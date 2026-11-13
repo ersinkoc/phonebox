@@ -559,6 +559,10 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         devices = devices.Where(s => string.IsNullOrEmpty(serial) || s == serial).ToArray();
 
         SetDevices(devices);
+        // _seen shrinks with the list here, before the empty-list return below: after an unplug the
+        // phone must count as "not yet woken by this process" again, or the reconnect wake further
+        // down is skipped while the adb server silently re-applies its cached reverse rules.
+        _seen.IntersectWith(devices);
         usb?.Retain(devices);
         foreach (var gone in _keyTriedAt.Keys.Except(devices).ToList()) _keyTriedAt.Remove(gone); // plugged in again: ask at once
         _oldApp.IntersectWith(devices);
@@ -670,7 +674,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // Settings › Display › home screen: the app offers itself as a home app; make it the default one (no root needed).
         if (cfg.Get().Display.HomeScreen)
         {
-            foreach (var d in devices.Where(d => !_homeSet.Contains(d) && !unreachable.Contains(d)))
+        foreach (var d in devices.Where(d => !_homeSet.Contains(d) && !unreachable.Contains(d)))
             {
                 // Android answers a refusal with exit code 1; that must not end the round for the other phones and keep-awake.
                 var r = await Adb(adb, $"-s {d} shell cmd package set-home-activity {HomeAlias}", ct, anyExit: true);
@@ -703,7 +707,6 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
         else _awakeSet.Clear();
         _awakeSet.IntersectWith(devices.Select(d => $"{d}:{stayOn}"));
-        _seen.IntersectWith(devices);
         Report($"phone connected: {Devices}");
     }
 

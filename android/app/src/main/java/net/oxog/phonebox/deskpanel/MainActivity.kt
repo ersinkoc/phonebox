@@ -7,6 +7,7 @@ import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Context
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import android.os.PowerManager
 import android.os.Looper
 import android.os.Handler
@@ -120,6 +121,7 @@ class MainActivity : Activity(), SensorEventListener {
     @Volatile private var standbyHostAlive = true   // what standby acts on; reconciled by standbyTick
     @Volatile private var standbyFromAgent = false  // have we read display.standby from the agent yet?
     @Volatile private var standbyLostSince = 0L     // elapsedRealtime of the first absence; 0 while alive
+    @Volatile private var standbyDestroyed = false  // onDestroy ran: late callbacks must not reschedule or probe
     private val standbyHealthPollMs = 2_000L        // while the computer answers
     private val standbyPollMs = 15_000L             // once it went quiet, until it comes back
     private val standbySilenceMs = 12_000L          // this long with no answer at all => not reachable
@@ -142,6 +144,7 @@ class MainActivity : Activity(), SensorEventListener {
     /** Take the criterion from whoever knows it: the panel pushes it when the setting changes, and the app reads
      *  it from the agent itself after a cold start (see standbyLoadSetting). Same entry point either way. */
     private fun applyStandbySetting(mode: String, graceSec: Int) {
+        if (standbyDestroyed) return
         val m = when (mode.trim().lowercase()) { "power" -> "power"; "data" -> "data"; else -> "off" }
         val g = graceSec.coerceIn(3, 600)
         if (m == standbyMode && g * 1000L == standbyGraceMs) return
@@ -246,12 +249,12 @@ class MainActivity : Activity(), SensorEventListener {
      * cannot run yet. A reply also proves the computer is up, so it feeds the criterion at the same time.
      */
     private fun standbyLoadSetting() {
-        standbyProbes.execute {
+        standbyExecute {
             try {
                 val r = link.request("GET", "/api/config")
-                if (r.code >= 400) return@execute
-                val body = r.body?.reader()?.readText() ?: return@execute
-                val d = org.json.JSONObject(body).optJSONObject("config")?.optJSONObject("display") ?: return@execute
+                if (r.code >= 400) { r.body.close(); return@standbyExecute }
+                val body = r.body.reader().use { it.readText() }
+                val d = org.json.JSONObject(body).optJSONObject("config")?.optJSONObject("display") ?: return@standbyExecute
                 standbyAgentDataAt = SystemClock.elapsedRealtime()
                 standbyFromAgent = true
                 applyStandbySetting(d.optString("standby", "off"), d.optInt("standbyGraceSec", 30))
@@ -301,6 +304,7 @@ class MainActivity : Activity(), SensorEventListener {
     /** Watch the computer: fast while it answers, slower once it has gone quiet. */
     private val standbyTick = object : Runnable {
         override fun run() {
+            if (standbyDestroyed) return
             if (!standbyFromAgent) standbyLoadSetting()
             if (standbyMode != "off") {
                 standbyUsbLink = standbyReadUsbLink()
@@ -311,14 +315,28 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    /** Proof that the computer answers: stamp the clock and, if the panel had already released the screen, do not
-     *  wait for the next fallback tick either - reconcile right away, so the keyguard that the agent's
-     *  KEYCODE_WAKEUP left standing is dismissed within a second instead of within standbyPollMs. */
+    /** Proof that the computer answers: stamp the clock and, when the verdict keys off data (mode "data"),
+     *  do not wait for the next fallback tick either - reconcile right away, so the keyguard that the
+     *  agent's KEYCODE_WAKEUP left standing is dismissed within a second instead of within standbyPollMs.
+     *  Mode "power" keys off the charge state: an answer proves nothing there, and posting anyway
+     *  would feed a probe-tick-probe hot loop whenever the agent answers over Wi-Fi with the cable out. */
     private fun markHostAnswer() {
+        if (standbyDestroyed) return
         standbyAgentDataAt = SystemClock.elapsedRealtime()
-        if (!standbyHostAlive) {
+        if (!standbyHostAlive && standbyMode == "data") {
             standbyHandler.removeCallbacks(standbyTick)
             standbyHandler.post(standbyTick)
+        }
+    }
+
+    /** Fire-and-forget submission for the standby executor: a teardown may land between the destroyed
+     *  check and execute(), and the RejectedExecutionException must not reach a handler thread. */
+    private fun standbyExecute(task: Runnable) {
+        if (standbyDestroyed) return
+        try {
+            standbyProbes.execute(task)
+        } catch (e: RejectedExecutionException) {
+            Unit
         }
     }
 
@@ -328,9 +346,11 @@ class MainActivity : Activity(), SensorEventListener {
      *  land in the doze maintenance windows - good enough as a fallback, because the prompt path is the agent
      *  itself, which sends KEYCODE_WAKEUP when it re-establishes the adb reverse rule after a reconnect. */
     private fun standbyProbe() {
-        standbyProbes.execute {
+        standbyExecute {
             try {
-                if (link.request("GET", "/api/state").code < 400) markHostAnswer()
+                val reply = link.request("GET", "/api/state")
+                reply.body.use { }  // an unread, unclosed body strands the HttpURLConnection
+                if (reply.code < 400) markHostAnswer()
             } catch (e: Exception) {
                 Unit
             }
@@ -648,6 +668,7 @@ class MainActivity : Activity(), SensorEventListener {
     override fun onDestroy() {
         destroyed = true
         resumed = false
+        standbyDestroyed = true
         standbyHandler.removeCallbacks(standbyTick)
         standbyPowerReceiver?.let { runCatching { unregisterReceiver(it) } }
         standbyUsbReceiver?.let { runCatching { unregisterReceiver(it) } }
@@ -783,7 +804,10 @@ class MainActivity : Activity(), SensorEventListener {
         }
 
         @JavascriptInterface
-        fun setStandby(mode: String, graceSec: Int) = applyStandbySetting(mode, graceSec)
+        fun setStandby(key: String, mode: String, graceSec: Int) {
+            if (!ok(key)) return
+            applyStandbySetting(mode, graceSec)
+        }
 
         @JavascriptInterface
         fun battery(key: String): String {
