@@ -15,6 +15,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private const string HomeAlias = "net.oxog.phonebox.deskpanel/.HomeAlias";
     private readonly HashSet<string> _homeSet = [];
     private readonly HashSet<string> _awakeSet = [];
+    /// <summary>Phones this agent process has already woken since it started (see LightPanel).</summary>
+    private readonly HashSet<string> _seen = [];
     private volatile string[] _missingApp = [];
 
     /// <summary>Connected phones that do not have the PhoneBox app yet (installed from Settings, e.g. after winget / Scoop).</summary>
@@ -440,6 +442,40 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     public Task<bool> SyncSessionAsync(CancellationToken ct, bool force = false) => ScreenSync.ReconcileAsync(_devices, ct, force);
     public Task ResetSessionAsync(CancellationToken ct) => ScreenSync.ResetAsync(ct);
 
+    /// <summary>
+    /// Light a phone this agent has not woken yet in this session and bring the panel to the front. The trio
+    /// (wake key, wm dismiss-keyguard, am start) mirrors the session-sync path below: an app cannot dismiss
+    /// its own keyguard while the display is off, and Android 10+ may refuse the sleeping app's request to
+    /// come forward ("Background activity start" is logged and blocked) - shell commands via adb are neither.
+    /// </summary>
+    private async Task LightPanel(string device, string adb, string why, CancellationToken ct)
+{
+    // A newly plugged-in phone must not light up while the computer is locked.
+    if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
+    {
+        await SyncSessionAsync(ct, force: true);
+        return;
+    }
+    await Adb(adb, ["-s", device, "shell", "input", "keyevent", "KEYCODE_WAKEUP"], ct);
+    // Settings › Display › wake and unlock: the keyguard is dismissed only when the phone reports it is
+    // showing one. A PIN, pattern or password is not passed: "wm dismiss-keyguard" only steps over
+    // swipe-to-unlock screens.
+    if (cfg.Get().Display.WakeOnUnlock && await KeyguardShowingAsync(adb, device, ct))
+    {
+        // optional: a dismiss that fails must not keep the panel from opening
+        try { await Adb(adb, ["-s", device, "shell", "wm", "dismiss-keyguard"], ct); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
+        { log.LogInformation("{Device}: the lock screen could not be stepped over ({Why})", device, ex.Message); }
+    }
+    await Adb(adb, ["-s", device, "shell", "am", "start", "-n", PanelActivity], ct);
+    log.LogInformation("{Device}: {Why}, panel opened", device, why);
+}
+    /// <summary>Lights a phone only the first time this agent process sees it (see the re-plug note in Ensure).</summary>
+    private async Task LightIfNew(string device, string adb, string why, CancellationToken ct)
+    {
+        if (_seen.Add(device)) await LightPanel(device, adb, why, ct);
+    }
     private async Task ApplyScreenAsync(string device, bool locked, CancellationToken ct)
     {
         var adb = FindAdb(cfg.Get().AdbPath);
@@ -587,13 +623,19 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             }
             var ruled = listable ? HasOwnRule(list) : _reverseSet.Contains(d);
             var keyed = usb is null || KeyAskedRecently(d, usb.HasKey(d) && !refreshKeys ? KeyRefreshMs : KeyRetryMs);
-            if (ruled && keyed && !_missingApp.Contains(d)) continue;
+            if (ruled && keyed && !_missingApp.Contains(d))
+            {
+                // A re-plug inside one live agent keeps the adb server's cached rules, so "rule missing" never
+                // fires; any phone this process has not lit yet gets woken once.
+                await LightIfNew(d, adb, "phone reconnected", ct);
+                continue;
+            }
             // is the app there at all? (the agent may have been installed on its own, with winget or Scoop)
             var installed = (await Adb(adb, $"-s {d} shell pm path net.oxog.phonebox.deskpanel", ct, anyExit: true)).Contains("package:");
             _missingApp = installed ? _missingApp.Where(x => x != d).ToArray() : _missingApp.Union([d]).ToArray();
             if (!installed) { Report($"{d}: the PhoneBox app is not installed (Settings › General › Install the phone app)"); continue; }
             if (!keyed) await ReadKeyAsync(adb, d, ct);
-            if (ruled) continue;
+            if (ruled) { await LightIfNew(d, adb, "phone reconnected", ct); continue; }
             // the phone had a rule already: this agent restarted (its USB port changed), the phone was not plugged in now
             var moved = HasAnyRule(list);
             if (_stopping) return; // the agent is closing: a rule set now would be left behind (RemoveBeforeThePortCloses)
@@ -605,7 +647,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             _reverseSet.Add(d);
             _setHere[d] = sdk;
             if (transports?.TryGetValue(d, out var transport) == true) _transport[d] = transport;
-            if (moved) { log.LogInformation("{Device}: adb reverse moved to this agent", d); continue; }
+            if (moved) { log.LogInformation("{Device}: adb reverse moved to this agent", d); await LightIfNew(d, adb, "phone reconnected", ct); continue; }
             // the adb server was restarted: the phone was set up already, and is left as it is
             if (_quiet.Remove(d) && Environment.TickCount64 < _quietUntil)
             {
@@ -619,24 +661,11 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             }
             else if (cfg.Get().Display.OpenOnConnect)
             {
-                await Adb(adb, $"-s {d} shell input keyevent KEYCODE_WAKEUP", ct);
-                // Settings › Display › wake and unlock: the keyguard is dismissed only when the phone reports it
-                // is showing one — no input goes to whatever else is on screen, and a PIN, pattern or password is
-                // not passed: "wm dismiss-keyguard" only steps over swipe-to-unlock screens.
-                if (cfg.Get().Display.WakeOnUnlock && await KeyguardShowingAsync(adb, d, ct))
-                {
-                    // optional: a dismiss that fails must not keep the panel from opening (the rule is set already, so
-                    // the next round would not come back to open it)
-                    try { await Adb(adb, $"-s {d} shell wm dismiss-keyguard", ct); }
-                    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-                    catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
-                    { log.LogInformation("{Device}: the lock screen could not be stepped over ({Why})", d, ex.Message); }
-                }
-                await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", ct);
-                log.LogInformation("{Device}: adb reverse set up, panel opened", d);
+                await LightPanel(d, adb, "adb reverse set up", ct);
             }
             // Settings › Display › open on connect is off: the phone stays as it is (the panel opens when the user starts it).
             else log.LogInformation("{Device}: adb reverse set up", d);
+            _seen.Add(d);
         }
         // Settings › Display › home screen: the app offers itself as a home app; make it the default one (no root needed).
         if (cfg.Get().Display.HomeScreen)
@@ -652,20 +681,29 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
         else _homeSet.Clear();
         // Settings › Display › keep awake: Android's screen saver (Daydream) starts on the dock or charger and covers the
-        // panel; turn it off and keep the screen on while plugged in (plain adb settings, no root).
+        // panel; turn it off and keep the screen on while plugged in (plain adb settings, no root). One exception:
+        // a standby panel must stay able to sleep while 5 V is alive (ErP off, a charge-capped port), and
+        // stay_on_while_plugged_in is system-level - PowerManagerService would outvote the app releasing its own
+        // keep-awake flag (measured: the app released the hold, the timeout fired, the screen stayed up until the
+        // setting was 0). The app cannot clear it (WRITE_SETTINGS), so the agent writes 7 while standby is off -
+        // today's behaviour, unchanged - and 0 the moment standby is on. The value rides in the key, so flipping
+        // the setting re-applies it without restarting the agent.
+        var stayOn = cfg.Get().Display.Standby == "off" ? "7" : "0";
         if (cfg.Get().Display.KeepAwake)
         {
-            foreach (var d in devices.Where(d => !_awakeSet.Contains(d) && !_missingApp.Contains(d) && !unreachable.Contains(d)))
+        foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
             {
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_enabled 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_dock 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_sleep 0", ct);
-                await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in 7", ct);
-                _awakeSet.Add(d);
-                log.LogInformation("{Device}: screen saver off, stays awake while plugged in", d);
+                await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
+                _awakeSet.Add($"{d}:{stayOn}");
+                log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
             }
         }
         else _awakeSet.Clear();
+        _awakeSet.IntersectWith(devices.Select(d => $"{d}:{stayOn}"));
+        _seen.IntersectWith(devices);
         Report($"phone connected: {Devices}");
     }
 
@@ -742,7 +780,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
     private void SetDevices(string[] devices)
     {
-        _awakeSet.IntersectWith(devices);
+        _awakeSet.RemoveWhere(k => !devices.Any(d => k.StartsWith(d + ":")));
         _reverseSet.IntersectWith(devices); // plugged in again: the rule has to be set again
         foreach (var gone in _sdk.Keys.Except(devices).ToList()) _sdk.Remove(gone);
         foreach (var gone in _transport.Keys.Except(devices).ToList()) _transport.Remove(gone);
