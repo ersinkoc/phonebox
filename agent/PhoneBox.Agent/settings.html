@@ -1915,6 +1915,96 @@ function renderControlSettings() {
     box.append(btn('Show task output',async()=>{const r=await fetch('/api/controls/task-output/'+encodeURIComponent(a.id));if(!r.ok)throw new Error('Output unavailable');output.textContent=await r.text();}),btn('Remove control',()=>{c.actions=c.actions.filter(x=>x!==a);changed();renderActions();}),output);return box;
   }));renderActions();
   root.append(btn('Add control',()=>{c.actions.push({id:'control-'+crypto.randomUUID().slice(0,8),label:'New control',kind:'shortcut',target:'',value:75});changed();renderActions();actions.lastChild.open=true;}));
+
+  const radioDir = h('details', {}, h('summary', {}, 'Import & verify radio stations (radio-browser.info)'));
+  const countrySelect = h('select', { 'aria-label': 'Country', style: { minWidth: '200px' } }, h('option', { value: '' }, 'Load countries first…'));
+  const limitInput = h('input', { type: 'number', min: 1, max: 100, value: 30, style: { width: '90px' }, 'aria-label': 'Station count' });
+  const dirStatus = h('p', { class: 'hint', style: { margin: '6px 0' } }, 'Import popular stations by country from the public radio-browser.info directory (CC0), or check configured radio stream URLs.');
+  const checkReport = h('pre', { style: { maxHeight: '200px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
+  radioDir.append(
+    dirStatus,
+    h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', marginBottom: '8px' } },
+      btn('Load countries', async () => {
+        try {
+          const res = await request('radio-directory/countries', 'GET');
+          const list = res.countries || [];
+          countrySelect.replaceChildren(
+            h('option', { value: '' }, '— Select country —'),
+            ...list.map((cty) => h('option', { value: cty.code }, `${cty.name} (${cty.stationCount})`))
+          );
+          dirStatus.textContent = `Loaded ${list.length} countries.`;
+        } catch (e) {
+          dirStatus.textContent = e.message || 'Could not load countries from radio-browser.info.';
+          throw e;
+        }
+      }),
+      countrySelect,
+      limitInput,
+      btn('Import stations', async () => {
+        const cc = countrySelect.value;
+        if (!cc) { toast('Select a country first', true); return; }
+        const MAX_ACTIONS = 512;
+        c.actions ||= [];
+        if (c.actions.length >= MAX_ACTIONS) {
+          dirStatus.textContent = `Control Deck is full (${MAX_ACTIONS} controls maximum). Remove unused controls before importing.`;
+          toast(`Control Deck is full (${MAX_ACTIONS} max)`, true);
+          return;
+        }
+        const limit = Math.max(1, Math.min(100, parseInt(limitInput.value || '30', 10)));
+        try {
+          const res = await request(`radio-directory/stations?country=${encodeURIComponent(cc)}&limit=${limit}`, 'GET');
+          const stations = res.stations || [];
+          const existingTargets = new Set(c.actions.filter((a) => a.kind === 'radio').map((a) => (a.target || '').trim().toLowerCase()));
+          const existingIds = new Set(c.actions.map((a) => a.id));
+          let added = 0, skipped = 0, capped = 0;
+          for (const st of stations) {
+            const normUrl = (st.streamUrl || '').trim().toLowerCase();
+            if (!normUrl || existingTargets.has(normUrl)) { skipped++; continue; }
+            if (c.actions.length >= MAX_ACTIONS) { capped++; continue; }
+            let id = st.id || ('radio-' + crypto.randomUUID().slice(0, 8));
+            let suffix = 2;
+            while (existingIds.has(id)) id = `${st.id}-${suffix++}`;
+            existingIds.add(id);
+            existingTargets.add(normUrl);
+            c.actions.push({ id, label: st.label, kind: 'radio', target: st.streamUrl, value: 80 });
+            added++;
+          }
+          if (added > 0) { changed(); renderActions(); }
+          const msg = `Imported ${added} new station(s)`
+            + (skipped ? ` (${skipped} already present)` : '')
+            + (capped ? ` — stopped at ${MAX_ACTIONS}-control limit (${capped} omitted)` : '')
+            + '. Click Save to apply.';
+          dirStatus.textContent = msg;
+          toast(capped ? `Imported ${added} stations (${MAX_ACTIONS} limit reached)` : `Imported ${added} station(s)`);
+        } catch (e) {
+          dirStatus.textContent = e.message || 'Could not import stations from radio-browser.info.';
+          throw e;
+        }
+      }),
+      btn('Check configured streams', async () => {
+        const radios = c.actions.filter((a) => a.kind === 'radio');
+        if (!radios.length) { toast('No radio controls configured', true); return; }
+        dirStatus.textContent = `Checking ${radios.length} stream(s)…`;
+        const r = await fetch('/api/controls/radio-directory/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stations: radios.map((a) => ({ id: a.id, streamUrl: a.target })) })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || 'Stream check failed');
+        const results = j.results || [];
+        const byId = new Map(results.map((x) => [x.id, x]));
+        const okCount = results.filter((x) => x.ok).length;
+        dirStatus.textContent = `Checked ${results.length} stream(s): ${okCount} live, ${results.length - okCount} unreachable (no controls were modified).`;
+        checkReport.textContent = radios.map((a) => {
+          const st = byId.get(a.id);
+          return `${st?.ok ? '✓' : '✗'} ${a.label || a.id} — ${st?.status || 'Unknown'} (${a.target})`;
+        }).join('\n');
+      })
+    ),
+    checkReport
+  );
+  root.append(radioDir);
   root.append(h('details',{},h('summary',{},'Available shortcut IDs'),h('p',{class:'hint'},'Create executable, text and macro shortcuts in Deck first.'),...cfg.shortcuts.map(s=>h('div',{},s.id+' — '+s.label))));
   const profiles=h('div');root.append(h('h4',{},'Audio and routine profiles'),profiles);
   const renderProfiles=()=>profiles.replaceChildren(...c.profiles.map(p=>{
