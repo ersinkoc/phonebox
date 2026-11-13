@@ -5099,6 +5099,64 @@ pager.addEventListener("touchend", (e) => {
 pager.addEventListener("touchcancel", () => {
   swipeTracking = false;
 }, { passive: true });
+var mouseDrag = null;
+pager.addEventListener("pointerdown", (e) => {
+  var _a, _b;
+  if (e.pointerType !== "mouse" || e.button !== 0 || pages.length < 2) return;
+  if (volDragging || ((_b = (_a = e.target).closest) == null ? void 0 : _b.call(_a, "input, textarea, select, [contenteditable], .s-list, .vb"))) return;
+  mouseDrag = { x: e.clientX, y: e.clientY, left: pager.scrollLeft, page: curPage, time: Date.now(), moved: false, id: e.pointerId };
+});
+pager.addEventListener("pointermove", (e) => {
+  var _a, _b;
+  if (!mouseDrag || e.pointerId !== mouseDrag.id) return;
+  const dx = e.clientX - mouseDrag.x;
+  if (!mouseDrag.moved) {
+    if (e.target !== pager && ((_b = (_a = e.target).hasPointerCapture) == null ? void 0 : _b.call(_a, e.pointerId))) {
+      mouseDrag = null;
+      return;
+    }
+    if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(e.clientY - mouseDrag.y)) return;
+    mouseDrag.moved = true;
+    clearTimeout(snapTimer);
+    pager.style.scrollSnapType = "none";
+    document.body.style.cursor = "grabbing";
+    document.body.style.userSelect = "none";
+    try {
+      pager.setPointerCapture(e.pointerId);
+    } catch (_) {
+    }
+  }
+  pager.scrollLeft = mouseDrag.left - dx;
+});
+function endMouseDrag(e) {
+  if (!mouseDrag || e.pointerId !== mouseDrag.id) return;
+  const d = mouseDrag;
+  mouseDrag = null;
+  if (!d.moved) return;
+  document.body.style.cursor = "";
+  document.body.style.userSelect = "";
+  const swallow = (c) => {
+    c.stopPropagation();
+    c.preventDefault();
+  };
+  window.addEventListener("click", swallow, { capture: true, once: true });
+  setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 50);
+  const dx = e.clientX - d.x;
+  const flick = Math.abs(dx) >= 40 && Date.now() - d.time < 700;
+  let target = Math.round(pager.scrollLeft / window.innerWidth);
+  if (flick || Math.abs(dx) > window.innerWidth / 2) target = d.page + (dx < 0 ? 1 : -1);
+  else target = d.page;
+  lastTouch = lastUserTouch = Date.now();
+  haptic();
+  if (target >= pages.length || target < 0) {
+    goPage(target < 0 ? pages.length - 1 : 0, true);
+    return;
+  }
+  goPage(target);
+  snapTimer = setTimeout(() => pager.style.scrollSnapType = "", 450);
+}
+pager.addEventListener("pointerup", endMouseDrag);
+pager.addEventListener("pointercancel", endMouseDrag);
 window.onAndroidKey = (k) => {
   lastTouch = lastUserTouch = Date.now();
   if (nightOn) {
