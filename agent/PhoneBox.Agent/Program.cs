@@ -510,6 +510,8 @@ app.MapGet("/api/work", (SessionMonitor s, GitHubMonitor gh) => Results.Json(new
     github = gh.Snapshot(),
 }));
 
+app.MapGet("/api/proxy", (string? url, CancellationToken ct) => WidgetFeedProxy.FetchAsync(url, ct));
+
 app.MapGet("/api/procs", (ProcessMonitor procs, int? top) =>
 {
     var all = procs.Snapshot();

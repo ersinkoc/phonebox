@@ -1,4 +1,4 @@
-import { $, ago, h, store, tick } from '../main.js';
+import { $, ago, h, safeFetch, store, tick } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every, fmtNum, lines, pctSpan, sparkLine } from './helpers.js';
 
@@ -15,7 +15,7 @@ W.hackernews = {
         let data = store.get('nc:' + key, null);
         if (!data || Date.now() - data.at > 15 * 60_000) {
           const ids = (await cached('hn-ids', 'https://hacker-news.firebaseio.com/v0/topstories.json', 15 * 60_000)).slice(0, 15);
-          const items = await Promise.all(ids.map((id) => fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then((r) => r.json()).catch(() => null)));
+          const items = await Promise.all(ids.map((id) => safeFetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then((r) => r.json()).catch(() => null)));
           data = { at: Date.now(), data: items.filter(Boolean).map((i) => ({ t: i.title, u: i.url, s: i.score, c: i.descendants || 0 })) };
           store.set('nc:' + key, data);
         }

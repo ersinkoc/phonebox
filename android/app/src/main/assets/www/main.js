@@ -78,6 +78,21 @@ export const hist = { cpu: [], gpu: [], ram: [], vram: [], down: [], up: [], pin
 export const pushHist = (k, v) => { const a = hist[k]; a.push(v ?? 0); if (a.length > HIST) a.shift(); };
 
 // ---------------------------------------------------------------- helpers
+/** fetch() to the panel's local/USB feed proxy when the phone cannot reach an allowed public HTTPS feed directly. */
+export async function safeFetch(url, opts = {}) {
+  try {
+    return await fetch(url, opts);
+  } catch (e) {
+    if (!opts.signal?.aborted && typeof url === 'string' && url.startsWith('https://')) {
+      return await fetch(`${API}/proxy?url=${encodeURIComponent(url)}`, {
+        ...opts,
+        headers: { ...(opts.headers || {}), ...PANEL_HEADERS },
+      });
+    }
+    throw e;
+  }
+}
+
 export async function api(path, method = 'GET', timeout = 2500) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeout);
@@ -270,7 +285,7 @@ export async function loadWeather(force = false) {
       '&timezone=auto&forecast_days=7';
     const ctl = new AbortController();
     setTimeout(() => ctl.abort(), 8000);
-    const data = await (await fetch(url, { signal: ctl.signal })).json();
+    const data = await (await safeFetch(url, { signal: ctl.signal })).json();
     store.set('wx', { key, at: Date.now(), data });
     D.weather = data;
     emit('weather');

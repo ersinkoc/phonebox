@@ -1,4 +1,4 @@
-import { $, LOCALE, cfg, h, ringSvg, sizeCanvas, store } from '../main.js';
+import { $, LOCALE, cfg, h, ringSvg, safeFetch, sizeCanvas, store } from '../main.js';
 
 // ---------------------------------------------------------------- more widgets: helpers
 export const inflight = {};
@@ -9,7 +9,7 @@ export function cached(key, url, maxAgeMs) {
   if (inflight[key]) return inflight[key];
   const ctl = new AbortController();
   setTimeout(() => ctl.abort(), 10000);
-  inflight[key] = fetch(url, { signal: ctl.signal })
+  inflight[key] = safeFetch(url, { signal: ctl.signal })
     .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then((data) => { store.set('nc:' + key, { at: Date.now(), data }); return data; })
     .catch((e) => { if (c) return c.data; throw e; })
