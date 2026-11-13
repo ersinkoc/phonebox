@@ -1,5 +1,15 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, color, cssVar, emit, fillIcon, fmtDur, fmtMem, fmtReset, fmtTime, fmtValue, h, haptic, hist, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, renderStatus, ringSvg, setArtColor, setVolDragging, shortDur, store, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtDur, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, h, haptic, hasProcessesPage, hist, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, setVolDragging, shortDur, store, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
 import { W } from '../registry.js';
+
+function bindProcessLink(box, sortTarget) {
+  if (!hasProcessesPage()) return;
+  box.style.cursor = 'pointer';
+  box.addEventListener('click', () => {
+    if (!hasProcessesPage()) return;
+    haptic();
+    gotoProcesses(sortTarget);
+  });
+}
 
 // ================================================================= widgets
 // Each widget: { needs: [data kinds], bare?: no card background, create(box, ctx) -> { update(kind) } }
@@ -181,8 +191,10 @@ W.stat = {
     const c = color(m.color);
     box.style.setProperty('--c', c);
     const canvas = h('canvas');
+    const lbl = h('div', 't-label', m.label);
     const val = h('b', null, '—'), unit = h('small'), sub = h('div', 't-sub', ' ');
-    box.append(canvas, h('div', 't-label', m.label), h('div', 't-val', val, unit), sub);
+    box.append(canvas, lbl, h('div', 't-val', val, unit), sub);
+    if (o.metric === 'cpu' || o.metric === 'ram') bindProcessLink(box, o.metric === 'cpu' ? 'cpu' : 'mem');
     return {
       update() {
         const s = D.state;
@@ -190,6 +202,8 @@ W.stat = {
         const [v, u] = metricText(m, s);
         val.textContent = v;
         unit.textContent = u;
+        const pctVal = m.pct?.(s);
+        lbl.textContent = pctVal != null && m.label === 'RAM' ? `RAM (${Math.round(pctVal)}%)` : m.label;
         sub.textContent = m.sub?.(s) || ' ';
         chart(canvas, [{ data: hist[m.hist || o.metric] || hist.cpu, color: c, max: m.max(s) }]);
       },
@@ -205,6 +219,7 @@ W.gauge = {
     const dial = h('div', 'g-dial'), pct = h('div', 'g-val'), sub = h('div', 'g-sub');
     box.append(dial, h('div', 'g-label', m.label), sub);
     dial.append(pct);
+    if (o.metric === 'cpu' || o.metric === 'ram') bindProcessLink(box, o.metric === 'cpu' ? 'cpu' : 'mem');
     let svg = null;
     return {
       update() {
@@ -237,6 +252,7 @@ W.chart = {
     const main = h('div', 's-main');
     const canvas = h('canvas');
     box.append(head, main, canvas);
+    if (keys.includes('cpu') || keys.includes('ram')) bindProcessLink(box, keys.includes('cpu') ? 'cpu' : 'mem');
     return {
       update() {
         const s = D.state;
@@ -268,6 +284,7 @@ W.meters = {
     const up = h('span', 's-name');
     const list = h('div', 'meters');
     box.append(h('div', 's-head', h('span', 's-label', 'Memory'), up), list);
+    bindProcessLink(box, 'mem');
     const meter = (name, txt, pct, c) => {
       const e = h('div', 'meter', h('div', 'm-row', h('span', null, name), h('span', null, txt)), h('div', 'track', h('i')));
       e.querySelector('i').style.width = Math.min(100, pct) + '%';
@@ -543,12 +560,12 @@ W.github = {
 };
 
 W.processes = {
-  needs: ['procs'],
+  needs: ['procs', 'state'],
   create(box, { o }) {
     const canKill = o.allowKill !== false;
-    let sort = 'cpu';
+    let sort = currentProcessesSort();
     const sum = h('span', 'p-sum');
-    const seg = h('div', 'seg', h('button', 'on', 'CPU'), h('button', null, 'RAM'));
+    const seg = h('div', 'seg', h('button', sort === 'cpu' ? 'on' : null, 'CPU'), h('button', sort === 'mem' ? 'on' : null, 'RAM'));
     const grid = h('div', 'p-grid', h('div', 'empty', 'Processes appear once the computer is connected.'));
     box.style.setProperty('--c', '#f472b6');
     box.append(h('div', 'p-head', h('span', 's-label', 'Processes'), sum, seg), grid);
@@ -574,7 +591,16 @@ W.processes = {
       grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
       const list = [...data.groups].sort((a, b) => (sort === 'cpu' ? b.cpu - a.cpu || b.memMb - a.memMb : b.memMb - a.memMb)).slice(0, cols * rows);
       const max = Math.max(0.1, ...list.map((g) => (sort === 'cpu' ? g.cpu : g.memMb)));
-      sum.textContent = box.clientWidth > 380 ? `${data.total} processes · ${data.groupCount ?? data.groups.length} apps · tap one for details` : `${data.total} processes`;
+      const pc = D.state?.pc;
+      const cpuPct = pc && pc.cpu != null ? Math.round(pc.cpu) : null;
+      const ramPct = pc && pc.ramTotalGb ? Math.round((pc.ramUsedGb / pc.ramTotalGb) * 100) : null;
+      const ramStr = ramPct != null && pc.ramUsedGb != null && pc.ramTotalGb != null
+        ? `Total RAM ${ramPct}% (${Math.round(pc.ramUsedGb)}/${Math.round(pc.ramTotalGb)} GB) · `
+        : (ramPct != null ? `Total RAM ${ramPct}% · ` : '');
+      const loadPart = sort === 'cpu'
+        ? (cpuPct != null ? `Total CPU ${cpuPct}% · ` : '')
+        : ramStr;
+      sum.textContent = box.clientWidth > 380 ? `${loadPart}${data.total} processes · ${data.groupCount ?? data.groups.length} apps · tap one for details` : `${loadPart}${data.total} processes`;
       if (grid.querySelector('.empty')) grid.replaceChildren();
       const keep = new Set(list.map((g) => g.name));
       for (const [n, e] of els) if (!keep.has(n)) { e.remove(); els.delete(n); }
@@ -590,11 +616,15 @@ W.processes = {
         grid.appendChild(e); // keeps the order
       }
     };
+    const setSort = (s) => {
+      sort = s === 'mem' ? 'mem' : 'cpu';
+      [...seg.children].forEach((x, i) => x.classList.toggle('on', (i === 0 ? 'cpu' : 'mem') === sort));
+      render();
+    };
+    registerProcessesSorter(setSort);
     [...seg.children].forEach((b, i) => b.addEventListener('click', () => {
       haptic();
-      sort = i === 0 ? 'cpu' : 'mem';
-      [...seg.children].forEach((x) => x.classList.toggle('on', x === b));
-      render();
+      setSort(i === 0 ? 'cpu' : 'mem');
     }));
     return { update: render };
   },

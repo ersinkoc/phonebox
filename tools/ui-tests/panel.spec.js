@@ -288,6 +288,20 @@ for (const [zone, noon] of [['America/New_York', '2026-11-09T12:00:00-05:00'], [
   });
 }
 
+test('clicking a RAM widget navigates to the Processes page sorted by RAM', async ({ page }) => {
+  await page.goto('/panel/');
+  await expect(page.locator('.w').first()).toBeVisible();
+  await expect.poll(() => page.locator('#dots i').count()).toBeGreaterThan(10);
+  const ramLabel = page.locator('.w .t-label', { hasText: /^RAM/ }).first();
+  await expect(ramLabel).toBeVisible();
+  await expect(ramLabel).toContainText('%');
+  await ramLabel.locator('..').click();
+  const procHead = page.locator('.w .p-head');
+  await expect(procHead).toBeVisible();
+  await expect(procHead.locator('.seg button.on')).toHaveText('RAM');
+  await expect(procHead.locator('.p-sum')).toContainText('Total RAM');
+});
+
 test('the landing page embeds the panel', async ({ page }) => {
   const errors = watchErrors(page);
   await page.setViewportSize({ width: 1200, height: 900 });

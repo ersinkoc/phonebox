@@ -377,25 +377,44 @@ W.battery = {
 };
 
 W.topprocs = {
-  needs: ['procs'],
+  needs: ['procs', 'state'],
   create(box, { o }) {
     const byMem = o.sort === 'mem';
     const list = h('div', 'tp-list');
     box.style.setProperty('--c', '#f472b6');
-    box.append(h('div', 'w-title', byMem ? 'Top memory' : 'Top CPU'), list);
+    const title = h('div', 'w-title', byMem ? 'Top memory' : 'Top CPU');
+    box.append(title, list);
+    const rowMap = new Map();
     return {
       update() {
+        const pc = D.state?.pc;
+        if (byMem && pc?.ramTotalGb) {
+          const pct = Math.round((pc.ramUsedGb / pc.ramTotalGb) * 100);
+          title.textContent = `Top memory (${pct}% · ${Math.round(pc.ramUsedGb)}/${Math.round(pc.ramTotalGb)} GB)`;
+        } else if (!byMem && pc?.cpu != null) {
+          title.textContent = `Top CPU (${Math.round(pc.cpu)}%)`;
+        }
         const data = D.procs;
-        if (!data?.groups?.length) { list.replaceChildren(h('div', 'empty', 'Measuring…')); return; }
+        if (!data?.groups?.length) { rowMap.clear(); list.replaceChildren(h('div', 'empty', 'Measuring…')); return; }
+        if (list.querySelector('.empty')) list.replaceChildren();
         const n = Math.max(1, Math.floor((box.clientHeight - 30) / 24));
         const top = [...data.groups].sort((a, b) => (byMem ? b.memMb - a.memMb : b.cpu - a.cpu)).slice(0, n);
-        list.replaceChildren(...top.map((g) => {
-          const ico = h('div', 'p-ico');
-          fillIcon(ico, g);
-          const row = h('div', 'tp-i', ico, h('span', 'tp-n', g.title + (g.count > 1 ? ` ×${g.count}` : '')), h('b', null, byMem ? fmtMem(g.memMb) : g.cpu.toFixed(1) + '%'));
-          row.addEventListener('click', () => { haptic(); openSheet(g, canKillAnywhere()); });
-          return row;
-        }));
+        const keep = new Set(top.map((g) => g.name));
+        for (const [k, el] of rowMap) if (!keep.has(k)) { el.remove(); rowMap.delete(k); }
+        for (const g of top) {
+          let row = rowMap.get(g.name);
+          if (!row) {
+            const ico = h('div', 'p-ico');
+            fillIcon(ico, g);
+            row = h('div', 'tp-i', ico, h('span', 'tp-n'), h('b'));
+            row.addEventListener('click', () => { haptic(); openSheet(row._g, canKillAnywhere()); });
+            rowMap.set(g.name, row);
+          }
+          row._g = g;
+          row.querySelector('.tp-n').textContent = g.title + (g.count > 1 ? ` ×${g.count}` : '');
+          row.querySelector('b').textContent = byMem ? fmtMem(g.memMb) : g.cpu.toFixed(1) + '%';
+          list.appendChild(row);
+        }
       },
     };
   },

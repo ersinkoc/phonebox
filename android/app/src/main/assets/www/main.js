@@ -484,14 +484,33 @@ export function monogramColor(name) {
   return `hsl(${x} 70% 65%)`;
 }
 
+const ICON_CACHE = new Map();
+const MAX_ICON_CACHE = 200;
+
 /** Fills an icon box with the app icon, falling back to a coloured monogram. */
 export function fillIcon(box, g) {
   box.replaceChildren();
+  const cached = ICON_CACHE.get(g.name);
+  if (cached) {
+    box.textContent = '';
+    box.style.background = 'transparent';
+    box.appendChild(cached.cloneNode(true));
+    return;
+  }
   box.style.background = monogramColor(g.name);
   box.textContent = (g.title || g.name).charAt(0).toUpperCase();
   if (g.hasIcon !== false) {
     const img = new Image();
-    img.onload = () => { box.textContent = ''; box.style.background = 'transparent'; box.appendChild(img); };
+    img.onload = () => {
+      if (ICON_CACHE.size >= MAX_ICON_CACHE) {
+        const oldest = ICON_CACHE.keys().next().value;
+        if (oldest !== undefined) ICON_CACHE.delete(oldest);
+      }
+      ICON_CACHE.set(g.name, img);
+      box.textContent = '';
+      box.style.background = 'transparent';
+      box.appendChild(img);
+    };
     img.src = `${API}/procs/icon?name=${encodeURIComponent(g.name)}`;
   }
 }
@@ -847,6 +866,32 @@ export function gotoPageRef(ref) {
   lastTouch = Date.now();
   goPage(n, Math.abs(n - curPage) > 1);
   return n;
+}
+
+let procsSort = 'cpu';
+let procsSorter = null;
+
+export function registerProcessesSorter(fn) {
+  procsSorter = typeof fn === 'function' ? fn : null;
+  if (procsSorter) procsSorter(procsSort);
+}
+
+export function currentProcessesSort() {
+  return procsSort;
+}
+
+export function hasProcessesPage() {
+  return resolvePage('procs') >= 0 || resolvePage('processes') >= 0
+    || pages.some((p) => (p.widgets || []).some((w) => w.type === 'processes'));
+}
+
+export function gotoProcesses(sortTarget = 'cpu') {
+  procsSort = sortTarget === 'mem' ? 'mem' : 'cpu';
+  let idx = resolvePage('procs');
+  if (idx < 0) idx = resolvePage('processes');
+  if (idx < 0) idx = pages.findIndex((p) => (p.widgets || []).some((w) => w.type === 'processes'));
+  if (idx >= 0) gotoPageRef(idx + 1);
+  if (procsSorter) procsSorter(procsSort);
 }
 
 export const resolvePage = (ref) => {
