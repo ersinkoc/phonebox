@@ -573,7 +573,7 @@ app.Run();
 single.ReleaseMutex();
 single.Dispose();
 if (AppRestart.Requested && Environment.ProcessPath is { } exe)
-    System.Diagnostics.Process.Start(AppRestart.StartInfo(exe, args));
+    System.Diagnostics.Process.Start(AppRestart.StartInfo(AppRestart.Executable(exe), args));
 
 static void AddMonitor<T>(IServiceCollection s) where T : class, IHostedService
 {

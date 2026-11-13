@@ -12,6 +12,10 @@
   address copied in Settings › General › Web kiosk. Served on the Wi-Fi & Tailscale HTTPS port (and on `127.0.0.1`
   for a browser on the PC).
 
+**Linux**
+- `packaging/appimage/build-appimage.sh` builds a self-contained AppImage of the agent (the .NET runtime included).
+  Restarting from the settings page starts the AppImage file again instead of its temporary mount point.
+
 ## 0.9.4 — 2026-11-11
 
 A full audit of the agent, the panel, the settings page and the tooling. Every fix below has a regression test or a
