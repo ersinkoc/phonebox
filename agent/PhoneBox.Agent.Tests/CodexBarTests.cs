@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
@@ -75,5 +76,102 @@ public sealed class CodexBarTests
         Assert.Equal(3, provider.Limits.Count);
         Assert.Equal("Opus", provider.Limits[2].Label);
         Assert.Equal(30, provider.Limits[2].Percent);
+    }
+
+    /// <summary>
+    /// Verifies that documented CLI pace metadata, reset descriptions, and expanded provider names are parsed.
+    /// </summary>
+    [Fact]
+    public void ParsesResetDescriptionPaceAndAdditionalProviders()
+    {
+        var providers = CodexBar.Parse("""
+            [{"provider":"cursor","pace":{"primary":{"stage":"ahead","deltaPercent":12.5,"expectedUsedPercent":30,"willLastToReset":true}},
+              "usage":{"loginMethod":"Pro","primary":{
+                "usedPercent":42.5,
+                "windowMinutes":10080,
+                "resetDescription":"Resets Sunday 12:00"
+              },
+              "extraRateWindows":[{"title":"Fuel pack: 750/1000","window":{"usedPercent":25,"resetDescription":"   "}}]}},
+            {"provider":"alibabatokenplan","usage":{"primary":{"usedPercent":10}}},
+            {"provider":"alibaba","usage":{"primary":{"usedPercent":20}}},
+            {"provider":"custom_ai","displayName":"Ignored Name","usage":{"primary":{"usedPercent":75}}}]
+            """);
+        Assert.Equal(4, providers.Count);
+
+        var cursor = providers[0];
+        Assert.Equal("cursor", cursor.Id);
+        Assert.Equal("Cursor", cursor.Name);
+        Assert.Equal("Pro", cursor.Plan);
+        Assert.Equal(2, cursor.Limits.Count);
+        var limit = cursor.Limits[0];
+        Assert.Equal("Weekly", limit.Label);
+        Assert.Equal("Resets Sunday 12:00", limit.ResetDescription);
+        Assert.Equal(12.5, limit.DeltaPercent);
+        Assert.Equal(30, limit.ExpectedPercent);
+        Assert.True(limit.PaceOnTrack);
+
+        var fuelPack = cursor.Limits[1];
+        Assert.Equal("Fuel pack: 750/1000", fuelPack.Label);
+        Assert.Null(fuelPack.ResetDescription);
+        Assert.Null(fuelPack.DeltaPercent);
+        Assert.Null(fuelPack.PaceOnTrack);
+
+        Assert.Equal("Alibaba Token Plan", providers[1].Name);
+        Assert.Equal("Alibaba Coding Plan", providers[2].Name);
+        Assert.Equal("Custom_ai", providers[3].Name);
+    }
+
+    /// <summary>
+    /// Verifies that quota-above fires for cached limits carrying an error while ignoring omitted providers.
+    /// </summary>
+    [Fact]
+    public void QuotaAboveRuleKeepsFiringForCachedLimitsWithErrorAndSkipsOmittedProviders()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "phonebox-codexbar-rule-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, """
+                {"rules":[
+                  {"id":"q-claude","name":"Claude High","when":"quota-above","match":"claude","value":80,"then":"push","key":"q_claude","pushValue":"hot","whileActive":true},
+                  {"id":"q-cursor","name":"Cursor High","when":"quota-above","match":"cursor","value":80,"then":"push","key":"q_cursor","pushValue":"hot","whileActive":true}
+                ]}
+                """);
+            var cfg = new ConfigStore(cfgPath);
+            var push = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(dir, "data.json"));
+            var quotas = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance);
+            quotas.SetStateForTest(
+                claude: new QuotaProvider("claude", "Claude", "Max",
+                    [new QuotaLimit("5-hour session", 92, null, 18000, "warning")],
+                    null, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), "Could not fetch quota (HTTP 500)"),
+                external: [new QuotaProvider("cursor", "Cursor", "Pro", [], null,
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), "CodexBar omitted this provider", Source: "codexbar")]);
+
+            var engine = new RuleEngine(cfg, push,
+                new SessionMonitor(NullLogger<SessionMonitor>.Instance),
+                new MediaMonitor(NullLogger<MediaMonitor>.Instance),
+                new SystemMonitor(NullLogger<SystemMonitor>.Instance),
+                new PrivacyMonitor(NullLogger<PrivacyMonitor>.Instance),
+                new CalendarMonitor(cfg, NullLogger<CalendarMonitor>.Instance),
+                new ObsMonitor(cfg, NullLogger<ObsMonitor>.Instance),
+                quotas,
+                new GitHubMonitor(NullLogger<GitHubMonitor>.Instance),
+                new BatteryMonitor(NullLogger<BatteryMonitor>.Instance),
+                new PingMonitor(),
+                new AudioControl(),
+                NullLogger<RuleEngine>.Instance);
+
+            engine.Evaluate();
+
+            Assert.Contains("q-claude", engine.Active());
+            Assert.DoesNotContain("q-cursor", engine.Active());
+            Assert.True(push.Snapshot().ContainsKey("q_claude"));
+            Assert.False(push.Snapshot().ContainsKey("q_cursor"));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch { }
+        }
     }
 }

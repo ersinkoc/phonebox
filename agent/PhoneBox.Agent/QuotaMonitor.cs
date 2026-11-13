@@ -6,7 +6,12 @@ using System.Text.RegularExpressions;
 
 namespace PhoneBox.Agent;
 
-public sealed record QuotaLimit(string Label, double Percent, long? ResetsAt, long? WindowSec, string Severity);
+/// <summary>
+/// A single quota window limit. <paramref name="ResetDescription"/> carries provider-formatted reset text,
+/// and <paramref name="DeltaPercent"/> is used minus expected pace percent.
+/// </summary>
+public sealed record QuotaLimit(string Label, double Percent, long? ResetsAt, long? WindowSec, string Severity,
+    string? ResetDescription = null, double? DeltaPercent = null, double? ExpectedPercent = null, bool? PaceOnTrack = null);
 
 public sealed record CodexUsage(string? Model, string? Effort, long? TotalInput, long? TotalCached,
     long? TotalOutput, long? TotalReasoning, long? TotalTokens, long? LastInput, long? LastOutput,
@@ -36,25 +41,44 @@ public sealed partial class QuotaMonitor(ILogger<QuotaMonitor> log) : Background
     private long _nextAntigravity;
     private volatile IReadOnlyList<QuotaProvider> _external = [];
 
+    /// <summary>Seeds quota state in unit tests without running background loops.</summary>
+    internal void SetStateForTest(QuotaProvider? claude = null, IReadOnlyList<QuotaProvider>? external = null)
+    {
+        _claude = claude;
+        if (external is not null) _external = external;
+    }
+
     public IReadOnlyList<QuotaProvider> Snapshot()
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        return new[] { "claude", "codex", "antigravity" }
-            .Select(id => CodexBar.Select(id == "claude" ? _claude : id == "codex" ? _codex : _antigravity, _external.FirstOrDefault(p => p.Id == id), now))
-            .OfType<QuotaProvider>().Select(p => Rolled(p, now)).ToList();
+        var external = _external;
+        var core = new[] { "claude", "codex", "antigravity" }
+            .Select(id => CodexBar.Select(id == "claude" ? _claude : id == "codex" ? _codex : _antigravity,
+                external.FirstOrDefault(p => p.Id == id), now))
+            .OfType<QuotaProvider>();
+        var extra = external
+            .Where(p => p.Id is not ("claude" or "codex" or "antigravity"))
+            .Select(p => CodexBar.Select(null, p, now))
+            .OfType<QuotaProvider>();
+        return core.Concat(extra).Select(p => Rolled(p, now)).ToList();
     }
 
     /// <summary>A window whose reset time has passed started over: the last reading (kept while the tool is not used) no longer applies.</summary>
     private static QuotaProvider Rolled(QuotaProvider p, long now)
     {
         if (!p.Limits.Any(l => l.ResetsAt is { } r && r <= now)) return p;
-        var limits = p.Limits.Select(l => l.ResetsAt is { } r && r <= now ? l with { Percent = 0, ResetsAt = null, Severity = "normal" } : l).ToList();
+        var limits = p.Limits.Select(l => l.ResetsAt is { } r && r <= now
+            ? l with { Percent = 0, ResetsAt = null, Severity = "normal", ResetDescription = null, DeltaPercent = null, ExpectedPercent = null, PaceOnTrack = null }
+            : l).ToList();
         const string reached = "Limit reached";
         var extra = p.Extra is { } x && x.StartsWith(reached, StringComparison.Ordinal) && !limits.Any(l => l.Percent >= 100)
             ? (x.Length > reached.Length + 3 ? x[(reached.Length + 3)..] : null) : p.Extra;
         return p with { Limits = limits, Extra = extra };
     }
 
+    /// <summary>
+    /// Periodically refreshes local and CodexBar quota providers in the background.
+    /// </summary>
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("PhoneBox/" + AppPaths.Version);
@@ -71,7 +95,7 @@ public sealed partial class QuotaMonitor(ILogger<QuotaMonitor> log) : Background
                         var latest = await CodexBar.ReadAsync(path, ct);
                         _external = latest.Select(p => p.Limits.Count == 0 && _external.FirstOrDefault(old => old.Id == p.Id) is { } cached
                             ? cached with { Error = p.Error ?? "CodexBar returned no data" } : p)
-                            .Concat(_external.Where(old => !latest.Any(p => p.Id == old.Id)).Select(p => p with { Error = "CodexBar omitted this provider" })).ToList();
+                            .Concat(_external.Where(old => !latest.Any(p => p.Id == old.Id)).Select(p => p with { Limits = [], Error = "CodexBar omitted this provider" })).ToList();
                     }
                     _nextCodexBar = Environment.TickCount64 + 180_000;
                 }
