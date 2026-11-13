@@ -2,7 +2,7 @@
 // queries and modern JavaScript, down to Firefox 68 ESR, the last Firefox for Android 4.4.
 //
 //   node build.mjs           writes agent/PhoneBox.Agent/kiosk-lite/
-//   node build.mjs --check   fails when the committed files are out of date (CI)
+//   node build.mjs --check   fails when the committed files are out of date
 //
 // JavaScript: the same modules, bundled and lowered by esbuild (?., ??, ||=, numeric separators…), plus polyfills.
 // CSS: the same style sheets. What Firefox 68 cannot evaluate (container query units, min() / max() / clamp(),

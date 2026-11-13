@@ -499,7 +499,7 @@ Node.js 22 for the browser tooling. The Gradle wrapper downloads Gradle automati
 python tools/demo-server.py                  # the web demo from source: http://127.0.0.1:8790/panel/ and /settings/
 python tools/check-release.py                # release versions and widget/template catalog consistency
 dotnet test agent/PhoneBox.Agent.Tests       # agent unit tests
-cd tools/kiosk-lite; npm ci; node build.mjs; cd ../.. # after changing the panel: regenerate the web kiosk lite (CI checks it)
+cd tools/kiosk-lite; npm ci; node build.mjs; cd ../.. # after changing the panel: regenerate the web kiosk lite (node build.mjs --check verifies it)
 packaging/appimage/build-appimage.sh linux-x64 # self-contained Linux AppImage in dist/ (needs squashfs-tools)
 cd tools/ui-tests
 npm ci
