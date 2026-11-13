@@ -947,6 +947,54 @@ body.night #night { display: flex; }
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.85);
 }
+.stack-dots.paused {
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  background: rgba(20, 16, 8, 0.72);
+}
+.stack-dots.paused .stack-dot.active {
+  background: #f59e0b;
+}
+.stack-pause {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  padding: 4px 6px;
+  margin: -4px -5px -4px 1px;
+  min-width: 24px;
+  min-height: 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+}
+.stack-pause::before {
+  content: '';
+  position: absolute;
+  inset: -6px -8px -6px -2px;
+}
+.stack-pause svg {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+  pointer-events: none;
+}
+.stack-pause .i-pause { display: block; }
+.stack-pause .i-play { display: none; }
+.stack-pause.on .i-pause { display: none; }
+.stack-pause.on .i-play { display: block; }
+.stack-pause:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+.stack-pause:focus-visible {
+  box-shadow: 0 0 0 1.5px #f59e0b;
+}
+.stack-pause.on {
+  color: #f59e0b;
+}
 
 
 

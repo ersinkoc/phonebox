@@ -107,3 +107,50 @@ test('two counters in a stack keep separate values after reload', async ({ page 
   await page.locator('.stack-dot').nth(1).click();
   await expect(page.locator('.stack-item.active .ct-n')).toHaveText('2');
 });
+
+test('stack pause button, dots hold, heldDots reset, and vertical swipe over quotas child', async ({ page }) => {
+  await layout(page, [widget('stack', { interval: 3, widgets: [{ type: 'quotas' }, { type: 'clock' }] })]);
+  const pauseBtn = page.getByRole('button', { name: 'Pause stack rotation' });
+  await expect(pauseBtn).toHaveAttribute('aria-pressed', 'false');
+  await expect(pauseBtn.locator('.i-pause')).toBeVisible();
+  await expect(pauseBtn.locator('.i-play')).toBeHidden();
+
+  // Tapping the pause button keeps a constant aria-label and switches to .i-play with aria-pressed="true".
+  await pauseBtn.click();
+  await expect(pauseBtn).toHaveAttribute('aria-pressed', 'true');
+  await expect(pauseBtn).toHaveClass(/\bon\b/);
+  await expect(pauseBtn.locator('.i-play')).toBeVisible();
+  await expect(pauseBtn.locator('.i-pause')).toBeHidden();
+  await pauseBtn.click();
+  await expect(pauseBtn).toHaveAttribute('aria-pressed', 'false');
+
+  // Holding on the card surface does NOT pause rotation; holding on .stack-dots DOES.
+  await page.locator('.stack-item.active .q-grid').dispatchEvent('pointerdown', { button: 0, pointerType: 'mouse', clientX: 50, clientY: 50 });
+  await page.waitForTimeout(550);
+  await page.locator('.stack-item.active .q-grid').dispatchEvent('pointerup', { button: 0, pointerType: 'mouse', clientX: 50, clientY: 50 });
+  await expect(pauseBtn).toHaveAttribute('aria-pressed', 'false');
+
+  await page.locator('.stack-dot').first().dispatchEvent('pointerdown', { button: 0, pointerType: 'mouse', clientX: 10, clientY: 10 });
+  await page.waitForTimeout(550);
+  await page.locator('.stack-dot').first().dispatchEvent('pointerleave', { button: 0, pointerType: 'mouse', clientX: 10, clientY: 10 });
+  await expect(pauseBtn).toHaveAttribute('aria-pressed', 'true');
+
+  // When a hold ends without a click event, the next tap on .stack-pause still works (heldDots resets on pointerdown).
+  await pauseBtn.click();
+  await expect(pauseBtn).toHaveAttribute('aria-pressed', 'false');
+
+  // Vertical swipe inside a .q-grid quotas child switches stack cards.
+  await expect(page.locator('.stack-item.active .w-quotas')).toHaveCount(1);
+  await page.locator('.stack-item.active .q-grid').evaluate((el) => {
+    const mk = (type, x, y) => {
+      const e = new Event(type, { bubbles: true, cancelable: true });
+      const touch = { clientX: x, clientY: y };
+      e.touches = type === 'touchstart' ? [touch] : [];
+      e.changedTouches = [touch];
+      return e;
+    };
+    el.dispatchEvent(mk('touchstart', 100, 200));
+    el.dispatchEvent(mk('touchend', 100, 100));
+  });
+  await expect(page.locator('.stack-item.active .w-clock')).toHaveCount(1);
+});

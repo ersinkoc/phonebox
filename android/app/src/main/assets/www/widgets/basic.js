@@ -292,6 +292,9 @@ W.meters = {
 
 W.quotas = {
   needs: ['quotas', 'tick'],
+  /**
+   * Creates the AI Quotas widget instance with optional paged provider rotation.
+   */
   create(box, { o }) {
     const tokens = (n) => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
     const grid = h('div', 'q-grid', h('div', 'empty', 'Quota data arrives once the computer is connected.'));
@@ -418,11 +421,21 @@ W.quotas = {
       }
     };
 
+    /**
+     * Checks whether an enclosing Smart Stack widget has paused rotation.
+     */
+    const isStackPaused = () => box.closest('.w-stack')?.dataset.stackPaused === '1';
+
     return {
+      /**
+       * Updates quota display and advances paged provider rotation on ticks.
+       */
       update(kind) {
         if (kind === 'tick') {
           const sec = getRotateInterval();
-          if (sec > 0 && Date.now() - lastRotate >= sec * 1000) {
+          if (isStackPaused()) {
+            lastRotate = Date.now();
+          } else if (sec > 0 && Date.now() - lastRotate >= sec * 1000) {
             const ps = getPageSize();
             const want = getProviders();
             const list = quotaProviders().filter((p) => want.includes(p.id));
