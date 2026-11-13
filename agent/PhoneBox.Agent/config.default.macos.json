@@ -44,7 +44,7 @@
 
   // Clock seconds, return to the first page after N idle seconds (0 = never), vibrate on session events, a message when a session finishes,
   // switch pages with the phone's volume keys
-  "display": { "showSeconds": true, "idleReturnSec": 90, "vibrate": true, "finishToast": true, "finishSound": false, "finishSoundVolume": 70, "volumeKeys": true, "pixelShift": false, "controlsTop": false, "tabletRows": false, "pageBar": "dots", "pageBarSide": "bottom", "idleDimMin": 0, "nightWhenUnreachable": false, "unreachableNightDelayMin": 5, "wakeOnUnlock": false, "lockPhoneWithShortcut": false, "language": "auto", "wallpaper": { "dim": 45, "blur": 0 } },
+  "display": { "showSeconds": true, "idleReturnSec": 90, "vibrate": true, "finishToast": true, "finishSound": false, "finishSoundVolume": 70, "volumeKeys": true, "pixelShift": false, "controlsTop": false, "tabletRows": false, "pageBar": "dots", "pageBarSide": "bottom", "idleDimMin": 0, "nightWhenUnreachable": false, "unreachableNightDelayMin": 5, "wakeOnUnlock": false, "lockPhoneWithShortcut": false, "language": "auto", "wallpaper": { "dim": 45, "blur": 0 }, "standby": "off", "standbyGraceSec": 30 },
 
   // Plex music control (Caldera Amp or another Plex Companion player): the server address and token, and the player address.
   // None of these go to the phone; the token is sent only to the server, never to the player.

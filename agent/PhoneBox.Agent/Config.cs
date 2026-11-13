@@ -209,6 +209,15 @@ public sealed class DisplayConfig
     public int FinishSoundVolume { get; set; } = 70;
     /// <summary>The phone's volume keys switch pages.</summary>
     public bool VolumeKeys { get; set; } = true;
+    /// <summary>Whether the panel releases its keep-awake hold when the computer goes away: "off" (today's
+    /// behaviour - hold the screen while the panel runs and keep it lit at system level while plugged), "power"
+    /// (when USB charge is cut) or "data" (when the agent stops answering, whatever the cable reports). Any
+    /// mode but off also clears the system stay_on_while_plugged_in, which would outvote the app. Off by
+    /// default, so nothing changes.</summary>
+    public string Standby { get; set; } = "off";
+    /// <summary>Seconds the computer may be absent before the hold is released. Debounces a host reboot and a
+    /// network hiccup; the system's own screen-off timeout is what actually sleeps the display.</summary>
+    public int StandbyGraceSec { get; set; } = 30;
     /// <summary>landscape, portrait or auto (follow the phone). In portrait the widgets are arranged automatically.</summary>
     public string Orientation { get; set; } = "landscape";
     /// <summary>
@@ -776,6 +785,8 @@ public sealed partial class ConfigStore(string path)
         c.Display.MinDwellSec = Math.Clamp(c.Display.MinDwellSec, 0, 600);
         c.Display.HoldMaxMin = Math.Clamp(c.Display.HoldMaxMin, 0, 1440);
         c.Display.FinishSoundVolume = Math.Clamp(c.Display.FinishSoundVolume, 10, 100);
+        c.Display.Standby = c.Display.Standby?.Trim().ToLowerInvariant() switch { "power" => "power", "data" => "data", _ => "off" };
+        c.Display.StandbyGraceSec = Math.Clamp(c.Display.StandbyGraceSec, 3, 600);
         c.Lan ??= new();
         c.Updates ??= new();
         c.Ping ??= new();
