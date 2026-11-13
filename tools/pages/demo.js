@@ -22,11 +22,72 @@
   const PAGES = ['home', 'dashboard', 'ai', 'work', 'system', 'procs', 'deck', 'music', 'status', 'ambient', 'world', 'daily', 'markets', 'feeds', 'focus', 'calm', 'clock', 'automation', 'planner', 'nightstand', 'weekend', 'focuswork',
     'codexbar', 'devops', 'audio-deck', 'stream-deck', 'meeting-deck', 'development-deck', 'music-deck', 'system-deck'];
 
-  let catalog = null;
+  let baseCatalog = null;
+  const DEMO_MARKETPLACE = [
+    {
+      id: 'google-meet', name: 'Google Meet', version: '1.2.0', author: 'PhoneBox Community',
+      description: 'Control microphone, camera, raised hand, and call leave via companion browser bridge.',
+      category: 'Plugins', icon: '📹', homepage: 'https://github.com/ersinkoc/phonebox-plugins',
+      verified: true, minAgentVersion: '0.9.0', os: ['windows', 'linux', 'macos'], runtime: 'none',
+      permissions: ['bridge'], hasBridge: true, settingsSchema: [],
+      widgets: [{
+        type: 'plugin:google-meet.call', category: 'Plugins', name: 'Google Meet', icon: '📹',
+        desc: 'Mute, camera, hand raise and call controls.', w: 4, h: 2, minW: 3, minH: 2, plugin: 'google-meet', uiKind: 'buttons',
+        options: [
+          { key: 'title', label: 'Title', type: 'text', default: 'Google Meet' },
+          { key: 'control', label: 'Allow phone controls', type: 'bool', default: true },
+        ],
+      }],
+    },
+    {
+      id: 'gitea', name: 'Gitea', version: '1.0.0', author: 'PhoneBox Community',
+      description: 'Show open PRs, issues, and CI status from a Gitea instance.',
+      category: 'Plugins', icon: '🫖', homepage: 'https://github.com/ersinkoc/phonebox-plugins',
+      verified: true, minAgentVersion: '0.9.0', os: ['windows', 'linux', 'macos'], runtime: 'none',
+      permissions: ['http'], hasBridge: false,
+      settingsSchema: [
+        { key: 'baseUrl', label: 'Server URL', type: 'text', secret: false, default: 'https://gitea.example.com' },
+        { key: 'token', label: 'Access Token', type: 'password', secret: true },
+      ],
+      widgets: [{
+        type: 'plugin:gitea.repos', category: 'Plugins', name: 'Gitea Repo', icon: '🫖',
+        desc: 'Shows open PRs, issues, and build state for a repository.', w: 4, h: 3, minW: 3, minH: 2, plugin: 'gitea', uiKind: 'list',
+        options: [
+          { key: 'repo', label: 'Repository (owner/name)', type: 'text', default: 'ersinkoc/phonebox' },
+          { key: 'control', label: 'Allow refresh action', type: 'bool', default: true },
+        ],
+      }],
+    },
+    {
+      id: 'proxmox', name: 'Proxmox VE', version: '0.9.0', author: 'Community',
+      description: 'Monitor Proxmox node CPU load and active guest count.',
+      category: 'Plugins', icon: '🖥️', homepage: 'https://github.com/ersinkoc/phonebox-plugins',
+      verified: false, minAgentVersion: '0.9.0', os: ['windows', 'linux', 'macos'], runtime: 'python3',
+      permissions: ['http', 'exec'], hasBridge: false,
+      settingsSchema: [
+        { key: 'host', label: 'Proxmox URL', type: 'text', secret: false, default: 'https://pve.local:8006' },
+        { key: 'apiToken', label: 'API Token', type: 'password', secret: true },
+      ],
+      widgets: [{
+        type: 'plugin:proxmox.node', category: 'Plugins', name: 'Proxmox Node', icon: '🖥️',
+        desc: 'Cluster CPU and running VM count.', w: 3, h: 2, minW: 2, minH: 2, plugin: 'proxmox', uiKind: 'gauge',
+        options: [{ key: 'node', label: 'Node name', type: 'text', default: 'pve' }],
+      }],
+    },
+  ];
+  const demoPlugins = () => store.get('pb-demo-plugins', {});
+  const saveDemoPlugins = (p) => store.set('pb-demo-plugins', p);
+  const demoPluginData = () => store.get('pb-demo-plugin-data', {});
+  const saveDemoPluginData = (d) => store.set('pb-demo-plugin-data', d);
+
   async function loadCatalog() {
-    if (catalog) return catalog;
-    const [widgets, templates] = await Promise.all([realFetch(ROOT + 'widgets.json').then((r) => r.json()), realFetch(ROOT + 'templates.json').then((r) => r.json())]);
-    return (catalog = { cols: 12, rows: 6, widgets, templates });
+    if (!baseCatalog) {
+      const [widgets, templates] = await Promise.all([realFetch(ROOT + 'widgets.json').then((r) => r.json()), realFetch(ROOT + 'templates.json').then((r) => r.json())]);
+      baseCatalog = { cols: 12, rows: 6, widgets, templates };
+    }
+    const inst = demoPlugins();
+    const extra = DEMO_MARKETPLACE.filter((m) => inst[m.id]?.enabled).flatMap((m) => m.widgets);
+    return { cols: 12, rows: 6, widgets: [...baseCatalog.widgets, ...extra], templates: baseCatalog.templates };
   }
 
   const store = {
@@ -61,6 +122,7 @@
         homePage: null, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30 },
       lan: { enabled: true, port: 8766, token: 'demo', webhookToken: 'demo-webhook-key' },
       updates: { auto: true, repo: 'ersinkoc/phonebox' },
+      plugins: { repo: 'ersinkoc/phonebox-plugins' },
       claude: { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false },
       pages: PAGES.filter((id) => byId[id]).map((id) => {
         const t = byId[id], seen = {};
@@ -418,6 +480,96 @@
     return { ok: true };
   }
 
+  function pluginOverview(c) {
+    const inst = demoPlugins();
+    const installed = Object.entries(inst).map(([id, st]) => {
+      const m = DEMO_MARKETPLACE.find((x) => x.id === id);
+      if (!m) return null;
+      const secretKeys = new Set(m.settingsSchema.filter((o) => o.secret || o.type === 'password').map((o) => o.key));
+      const secretKeysSet = [...secretKeys].filter((k) => typeof st.settings?.[k] === 'string' && st.settings[k].length > 0);
+      const publicSettings = Object.fromEntries(Object.entries(st.settings || {}).filter(([k]) => !secretKeys.has(k)));
+      return {
+        id: m.id, name: m.name, version: m.version, author: m.author, description: m.description, homepage: m.homepage,
+        source: st.source || 'marketplace', enabled: !!st.enabled, active: !!st.enabled, needsApproval: false, error: null,
+        osOk: true, agentVersionOk: true, runtime: m.runtime, runtimeOk: true, runtimeHint: null,
+        permissions: m.permissions, approvedPermissions: st.approvedPermissions || [], hasBridge: m.hasBridge,
+        bridgeToken: m.hasBridge ? (st.bridgeToken || null) : null,
+        settingsSchema: m.settingsSchema, settings: publicSettings, secretKeysSet,
+        widgets: m.widgets.map((w) => ({ type: w.type, name: w.name, icon: w.icon, category: w.category, ui: w.uiKind })),
+        updateAvailable: false, latestVersion: null,
+      };
+    }).filter(Boolean);
+    return {
+      pluginsDir: '~/.local/share/phonebox/plugins (demo)',
+      marketplace: {
+        repo: c.plugins?.repo || 'ersinkoc/phonebox-plugins',
+        status: 'ok', error: null, updatedAt: now(),
+        plugins: DEMO_MARKETPLACE.map((m) => ({
+          id: m.id, name: m.name, version: m.version, author: m.author, description: m.description,
+          category: m.category, icon: m.icon, homepage: m.homepage, verified: m.verified, minAgentVersion: m.minAgentVersion,
+          os: m.os, runtime: m.runtime, permissions: m.permissions, osOk: true, agentVersionOk: true,
+          runtimeOk: true, runtimeHint: null, packageAvailable: true,
+          installed: !!inst[m.id], installedVersion: inst[m.id]?.version || null, updateAvailable: false,
+        })),
+      },
+      installed,
+    };
+  }
+
+  function resolvePluginWidget(c, pageId, widgetId) {
+    const p = (c.pages || []).find((x) => x.id === pageId);
+    if (!p?.widgets) return null;
+    const direct = p.widgets.find((w) => w.id === widgetId);
+    if (direct) return direct;
+    const colon = widgetId.indexOf(':');
+    if (colon > 0) {
+      const stack = p.widgets.find((w) => w.id === widgetId.slice(0, colon) && w.type === 'stack');
+      if (stack) {
+        const list = Array.isArray(stack.options?.widgets) ? stack.options.widgets : [];
+        const child = list.find((ch, idx) => (ch?.id || `card-${idx}`) === widgetId.slice(colon + 1));
+        if (child) return child;
+      }
+    }
+    return null;
+  }
+
+  function pluginWidgetStateData(pluginId, widgetCfg) {
+    const all = demoPluginData();
+    if (pluginId === 'google-meet') {
+      const d = all['google-meet'] || { micMuted: false, camOff: false, handRaised: false, inCall: true, synced: false };
+      return {
+        title: widgetCfg.options?.title || 'Google Meet',
+        sub: d.inCall ? 'Weekly Sync · 3 participants' : 'Left call',
+        badge: d.inCall ? 'Live' : 'Ended',
+        tone: d.inCall ? 'ok' : 'warn',
+        actions: [
+          { op: 'mute', icon: d.micMuted ? '🔇' : '🎙️', label: d.micMuted ? 'Unmute' : 'Mute', active: d.micMuted, tone: d.micMuted ? 'warn' : '' },
+          { op: 'camera', icon: '📷', label: d.camOff ? 'Cam On' : 'Cam Off', active: d.camOff },
+          { op: 'hand', icon: '✋', label: 'Hand', active: d.handRaised },
+          { op: 'leave', icon: '📞', label: d.inCall ? 'Leave' : 'Rejoin', tone: d.inCall ? 'danger' : 'ok' },
+        ],
+      };
+    }
+    if (pluginId === 'gitea') {
+      const repo = widgetCfg.options?.repo || 'ersinkoc/phonebox';
+      const d = all.gitea || { syncedCount: 0 };
+      return {
+        title: repo,
+        badge: d.syncedCount ? `Synced ${d.syncedCount}×` : 'Green',
+        tone: 'ok',
+        items: [
+          { title: 'PR #42 Modular plugin API', sub: 'open · CI passing', value: '✓', tone: 'ok' },
+          { title: 'Issue #18 Marketplace UI', sub: '2 comments · maintainers', value: 'Open' },
+        ],
+        actions: [{ op: 'sync', label: 'Sync now' }],
+      };
+    }
+    if (pluginId === 'proxmox') {
+      return { title: `${widgetCfg.options?.node || 'pve'} CPU`, value: 28, unit: '%', pct: 28, sub: '4 VMs running · 32 GB RAM free' };
+    }
+    return { value: 'OK' };
+  }
+
   async function handle(method, path, q, body, headers) {
     if (path === '/api/controls/obs') return json(deckObsState());
     if (path.startsWith('/api/controls/obs/') && method === 'POST') {
@@ -582,6 +734,105 @@
     }
     if (path === '/api/info') return json({ version: VERSION, os: 'windows', configPath: 'browser storage (demo)', logPath: '—', adb: 'demo', connected: true, devices: ['DEMO0001'], appMissing: [], usbProblem: null });
     if (path === '/api/lan') return json({ configured: true, active: true, port: 8766, restartNeeded: false, hosts: ['192.168.1.20', '100.101.102.103'], fingerprint: 'demo' });
+    if (path === '/api/plugins' && method === 'GET') return json(pluginOverview(await config()));
+    if (path === '/api/plugins/refresh' && method === 'POST') return json(pluginOverview(await config()));
+    if (path === '/api/plugins/install' && method === 'POST') {
+      const req = parse(body) || {}, entry = DEMO_MARKETPLACE.find((m) => m.id === req.id);
+      if (!entry) return json({ error: `plugin '${req.id}' was not found in the marketplace` }, 400);
+      const approved = new Set(req.approvedPermissions || []);
+      const missing = entry.permissions.filter((p) => !approved.has(p));
+      if (missing.length) return json({ error: 'permissions must be approved before installing: ' + missing.join(', ') }, 400);
+      const inst = demoPlugins(), prev = inst[entry.id] || {};
+      inst[entry.id] = {
+        enabled: true, version: entry.version, source: 'marketplace',
+        approvedPermissions: [...entry.permissions],
+        bridgeToken: entry.hasBridge ? (prev.bridgeToken || 'demo-bridge-' + Math.random().toString(36).slice(2, 10)) : null,
+        settings: prev.settings || Object.fromEntries(entry.settingsSchema.filter((o) => o.default !== undefined).map((o) => [o.key, o.default])),
+      };
+      saveDemoPlugins(inst);
+      emit('refresh');
+      return json({ ok: true, overview: pluginOverview(await config()) });
+    }
+    if (path.startsWith('/api/plugins/')) {
+      const parts = path.slice(13).split('/');
+      const pid = decodeURIComponent(parts[0] || ''), sub = parts[1] || '';
+      const inst = demoPlugins(), entry = DEMO_MARKETPLACE.find((m) => m.id === pid);
+      if (sub === 'toggle' && method === 'POST') {
+        if (!inst[pid] || !entry) return json({ error: 'plugin not installed' }, 400);
+        const req = parse(body) || {};
+        if (req.enabled) {
+          const approved = new Set([...(inst[pid].approvedPermissions || []), ...(req.approvedPermissions || [])]);
+          const missing = entry.permissions.filter((p) => !approved.has(p));
+          if (missing.length) return json({ error: 'permissions must be approved before enabling: ' + missing.join(', ') }, 400);
+          inst[pid].approvedPermissions = [...approved];
+        }
+        inst[pid].enabled = !!req.enabled;
+        saveDemoPlugins(inst);
+        emit('refresh');
+        return json({ ok: true, overview: pluginOverview(await config()) });
+      }
+      if (sub === 'settings' && method === 'PUT') {
+        if (!inst[pid] || !entry) return json({ error: 'plugin not installed' }, 400);
+        const req = parse(body) || {}, inc = req.settings || {};
+        const next = {};
+        for (const o of entry.settingsSchema) {
+          const isSec = o.secret || o.type === 'password';
+          if (isSec) {
+            if (!(o.key in inc) || inc[o.key] === '__UNCHANGED__') { if (inst[pid].settings?.[o.key]) next[o.key] = inst[pid].settings[o.key]; }
+            else if (inc[o.key]) next[o.key] = String(inc[o.key]);
+          } else if (o.key in inc && inc[o.key] !== undefined) next[o.key] = inc[o.key];
+          else if (o.default !== undefined) next[o.key] = o.default;
+        }
+        inst[pid].settings = next;
+        if (req.regenerateBridgeToken && entry.hasBridge) inst[pid].bridgeToken = 'demo-bridge-' + Math.random().toString(36).slice(2, 10);
+        saveDemoPlugins(inst);
+        emit('refresh');
+        return json({ ok: true, overview: pluginOverview(await config()) });
+      }
+      if (!sub && method === 'DELETE') {
+        delete inst[pid];
+        saveDemoPlugins(inst);
+        emit('refresh');
+        return json({ ok: true, overview: pluginOverview(await config()) });
+      }
+    }
+    if (path.startsWith('/api/plugin/')) {
+      const parts = path.slice(12).split('/');
+      const pid = decodeURIComponent(parts[0] || ''), sub = parts[1] || '';
+      const pageId = q.get('page') || '', widgetId = q.get('widget') || '';
+      const inst = demoPlugins(), entry = DEMO_MARKETPLACE.find((m) => m.id === pid);
+      if (sub === 'state' && method === 'GET') {
+        if (!inst[pid] || !entry) return json({ ok: false, status: 'missing', error: `Plugin '${pid}' is not installed` });
+        if (!inst[pid].enabled) return json({ ok: false, status: 'disabled', error: `Plugin '${entry.name}' is disabled` });
+        const c = await config(), wCfg = resolvePluginWidget(c, pageId, widgetId);
+        if (!wCfg) return json({ ok: false, status: 'not_found', error: 'Widget not found in settings' });
+        const wDef = entry.widgets.find((x) => x.type === wCfg.type) || entry.widgets[0];
+        return json({ ok: true, status: 'ready', ui: { kind: wDef.uiKind, name: wDef.name, icon: wDef.icon, html: null },
+          controlAllowed: wCfg.options?.control !== false, at: now(), data: pluginWidgetStateData(pid, wCfg), error: null });
+      }
+      if (sub === 'act' && method === 'POST') {
+        if (!inst[pid] || !entry || !inst[pid].enabled) return json({ ok: false, error: 'plugin is not active' }, 404);
+        const c = await config(), wCfg = resolvePluginWidget(c, pageId, widgetId);
+        if (!wCfg) return json({ ok: false, error: 'widget not found' }, 404);
+        if (wCfg.options?.control === false) return json({ ok: false, error: 'control from phone is disabled in widget settings' }, 403);
+        const op = q.get('op') || '', all = demoPluginData();
+        if (pid === 'google-meet') {
+          const d = all['google-meet'] || { micMuted: false, camOff: false, handRaised: false, inCall: true };
+          if (op === 'mute') d.micMuted = !d.micMuted;
+          else if (op === 'camera') d.camOff = !d.camOff;
+          else if (op === 'hand') d.handRaised = !d.handRaised;
+          else if (op === 'leave') d.inCall = !d.inCall;
+          all['google-meet'] = d;
+        } else if (pid === 'gitea' && op === 'sync') {
+          const d = all.gitea || { syncedCount: 0 };
+          d.syncedCount++;
+          all.gitea = d;
+        }
+        saveDemoPluginData(all);
+        emit('plugin', { plugin: pid, widget: wCfg.type });
+        return json({ ok: true, data: pluginWidgetStateData(pid, wCfg) });
+      }
+    }
     if (path === '/api/update') return json({ status: { agentVersion: VERSION, appVersion: VERSION, latest: VERSION, releaseUrl: 'https://github.com/ersinkoc/phonebox/releases/latest', agentUpdate: false, appUpdate: false,
       lastCheck: now() - 3600e3, state: 'idle', error: null }, auto: (await config()).updates?.auto !== false, installed: true });
     if (path === '/api/claude/hook') return json({ installed: false, path: '~/.claude/settings.json' });
@@ -620,5 +871,5 @@
     on('ask', (d) => ask(d || undefined, false));
   }
 
-  window.PhoneBoxDemo = { emit, ask, reset() { localStorage.removeItem('pb-demo-config'); store.set('pb-demo-version', cfgVersion() + 1); } };
+  window.PhoneBoxDemo = { emit, ask, reset() { localStorage.removeItem('pb-demo-config'); localStorage.removeItem('pb-demo-plugins'); localStorage.removeItem('pb-demo-plugin-data'); store.set('pb-demo-version', cfgVersion() + 1); } };
 })();

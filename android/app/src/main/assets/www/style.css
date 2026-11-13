@@ -971,3 +971,44 @@ body.night #night { display: flex; }
 .q-rings-grid .q-reset { font-size: 10px; color: var(--dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .q-rings-grid .q-pace { display: none; }
 .q-grid { position: relative; }
+
+/* ---------- plugins ---------- */
+.w-plugin { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.w-plugin.bare-html { padding: 0; }
+.pl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.pl-head .w-title { flex: 1; min-width: 0; }
+.pl-badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: rgba(255, 255, 255, .08); color: var(--muted); white-space: nowrap; }
+.pl-badge.ok { background: rgba(34, 197, 94, .18); color: #86efac; }
+.pl-badge.warn { background: rgba(245, 158, 11, .18); color: #fde68a; }
+.pl-badge.err { background: rgba(239, 68, 68, .18); color: #fca5a5; }
+.pl-stat { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.pl-val-row { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.pl-val { font-size: clamp(22px, 24cqh, 40px); font-weight: 300; line-height: 1.05; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-unit { font-size: 13px; color: var(--muted); }
+.pl-sub { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-kv { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.pl-kv-i { font-size: 11.5px; padding: 3px 8px; border-radius: 8px; background: rgba(255, 255, 255, .05); color: var(--text); white-space: nowrap; }
+.pl-kv-i span { color: var(--muted); margin-right: 4px; }
+.pl-gauge { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.pl-gauge .g-dial { height: min(58cqh, 76cqw); }
+.pl-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; scrollbar-width: none; touch-action: pan-y; }
+.pl-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 10px; background: rgba(255, 255, 255, .045); border: 1px solid rgba(255, 255, 255, .06); color: var(--text); font: inherit; text-align: left; min-width: 0; width: 100%; }
+button.pl-row { cursor: pointer; }
+button.pl-row:active { transform: scale(.98); }
+.pl-row-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pl-row-t { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-row-s { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-row-v { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pl-row-v.ok { color: #86efac; }
+.pl-row-v.warn { color: #fde68a; }
+.pl-row-v.err { color: #fca5a5; }
+.pl-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; margin-top: auto; }
+.pl-btns.full { flex: 1; align-content: center; grid-auto-rows: minmax(42px, 1fr); }
+.pl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .06); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-btn:active { transform: scale(.97); }
+.pl-btn.on, .pl-btn[aria-pressed="true"] { background: rgba(var(--ambient), .24); border-color: rgba(var(--ambient), .6); color: #fff; }
+.pl-btn.ok { color: #86efac; border-color: rgba(34, 197, 94, .45); background: rgba(34, 197, 94, .14); }
+.pl-btn.warn { color: #fde68a; border-color: rgba(245, 158, 11, .45); background: rgba(245, 158, 11, .14); }
+.pl-btn.danger, .pl-btn.err { color: #fca5a5; border-color: rgba(239, 68, 68, .45); background: rgba(239, 68, 68, .16); }
+.pl-btn.busy { opacity: .55; }
+@container (max-height: 110px) { .w-plugin .pl-sub { display: none; } }

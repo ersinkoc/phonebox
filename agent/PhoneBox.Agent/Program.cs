@@ -73,6 +73,7 @@ AddMonitor<ObsMonitor>(builder.Services);
 AddMonitor<BatteryMonitor>(builder.Services);
 AddMonitor<RuleEngine>(builder.Services);
 AddMonitor<ChargeGuard>(builder.Services);
+AddMonitor<PluginService>(builder.Services);
 builder.Services.AddHostedService<Tray>();
 
 var app = builder.Build();
@@ -135,8 +136,10 @@ app.Use(async (ctx, next) =>
         var host = ctx.Request.Host.Host;
         var spotifyCallback = ctx.Request.Method == "GET" && ctx.Request.Path == "/api/controls/spotify/callback"
             && app.Services.GetRequiredService<SpotifyControl>().HasPendingState(ctx.Request.Query["state"]);
-        if ((host != "127.0.0.1" && host != "localhost") || (origin != "" && !SameOrigins.Contains(origin))
-            || (!spotifyCallback && BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path)))
+        var pluginBridge = (host == "127.0.0.1" || host == "localhost")
+            && app.Services.GetRequiredService<PluginService>().AuthorizeBridgeRequest(ctx.Request.Path, ctx.Request.Headers.Authorization);
+        if ((host != "127.0.0.1" && host != "localhost") || (!pluginBridge && origin != "" && !SameOrigins.Contains(origin))
+            || (!spotifyCallback && !pluginBridge && BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path)))
         {
             ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
@@ -264,9 +267,67 @@ app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg) => Results.Json(new
 
 app.MapPost("/api/phone/open", async (AdbReverse adb) => { await adb.OpenPanelAsync(); return Results.Ok(); });
 
-// Widget types and page templates for the settings page's layout editor.
-app.MapGet("/api/catalog", () => Results.Text($"{{\"cols\":{Catalog.Cols},\"rows\":{Catalog.Rows},\"widgets\":{Catalog.WidgetsJson},\"templates\":{Catalog.TemplatesJson}}}",
+// Widget types and page templates for the settings page's layout editor (including active community plugins).
+app.MapGet("/api/catalog", (PluginService plugins) => Results.Text(Catalog.CombinedJson(plugins),
     "application/json; charset=utf-8"));
+
+// ---------------------------------------------------------------- community plugins & marketplace (local only)
+app.MapGet("/api/plugins", (PluginService plugins) => Results.Json(plugins.GetOverview()));
+app.MapPost("/api/plugins/refresh", async (PluginService plugins, CancellationToken ct) =>
+{
+    await plugins.RefreshMarketplaceAsync(ct);
+    return Results.Json(plugins.GetOverview());
+});
+app.MapPost("/api/plugins/install", async (HttpRequest req, PluginService plugins, CancellationToken ct) =>
+{
+    var body = await req.ReadFromJsonAsync<PluginInstallRequest>(new JsonSerializerOptions(JsonSerializerDefaults.Web), ct);
+    if (body is null || string.IsNullOrWhiteSpace(body.Id)) return Results.BadRequest(new { error = "plugin id is required" });
+    var err = await plugins.InstallAsync(body.Id.Trim(), body.ApprovedPermissions, ct);
+    return err is null ? Results.Json(new { ok = true, overview = plugins.GetOverview() }) : Results.BadRequest(new { error = err });
+});
+app.MapPost("/api/plugins/{id}/toggle", async (string id, HttpRequest req, PluginService plugins, CancellationToken ct) =>
+{
+    var body = await req.ReadFromJsonAsync<PluginToggleRequest>(new JsonSerializerOptions(JsonSerializerDefaults.Web), ct);
+    if (body is null) return Results.BadRequest(new { error = "enabled flag is required" });
+    var err = await plugins.SetEnabledAsync(id, body.Enabled, body.ApprovedPermissions);
+    return err is null ? Results.Json(new { ok = true, overview = plugins.GetOverview() }) : Results.BadRequest(new { error = err });
+});
+app.MapPut("/api/plugins/{id}/settings", async (string id, HttpRequest req, PluginService plugins, CancellationToken ct) =>
+{
+    var body = await req.ReadFromJsonAsync<PluginSettingsRequest>(new JsonSerializerOptions(JsonSerializerDefaults.Web), ct);
+    var err = await plugins.SaveSettingsAsync(id, body?.Settings, body?.RegenerateBridgeToken == true);
+    return err is null ? Results.Json(new { ok = true, overview = plugins.GetOverview() }) : Results.BadRequest(new { error = err });
+});
+app.MapDelete("/api/plugins/{id}", async (string id, PluginService plugins) =>
+{
+    var err = await plugins.UninstallAsync(id);
+    return err is null ? Results.Json(new { ok = true, overview = plugins.GetOverview() }) : Results.BadRequest(new { error = err });
+});
+
+// Companion browser-extension bridge (local only, authenticated with the plugin's per-plugin bridgeToken).
+app.MapGet("/api/plugins/{id}/bridge", (string id, HttpRequest req, PluginService plugins) =>
+{
+    if (!plugins.AuthorizeBridgeRequest(req.Path, req.Headers.Authorization)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    return Results.Json(plugins.DrainBridgeActions(id));
+});
+app.MapPost("/api/plugins/{id}/bridge", async (string id, HttpRequest req, PluginService plugins, CancellationToken ct) =>
+{
+    if (!plugins.AuthorizeBridgeRequest(req.Path, req.Headers.Authorization)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    JsonElement payload;
+    try { payload = (await JsonDocument.ParseAsync(req.Body, cancellationToken: ct)).RootElement.Clone(); }
+    catch (JsonException) { return Results.BadRequest(new { error = "invalid JSON payload" }); }
+    var (ok, err, res) = await plugins.HandleBridgePostAsync(id, payload, ct);
+    return ok ? Results.Json(res) : Results.BadRequest(new { error = err });
+});
+
+// Phone panel runtime routes (/api/plugin/* is allowed over paired Wi-Fi; /api/plugins/* stays local-only).
+app.MapGet("/api/plugin/{id}/state", async (string id, string page, string widget, bool? force, PluginService plugins, CancellationToken ct) =>
+    Results.Json(await plugins.GetWidgetStateAsync(id, page, widget, force == true, ct)));
+app.MapPost("/api/plugin/{id}/act", async (string id, string page, string widget, string op, string? arg, PluginService plugins, CancellationToken ct) =>
+{
+    var (code, body) = await plugins.ActAsync(id, page, widget, op, arg, ct);
+    return Results.Json(body, statusCode: code);
+});
 
 // ---------------------------------------------------------------- webhook API: push data and events into the panel
 // POST /api/push/{key}       body: JSON or plain text (or ?value=); optional ?ttl=seconds. Shown by "push" widgets.

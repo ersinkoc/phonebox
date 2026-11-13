@@ -1,5 +1,5 @@
 import { h, haptic } from '../main.js';
-import { W } from '../registry.js';
+import { W, resolveWidget } from '../registry.js';
 
 function parseWidgets(raw) {
   let list = [];
@@ -74,11 +74,12 @@ W.stack = {
     const collectedNeeds = new Set(['tick']);
 
     subDefs.forEach((item, i) => {
-      const def = W[item.type];
+      const def = resolveWidget(item.type);
       const itemEl = h('div', `stack-item${i === 0 ? ' active' : ''}`);
       itemEl.setAttribute('aria-hidden', String(i !== 0));
       itemEl.inert = i !== 0;
-      const subBox = h('div', `w w-${item.type}${def?.bare ? ' bare' : ' card'}`);
+      const typeCls = item.type?.startsWith('plugin:') ? 'plugin' : item.type;
+      const subBox = h('div', `w w-${typeCls}${def?.bare ? ' bare' : ' card'}`);
       PhoneBoxAppearance.widget(subBox, ctx.appearance);
       itemEl.appendChild(subBox);
       wrap.appendChild(itemEl);
@@ -168,7 +169,7 @@ W.stack = {
     wrap.style.touchAction = 'pan-x';
     let startX = 0, startY = 0, startT = 0, swiping = false;
     wrap.addEventListener('touchstart', (e) => {
-      swiping = e.touches.length === 1 && !e.target.closest('button, input, textarea, select, a, [contenteditable], .s-list');
+      swiping = e.touches.length === 1 && !e.target.closest('button, input, textarea, select, a, [contenteditable], .s-list, .pl-list');
       if (!swiping) return;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;

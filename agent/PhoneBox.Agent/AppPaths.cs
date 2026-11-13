@@ -26,10 +26,14 @@ public static class AppPaths
         : Xdg("XDG_DATA_HOME", Path.Combine(".local", "share")), AppName);
 
     public static readonly string ConfigPath = Path.Combine(ConfigDir, "config.json");
+    public static readonly string PluginsStatePath = Path.Combine(ConfigDir, "plugins.json");
     public static readonly string LogPath = Path.Combine(LocalDir, "agent.log");
 
     /// <summary>Where install scripts put the agent; self-update only works for this copy.</summary>
     public static readonly string InstallDir = Path.Combine(LocalDir, "app");
+
+    /// <summary>Installed community plugins directory; preserved across agent updates.</summary>
+    public static readonly string PluginsDir = Path.Combine(LocalDir, "plugins");
 
     /// <summary>"windows", "linux" or "macos".</summary>
     public static string Os => OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux";

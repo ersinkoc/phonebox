@@ -217,6 +217,10 @@ use its picker. Reorder cards, open their settings, or disable individual cards.
 change cards; horizontal swipes still change pages. Focused controls pause rotation. Command widgets belong directly
 on a page rather than inside a stack.
 
+**Community Plugins & Marketplace** let you install third-party widgets from the central marketplace
+(`ersinkoc/phonebox-plugins` in **Settings › Plugins**) or load local plugins from your computer with explicit permission
+approval (`http`, `exec`, `bridge`). See [docs/PLUGINS.md](docs/PLUGINS.md) for the manifest format and SDK guide.
+
 **CodexBar** is an optional source: install its `codexbar` CLI on the computer and the agent reads `usage --json`.
 The CodexBar template and quota widget can show Claude, Codex and Antigravity with configurable provider rotation.
 Local Claude, Codex and Antigravity sources keep refreshing when CodexBar is absent, fails, or reports stale data. General settings

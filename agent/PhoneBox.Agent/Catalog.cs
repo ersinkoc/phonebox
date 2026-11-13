@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace PhoneBox.Agent;
 
@@ -12,8 +13,8 @@ public sealed class TemplateDef
     public List<WidgetConfig> Widgets { get; set; } = [];
 }
 
-/// <summary>The widget types and page templates shipped with the agent (widgets.json, templates.json).</summary>
-public static class Catalog
+/// <summary>The widget types and page templates shipped with the agent (widgets.json, templates.json) plus active plugins.</summary>
+public static partial class Catalog
 {
     public const int Cols = 12;
     public const int Rows = 6;
@@ -28,9 +29,33 @@ public static class Catalog
 
     private static readonly Dictionary<string, (int MinW, int MinH)> Sizes = LoadSizes();
 
-    public static bool IsWidget(string type) => Sizes.ContainsKey(type);
+    public static bool IsPluginWidgetType(string? type) =>
+        !string.IsNullOrEmpty(type) && PluginWidgetRegex().IsMatch(type);
 
-    public static (int MinW, int MinH) MinSize(string type) => Sizes.TryGetValue(type, out var s) ? s : (1, 1);
+    public static string? PluginIdOf(string? type)
+    {
+        if (string.IsNullOrEmpty(type)) return null;
+        var m = PluginWidgetRegex().Match(type);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    public static bool IsWidget(string type) => Sizes.ContainsKey(type) || IsPluginWidgetType(type);
+
+    public static (int MinW, int MinH) MinSize(string type)
+    {
+        if (Sizes.TryGetValue(type, out var s)) return s;
+        if (IsPluginWidgetType(type)) return PluginService.GetRegisteredMinSize(type);
+        return (1, 1);
+    }
+
+    public static string CombinedJson(PluginService plugins)
+    {
+        var extra = plugins.ActiveCatalogWidgetsJson();
+        var widgets = string.IsNullOrEmpty(extra)
+            ? WidgetsJson
+            : WidgetsJson.TrimEnd().TrimEnd(']') + "," + extra + "]";
+        return $"{{\"cols\":{Cols},\"rows\":{Rows},\"widgets\":{widgets},\"templates\":{TemplatesJson}}}";
+    }
 
     public static TemplateDef? Template(string? id) => id is null ? null : Templates.FirstOrDefault(t => t.Id == id);
 
@@ -48,4 +73,7 @@ public static class Catalog
         using var r = new StreamReader(s);
         return r.ReadToEnd();
     }
+
+    [GeneratedRegex(@"^plugin:([a-z0-9][a-z0-9-]{0,47})(?:\.([a-z0-9][a-z0-9-]{0,47}))?$")]
+    private static partial Regex PluginWidgetRegex();
 }
