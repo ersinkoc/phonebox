@@ -69,6 +69,10 @@ public sealed class AgentConfig
 
     public bool AllowKill() => Widgets(enabledPagesOnly: true)
         .Any(w => w.Type == "processes" && w.Bool("allowKill") != false);
+
+    /// <summary>True when an enabled page (including enabled Smart Stack children) shows the quota cost overview card.</summary>
+    public bool ShowQuotaOverview() => Widgets(enabledPagesOnly: true)
+        .Any(w => w.Type is "codexbar" or "quotas" && w.Bool("showOverview") == true);
 }
 
 public sealed class WeatherConfig
