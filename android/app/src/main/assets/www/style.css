@@ -388,6 +388,8 @@ body.offline .offline-msg { display: flex; }
 .sess .tl { font-size: 12px; width: 14px; text-align: center; flex: 0 0 14px; }
 .sess .tl.claude { color: #d97757; }
 .sess .tl.codex { color: #e5e7eb; }
+.sess .tl.antigravity { color: #38bdf8; }
+.sess .tl.openclaw { color: #fb7185; }
 .sess-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .sess .nm { min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sess-meta { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

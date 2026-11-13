@@ -442,6 +442,12 @@ export function paceInfo(l) {
 
 // ---------------------------------------------------------------- sessions & GitHub
 export const S_ORDER = { waiting: 0, busy: 1, shell: 2, idle: 3 };
+export const S_TOOLS = {
+  claude: { icon: '✳', label: 'Claude Code' },
+  codex: { icon: '◎', label: 'Codex' },
+  antigravity: { icon: '✦', label: 'Antigravity' },
+  openclaw: { icon: '🦀', label: 'OpenClaw' },
+};
 export const prevStatus = new Map();
 export let workLoaded = false;
 

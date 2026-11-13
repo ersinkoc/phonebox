@@ -133,5 +133,45 @@ public sealed class SessionDetailsTests : IDisposable
         Assert.Equal(ignored ? 0 : 1, sessions.Count);
     }
 
+    [Fact]
+    public void Antigravity_DaemonAndWal_ReportsActiveProjectAndIgnoresDeadPid()
+    {
+        var agyDir = Path.Combine(_root, ".gemini", "antigravity");
+        var daemonDir = Path.Combine(agyDir, "daemon");
+        var convDir = Path.Combine(agyDir, "conversations");
+        Directory.CreateDirectory(daemonDir);
+        Directory.CreateDirectory(convDir);
+        File.WriteAllText(Path.Combine(daemonDir, "daemon.json"), """{"pid":4455}""");
+        var wal = Path.Combine(agyDir, "conversation_summaries.db-wal");
+        File.WriteAllText(wal, "file:///Users/test/Projects/phonebox ");
+        File.SetLastWriteTimeUtc(wal, DateTime.UtcNow);
+
+        Assert.Empty(SessionMonitor.ReadAntigravity(_root, _ => [], pid => pid == 9999));
+
+        var session = Assert.Single(SessionMonitor.ReadAntigravity(_root, _ => [], pid => pid == 4455));
+        Assert.Equal("antigravity", session.Tool);
+        Assert.Equal("phonebox", session.Project);
+        Assert.Equal("busy", session.Status);
+        Assert.Equal(4455, session.Pid);
+    }
+
+    [Fact]
+    public void OpenClaw_ActiveProcessAndDirectory_ReportsStatus()
+    {
+        var clawDir = Path.Combine(_root, ".openclaw");
+        Directory.CreateDirectory(clawDir);
+        var stateFile = Path.Combine(clawDir, "state.json");
+        File.WriteAllText(stateFile, "{}");
+        File.SetLastWriteTimeUtc(stateFile, DateTime.UtcNow.AddMinutes(-5));
+
+        var session = Assert.Single(SessionMonitor.ReadOpenClaw(_root, name => name == "openclaw" ? [5566] : [], pid => pid == 5566));
+        Assert.Equal("openclaw", session.Tool);
+        Assert.Equal("openclaw", session.Project);
+        Assert.Equal("idle", session.Status);
+        Assert.Equal(5566, session.Pid);
+
+        Assert.Empty(SessionMonitor.ReadOpenClaw(_root, name => name == "claw" ? [7788] : [], pid => pid == 7788));
+    }
+
     public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
 }

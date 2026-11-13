@@ -17,6 +17,8 @@ public sealed record AgentSession(string Id, string Tool, string Name, string Pr
 /// Watches running AI coding sessions (local and read-only):
 ///  - Claude Code: ~/.claude/sessions/{pid}.json (status files written by Claude Code itself)
 ///  - Codex: the latest events in recent rollout files under ~/.codex/sessions
+///  - Antigravity: ~/.gemini/antigravity daemon/conversation state
+///  - OpenClaw: ~/.openclaw local state
 /// </summary>
 public sealed class SessionMonitor(ILogger<SessionMonitor> log) : BackgroundService
 {
@@ -37,6 +39,8 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log) : BackgroundServ
             var list = new List<AgentSession>();
             try { list.AddRange(ReadClaude()); } catch (Exception ex) { log.LogDebug("claude sessions: {Msg}", ex.Message); }
             try { list.AddRange(ReadCodex()); } catch (Exception ex) { log.LogDebug("codex sessions: {Msg}", ex.Message); }
+            try { list.AddRange(ReadAntigravity()); } catch (Exception ex) { log.LogDebug("antigravity sessions: {Msg}", ex.Message); }
+            try { list.AddRange(ReadOpenClaw()); } catch (Exception ex) { log.LogDebug("openclaw sessions: {Msg}", ex.Message); }
             _sessions = list;
             await Task.Delay(2000, ct);
         }
@@ -233,6 +237,207 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log) : BackgroundServ
     {
         try { using var p = Process.GetProcessById(pid); return !p.HasExited; }
         catch { return false; }
+    }
+
+    private static int[] FindProcessIds(string name)
+    {
+        try
+        {
+            var procs = Process.GetProcessesByName(name);
+            var ids = new int[procs.Length];
+            for (var i = 0; i < procs.Length; i++)
+            {
+                using var p = procs[i];
+                ids[i] = p.Id;
+            }
+            return ids;
+        }
+        catch { return []; }
+    }
+
+    internal static IEnumerable<AgentSession> ReadAntigravity(
+        string? homeDir = null,
+        Func<string, int[]>? getProcessIds = null,
+        Func<int, bool>? isAlive = null)
+    {
+        var home = homeDir ?? Home;
+        var agyDir = Path.Combine(home, ".gemini", "antigravity");
+        if (!Directory.Exists(agyDir)) yield break;
+
+        var pLookup = getProcessIds ?? FindProcessIds;
+        var aliveCheck = isAlive ?? Alive;
+        int? agyPid = null;
+        foreach (var procName in new[] { "Antigravity", "antigravity" })
+        {
+            foreach (var pid in pLookup(procName))
+            {
+                if (pid > 0 && aliveCheck(pid)) { agyPid = pid; break; }
+            }
+            if (agyPid is not null) break;
+        }
+
+        var daemonDir = Path.Combine(agyDir, "daemon");
+        if (agyPid is null && Directory.Exists(daemonDir))
+        {
+            try
+            {
+                foreach (var f in Directory.EnumerateFiles(daemonDir, "*.json"))
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(File.ReadAllText(f));
+                        if (doc.RootElement.TryGetProperty("pid", out var pElem) && pElem.TryGetInt32(out var pid) && pid > 0 && aliveCheck(pid))
+                        {
+                            agyPid = pid;
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        if (agyPid is null) yield break;
+
+        var detectedProject = "antigravity";
+        var newestWriteUtc = DateTime.MinValue;
+
+        var convDir = Path.Combine(agyDir, "conversations");
+        if (Directory.Exists(convDir))
+        {
+            try
+            {
+                foreach (var f in new DirectoryInfo(convDir).EnumerateFiles())
+                {
+                    if ((f.Extension.StartsWith(".db", StringComparison.OrdinalIgnoreCase) || f.Extension.Equals(".pb", StringComparison.OrdinalIgnoreCase))
+                        && f.LastWriteTimeUtc > newestWriteUtc)
+                        newestWriteUtc = f.LastWriteTimeUtc;
+                }
+            }
+            catch { }
+        }
+
+        var brainDir = Path.Combine(agyDir, "brain");
+        if (Directory.Exists(brainDir))
+        {
+            try
+            {
+                foreach (var dir in Directory.EnumerateDirectories(brainDir))
+                {
+                    var transcript = Path.Combine(dir, ".system_generated", "logs", "transcript.jsonl");
+                    if (!File.Exists(transcript)) continue;
+                    var wt = File.GetLastWriteTimeUtc(transcript);
+                    if (wt > newestWriteUtc) newestWriteUtc = wt;
+                }
+            }
+            catch { }
+        }
+
+        var walFile = Path.Combine(agyDir, "conversation_summaries.db-wal");
+        if (File.Exists(walFile))
+        {
+            try
+            {
+                var fi = new FileInfo(walFile);
+                if (fi.LastWriteTimeUtc > newestWriteUtc) newestWriteUtc = fi.LastWriteTimeUtc;
+                using var fs = new FileStream(walFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                var buf = new byte[(int)Math.Min(fs.Length, 65536)];
+                var read = fs.Read(buf, 0, buf.Length);
+                var txt = Encoding.UTF8.GetString(buf, 0, read);
+                var match = System.Text.RegularExpressions.Regex.Match(txt, @"file:///[^""\s<>]+");
+                if (match.Success)
+                {
+                    var p = match.Value["file://".Length..].TrimEnd('/', '\\');
+                    var candidate = Path.GetFileName(p);
+                    if (!string.IsNullOrWhiteSpace(candidate)) detectedProject = candidate;
+                }
+            }
+            catch { }
+        }
+
+        var age = DateTime.UtcNow - newestWriteUtc;
+        var status = newestWriteUtc > DateTime.MinValue && age < TimeSpan.FromMinutes(2) ? "busy" : "idle";
+        var since = newestWriteUtc > DateTime.MinValue
+            ? new DateTimeOffset(newestWriteUtc).ToUnixTimeMilliseconds()
+            : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        yield return new AgentSession(
+            Id: "antigravity:main",
+            Tool: "antigravity",
+            Name: "Antigravity",
+            Project: detectedProject,
+            Status: status,
+            WaitingFor: null,
+            Since: since,
+            StartedAt: since,
+            Pid: agyPid);
+    }
+
+    internal static IEnumerable<AgentSession> ReadOpenClaw(
+        string? homeDir = null,
+        Func<string, int[]>? getProcessIds = null,
+        Func<int, bool>? isAlive = null)
+    {
+        var pLookup = getProcessIds ?? FindProcessIds;
+        var aliveCheck = isAlive ?? Alive;
+        int? clawPid = null;
+        foreach (var procName in new[] { "openclaw", "OpenClaw" })
+        {
+            foreach (var pid in pLookup(procName))
+            {
+                if (pid > 0 && aliveCheck(pid)) { clawPid = pid; break; }
+            }
+            if (clawPid is not null) break;
+        }
+        if (clawPid is null) yield break;
+
+        var home = homeDir ?? Home;
+        var clawDir = Path.Combine(home, ".openclaw");
+        var newestWriteUtc = DateTime.MinValue;
+        if (Directory.Exists(clawDir))
+        {
+            try
+            {
+                var scanned = 0;
+                foreach (var f in new DirectoryInfo(clawDir).EnumerateFiles())
+                {
+                    if (f.LastWriteTimeUtc > newestWriteUtc) newestWriteUtc = f.LastWriteTimeUtc;
+                    if (++scanned >= 300) break;
+                }
+                if (scanned < 300)
+                {
+                    foreach (var sub in new DirectoryInfo(clawDir).EnumerateDirectories())
+                    {
+                        if (sub.Name is "node_modules" or ".git") continue;
+                        foreach (var f in sub.EnumerateFiles())
+                        {
+                            if (f.LastWriteTimeUtc > newestWriteUtc) newestWriteUtc = f.LastWriteTimeUtc;
+                            if (++scanned >= 300) break;
+                        }
+                        if (scanned >= 300) break;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        var age = DateTime.UtcNow - newestWriteUtc;
+        var status = newestWriteUtc > DateTime.MinValue && age < TimeSpan.FromMinutes(2) ? "busy" : "idle";
+        var since = newestWriteUtc > DateTime.MinValue
+            ? new DateTimeOffset(newestWriteUtc).ToUnixTimeMilliseconds()
+            : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        yield return new AgentSession(
+            Id: "openclaw:main",
+            Tool: "openclaw",
+            Name: "OpenClaw",
+            Project: "openclaw",
+            Status: status,
+            WaitingFor: null,
+            Since: since,
+            StartedAt: since,
+            Pid: clawPid);
     }
 
     private static string? Str(JsonElement e, string p) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
