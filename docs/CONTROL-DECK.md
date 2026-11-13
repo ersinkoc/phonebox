@@ -67,7 +67,8 @@ microphone has a signal, and preserves manual volume changes when restoring. It 
 The music sleep timer fades matching application sessions over its final thirty seconds, pauses the selected player,
 then restores volume. A manual volume adjustment takes ownership away from the fade. Players without a matching
 application audio session can still be paused; their volume cannot be faded. Soundboard files play on the computer;
-radio targets must be direct Media Foundation-compatible HTTP(S) audio streams, not playlist webpages.
+radio targets must be direct HTTP(S) audio streams (Media Foundation-compatible on Windows, or played via `ffplay`,
+`mpv` or `vlc` on Linux/macOS), not playlist webpages.
 
 ## Optional integrations
 
@@ -90,10 +91,11 @@ configure application/global shortcuts appropriately. Presentation bindings targ
 
 ## Platforms and connection behavior
 
-The full native audio/session/device, DDC/CI, Windows service/window/display/power, soundboard, MIDI and loopback
-implementation targets Windows. Linux/macOS preserve their existing master volume/media features and report new
-native-only operations as unavailable. Configured executable tasks, OSC and account integrations are portable when
-their corresponding programs and APIs are available. Do not interpret cross-platform compilation as native feature parity.
+The full native audio/session/device, DDC/CI, Windows service/window/display/power, MIDI and loopback
+implementation targets Windows. On Linux/macOS, master volume/media controls remain available, and soundboard/radio
+actions use installed `ffplay`, `mpv`, `cvlc`/`vlc` (plus macOS `afplay` for local soundboard files) when found on
+`PATH`. Configured executable tasks, OSC and account integrations are portable when their corresponding programs and
+APIs are available. Do not interpret cross-platform compilation as native feature parity.
 
 Listening is an explicit desktop opt-in and a user-started phone action. It streams default-output loopback PCM to the
 phone, stops when its widget leaves view, and allows at most two listeners. Enabling it does not reroute other apps.
