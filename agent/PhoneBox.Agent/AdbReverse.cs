@@ -705,6 +705,21 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                 log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
             }
         }
+        else if (cfg.Get().Display.Standby != "off")
+        {
+            // "keep awake off" used to mean "never touch the phone's power settings" - but one stale value
+            // still breaks standby with that off: stay_on_while_plugged_in survives reboots, an earlier
+            // keepAwake=true run may have left 7 behind, and some stock ROMs ship it non-zero. While the
+            // phone reports plugged, that system flag outvotes the app releasing its own hold even though
+            // the app was never the one holding the screen on. The standby override therefore lands
+            // independently of KeepAwake; the screen-saver writes stay the optional part.
+            foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}") && !_missingApp.Contains(d)))
+            {
+                await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
+                _awakeSet.Add($"{d}:{stayOn}");
+                log.LogInformation("{Device}: standby cleared stay_on_while_plugged_in (keep awake off)", d);
+            }
+        }
         else _awakeSet.Clear();
         _awakeSet.IntersectWith(devices.Select(d => $"{d}:{stayOn}"));
         Report($"phone connected: {Devices}");
