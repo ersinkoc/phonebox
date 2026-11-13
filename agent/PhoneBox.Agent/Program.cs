@@ -101,10 +101,16 @@ app.MapPost("/api/controls/obs/{action}", async (string action, string? id, int?
 
 // The panel in a desktop browser (the layout editor's live preview, /panel/) calls the API as /agent/api/..., the same
 // path the phone uses; on the local port that is simply /api/... Routing runs after this, so it sees the new path.
+// The web kiosk (Kiosk.cs) runs the same panel, so on the Wi-Fi port too; there it needs the kiosk key (checked below).
+const string PanelApiItem = "phonebox.panel-api";
 app.Use((ctx, next) =>
 {
-    if (ctx.Connection.LocalPort == Port && ctx.Request.Path.StartsWithSegments("/agent/api", out var rest))
+    var lanPort = lanCert is not null && ctx.Connection.LocalPort == lanCfg.Port;
+    if ((ctx.Connection.LocalPort == Port || lanPort) && ctx.Request.Path.StartsWithSegments("/agent/api", out var rest))
+    {
         ctx.Request.Path = "/api" + rest;
+        ctx.Items[PanelApiItem] = true;
+    }
     return next(ctx);
 });
 
@@ -116,6 +122,35 @@ app.UseRouting();
 app.Use(async (ctx, next) =>
 {
     var origin = ctx.Request.Headers.Origin.ToString();
+    // Web kiosk (Kiosk.cs): its own key, on either port. /kiosk/… takes it in ?token= (or the cookie set from it); the
+    // panel's API calls (/agent/api/…) carry the cookie. Invisible (404) while turned off.
+    var kiosk = configStore.Get().Kiosk;
+    var lanPort = lanCert is not null && ctx.Connection.LocalPort == lanCfg.Port;
+    var kioskCookie = ctx.Request.Cookies[Kiosk.CookieName];
+    var panelApi = ctx.Items.ContainsKey(PanelApiItem);
+    var kioskPage = Kiosk.IsKioskPath(ctx.Request.Path);
+    // on the local port the layout editor's preview also uses /agent/api without a key: only a valid cookie makes it a kiosk call
+    var kioskApi = panelApi && (lanPort || Kiosk.Authorized(null, null, kiosk, kioskCookie));
+    if (kioskPage || kioskApi)
+    {
+        var status = !kiosk.Enabled ? StatusCodes.Status404NotFound
+            : !Kiosk.Authorized(kioskPage ? ctx.Request.Headers.Authorization.ToString() : null, kioskPage ? ctx.Request.Query["token"].ToString() : null, kiosk, kioskCookie)
+              || !Kiosk.OriginAllowed(origin, ctx.Request.Scheme, ctx.Request.Host.Value ?? "")
+              || BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path)
+              || (kioskApi && !Kiosk.PanelApiAllowed(ctx.Request.Path, ctx.Request.Method, ctx.Request.Headers.ContainsKey("X-PhoneBox-Panel")))
+                ? StatusCodes.Status403Forbidden : 0;
+        if (status != 0) { ctx.Response.StatusCode = status; return; }
+        if (kioskPage && Lan.MatchesQuery(ctx.Request.Query["token"], kiosk.Token!) && !Lan.MatchesQuery(kioskCookie, kiosk.Token!))
+            Kiosk.SetCookie(ctx.Response, kiosk.Token!, ctx.Request.IsHttps);
+        // an open kiosk counts as a panel that can answer Claude Code prompts, like the phone
+        if (kioskApi && (ctx.Request.Path.StartsWithSegments("/api/state") || ctx.Request.Path.StartsWithSegments("/api/stream")))
+            Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        ctx.Response.Headers.CacheControl = "no-store";
+        ctx.Response.Headers["X-Frame-Options"] = "DENY";
+        ctx.Response.Headers["Referrer-Policy"] = "no-referrer"; // the key is in the URL
+        await next();
+        return;
+    }
     if (lanCert is not null && ctx.Connection.LocalPort == lanCfg.Port)
     {
         // The phone's key opens the panel API; the separate webhook key opens only the webhook endpoints, in a header
@@ -195,6 +230,9 @@ app.MapPost("/api/restart", (IHostApplicationLifetime life) =>
     return Results.Ok();
 });
 
+// ---------------------------------------------------------------- web kiosk (browsers, old tablets): /kiosk?token=…
+app.MapKiosk();
+
 // ---------------------------------------------------------------- settings UI (browser)
 app.MapGet("/", () =>
 {
@@ -206,17 +244,7 @@ app.MapGet("/", () =>
 app.MapGet("/panel/{*file}", (string? file, HttpRequest req) =>
 {
     if (string.IsNullOrEmpty(file) && !req.Path.Value!.EndsWith('/')) return Results.Redirect("/panel/" + req.QueryString);
-    file = string.IsNullOrEmpty(file) ? "index.html" : file;
-    // index.html, main.js, style.css… and the widget modules in widgets/
-    if (!System.Text.RegularExpressions.Regex.IsMatch(file, @"^(widgets/)?[A-Za-z0-9_.-]+$") || file.Contains("..")) return Results.NotFound();
-    var type = Path.GetExtension(file) switch
-    {
-        ".html" => "text/html; charset=utf-8",
-        ".js" => "text/javascript; charset=utf-8",
-        ".css" => "text/css; charset=utf-8",
-        _ => "application/octet-stream",
-    };
-    return AppPaths.Resource("www/" + file) is { } s ? Results.Stream(s, type) : Results.NotFound();
+    return Kiosk.PanelFile(file);
 });
 app.MapGet("/favicon.ico", () => AppPaths.Resource("phonebox.ico") is { } s ? Results.Stream(s, "image/x-icon") : Results.NotFound());
 
@@ -545,7 +573,7 @@ app.Run();
 single.ReleaseMutex();
 single.Dispose();
 if (AppRestart.Requested && Environment.ProcessPath is { } exe)
-    System.Diagnostics.Process.Start(AppRestart.StartInfo(exe, args));
+    System.Diagnostics.Process.Start(AppRestart.StartInfo(AppRestart.Executable(exe), args));
 
 static void AddMonitor<T>(IServiceCollection s) where T : class, IHostedService
 {

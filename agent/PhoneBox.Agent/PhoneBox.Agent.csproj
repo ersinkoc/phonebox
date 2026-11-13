@@ -49,6 +49,8 @@
     <EmbeddedResource Include="config.default.macos.json" LogicalName="config.default.macos.json" />
     <EmbeddedResource Include="phonebox.ico" LogicalName="phonebox.ico" />
     <EmbeddedResource Include="settings.html" LogicalName="settings.html" />
+    <!-- web kiosk lite: the panel built for older browsers by tools/kiosk-lite -->
+    <EmbeddedResource Include="kiosk-lite\*.*" LogicalName="kiosk-lite/%(Filename)%(Extension)" />
     <EmbeddedResource Include="widgets.json" LogicalName="widgets.json" />
     <EmbeddedResource Include="templates.json" LogicalName="templates.json" />
     <!-- the phone's panel, served at /panel/ for the live preview in the layout editor -->

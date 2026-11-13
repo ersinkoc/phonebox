@@ -567,6 +567,15 @@ dd { margin: 0; word-break: break-all; }
         <div class="row"><button class="btn" id="lanRegen">New key (unpair phones)</button><span class="hint" id="lanStatus"></span></div>
       </div>
       <div class="card">
+        <h3>Web kiosk (tablets, monitors, old devices)</h3>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="kiosk.enabled"><span></span></label> Show the phone's pages in a browser</div>
+        <p class="hint" style="margin:0 0 12px">For devices without the phone app &mdash; a tablet, a second monitor, a Raspberry Pi screen, Fully Kiosk Browser. Current browsers get exactly
+          the phone's pages (with the phone's controls, Claude Code prompts included); older ones get the same panel built for them, down to Firefox 68
+          on Android 4.4. Open the address below on the device and bookmark it. It uses the Wi-Fi &amp; Tailscale port (HTTPS with this PC's self-signed certificate:
+          accept the warning once, or turn on "ignore SSL errors" in Fully Kiosk). Anyone with the address can use the panel like the phone: treat it like a password and replace the key if it leaks.</p>
+        <div id="kioskInfo"></div>
+      </div>
+      <div class="card">
         <h3>Updates</h3>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="updates.auto"><span></span></label> Install new releases automatically</div>
         <p class="hint" style="margin:0 0 12px">Checks <span id="updRepo"></span> on GitHub every 6 hours. The phone app is installed over USB without a prompt
@@ -1677,6 +1686,25 @@ async function pollCharge() {
 }
 setInterval(pollCharge, 5000);
 
+// ---------------------------------------------------------------- web kiosk
+function renderKiosk(lan) {
+  const token = cfg.kiosk?.token || '';
+  const host = lan?.active && lan.hosts?.length ? `https://${lan.hosts[0]}:${lan.port}` : null;
+  const local = `http://127.0.0.1:${location.port || 8765}`;
+  const link = (base) => `${base}/kiosk?token=${encodeURIComponent(token)}`;
+  const shown = (base) => `${base}/kiosk?token=${token ? token.slice(0, 6) + '…' : '(generated on save)'}`;
+  const on = !!cfg.kiosk?.enabled;
+  $('kioskInfo').replaceChildren(
+    h('div', { class: 'row', style: { gap: '8px', margin: '0 0 8px', flexWrap: 'wrap' } },
+      h('code', {}, shown(host || 'https://<this PC>:' + (lan?.port || 8766))),
+      h('button', { class: 'btn sm', disabled: !token || !host, onclick: () => { navigator.clipboard?.writeText(link(host)); toast('Kiosk address copied'); } }, 'Copy address'),
+      h('button', { class: 'btn sm', disabled: !token, onclick: () => window.open(link(local), '_blank', 'noopener') }, 'Open here'),
+      h('button', { class: 'btn sm', onclick: () => { cfg.kiosk = { ...(cfg.kiosk || {}), token: '' }; changed(); toast('A new kiosk key is generated on save'); } }, 'New key')),
+    h('p', { class: 'hint', style: { margin: 0 } }, !on ? 'Off: /kiosk answers 404 (turn it on and save first).'
+      : host ? 'Other devices on your network or Tailscale can open the address above.'
+      : 'Turn on "Wi-Fi & Tailscale" above (and restart) so other devices can reach it. "Open here" works on this PC already.'));
+}
+
 // ---------------------------------------------------------------- webhooks
 function renderWebhooks(lan) {
   const local = `http://127.0.0.1:${location.port || 8765}`;
@@ -2093,6 +2121,7 @@ async function loadInfo() {
     $('restartBtn').hidden = !lan.restartNeeded;
     renderUpdate(await (await fetch('/api/update')).json());
     renderWebhooks(lan);
+    renderKiosk(lan);
     const hk = await (await fetch('/api/claude/hook')).json();
     $('hookState').textContent = hk.installed ? 'Installed in ' + hk.path : 'Not installed';
     $('hookBtn').textContent = hk.installed ? 'Remove hook' : 'Install hook';
@@ -2111,7 +2140,7 @@ async function load() {
   const res = await fetch('/api/settings');
   cfgVersion = res.headers.get('X-Config-Version');
   cfg = await res.json();
-  cfg.pages ??= []; cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night ??= {}; cfg.weather ??= {}; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false };
+  cfg.pages ??= []; cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night ??= {}; cfg.weather ??= {}; cfg.lan ??= { enabled: false, port: 8766 }; cfg.kiosk ??= { enabled: false }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };

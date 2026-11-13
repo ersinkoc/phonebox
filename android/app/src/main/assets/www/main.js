@@ -1163,6 +1163,60 @@ pager.addEventListener('touchend', (e) => {
 
 pager.addEventListener('touchcancel', () => { swipeTracking = false; }, { passive: true });
 
+// Mouse drag (the panel in a desktop browser, e.g. the web kiosk): the same paging as a swipe on the phone, which
+// a mouse cannot do with native scrolling. Touch and pen keep the native scroll above.
+let mouseDrag = null;
+pager.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'mouse' || e.button !== 0 || pages.length < 2) return;
+  // like a finger on the phone: a drag may start on a key or a link (it is then not clicked), not on a slider or a list
+  if (volDragging || e.target.closest?.('input, textarea, select, [contenteditable], .s-list, .vb')) return;
+  mouseDrag = { x: e.clientX, y: e.clientY, left: pager.scrollLeft, page: curPage, time: Date.now(), moved: false, id: e.pointerId };
+});
+pager.addEventListener('pointermove', (e) => {
+  if (!mouseDrag || e.pointerId !== mouseDrag.id) return;
+  const dx = e.clientX - mouseDrag.x;
+  if (!mouseDrag.moved) {
+    // a control that holds the pointer (Hold to talk, a fader) keeps it: no page drag
+    if (e.target !== pager && e.target.hasPointerCapture?.(e.pointerId)) { mouseDrag = null; return; }
+    if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(e.clientY - mouseDrag.y)) return;
+    mouseDrag.moved = true;
+    clearTimeout(snapTimer);
+    pager.style.scrollSnapType = 'none';
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+    try { pager.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  pager.scrollLeft = mouseDrag.left - dx;
+});
+function endMouseDrag(e) {
+  if (!mouseDrag || e.pointerId !== mouseDrag.id) return;
+  const d = mouseDrag;
+  mouseDrag = null;
+  if (!d.moved) return;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  // a drag that ends on a widget must not click it
+  const swallow = (c) => { c.stopPropagation(); c.preventDefault(); };
+  window.addEventListener('click', swallow, { capture: true, once: true });
+  setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 50);
+  const dx = e.clientX - d.x;
+  const flick = Math.abs(dx) >= 40 && Date.now() - d.time < 700;
+  let target = Math.round(pager.scrollLeft / window.innerWidth);
+  if (flick || Math.abs(dx) > window.innerWidth / 2) target = d.page + (dx < 0 ? 1 : -1);
+  else target = d.page;
+  lastTouch = lastUserTouch = Date.now();
+  haptic();
+  if (target >= pages.length || target < 0) {
+    // past the last or before the first page: wrap around, as a swipe does on the phone
+    goPage(target < 0 ? pages.length - 1 : 0, true);
+    return;
+  }
+  goPage(target);
+  snapTimer = setTimeout(() => (pager.style.scrollSnapType = ''), 450);
+}
+pager.addEventListener('pointerup', endMouseDrag);
+pager.addEventListener('pointercancel', endMouseDrag);
+
 /** Called by the Android shell (volume keys) and by arrow keys in a desktop browser. */
 window.onAndroidKey = (k) => {
   lastTouch = lastUserTouch = Date.now();

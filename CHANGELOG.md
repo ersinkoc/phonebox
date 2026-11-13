@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+**Web kiosk**
+- New `/kiosk` address that shows the phone's pages in a browser, for devices without the phone app (a tablet, a
+  spare monitor, a Raspberry Pi screen, Fully Kiosk Browser): the same panel, with the phone's API over Wi-Fi.
+- Older browsers get `/kiosk/lite/`: the same panel built for browsers without container queries or modern
+  JavaScript, down to Firefox 68 on Android 4.4 (`tools/kiosk-lite`; a small runtime fills in container query units,
+  `min()` / `max()` / `clamp()`, `color-mix()`, `@container`, `:has()` and `aspect-ratio`).
+- Opened with its own key in `?token=`, separate from the phone and webhook keys. Off by default; turned on and its
+  address copied in Settings › General › Web kiosk. Served on the Wi-Fi & Tailscale HTTPS port (and on `127.0.0.1`
+  for a browser on the PC).
+- With a mouse, dragging a page sideways flips pages like a swipe on the phone, wrapping around at the first and
+  last page. A drag may start on a key (it is then not pressed); sliders, lists and held controls such as Hold to
+  talk keep the pointer.
+
+**Linux**
+- `packaging/appimage/build-appimage.sh` builds a self-contained AppImage of the agent (the .NET runtime included).
+  Restarting from the settings page starts the AppImage file again instead of its temporary mount point.
+
 ## 0.9.4 — 2026-11-11
 
 A full audit of the agent, the panel, the settings page and the tooling. Every fix below has a regression test or a

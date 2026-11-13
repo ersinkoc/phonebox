@@ -40,4 +40,5 @@ config.json.bak
 .ui-site/
 ui-test-report/
 tools/ui-tests/node_modules/
+tools/kiosk-lite/node_modules/
 tools/ui-tests/test-results/

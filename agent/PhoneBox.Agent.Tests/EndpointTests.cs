@@ -37,4 +37,17 @@ public sealed class EndpointTests
         var hosted = AppRestart.StartInfo("dotnet", ["--port", "18765"]);
         Assert.EndsWith("PhoneBoxAgent.dll", hosted.ArgumentList[0]);
     }
+
+    [Fact]
+    public void InsideAnAppImageTheRestartStartsTheAppImageFile()
+    {
+        var file = Path.GetTempFileName();
+        try
+        {
+            Assert.Equal(file, AppRestart.Executable("/tmp/.mount_PhoneBoxAbc/usr/bin/PhoneBoxAgent", file));
+            Assert.Equal("/opt/phonebox/PhoneBoxAgent", AppRestart.Executable("/opt/phonebox/PhoneBoxAgent", ""));
+            Assert.Equal("/opt/phonebox/PhoneBoxAgent", AppRestart.Executable("/opt/phonebox/PhoneBoxAgent", "/no/such/file.AppImage"));
+        }
+        finally { File.Delete(file); }
+    }
 }

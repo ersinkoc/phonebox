@@ -328,9 +328,20 @@ public static class AppRestart
 {
     public static volatile bool Requested;
 
+    /// <summary>
+    /// What to start again: the running program, or inside an AppImage the .AppImage file itself (its mount point, where
+    /// the program runs from, goes away when this process exits).
+    /// </summary>
+    internal static string Executable(string processPath, string? appImage = null)
+    {
+        appImage ??= Environment.GetEnvironmentVariable("APPIMAGE");
+        return !string.IsNullOrEmpty(appImage) && File.Exists(appImage) ? appImage : processPath;
+    }
+
     internal static ProcessStartInfo StartInfo(string executable, string[] args)
     {
-        var start = new ProcessStartInfo(executable) { UseShellExecute = false, WorkingDirectory = AppContext.BaseDirectory };
+        var appImage = executable == Environment.GetEnvironmentVariable("APPIMAGE");
+        var start = new ProcessStartInfo(executable) { UseShellExecute = false, WorkingDirectory = appImage ? AppPaths.NeutralCwd : AppContext.BaseDirectory };
         if (string.Equals(Path.GetFileNameWithoutExtension(executable), "dotnet", StringComparison.OrdinalIgnoreCase))
             start.ArgumentList.Add(typeof(AppRestart).Assembly.Location);
         foreach (var arg in args.Where(a => a != "--restart")) start.ArgumentList.Add(arg);

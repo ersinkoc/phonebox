@@ -1,0 +1,14 @@
+{
+  "name": "phonebox-kiosk-lite",
+  "private": true,
+  "description": "Builds the web kiosk's lite panel (the phone's panel for Firefox 68 on Android 4.4) into agent/PhoneBox.Agent/kiosk-lite.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0",
+    "postcss": "8.5.3"
+  }
+}

@@ -34,7 +34,7 @@ the pages in a visual editor on the PC: **113 widgets**, **30 templates**, as ma
 <sub>A tour through the pages (made-up data): a notification, a permission prompt, a rule switching pages calmly. <a href="docs/tour-0.6.mp4">Video (MP4)</a></sub></p>
 
 **Contents**: [Quick start](#quick-start) · [Pages & templates](#pages--templates) · [Widgets](#widgets) ·
-[Layout editor](#layout-editor--settings) · [Claude Code prompts](#claude-code-permission-prompts) · [Webhooks](#webhooks) · [Rules](#rules) · [Wi-Fi & Tailscale](#wi-fi--tailscale) ·
+[Layout editor](#layout-editor--settings) · [Claude Code prompts](#claude-code-permission-prompts) · [Webhooks](#webhooks) · [Rules](#rules) · [Wi-Fi & Tailscale](#wi-fi--tailscale) · [Web kiosk](#web-kiosk-tablets-monitors-and-old-devices) ·
 [Updates](#updates) · [How it works](#how-it-works) · [Security](#security--privacy) · [FAQ](#faq--troubleshooting) ·
 [Development](#development)
 
@@ -365,6 +365,30 @@ plugged in again; the status line shows which one it uses.
 With several computers (each paired once over USB), the page overview on the phone lists them and switches between
 them over Wi-Fi.
 
+## Web kiosk (tablets, monitors and old devices)
+
+A device without the phone app — a tablet, a second monitor, a Raspberry Pi screen, Fully Kiosk Browser — can show
+the panel in a browser. Turn on **Settings › General › Web kiosk** (it needs **Wi-Fi & Tailscale** on as well), then
+open the address shown there on the device and bookmark it:
+
+```
+https://<pc>:8766/kiosk?token=<kiosk key>
+```
+
+- It shows **exactly the pages the phone shows**: the same panel, layout, widgets, appearance and rules, with the same
+  API as the phone over Wi-Fi (keys, media, processes, Docker, OBS, Home Assistant, Claude Code Allow / Deny).
+  Phone-only features (battery, brightness, vibration, volume keys) are left out. This is what current browsers
+  get (Chrome / WebView 105+, Safari 16+, Firefox 110+).
+- **Older browsers** are sent to `/kiosk/lite/` automatically: the same panel, with the same pages, widgets and
+  look, built for browsers without container queries or modern JavaScript, down to **Firefox 68**, the last Firefox
+  for **Android 4.4** (install it from Mozilla's archive). The Android 4.4 built-in browser is too old for either and
+  says so. Add `&full=1` to the address to skip the check.
+- Both reconnect by themselves after the network drops and have no scrollbars, so they suit fullscreen browsers.
+- It uses the Wi-Fi port, so the connection is HTTPS with the agent's self-signed certificate: accept the warning
+  once on the device, or turn on "ignore SSL errors" in Fully Kiosk Browser.
+- The kiosk key is separate from the phone's key and the webhook key, and **New key** replaces it. The page keeps it
+  in an HttpOnly, SameSite=Strict cookie for its own requests. On this PC, "Open here" opens the kiosk locally.
+
 ## Updates
 
 The agent checks the latest GitHub release every 6 hours (or **Settings › General › Updates › Check now**) and, with
@@ -409,6 +433,10 @@ flowchart LR
   the phone asks for a widget's output and never sees the command.
 - Webhooks from other machines need the separate webhook key, which cannot open the phone API and can be replaced
   on its own.
+- The web kiosk is off by default. It can do what the phone can over Wi-Fi (settings, pairing and tests stay local),
+  so treat its address like a password. Its key is separate from the phone's key and opens nothing else; the page
+  sends no referrer, accepts calls only from itself, and Custom HTML widgets cannot use its API. While it is off,
+  `/kiosk` answers 404.
 - Ending processes is limited to your own session, never touches a list of Windows-critical processes, and can be
   switched off in the processes widget's options.
 - **Claude Code permission prompts** are opt-in. The hook only posts the request to the agent on `127.0.0.1`; the
@@ -471,6 +499,8 @@ Node.js 22 for the browser tooling. The Gradle wrapper downloads Gradle automati
 python tools/demo-server.py                  # the web demo from source: http://127.0.0.1:8790/panel/ and /settings/
 python tools/check-release.py                # release versions and widget/template catalog consistency
 dotnet test agent/PhoneBox.Agent.Tests       # agent unit tests
+cd tools/kiosk-lite; npm ci; node build.mjs; cd ../.. # after changing the panel: regenerate the web kiosk lite (node build.mjs --check verifies it)
+packaging/appimage/build-appimage.sh linux-x64 # self-contained Linux AppImage in dist/ (needs squashfs-tools)
 cd tools/ui-tests
 npm ci
 npx playwright install chromium             # first run; on Linux CI use --with-deps chromium
