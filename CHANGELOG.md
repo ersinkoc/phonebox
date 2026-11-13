@@ -11,6 +11,9 @@
 - Opened with its own key in `?token=`, separate from the phone and webhook keys. Off by default; turned on and its
   address copied in Settings › General › Web kiosk. Served on the Wi-Fi & Tailscale HTTPS port (and on `127.0.0.1`
   for a browser on the PC).
+- With a mouse, dragging a page sideways flips pages like a swipe on the phone, wrapping around at the first and
+  last page. A drag may start on a key (it is then not pressed); sliders, lists and held controls such as Hold to
+  talk keep the pointer.
 
 **Linux**
 - `packaging/appimage/build-appimage.sh` builds a self-contained AppImage of the agent (the .NET runtime included).
