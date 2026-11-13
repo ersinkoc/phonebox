@@ -35,6 +35,16 @@ internal sealed class ControlTasks(ConfigStore config, ILogger log) : IDisposabl
             return job.State == "Failed to start" ? new(false, "The configured task could not be started") : new(true);
         }
     }
+
+    /// <summary>Cancels a running task or server job if still active without failing when stopped.</summary>
+    public void StopIfRunning(string id)
+    {
+        lock (_gate)
+        {
+            if (_jobs.TryGetValue(id, out var current) && current.Work?.IsCompleted == false)
+                current.Stop.Cancel();
+        }
+    }
     private async Task Run(Job job, Shortcut shortcut, TimeSpan timeout)
     {
         var start = new ProcessStartInfo(shortcut.Cmd, shortcut.Args ?? "")

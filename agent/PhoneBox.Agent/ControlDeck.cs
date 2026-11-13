@@ -76,7 +76,7 @@ public sealed partial class ControlDeck : BackgroundService
         {
             platform = AppPaths.Os, audio = Audio(), media, mediaError,
             monitors = _monitors, powerPlans = _plans, midi = _midi, hardwareLoading = _hardwareJob?.IsCompleted == false,
-            actions = c.Controls.Actions.Select(Describe).ToArray(),
+            actions = c.Controls.Actions.Where(a => a.Enabled).Select(Describe).ToArray(),
             shortcuts = c.Shortcuts.Select(DescribeShortcut),
             profiles = c.Controls.Profiles.Select(p => new DeckItem(p.Id, p.Label, "profile")),
             allowListening = c.Controls.AllowListening, allowPower = c.Controls.AllowPower,
@@ -202,7 +202,15 @@ public sealed partial class ControlDeck : BackgroundService
             foreach (var pair in profile.Defaults) { audioRole(pair.Key, out var role); if (!_native.DefaultDevice(pair.Value, role)) return new(false, "A profile's audio role could not be restored"); }
             if (profile.Output is { Length: > 0 } output && !_native.DefaultDevice(output)) return new(false, "Profile output is unavailable");
             if (profile.Input is { Length: > 0 } input && !_native.DefaultDevice(input)) return new(false, "Profile microphone is unavailable");
-            foreach (var action in profile.Actions) { var result = await Action(action, "", null, ct); if (!result.Ok) return result; }
+            var configuredActions = _config.Get().Controls.Actions;
+            foreach (var action in profile.Actions)
+            {
+                if (!action.StartsWith("shortcut:", StringComparison.Ordinal)
+                    && configuredActions.FirstOrDefault(a => a.Id == action) is { Enabled: false })
+                    continue;
+                var result = await Action(action, "", null, ct);
+                if (!result.Ok) return result;
+            }
             Invalidate(); return new(true);
         }
         finally { _profiles.Release(); }
@@ -213,6 +221,17 @@ public sealed partial class ControlDeck : BackgroundService
         }
     }
 
+    /// <summary>Stops any active radio, sound, task, or server controls that have been disabled.</summary>
+    public void StopDisabledControls()
+    {
+        foreach (var a in _config.Get().Controls.Actions.Where(a => !a.Enabled))
+        {
+            if (a.Kind is "radio" or "sound") _native.StopSound(a.Id);
+            else if (a.Kind is "task" or "server") _tasks.StopIfRunning(a.Id);
+        }
+        Invalidate();
+    }
+
     private async Task<DeckResult> Action(string id, string op, int? value, CancellationToken ct)
     {
         var c = _config.Get();
@@ -220,6 +239,8 @@ public sealed partial class ControlDeck : BackgroundService
             return await ShortcutAction(c, id[9..], op, ct);
         var action = c.Controls.Actions.FirstOrDefault(a => a.Id == id);
         if (action is null) return new(false, "Choose a configured control in desktop settings");
+        if (!action.Enabled && !(op == "stop" && action.Kind is "task" or "server" or "sound" or "radio"))
+            return new(false, "Control is disabled");
         switch (action.Kind)
         {
             case "task": case "server": return _tasks.Start(action, op == "stop");

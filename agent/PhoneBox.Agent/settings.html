@@ -1905,16 +1905,113 @@ function renderControlSettings() {
   root.append(spotify);
   const integration=h('details',{},h('summary',{},'Optional audio integrations'),field('SoundVolumeView executable path',c,'mixerExecutable'),field('Installed Voicemeeter Remote DLL path (64-bit)',c,'mixerLibrary'));root.append(integration);
   const hints={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
-  const actions=h('div');root.append(h('h4',{},'Control bindings'),actions);
-  const renderActions=()=>actions.replaceChildren(...c.actions.map(a=>{
-    const box=h('details',{},h('summary',{},a.label || a.id));
-    const kind=h('select',{'aria-label':'Control kind'},...Object.keys(hints).map(k=>h('option',{value:k,selected:a.kind===k},k)));
-    const hint=h('p',{class:'hint'},hints[a.kind] || 'Select a kind.');kind.onchange=()=>{a.kind=kind.value;hint.textContent=hints[a.kind];changed();};
-    box.append(field('Control ID',a,'id'),field('Control label',a,'label'),h('label',{},'Kind'),kind,hint,field('Target',a,'target'),field('Argument',a,'argument'),field('Device / port / branch',a,'device'),field('Value',a,'value','number'));
-    const output=h('pre',{style:{maxHeight:'240px',overflow:'auto',whiteSpace:'pre-wrap'}});
-    box.append(btn('Show task output',async()=>{const r=await fetch('/api/controls/task-output/'+encodeURIComponent(a.id));if(!r.ok)throw new Error('Output unavailable');output.textContent=await r.text();}),btn('Remove control',()=>{c.actions=c.actions.filter(x=>x!==a);changed();renderActions();}),output);return box;
-  }));renderActions();
-  root.append(btn('Add control',()=>{c.actions.push({id:'control-'+crypto.randomUUID().slice(0,8),label:'New control',kind:'shortcut',target:'',value:75});changed();renderActions();actions.lastChild.open=true;}));
+  const stationFilter = h('input', { type: 'search', placeholder: 'Filter stations…', style: { marginBottom: '6px' } });
+  const stationList = h('div', { class: 'stack-list' });
+  const radioDetails = h('details', {}, h('summary', {}, 'Radio stations (enable & order)'),
+    h('p', { class: 'hint' }, 'Order and enablement apply to all Radio widgets using the configured stations below.'),
+    stationFilter, stationList);
+  root.append(radioDetails);
+  const actions = h('div'); root.append(h('h4', {}, 'Control bindings'), actions);
+
+  let renderStations = () => {};
+  const moveRadio = (fromIdx, toIdx) => {
+    const radios = c.actions.filter((a) => a.kind === 'radio');
+    if (fromIdx < 0 || fromIdx >= radios.length || toIdx < 0 || toIdx >= radios.length || fromIdx === toIdx) return;
+    const [moved] = radios.splice(fromIdx, 1);
+    radios.splice(toIdx, 0, moved);
+    let rPtr = 0;
+    c.actions = c.actions.map((a) => (a.kind === 'radio' ? radios[rPtr++] : a));
+    changed();
+    renderStations();
+    renderActions();
+  };
+
+  renderStations = () => {
+    const radios = c.actions.filter((a) => a.kind === 'radio');
+    const q = stationFilter.value.trim().toLowerCase();
+    const visible = q ? radios.filter((r) => (r.label || r.id || '').toLowerCase().includes(q)) : radios;
+    if (!visible.length) {
+      stationList.replaceChildren(h('p', { class: 'hint', style: { margin: '6px 0' } }, radios.length ? 'No matching radio stations.' : 'No radio stations configured yet.'));
+      return;
+    }
+    stationList.replaceChildren(...visible.map((station) => {
+      const idx = radios.indexOf(station);
+      const isEnabled = station.enabled !== false;
+      const row = h('div', {
+        class: 'stack-row' + (isEnabled ? '' : ' off'),
+        draggable: !q ? 'true' : null,
+        ondragstart: (e) => {
+          if (q || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') { e.preventDefault(); return; }
+          row.classList.add('dragging');
+          e.dataTransfer.setData('application/phonebox-radio-idx', String(idx));
+          e.dataTransfer.effectAllowed = 'move';
+        },
+        ondragend: () => {
+          row.classList.remove('dragging');
+          stationList.querySelectorAll('.stack-row.over').forEach((el) => el.classList.remove('over'));
+        },
+        ondragover: (e) => {
+          if (q) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          row.classList.add('over');
+        },
+        ondragleave: () => row.classList.remove('over'),
+        ondrop: (e) => {
+          if (q) return;
+          e.preventDefault();
+          e.stopPropagation();
+          row.classList.remove('over');
+          const fromIdx = parseInt(e.dataTransfer.getData('application/phonebox-radio-idx'), 10);
+          if (!Number.isNaN(fromIdx) && fromIdx !== idx) moveRadio(fromIdx, idx);
+        }
+      },
+        h('span', { class: 'stack-row-handle', title: q ? 'Clear search to drag' : 'Drag to reorder' }, '⋮⋮'),
+        h('input', {
+          type: 'checkbox',
+          class: 'stack-row-check',
+          checked: isEnabled,
+          title: isEnabled ? 'Enabled' : 'Disabled',
+          onchange: (e) => {
+            e.stopPropagation();
+            station.enabled = e.target.checked;
+            changed();
+            renderStations();
+            renderActions();
+          }
+        }),
+        h('span', { class: 'stack-row-ico' }, '📻'),
+        h('span', { class: 'stack-row-name', title: station.target || '' }, station.label || station.id),
+        h('div', { class: 'stack-row-actions' },
+          h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move up', disabled: !!q || idx === 0, onclick: (e) => { e.stopPropagation(); moveRadio(idx, idx - 1); } }, '▲'),
+          h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move down', disabled: !!q || idx === radios.length - 1, onclick: (e) => { e.stopPropagation(); moveRadio(idx, idx + 1); } }, '▼')
+        )
+      );
+      return row;
+    }));
+  };
+  stationFilter.oninput = () => renderStations();
+
+  const renderActions = () => {
+    actions.replaceChildren(...c.actions.map((a) => {
+      if (a.enabled === undefined) a.enabled = true;
+      const box = h('details', {}, h('summary', {}, a.label || a.id));
+      const kind = h('select', { 'aria-label': 'Control kind' }, ...Object.keys(hints).map((k) => h('option', { value: k, selected: a.kind === k }, k)));
+      const hint = h('p', { class: 'hint' }, hints[a.kind] || 'Select a kind.');
+      kind.onchange = () => { a.kind = kind.value; hint.textContent = hints[a.kind]; changed(); renderStations(); };
+      const enField = field('Enabled', a, 'enabled', 'checkbox');
+      enField.querySelector('input').addEventListener('change', () => renderStations());
+      const lblField = field('Control label', a, 'label');
+      lblField.querySelector('input').addEventListener('change', () => renderStations());
+      box.append(enField, field('Control ID', a, 'id'), lblField, h('label', {}, 'Kind'), kind, hint, field('Target', a, 'target'), field('Argument', a, 'argument'), field('Device / port / branch', a, 'device'), field('Value', a, 'value', 'number'));
+      const output = h('pre', { style: { maxHeight: '240px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
+      box.append(btn('Show task output', async () => { const r = await fetch('/api/controls/task-output/' + encodeURIComponent(a.id)); if (!r.ok) throw new Error('Output unavailable'); output.textContent = await r.text(); }), btn('Remove control', () => { c.actions = c.actions.filter((x) => x !== a); changed(); renderActions(); }), output);
+      return box;
+    }));
+    renderStations();
+  };
+  renderActions();
+  root.append(btn('Add control', () => { c.actions.push({ id: 'control-' + crypto.randomUUID().slice(0, 8), label: 'New control', kind: 'shortcut', target: '', value: 75, enabled: true }); changed(); renderActions(); actions.lastChild.open = true; }));
   root.append(h('details',{},h('summary',{},'Available shortcut IDs'),h('p',{class:'hint'},'Create executable, text and macro shortcuts in Deck first.'),...cfg.shortcuts.map(s=>h('div',{},s.id+' — '+s.label))));
   const profiles=h('div');root.append(h('h4',{},'Audio and routine profiles'),profiles);
   const renderProfiles=()=>profiles.replaceChildren(...c.profiles.map(p=>{

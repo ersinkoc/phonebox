@@ -334,7 +334,7 @@
     Object.assign(deck.media[0], { title: TRACKS[player.track][0], playing: player.playing, position: position(), duration: TRACKS[player.track][3] });
     return { ...deck, allowListening: !!controls.allowListening, allowPower: !!controls.allowPower,
       // ControlDeck.Describe / DescribeShortcut: ids, labels and kinds only
-      actions: (controls.actions || []).map((a) => ({ id: a.id, name: a.label, kind: a.kind, state: actionState[a.id] ?? (/^(app|project|shortcut|focus)$/.test(a.kind) ? (c.shortcuts.some((x) => x.id === a.target) ? 'Ready' : 'Shortcut is missing') : null),
+      actions: (controls.actions || []).filter((a) => a.enabled !== false).map((a) => ({ id: a.id, name: a.label, kind: a.kind, state: actionState[a.id] ?? (/^(app|project|shortcut|focus)$/.test(a.kind) ? (c.shortcuts.some((x) => x.id === a.target) ? 'Ready' : 'Shortcut is missing') : null),
         available: !/^(app|project|shortcut|focus)$/.test(a.kind) || c.shortcuts.some((x) => x.id === a.target) })),
       shortcuts: (c.shortcuts || []).map((x) => ({ id: x.id, name: x.label, kind: { 'builtin:keys': 'keys', 'builtin:text': 'text', 'builtin:macro': 'macro' }[x.cmd] || (String(x.cmd).startsWith('builtin:') ? 'shortcut' : 'app'), state: null, available: true })),
       profiles: (controls.profiles || []).map((x) => ({ id: x.id, name: x.label, kind: 'profile', state: null, available: true })) };
@@ -409,9 +409,10 @@
       // "shortcut:<id>" runs one of the settings' shortcuts; anything else is a configured control
       if (id?.startsWith('shortcut:')) return c.shortcuts.some(x => x.id === id.slice(9)) ? { ok: true } : { ok: false, error: 'Configured shortcut is missing' };
       const a = (c.controls?.actions || []).find(x => x.id === id); if (!a) return { ok: false, error: 'Control is not configured' };
+      if (a.enabled === false && !(op === 'stop' && /^(task|server|sound|radio)$/.test(a.kind))) return { ok: false, error: 'Control is disabled' };
       if (a.kind === 'server') actionState[id] = op === 'stop' ? 'Stopped' : 'Running';
-      else if (a.kind === 'task') { actionState[id] = 'Running'; setTimeout(() => { actionState[id] = 'Finished'; }, 4000); }
-      else if (a.kind === 'sound' || a.kind === 'radio') actionState[id] = 'Playing';
+      else if (a.kind === 'task') { if (op === 'stop') actionState[id] = 'Stopped'; else { actionState[id] = 'Running'; setTimeout(() => { actionState[id] = 'Finished'; }, 4000); } }
+      else if (a.kind === 'sound' || a.kind === 'radio') { if (op === 'stop') delete actionState[id]; else actionState[id] = 'Playing'; }
     } else if (kind === 'sound-stop') { for (const a of c.controls?.actions || []) if ((!id || a.id === id) && actionState[a.id] === 'Playing') delete actionState[a.id]; }
     else if (kind === 'power-arm' || kind === 'power') return { ok: false, error: 'Power controls are disabled in desktop settings' };
     else if (!['desktop', 'lock', 'monitor-off'].includes(kind)) return { ok: false, error: 'Unknown control' };

@@ -24,6 +24,7 @@ public sealed class DeckAction
     public string? Argument { get; set; }
     public int Value { get; set; }
     public string? Device { get; set; }
+    public bool Enabled { get; set; } = true;
 }
 public sealed class DeckProfile
 {

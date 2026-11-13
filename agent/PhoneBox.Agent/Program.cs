@@ -228,7 +228,7 @@ app.MapGet("/api/settings", (ConfigStore cfg, HttpResponse res) =>
     return Results.Text(json, "application/json; charset=utf-8");
 });
 
-app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ILogger<Program> log) =>
+app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck deck, ILogger<Program> log) =>
 {
     if (req.ContentType?.StartsWith("application/json") != true) return Results.StatusCode(415);
     using var r = new StreamReader(req.Body);
@@ -236,6 +236,7 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ILogger<Pro
     var err = cfg.Save(await r.ReadToEndAsync(), expected);
     if (err == ConfigStore.Conflict) return Results.Json(new { error = err }, statusCode: StatusCodes.Status409Conflict);
     if (err is not null) return Results.BadRequest(new { error = err });
+    deck.StopDisabledControls();
     log.LogInformation("settings saved");
     return Results.Ok(new { version = cfg.Version });
 });

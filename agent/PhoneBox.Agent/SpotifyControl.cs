@@ -179,7 +179,9 @@ public sealed class SpotifyControl : IDisposable
             else if (action == "playlist")
             {
                 var configured = _config.Get().Controls.Actions.FirstOrDefault(a => a.Id == id && a.Kind == "playlist");
-                if (configured is null || !PlaybackUri(configured.Target)) return new(false, "Configure a Spotify playlist URI on the computer");
+                if (configured is null) return new(false, "Configure a Spotify playlist URI on the computer");
+                if (!configured.Enabled) return new(false, "Control is disabled");
+                if (!PlaybackUri(configured.Target)) return new(false, "Configure a Spotify playlist URI on the computer");
                 var body = configured.Target.StartsWith("spotify:track:", StringComparison.Ordinal) || configured.Target.StartsWith("spotify:episode:", StringComparison.Ordinal)
                     ? new JsonObject { ["uris"] = new JsonArray(configured.Target) }
                     : new JsonObject { ["context_uri"] = configured.Target };

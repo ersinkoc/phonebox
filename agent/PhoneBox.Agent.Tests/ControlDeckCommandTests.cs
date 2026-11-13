@@ -19,7 +19,7 @@ public sealed class ControlDeckCommandTests
         public Task<IReadOnlyList<DeckMedia>> Media(CancellationToken ct)=>Task.FromResult<IReadOnlyList<DeckMedia>>([new("Spotify.exe","Spotify","Track",true,0,100000,true,true,true,false,"None")]);
         public Task<bool> MediaAction(string id,string action,long value,CancellationToken ct){Writes.Add("media:"+action);return Task.FromResult(true);}
         public void Play(string id,string file,string? device,int volume){Writes.Add("sound:"+volume);}
-        public void StopSound(string? id){}
+        public void StopSound(string? id){Writes.Add("stop:"+(id ?? ""));}
         public IReadOnlyList<DeckItem> MidiPorts()=>[];
         public void Midi(int port,string message,int value){}
         public async IAsyncEnumerable<DeckAudioPacket> Listen([System.Runtime.CompilerServices.EnumeratorCancellation]CancellationToken ct){await Task.CompletedTask;yield break;}
@@ -99,5 +99,77 @@ public sealed class ControlDeckCommandTests
         f.Now+=45_000;await f.Deck.TickSleep(default);Assert.Equal(40,f.Native.Sessions[0].Volume);
         f.Native.Sessions[0]=f.Native.Sessions[0] with{Volume=65};
         f.Now+=15_000;await f.Deck.TickSleep(default);Assert.Equal(65,f.Native.Sessions[0].Volume);
+    }
+
+    /// <summary>
+    /// Verifies disabled controls stay hidden from snapshots, refuse execution (while still allowing stop),
+    /// stop running instances on disable, and preserve profile/Spotify/default-enabled semantics.
+    /// </summary>
+    [Fact]
+    public async Task DisabledControlIsHiddenRejectedAndStopped()
+    {
+        using var f=new Fixture("""{"actions":[{"id":"r1","label":"Station 1","kind":"radio","target":"https://example.com/1","value":80,"enabled":false},{"id":"r2","label":"Station 2","kind":"radio","target":"https://example.com/2","value":80,"enabled":true},{"id":"s1","label":"Chime","kind":"sound","target":"chime.wav","value":50,"enabled":false}]}""");
+        var snap=System.Text.Json.JsonSerializer.Serialize(await f.Deck.Snapshot(default));
+        Assert.DoesNotContain("\"r1\"",snap);
+        Assert.Contains("\"r2\"",snap);
+        var res=await f.Act("action","r1");
+        Assert.False(res.Ok);
+        Assert.Equal("Control is disabled",res.Error);
+        var stopRadio=await f.Act("action","r1",op:"stop");
+        Assert.True(stopRadio.Ok);
+        var stopSound=await f.Act("action","s1",op:"stop");
+        Assert.True(stopSound.Ok);
+        f.Deck.StopDisabledControls();
+        Assert.Contains("stop:r1",f.Native.Writes);
+        Assert.Contains("stop:s1",f.Native.Writes);
+        Assert.DoesNotContain("stop:r2",f.Native.Writes);
+    }
+
+    /// <summary>
+    /// Verifies disabled playlist controls return "Control is disabled", profiles skip disabled actions,
+    /// disabled tasks/servers can still be stopped, and missing JSON "enabled" defaults to true.
+    /// </summary>
+    [Fact]
+    public async Task DisabledPlaylistProfileAndDefaultEnablementBehaveSafely()
+    {
+        var dir=Path.Combine(Path.GetTempPath(),"phonebox-ctrl-disabled-"+Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var cfgPath=Path.Combine(dir,"config.json");
+            File.WriteAllText(cfgPath,"""
+                {"controls":{
+                  "actions":[
+                    {"id":"pl1","label":"Chill","kind":"playlist","target":"spotify:playlist:37i9dQZF1DX4WYpdgoIcn6","enabled":false},
+                    {"id":"r1","label":"Disabled Radio","kind":"radio","target":"https://example.com/1","value":70,"enabled":false},
+                    {"id":"r2","label":"Enabled Radio","kind":"radio","target":"https://example.com/2","value":75},
+                    {"id":"t1","label":"Disabled Task","kind":"task","target":"missing-shortcut","enabled":false}
+                  ],
+                  "profiles":[{"id":"p1","label":"Mix","levels":[],"actions":["r1","r2"]}]
+                }}
+                """);
+            var cfg=new ConfigStore(cfgPath);
+            Assert.True(cfg.Get().Controls.Actions.First(a=>a.Id=="r2").Enabled);
+
+            using var spotify=new SpotifyControl(cfg,new AgentEndpoint(19885),new HttpClient());
+            var spRes=await spotify.Act("playlist","pl1",CancellationToken.None);
+            Assert.False(spRes.Ok);
+            Assert.Equal("Control is disabled",spRes.Error);
+
+            var native=new Native();
+            using var deck=new ControlDeck(cfg,native,NullLogger<ControlDeck>.Instance,()=>1000);
+            var taskStop=await deck.Act("action","t1","stop",null,null,null,default);
+            Assert.False(taskStop.Ok);
+            Assert.Equal("This task is not running",taskStop.Error);
+
+            var profRes=await deck.Act("profile","p1",null,null,null,null,default);
+            Assert.True(profRes.Ok);
+            Assert.Contains("sound:75",native.Writes);
+            Assert.DoesNotContain("sound:70",native.Writes);
+        }
+        finally
+        {
+            try{Directory.Delete(dir,true);}catch{}
+        }
     }
 }
