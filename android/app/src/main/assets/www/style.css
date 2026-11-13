@@ -368,6 +368,10 @@ body.offline .offline-msg { display: flex; }
 .q-breakdown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .q-alert { color: #f87171; font-weight: 700; }
 .q-foot .q-err { color: #fca5a5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-ov-hero { flex: 1; display: flex; justify-content: space-around; align-items: center; gap: 12px; min-height: 0; padding: 6px 0; }
+.q-ov-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.q-ov-lbl { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.q-ov-val { font-size: clamp(18px, 8cqh, 26px); font-weight: 600; color: var(--text); white-space: nowrap; }
 @container (max-height: 200px) { .q-reset, .q-pace, .q-foot, .q-details { display: none; } .q-dial { width: min(58cqh, 124px); } }
 @container (max-width: 420px) { .q-grid { flex-direction: column; } }
 

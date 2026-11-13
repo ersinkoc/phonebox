@@ -107,3 +107,19 @@ test('two counters in a stack keep separate values after reload', async ({ page 
   await page.locator('.stack-dot').nth(1).click();
   await expect(page.locator('.stack-item.active .ct-n')).toHaveText('2');
 });
+
+test('multi option preserves saved unlisted quota provider IDs when toggling choices', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await layout(page, [widget('quotas', { providers: ['claude', 'alibaba'] })]);
+  await page.goto('/settings/');
+  await page.locator('#canvas [title="AI quotas"]').click();
+  const codexCheckbox = page.locator('#inspector label.check', { hasText: 'Codex' }).locator('input[type="checkbox"]');
+  await expect(codexCheckbox).toBeVisible();
+  await codexCheckbox.check();
+  await page.locator('#save').click();
+  await expect(page.locator('#save')).toBeDisabled();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pb-demo-config')).pages[0].widgets[0].options.providers);
+  expect(saved).toContain('claude');
+  expect(saved).toContain('codex');
+  expect(saved).toContain('alibaba');
+});

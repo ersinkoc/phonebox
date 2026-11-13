@@ -1273,7 +1273,7 @@ function optionField(w, o, onValChange) {
   }
   const v = optVal(w, o);
   const set = (key, val) => {
-    if (onValChange) onValChange(key, val);
+    if (onValChange) { w.options = w.options || {}; w.options[key] = val; onValChange(key, val); }
     else setWOpt(w, key, val);
   };
   const field = (...kids) => h('div', { class: 'field' }, h('label', {}, o.label), ...kids);
@@ -1285,11 +1285,43 @@ function optionField(w, o, onValChange) {
     case 'multi': {
       // read the stored value on every change: the inspector is not rebuilt between two ticks
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
-      return field(h('div', { class: 'opts' }, ...o.choices.map(([k, l]) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(k), onchange: (e) => {
-        const next = o.choices.map((c) => c[0]).filter((x) => (x === k ? e.target.checked : cur().includes(x)));
-        set(o.key, next.length ? next : cur());
-        if (!next.length) { e.target.checked = true; toast('Keep at least one', true); }
-      } }), l))));
+      const optsBox = h('div', { class: 'opts' });
+      let currentChoices = [...(o.choices || [])];
+      const renderChoices = (choices) => {
+        currentChoices = choices;
+        const selected = cur();
+        optsBox.replaceChildren(...choices.map(([k, l]) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: selected.includes(k), onchange: (e) => {
+          const picked = new Set(cur());
+          if (e.target.checked) picked.add(k); else picked.delete(k);
+          const knownOrder = currentChoices.map((c) => c[0]).filter((x) => picked.has(x));
+          const preservedUnknown = [...picked].filter((x) => !knownOrder.includes(x));
+          const next = [...knownOrder, ...preservedUnknown];
+          if (!next.length) { e.target.checked = true; toast('Keep at least one', true); return; }
+          set(o.key, next);
+        } }), l)));
+      };
+      const withSaved = (list) => {
+        const seen = new Set(list.map((c) => c[0]));
+        const out = [...list];
+        for (const id of cur()) if (id && !seen.has(id)) { seen.add(id); out.push([id, id]); }
+        return out;
+      };
+      const baseChoices = [...(o.choices || [])];
+      renderChoices(withSaved(baseChoices));
+      if (o.key === 'providers') {
+        fetch('/api/quotas').then((r) => r.ok ? r.json() : null).then((data) => {
+          const seen = new Set(baseChoices.map((c) => c[0]));
+          const merged = [...baseChoices];
+          for (const p of (data?.providers || [])) {
+            if (p?.id && !seen.has(p.id)) {
+              seen.add(p.id);
+              merged.push([p.id, p.name || p.id]);
+            }
+          }
+          renderChoices(withSaved(merged));
+        }).catch(() => {});
+      }
+      return field(optsBox);
     }
     case 'control-target': {
       let selected = v;

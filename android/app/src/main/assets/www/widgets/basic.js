@@ -329,10 +329,65 @@ W.quotas = {
       return ['claude', 'codex', 'antigravity'];
     };
 
+    const isOverviewEnabled = () => o.showOverview === true;
+
+    const getItems = () => {
+      const want = getProviders();
+      const items = quotaProviders().filter((p) => want.includes(p.id));
+      if (isOverviewEnabled() && D.quotas?.overview) {
+        return [{ id: '__overview__', isOverview: true, overview: D.quotas.overview }, ...items];
+      }
+      return items;
+    };
+
+    const fmtCurrency = (amount, code = 'USD') => {
+      const n = Number(amount || 0);
+      const cur = (code || 'USD').toUpperCase();
+      try { return new Intl.NumberFormat(LOCALE, { style: 'currency', currency: cur }).format(n); }
+      catch (_) { return `${cur === 'USD' ? '$' : cur + ' '}${n.toFixed(2)}`; }
+    };
+
+    const renderOverviewCard = (ov, flexVal) => {
+      const card = h('div', 'q-card q-overview-card');
+      card.style.setProperty('--q', '#f97316');
+      card.style.flex = flexVal;
+      const days = ov.windowDays || 30;
+      const age = ov.updatedAt ? Math.max(0, Date.now() - ov.updatedAt) : null;
+      const updStr = age != null ? `checked ${age < 60_000 ? 'just now' : fmtDur(age) + ' ago'}` : '';
+      card.appendChild(h('div', 'q-head',
+        h('span', 'q-logo', '📊'),
+        h('span', 'q-name', 'Overview'),
+        h('span', 'q-plan', `${days}-day spend`),
+        updStr ? h('span', 'q-upd', updStr) : null
+      ));
+      const summary = h('div', 'q-ov-hero',
+        h('div', 'q-ov-stat', h('span', 'q-ov-lbl', 'Estimated spend'), h('strong', 'q-ov-val', fmtCurrency(ov.totalCost, ov.currencyCode))),
+        h('div', 'q-ov-stat', h('span', 'q-ov-lbl', 'Recorded tokens'), h('strong', 'q-ov-val', tokens(ov.totalTokens || 0)))
+      );
+      card.appendChild(summary);
+      const details = h('div', 'q-details q-ov-details');
+      for (const s of (ov.subscriptions || []).slice(0, 3)) {
+        details.appendChild(h('div', 'q-detail',
+          h('span', null, s.name),
+          h('strong', null, `${tokens(s.tokens)} · ${fmtCurrency(s.cost, s.currencyCode || ov.currencyCode)}`)
+        ));
+      }
+      for (const m of (ov.topModels || []).slice(0, 2)) {
+        details.appendChild(h('div', 'q-detail q-breakdown',
+          h('span', null, m.modelName || m.name),
+          h('strong', null, fmtCurrency(m.cost, m.currencyCode || ov.currencyCode))
+        ));
+      }
+      if (details.childNodes.length) card.appendChild(details);
+      const count = ov.providerCount ?? (ov.subscriptions || []).length;
+      card.appendChild(h('div', 'q-foot', h('span', null, `${count} ${count === 1 ? 'provider' : 'providers'}`), h('span')));
+      return card;
+    };
+
     const render = () => {
       if (!D.quotas) return;
       const want = getProviders();
-      const list = quotaProviders().filter((p) => want.includes(p.id));
+      const list = getItems();
       grid.replaceChildren();
       if (!list.length) { grid.appendChild(h('div', 'empty', want.length ? 'Quota data is unavailable for the selected providers' : 'No quota providers enabled')); return; }
 
@@ -349,6 +404,10 @@ W.quotas = {
       }
 
       for (const p of visible) {
+        if (p.isOverview) {
+          grid.appendChild(renderOverviewCard(p.overview, needsPaging && ps === 2 ? '1 1 0' : '1.5'));
+          continue;
+        }
         const st = Q_STYLE[p.id] || { color: '#94a3b8', logo: '●' };
         const card = h('div', 'q-card' + (p.limits.length >= 4 ? ' q-card-compact' : ''));
         card.style.setProperty('--q', st.color);
@@ -408,8 +467,7 @@ W.quotas = {
 
     grid.onclick = () => {
       const ps = getPageSize();
-      const want = getProviders();
-      const list = quotaProviders().filter((p) => want.includes(p.id));
+      const list = getItems();
       if (ps > 0 && list.length > ps) {
         offset = (offset + 1) % list.length;
         lastRotate = Date.now();
@@ -424,8 +482,7 @@ W.quotas = {
           const sec = getRotateInterval();
           if (sec > 0 && Date.now() - lastRotate >= sec * 1000) {
             const ps = getPageSize();
-            const want = getProviders();
-            const list = quotaProviders().filter((p) => want.includes(p.id));
+            const list = getItems();
             if (ps > 0 && list.length > ps) {
               offset = (offset + 1) % list.length;
               lastRotate = Date.now();
