@@ -12,6 +12,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private const string HomeAlias = "net.oxog.phonebox.deskpanel/.HomeAlias";
     private readonly HashSet<string> _homeSet = [];
     private readonly HashSet<string> _awakeSet = [];
+    /// <summary>Phones this agent process has already woken since it started (see LightPanel).</summary>
+    private readonly HashSet<string> _seen = [];
     private volatile string[] _missingApp = [];
 
     /// <summary>Connected phones that do not have the PhoneBox app yet (installed from Settings, e.g. after winget / Scoop).</summary>
@@ -61,6 +63,26 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     public Task<bool> SyncSessionAsync(CancellationToken ct, bool force = false) => ScreenSync.ReconcileAsync(_devices, ct, force);
     public Task ResetSessionAsync(CancellationToken ct) => ScreenSync.ResetAsync(ct);
 
+    /// <summary>
+    /// Light a phone this agent has not woken yet in this session and bring the panel to the front. The trio
+    /// (wake key, wm dismiss-keyguard, am start) mirrors the session-sync path below: an app cannot dismiss
+    /// its own keyguard while the display is off, and Android 10+ may refuse the sleeping app's request to
+    /// come forward ("Background activity start" is logged and blocked) - shell commands via adb are neither.
+    /// </summary>
+    private async Task LightPanel(string device, string adb, string why, CancellationToken ct)
+    {
+        // A newly plugged-in phone must not light up while the computer is locked.
+        if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
+        {
+            await SyncSessionAsync(ct, force: true);
+            return;
+        }
+        await Adb(adb, $"-s {device} shell input keyevent KEYCODE_WAKEUP", ct);
+        await Adb(adb, $"-s {device} shell wm dismiss-keyguard", ct);
+        await Adb(adb, $"-s {device} shell am start -n {PanelActivity}", ct);
+        log.LogInformation("{Device}: {Why}, panel opened", device, why);
+    }
+
     private async Task ApplyScreenAsync(string device, bool locked, CancellationToken ct)
     {
         var adb = FindAdb(cfg.Get().AdbPath);
@@ -98,6 +120,10 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         devices = devices.Where(s => string.IsNullOrEmpty(serial) || s == serial).ToArray();
 
         SetDevices(devices);
+        // _seen shrinks with the list here, before the empty-list return below: after an unplug the
+        // phone must count as "not yet woken by this process" again, or the reconnect wake further
+        // down is skipped while the adb server silently re-applies its cached reverse rules.
+        _seen.IntersectWith(devices);
         var problem = UsbProblem;
         if (problem != _lastProblem)
         {
@@ -111,24 +137,25 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         foreach (var d in devices)
         {
             var list = await Adb(adb, $"-s {d} reverse --list", ct);
-            if (list.Contains(Rule) && !_missingApp.Contains(d)) continue;
+            if (list.Contains(Rule) && !_missingApp.Contains(d))
+            {
+                // A re-plug inside one live agent looks different from a boot: the adb SERVER caches the
+                // reverse rules and re-applies them the moment the transport re-attaches, so the rule never
+                // appears missing here - yet the display is exactly as asleep as on a cold boot (measured
+                // 11-13 14:49:28: charge edge true, five seconds of keyguard flash, dark). Any device this
+                // process has not woken since it started gets the same treatment as the cold path.
+                if (!_seen.Contains(d)) await LightPanel(d, adb, "phone reconnected", ct);
+                _seen.Add(d);
+                continue;
+            }
             // is the app there at all? (the agent may have been installed on its own, with winget or Scoop)
             var installed = (await Adb(adb, $"-s {d} shell pm path net.oxog.phonebox.deskpanel", ct, anyExit: true)).Contains("package:");
             _missingApp = installed ? _missingApp.Where(x => x != d).ToArray() : _missingApp.Union([d]).ToArray();
             if (!installed) { Report($"{d}: the PhoneBox app is not installed (Settings › General › Install the phone app)"); continue; }
             if (list.Contains(Rule)) continue;
             await Adb(adb, $"-s {d} reverse {Rule} {TargetRule}", ct);
-            // A newly plugged-in phone must not light up while the computer is locked.
-            if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
-            {
-                await SyncSessionAsync(ct, force: true);
-            }
-            else
-            {
-                await Adb(adb, $"-s {d} shell input keyevent KEYCODE_WAKEUP", ct);
-                await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", ct);
-                log.LogInformation("{Device}: adb reverse set up, panel opened", d);
-            }
+            await LightPanel(d, adb, "adb reverse set up", ct);
+            _seen.Add(d);
         }
         // Settings › Display › home screen: the app offers itself as a home app; make it the default one (no root needed).
         if (cfg.Get().Display.HomeScreen)
@@ -143,21 +170,46 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
         else _homeSet.Clear();
         // Settings › Display › keep awake: Android's screen saver (Daydream) starts on the dock or charger and covers the
-        // panel; turn it off and keep the screen on while plugged in (plain adb settings, no root).
-        if (cfg.Get().Display.KeepAwake)
+        // panel; turn it off and keep the screen on while plugged in (plain adb settings, no root). One exception:
+        // a standby panel must stay able to sleep while 5 V is alive (ErP off, a charge-capped port), and
+        // stay_on_while_plugged_in is system-level - PowerManagerService would outvote the app releasing its own
+        // keep-awake flag (measured: the app released the hold, the timeout fired, the screen stayed up until the
+        // setting was 0). The app cannot clear it (WRITE_SETTINGS), so the agent writes 7 while standby is off -
+        // today's behaviour, unchanged - and 0 the moment standby is on. The value rides in the key, so flipping
+        // the setting re-applies it without restarting the agent.
+        var keepAwake = cfg.Get().Display.KeepAwake;
+        var stayOn = cfg.Get().Display.Standby == "off" ? "7" : "0";
+        // the applied-state key carries which branch applied it: the keep-awake-off branch writes only
+        // stay_on, and sharing one key would let that half-apply silence the screen-saver writes later
+        if (keepAwake)
         {
-            foreach (var d in devices.Where(d => !_awakeSet.Contains(d) && !_missingApp.Contains(d)))
+            foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:on") && !_missingApp.Contains(d)))
             {
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_enabled 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_dock 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_sleep 0", ct);
-                await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in 7", ct);
-                _awakeSet.Add(d);
-                log.LogInformation("{Device}: screen saver off, stays awake while plugged in", d);
+                await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
+                _awakeSet.Add($"{d}:{stayOn}:on");
+                log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
+            }
+        }
+        else if (cfg.Get().Display.Standby != "off")
+        {
+            // "keep awake off" used to mean "never touch the phone's power settings" - but one stale value
+            // still breaks standby with that off: stay_on_while_plugged_in survives reboots, an earlier
+            // keepAwake=true run may have left 7 behind, and some stock ROMs ship it non-zero. While the
+            // phone reports plugged, that system flag outvotes the app releasing its own hold even though
+            // the app was never the one holding the screen on. The standby override therefore lands
+            // independently of KeepAwake; the screen-saver writes stay the optional part.
+            foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:off") && !_missingApp.Contains(d)))
+            {
+                await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
+                _awakeSet.Add($"{d}:{stayOn}:off");
+                log.LogInformation("{Device}: standby cleared stay_on_while_plugged_in (keep awake off)", d);
             }
         }
         else _awakeSet.Clear();
-        _awakeSet.IntersectWith(devices);
+        _awakeSet.IntersectWith(devices.Select(d => $"{d}:{stayOn}:{(keepAwake ? "on" : "off")}"));
         Report($"phone connected: {Devices}");
     }
 

@@ -454,6 +454,12 @@ dd { margin: 0; word-break: break-all; }
         <div class="field" style="max-width:420px"><label>Orientation</label>
           <select data-bind="display.orientation"><option value="landscape">Landscape</option><option value="portrait">Portrait</option><option value="auto">Follow the phone</option></select>
           <span class="hint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
+        <div class="field" style="max-width:460px"><label>Power standby</label>
+          <select data-bind="display.standby"><option value="off">Off: hold the screen while the panel runs</option><option value="power">Sleep when USB charge is cut</option><option value="data">Sleep when the agent stops answering</option></select>
+          <span class="hint">Off is today's behaviour. A panel wired to one computer can release its keep-awake hold once that computer is gone, then light up by itself when it returns. "Data" also survives a charge-capped port (a charging ceiling, some hubs) and a board that keeps 5&nbsp;V alive after shutdown; "power" is the classic cable check. Any mode but Off clears Android's stay-on-while-charging setting for you (the app could not write it); the panel relights on reconnect - the agent sends it a wake key when ADB sees the phone again, and plugging the cable back in lights it anyway.</span></div>
+        <div class="field" style="max-width:170px"><label>Standby grace (s)</label>
+          <input type="number" data-bind="display.standbyGraceSec" data-type="int" min="3" max="600" step="1">
+          <span class="hint">Absorbs a reboot or a network hiccup.</span></div>
         <label class="check"><input type="checkbox" data-bind="display.showSeconds"> Show seconds on the clock</label>
         <label class="check"><input type="checkbox" data-bind="display.vibrate"> Vibrate when a session finishes or needs input</label>
         <label class="check"><input type="checkbox" data-bind="display.volumeKeys"> The phone's volume keys switch pages</label>
