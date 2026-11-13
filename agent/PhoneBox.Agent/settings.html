@@ -546,6 +546,7 @@ dd { margin: 0; word-break: break-all; }
           <div class="field"><label>Path to adb.exe (empty = auto-detect)</label><input type="text" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
         </div>
         <p id="usbProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
+        <p id="webviewProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
       </div>
       <div class="card">
         <h3>Phones</h3>
@@ -1385,10 +1386,12 @@ function renderPhones() {
     const conf = cfg.phones.find((x) => x.id === ph.id);
     const chosen = conf?.pages || null;
     const all = !chosen?.length;
+    const wvMajor = ph.webView ? ph.webView.split('/')[1]?.split(/[.-]/)[0] : '';
     return h('div', { class: 'phone-row' },
       h('div', { class: 'row' },
         h('input', { type: 'text', value: conf?.name || '', placeholder: ph.model || 'Phone', style: { maxWidth: '220px' }, oninput: (e) => { entry(ph.id).name = e.target.value; changed(); } }),
-        h('span', { class: 'hint' }, `${ph.model || 'Android device'} · ${ago(ph.lastSeen)}${ph.via ? ' over ' + ph.via : ''}`)),
+        h('span', { class: 'hint' }, `${ph.model || 'Android device'} · ${ago(ph.lastSeen)}${ph.via ? ' over ' + ph.via : ''}${wvMajor ? ' · WebView ' + wvMajor : ''}`)),
+      ph.webviewProblem ? h('p', { class: 'hint', style: { margin: '6px 0 0', color: 'var(--warn)' } }, '⚠ ' + ph.webviewProblem) : null,
       h('label', { class: 'check', style: { marginTop: '8px' } },
         h('input', { type: 'checkbox', checked: all, onchange: (e) => { entry(ph.id).pages = e.target.checked ? null : cfg.pages.map((p) => p.id).filter(Boolean); changed(); renderPhones(); } }),
         'Shows all pages'),
@@ -2078,6 +2081,8 @@ async function loadInfo() {
     $('appMissing').hidden = !(i.appMissing && i.appMissing.length);
     $('usbProblem').hidden = !i.usbProblem;
     $('usbProblem').textContent = i.usbProblem ? '⚠ ' + i.usbProblem : '';
+    $('webviewProblem').hidden = !i.webviewProblem;
+    $('webviewProblem').textContent = i.webviewProblem ? '⚠ ' + i.webviewProblem : '';
     if (i.appMissing?.length) $('appMissingText').textContent = `${i.appMissing.join(', ')} has no PhoneBox app yet`;
     const sel = $('serial');
     const cur = cfg.deviceSerial || '';

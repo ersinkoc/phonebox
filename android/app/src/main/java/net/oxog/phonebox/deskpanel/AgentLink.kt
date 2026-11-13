@@ -3,6 +3,7 @@ package net.oxog.phonebox.deskpanel
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
+import androidx.webkit.WebViewCompat
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
@@ -103,6 +104,11 @@ class AgentLink(context: Context) {
         .digest((Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown").toByteArray())
         .take(6).joinToString("") { "%02x".format(it) }
     private val deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}".filter { it in ' '..'~' }.trim().take(40)
+    private val webViewInfo = runCatching {
+        WebViewCompat.getCurrentWebViewPackage(context)?.let { p ->
+            "${p.packageName}/${p.versionName ?: ""}".filter { it in ' '..'~' }.trim().take(80)
+        } ?: ""
+    }.getOrDefault("")
     private val background = Executors.newSingleThreadExecutor()
     @Volatile private var lastPair = 0L
     @Volatile private var preferredHost = 0
@@ -173,6 +179,7 @@ class AgentLink(context: Context) {
         c.setRequestProperty("X-PhoneBox-App", appVersion) // lets the agent offer updates
         c.setRequestProperty("X-PhoneBox-Device", deviceId)
         c.setRequestProperty("X-PhoneBox-Model", deviceModel)
+        if (webViewInfo.isNotEmpty()) c.setRequestProperty("X-PhoneBox-WebView", webViewInfo)
         // A workflow or service restart can take longer than a state poll.
         c.readTimeout = if (controlPost) 30000 else readTimeout
         c.useCaches = false

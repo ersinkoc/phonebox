@@ -58,6 +58,27 @@
 <div id="offline">PC not connected</div>
 <div id="night"><div id="nClock">--:--</div><div id="nDate"></div></div>
 
+<div id="webviewWarn" hidden role="status" style="position:fixed;top:8px;left:8px;right:8px;z-index:90;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:rgba(24,20,12,.94);border:1px solid rgba(245,158,11,.45);color:#fde68a;font:12.5px/1.35 system-ui,sans-serif">
+  <span style="flex:1">Outdated WebView — update Android System WebView or Google Chrome so widgets scale properly.</span>
+  <button id="webviewWarnClose" type="button" aria-label="Dismiss WebView notice" style="background:transparent;border:1px solid rgba(253,230,138,.35);color:inherit;border-radius:6px;padding:3px 8px;font:inherit;cursor:pointer">✕</button>
+</div>
+<script>
+(function () {
+  try {
+    if (/[?&]preview(?:[=&]|$)/.test(location.search)) return;
+    if (window.CSS && typeof CSS.supports === 'function' && CSS.supports('font-size', '1cqw')) return;
+    try { if (sessionStorage.getItem('pb-wv-dismissed') === '1') return; } catch (_) {}
+    var el = document.getElementById('webviewWarn'), btn = document.getElementById('webviewWarnClose');
+    if (!el) return;
+    el.hidden = false; el.style.display = 'flex';
+    if (btn) btn.onclick = function (e) {
+      e.stopPropagation();
+      el.style.display = ''; el.hidden = true;
+      try { sessionStorage.setItem('pb-wv-dismissed', '1'); } catch (_) {}
+    };
+  } catch (_) {}
+})();
+</script>
 <script type="module" src="main.js"></script>
 </body>
 </html>
