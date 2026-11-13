@@ -1,4 +1,4 @@
-import { $, D, DEFAULT_CFG, LOCALE, cfg, fmtDur, h, tick } from '../main.js';
+import { $, D, DEFAULT_CFG, LOCALE, cfg, fmtClock, fmtDur, h, tick, useHour12 } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every } from './helpers.js';
 
@@ -13,7 +13,7 @@ export function moonPhase(date) {
 
 W.sun = {
   needs: ['weather', 'tick'],
-  create(box) {
+  create(box, { o }) {
     box.innerHTML = '<div class="w-title">Sun &amp; moon<span class="w-sub"></span></div>' +
       '<svg class="sun-arc" viewBox="0 0 200 80" preserveAspectRatio="xMidYMax meet"><path class="sa-bg" d="M10 75 A90 70 0 0 1 190 75"/><path class="sa-fg" d="M10 75 A90 70 0 0 1 190 75"/><line class="sa-h" x1="2" y1="75" x2="198" y2="75"/><circle class="sa-sun" r="7" cx="10" cy="75"/></svg>' +
       '<div class="sun-row"><span class="sr"></span><span class="sl"></span><span class="ss"></span></div><div class="moon"></div>';
@@ -27,7 +27,8 @@ W.sun = {
         const d = D.weather?.daily;
         if (!d?.sunrise) { q('.sl').textContent = D.weather === null ? 'Loading…' : 'Weather unavailable'; return; }
         const now = new Date();
-        const key = now.getHours() + ':' + now.getMinutes();
+        const is12 = useHour12(o.hour12);
+        const key = `${now.getHours()}:${now.getMinutes()}:${is12}`;
         if (key === shown) return;
         shown = key;
         const rise = new Date(d.sunrise[0]), set = new Date(d.sunset[0]);
@@ -36,7 +37,7 @@ W.sun = {
         const pt = fg.getPointAtLength(len * f);
         sun.setAttribute('cx', pt.x.toFixed(1)); sun.setAttribute('cy', pt.y.toFixed(1));
         box.classList.toggle('night', now < rise || now > set);
-        const hm = (t) => t.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+        const hm = (t) => fmtClock(t, { hour12: is12 });
         q('.sr').textContent = '↑ ' + hm(rise);
         q('.ss').textContent = hm(set) + ' ↓';
         q('.sl').textContent = now < rise ? `rises in ${fmtDur(rise - now)}` : now > set ? 'after sunset' : `${fmtDur(set - now)} of light left`;

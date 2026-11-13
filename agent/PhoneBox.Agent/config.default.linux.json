@@ -15,7 +15,7 @@
 
   // Clock seconds, return to the first page after N idle seconds (0 = never), vibrate on session events,
   // switch pages with the phone's volume keys
-  "display": { "showSeconds": true, "idleReturnSec": 90, "vibrate": true, "volumeKeys": true },
+  "display": { "showSeconds": true, "hour12": false, "idleReturnSec": 90, "vibrate": true, "volumeKeys": true },
 
   // Pages in the order they appear on the phone. Each page is a 12 x 6 grid of widgets; the settings page has a
   // visual editor. { "template": "<id>" } creates a page from templates.json (home, ai, work, system, procs, deck,

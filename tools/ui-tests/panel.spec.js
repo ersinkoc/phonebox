@@ -297,3 +297,175 @@ test('the landing page embeds the panel', async ({ page }) => {
   await expect(page.frameLocator('#panel').locator('#toast')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+function mockWeatherRoute(page) {
+  return page.route('**/api.open-meteo.com/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      current: { time: '2026-05-15T14:00', temperature_2m: 18, apparent_temperature: 17, weather_code: 1, wind_speed_10m: 9, relative_humidity_2m: 55, is_day: 1 },
+      hourly: {
+        time: ['2026-05-15T14:00', '2026-05-15T15:00', '2026-05-15T16:00', '2026-05-15T17:00', '2026-05-15T18:00', '2026-05-15T19:00'],
+        temperature_2m: [18, 19, 19, 17, 16, 14],
+        weather_code: [1, 1, 2, 2, 2, 0],
+        precipitation_probability: [0, 0, 10, 10, 0, 0],
+        is_day: [1, 1, 1, 1, 1, 1],
+      },
+      daily: {
+        time: ['2026-05-15', '2026-05-16', '2026-05-17'],
+        temperature_2m_max: [20, 21, 19],
+        temperature_2m_min: [10, 11, 9],
+        weather_code: [1, 2, 0],
+        precipitation_probability_max: [10, 20, 0],
+        sunrise: ['2026-05-15T05:15'],
+        sunset: ['2026-05-15T21:45'],
+        daylight_duration: [59400],
+        uv_index_max: [5],
+      },
+    }),
+  }));
+}
+
+test('display.hour12 formats all clock and time widgets and supports per-widget overrides', async ({ browser, baseURL }) => {
+  const ctx = await browser.newContext({ baseURL, viewport: { width: 1280, height: 800 }, timezoneId: 'UTC', locale: 'en-GB' });
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  await mockWeatherRoute(page);
+  await page.clock.setFixedTime(new Date('2026-05-15T14:30:45Z'));
+
+  const hour12Widgets = [
+    { id: 'c12', type: 'clock', x: 0, y: 0, w: 4, h: 2, options: { status: false, weather: false, date: false } },
+    { id: 'c24', type: 'clock', x: 4, y: 0, w: 4, h: 2, options: { status: false, weather: false, date: false, hour12: '24h' } },
+    { id: 'an12', type: 'analog', x: 8, y: 0, w: 2, h: 2, options: { seconds: true } },
+    { id: 'an24', type: 'analog', x: 10, y: 0, w: 2, h: 2, options: { seconds: true, hour12: '24h' } },
+    { id: 'wc', type: 'worldclock', x: 0, y: 2, w: 6, h: 1, options: { zones: ['London=UTC', 'East=Etc/GMT-2'] } },
+    { id: 'cd', type: 'countdown', x: 6, y: 2, w: 6, h: 1, options: { label: 'Launch', target: '2026-12-31 15:45' } },
+    { id: 'ag', type: 'agenda', x: 0, y: 3, w: 4, h: 3, options: { title: 'Agenda' } },
+    { id: 'nu', type: 'nextup', x: 4, y: 3, w: 4, h: 1, options: { title: 'Next up' } },
+    { id: 'fc', type: 'forecast', x: 4, y: 4, w: 4, h: 2, options: { mode: 'hourly' } },
+    { id: 'su', type: 'sun', x: 8, y: 3, w: 4, h: 1, options: {} },
+    { id: 'ru', type: 'rules', x: 8, y: 4, w: 4, h: 1, options: { title: 'Rules' } },
+    { id: 'qu', type: 'quotas', x: 8, y: 5, w: 4, h: 1, options: { providers: ['claude'], rotate: false, pageSize: 1 } },
+  ];
+
+  // First load demo defaults, then switch config to a single test page with display.hour12: true.
+  await page.goto('/panel/');
+  await expect(page.locator('.w').first()).toBeVisible();
+  await page.evaluate((widgets) => {
+    const cfg = JSON.parse(localStorage.getItem('pb-demo-config') || '{}');
+    cfg.night = { enabled: false, start: '00:30', end: '07:30', brightness: 0.02 };
+    cfg.display = { ...(cfg.display || {}), showSeconds: true, hour12: true };
+    cfg.pages = [{ id: 'p1', title: 'All Clocks', icon: '🕒', enabled: true, widgets }];
+    localStorage.setItem('pb-demo-config', JSON.stringify(cfg));
+  }, hour12Widgets);
+
+  await page.reload();
+  const clocks = page.locator('.w-clock');
+  await expect(clocks).toHaveCount(2);
+
+  // Global 12-hour clock vs per-widget 24-hour override
+  await expect(clocks.nth(0).locator('.hh')).toHaveText('2');
+  await expect(clocks.nth(0).locator('.mm')).toHaveText('30');
+  await expect(clocks.nth(0).locator('.sec')).toHaveText('45');
+  await expect(clocks.nth(0).locator('.ampm')).toHaveText('PM');
+  await expect(clocks.nth(1).locator('.hh')).toHaveText('14');
+  await expect(clocks.nth(1).locator('.ampm')).toHaveText('');
+
+  // Analog AM/PM indicator respects global and override
+  await expect(page.locator('.w-analog .ap').nth(0)).toHaveText('PM');
+  await expect(page.locator('.w-analog .ap').nth(1)).toHaveText('');
+
+  // World clocks show 12h AND preserve exact +2h offset arithmetic
+  await expect(page.locator('.w-worldclock .wc-t').nth(0)).toHaveText('2:30 PM');
+  await expect(page.locator('.w-worldclock .wc-t').nth(1)).toHaveText('4:30 PM');
+  await expect(page.locator('.w-worldclock .wc-s').nth(1)).toHaveText('Today, +2h');
+
+  // Countdown target time uses 12h
+  await expect(page.locator('.w-countdown .cd-s')).toContainText('3:45 PM');
+
+  // Agenda & Next up use 12h (and Agenda widens column class h12)
+  await expect(page.locator('.w-agenda')).toHaveClass(/\bh12\b/);
+  await expect(page.locator('.w-agenda .ag-when').first()).toContainText(/(AM|PM)/);
+  await expect(page.locator('.w-nextup .nu-meta')).toContainText(/(AM|PM)/);
+
+  // Sun & hourly Forecast use 12h
+  await expect(page.locator('.w-sun .sr')).toHaveText('↑ 5:15 AM');
+  await expect(page.locator('.w-sun .ss')).toHaveText('9:45 PM ↓');
+  await expect(page.locator('.w-forecast .fc-t').nth(1)).toHaveText('4 PM');
+
+  // Quotas reset time uses 12h
+  await expect(page.locator('.w-quotas .q-reset').first()).toContainText(/(AM|PM)/);
+
+  // Rules widget & Overview pause button show 12h time when paused
+  await expect(page.locator('.w-rules .ru-pause')).toBeVisible();
+  await page.locator('.w-rules .ru-pause').click();
+  await expect(page.locator('.w-rules .ru-note')).toContainText(/Paused until .* (AM|PM)/);
+  await page.keyboard.press('o');
+  await expect(page.locator('#ovRules')).toContainText(/paused until .* (AM|PM)/i);
+  await page.keyboard.press('Escape');
+
+  // Night screen #nClock formats 2:30 PM at 14:30 when night window covers 14:00-15:00
+  await page.evaluate(() => {
+    const cfg = JSON.parse(localStorage.getItem('pb-demo-config') || '{}');
+    cfg.night = { enabled: true, start: '14:00', end: '15:00', brightness: 0.02 };
+    localStorage.setItem('pb-demo-config', JSON.stringify(cfg));
+  });
+  await page.reload();
+  await expect(page.locator('body')).toHaveClass(/night/);
+  await expect(page.locator('#nClock')).toHaveText('2:30 PM');
+
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
+
+test('midnight 12-hour formatting, default 24h mode, and Settings Display selector', async ({ browser, baseURL }) => {
+  const ctx = await browser.newContext({ baseURL, viewport: { width: 1280, height: 860 }, timezoneId: 'UTC', locale: 'en-US' });
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  await page.clock.setFixedTime(new Date('2026-05-15T00:05:09Z'));
+
+  // 1) Settings page selector defaults to 24h (false), can switch to 12h (true) and auto ('auto')
+  await page.goto('/settings/#general');
+  const sel = page.locator('[data-bind="display.hour12"]');
+  await expect(sel).toBeVisible();
+  await expect(sel).toHaveValue('false');
+
+  await sel.selectOption('true');
+  await page.locator('#save').click();
+  await expect(page.locator('#save')).toBeDisabled();
+  const savedTrue = await page.evaluate(() => JSON.parse(localStorage.getItem('pb-demo-config') || '{}').display?.hour12);
+  expect(savedTrue).toBe(true);
+
+  // 2) Verify midnight 00:05:09 renders as 12:05 09 AM on panel
+  await page.evaluate(() => {
+    const cfg = JSON.parse(localStorage.getItem('pb-demo-config') || '{}');
+    cfg.night = { enabled: false, start: '01:00', end: '02:00', brightness: 0.02 };
+    cfg.pages = [{ id: 'p1', title: 'Midnight', icon: '🕒', enabled: true, widgets: [
+      { id: 'c12', type: 'clock', x: 0, y: 0, w: 6, h: 4, options: {} },
+      { id: 'c24', type: 'clock', x: 6, y: 0, w: 6, h: 4, options: { hour12: '24h' } },
+    ] }];
+    localStorage.setItem('pb-demo-config', JSON.stringify(cfg));
+  });
+  await page.goto('/panel/');
+  await expect(page.locator('.w-clock').nth(0).locator('.hh')).toHaveText('12');
+  await expect(page.locator('.w-clock').nth(0).locator('.mm')).toHaveText('05');
+  await expect(page.locator('.w-clock').nth(0).locator('.ampm')).toHaveText('AM');
+  await expect(page.locator('.w-clock').nth(1).locator('.hh')).toHaveText('00');
+  await expect(page.locator('.w-clock').nth(1).locator('.ampm')).toHaveText('');
+
+  // 3) Check "auto" mode saves string 'auto' and follows en-US browser Intl (12h -> 12:05 AM)
+  await page.goto('/settings/#general');
+  await expect(page.locator('[data-bind="display.hour12"]')).toHaveValue('true');
+  await page.locator('[data-bind="display.hour12"]').selectOption('auto');
+  await page.locator('#save').click();
+  await expect(page.locator('#save')).toBeDisabled();
+  const savedAuto = await page.evaluate(() => JSON.parse(localStorage.getItem('pb-demo-config') || '{}').display?.hour12);
+  expect(savedAuto).toBe('auto');
+
+  await page.goto('/panel/');
+  await expect(page.locator('.w-clock').nth(0).locator('.hh')).toHaveText('12');
+  await expect(page.locator('.w-clock').nth(0).locator('.ampm')).toHaveText('AM');
+
+  expect(errors).toEqual([]);
+  await ctx.close();
+});

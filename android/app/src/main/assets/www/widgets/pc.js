@@ -1,4 +1,4 @@
-import { $, API, D, PANEL_HEADERS, LOCALE, Q_STYLE, api, bridge, cfg, color, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtMem, gotoPageRef, h, haptic, openSheet, paceInfo, pad, quotaProviders, store, tick, toast } from '../main.js';
+import { $, API, D, PANEL_HEADERS, LOCALE, Q_STYLE, api, bridge, cfg, color, rulesPaused, toggleRulesPause, fillIcon, fmtClock, fmtDur, fmtMem, gotoPageRef, h, haptic, openSheet, paceInfo, pad, quotaProviders, store, tick, toast, useHour12 } from '../main.js';
 import { W } from '../registry.js';
 import { canKillAnywhere, dialEl, every } from './helpers.js';
 
@@ -265,7 +265,7 @@ W.agenda = {
     const days = Math.max(1, Math.min(14, +o.days || 7));
     const only = String(o.calendars || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
     let lastKey = '';
-    const hm = (ms) => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+    const hm = (ms) => fmtClock(ms, { hour12: o.hour12 });
     const dayKey = (ms) => new Date(ms).toDateString();
     const dayName = (ms) => {
       const d = new Date(ms), t = new Date();
@@ -282,10 +282,12 @@ W.agenda = {
       const until = new Date(new Date().toDateString()).getTime() + days * 864e5;
       const list = (cal?.events || []).filter((e) => e.end > now && e.start < until && (!only.length || only.includes(e.calendar.toLowerCase())));
       const small = box.clientHeight < 110;
-      const key = JSON.stringify([list.map((e) => e.start + e.title), Math.floor(now / 30000), small, box.clientHeight]);
+      const is12 = useHour12(o.hour12);
+      const key = JSON.stringify([list.map((e) => e.start + e.title), Math.floor(now / 30000), small, box.clientHeight, is12]);
       if (key === lastKey) return;
       lastKey = key;
       box.classList.toggle('small', small);
+      box.classList.toggle('h12', is12);
       if (!cal) { box.replaceChildren(h('div', 'empty', 'Loading…')); return; }
       if (!cal.updated && !list.length) { box.replaceChildren(h('div', 'w-title', o.title || 'Agenda'), h('div', 'empty', 'Add a calendar in Settings › General')); return; }
       const timed = list.filter((e) => !e.allDay);
@@ -483,7 +485,8 @@ W.rules = {
         const rules = (cfg.rules || []).filter((r) => r.enabled !== false);
         const active = D.state?.rules || [];
         const paused = rulesPaused && rulesPaused > Date.now();
-        const k = JSON.stringify([rules, active, paused]);
+        const is12 = useHour12(o.hour12);
+        const k = JSON.stringify([rules, active, paused, is12]);
         if (k === key) return;
         key = k;
         btn.textContent = paused ? '▶ Resume' : '⏸ Pause';
@@ -491,7 +494,7 @@ W.rules = {
         box.classList.toggle('paused', !!paused);
         if (!rules.length) { list.replaceChildren(h('div', 'empty', 'Add rules in Settings › Rules')); return; }
         const sorted = [...rules].sort((a, b) => active.includes(b.id) - active.includes(a.id));
-        list.replaceChildren(...(paused ? [h('div', 'ru-note', `Paused until ${new Date(rulesPaused).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}`)] : []),
+        list.replaceChildren(...(paused ? [h('div', 'ru-note', `Paused until ${fmtClock(rulesPaused, { hour12: is12 })}`)] : []),
           ...sorted.map((r) => h('div', 'ru-row' + (active.includes(r.id) && !paused ? ' on' : ''),
             h('span', 'ru-ico', RULE_WHEN[r.when] || '⚡'), h('span', 'ru-name', r.name || r.when), h('i', 'ru-dot'))));
       },
@@ -539,14 +542,15 @@ W.nextup = {
     const when = h('div', 'nu-when'), title = h('div', 'nu-title'), meta = h('div', 'nu-meta'), bar = h('i'), track = h('div', 'track nu-track', bar);
     box.append(h('div', 'w-title', o.title || 'Next up'), when, title, meta, track);
     let key = '';
-    const hm = (ms) => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+    const hm = (ms) => fmtClock(ms, { hour12: o.hour12 });
     return {
       update() {
         const cal = D.calendar, now = Date.now();
         const evs = (cal?.events || []).filter((e) => !e.allDay && e.end > now && (!only.length || only.includes(e.calendar.toLowerCase()))).sort((a, b) => a.start - b.start);
         const cur = evs.find((e) => e.start <= now), next = evs.find((e) => e.start > now);
         const ev = cur || next;
-        const k = JSON.stringify([ev?.start, ev?.title, Math.floor(now / 15000), !!cal]);
+        const is12 = useHour12(o.hour12);
+        const k = JSON.stringify([ev?.start, ev?.title, Math.floor(now / 15000), !!cal, is12]);
         if (k === key) return;
         key = k;
         box.classList.toggle('now', !!cur);

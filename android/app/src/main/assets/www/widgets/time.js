@@ -1,4 +1,4 @@
-import { $, buzz, fmtTime, h, haptic, pad, r1, store, tick, toast } from '../main.js';
+import { $, LOCALE, buzz, fmtTime, h, haptic, pad, r1, store, tick, toast, useHour12 } from '../main.js';
 import { W } from '../registry.js';
 import { dialEl, lines } from './helpers.js';
 
@@ -14,11 +14,11 @@ W.analog = {
       return `<line class="tk${big ? ' b' : ''}" x1="${(50 + r1 * Math.sin(a)).toFixed(2)}" y1="${(50 - r1 * Math.cos(a)).toFixed(2)}" x2="${(50 + 46.5 * Math.sin(a)).toFixed(2)}" y2="${(50 - 46.5 * Math.cos(a)).toFixed(2)}"/>`;
     }).join('');
     const nums = o.numbers ? [12, 3, 6, 9].map((n, i) => `<text x="${50 + 33 * Math.sin((i * Math.PI) / 2)}" y="${50 - 33 * Math.cos((i * Math.PI) / 2) + 3.6}">${n}</text>`).join('') : '';
-    box.innerHTML = `<svg viewBox="0 0 100 100" class="analog"><circle class="face" cx="50" cy="50" r="48.5"/>${ticks}${nums}` +
+    box.innerHTML = `<svg viewBox="0 0 100 100" class="analog"><circle class="face" cx="50" cy="50" r="48.5"/>${ticks}${nums}<text class="ap" x="50" y="70"></text>` +
       '<line class="hh" x1="50" y1="53" x2="50" y2="27"/><line class="mh" x1="50" y1="55" x2="50" y2="12"/>' +
       (showSec ? '<line class="sh" x1="50" y1="60" x2="50" y2="8"/>' : '') + '<circle class="hub" cx="50" cy="50" r="2.4"/></svg>';
     if (o.label) box.append(h('div', 'an-l', o.label));
-    const [hh, mh, sh] = ['.hh', '.mh', '.sh'].map((s) => box.querySelector(s));
+    const [hh, mh, sh, ap] = ['.hh', '.mh', '.sh', '.ap'].map((s) => box.querySelector(s));
     return {
       update() {
         let H, M, S;
@@ -27,6 +27,7 @@ W.analog = {
         hh.setAttribute('transform', `rotate(${(H % 12) * 30 + M * 0.5} 50 50)`);
         mh.setAttribute('transform', `rotate(${M * 6 + S * 0.1} 50 50)`);
         sh?.setAttribute('transform', `rotate(${S * 6} 50 50)`);
+        ap.textContent = useHour12(o.hour12) ? (H >= 12 ? 'PM' : 'AM') : '';
       },
     };
   },
@@ -278,7 +279,7 @@ W.wordclock = {
         shown = k;
         lead.textContent = t.lead;
         main.replaceChildren(...t.main.map((w, i) => h('span', i === t.main.length - 1 || t.main.length === 1 ? 'hr' : null, w + ' ')));
-        date.textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+        date.textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
       },
     };
   },

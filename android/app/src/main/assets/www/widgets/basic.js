@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, color, cssVar, emit, fillIcon, fmtDur, fmtMem, fmtReset, fmtTime, fmtValue, h, haptic, hist, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, renderStatus, ringSvg, setArtColor, setVolDragging, shortDur, store, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, clockParts, color, cssVar, emit, fillIcon, fmtClock, fmtDur, fmtHour, fmtMem, fmtReset, fmtTime, fmtValue, h, haptic, hist, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, renderStatus, ringSvg, setArtColor, setVolDragging, shortDur, store, tick, toast, useHour12, volDragging, wxBlock, wxIcon } from '../main.js';
 import { W } from '../registry.js';
 
 // ================================================================= widgets
@@ -9,18 +9,22 @@ W.clock = {
   bare: true, needs: ['tick', 'state', 'weather', 'quotas', 'work'],
   create(box, { o }) {
     const status = o.status !== false ? h('div', 'status') : null;
-    const hh = h('span', 'hh', '--'), mm = h('span', 'mm', '--'), ss = h('span', 'sec');
+    const hh = h('span', 'hh', '--'), mm = h('span', 'mm', '--'), ss = h('span', 'sec'), ap = h('span', 'ampm');
+    const side = h('span', 'clock-side', ss, ap);
     const date = o.date !== false ? h('div', 'date') : null;
     const wx = o.weather !== false ? wxBlock() : null;
-    box.append(status || '', h('div', 'clock', hh, h('span', 'colon', ':'), mm, ss), date || '', wx || '');
+    box.append(status || '', h('div', 'clock', hh, h('span', 'colon', ':'), mm, side), date || '', wx || '');
     box.style.setProperty('--tf', (0.84 - (status ? 0.1 : 0) - (date ? 0.11 : 0) - (wx ? 0.2 : 0)).toFixed(2));
     return {
       update(kind) {
         if (kind === 'tick') {
           const now = new Date();
-          hh.textContent = pad(now.getHours());
-          mm.textContent = pad(now.getMinutes());
-          ss.textContent = cfg.display?.showSeconds === false ? '' : pad(now.getSeconds());
+          const cp = clockParts(now.getHours(), now.getMinutes(), cfg.display?.showSeconds === false ? null : now.getSeconds(), o.hour12);
+          hh.textContent = cp.hh;
+          mm.textContent = cp.mm;
+          ss.textContent = cp.ss;
+          ap.textContent = cp.period;
+          side.hidden = !cp.ss && !cp.period;
           if (date) date.textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
           if (status && now.getSeconds() % 30 === 0) renderStatus(status); // battery
         } else if (kind === 'weather') wx?.update();
@@ -73,7 +77,7 @@ W.forecast = {
             const i = start + k * step;
             if (i >= hr.time.length) break;
             const rain = hr.precipitation_probability?.[i];
-            cells.push(h('div', 'fc-i', h('span', 'fc-t', k === 0 ? 'Now' : hr.time[i].slice(11, 13)), h('span', 'fc-ic', wxIcon(hr.weather_code[i], hr.is_day?.[i])),
+            cells.push(h('div', 'fc-i', h('span', 'fc-t', k === 0 ? 'Now' : fmtHour(+hr.time[i].slice(11, 13), o.hour12)), h('span', 'fc-ic', wxIcon(hr.weather_code[i], hr.is_day?.[i])),
               h('span', 'fc-v', Math.round(hr.temperature_2m[i]) + '°'), h('span', 'fc-r', rain >= 20 ? `💧${rain}%` : '')));
           }
         }
@@ -370,7 +374,7 @@ W.quotas = {
           const pctEl = h('div', 'q-pct', String(Math.round(l.percent)), h('small', null, '%'));
           if (compact) pctEl.style.fontSize = '22px';
           dial.appendChild(pctEl);
-          rings.appendChild(h('div', 'q-ring', dial, h('div', 'q-label', l.label), p.id === 'codex' ? h('div', 'q-left', `${Math.max(0, Math.round(100 - l.percent))}% left`) : null, h('div', 'q-reset', fmtReset(l.resetsAt)),
+          rings.appendChild(h('div', 'q-ring', dial, h('div', 'q-label', l.label), p.id === 'codex' ? h('div', 'q-left', `${Math.max(0, Math.round(100 - l.percent))}% left`) : null, h('div', 'q-reset', fmtReset(l.resetsAt, o.hour12)),
             pace ? h('div', 'q-pace ' + pace.cls, pace.text) : null));
         }
         if (!p.limits.length) rings.appendChild(h('div', 'q-reset', 'No data'));
@@ -647,20 +651,22 @@ W.worldclock = {
     });
     const row = h('div', 'wc-row', items.map((i) => i.el));
     box.append(row);
-    let shown = -1;
+    let shown = '';
     return {
       update() {
         // once a minute, and at once after ticks were missed (the page was not visible, the night screen was on)
-        const minute = Math.floor(Date.now() / 60000);
-        if (minute === shown) return;
-        shown = minute;
+        const is12 = useHour12(o.hour12);
+        const key = `${Math.floor(Date.now() / 60000)}:${is12}`;
+        if (key === shown) return;
+        shown = key;
         const now = new Date();
         const localUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
         row.classList.toggle('vert', box.clientHeight > box.clientWidth * 1.1);
         for (const it of items) {
           if (!it.fmt) continue;
           const p = Object.fromEntries(it.fmt.formatToParts(now).map((x) => [x.type, x.value]));
-          it.t.textContent = `${p.hour}:${p.minute}`;
+          const cp = clockParts(+p.hour, +p.minute, null, is12);
+          it.t.replaceChildren(`${cp.hh}:${cp.mm}`, cp.period ? h('small', 'wc-ap', ' ' + cp.period) : '');
           const zoneUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
           const diffH = Math.round((zoneUtc - localUtc) / 360000) / 10;
           const dayDiff = Math.round((Date.UTC(+p.year, +p.month - 1, +p.day) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
@@ -774,9 +780,17 @@ W.countdown = {
     const big = h('div', 'cd-v'), sub = h('div', 'cd-s');
     box.append(h('div', 'cd-l', o.label || 'Countdown'), big, sub);
     if (Number.isNaN(target)) { big.textContent = '—'; sub.textContent = 'Set a date as YYYY-MM-DD HH:MM'; return {}; }
-    sub.textContent = new Date(target).toLocaleString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    let shown12 = null;
+    const renderSub = () => {
+      const is12 = useHour12(o.hour12);
+      if (is12 === shown12) return;
+      shown12 = is12;
+      sub.textContent = `${new Date(target).toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}, ${fmtClock(target, { hour12: is12 })}`;
+    };
+    renderSub();
     return {
       update() {
+        renderSub();
         let d = target - Date.now();
         const past = d < 0;
         d = Math.abs(d);

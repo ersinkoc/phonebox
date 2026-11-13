@@ -117,6 +117,28 @@ public class ConfigTests
         Assert.Equal(1440, c.Rules[0].Value);
         Assert.Equal("info", c.Rules[0].Level);
     }
+
+    [Fact]
+    public void Hour12DefaultsToFalseAndSupportsTrueAndAuto()
+    {
+        var def = Load("{}");
+        Assert.Equal("false", def.Display.Hour12);
+        using (var doc = JsonDocument.Parse(JsonSerializer.Serialize(def.ToPublic(), ConfigStore.WriteOpts)))
+            Assert.Equal(JsonValueKind.False, doc.RootElement.GetProperty("display").GetProperty("hour12").ValueKind);
+
+        var enabled = Load("""{ "display": { "hour12": true } }""");
+        Assert.Equal("true", enabled.Display.Hour12);
+        using (var doc = JsonDocument.Parse(JsonSerializer.Serialize(enabled.ToPublic(), ConfigStore.WriteOpts)))
+            Assert.Equal(JsonValueKind.True, doc.RootElement.GetProperty("display").GetProperty("hour12").ValueKind);
+
+        var auto = Load("""{ "display": { "hour12": "auto" } }""");
+        Assert.Equal("auto", auto.Display.Hour12);
+        using (var doc = JsonDocument.Parse(JsonSerializer.Serialize(auto.ToPublic(), ConfigStore.WriteOpts)))
+            Assert.Equal("auto", doc.RootElement.GetProperty("display").GetProperty("hour12").GetString());
+
+        Assert.Equal("true", Load("""{ "display": { "hour12": "12h" } }""").Display.Hour12);
+        Assert.Equal("false", Load("""{ "display": { "hour12": "invalid" } }""").Display.Hour12);
+    }
 }
 
 public class LanTests

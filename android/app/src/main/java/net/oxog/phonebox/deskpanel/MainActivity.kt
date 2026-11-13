@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.text.format.DateFormat
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
@@ -303,6 +304,10 @@ class MainActivity : Activity(), SensorEventListener {
         /** Whether the volume keys flip pages (true) or change the phone's volume (false). */
         @JavascriptInterface
         fun setVolumeKeys(key: String, enabled: Boolean) { if (ok(key)) volumeKeysFlipPages = enabled }
+
+        /** Whether the phone is set to 24-hour time in Android settings. */
+        @JavascriptInterface
+        fun is24Hour(key: String): Boolean = if (ok(key)) DateFormat.is24HourFormat(this@MainActivity) else true
 
         /** Which sensors the phone has: {"light": true, "proximity": true}. */
         @JavascriptInterface

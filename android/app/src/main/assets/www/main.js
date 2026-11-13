@@ -27,7 +27,7 @@ export const ROWS = 6;
 export const $ = (id) => document.getElementById(id);
 // The native bridge (window.Android) is in every frame, sandboxed widgets included, so each call carries a key that only
 // the panel's own frames receive (MainActivity.bridgeKey). This wrapper adds it.
-const BRIDGE = ['battery', 'buzz', 'haptic', 'pcs', 'selectPc', 'forgetPc', 'setBrightness', 'setHomeScreen', 'setOrientation',
+const BRIDGE = ['battery', 'buzz', 'haptic', 'is24Hour', 'pcs', 'selectPc', 'forgetPc', 'setBrightness', 'setHomeScreen', 'setOrientation',
   'setPinned', 'setVolumeKeys', 'transport', 'sensors', 'version'];
 export const bridge = typeof Android === 'undefined' ? null : Object.fromEntries(BRIDGE.filter((m) => typeof Android[m] === 'function')
   .map((m) => [m, (...args) => Android[m](window.__phoneboxKey || '', ...args)]));
@@ -49,7 +49,7 @@ export const FALLBACK_PAGES = [{
 export const DEFAULT_CFG = {
   weather: { city: 'Tallinn', lat: 59.437, lon: 24.745 },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
-  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, volumeKeys: true },
+  display: { showSeconds: true, hour12: false, idleReturnSec: 90, vibrate: true, volumeKeys: true },
   pages: FALLBACK_PAGES,
   shortcuts: [],
 };
@@ -102,6 +102,35 @@ export function h(tag, cls, ...kids) {
 }
 
 export const pad = (n) => String(n).padStart(2, '0');
+export function useHour12(override) {
+  if (override === true || override === '12h' || override === 'true') return true;
+  if (override === false || override === '24h' || override === 'false') return false;
+  const pref = cfg.display?.hour12;
+  if (pref === true || pref === '12h' || pref === 'true') return true;
+  if (pref === 'auto') {
+    try { if (bridge?.is24Hour) return !bridge.is24Hour(); } catch (_) {}
+    try { return !!new Intl.DateTimeFormat(navigator.language || undefined, { hour: 'numeric' }).resolvedOptions().hour12; } catch (_) {}
+  }
+  return false;
+}
+export function clockParts(h24, m, s = null, override) {
+  const is12 = useHour12(override);
+  return {
+    hh: is12 ? String(h24 % 12 || 12) : pad(h24),
+    mm: pad(m),
+    ss: s == null ? '' : pad(s),
+    period: is12 ? (h24 >= 12 ? 'PM' : 'AM') : '',
+  };
+}
+export function fmtClock(dateOrMs, opts = {}) {
+  const d = dateOrMs instanceof Date ? dateOrMs : new Date(dateOrMs);
+  const cp = clockParts(d.getHours(), d.getMinutes(), opts.seconds ? d.getSeconds() : null, opts.hour12);
+  const base = cp.ss ? `${cp.hh}:${cp.mm}:${cp.ss}` : `${cp.hh}:${cp.mm}`;
+  return cp.period ? `${base} ${cp.period}` : base;
+}
+export function fmtHour(h24, override) {
+  return useHour12(override) ? `${h24 % 12 || 12} ${h24 >= 12 ? 'PM' : 'AM'}` : pad(h24);
+}
 export const fmtTime = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + pad(s % 60); };
 export function fmtRate(bps) {
   if (bps == null) return ['—', ''];
@@ -415,10 +444,10 @@ export const MEDIA_HTML = `
 // ---------------------------------------------------------------- quotas
 export const Q_STYLE = { antigravity: { color: '#38bdf8', logo: '✦' }, claude: { color: '#d97757', logo: '✳' }, codex: { color: '#e5e7eb', logo: '◎' } };
 
-export function fmtReset(ts) {
+export function fmtReset(ts, hour12) {
   if (!ts) return '';
   const d = new Date(ts);
-  const hm = d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+  const hm = fmtClock(d, { hour12 });
   const day = d.toDateString() === new Date().toDateString() ? hm : d.toLocaleDateString(LOCALE, { weekday: 'short' }) + ' ' + hm;
   return `${day} · in ${fmtDur(ts - Date.now())}`;
 }
@@ -751,7 +780,7 @@ export function buildLayout() {
   const enabled = (cfg.pages || []).filter((p) => p.enabled !== false && Array.isArray(p.widgets));
   const next = enabled.length ? enabled : FALLBACK_PAGES;
   const portrait = isPortrait();
-  const key = JSON.stringify([next, cfg.shortcuts, cfg.display?.showSeconds, cfg.display?.appearance, portrait]);
+  const key = JSON.stringify([next, cfg.shortcuts, cfg.display?.showSeconds, cfg.display?.hour12, cfg.display?.appearance, portrait]);
   if (key === layoutKey) return;
   layoutKey = key;
   const prevId = pages[curPage]?.id;
@@ -1046,7 +1075,7 @@ export function renderRulesBtn() {
   const paused = rulesPaused && rulesPaused > Date.now();
   b.hidden = PREVIEW || !online;
   b.classList.toggle('on', !!paused);
-  b.textContent = paused ? `⏸ Rules paused until ${new Date(rulesPaused).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })} · resume` : '⏸ Pause rules 1 h';
+  b.textContent = paused ? `⏸ Rules paused until ${fmtClock(rulesPaused)} · resume` : '⏸ Pause rules 1 h';
 }
 
 export let titleTimer = 0;
@@ -1246,7 +1275,8 @@ window.onAndroidSensor = (kind, value) => {
 
 export function tick() {
   const now = new Date();
-  $('nClock').textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  const cp = clockParts(now.getHours(), now.getMinutes());
+  $('nClock').replaceChildren(`${cp.hh}:${cp.mm}`, cp.period ? h('small', 'n-ampm', ' ' + cp.period) : '');
   $('nDate').textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
   if (darkSince && Date.now() - darkSince > 30_000) darkRoom = true;
   const dark = darkRoom && cfg.display?.nightWhenDark === true;
@@ -1270,6 +1300,7 @@ export function applyDisplay() {
   document.documentElement.style.setProperty('--accent', `rgb(${DEFAULT_AMBIENT})`);
   artTint = d.artTint !== false;
   if (before !== DEFAULT_AMBIENT || !artTint) setAmbient(artTint ? currentArtColor : null);
+  renderRulesBtn();
   if (PREVIEW || !bridge) return;
   try { bridge.setVolumeKeys && bridge.setVolumeKeys(d.volumeKeys !== false); } catch (_) {}
   try { bridge.setPinned && bridge.setPinned(d.pin === true); } catch (_) {}

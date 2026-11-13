@@ -454,6 +454,9 @@ dd { margin: 0; word-break: break-all; }
         <div class="field" style="max-width:420px"><label>Orientation</label>
           <select data-bind="display.orientation"><option value="landscape">Landscape</option><option value="portrait">Portrait</option><option value="auto">Follow the phone</option></select>
           <span class="hint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
+        <div class="field" style="max-width:420px"><label>Time format</label>
+          <select data-bind="display.hour12" data-type="hour12"><option value="false">24-hour (14:30)</option><option value="true">12-hour (2:30 PM)</option><option value="auto">Follow the phone</option></select>
+          <span class="hint">Applies to clocks, schedules and forecasts; individual widgets can override it.</span></div>
         <label class="check"><input type="checkbox" data-bind="display.showSeconds"> Show seconds on the clock</label>
         <label class="check"><input type="checkbox" data-bind="display.vibrate"> Vibrate when a session finishes or needs input</label>
         <label class="check"><input type="checkbox" data-bind="display.volumeKeys"> The phone's volume keys switch pages</label>
@@ -1638,7 +1641,10 @@ async function pollRules() {
     const next = s.rules || [];
     rulesPausedUntil = s.rulesPaused || null;
     $('rulesPauseBtn').textContent = rulesPausedUntil ? 'Resume rules' : 'Pause all rules for 1 hour';
-    $('rulesPausedState').textContent = rulesPausedUntil ? `⏸ Rules are paused until ${new Date(rulesPausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
+    const h12 = cfg?.display?.hour12;
+    const pauseTime = rulesPausedUntil ? new Date(rulesPausedUntil).toLocaleTimeString(h12 === 'auto' ? [] : 'en-GB',
+      h12 === 'auto' ? { hour: 'numeric', minute: '2-digit' } : h12 === true || h12 === 'true' ? { hour: 'numeric', minute: '2-digit', hour12: true } : { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\bam\b/i, 'AM').replace(/\bpm\b/i, 'PM') : '';
+    $('rulesPausedState').textContent = rulesPausedUntil ? `⏸ Rules are paused until ${pauseTime}.`
       : 'Page switches count down on the phone and wait while you use it (General › Page switching).';
     if (next.join() !== activeRules.join()) { activeRules = next; if (!document.activeElement?.closest?.('#ruleList')) renderRules(); }
   } catch (_) {}
@@ -2014,11 +2020,14 @@ function bindForm() {
   document.querySelectorAll('[data-bind]').forEach((el) => {
     const p = el.dataset.bind, type = el.dataset.type;
     const v = getPath(cfg, p);
-    if (el.type === 'checkbox') el.checked = !!v; else el.value = v ?? '';
+    if (el.type === 'checkbox') el.checked = !!v;
+    else if (type === 'hour12') el.value = v === true || v === 'true' || v === '12h' ? 'true' : v === 'auto' ? 'auto' : 'false';
+    else el.value = v ?? '';
     el.oninput = el.onchange = () => {
       let val = el.type === 'checkbox' ? el.checked : el.value;
       if (type === 'num') val = parseFloat(val);
       if (type === 'int') val = parseInt(val || '0', 10);
+      if (type === 'hour12') val = val === 'true' ? true : val === 'auto' ? 'auto' : false;
       if (p === 'adbPath' && val === '') val = null;
       setPath(cfg, p, val);
       $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
