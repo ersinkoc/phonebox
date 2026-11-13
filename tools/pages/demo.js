@@ -274,7 +274,7 @@
     const pr = (repo, number, title, ci = null, review = null, draft = false, author = null) => ({ repo, number, title, ci, review, draft, author, updated: n - (number % 9 + 1) * 3600e3 });
     return {
       sessions: [s(1, 'claude', 'api-gateway', 'busy', 4), s(2, 'claude', 'docs-site', 'waiting', 2, 'approve a file edit'), s(3, 'codex', 'mobile-app', 'busy', 11),
-        s(4, 'claude', 'infra', 'shell', 1), s(5, 'claude', 'blog-engine', 'idle', 38), s(6, 'codex', 'data-pipeline', 'idle', 74), s(7, 'claude', 'design-system', 'idle', 125)],
+        s(4, 'antigravity', 'phonebox', 'busy', 1), s(5, 'claude', 'blog-engine', 'idle', 38), s(6, 'codex', 'data-pipeline', 'idle', 74), s(7, 'claude', 'design-system', 'idle', 125)],
       github: { user: 'octocat', notifications: 7, error: null, updatedAt: n - 90e3,
         reviewRequests: [pr('acme/api', 412, 'Rate limiter for public endpoints', null, null, false, 'hubot'), pr('acme/web', 1288, 'Dark mode for the dashboard', null, null, false, 'monalisa'),
           pr('acme/infra', 77, 'Move staging to a new region', null, null, false, 'hubot')],
@@ -517,6 +517,21 @@
       return json({ ok: true });
     }
     if (path === '/api/work') return json(work());
+    if (path === '/api/sessions/detail') {
+      const cfgObj = await config();
+      const allowMsg = (cfgObj.pages || []).some((p) => p.enabled !== false && (p.widgets || []).some((w) =>
+        (w.type === 'sessions' && w.options?.showMessages === true) ||
+        (w.options?.widgets || []).some((c) => c.enabled !== false && c.type === 'sessions' && c.options?.showMessages === true)));
+      if (!allowMsg) return json({ error: 'disabled' }, 403);
+      const id = q.get('id') || '';
+      const found = work().sessions.find((s) => s.id === id);
+      if (!found) return json({ error: 'not found' }, 404);
+      return json({
+        ...found,
+        lastPrompt: 'Summarize the failing check and propose the minimal patch.',
+        lastResponse: 'Identified the race condition in the artwork refresh loop and added unit test coverage.',
+      });
+    }
     if (path === '/api/procs') return json(procs());
     if (path === '/api/procs/detail') return json(procDetail(q.get('name')));
     if (path.startsWith('/api/widget/')) return json({ output: String(3 + Math.floor(Math.random() * 3)), at: now() - 8000, ok: true, running: false, durationMs: 412 });

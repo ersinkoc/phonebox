@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, color, cssVar, emit, fillIcon, fmtDur, fmtMem, fmtReset, fmtTime, fmtValue, h, haptic, hist, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, renderStatus, ringSvg, setArtColor, setVolDragging, shortDur, store, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, S_TOOLS, ago, api, averageColor, buzz, cfg, chart, color, cssVar, emit, fillIcon, fmtDur, fmtMem, fmtReset, fmtTime, fmtValue, h, haptic, hist, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, renderStatus, ringSvg, setArtColor, setVolDragging, shortDur, store, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
 import { W } from '../registry.js';
 
 // ================================================================= widgets
@@ -446,7 +446,8 @@ W.codexbar = W.quotas;
 
 W.sessions = {
   needs: ['work', 'tick'],
-  create(box) {
+  create(box, { o }) {
+    const showMessages = o.showMessages === true;
     const sum = h('span', 'w-sum');
     const list = h('div', 's-list', h('div', 'empty', 'Waiting for session data…'));
     box.append(h('div', 'w-head', h('span', 's-label', 'Sessions'), sum), list);
@@ -454,6 +455,7 @@ W.sessions = {
     const tokens = (n) => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
     const statusText = (s) => s.status === 'busy' ? 'Working' : s.status === 'waiting' ? 'Waiting' : s.status === 'shell' ? 'Running a command' : s.outcome === 'completed' ? 'Completed' : s.outcome === 'aborted' ? 'Aborted' : 'Idle';
     const ageText = (since) => Date.now() - since < 60_000 ? 'just now' : shortDur(Date.now() - since) + ' ago';
+    const toolInfo = (s) => S_TOOLS[s.tool] || { icon: '●', label: s.tool };
     const openDetails = (s) => {
       haptic();
       const backdrop = h('div', 'session-backdrop');
@@ -467,7 +469,8 @@ W.sessions = {
       const dismiss = () => { backdrop.remove(); document.removeEventListener('keydown', onKey); };
       close.addEventListener('click', dismiss);
       backdrop.addEventListener('click', (e) => { if (e.target === backdrop) dismiss(); });
-      panel.append(h('div', 'session-panel-head', h('span', null, s.tool === 'codex' ? '◎ Codex' : '✳ Claude Code'), close), title);
+      const tool = toolInfo(s);
+      panel.append(h('div', 'session-panel-head', h('span', null, `${tool.icon} ${tool.label}`), close), title);
       const rows = [
         ['Status', statusText(s)],
         ['Started', s.startedAt ? ageText(s.startedAt) : null],
@@ -482,6 +485,27 @@ W.sessions = {
         ['Recent tool', s.lastTool],
       ];
       for (const [label, value] of rows) if (value != null) panel.append(h('div', 'session-detail-row', h('span', null, label), h('strong', null, value)));
+      if (showMessages) {
+        const msgWrap = h('div', 'session-msgs', h('div', 'session-msg-loading', 'Loading conversation…'));
+        panel.append(msgWrap);
+        api(`/sessions/detail?id=${encodeURIComponent(s.id)}`).then((detail) => {
+          if (!backdrop.isConnected) return;
+          const items = [];
+          if (detail?.lastPrompt) {
+            items.push(h('div', 'session-msg-box prompt',
+              h('div', 'session-msg-lbl', 'Last prompt'),
+              h('div', 'session-msg-txt', detail.lastPrompt)));
+          }
+          if (detail?.lastResponse) {
+            items.push(h('div', 'session-msg-box response',
+              h('div', 'session-msg-lbl', 'Last reply'),
+              h('div', 'session-msg-txt', detail.lastResponse)));
+          }
+          msgWrap.replaceChildren(...(items.length ? items : [h('div', 'session-msg-empty', 'No messages found')]));
+        }).catch(() => {
+          if (backdrop.isConnected) msgWrap.replaceChildren(h('div', 'session-msg-empty', 'Conversation details unavailable'));
+        });
+      }
       if (s.tool === 'codex') panel.append(h('p', 'session-note', 'Token totals are for this local session, not your account allowance.'));
       backdrop.append(panel);
       document.body.append(backdrop);
@@ -501,14 +525,15 @@ W.sessions = {
         ].filter(Boolean).join(' · ') || 'No open sessions';
         const sorted = [...sessions].sort((a, b) => (S_ORDER[a.status] ?? 9) - (S_ORDER[b.status] ?? 9) || b.since - a.since);
         const rows = sorted.length ? sorted.map((s) => {
+          const tool = toolInfo(s);
           const row = h('button', 'sess ' + s.status,
-            h('span', 'st'), h('span', 'tl ' + s.tool, s.tool === 'claude' ? '✳' : '◎'),
+            h('span', 'st'), h('span', 'tl ' + s.tool, tool.icon),
             h('span', 'sess-main', h('span', 'nm', s.project || s.name), h('span', 'sess-meta', [s.model, s.effort].filter(Boolean).join(' · ') || statusText(s))),
             h('span', 'ds', shortDur(Date.now() - s.since)));
           row.type = 'button';
           row.addEventListener('click', () => openDetails(s));
           return row;
-        }) : [h('div', 'empty', 'No Claude Code / Codex sessions open')];
+        }) : [h('div', 'empty', 'No active coding sessions')];
         list.replaceChildren(...rows);
       },
     };

@@ -288,6 +288,24 @@ for (const [zone, noon] of [['America/New_York', '2026-11-09T12:00:00-05:00'], [
   });
 }
 
+test('session details show last prompt and reply only when opted in', async ({ page }) => {
+  await page.goto('/panel/');
+  await expect(page.locator('.w').first()).toBeVisible();
+  await page.evaluate(() => {
+    const pages = [{ id: 'sess', title: 'Sessions', icon: '🤖', enabled: true,
+      widgets: [{ id: 's1', type: 'sessions', x: 0, y: 0, w: 7, h: 6, options: { showMessages: true } }] }];
+    const cfg = JSON.parse(localStorage.getItem('pb-demo-config') || 'null');
+    localStorage.setItem('pb-demo-config', JSON.stringify({ ...(cfg || {}), pages, shortcuts: cfg?.shortcuts || [] }));
+  });
+  await page.reload();
+  await page.locator('.sess').first().click();
+  const dialog = page.locator('.session-panel');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Last prompt');
+  await expect(dialog).toContainText('Last reply');
+  await expect(dialog).toContainText('Summarize the failing check');
+});
+
 test('the landing page embeds the panel', async ({ page }) => {
   const errors = watchErrors(page);
   await page.setViewportSize({ width: 1200, height: 900 });

@@ -388,6 +388,8 @@ body.offline .offline-msg { display: flex; }
 .sess .tl { font-size: 12px; width: 14px; text-align: center; flex: 0 0 14px; }
 .sess .tl.claude { color: #d97757; }
 .sess .tl.codex { color: #e5e7eb; }
+.sess .tl.antigravity { color: #38bdf8; }
+.sess .tl.openclaw { color: #fb7185; }
 .sess-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .sess .nm { min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sess-meta { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -402,6 +404,13 @@ body.offline .offline-msg { display: flex; }
 .session-detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12px; }
 .session-detail-row span { color: var(--muted); }
 .session-detail-row strong { font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.session-msgs { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.session-msg-box { padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07); }
+.session-msg-box.prompt { border-left: 2px solid #60a5fa; }
+.session-msg-box.response { border-left: 2px solid #4ade80; }
+.session-msg-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+.session-msg-txt { font-size: 11.5px; color: var(--text); white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto; line-height: 1.4; }
+.session-msg-loading, .session-msg-empty { font-size: 11px; color: var(--dim); padding: 4px 0; }
 .session-note { margin: 12px 0 0; color: var(--dim); font-size: 11px; }
 .gh-bell { font-size: 11.5px; padding: 2px 8px; border-radius: 8px; background: rgba(255, 255, 255, .08); white-space: nowrap; }
 .gh-sec { display: flex; justify-content: space-between; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 3px 0; font-weight: 600; }

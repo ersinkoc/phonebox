@@ -69,6 +69,10 @@ public sealed class AgentConfig
 
     public bool AllowKill() => Widgets(enabledPagesOnly: true)
         .Any(w => w.Type == "processes" && w.Bool("allowKill") != false);
+
+    /// <summary>Last prompt and reply in session details are opt-in and local/USB only.</summary>
+    public bool AllowSessionMessages() => Widgets(enabledPagesOnly: true)
+        .Any(w => w.Type == "sessions" && w.Bool("showMessages") == true);
 }
 
 public sealed class WeatherConfig

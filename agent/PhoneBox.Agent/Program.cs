@@ -510,6 +510,14 @@ app.MapGet("/api/work", (SessionMonitor s, GitHubMonitor gh) => Results.Json(new
     github = gh.Snapshot(),
 }));
 
+app.MapGet("/api/sessions/detail", (string id, SessionMonitor s, ConfigStore cfg) =>
+{
+    if (!cfg.Get().AllowSessionMessages())
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (string.IsNullOrWhiteSpace(id)) return Results.BadRequest();
+    return s.GetDetail(id) is { } detail ? Results.Json(detail) : Results.NotFound();
+});
+
 app.MapGet("/api/procs", (ProcessMonitor procs, int? top) =>
 {
     var all = procs.Snapshot();
