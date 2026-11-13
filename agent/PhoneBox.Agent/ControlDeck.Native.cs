@@ -12,10 +12,11 @@ using System.Windows.Forms;
 
 namespace PhoneBox.Agent;
 
-internal sealed partial class WindowsDeckNative : IDeckNative
+internal sealed partial class WindowsDeckNative(ILogger? log = null) : IDeckNative
 {
     private readonly Lock _gate = new();
     private readonly Dictionary<string, (WasapiPlayer Output, WaveStream Reader, MMDevice Device)> _sounds = [];
+    private readonly Dictionary<string, IDisposable> _hls = [];
     private GlobalSystemMediaTransportControlsSessionManager? _media;
 
     public DeckAudio Audio()
@@ -189,33 +190,87 @@ internal sealed partial class WindowsDeckNative : IDeckNative
 
     public void Play(string id, string file, string? device, int volume)
     {
+        StopSound(id);
+        if (!string.IsNullOrWhiteSpace(device))
+        {
+            using var checkEn = new MMDeviceEnumerator();
+            using var checkDev = checkEn.GetDevice(device);
+            if (checkDev.State != DeviceState.Active)
+                throw new InvalidOperationException("Selected audio output device is unavailable");
+        }
+        WaveStream? reader = null;
+        HlsPlayer.Handle? hls = null;
+        HlsPlayer.Handle? ownHls = null;
+        try
+        {
+            if (Uri.TryCreate(file, UriKind.Absolute, out var url) && url.Scheme is "http" or "https")
+            {
+                void OnHlsStopped() { lock (_gate) if (_hls.TryGetValue(id, out var cur) && ReferenceEquals(cur, ownHls)) StopSound(id); }
+                if (HlsPlaylist.IsHlsUrl(url))
+                    hls = ownHls = HlsPlayer.Open(url, device, volume, OnHlsStopped, log);
+                else
+                {
+                    try
+                    {
+                        var mf = new MediaFoundationReader(file);
+                        try { reader = new WaveChannel32(mf, Math.Clamp(volume, 0, 100) / 100f, 0) { PadWithZeroes = false }; }
+                        catch { mf.Dispose(); throw; }
+                    }
+                    catch when (HlsPlaylist.ProbeManifest(url))
+                    {
+                        hls = ownHls = HlsPlayer.Open(url, device, volume, OnHlsStopped, log);
+                    }
+                }
+            }
+            else reader = new AudioFileReader(file) { Volume = Math.Clamp(volume, 0, 100) / 100f };
+        }
+        catch { hls?.Dispose(); reader?.Dispose(); throw; }
+
         lock (_gate)
         {
             StopSound(id);
-            using var en = new MMDeviceEnumerator();
-            var output = string.IsNullOrWhiteSpace(device) ? en.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia) : en.GetDevice(device);
-            WaveStream? reader = null; WasapiPlayer? player = null;
+            if (hls is not null)
+            {
+                _hls[id] = hls;
+                if (hls.IsStopped)
+                {
+                    _hls.Remove(id);
+                    hls.Dispose();
+                    throw new InvalidOperationException("HLS playback failed");
+                }
+                return;
+            }
+            MMDevice? output = null;
+            WasapiPlayer? player = null;
             try
             {
-                if (Uri.TryCreate(file, UriKind.Absolute, out var url) && url.Scheme is "http" or "https")
-                    reader = new WaveChannel32(new MediaFoundationReader(file), Math.Clamp(volume, 0, 100) / 100f, 0) { PadWithZeroes = false };
-                else reader = new AudioFileReader(file) { Volume = Math.Clamp(volume, 0, 100) / 100f };
+                using var en = new MMDeviceEnumerator();
+                output = string.IsNullOrWhiteSpace(device)
+                    ? en.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)
+                    : en.GetDevice(device);
                 player = new WasapiPlayerBuilder().WithDevice(output).WithSharedMode().WithLatency(100).Build();
-                player.Init(reader); _sounds[id] = (player, reader, output);
+                player.Init(reader!); _sounds[id] = (player, reader!, output);
                 var own = player;
                 player.PlaybackStopped += (_, _) => _ = Task.Run(() => { lock (_gate) if (_sounds.TryGetValue(id, out var sound) && ReferenceEquals(sound.Output, own)) StopSound(id); });
                 player.Play();
             }
-            catch { _sounds.Remove(id); player?.Dispose(); reader?.Dispose(); output.Dispose(); throw; }
+            catch { _sounds.Remove(id); player?.Dispose(); reader?.Dispose(); output?.Dispose(); throw; }
         }
     }
     public void StopSound(string? id)
     {
         lock (_gate)
-        foreach (var key in _sounds.Keys.Where(k => id is null || k == id).ToArray())
         {
-            var sound = _sounds[key]; _sounds.Remove(key);
-            sound.Output.Stop(); sound.Output.Dispose(); sound.Reader.Dispose(); sound.Device.Dispose();
+            foreach (var key in _sounds.Keys.Where(k => id is null || k == id).ToArray())
+            {
+                var sound = _sounds[key]; _sounds.Remove(key);
+                sound.Output.Stop(); sound.Output.Dispose(); sound.Reader.Dispose(); sound.Device.Dispose();
+            }
+            foreach (var key in _hls.Keys.Where(k => id is null || k == id).ToArray())
+            {
+                var hls = _hls[key]; _hls.Remove(key);
+                hls.Dispose();
+            }
         }
     }
     public IReadOnlyList<DeckItem> MidiPorts() => Enumerable.Range(0, MidiOut.NumberOfDevices)

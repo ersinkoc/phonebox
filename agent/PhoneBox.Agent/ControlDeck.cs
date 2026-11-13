@@ -33,12 +33,12 @@ public sealed partial class ControlDeck : BackgroundService
     private readonly PushStore? _push;
     private readonly AudioControl? _master;
     public ControlDeck(ConfigStore config, AudioControl audio, MediaMonitor media, ILogger<ControlDeck> log, SpotifyControl spotify, PushStore push)
-        : this(config, CreateNative(audio, media), log, null, push, audio) { _spotify = spotify; }
+        : this(config, CreateNative(audio, media, log), log, null, push, audio) { _spotify = spotify; }
 
-    private static IDeckNative CreateNative(AudioControl audio, MediaMonitor media)
+    private static IDeckNative CreateNative(AudioControl audio, MediaMonitor media, ILogger log)
     {
 #if WINDOWS
-        return new WindowsDeckNative();
+        return new WindowsDeckNative(log);
 #else
         return new PortableDeckNative(audio, media);
 #endif
