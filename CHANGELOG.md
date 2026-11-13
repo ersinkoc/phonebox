@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+**Web kiosk**
+- New `/kiosk` address that shows the phone's pages in a browser, for devices without the phone app (a tablet, a
+  spare monitor, a Raspberry Pi screen, Fully Kiosk Browser): the same panel, with the phone's API over Wi-Fi.
+- Browsers too old for the panel (Android 4.4, old iPads) get `/kiosk/lite`: keys and toggles, now playing with
+  media and volume controls, CPU / RAM / network, pushed values and notifications, in plain ES5.
+- Opened with its own key in `?token=`, separate from the phone and webhook keys. Off by default; turned on and its
+  address copied in Settings › General › Web kiosk. Served on the Wi-Fi & Tailscale HTTPS port (and on `127.0.0.1`
+  for a browser on the PC).
+
 ## 0.9.4 — 2026-11-11
 
 A full audit of the agent, the panel, the settings page and the tooling. Every fix below has a regression test or a

@@ -15,6 +15,8 @@ public sealed class AgentConfig
     public NightConfig Night { get; set; } = new();
     public DisplayConfig Display { get; set; } = new();
     public LanConfig Lan { get; set; } = new();
+    /// <summary>Web kiosk for browsers and old tablets (/kiosk?token=…, see Kiosk.cs).</summary>
+    public KioskConfig Kiosk { get; set; } = new();
     public UpdateConfig Updates { get; set; } = new();
     public ClaudeConfig Claude { get; set; } = new();
     public List<PageConfig> Pages { get; set; } = [];
@@ -140,6 +142,14 @@ public sealed class LanConfig
     public string? Token { get; set; }
     /// <summary>Separate key for the webhook API from other machines (push/notify/goto/refresh only). May appear in URLs.</summary>
     public string? WebhookToken { get; set; }
+}
+
+public sealed class KioskConfig
+{
+    /// <summary>Serve the web kiosk at /kiosk (on the Wi-Fi / Tailscale HTTPS port, and locally for a browser on this PC).</summary>
+    public bool Enabled { get; set; }
+    /// <summary>Key in the kiosk URL (?token=); it opens only /kiosk. Empty = generate a new one.</summary>
+    public string? Token { get; set; }
 }
 
 public sealed class UpdateConfig
@@ -430,6 +440,8 @@ public sealed partial class ConfigStore(string path)
         c.Lan.Port = Math.Clamp(c.Lan.Port, 1024, 65535);
         if (string.IsNullOrWhiteSpace(c.Lan.Token)) c.Lan.Token = NewToken();
         if (string.IsNullOrWhiteSpace(c.Lan.WebhookToken)) c.Lan.WebhookToken = NewToken();
+        c.Kiosk ??= new();
+        if (string.IsNullOrWhiteSpace(c.Kiosk.Token)) c.Kiosk.Token = NewToken();
         c.Night.Brightness = Math.Clamp(c.Night.Brightness, 0.01, 1);
 
         c.Pages = NormalizePages(c.Pages);
@@ -603,7 +615,8 @@ public sealed partial class ConfigStore(string path)
             var onDisk = JsonSerializer.Deserialize<AgentConfig>(File.ReadAllText(path), ReadOpts);
             var damagedIcons = (onDisk?.Pages ?? []).Any(p => p is not null && IconText.Repair(p.Icon) != p.Icon)
                 || (onDisk?.Shortcuts ?? []).Any(s => s is not null && IconText.Repair(s.Icon) != s.Icon);
-            if (!damagedIcons && onDisk?.Lan?.Token == c.Lan.Token && onDisk?.Lan?.WebhookToken == c.Lan.WebhookToken) return;
+            if (!damagedIcons && onDisk?.Lan?.Token == c.Lan.Token && onDisk?.Lan?.WebhookToken == c.Lan.WebhookToken
+                && onDisk?.Kiosk?.Token == c.Kiosk.Token) return;
         }
         catch { }
         Save(JsonSerializer.Serialize(c, WriteOpts), version);
