@@ -87,7 +87,7 @@ public class KioskTests
         Assert.Equal(original, html.Replace("\n" + Kiosk.LegacyCheck, ""));
         Assert.True(html.IndexOf(Kiosk.LegacyCheck, StringComparison.Ordinal) < html.IndexOf("<link", StringComparison.Ordinal));
         Assert.DoesNotContain("=>", Kiosk.LegacyCheck);
-        Assert.Contains("location.replace('lite'", Kiosk.LegacyCheck);
+        Assert.Contains("location.replace('lite/'", Kiosk.LegacyCheck);
     }
 
     [Fact]
@@ -112,17 +112,23 @@ public class KioskTests
     }
 
     [Fact]
-    public void ThePageIsEmbeddedAndStaysEs5()
+    public void TheLitePanelIsEmbeddedAndLoweredForFirefox68()
     {
-        using var s = AppPaths.Resource("kiosk.html");
-        Assert.NotNull(s);
-        var html = new StreamReader(s!).ReadToEnd();
-        var script = html[html.LastIndexOf("<script>", StringComparison.Ordinal)..];
-        Assert.DoesNotContain("type=\"module\"", html);
-        Assert.DoesNotContain("=>", script);
-        Assert.DoesNotContain("`", script);
-        Assert.DoesNotContain("fetch(", script);
-        Assert.Matches(@"^(?![\s\S]*\b(let|const|class|async|await)\s)", script);
-        Assert.Contains("token=", script);
+        string Read(string name)
+        {
+            using var s = AppPaths.Resource("kiosk-lite/" + name);
+            Assert.NotNull(s);
+            return new StreamReader(s!).ReadToEnd();
+        }
+        var index = Read("index.html");
+        Assert.Contains("src=\"polyfill.js\"", index);
+        Assert.Contains("type=\"module\" src=\"main.js\"", index);
+        Assert.Contains("too old for the PhoneBox kiosk", index);
+        var js = Read("main.js");
+        Assert.DoesNotContain("?.", js.Replace("\"?.\"", "").Replace("'?.'", ""));
+        Assert.DoesNotContain("||=", js);
+        var css = Read("style.css");
+        Assert.DoesNotMatch(@"\d(cqw|cqh|cqmin)\b|[^\w-](min|max|clamp)\(|color-mix\(|:is\(|:has\(|@container|aspect-ratio", css);
+        Assert.Contains("PF_TABLE", Read("polyfill.js"));
     }
 }

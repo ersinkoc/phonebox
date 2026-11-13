@@ -47,6 +47,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      - name: Check the web kiosk lite build matches the panel
+        working-directory: tools/kiosk-lite
+        run: npm ci && node build.mjs --check
       - name: Install Playwright
         working-directory: tools/ui-tests
         run: npm ci && npx playwright install --with-deps chromium

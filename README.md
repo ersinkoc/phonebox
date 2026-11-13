@@ -377,11 +377,12 @@ https://<pc>:8766/kiosk?token=<kiosk key>
 
 - It shows **exactly the pages the phone shows**: the same panel, layout, widgets, appearance and rules, with the same
   API as the phone over Wi-Fi (keys, media, processes, Docker, OBS, Home Assistant, Claude Code Allow / Deny).
-  Phone-only features (battery, brightness, vibration, volume keys) are left out. Needs a current browser
-  (Chrome / WebView 88+, Safari 15+).
-- **Older browsers** (Android 4.4, old iPads) are sent to `/kiosk/lite` automatically: a small page in plain ES5
-  with the keys, now playing with media and volume controls, CPU / RAM / network, pushed values and notifications.
-  It does not draw the page layout. Add `&full=1` to the address to skip the check.
+  Phone-only features (battery, brightness, vibration, volume keys) are left out. This is what current browsers
+  get (Chrome / WebView 105+, Safari 16+, Firefox 110+).
+- **Older browsers** are sent to `/kiosk/lite/` automatically: the same panel, with the same pages, widgets and
+  look, built for browsers without container queries or modern JavaScript, down to **Firefox 68**, the last Firefox
+  for **Android 4.4** (install it from Mozilla's archive). The Android 4.4 built-in browser is too old for either and
+  says so. Add `&full=1` to the address to skip the check.
 - Both reconnect by themselves after the network drops and have no scrollbars, so they suit fullscreen browsers.
 - It uses the Wi-Fi port, so the connection is HTTPS with the agent's self-signed certificate: accept the warning
   once on the device, or turn on "ignore SSL errors" in Fully Kiosk Browser.
@@ -498,6 +499,7 @@ Node.js 22 for the browser tooling. The Gradle wrapper downloads Gradle automati
 python tools/demo-server.py                  # the web demo from source: http://127.0.0.1:8790/panel/ and /settings/
 python tools/check-release.py                # release versions and widget/template catalog consistency
 dotnet test agent/PhoneBox.Agent.Tests       # agent unit tests
+cd tools/kiosk-lite; npm ci; node build.mjs; cd ../.. # after changing the panel: regenerate the web kiosk lite (CI checks it)
 cd tools/ui-tests
 npm ci
 npx playwright install chromium             # first run; on Linux CI use --with-deps chromium

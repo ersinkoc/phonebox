@@ -5,8 +5,9 @@
 **Web kiosk**
 - New `/kiosk` address that shows the phone's pages in a browser, for devices without the phone app (a tablet, a
   spare monitor, a Raspberry Pi screen, Fully Kiosk Browser): the same panel, with the phone's API over Wi-Fi.
-- Browsers too old for the panel (Android 4.4, old iPads) get `/kiosk/lite`: keys and toggles, now playing with
-  media and volume controls, CPU / RAM / network, pushed values and notifications, in plain ES5.
+- Older browsers get `/kiosk/lite/`: the same panel built for browsers without container queries or modern
+  JavaScript, down to Firefox 68 on Android 4.4 (`tools/kiosk-lite`; a small runtime fills in container query units,
+  `min()` / `max()` / `clamp()`, `color-mix()`, `@container`, `:has()` and `aspect-ratio`).
 - Opened with its own key in `?token=`, separate from the phone and webhook keys. Off by default; turned on and its
   address copied in Settings › General › Web kiosk. Served on the Wi-Fi & Tailscale HTTPS port (and on `127.0.0.1`
   for a browser on the PC).

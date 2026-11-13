@@ -1,20 +1,16 @@
-using System.Text.Json;
-
 namespace PhoneBox.Agent;
 
 /// <summary>
 /// Web kiosk: the phone's panel in a browser, for devices without the phone app (a tablet, a spare monitor, a Raspberry Pi
 /// screen, Fully Kiosk Browser). /kiosk/?token=… serves exactly the pages the phone shows; the page then talks to the same
-/// API as the phone (/agent/api/…), authenticated by a cookie set from the token. Browsers too old for the panel (Android
-/// 4.4, old iPads) are sent to /kiosk/lite, a small ES5 page with keys, now playing, PC stats, pushed values and
-/// notifications. The kiosk has its own key (URLs end up in logs and bookmarks, so it is never the phone's key).
+/// API as the phone (/agent/api/…), authenticated by a cookie set from the token. Browsers without container queries
+/// or modern JavaScript, down to Firefox 68 on Android 4.4, are sent to /kiosk/lite/: the same panel built for them by
+/// tools/kiosk-lite (kiosk-lite/ here). The kiosk has its own key (URLs end up in logs and bookmarks, so it is never the
+/// phone's key).
 /// </summary>
 public static class Kiosk
 {
     public const string CookieName = "phonebox_kiosk";
-
-    /// <summary>Panel events the lite page acts on; the others (page switches, rule cards…) need the full panel.</summary>
-    private static readonly HashSet<string> Events = ["notify", "reload"];
 
     /// <summary>Read-only images the panel loads with &lt;img&gt;, which cannot carry the panel header (like the phone's proxy).</summary>
     private static readonly HashSet<string> Images = ["/api/art", "/api/procs/icon"];
@@ -39,15 +35,15 @@ public static class Kiosk
         Lan.AllowedOverLan(path) && (panelHeader || (HttpMethods.IsGet(method) && Images.Contains(path.Value ?? "")));
 
     /// <summary>
-    /// Sent first in the panel's &lt;head&gt;: browsers without ES modules, optional chaining or modern CSS go to the lite page.
+    /// Sent first in the panel's &lt;head&gt;: browsers without container queries or optional chaining go to the lite panel.
     /// ES5 on purpose, so that old browsers can run it. ?full=1 skips the check.
     /// </summary>
     public const string LegacyCheck = """
-        <script>(function(){if(/[?&]full=1/.test(location.search))return;var ok=false;try{ok='noModule' in HTMLScriptElement.prototype&&!!(window.CSS&&CSS.supports&&CSS.supports('aspect-ratio','1')&&CSS.supports('color','var(--x)'))&&!!new Function('a','return a?.b??1');}catch(e){ok=false;}if(!ok)location.replace('lite'+location.search);})();</script>
+        <script>(function(){if(/[?&]full=1/.test(location.search))return;var ok=false;try{ok=!!(window.CSS&&CSS.supports&&CSS.supports('width','1cqw'))&&!!new Function('a','return a?.b??1');}catch(e){ok=false;}if(!ok)location.replace('lite/'+location.search);})();</script>
         """;
 
     /// <summary>A file of the phone's panel (embedded at build time): index.html, main.js, style.css… and widgets/*.js.</summary>
-    public static IResult PanelFile(string? file)
+    public static IResult PanelFile(string? file, string folder = "www")
     {
         file = string.IsNullOrEmpty(file) ? "index.html" : file;
         if (!System.Text.RegularExpressions.Regex.IsMatch(file, @"^(widgets/)?[A-Za-z0-9_.-]+$") || file.Contains("..")) return Results.NotFound();
@@ -58,7 +54,7 @@ public static class Kiosk
             ".css" => "text/css; charset=utf-8",
             _ => "application/octet-stream",
         };
-        return AppPaths.Resource("www/" + file) is { } s ? Results.Stream(s, type) : Results.NotFound();
+        return AppPaths.Resource(folder + "/" + file) is { } s ? Results.Stream(s, type) : Results.NotFound();
     }
 
     /// <summary>The panel's index.html with the legacy-browser check in front of everything else.</summary>
@@ -81,113 +77,16 @@ public static class Kiosk
             MaxAge = TimeSpan.FromDays(400),
         });
 
-    /// <summary>What the kiosk shows. Shortcut commands, arguments and other secrets never leave this computer.</summary>
-    public static object State(IServiceProvider sp, long? since)
-    {
-        var cfg = sp.GetRequiredService<ConfigStore>().Get();
-        var push = sp.GetRequiredService<PushStore>();
-        var audio = sp.GetRequiredService<AudioControl>();
-        return new
-        {
-            ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            host = Environment.MachineName,
-            evSeq = push.Seq,
-            events = since is { } s ? push.Since(s).Where(e => Events.Contains(e.Kind)) : [],
-            pc = sp.GetRequiredService<SystemMonitor>().Snapshot(),
-            media = sp.GetRequiredService<MediaMonitor>().Snapshot(),
-            audio = audio.Snapshot(),
-            shortcuts = cfg.Shortcuts.Select(sc => new { sc.Id, sc.Label, sc.Icon, sc.Color, toggle = sc.Toggle || sc.Cmd == "builtin:mute" }),
-            toggles = Shortcuts.States(cfg, push, audio),
-            pushVersion = push.Version,
-            push = push.Snapshot().Select(kv => new { key = kv.Key, data = kv.Value.Data, at = kv.Value.At }),
-        };
-    }
-
     public static void MapKiosk(this WebApplication app)
     {
-        // The phone's pages, unchanged. Relative URLs (style.css, main.js, widgets/…) need the trailing slash.
-        app.MapGet("/kiosk/lite", () =>
-        {
-            using var s = AppPaths.Resource("kiosk.html");
-            if (s is null) return Results.NotFound();
-            using var r = new StreamReader(s);
-            return Results.Content(r.ReadToEnd(), "text/html; charset=utf-8");
-        });
-        // The phone's pages, unchanged. Relative URLs (style.css, main.js, widgets/…) need the trailing slash.
+        // The phone's pages, unchanged; /kiosk/lite/ the same panel built for older browsers (tools/kiosk-lite).
+        // Relative URLs (style.css, main.js, widgets/…) need the trailing slash.
         app.MapGet("/kiosk/{*file}", (string? file, HttpRequest req) =>
         {
             if (string.IsNullOrEmpty(file) && !req.Path.Value!.EndsWith('/')) return Results.Redirect("/kiosk/" + req.QueryString);
+            if (file == "lite") return Results.Redirect("/kiosk/lite/" + req.QueryString);
+            if (file?.StartsWith("lite/", StringComparison.Ordinal) == true) return PanelFile(file["lite/".Length..], "kiosk-lite");
             return string.IsNullOrEmpty(file) || file == "index.html" ? Results.Content(PanelIndex(), "text/html; charset=utf-8") : PanelFile(file);
         });
-
-        app.MapGet("/kiosk/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.RequestServices, ev)));
-
-        // Server-sent events: "state" every 2 s, "event" as soon as a notification arrives. A comment line keeps idle
-        // connections alive through proxies; the page reconnects by itself when the connection drops.
-        app.MapGet("/kiosk/api/stream", async (HttpContext ctx, PushStore push) =>
-        {
-            var ct = ctx.RequestAborted;
-            ctx.Response.ContentType = "text/event-stream";
-            ctx.Response.Headers["X-Accel-Buffering"] = "no";
-            var opts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-            async Task Write(string text)
-            {
-                await ctx.Response.WriteAsync(text, ct);
-                await ctx.Response.Body.FlushAsync(ct);
-            }
-            Task Send(string name, object data) => Write($"event: {name}\ndata: {JsonSerializer.Serialize(data, opts)}\n\n");
-            using var wake = new SemaphoreSlim(0);
-            void OnEmit() { try { wake.Release(); } catch (ObjectDisposedException) { } }
-            push.Emitted += OnEmit;
-            try
-            {
-                await Write("retry: 3000\n\n");
-                var seq = push.Seq;
-                var next = 0L;
-                while (!ct.IsCancellationRequested)
-                {
-                    foreach (var e in push.Since(seq))
-                    {
-                        seq = e.Seq;
-                        if (Events.Contains(e.Kind)) await Send("event", e);
-                    }
-                    var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                    if (now >= next)
-                    {
-                        await Send("state", State(ctx.RequestServices, null));
-                        next = now + 2000;
-                    }
-                    await wake.WaitAsync(TimeSpan.FromMilliseconds(Math.Max(5, next - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())), ct);
-                }
-            }
-            catch (OperationCanceledException) { }
-            catch (IOException) { }
-            finally { push.Emitted -= OnEmit; }
-        });
-
-        app.MapPost("/kiosk/api/run/{id}", (string id, ConfigStore cfg, PushStore push, AudioControl audio, ILogger<KioskLog> log) =>
-            Shortcuts.Run(cfg.Get(), id, log, push, audio) is { } error ? Results.Problem(error) : Results.Ok());
-
-        app.MapPost("/kiosk/api/media/{action}", async (string action, MediaMonitor media) =>
-            action is "playpause" or "next" or "prev" && await media.Control(action, null)
-                ? Results.Ok() : Results.BadRequest());
-
-        app.MapPost("/kiosk/api/volume", (string? op, AudioControl audio) =>
-        {
-            var ok = op switch
-            {
-                "mute" => audio.ToggleMute(),
-                "up" => audio.Step(+5),
-                "down" => audio.Step(-5),
-                _ => false,
-            };
-            return ok ? Results.Json(audio.Snapshot()) : Results.BadRequest();
-        });
-
-        app.MapGet("/kiosk/api/art", (MediaMonitor media) =>
-            media.Art is { } art ? Results.File(art.Bytes, art.Mime) : Results.NotFound());
     }
 }
-
-/// <summary>Log category for the kiosk endpoints.</summary>
-public sealed class KioskLog;
