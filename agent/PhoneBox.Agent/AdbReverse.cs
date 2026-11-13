@@ -692,16 +692,19 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // setting was 0). The app cannot clear it (WRITE_SETTINGS), so the agent writes 7 while standby is off -
         // today's behaviour, unchanged - and 0 the moment standby is on. The value rides in the key, so flipping
         // the setting re-applies it without restarting the agent.
+        var keepAwake = cfg.Get().Display.KeepAwake;
         var stayOn = cfg.Get().Display.Standby == "off" ? "7" : "0";
-        if (cfg.Get().Display.KeepAwake)
+        // the applied-state key carries which branch applied it: the keep-awake-off branch writes only
+        // stay_on, and sharing one key would let that half-apply silence the screen-saver writes later
+        if (keepAwake)
         {
-        foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
+        foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:off") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
             {
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_enabled 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_dock 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_sleep 0", ct);
                 await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
-                _awakeSet.Add($"{d}:{stayOn}");
+                _awakeSet.Add($"{d}:{stayOn}:on");
                 log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
             }
         }
@@ -713,15 +716,15 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             // phone reports plugged, that system flag outvotes the app releasing its own hold even though
             // the app was never the one holding the screen on. The standby override therefore lands
             // independently of KeepAwake; the screen-saver writes stay the optional part.
-            foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}") && !_missingApp.Contains(d)))
+            foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:off") && !_missingApp.Contains(d)))
             {
                 await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
-                _awakeSet.Add($"{d}:{stayOn}");
+                _awakeSet.Add($"{d}:{stayOn}:off");
                 log.LogInformation("{Device}: standby cleared stay_on_while_plugged_in (keep awake off)", d);
             }
         }
         else _awakeSet.Clear();
-        _awakeSet.IntersectWith(devices.Select(d => $"{d}:{stayOn}"));
+        _awakeSet.IntersectWith(devices.Select(d => $"{d}:{stayOn}:{(keepAwake ? "on" : "off")}"));
         Report($"phone connected: {Devices}");
     }
 
