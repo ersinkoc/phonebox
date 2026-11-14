@@ -29,6 +29,8 @@ public sealed class AgentConfig
     public HomeAssistantConfig HomeAssistant { get; set; } = new();
     /// <summary>OBS Studio's WebSocket server (obs-websocket 5).</summary>
     public ObsConfig Obs { get; set; } = new();
+    /// <summary>Application-aware console profiles, sub-pages, and axes.</summary>
+    public AppConsoleConfig Console { get; set; } = new();
 
     /// <summary>The pages a phone shows: its own selection (Settings › Phones), or all of them.</summary>
     public IEnumerable<PageConfig> PagesFor(string? deviceId)
@@ -60,6 +62,7 @@ public sealed class AgentConfig
         // names only (for the Rules widget); what a rule matches on stays here
         rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When }),
         charge = new { Charge.Enabled, Charge.Min, Charge.Max },
+        console = AppConsole.ToPublic(Console),
     };
 
     /// <summary>Ending processes is allowed when an enabled page has a processes widget that allows it.</summary>
@@ -457,6 +460,7 @@ public sealed partial class ConfigStore(string path)
         foreach (var ph in c.Phones) { ph.Name = ph.Name?.Trim() ?? ""; if (ph.Pages is { Count: 0 }) ph.Pages = null; }
         c.Obs ??= new();
         if (string.IsNullOrWhiteSpace(c.Obs.Url)) c.Obs.Url = "ws://127.0.0.1:4455";
+        c.Console = AppConsole.Normalize(c.Console);
         c.HomeAssistant ??= new();
         c.HomeAssistant.Url = string.IsNullOrWhiteSpace(c.HomeAssistant.Url) ? null : c.HomeAssistant.Url.Trim().TrimEnd('/');
         c.HomeAssistant.Token = string.IsNullOrWhiteSpace(c.HomeAssistant.Token) ? null : c.HomeAssistant.Token.Trim();
@@ -602,7 +606,8 @@ public sealed partial class ConfigStore(string path)
         {
             var onDisk = JsonSerializer.Deserialize<AgentConfig>(File.ReadAllText(path), ReadOpts);
             var damagedIcons = (onDisk?.Pages ?? []).Any(p => p is not null && IconText.Repair(p.Icon) != p.Icon)
-                || (onDisk?.Shortcuts ?? []).Any(s => s is not null && IconText.Repair(s.Icon) != s.Icon);
+                || (onDisk?.Shortcuts ?? []).Any(s => s is not null && IconText.Repair(s.Icon) != s.Icon)
+                || AppConsole.HasDamagedIcons(onDisk?.Console);
             if (!damagedIcons && onDisk?.Lan?.Token == c.Lan.Token && onDisk?.Lan?.WebhookToken == c.Lan.WebhookToken) return;
         }
         catch { }
@@ -610,7 +615,7 @@ public sealed partial class ConfigStore(string path)
     }
 
     // ToLowerInvariant keeps the Turkish capital İ (U+0130) as it is, so it is mapped by hand like the other letters
-    private static string Slug(string s) => NonSlug().Replace(s.ToLowerInvariant()
+    internal static string Slug(string s) => NonSlug().Replace(s.ToLowerInvariant()
         .Replace('İ', 'i').Replace('ı', 'i').Replace('ğ', 'g').Replace('ü', 'u').Replace('ş', 's').Replace('ö', 'o').Replace('ç', 'c'), "-").Trim('-');
 
     [GeneratedRegex("[^a-z0-9]+")]

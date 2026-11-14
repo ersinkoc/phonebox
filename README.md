@@ -18,7 +18,7 @@ Widgets for your PC, AI coding sessions, music, weather and anything you push to
 
 PhoneBox has two parts: a small **Android app** that runs full screen on the phone, and an **agent** on the computer
 (Windows, Linux or macOS) that feeds it over the USB cable (or over Wi-Fi / Tailscale after pairing once). You design
-the pages in a visual editor on the PC: **113 widgets**, **30 templates**, as many pages as you like.
+the pages in a visual editor on the PC: **116 widgets**, **30 templates**, as many pages as you like.
 
 - **Your PC at a glance**: CPU, GPU, RAM, disks, network and ping; the heaviest apps, with "end one instance / end all".
 - **AI coding**: Claude and Codex quotas with a burn-rate forecast; Codex remaining allowance and local session token details; tap a session to see its model, timing, tokens, context window and recent tool — the phone
@@ -150,7 +150,8 @@ Existing layouts keep their original appearance. See the [appearance guide](docs
 
 Turn a phone into a touch control deck with application audio faders, microphone controls, device selection,
 push-to-talk, audio profiles, media controls, soundboard, window and system controls, OBS, meeting shortcuts,
-development tasks, MIDI and OSC. Six new templates provide starting layouts; existing layouts are retained.
+development tasks, MIDI, OSC, and context-aware **App Console** widgets (`app-keypad`, `app-dial`, `app-roller`)
+that automatically follow the active desktop application. Six new templates provide starting layouts; existing layouts are retained.
 
 Open **Settings → General → Control Deck** to define computer-side bindings and capture audio profiles. Add the
 matching widgets in Pages. Executable shortcuts and macros are configured in Shortcuts first; phone requests contain

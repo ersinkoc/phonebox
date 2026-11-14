@@ -61,6 +61,8 @@ public sealed partial class ControlDeck : BackgroundService
             return _audio = _native.Audio();
         }
     }
+    internal DeckAudio CurrentAudio() => Audio();
+    internal IReadOnlyList<DeckMonitor> CurrentMonitors() { RefreshHardware(); return _monitors; }
     private void Invalidate() { lock (_state) _audio = null; }
 
     public async Task<object> Snapshot(CancellationToken ct)

@@ -182,6 +182,31 @@ table.items td.val { font-family: Consolas, monospace; font-size: 12px; max-widt
 input[type=color] { width: 42px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 2px; }
 .icon-input { width: 70px; text-align: center; font-size: 20px; }
 
+/* app console */
+.con-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; align-items: start; }
+#conProfiles { display: flex; flex-direction: column; gap: 6px; }
+.con-ptab { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
+.con-ptab.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+.con-ptab.off { opacity: .5; }
+.con-ptab-main { flex: 1; min-width: 0; }
+.con-ptab-main b, .con-ptab-main small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.con-ptab-main small { color: var(--muted); font-size: 11.5px; }
+.con-badge { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.con-subs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.con-slot-grid { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.con-slot { aspect-ratio: 1.55; border-radius: 10px; border: 1.5px solid var(--line); background: #141922; color: #eef2f6; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; min-width: 0; }
+.con-slot.empty { background: transparent; color: var(--muted); border-style: dashed; }
+.con-slot.sel { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.con-slot small { font-size: 10px; opacity: .7; font-family: ui-monospace, monospace; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.con-slot span { font-size: 12px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.con-axis-card { border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: grid; gap: 8px; }
+.con-win-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.con-win-row { display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; }
+.con-win-row:hover { border-color: var(--accent); }
+.con-win-row img { width: 24px; height: 24px; border-radius: 5px; object-fit: contain; flex: none; }
+.con-rec.recording { border-color: var(--danger); color: var(--danger); }
+@media (max-width: 1100px) { .con-layout { grid-template-columns: 1fr; } }
+
 /* smart stack builder in inspector */
 .stack-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
 .stack-row {
@@ -326,6 +351,7 @@ dd { margin: 0; word-break: break-all; }
   <nav id="nav">
     <a href="#pages" class="on">Pages</a>
     <a href="#shortcuts">Shortcuts</a>
+    <a href="#console">Console</a>
     <a href="#rules">Rules</a>
     <a href="#webhooks">Webhooks</a>
     <a href="#general">General</a>
@@ -359,6 +385,26 @@ dd { margin: 0; word-break: break-all; }
       <p class="lead">The keys shown by Shortcut grid and Big button widgets. Click a key to edit it, drag to reorder. The phone only sends the key's id; commands never leave this computer.</p>
       <div class="deck" id="deck"></div>
       <div class="card editor" id="editor"></div>
+    </section>
+
+    <section id="console">
+      <h2>App Console</h2>
+      <p class="lead">Context-aware application profiles for <b>App console</b>, <b>App dial</b>, and <b>App roller</b> widgets. Profiles switch automatically when the foreground application changes, while keeping your keybindings on this computer.</p>
+      <div class="card row" style="justify-content:space-between;align-items:center">
+        <div class="row" style="gap:16px">
+          <label class="check"><input type="checkbox" id="conFollow"> Auto-follow active desktop app</label>
+          <label class="check"><input type="checkbox" id="conFocus"> Bring matching app to front before sending keys</label>
+        </div>
+        <div class="row" style="gap:8px">
+          <button class="btn sm" id="conPresetBtn">＋ Add from preset</button>
+          <button class="btn sm" id="conWinBtn">🪟 Pick running app</button>
+          <button class="btn sm" id="conNewBtn">＋ Blank profile</button>
+        </div>
+      </div>
+      <div class="con-layout">
+        <div id="conProfiles"></div>
+        <div class="card editor" id="conEditor"></div>
+      </div>
     </section>
 
     <section id="rules">
@@ -781,6 +827,9 @@ function widgetSummary(w) {
     case 'countdown': return o.label || '';
     case 'button': return cfg.shortcuts.find((s) => s.id === o.id)?.label || 'pick a shortcut';
     case 'shortcuts': return (o.ids?.length ? `${o.ids.length} keys` : 'all keys') + ` · ${o.columns || 4} columns`;
+    case 'app-keypad': return (o.mode === 'pinned' ? ((cfg.console?.profiles || []).find((p) => p.id === o.profileId)?.name || 'pinned profile') : 'auto active app') + ' keypad';
+    case 'app-dial': return `Axis #${o.axis || 1} · ${o.mode === 'pinned' ? 'pinned' : 'auto'}`;
+    case 'app-roller': return `Axis #${o.axis || 2} · ${o.orientation || 'auto'}`;
     case 'worldclock': return (o.zones || d.options[0]?.default || []).map((z) => z.split('=')[0]).join(' · ');
     case 'quotas': case 'codexbar': return (o.providers || ['claude', 'codex', 'antigravity']).join(' + ');
     case 'quotaring': return `${choice('provider')} · ${choice('limit').split(' (')[0]}`;
@@ -1325,6 +1374,9 @@ function optionField(w, o, onValChange) {
       return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, '(first shortcut)'),
         ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, `${s.icon} ${s.label}`))),
         h('span', { class: 'hint' }, 'New shortcuts get their id when you save.'));
+    case 'console-profile':
+      return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, '(Desktop fallback / automatic)'),
+        ...(cfg.console?.profiles || []).map((p) => h('option', { value: p.id, selected: p.id === v }, `${p.icon || '🎛️'} ${p.name || p.id}`))));
     case 'shortcuts': {
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
       return field(h('div', { class: 'opts' }, ...cfg.shortcuts.map((s) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(s.id), onchange: (e) => {
@@ -1875,6 +1927,487 @@ async function testKey() {
   r.ok ? toast(`Ran "${s.label}"`) : toast(j.error || 'Could not run it', true);
 }
 
+// ---------------------------------------------------------------- app console
+let selConProfile = 0, selConSub = 0, selConSlot = 0;
+
+function consoleMod() {
+  return (osName === 'macos' || /mac/i.test(navigator.platform || '')) ? 'Cmd' : 'Ctrl';
+}
+
+function makeSlot(kind, label, icon, extra = {}) {
+  return { kind, label, icon, hint: '', color: null, toggle: false, stateKey: '', keys: '', steps: [], text: '', target: '', ...extra };
+}
+
+function buildConsolePresets() {
+  const mod = consoleMod();
+  const switchApp = mod === 'Cmd' ? 'Cmd+Tab' : 'Alt+Tab';
+  const navBack = mod === 'Cmd' ? 'Cmd+Left' : 'Alt+Left';
+  const navFwd = mod === 'Cmd' ? 'Cmd+Right' : 'Alt+Right';
+  return [
+    {
+      name: 'Desktop (Fallback)', icon: '🖥️', color: '#38bdf8', isDefault: true, columns: 4, rows: 2, appMatch: '', titleMatch: '',
+      subPages: [{ name: 'Media & System', slots: [
+        makeSlot('deck', 'Prev', '⏮️', { target: 'media:prev' }),
+        makeSlot('deck', 'Play / Pause', '⏯️', { target: 'media:playpause', toggle: true, stateKey: 'media:playing' }),
+        makeSlot('deck', 'Next', '⏭️', { target: 'media:next' }),
+        makeSlot('deck', 'Mute', '🔇', { target: 'audio:mute', toggle: true, stateKey: 'audio:muted' }),
+        makeSlot('keys', 'Copy', '📋', { keys: `${mod}+C`, hint: `${mod}+C` }),
+        makeSlot('keys', 'Paste', '📥', { keys: `${mod}+V`, hint: `${mod}+V` }),
+        makeSlot('keys', 'Undo', '↩️', { keys: `${mod}+Z`, hint: `${mod}+Z` }),
+        makeSlot('keys', 'Switch App', '🪟', { keys: switchApp, hint: switchApp }),
+      ] }],
+      axes: [
+        { index: 1, name: 'Volume', icon: '🔊', kind: 'system-volume', prevKeys: '', nextKeys: '', tapAction: 'deck:audio:mute', appTarget: '', sensitivity: 'normal' },
+        { index: 2, name: 'Seek', icon: '⏩', kind: 'media-seek', prevKeys: '', nextKeys: '', tapAction: 'deck:media:playpause', appTarget: '', sensitivity: 'normal' },
+      ],
+    },
+    {
+      name: 'OBS Studio', icon: '🎥', color: '#ef4444', isDefault: false, columns: 4, rows: 2, appMatch: 'obs64|obs', titleMatch: '',
+      subPages: [{ name: 'Broadcast', slots: [
+        makeSlot('deck', 'Record', '⏺️', { target: 'obs:record', toggle: true, stateKey: 'obs:recording' }),
+        makeSlot('deck', 'Stream', '📡', { target: 'obs:stream', toggle: true, stateKey: 'obs:streaming' }),
+        makeSlot('deck', 'Pause Rec', '⏸️', { target: 'obs:pause', toggle: true, stateKey: 'obs:paused' }),
+        makeSlot('deck', 'Mic Mute', '🎙️', { target: 'obs:mic', toggle: true, stateKey: 'obs:mic' }),
+        makeSlot('keys', 'Scene 1', '🎬', { keys: `${mod}+Shift+1`, hint: `${mod}+⇧+1` }),
+        makeSlot('keys', 'Scene 2', '🎞️', { keys: `${mod}+Shift+2`, hint: `${mod}+⇧+2` }),
+        makeSlot('keys', 'Replay', '⏪', { keys: `${mod}+Shift+R`, hint: `${mod}+⇧+R` }),
+        makeSlot('keys', 'Studio', '🎚️', { keys: `${mod}+Shift+S`, hint: `${mod}+⇧+S` }),
+      ] }],
+      axes: [
+        { index: 1, name: 'Mic Gain', icon: '🎙️', kind: 'mic-gain', tapAction: 'deck:obs:mic', sensitivity: 'normal' },
+        { index: 2, name: 'Desktop Vol', icon: '🔊', kind: 'system-volume', tapAction: 'deck:audio:mute', sensitivity: 'normal' },
+      ],
+    },
+    {
+      name: 'Premiere Pro', icon: '🎬', color: '#a855f7', isDefault: false, columns: 4, rows: 2, appMatch: 'adobe premiere pro|premiere', titleMatch: '',
+      subPages: [{ name: 'Timeline', slots: [
+        makeSlot('keys', 'Razor', '✂️', { keys: 'C', hint: 'C' }),
+        makeSlot('keys', 'Select', '👆', { keys: 'V', hint: 'V' }),
+        makeSlot('keys', 'Ripple Del', '🗑️', { keys: 'Shift+Delete', hint: '⇧+Del' }),
+        makeSlot('keys', 'Mark In', '📥', { keys: 'I', hint: 'I' }),
+        makeSlot('keys', 'Mark Out', '📤', { keys: 'O', hint: 'O' }),
+        makeSlot('keys', 'Play/Stop', '⏯️', { keys: 'Space', hint: 'Space' }),
+        makeSlot('keys', 'Undo', '↩️', { keys: `${mod}+Z`, hint: `${mod}+Z` }),
+        makeSlot('keys', 'Export', '📦', { keys: `${mod}+M`, hint: `${mod}+M` }),
+      ] }],
+      axes: [
+        { index: 1, name: 'Timeline', icon: '🎞️', kind: 'keys', prevKeys: 'Left', nextKeys: 'Right', tapAction: 'Space', sensitivity: 'normal' },
+        { index: 2, name: 'Zoom', icon: '🔎', kind: 'keys', prevKeys: '-', nextKeys: '=', tapAction: '\\', sensitivity: 'normal' },
+      ],
+    },
+    {
+      name: 'DaVinci Resolve', icon: '🎨', color: '#f97316', isDefault: false, columns: 4, rows: 2, appMatch: 'resolve|davinci resolve', titleMatch: '',
+      subPages: [{ name: 'Cut & Color', slots: [
+        makeSlot('keys', 'Blade', '✂️', { keys: `${mod}+B`, hint: `${mod}+B` }),
+        makeSlot('keys', 'Undo', '↩️', { keys: `${mod}+Z`, hint: `${mod}+Z` }),
+        makeSlot('keys', 'In', '📥', { keys: 'I', hint: 'I' }),
+        makeSlot('keys', 'Out', '📤', { keys: 'O', hint: 'O' }),
+        makeSlot('keys', 'Loop', '🔁', { keys: `${mod}+/`, hint: `${mod}+/` }),
+        makeSlot('keys', 'Play', '⏯️', { keys: 'Space', hint: 'Space' }),
+        makeSlot('keys', 'Color Page', '🌈', { keys: 'Shift+6', hint: '⇧+6' }),
+        makeSlot('keys', 'Grab Still', '📸', { keys: `${mod}+Alt+G`, hint: `${mod}+⌥+G` }),
+      ] }],
+      axes: [
+        { index: 1, name: 'Jog', icon: '🎞️', kind: 'keys', prevKeys: 'J', nextKeys: 'L', tapAction: 'K', sensitivity: 'normal' },
+        { index: 2, name: 'Zoom', icon: '🔎', kind: 'keys', prevKeys: `${mod}+-`, nextKeys: `${mod}+=`, tapAction: 'Shift+Z', sensitivity: 'normal' },
+      ],
+    },
+    {
+      name: 'Photoshop', icon: '🖌️', color: '#0ea5e9', isDefault: false, columns: 4, rows: 2, appMatch: 'photoshop', titleMatch: '',
+      subPages: [{ name: 'Paint', slots: [
+        makeSlot('keys', 'Brush', '🖌️', { keys: 'B', hint: 'B' }),
+        makeSlot('keys', 'Eraser', '🧽', { keys: 'E', hint: 'E' }),
+        makeSlot('keys', 'Lasso', '➰', { keys: 'L', hint: 'L' }),
+        makeSlot('keys', 'Swap X', '🔄', { keys: 'X', hint: 'X' }),
+        makeSlot('keys', 'Undo', '↩️', { keys: `${mod}+Z`, hint: `${mod}+Z` }),
+        makeSlot('keys', 'New Layer', '➕', { keys: `${mod}+Shift+N`, hint: `${mod}+⇧+N` }),
+        makeSlot('keys', 'Fit Screen', '🖼️', { keys: `${mod}+0`, hint: `${mod}+0` }),
+        makeSlot('keys', 'Save', '💾', { keys: `${mod}+S`, hint: `${mod}+S` }),
+      ] }],
+      axes: [
+        { index: 1, name: 'Brush Size', icon: '⭕', kind: 'keys', prevKeys: '[', nextKeys: ']', tapAction: 'X', sensitivity: 'normal' },
+        { index: 2, name: 'Zoom', icon: '🔎', kind: 'keys', prevKeys: `${mod}+-`, nextKeys: `${mod}+=`, tapAction: `${mod}+0`, sensitivity: 'normal' },
+      ],
+    },
+    {
+      name: 'Figma', icon: '📐', color: '#ec4899', isDefault: false, columns: 4, rows: 2, appMatch: 'figma', titleMatch: '',
+      subPages: [{ name: 'Design', slots: [
+        makeSlot('keys', 'Frame', '⬜', { keys: 'F', hint: 'F' }),
+        makeSlot('keys', 'Rect', '🟦', { keys: 'R', hint: 'R' }),
+        makeSlot('keys', 'Text', '🔤', { keys: 'T', hint: 'T' }),
+        makeSlot('keys', 'Comment', '💬', { keys: 'C', hint: 'C' }),
+        makeSlot('keys', 'Auto Layout', '📐', { keys: 'Shift+A', hint: '⇧+A' }),
+        makeSlot('keys', 'Group', '📦', { keys: `${mod}+G`, hint: `${mod}+G` }),
+        makeSlot('keys', 'Duplicate', '📑', { keys: `${mod}+D`, hint: `${mod}+D` }),
+        makeSlot('keys', 'UI Toggle', '👁️', { keys: `${mod}+\\`, hint: `${mod}+\\` }),
+      ] }],
+      axes: [
+        { index: 1, name: 'Zoom', icon: '🔎', kind: 'keys', prevKeys: '-', nextKeys: '=', tapAction: 'Shift+0', sensitivity: 'normal' },
+        { index: 2, name: 'Undo / Redo', icon: '↩️', kind: 'keys', prevKeys: `${mod}+Z`, nextKeys: `${mod}+Shift+Z`, tapAction: '', sensitivity: 'normal' },
+      ],
+    },
+    {
+      name: 'VS Code', icon: '💻', color: '#3b82f6', isDefault: false, columns: 4, rows: 2, appMatch: 'code|code - insiders|cursor|windsurf', titleMatch: '',
+      subPages: [
+        { name: 'Code', slots: [
+          makeSlot('keys', 'Palette', '⌘', { keys: `${mod}+Shift+P`, hint: `${mod}+⇧+P` }),
+          makeSlot('keys', 'Quick Open', '🔍', { keys: `${mod}+P`, hint: `${mod}+P` }),
+          makeSlot('keys', 'Find', '🔎', { keys: `${mod}+F`, hint: `${mod}+F` }),
+          makeSlot('keys', 'Sidebar', '◧', { keys: `${mod}+B`, hint: `${mod}+B` }),
+          makeSlot('keys', 'Comment', '💬', { keys: `${mod}+/`, hint: `${mod}+/` }),
+          makeSlot('keys', 'Terminal', '⬛', { keys: `${mod}+\``, hint: `${mod}+\`` }),
+          makeSlot('keys', 'Format', '✨', { keys: 'Shift+Alt+F', hint: '⇧+⌥+F' }),
+          makeSlot('keys', 'Save', '💾', { keys: `${mod}+S`, hint: `${mod}+S` }),
+        ] },
+        { name: 'Debug', slots: [
+          makeSlot('keys', 'Run', '▶️', { keys: 'F5', hint: 'F5' }),
+          makeSlot('keys', 'Over', '⤵️', { keys: 'F10', hint: 'F10' }),
+          makeSlot('keys', 'Into', '⬇️', { keys: 'F11', hint: 'F11' }),
+          makeSlot('keys', 'Stop', '⏹️', { keys: 'Shift+F5', hint: '⇧+F5' }),
+        ] },
+      ],
+      axes: [
+        { index: 1, name: 'Undo / Redo', icon: '↩️', kind: 'keys', prevKeys: `${mod}+Z`, nextKeys: mod === 'Cmd' ? 'Cmd+Shift+Z' : 'Ctrl+Y', tapAction: `${mod}+S`, sensitivity: 'normal' },
+        { index: 2, name: 'Zoom', icon: '🔎', kind: 'keys', prevKeys: `${mod}+-`, nextKeys: `${mod}+=`, tapAction: `${mod}+0`, sensitivity: 'normal' },
+      ],
+    },
+    {
+      name: 'Browser (YouTube / Twitch)', icon: '▶️', color: '#ef4444', isDefault: false, columns: 4, rows: 2, appMatch: 'chrome|msedge|firefox|safari|brave|arc', titleMatch: 'YouTube|Twitch',
+      subPages: [{ name: 'Playback', slots: [
+        makeSlot('keys', 'Rewind 10s', '⏪', { keys: 'J', hint: 'J' }),
+        makeSlot('keys', 'Play/Pause', '⏯️', { keys: 'K', hint: 'K' }),
+        makeSlot('keys', 'Forward 10s', '⏩', { keys: 'L', hint: 'L' }),
+        makeSlot('keys', 'Mute', '🔇', { keys: 'M', hint: 'M' }),
+        makeSlot('keys', 'Fullscreen', '⛶', { keys: 'F', hint: 'F' }),
+        makeSlot('keys', 'Captions', '💬', { keys: 'C', hint: 'C' }),
+        makeSlot('keys', 'Back', '⬅️', { keys: navBack, hint: 'Back' }),
+        makeSlot('keys', 'Forward', '➡️', { keys: navFwd, hint: 'Fwd' }),
+      ] }],
+      axes: [
+        { index: 1, name: 'Scrub', icon: '⏩', kind: 'keys', prevKeys: 'J', nextKeys: 'L', tapAction: 'K', sensitivity: 'normal' },
+        { index: 2, name: 'Volume', icon: '🔊', kind: 'system-volume', tapAction: 'M', sensitivity: 'normal' },
+      ],
+    },
+    {
+      name: 'Discord / Zoom', icon: '🎧', color: '#6366f1', isDefault: false, columns: 4, rows: 2, appMatch: 'discord|zoom|teams', titleMatch: '',
+      subPages: [{ name: 'Calls', slots: [
+        makeSlot('keys', 'Mic Mute', '🎙️', { keys: `${mod}+Shift+M`, hint: `${mod}+⇧+M`, toggle: true }),
+        makeSlot('keys', 'Deafen', '🔕', { keys: `${mod}+Shift+D`, hint: `${mod}+⇧+D`, toggle: true }),
+        makeSlot('keys', 'Video', '📹', { keys: `${mod}+Shift+V`, hint: `${mod}+⇧+V`, toggle: true }),
+        makeSlot('keys', 'Share', '🖥️', { keys: `${mod}+Shift+S`, hint: `${mod}+⇧+S` }),
+        makeSlot('deck', 'Sys Mute', '🔇', { target: 'audio:mute', toggle: true, stateKey: 'audio:muted' }),
+        makeSlot('keys', 'Leave', '☎️', { keys: `${mod}+W`, hint: `${mod}+W` }),
+      ] }],
+      axes: [
+        { index: 1, name: 'Mic Gain', icon: '🎙️', kind: 'mic-gain', tapAction: 'deck:audio:mute', sensitivity: 'normal' },
+        { index: 2, name: 'Volume', icon: '🔊', kind: 'system-volume', tapAction: '', sensitivity: 'normal' },
+      ],
+    },
+  ];
+}
+
+function addConsoleProfile(profile) {
+  cfg.console ??= { autoFollow: true, focusBeforeKeys: true, profiles: [] };
+  cfg.console.profiles ??= [];
+  const copy = JSON.parse(JSON.stringify(profile));
+  if (copy.isDefault) cfg.console.profiles.forEach((p) => { p.isDefault = false; });
+  copy.id ||= '';
+  copy.enabled ??= true;
+  copy.columns ||= 4;
+  copy.rows ||= 2;
+  copy.subPages = copy.subPages?.length ? copy.subPages : [{ id: '', name: 'Main', slots: [] }];
+  copy.axes ??= [];
+  cfg.console.profiles.push(copy);
+  selConProfile = cfg.console.profiles.length - 1;
+  selConSub = 0; selConSlot = 0;
+  renderConsole();
+  changed();
+}
+
+function keyComboFromEvent(e) {
+  const key = e.key;
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(key)) return null;
+  if (key === 'Escape' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) return 'CANCEL';
+  const parts = [];
+  if (e.ctrlKey) parts.push('Ctrl');
+  if (e.altKey) parts.push('Alt');
+  if (e.shiftKey) parts.push('Shift');
+  if (e.metaKey) parts.push(consoleMod() === 'Cmd' ? 'Cmd' : 'Win');
+  const map = {
+    ' ': 'Space', ArrowLeft: 'Left', ArrowRight: 'Right', ArrowUp: 'Up', ArrowDown: 'Down',
+    Escape: 'Esc', Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Delete: 'Delete',
+    Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown',
+  };
+  let name = map[key] || (key.length === 1 ? key.toUpperCase() : key);
+  if (/^F\d{1,2}$/i.test(name)) name = name.toUpperCase();
+  parts.push(name);
+  return parts.join('+');
+}
+
+function recordButton(onRecorded) {
+  const btn = h('button', { type: 'button', class: 'btn sm con-rec' }, '⏺ Record keys');
+  btn.onclick = () => {
+    btn.classList.add('recording');
+    btn.textContent = 'Press shortcut… (Esc to cancel)';
+    const stop = () => {
+      btn.classList.remove('recording');
+      btn.textContent = '⏺ Record keys';
+      window.removeEventListener('keydown', onKey, true);
+    };
+    const onKey = (e) => {
+      const combo = keyComboFromEvent(e);
+      if (combo === null) return;
+      e.preventDefault(); e.stopPropagation();
+      stop();
+      if (combo !== 'CANCEL') onRecorded(combo);
+    };
+    window.addEventListener('keydown', onKey, true);
+  };
+  return btn;
+}
+
+function openConsolePresets() {
+  $('modalBody').replaceChildren(
+    h('h3', {}, 'Add Console Profile from Preset'),
+    h('div', { class: 'tpl-grid' }, ...buildConsolePresets().map((pr) =>
+      h('button', { type: 'button', class: 'tpl', onclick: () => { closeModal(); addConsoleProfile(pr); } },
+        h('b', {}, `${pr.icon} ${pr.name}`),
+        h('small', {}, pr.isDefault ? 'Fallback when no app matches' : `Matches: ${pr.appMatch}${pr.titleMatch ? ' · Title: ' + pr.titleMatch : ''}`),
+        h('small', {}, `${pr.subPages[0]?.slots?.length || 0} keys · ${(pr.axes || []).length} axes`)))));
+  $('modal').hidden = false;
+}
+
+async function openWindowPicker() {
+  $('modalBody').replaceChildren(h('h3', {}, 'Pick a Running Application'), h('p', { class: 'hint' }, 'Loading open windows…'));
+  $('modal').hidden = false;
+  let list = [];
+  try { list = await (await fetch('/api/console/windows')).json(); } catch (_) {}
+  if (!Array.isArray(list) || !list.length) {
+    $('modalBody').replaceChildren(h('h3', {}, 'Pick a Running Application'), h('p', { class: 'hint' }, 'No visible application windows were detected.'));
+    return;
+  }
+  const cur = (cfg.console?.profiles || [])[selConProfile];
+  $('modalBody').replaceChildren(
+    h('h3', {}, 'Pick a Running Application'),
+    h('p', { class: 'hint' }, cur && !cur.isDefault
+      ? `Click an app to apply its process matcher to "${cur.name}", or choose Create new profile.`
+      : 'Click an app to create a new profile targeting its process.'),
+    h('div', { class: 'con-win-list' }, ...list.map((win) => {
+      const img = window.PhoneBoxDemo ? null : h('img', { src: `/api/procs/icon?name=${encodeURIComponent(win.process)}`, alt: '' });
+      if (img) img.onerror = () => { img.style.display = 'none'; };
+      return h('button', { type: 'button', class: 'con-win-row', onclick: () => {
+        closeModal();
+        const mod = consoleMod();
+        addConsoleProfile({
+          name: win.process, icon: '🎛️', color: '#38bdf8', isDefault: false, columns: 4, rows: 2,
+          appMatch: win.process, titleMatch: '',
+          subPages: [{ name: 'Main', slots: [makeSlot('keys', 'Copy', '📋', { keys: `${mod}+C`, hint: `${mod}+C` }), makeSlot('keys', 'Paste', '📥', { keys: `${mod}+V`, hint: `${mod}+V` })] }],
+          axes: [{ index: 1, name: 'Volume', icon: '🔊', kind: 'system-volume', tapAction: 'deck:audio:mute', sensitivity: 'normal' }],
+        });
+      } }, img, h('div', { style: { minWidth: '0' } }, h('b', {}, win.process), win.title ? h('div', { class: 'hint', style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' } }, win.title) : null));
+    })));
+}
+
+function renderConsole() {
+  cfg.console ??= { autoFollow: true, focusBeforeKeys: true, profiles: [] };
+  cfg.console.profiles ??= [];
+  const followEl = $('conFollow'), focusEl = $('conFocus');
+  if (followEl) {
+    followEl.checked = cfg.console.autoFollow !== false;
+    followEl.onchange = (e) => { cfg.console.autoFollow = e.target.checked; changed(); };
+  }
+  if (focusEl) {
+    focusEl.checked = cfg.console.focusBeforeKeys !== false;
+    focusEl.onchange = (e) => { cfg.console.focusBeforeKeys = e.target.checked; changed(); };
+  }
+  const profiles = cfg.console.profiles;
+  if (selConProfile >= profiles.length) selConProfile = Math.max(0, profiles.length - 1);
+
+  $('conProfiles').replaceChildren(...profiles.map((p, i) =>
+    h('button', { type: 'button', class: 'con-ptab' + (i === selConProfile ? ' on' : '') + (p.enabled === false ? ' off' : ''),
+      onclick: () => { selConProfile = i; selConSub = 0; selConSlot = 0; renderConsole(); } },
+      h('span', { style: { fontSize: '20px' } }, p.icon || '🎛️'),
+      h('div', { class: 'con-ptab-main' },
+        h('b', {}, p.name || '(untitled)'),
+        h('small', {}, p.isDefault ? 'Default fallback' : (p.appMatch || p.titleMatch || 'No match rule'))),
+      p.isDefault ? h('span', { class: 'con-badge' }, 'Default') : null)));
+  renderConsoleEditor();
+}
+
+function renderConsoleEditor() {
+  const ed = $('conEditor');
+  ed.textContent = '';
+  const profiles = cfg.console?.profiles || [];
+  const p = profiles[selConProfile];
+  if (!p) { ed.append(h('p', { class: 'lead', style: { margin: 0 } }, 'No profiles yet. Click "Add from preset" or "Blank profile" above.')); return; }
+
+  p.subPages = p.subPages?.length ? p.subPages : [{ id: '', name: 'Main', slots: [] }];
+  p.axes ??= [];
+  if (selConSub >= p.subPages.length) selConSub = 0;
+  const sub = p.subPages[selConSub];
+  sub.slots ??= [];
+  const cols = Math.max(2, Math.min(6, p.columns || 4));
+  const rows = Math.max(1, Math.min(4, p.rows || 2));
+  const totalSlots = cols * rows;
+  if (selConSlot >= totalSlots) selConSlot = 0;
+
+  const upd = (rerenderList = false) => { changed(); if (rerenderList) renderConsole(); };
+  const textIn = (label, val, ph, onInput) => h('div', { class: 'field' }, h('label', {}, label),
+    h('input', { type: 'text', value: val ?? '', placeholder: ph, oninput: (e) => onInput(e.target.value) }));
+
+  const deckPickList = [
+    ['media:playpause', 'Media: Play / Pause'], ['media:next', 'Media: Next track'], ['media:prev', 'Media: Previous track'],
+    ['audio:mute', 'System Audio: Mute toggle'], ['obs:record', 'OBS: Toggle recording'], ['obs:stream', 'OBS: Toggle stream'],
+    ['obs:pause', 'OBS: Pause recording'], ['obs:mic', 'OBS: Toggle mic mute'],
+  ];
+
+  // Ensure slot array is large enough for editing
+  while (sub.slots.length <= selConSlot) sub.slots.push(makeSlot('empty', '', ''));
+  const slot = sub.slots[selConSlot];
+
+  const slotInspector = h('div', { style: { borderTop: '1px solid var(--line)', paddingTop: '12px' } });
+  const buildSlotInspector = () => {
+    slotInspector.textContent = '';
+    const extra = [];
+    if (slot.kind === 'keys') {
+      const kIn = h('input', { type: 'text', value: slot.keys ?? '', placeholder: 'e.g. Ctrl+Shift+B', style: { flex: '1' },
+        oninput: (e) => { slot.keys = e.target.value; upd(false); renderSlotGrid(); } });
+      const hIn = h('input', { type: 'text', value: slot.hint ?? '', maxlength: 20, placeholder: 'Badge label (optional, max 20)',
+        oninput: (e) => { slot.hint = e.target.value; upd(false); renderSlotGrid(); } });
+      const rec = recordButton((combo) => {
+        const prev = slot.keys;
+        slot.keys = combo; kIn.value = combo;
+        if (!slot.hint || slot.hint === prev) { slot.hint = combo.slice(0, 20); hIn.value = slot.hint; }
+        upd(false); renderSlotGrid();
+      });
+      extra.push(
+        h('div', { class: 'field' }, h('label', {}, 'Keys'), h('div', { class: 'row' }, kIn, rec)),
+        h('div', { class: 'field' }, h('label', {}, 'Phone badge hint'), hIn));
+    } else if (slot.kind === 'text') {
+      extra.push(h('div', { class: 'field' }, h('label', {}, 'Text to type'),
+        h('textarea', { rows: 2, oninput: (e) => { slot.text = e.target.value; upd(false); } }, slot.text ?? '')));
+    } else if (slot.kind === 'macro') {
+      extra.push(h('div', { class: 'field' }, h('label', {}, 'Macro steps (one per line)'),
+        h('textarea', { rows: 4, placeholder: 'keys:Ctrl+C\nwait:150\ntext:Done', oninput: (e) => { slot.steps = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean); upd(false); } }, (slot.steps || []).join('\n'))));
+    } else if (slot.kind === 'shortcut') {
+      extra.push(h('div', { class: 'field' }, h('label', {}, 'Shortcut'),
+        h('select', { onchange: (e) => { slot.target = e.target.value; upd(false); renderSlotGrid(); } },
+          h('option', { value: '' }, '(pick a shortcut)'),
+          ...(cfg.shortcuts || []).map((sc) => h('option', { value: sc.id, selected: sc.id === slot.target }, `${sc.icon || ''} ${sc.label}`.trim())))));
+    } else if (slot.kind === 'deck') {
+      const tIn = h('input', { type: 'text', value: slot.target ?? '', placeholder: 'e.g. media:playpause, obs:scene:Main', style: { flex: '1' },
+        oninput: (e) => { slot.target = e.target.value; upd(false); renderSlotGrid(); } });
+      const dSel = h('select', { onchange: (e) => { if (e.target.value) { slot.target = e.target.value; tIn.value = e.target.value; upd(false); renderSlotGrid(); } e.target.value = ''; } },
+        h('option', { value: '' }, 'Quick pick deck command…'),
+        ...deckPickList.map(([k, l]) => h('option', { value: k }, l)),
+        ...(cfg.controls?.actions || []).map((a) => h('option', { value: `action:${a.id}` }, `Action: ${a.label || a.id}`)));
+      extra.push(h('div', { class: 'field' }, h('label', {}, 'Deck target'), h('div', { class: 'row' }, tIn, dSel)));
+    }
+    slotInspector.append(
+      h('h3', {}, `Slot #${selConSlot + 1} (${sub.name})`),
+      h('div', { class: 'grid2' },
+        h('div', {},
+          h('div', { class: 'field' }, h('label', {}, 'Action kind'),
+            h('select', { onchange: (e) => { slot.kind = e.target.value; if (slot.kind === 'keys' && !slot.label) slot.label = 'Key'; upd(false); renderSlotGrid(); buildSlotInspector(); } },
+              ...[['keys', 'Keyboard shortcut'], ['deck', 'Control Deck / Media / OBS'], ['shortcut', 'PhoneBox Shortcut'], ['macro', 'Macro steps'], ['text', 'Type text'], ['empty', 'Empty spacer']].map(([k, l]) => h('option', { value: k, selected: k === slot.kind }, l)))),
+          slot.kind !== 'empty' ? textIn('Label', slot.label, 'Key label', (v) => { slot.label = v; upd(false); renderSlotGrid(); }) : null,
+          slot.kind !== 'empty' ? textIn('Icon (emoji)', slot.icon, '🔘', (v) => { slot.icon = v; upd(false); renderSlotGrid(); }) : null),
+        h('div', {},
+          ...extra,
+          slot.kind !== 'empty' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!slot.toggle, onchange: (e) => { slot.toggle = e.target.checked; upd(false); } }), 'Show toggle state on phone') : null)));
+  };
+
+  const slotGrid = h('div', { class: 'con-slot-grid', style: { '--cols': cols } });
+  const renderSlotGrid = () => {
+    slotGrid.style.setProperty('--cols', cols);
+    const nodes = [];
+    for (let i = 0; i < totalSlots; i++) {
+      const sl = sub.slots[i] || { kind: 'empty', label: '', icon: '' };
+      const empty = sl.kind === 'empty';
+      nodes.push(h('button', { type: 'button', class: 'con-slot' + (empty ? ' empty' : '') + (i === selConSlot ? ' sel' : ''),
+        onclick: () => { selConSlot = i; renderConsoleEditor(); } },
+        h('span', { style: { fontSize: '18px' } }, empty ? '＋' : (sl.icon || '🔘')),
+        h('span', {}, empty ? 'Empty' : (sl.label || 'Key')),
+        !empty && sl.hint ? h('small', {}, sl.hint) : null));
+    }
+    slotGrid.replaceChildren(...nodes);
+  };
+  renderSlotGrid();
+  buildSlotInspector();
+
+  const axesWrap = h('div', { style: { marginTop: '14px' } });
+  const renderAxes = () => {
+    axesWrap.replaceChildren(
+      h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '8px' } },
+        h('h3', { style: { margin: 0 } }, 'Numbered Dial & Roller Axes (1–8)'),
+        h('button', { type: 'button', class: 'btn sm', onclick: () => {
+          const used = new Set((p.axes || []).map((a) => a.index));
+          let idx = 1; while (used.has(idx) && idx <= 8) idx++;
+          if (idx > 8) { toast('Maximum 8 axes per profile', true); return; }
+          p.axes.push({ index: idx, name: `Axis ${idx}`, icon: '🎚️', kind: 'keys', prevKeys: '', nextKeys: '', tapAction: '', appTarget: '', sensitivity: 'normal' });
+          upd(false); renderAxes();
+        } }, '＋ Add axis')),
+      ...(p.axes || []).map((ax, ai) => {
+        const card = h('div', { class: 'con-axis-card' });
+        const row1 = h('div', { class: 'row' },
+          h('select', { style: { width: '76px' }, onchange: (e) => { ax.index = +e.target.value; upd(false); } },
+            ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => h('option', { value: n, selected: n === ax.index }, `#${n}`))),
+          h('input', { type: 'text', value: ax.icon || '🎚️', style: { width: '54px', textAlign: 'center' }, oninput: (e) => { ax.icon = e.target.value; upd(false); } }),
+          h('input', { type: 'text', value: ax.name || '', placeholder: 'Axis name', style: { flex: '1' }, oninput: (e) => { ax.name = e.target.value; upd(false); } }),
+          h('select', { onchange: (e) => { ax.kind = e.target.value; upd(false); renderAxes(); } },
+            ...[['keys', 'Keys (CCW / CW)'], ['system-volume', 'System volume'], ['app-volume', 'App volume (Windows)'], ['mic-gain', 'Mic gain (Windows)'], ['media-seek', 'Media seek'], ['brightness', 'Monitor brightness (Windows)']].map(([k, l]) => h('option', { value: k, selected: k === ax.kind }, l))),
+          h('select', { onchange: (e) => { ax.sensitivity = e.target.value; upd(false); } },
+            ...[['fine', 'Fine'], ['normal', 'Normal'], ['coarse', 'Coarse']].map(([k, l]) => h('option', { value: k, selected: k === ax.sensitivity }, l))),
+          h('button', { type: 'button', class: 'btn sm danger', onclick: () => { p.axes.splice(ai, 1); upd(false); renderAxes(); } }, 'Remove'));
+        card.append(row1);
+        if (ax.kind === 'keys') {
+          const pIn = h('input', { type: 'text', value: ax.prevKeys || '', placeholder: 'CCW / Up key', style: { flex: '1' }, oninput: (e) => { ax.prevKeys = e.target.value; upd(false); } });
+          const nIn = h('input', { type: 'text', value: ax.nextKeys || '', placeholder: 'CW / Down key', style: { flex: '1' }, oninput: (e) => { ax.nextKeys = e.target.value; upd(false); } });
+          card.append(h('div', { class: 'row' },
+            h('span', { class: 'hint' }, 'CCW:'), pIn, recordButton((c) => { ax.prevKeys = c; pIn.value = c; upd(false); }),
+            h('span', { class: 'hint' }, 'CW:'), nIn, recordButton((c) => { ax.nextKeys = c; nIn.value = c; upd(false); })));
+        } else if (['app-volume', 'mic-gain', 'brightness'].includes(ax.kind)) {
+          card.append(h('input', { type: 'text', value: ax.appTarget || '', placeholder: 'Target app/device match (blank = auto)', oninput: (e) => { ax.appTarget = e.target.value; upd(false); } }));
+        }
+        card.append(h('input', { type: 'text', value: ax.tapAction || '', placeholder: 'Center tap action (e.g. Space, deck:audio:mute)', oninput: (e) => { ax.tapAction = e.target.value; upd(false); } }));
+        return card;
+      }));
+  };
+  renderAxes();
+
+  ed.append(
+    h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '10px' } },
+      h('h3', { style: { margin: 0 } }, `${p.icon || '🎛️'} ${p.name || 'Profile'}`),
+      h('div', { class: 'row', style: { gap: '8px' } },
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: p.enabled !== false, onchange: (e) => { p.enabled = e.target.checked; upd(true); } }), 'Enabled'),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!p.isDefault, onchange: (e) => { if (e.target.checked) cfg.console.profiles.forEach((x) => { x.isDefault = false; }); p.isDefault = e.target.checked; upd(true); } }), 'Default fallback'),
+        h('button', { type: 'button', class: 'btn sm danger', onclick: () => { cfg.console.profiles.splice(selConProfile, 1); selConProfile = Math.max(0, selConProfile - 1); selConSub = 0; selConSlot = 0; upd(true); } }, 'Delete'))),
+    h('div', { class: 'grid2' },
+      h('div', {},
+        textIn('Profile name', p.name, 'e.g. OBS Studio', (v) => { p.name = v; upd(true); }),
+        h('div', { class: 'row' },
+          h('div', { class: 'field' }, h('label', {}, 'Icon'), h('input', { type: 'text', class: 'icon-input', value: p.icon || '🎛️', oninput: (e) => { p.icon = e.target.value; upd(true); } })),
+          h('div', { class: 'field' }, h('label', {}, 'Accent colour'), h('input', { type: 'color', value: p.color || '#38bdf8', oninput: (e) => { p.color = e.target.value; upd(false); } })),
+          h('div', { class: 'field' }, h('label', {}, 'Cols'), h('input', { type: 'number', min: 2, max: 6, value: cols, style: { width: '70px' }, onchange: (e) => { p.columns = Math.max(2, Math.min(6, +e.target.value || 4)); upd(false); renderConsoleEditor(); } })),
+          h('div', { class: 'field' }, h('label', {}, 'Rows'), h('input', { type: 'number', min: 1, max: 4, value: rows, style: { width: '70px' }, onchange: (e) => { p.rows = Math.max(1, Math.min(4, +e.target.value || 2)); upd(false); renderConsoleEditor(); } })))),
+      h('div', {},
+        textIn('App process match (separate alternatives with |)', p.appMatch, 'e.g. obs64|obs', (v) => { p.appMatch = v; upd(true); }),
+        textIn('Window title match (optional)', p.titleMatch, 'e.g. YouTube|Twitch', (v) => { p.titleMatch = v; upd(true); }))),
+    h('div', { class: 'con-subs' },
+      h('span', { class: 'hint' }, 'Sub-pages:'),
+      ...p.subPages.map((sp, si) => h('button', { type: 'button', class: 'btn sm' + (si === selConSub ? ' primary' : ''),
+        onclick: () => { selConSub = si; selConSlot = 0; renderConsoleEditor(); } }, sp.name || `Page ${si + 1}`)),
+      h('button', { type: 'button', class: 'btn sm', onclick: () => { p.subPages.push({ id: '', name: `Page ${p.subPages.length + 1}`, slots: [] }); selConSub = p.subPages.length - 1; selConSlot = 0; upd(false); renderConsoleEditor(); } }, '＋ Sub-page'),
+      p.subPages.length > 1 ? h('button', { type: 'button', class: 'btn sm danger', onclick: () => { p.subPages.splice(selConSub, 1); selConSub = Math.max(0, selConSub - 1); selConSlot = 0; upd(false); renderConsoleEditor(); } }, 'Delete sub-page') : null),
+    slotGrid,
+    slotInspector,
+    axesWrap);
+}
+
+$('conPresetBtn').onclick = openConsolePresets;
+$('conWinBtn').onclick = openWindowPicker;
+$('conNewBtn').onclick = () => addConsoleProfile({ name: 'New Profile', icon: '🎛️', color: '#38bdf8', columns: 4, rows: 2, appMatch: '', subPages: [{ name: 'Main', slots: [] }], axes: [] });
+
 // ---------------------------------------------------------------- general
 function renderControlSettings() {
   const root = $('controlSettings');
@@ -2112,11 +2645,12 @@ async function load() {
   cfgVersion = res.headers.get('X-Config-Version');
   cfg = await res.json();
   cfg.pages ??= []; cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night ??= {}; cfg.weather ??= {}; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false };
+  cfg.console ??= { autoFollow: true, focusBeforeKeys: true, profiles: [] }; cfg.console.profiles ??= [];
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
   saved = JSON.stringify(cfg);
-  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderCharge(); bindForm(); changed(); loadInfo(); loadPhones();
+  renderPages(); renderDeck(); renderConsole(); renderRules(); renderCalendars(); renderCharge(); bindForm(); changed(); loadInfo(); loadPhones();
 }
 
 async function save() {
@@ -2131,7 +2665,7 @@ async function save() {
 }
 
 $('save').onclick = save;
-$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderRules(); renderCalendars(); renderPhones(); renderCharge(); bindForm(); changed(); };
+$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderConsole(); renderRules(); renderCalendars(); renderPhones(); renderCharge(); bindForm(); changed(); };
 $('openPhone').onclick = async () => { await fetch('/api/phone/open', { method: 'POST' }); toast('Opening the panel on the phone'); };
 $('cityBtn').onclick = searchCity;
 function renderUpdate(u) {
@@ -2190,7 +2724,7 @@ $('whClear').onclick = async () => { if (!confirm('Delete all pushed values?')) 
 setInterval(loadPushed, 4000);
 $('citySearch').onkeydown = (e) => { if (e.key === 'Enter') searchCity(); };
 $('applyJson').onclick = () => {
-  try { cfg = JSON.parse($('json').value); $('jsonErr').textContent = ''; renderPages(); renderDeck(); renderRules(); renderCalendars(); renderPhones(); renderCharge(); bindForm(); changed(); toast('JSON loaded into the form — remember to save'); }
+  try { cfg = JSON.parse($('json').value); cfg.console ??= { autoFollow: true, focusBeforeKeys: true, profiles: [] }; $('jsonErr').textContent = ''; renderPages(); renderDeck(); renderConsole(); renderRules(); renderCalendars(); renderPhones(); renderCharge(); bindForm(); changed(); toast('JSON loaded into the form — remember to save'); }
   catch (e) { $('jsonErr').textContent = e.message; }
 };
 document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (!$('save').disabled) save(); } });

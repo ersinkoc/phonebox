@@ -73,6 +73,7 @@ AddMonitor<ObsMonitor>(builder.Services);
 AddMonitor<BatteryMonitor>(builder.Services);
 AddMonitor<RuleEngine>(builder.Services);
 AddMonitor<ChargeGuard>(builder.Services);
+AddMonitor<ConsoleService>(builder.Services);
 builder.Services.AddHostedService<Tray>();
 
 var app = builder.Build();
@@ -98,6 +99,10 @@ app.MapGet("/api/controls/spotify/callback", async (string? state, string? code,
 app.MapGet("/api/controls/obs", async (ObsMonitor obs, CancellationToken ct) => Results.Json(await obs.DeckSnapshot(ct)));
 app.MapPost("/api/controls/obs/{action}", async (string action, string? id, int? value, bool? enabled, ObsMonitor obs, CancellationToken ct) =>
     Results.Json(await obs.DeckAct(action, id, value, enabled, ct)));
+app.MapGet("/api/console/state", (ConsoleService console) => Results.Json(console.Snapshot()));
+app.MapPost("/api/console/act", async (ConsoleActRequest req, ConsoleService console, CancellationToken ct) =>
+    Results.Json(await console.ActAsync(req, ct)));
+app.MapGet("/api/console/windows", (ConsoleService console) => Results.Json(console.ListWindows()));
 
 // The panel in a desktop browser (the layout editor's live preview, /panel/) calls the API as /agent/api/..., the same
 // path the phone uses; on the local port that is simply /api/... Routing runs after this, so it sees the new path.

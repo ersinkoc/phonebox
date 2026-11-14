@@ -22,6 +22,79 @@
   const PAGES = ['home', 'dashboard', 'ai', 'work', 'system', 'procs', 'deck', 'music', 'status', 'ambient', 'world', 'daily', 'markets', 'feeds', 'focus', 'calm', 'clock', 'automation', 'planner', 'nightstand', 'weekend', 'focuswork',
     'codexbar', 'devops', 'audio-deck', 'stream-deck', 'meeting-deck', 'development-deck', 'music-deck', 'system-deck'];
 
+  const DEFAULT_CONSOLE = {
+    autoFollow: true,
+    focusBeforeKeys: true,
+    profiles: [
+      {
+        id: 'desktop', name: 'Desktop', icon: '🖥️', color: '#38bdf8', isDefault: true, enabled: true, columns: 4, rows: 2, appMatch: null, titleMatch: null,
+        subPages: [{
+          id: 'media', name: 'Media & Essentials', slots: [
+            { kind: 'deck', label: 'Prev', icon: '⏮️', target: 'media:prev' },
+            { kind: 'deck', label: 'Play / Pause', icon: '⏯️', target: 'media:playpause', toggle: true, stateKey: 'media:playing' },
+            { kind: 'deck', label: 'Next', icon: '⏭️', target: 'media:next' },
+            { kind: 'deck', label: 'Mute', icon: '🔇', target: 'audio:mute', toggle: true, stateKey: 'audio:muted' },
+            { kind: 'keys', label: 'Copy', icon: '📋', hint: 'Ctrl+C', keys: 'Ctrl+C' },
+            { kind: 'keys', label: 'Paste', icon: '📥', hint: 'Ctrl+V', keys: 'Ctrl+V' },
+            { kind: 'keys', label: 'Undo', icon: '↩️', hint: 'Ctrl+Z', keys: 'Ctrl+Z' },
+            { kind: 'keys', label: 'Switch App', icon: '🪟', hint: 'Alt+Tab', keys: 'Alt+Tab' },
+          ],
+        }],
+        axes: [
+          { index: 1, name: 'Volume', icon: '🔊', kind: 'system-volume', tapAction: 'deck:audio:mute', sensitivity: 'normal' },
+          { index: 2, name: 'Seek', icon: '⏩', kind: 'media-seek', tapAction: 'deck:media:playpause', sensitivity: 'normal' },
+        ],
+      },
+      {
+        id: 'vscode', name: 'VS Code', icon: '💻', color: '#3b82f6', isDefault: false, enabled: true, columns: 4, rows: 2, appMatch: 'code|cursor|windsurf', titleMatch: null,
+        subPages: [
+          {
+            id: 'edit', name: 'Code & Edit', slots: [
+              { kind: 'keys', label: 'Palette', icon: '⌘', hint: 'Ctrl+Shift+P', keys: 'Ctrl+Shift+P' },
+              { kind: 'keys', label: 'Quick Open', icon: '🔍', hint: 'Ctrl+P', keys: 'Ctrl+P' },
+              { kind: 'keys', label: 'Find', icon: '🔎', hint: 'Ctrl+F', keys: 'Ctrl+F' },
+              { kind: 'keys', label: 'Sidebar', icon: '◧', hint: 'Ctrl+B', keys: 'Ctrl+B' },
+              { kind: 'keys', label: 'Comment', icon: '💬', hint: 'Ctrl+/', keys: 'Ctrl+/' },
+              { kind: 'keys', label: 'Terminal', icon: '⬛', hint: 'Ctrl+`', keys: 'Ctrl+`' },
+              { kind: 'keys', label: 'Format', icon: '✨', hint: 'Shift+Alt+F', keys: 'Shift+Alt+F' },
+              { kind: 'keys', label: 'Save', icon: '💾', hint: 'Ctrl+S', keys: 'Ctrl+S' },
+            ],
+          },
+          {
+            id: 'debug', name: 'Run & Debug', slots: [
+              { kind: 'keys', label: 'Run / Cont', icon: '▶️', hint: 'F5', keys: 'F5' },
+              { kind: 'keys', label: 'Step Over', icon: '⤵️', hint: 'F10', keys: 'F10' },
+              { kind: 'keys', label: 'Step Into', icon: '⬇️', hint: 'F11', keys: 'F11' },
+              { kind: 'keys', label: 'Stop', icon: '⏹️', hint: 'Shift+F5', keys: 'Shift+F5' },
+              { kind: 'keys', label: 'Breakpoint', icon: '🔴', hint: 'F9', keys: 'F9' },
+              { kind: 'keys', label: 'Go Def', icon: '🎯', hint: 'F12', keys: 'F12' },
+              { kind: 'keys', label: 'Rename', icon: '✏️', hint: 'F2', keys: 'F2' },
+              { kind: 'keys', label: 'Close Tab', icon: '✖️', hint: 'Ctrl+W', keys: 'Ctrl+W' },
+            ],
+          },
+        ],
+        axes: [
+          { index: 1, name: 'Undo / Redo', icon: '↩️', kind: 'keys', prevKeys: 'Ctrl+Z', nextKeys: 'Ctrl+Y', tapAction: 'Ctrl+S', sensitivity: 'normal' },
+          { index: 2, name: 'Zoom', icon: '🔎', kind: 'keys', prevKeys: 'Ctrl+-', nextKeys: 'Ctrl+=', tapAction: 'Ctrl+0', sensitivity: 'normal' },
+        ],
+      },
+      {
+        id: 'obs', name: 'OBS Studio', icon: '🎥', color: '#ef4444', isDefault: false, enabled: true, columns: 4, rows: 2, appMatch: 'obs64|obs', titleMatch: null,
+        subPages: [{
+          id: 'broadcast', name: 'Broadcast', slots: [
+            { kind: 'deck', label: 'Record', icon: '⏺️', target: 'obs:record', toggle: true, stateKey: 'obs:recording' },
+            { kind: 'deck', label: 'Stream', icon: '📡', target: 'obs:stream', toggle: true, stateKey: 'obs:streaming' },
+            { kind: 'deck', label: 'Pause Rec', icon: '⏸️', target: 'obs:pause', toggle: true, stateKey: 'obs:paused' },
+            { kind: 'deck', label: 'Mic Mute', icon: '🎙️', target: 'obs:mic', toggle: true, stateKey: 'obs:mic' },
+          ],
+        }],
+        axes: [
+          { index: 1, name: 'Desktop Vol', icon: '🔊', kind: 'system-volume', tapAction: 'deck:audio:mute', sensitivity: 'normal' },
+        ],
+      },
+    ],
+  };
+
   let catalog = null;
   async function loadCatalog() {
     if (catalog) return catalog;
@@ -36,7 +109,10 @@
 
   async function loadConfig() {
     let c = store.get('pb-demo-config', null);
-    if (c) return c;
+    if (c) {
+      if (!c.console) c.console = JSON.parse(JSON.stringify(DEFAULT_CONSOLE));
+      return c;
+    }
     const { templates } = await loadCatalog();
     const byId = Object.fromEntries(templates.map((t) => [t.id, t]));
     const rule = (r) => ({ enabled: true, match: null, value: null, page: null, text: null, level: null, key: null, pushValue: null, whileActive: true, shortcut: null,
@@ -82,6 +158,7 @@
       phones: [], calendars: [],
       homeAssistant: { url: null, token: null },
       obs: { enabled: true, url: 'ws://127.0.0.1:4455', password: null },
+      console: JSON.parse(JSON.stringify(DEFAULT_CONSOLE)),
     };
     c = JSON.parse(JSON.stringify(c, (_, v) => v === null ? undefined : v)); // the agent leaves unset (null) settings out
     store.set('pb-demo-config', c);
@@ -108,6 +185,25 @@
       shortcuts: (c.shortcuts || []).map(({ id, label, icon, color, toggle, cmd }) => ({ id, label, icon, color, toggle: !!toggle || cmd === 'builtin:mute' })),
       rules: (c.rules || []).map(({ id, name, enabled, when }) => ({ id, name, enabled: enabled !== false, when })),
       charge: { enabled: !!c.charge?.enabled, min: c.charge?.min ?? 50, max: c.charge?.max ?? 80 },
+      console: {
+        autoFollow: c.console?.autoFollow !== false,
+        profiles: (c.console?.profiles || []).map((p) => ({
+          id: p.id, name: p.name, icon: p.icon, color: p.color, isDefault: !!p.isDefault, enabled: p.enabled !== false,
+          columns: p.columns || 4, rows: p.rows || 2,
+          subPages: (p.subPages || []).map((sp) => ({
+            id: sp.id, name: sp.name,
+            slots: (sp.slots || []).map((s) => ({
+              kind: s.kind, label: s.label, icon: s.icon,
+              hint: s.kind === 'keys' && s.hint ? String(s.hint).slice(0, 20) : null,
+              color: s.color || null, toggle: !!s.toggle, stateKey: s.toggle ? (s.stateKey || null) : null,
+            })),
+          })),
+          axes: (p.axes || []).map((a) => ({
+            index: a.index, name: a.name, icon: a.icon, kind: a.kind, sensitivity: a.sensitivity || 'normal',
+            hasTap: !!a.tapAction,
+          })),
+        })),
+      },
     };
   }
 
@@ -193,6 +289,68 @@
 
   const toggles = {};
   let muteKeys = ['mute']; // ids of the shortcuts whose command is builtin:mute; their state is the computer's
+
+  // made-up App Console tracking & execution
+  const demoConsole = { activeProcess: 'firefox', activeTitle: 'Mozilla Firefox', pinnedProfileId: null, slotStates: {}, lastAction: null };
+  const matchPattern = (haystack, pattern) => {
+    if (!haystack || !pattern) return false;
+    const h = String(haystack).trim().replace(/\.exe$/i, '').toLowerCase();
+    return String(pattern).split(/[|,]/).map((s) => s.trim().replace(/\.exe$/i, '').toLowerCase()).some((t) => t && h.includes(t));
+  };
+  const matchConsoleProfile = (c) => {
+    if (c.console?.autoFollow === false) return null;
+    const list = (c.console?.profiles || []).filter((p) => p && p.enabled !== false && !p.isDefault);
+    return list.find((p) => p.appMatch && p.titleMatch && matchPattern(demoConsole.activeProcess, p.appMatch) && matchPattern(demoConsole.activeTitle, p.titleMatch))
+      || list.find((p) => !p.appMatch && p.titleMatch && matchPattern(demoConsole.activeTitle, p.titleMatch))
+      || list.find((p) => p.appMatch && !p.titleMatch && matchPattern(demoConsole.activeProcess, p.appMatch))
+      || null;
+  };
+  async function consoleSnapshot() {
+    const c = await config();
+    const list = (c.console?.profiles || []).filter((p) => p && p.enabled !== false);
+    const matched = matchConsoleProfile(c)?.id || null;
+    const pinned = demoConsole.pinnedProfileId && list.some((p) => p.id === demoConsole.pinnedProfileId) ? demoConsole.pinnedProfileId : null;
+    const effective = pinned || matched || list.find((p) => p.isDefault)?.id || list[0]?.id || null;
+    const slotStates = { ...demoConsole.slotStates, 'audio:muted': audio.muted, 'media:playing': player.playing,
+      'obs:recording': !!obs.recordingSince && !obs.paused, 'obs:paused': obs.paused, 'obs:streaming': !!obs.streamingSince, 'obs:mic': obs.mic };
+    return { autoFollow: c.console?.autoFollow !== false, activeProcess: demoConsole.activeProcess, activeTitle: demoConsole.activeTitle,
+      matchedProfileId: matched, pinnedProfileId: pinned, effectiveProfileId: effective, slotStates, updatedAt: now() };
+  }
+  async function consoleAct(req) {
+    const c = await config();
+    const list = (c.console?.profiles || []).filter((p) => p && p.enabled !== false);
+    if (req.kind === 'pin') {
+      if (req.pinned && !list.some((p) => p.id === req.pinned)) return { ok: false, error: 'Selected profile was not found', state: await consoleSnapshot() };
+      demoConsole.pinnedProfileId = req.pinned || null;
+      demoConsole.lastAction = { ...req };
+      return { ok: true, error: null, state: await consoleSnapshot() };
+    }
+    const profile = list.find((p) => p.id === req.profileId) || list.find((p) => p.isDefault) || list[0];
+    if (!profile) return { ok: false, error: 'No active console profile', state: await consoleSnapshot() };
+    if (req.kind === 'slot') {
+      const sub = (profile.subPages || []).find((s) => s.id === req.subPageId) || profile.subPages?.[0];
+      const slot = sub?.slots?.[req.slot ?? -1];
+      if (!slot) return { ok: false, error: 'Slot out of range', state: await consoleSnapshot() };
+      if (slot.kind === 'deck') {
+        if (slot.target === 'audio:mute') audio.muted = !audio.muted;
+        else if (slot.target?.startsWith('media:')) mediaAction(slot.target.slice(6));
+        else if (slot.target?.startsWith('obs:')) obsAct(slot.target.slice(4));
+      } else if (slot.toggle) {
+        const k = slot.stateKey || `${profile.id}:${sub.id}:${req.slot}`;
+        demoConsole.slotStates[k] = !demoConsole.slotStates[k];
+      }
+      demoConsole.lastAction = { ...req, profileId: profile.id, label: slot.label };
+      return { ok: true, error: null, state: await consoleSnapshot() };
+    }
+    if (req.kind === 'axis' || req.kind === 'axis-tap') {
+      const axis = (profile.axes || []).find((a) => a.index === (req.axis ?? 1));
+      if (!axis) return { ok: false, error: 'Axis is not configured', state: await consoleSnapshot() };
+      if (req.kind === 'axis' && axis.kind === 'system-volume') audio.volume = Math.max(0, Math.min(100, audio.volume + (req.delta || 0) * 3));
+      demoConsole.lastAction = { ...req, profileId: profile.id, axisKind: axis.kind };
+      return { ok: true, error: null, state: await consoleSnapshot() };
+    }
+    return { ok: false, error: 'Unknown console action', state: await consoleSnapshot() };
+  }
 
   // made-up OBS: streaming for a while, buttons and scenes work
   const obs = { streamingSince: now() - 754e3, recordingSince: 0, paused: false, scene: 'Desk', mic: false };
@@ -457,6 +615,14 @@
     if (path.startsWith('/api/controls/task-output/')) return new Response(actionState[decodeURIComponent(path.split('/').pop())] ? '> made-up output: the demo runs no commands\n' : '', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     if (path === '/api/controls/state') return json(await deckState());
     if (path.startsWith('/api/controls/command/') && method === 'POST') return json(await controlCommand(path.split('/').pop(), q));
+    if (path === '/api/console/state') return json(await consoleSnapshot());
+    if (path === '/api/console/windows') return json([
+      { process: 'Code', title: 'main.js - phonebox - Visual Studio Code' },
+      { process: 'obs64', title: 'OBS 30.2 - Profile: Stream' },
+      { process: 'firefox', title: 'Mozilla Firefox' },
+      { process: 'Spotify', title: 'Spotify Premium' },
+    ]);
+    if (path === '/api/console/act' && method === 'POST') return json(await consoleAct(parse(body) || {}));
     if (path === '/api/state') return json(state(q.has('ev') ? +q.get('ev') : null));
     if (path === '/api/config') return json({ version: cfgVersion(), config: publicConfig(await config()) });
     if (path === '/api/volume' && method === 'POST') {
@@ -574,6 +740,14 @@
         if (!c || typeof c !== 'object') return json({ error: 'the settings are not valid JSON' }, 400);
         (c.pages || []).forEach((p, i) => { p.id ||= `page-${i + 1}`; p.title ||= 'Page'; const seen = {}; (p.widgets || []).forEach((w) => { if (!w.id) { const n = (seen[w.type] = (seen[w.type] || 0) + 1); w.id = `${w.type}-${Date.now() % 100000}-${n}`; } }); });
         (c.shortcuts || []).forEach((s, i) => { s.id ||= `shortcut-${i + 1}`; });
+        const slug = (s, pfx) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || pfx;
+        if (c.console && Array.isArray(c.console.profiles)) {
+          const used = new Set();
+          c.console.profiles.forEach((p) => {
+            const base = slug(p.id || p.name, 'profile'); let id = base; for (let i = 2; used.has(id); i++) id = `${base}-${i}`; used.add(id); p.id = id;
+            const su = new Set(); (p.subPages || []).forEach((sp) => { const sb = slug(sp.id || sp.name, 'page'); let sid = sb; for (let i = 2; su.has(sid); i++) sid = `${sb}-${i}`; su.add(sid); sp.id = sid; });
+          });
+        }
         store.set('pb-demo-config', c);
         store.set('pb-demo-version', cfgVersion() + 1);
         return json({ version: cfgVersion() });
@@ -620,5 +794,10 @@
     on('ask', (d) => ask(d || undefined, false));
   }
 
-  window.PhoneBoxDemo = { emit, ask, reset() { localStorage.removeItem('pb-demo-config'); store.set('pb-demo-version', cfgVersion() + 1); } };
+  window.PhoneBoxDemo = {
+    emit, ask,
+    setActiveApp(process, title = '') { demoConsole.activeProcess = process || ''; demoConsole.activeTitle = title || ''; },
+    lastConsoleAction() { return demoConsole.lastAction; },
+    reset() { localStorage.removeItem('pb-demo-config'); store.set('pb-demo-version', cfgVersion() + 1); },
+  };
 })();

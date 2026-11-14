@@ -11,6 +11,7 @@ import './widgets/pc.js';
 import './widgets/sky.js';
 import './widgets/web.js';
 import './widgets/controls.js';
+import './widgets/console.js';
 
 // PhoneBox desk panel. Pages are 12 × 6 grids of widgets, designed in the agent's settings page.
 // The panel talks to the PhoneBox agent through "/agent/*", which the Android shell proxies over USB
@@ -721,7 +722,7 @@ export function handleEvent(e) {
 }
 
 export const WIDGET_ICONS = { rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', media: '🎵', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', quotas: '✳️', sessions: '🤖',
-  github: '🐙', processes: '⚙️', shortcuts: '🎛️', button: '🔘', worldclock: '🌍', calendar: '📅', pomodoro: '🍅', countdown: '⏳', note: '📝', command: '💻',
+  github: '🐙', processes: '⚙️', shortcuts: '🎛️', button: '🔘', 'app-keypad': '🎛️', 'app-dial': '🔄', 'app-roller': '🎚️', worldclock: '🌍', calendar: '📅', pomodoro: '🍅', countdown: '⏳', note: '📝', command: '💻',
   push: '📡', inbox: '📬', label: '🔤', analog: '🕰️', progress: '📆', stopwatch: '⏱️', timer: '⏲️', counter: '🔢', breathe: '🫁', quote: '💬',
   checklist: '✅', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊', sun: '🌅', air: '🍃', hackernews: '📰', exchange: '💱', crypto: '🪙', image: '🖼️' };
 
@@ -751,7 +752,7 @@ export function buildLayout() {
   const enabled = (cfg.pages || []).filter((p) => p.enabled !== false && Array.isArray(p.widgets));
   const next = enabled.length ? enabled : FALLBACK_PAGES;
   const portrait = isPortrait();
-  const key = JSON.stringify([next, cfg.shortcuts, cfg.display?.showSeconds, cfg.display?.appearance, portrait]);
+  const key = JSON.stringify([next, cfg.shortcuts, cfg.console, cfg.display?.showSeconds, cfg.display?.appearance, portrait]);
   if (key === layoutKey) return;
   layoutKey = key;
   const prevId = pages[curPage]?.id;
@@ -1131,8 +1132,8 @@ let swipeTracking = false;
 pager.addEventListener('touchstart', (e) => {
   swipeTracking = false;
   if (e.touches.length !== 1 || pages.length < 2) return;
-  // Dragging a slider, the volume bar or a list must never flip the page.
-  if (volDragging || e.target.closest?.('button, input, textarea, select, a, [contenteditable], .s-list, .vb')) return;
+  // Dragging a slider, the volume bar, a dial/roller or a list must never flip the page.
+  if (volDragging || e.target.closest?.('button, input, textarea, select, a, [contenteditable], .s-list, .vb, [data-no-page-swipe]')) return;
   swipeStartX = e.touches[0].clientX;
   swipeStartY = e.touches[0].clientY;
   swipeStartPage = curPage;
