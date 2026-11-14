@@ -128,3 +128,60 @@ for(const viewport of [{width:780,height:360},{width:360,height:780}]){
     await page.screenshot({path:'../../.temp_files/control-audio-'+viewport.width+'.png'});
   });
 }
+
+test('deckCommand discards an in-flight deckState request so stale data is not reused', async ({ page }) => {
+  await show(page, 'audio-mixer');
+  await expect(page.getByRole('slider', { name: 'Spotify volume', exact: true })).toBeVisible();
+  const result = await page.evaluate(async () => {
+    const mod = await import('/panel/widgets/controls.js');
+    const originalFetch = window.fetch;
+    let releaseFirstState;
+    const firstStateGate = new Promise(resolve => { releaseFirstState = resolve; });
+    let stateCalls = 0;
+
+    window.fetch = async (url, init) => {
+      if (String(url).includes('/controls/state')) {
+        stateCalls++;
+        if (stateCalls === 1) {
+          await firstStateGate;
+          return new Response(JSON.stringify({ audio: { sessions: [{ id: 'spotify', volume: 11 }] } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ audio: { sessions: [{ id: 'spotify', volume: 42 }] } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (String(url).includes('/controls/command/')) {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return originalFetch(url, init);
+    };
+
+    try {
+      mod.invalidateDeckState();
+      const firstInFlight = mod.deckState();
+      await mod.deckCommand('session', { id: 'spotify', volume: 42 });
+      const freshAfterCommand = await mod.deckState();
+      releaseFirstState();
+      await firstInFlight;
+      const afterStaleResolves = await mod.deckState();
+      return {
+        stateCalls,
+        freshVolume: freshAfterCommand.audio.sessions[0].volume,
+        cachedVolume: afterStaleResolves.audio.sessions[0].volume,
+      };
+    } finally {
+      window.fetch = originalFetch;
+    }
+  });
+
+  expect(result.stateCalls).toBe(2);
+  expect(result.freshVolume).toBe(42);
+  expect(result.cachedVolume).toBe(42);
+});

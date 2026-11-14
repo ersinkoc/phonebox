@@ -18,6 +18,8 @@ internal sealed partial class WindowsDeckNative : IDeckNative
     private readonly Dictionary<string, (WasapiPlayer Output, WaveStream Reader, MMDevice Device)> _sounds = [];
     private GlobalSystemMediaTransportControlsSessionManager? _media;
 
+    public event Action<string>? SoundStopped;
+
     public DeckAudio Audio()
     {
         lock (_gate)
@@ -203,7 +205,17 @@ internal sealed partial class WindowsDeckNative : IDeckNative
                 player = new WasapiPlayerBuilder().WithDevice(output).WithSharedMode().WithLatency(100).Build();
                 player.Init(reader); _sounds[id] = (player, reader, output);
                 var own = player;
-                player.PlaybackStopped += (_, _) => _ = Task.Run(() => { lock (_gate) if (_sounds.TryGetValue(id, out var sound) && ReferenceEquals(sound.Output, own)) StopSound(id); });
+                player.PlaybackStopped += (_, _) => _ = Task.Run(() =>
+                {
+                    var ended = false;
+                    lock (_gate)
+                        if (_sounds.TryGetValue(id, out var sound) && ReferenceEquals(sound.Output, own))
+                        {
+                            StopSound(id);
+                            ended = true;
+                        }
+                    if (ended) SoundStopped?.Invoke(id);
+                });
                 player.Play();
             }
             catch { _sounds.Remove(id); player?.Dispose(); reader?.Dispose(); output.Dispose(); throw; }

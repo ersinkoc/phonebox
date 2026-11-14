@@ -50,6 +50,7 @@ public sealed record DeckAudioPacket(int Rate, int Channels, int Bits, string En
 
 internal interface IDeckNative : IDisposable
 {
+    event Action<string>? SoundStopped { add { } remove { } }
     DeckAudio Audio();
     bool Device(string id, int? volume, bool? muted, int? channel = null);
     bool Session(string id, int? volume, bool? muted);

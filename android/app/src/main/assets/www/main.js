@@ -360,6 +360,11 @@ export function keyButton(s) {
 export let media = null;          // last media state + the time it was received
 export let volDragging = false;
 export const setVolDragging = (v) => { volDragging = v; };
+export const setMediaState = (m) => {
+  if (D.state) D.state.media = m || null;
+  media = m ? { ...m, at: performance.now() } : null;
+  emit('state');
+};
 // The background glow: the accent colour (Settings › Display), or the album art's colour while music plays.
 export let DEFAULT_AMBIENT = '45, 212, 191';
 export let artTint = true;
