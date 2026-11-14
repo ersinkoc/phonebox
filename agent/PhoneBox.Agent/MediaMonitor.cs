@@ -132,6 +132,16 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         return ok;
     }
 
+    public async Task<bool> PauseAsync()
+    {
+        var s = _mgr?.GetCurrentSession();
+        if (s is null || s.GetPlaybackInfo().PlaybackStatus != GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+            return false;
+        var ok = await s.TryPauseAsync();
+        try { await Poll(); } catch { }
+        return ok;
+    }
+
     private static string FriendlyApp(string id)
     {
         var l = id.ToLowerInvariant();

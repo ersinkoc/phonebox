@@ -1,5 +1,6 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, color, cssVar, emit, fillIcon, fmtDur, fmtMem, fmtReset, fmtTime, fmtValue, h, haptic, hist, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, renderStatus, ringSvg, setArtColor, setVolDragging, shortDur, store, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, color, cssVar, emit, fillIcon, fmtDur, fmtMem, fmtReset, fmtTime, fmtValue, h, haptic, hist, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, renderStatus, ringSvg, setArtColor, setMediaState, setVolDragging, shortDur, store, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
 import { W } from '../registry.js';
+import { invalidateDeckState } from './controls.js';
 
 // ================================================================= widgets
 // Each widget: { needs: [data kinds], bare?: no card background, create(box, ctx) -> { update(kind) } }
@@ -93,6 +94,7 @@ W.media = {
     const sourceIcons = {
       YouTube: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="5" fill="#ff0033"/><path d="m10 8 6 4-6 4z" fill="#fff"/></svg>',
       'YouTube Music': '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#ff0033"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#fff" stroke-width="1.4"/><path d="m10 8.5 5.5 3.5-5.5 3.5z" fill="#fff"/></svg>',
+      'Internet Radio': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.2 6.8 18.5 2a1 1 0 0 1 .7 1.9L10.8 7H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2.2zm1.8 5.2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm6 1.5v1.8h4v-1.8h-4zm0 3.2v1.8h4v-1.8h-4z" fill="#38bdf8"/></svg>',
     };
     let artId = -1, volTimer = 0;
     img.addEventListener('load', () => { img.classList.add('on'); setArtColor(averageColor(img)); });
@@ -105,7 +107,12 @@ W.media = {
         media.at = performance.now();
         box.classList.toggle('playing', media.playing);
       }
-      try { await api('/media/' + action, 'POST'); } catch (_) {}
+      try {
+        const res = await api('/media/' + action, 'POST');
+        if (res && typeof res === 'object' && 'media' in res) setMediaState(res.media);
+        invalidateDeckState();
+        emit('tick');
+      } catch (_) {}
     }));
     q('.bar').addEventListener('click', async (e) => {
       if (!media || !media.durMs || !media.canSeek) return;
@@ -132,10 +139,16 @@ W.media = {
     return {
       update(kind) {
         if (kind === 'fast') {
-          if (!media || !(media.durMs > 0)) return;
-          const pos = Math.min(media.durMs, media.posMs + (media.playing ? performance.now() - media.at : 0));
-          q('.fill').style.width = (pos / media.durMs) * 100 + '%';
-          q('.m-pos').textContent = fmtTime(pos);
+          if (!media) return;
+          if (media.durMs > 0) {
+            const pos = Math.min(media.durMs, media.posMs + (media.playing ? performance.now() - media.at : 0));
+            q('.fill').style.width = (pos / media.durMs) * 100 + '%';
+            q('.m-pos').textContent = fmtTime(pos);
+          } else if (media.app === 'Internet Radio') {
+            const pos = Math.max(0, (media.posMs || 0) + (media.playing ? performance.now() - media.at : 0));
+            q('.fill').style.width = media.playing ? '100%' : '0';
+            q('.m-pos').textContent = fmtTime(pos);
+          }
           return;
         }
         const m = D.state?.media, a = D.state?.audio;
@@ -163,7 +176,13 @@ W.media = {
         sourceIcon.innerHTML = sourceIcons[m.app] || '';
         q('.m-title').textContent = m.title || 'Unknown track';
         q('.m-artist').textContent = [m.artist, m.album].filter(Boolean).join(' · ') || '—';
-        q('.m-dur').textContent = fmtTime(m.durMs);
+        if (m.app === 'Internet Radio' && !(m.durMs > 0)) {
+          q('.fill').style.width = m.playing ? '100%' : '0';
+          q('.m-pos').textContent = fmtTime(m.posMs || 0);
+          q('.m-dur').textContent = m.playing ? 'LIVE' : '0:00';
+        } else {
+          q('.m-dur').textContent = fmtTime(m.durMs);
+        }
         if (m.artId !== artId) {
           artId = m.artId;
           if (m.artId) img.src = `${API}/art?id=${m.artId}`;

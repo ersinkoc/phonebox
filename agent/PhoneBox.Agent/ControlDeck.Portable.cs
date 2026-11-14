@@ -21,7 +21,9 @@ internal sealed class PortableDeckNative(AudioControl audio, MediaMonitor media)
     public Task<bool> PlatformAction(string kind, string target, string? argument, int value, CancellationToken ct) => Task.FromResult(false);
     public Task<IReadOnlyList<DeckMedia>> Media(CancellationToken ct) => Task.FromResult<IReadOnlyList<DeckMedia>>(media.Snapshot() is { } m
         ? [new("current", m.App, m.Title, m.Playing, m.PosMs, m.DurMs, m.CanSeek, false, false, false, "None")] : []);
-    public Task<bool> MediaAction(string id, string action, long value, CancellationToken ct) => id == "current" ? media.Control(action, value) : Task.FromResult(false);
+    public Task<bool> MediaAction(string id, string action, long value, CancellationToken ct) =>
+        id != "current" ? Task.FromResult(false) : action == "pause" ? media.PauseAsync() : media.Control(action, value);
+    public Task<bool> PauseCurrentMedia(CancellationToken ct) => media.PauseAsync();
     public void Play(string id, string file, string? device, int volume) => throw new NotSupportedException("Native sound playback requires Windows");
     public void StopSound(string? id) { }
     public IReadOnlyList<DeckItem> MidiPorts() => [];

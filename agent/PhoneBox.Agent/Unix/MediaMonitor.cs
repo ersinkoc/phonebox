@@ -328,4 +328,21 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         try { await Poll(); } catch { }
         return ok;
     }
+
+    public async Task<bool> PauseAsync()
+    {
+        var snap = _snap;
+        if (snap is not { Playing: true }) return false;
+        bool ok;
+        if (OperatingSystem.IsMacOS())
+        {
+            if (_macSystemMedia) ok = Sh.Run("nowplaying-cli", "pause") is not null;
+            else if (snap.App is "Spotify" or "Music")
+                ok = Sh.Run("osascript", "-e", $"tell application \"{snap.App}\" to pause") is not null;
+            else return false;
+        }
+        else ok = Sh.Run("playerctl", "pause") is not null;
+        try { await Poll(); } catch { }
+        return ok;
+    }
 }
