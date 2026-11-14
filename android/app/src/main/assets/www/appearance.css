@@ -1,6 +1,13 @@
 /* Opt-in overrides only: old layouts retain their exact widget-specific styling. */
 .w.has-widget-radius { border-radius: var(--widget-radius) !important; }
 .w.has-widget-padding { padding: var(--widget-padding) !important; }
+.w.has-widget-font,
+.w.has-widget-font :is(button, input, textarea, select, .cmd-o, .cmd-o.big, .qt-mark) {
+  font-family: var(--widget-font) !important;
+}
+.w.has-widget-font-scale {
+  font-size: calc(1rem * var(--widget-font-scale, 1));
+}
 .w[data-widget-border="false"] { border: 0 !important; }
 .w[data-widget-border="true"] { border: 1px solid var(--line) !important; }
 .w[data-widget-shadow="false"] { box-shadow: none !important; }

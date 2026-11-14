@@ -4,6 +4,8 @@ namespace PhoneBox.Agent;
 public sealed class AppearanceConfig
 {
     public string? Style { get; set; }
+    public string? Font { get; set; }
+    public int? FontScale { get; set; }
     public int? Radius { get; set; }
     public int? Gap { get; set; }
     public int? Padding { get; set; }
@@ -14,6 +16,8 @@ public sealed class AppearanceConfig
     internal void Normalize(bool widget = false)
     {
         Style = Style is "default" or "cards" or "flat" or "borderless" or "seamless" ? Style : null;
+        Font = Font is "default" or "sans" or "rounded" or "condensed" or "serif" or "mono" ? Font : null;
+        FontScale = FontScale is { } s ? Math.Clamp(s, 50, 200) : null;
         Radius = Bound(Radius, 32);
         Gap = widget ? null : Bound(Gap, 24);
         Padding = Bound(Padding, 24);

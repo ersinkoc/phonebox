@@ -1954,14 +1954,24 @@ function appearanceEditor(owner, parents, label, widget = false) {
     } }, ...[['', 'Inherit / current look'], ['default', 'Original appearance'], ['cards', 'Rounded cards'], ['flat', 'Flat surfaces'], ['borderless', 'Content only'], ['seamless', 'Seamless panel']]
       .map(([value, text]) => h('option', { value, selected: (owner.appearance?.style || '') === value }, text)));
     const fields = [h('div', { class: 'field' }, h('label', {}, 'Surface style'), style)];
-    const numeric = (key, title, max, fallback) => {
+    const fontLabels = { default: 'Original font', sans: 'Sans-serif', rounded: 'Rounded', condensed: 'Condensed', serif: 'Serif', mono: 'Monospace' };
+    const inheritedFont = (() => {
+      const inherited = { ...(owner.appearance || {}) }; delete inherited.font;
+      return PhoneBoxAppearance.resolve(...parents(), inherited).font;
+    })();
+    fields.push(h('div', { class: 'field' }, h('label', {}, 'Font'),
+      h('select', { 'aria-label': 'Font', onchange: e => { set('font', e.target.value || null); render(); } },
+        h('option', { value: '', selected: owner.appearance?.font == null }, !inheritedFont || inheritedFont === 'default' ? 'Original widget font' : 'Inherit (' + fontLabels[inheritedFont] + ')'),
+        ...Object.entries(fontLabels).map(([value, text]) => h('option', { value, selected: owner.appearance?.font === value }, text)))));
+    const numeric = (key, title, max, fallback, min = 0, step = 1, unit = ' px') => {
       const value = current[key];
-      const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? 'Automatic' : value + ' px');
-      const input = h('input', { type: 'range', min: 0, max, step: 1, value: value ?? fallback, 'aria-label': title, style: { flex: '1', minWidth: '60px' } });
-      input.oninput = () => { set(key, Number(input.value)); output.textContent = input.value + ' px'; };
+      const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? 'Automatic' : value + unit);
+      const input = h('input', { type: 'range', min, max, step, value: value ?? fallback, 'aria-label': title, style: { flex: '1', minWidth: '60px' } });
+      input.oninput = () => { set(key, Number(input.value)); output.textContent = input.value + unit; };
       const reset = h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Inherit ' + title.toLowerCase(), onclick: () => { set(key, null); render(); } }, 'Inherit');
       fields.push(h('div', { class: 'field' }, h('label', {}, title), h('div', { class: 'row', style: { gap: '10px' } }, input, output, reset)));
     };
+    numeric('fontScale', 'Font size', 200, 100, 50, 5, '%');
     numeric('radius', 'Corner radius', 32, 16);
     if (!widget) numeric('gap', 'Widget spacing', 24, 8);
     numeric('padding', 'Widget inner padding', 24, 12);

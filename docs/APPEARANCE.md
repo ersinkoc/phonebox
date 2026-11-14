@@ -9,6 +9,8 @@ Open **General → Appearance** for global defaults. Choose a surface preset, th
 
 | Setting | Range | Scope |
 |---|---|---|
+| Font | Original / sans / rounded / condensed / serif / mono | Global, page, widget |
+| Font size | 50–200% | Global, page, widget |
 | Corner radius | 0–32 CSS pixels | Global, page, widget |
 | Widget spacing | 0–24 CSS pixels | Global, page |
 | Widget inner padding | 0–24 CSS pixels | Global, page, widget |
@@ -52,6 +54,8 @@ The same optional object is supported at `display.appearance`, `pages[].appearan
   "display": {
     "appearance": {
       "style": "flat",
+      "font": "sans",
+      "fontScale": 120,
       "radius": 18,
       "gap": 12,
       "padding": 10,
@@ -62,6 +66,7 @@ The same optional object is supported at `display.appearance`, `pages[].appearan
 }
 ```
 
-Supported style values are `default`, `cards`, `flat`, `borderless` and `seamless`.
+Supported style values are `default`, `cards`, `flat`, `borderless` and `seamless`. Supported font values are
+`default`, `sans`, `rounded`, `condensed`, `serif` and `mono`, and `fontScale` is clamped between `50` and `200`.
 Omitted/null properties inherit. Zero and false are explicit choices. Imported numeric values are bounded;
-unknown style names are discarded, and appearance does not accept arbitrary CSS.
+unknown style or font names are discarded, and appearance does not accept arbitrary CSS.

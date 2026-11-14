@@ -368,7 +368,7 @@ W.quotas = {
           else if (l.percent >= 80 || l.severity === 'warning') dial.style.setProperty('--qc', '#f59e0b');
           dial.innerHTML = ringSvg(l.percent, pace?.elapsed); // numbers only
           const pctEl = h('div', 'q-pct', String(Math.round(l.percent)), h('small', null, '%'));
-          if (compact) pctEl.style.fontSize = '22px';
+          if (compact) pctEl.style.fontSize = 'calc(22px * var(--widget-font-scale, 1))';
           dial.appendChild(pctEl);
           rings.appendChild(h('div', 'q-ring', dial, h('div', 'q-label', l.label), p.id === 'codex' ? h('div', 'q-left', `${Math.max(0, Math.round(100 - l.percent))}% left`) : null, h('div', 'q-reset', fmtReset(l.resetsAt)),
             pace ? h('div', 'q-pace ' + pace.cls, pace.text) : null));

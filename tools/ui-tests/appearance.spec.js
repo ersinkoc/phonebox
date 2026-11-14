@@ -135,3 +135,115 @@ for(const width of [780,360])test('appearance fits the panel at '+width+'px',asy
   expect(await grid.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
   await page.screenshot({path:'../../.temp_files/appearance-flat-'+width+'.png'});
 });
+
+test('global font and font scale affect widgets proportionally without compounding em units',async({page})=>{
+  const basePages=[{id:'p',title:'P',widgets:[
+    {id:'clk',type:'clock',x:0,y:0,w:6,h:4,options:{}},
+    {id:'note',type:'note',x:6,y:0,w:6,h:4,options:{text:'Tablet scale'}},
+    {id:'audio',type:'audio-mixer',x:0,y:4,w:12,h:2,options:{}}
+  ]}];
+  await show(page,{display:{showSeconds:true,idleReturnSec:0},pages:basePages});
+  await expect.poll(()=>page.locator('.w-clock .clock').count()).toBe(1);
+  const baseClock=parseFloat(await css(page.locator('.w-clock .clock'),'fontSize'));
+  const baseSec=parseFloat(await css(page.locator('.w-clock .sec'),'fontSize'));
+  const baseDate=parseFloat(await css(page.locator('.w-clock .date'),'fontSize'));
+  const baseNote=parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'));
+  const baseAudioTitle=parseFloat(await css(page.locator('.w-audio-mixer .w-title'),'fontSize'));
+
+  await show(page,{display:{showSeconds:true,idleReturnSec:0,appearance:{font:'mono',fontScale:150}},pages:basePages});
+  await expect.poll(async()=>parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'))).toBeCloseTo(baseNote*1.5,0);
+  const scaledClock=parseFloat(await css(page.locator('.w-clock .clock'),'fontSize'));
+  const scaledSec=parseFloat(await css(page.locator('.w-clock .sec'),'fontSize'));
+  const scaledDate=parseFloat(await css(page.locator('.w-clock .date'),'fontSize'));
+  const scaledAudioTitle=parseFloat(await css(page.locator('.w-audio-mixer .w-title'),'fontSize'));
+  expect(scaledClock).toBeCloseTo(baseClock*1.5,0);
+  expect(scaledSec).toBeCloseTo(baseSec*1.5,0);
+  expect(scaledDate).toBeCloseTo(baseDate*1.5,0);
+  expect(scaledAudioTitle).toBeCloseTo(baseAudioTitle*1.5,0);
+  expect(await css(page.locator('.w-note'),'fontFamily')).toMatch(/Mono|monospace/i);
+  expect(await css(page.locator('#offline'),'fontSize')).toBe('11.5px');
+});
+
+test('page, widget and Smart Stack font and scale overrides compose correctly',async({page})=>{
+  await show(page,{display:{idleReturnSec:0,appearance:{font:'mono',fontScale:140}},pages:[{id:'p',title:'P',
+    appearance:{font:'serif',fontScale:125},widgets:[
+      {id:'a',type:'note',x:0,y:0,w:4,h:6,appearance:{font:'default',fontScale:100},options:{text:'Default'}},
+      {id:'b',type:'note',x:4,y:0,w:4,h:6,options:{text:'Page serif'}},
+      {id:'c',type:'stack',x:8,y:0,w:4,h:6,appearance:{font:'rounded',fontScale:150},options:{widgets:[{id:'sn',type:'note',options:{text:'Stack child'}}]}}
+    ]}]});
+  await expect.poll(()=>page.locator('.w-note').count()).toBe(3);
+  const notes=page.locator('.w-note');
+  const baseNote=parseFloat(await css(notes.nth(0).locator('.note-t'),'fontSize'));
+  expect(await css(notes.nth(0),'fontFamily')).toMatch(/Roboto|sans-serif/i);
+  expect(await css(notes.nth(1),'fontFamily')).toMatch(/Georgia|serif/i);
+  expect(parseFloat(await css(notes.nth(1).locator('.note-t'),'fontSize'))).toBeCloseTo(baseNote*1.25,1);
+  expect(await css(notes.nth(2),'fontFamily')).toMatch(/Rounded|Nunito|sans-serif/i);
+  expect(parseFloat(await css(notes.nth(2).locator('.note-t'),'fontSize'))).toBeCloseTo(baseNote*1.5,1);
+});
+
+test('desktop settings font and font size controls preview and persist',async({page})=>{
+  await show(page);
+  const baseNote=parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'));
+  await page.setViewportSize({width:1280,height:1000});
+  await page.goto('/settings/#general');
+  const editor=page.locator('#appearanceSettings');
+  await editor.getByRole('combobox',{name:'Font',exact:true}).selectOption('mono');
+  const fontSize=editor.getByRole('slider',{name:'Font size',exact:true});
+  await expect(fontSize).toHaveValue('100');
+  await fontSize.focus();await fontSize.press('End');
+  await editor.getByRole('button',{name:'Show live appearance preview',exact:true}).click();
+  const frame=page.frameLocator('iframe[title="Live appearance preview"]');
+  await expect.poll(()=>css(frame.locator('.w-note'),'fontFamily')).toMatch(/Mono|monospace/i);
+  await expect.poll(async()=>parseFloat(await css(frame.locator('.w-audio-mixer .w-title'),'fontSize'))).toBeCloseTo(22,0);
+  await page.locator('#save').click();await expect(page.locator('#save')).toBeDisabled();
+  await page.goto('/settings/#pages');
+  await page.locator('.wb').first().click();
+  const widgetEditor=page.locator('details[aria-label="Widget appearance"]');
+  await widgetEditor.locator('summary').click();
+  await widgetEditor.getByRole('combobox',{name:'Font',exact:true}).selectOption('serif');
+  await widgetEditor.getByRole('slider',{name:'Font size',exact:true}).fill('80');
+  await page.locator('#save').click();await expect(page.locator('#save')).toBeDisabled();
+  await page.goto('/panel/');
+  await expect.poll(()=>css(page.locator('.w-note'),'fontFamily')).toMatch(/Georgia|serif/i);
+  expect(parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'))).toBeCloseTo(baseNote*0.8,0);
+  expect(await css(page.locator('.w-audio-mixer'),'fontFamily')).toMatch(/Mono|monospace/i);
+  expect(parseFloat(await css(page.locator('.w-audio-mixer .w-title'),'fontSize'))).toBeCloseTo(22,0);
+});
+
+test('compact 4-limit quota percentage text scales with widget fontScale',async({page})=>{
+  const sampleQuota = {
+    providers: [{
+      id: 'claude', name: 'Claude', plan: 'Max', updatedAt: Date.now(),
+      limits: [
+        { label: '5h', percent: 40, resetsAt: Date.now() + 3600_000 },
+        { label: '7d', percent: 55, resetsAt: Date.now() + 86400_000 },
+        { label: 'Opus', percent: 25, resetsAt: Date.now() + 86400_000 },
+        { label: 'Sonnet', percent: 70, resetsAt: Date.now() + 86400_000 },
+      ],
+    }],
+  };
+  await page.goto('/panel/');
+  await page.evaluate(()=>{
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config',JSON.stringify({
+      night:{enabled:false},shortcuts:[],display:{idleReturnSec:0},
+      pages:[{id:'q',title:'Quotas',widgets:[
+        {id:'q1',type:'quotas',x:0,y:0,w:6,h:6,appearance:{fontScale:100},options:{providers:['claude']}},
+        {id:'q2',type:'quotas',x:6,y:0,w:6,h:6,appearance:{fontScale:150},options:{providers:['claude']}}
+      ]}]
+    }));
+  });
+  await page.reload();
+  await expect(page.locator('.w-quotas')).toHaveCount(2);
+  await page.evaluate(async(q)=>{
+    const { D, emit } = await import('/panel/main.js');
+    D.quotas = q;
+    emit('quotas');
+  }, sampleQuota);
+  await expect(page.locator('.q-rings-grid .q-pct')).toHaveCount(8);
+  const basePct = parseFloat(await css(page.locator('.w-quotas').nth(0).locator('.q-rings-grid .q-pct').first(),'fontSize'));
+  const scaledPct = parseFloat(await css(page.locator('.w-quotas').nth(1).locator('.q-rings-grid .q-pct').first(),'fontSize'));
+  expect(basePct).toBeCloseTo(22, 0);
+  expect(scaledPct).toBeCloseTo(33, 0);
+});
+

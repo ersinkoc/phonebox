@@ -201,9 +201,12 @@ body.night #navCard, body.night #navChip { display: none; }
 .dot.off { background: var(--err); }
 .clock {
   font-weight: 200;
-  font-size: min(calc(var(--tf, .6) * 100cqh), 30cqw);
+  font-size: calc(var(--tf, .6) * 24vw);
   line-height: .95; letter-spacing: -0.04em; margin-left: -.03em;
   display: flex; align-items: flex-start;
+}
+@supports (font-size: 1cqh) {
+  .clock { font-size: min(calc(var(--tf, .6) * 100cqh), 30cqw); }
 }
 .clock .colon { opacity: .55; margin: 0 .01em; animation: blink 2s steps(1) infinite; }
 .clock .sec { font-size: .2em; font-weight: 400; color: var(--muted); letter-spacing: 0; margin: .5em 0 0 .45em; }
