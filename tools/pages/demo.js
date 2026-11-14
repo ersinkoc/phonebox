@@ -82,6 +82,7 @@
       phones: [], calendars: [],
       homeAssistant: { url: null, token: null },
       obs: { enabled: true, url: 'ws://127.0.0.1:4455', password: null },
+      cloudPhotos: { cacheMaxMb: 250 },
     };
     c = JSON.parse(JSON.stringify(c, (_, v) => v === null ? undefined : v)); // the agent leaves unset (null) settings out
     store.set('pb-demo-config', c);
@@ -100,7 +101,15 @@
 
   // What the agent sends to a phone (AgentConfig.ToPublic): no commands, keys, tokens or what a rule matches on.
   function publicConfig(c) {
-    const options = (w) => w.type === 'command' ? Object.fromEntries(Object.entries(w.options || {}).filter(([k]) => k === 'title' || k === 'interval')) : w.options ?? null;
+    const scrubPhotos = (opts) => opts ? Object.fromEntries(Object.entries(opts).filter(([k]) => !['shareUrl', 'sharePassword', 'folder', 'albumId'].includes(k))) : null;
+    const options = (w) => {
+      if (w.type === 'command') return Object.fromEntries(Object.entries(w.options || {}).filter(([k]) => k === 'title' || k === 'interval'));
+      if (w.type === 'photos') return scrubPhotos(w.options);
+      if (w.type === 'stack' && Array.isArray(w.options?.widgets)) {
+        return { ...w.options, widgets: w.options.widgets.map((sub) => sub?.type === 'photos' ? { ...sub, options: scrubPhotos(sub.options) } : sub) };
+      }
+      return w.options ?? null;
+    };
     return {
       weather: c.weather, codexBar: c.codexBar, night: c.night, display: c.display,
       pages: (c.pages || []).map((p) => ({ id: p.id, title: p.title, icon: p.icon, enabled: p.enabled !== false, idleSec: p.idleSec ?? null, appearance: p.appearance ?? null,
@@ -302,6 +311,87 @@
     '<rect width="300" height="300" fill="url(#g)"/><circle cx="150" cy="130" r="70" fill="url(#s)"/><rect y="170" width="300" height="130" fill="#1b1037" opacity=".85"/>' +
     '<g stroke="#ff6fd8" stroke-width="3" opacity=".9">' + Array.from({ length: 9 }, (_, i) => `<line x1="0" y1="${180 + i * 14}" x2="300" y2="${180 + i * 14}"/>`).join('') +
     Array.from({ length: 13 }, (_, i) => `<line x1="150" y1="170" x2="${-300 + i * 75}" y2="300"/>`).join('') + '</g></svg>');
+
+  const DEMO_PHOTOS = [
+    {
+      id: 'demo-alpine',
+      caption: 'Alpine ridge at sunrise',
+      album: 'Travel Favorites',
+      takenAt: Date.UTC(2025, 6, 14, 10, 30),
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e293b"/><stop offset=".6" stop-color="#fb923c"/><stop offset="1" stop-color="#fde047"/></linearGradient></defs><rect width="800" height="500" fill="url(#sky)"/><circle cx="560" cy="210" r="54" fill="#fef08a"/><polygon points="0,420 220,180 430,420" fill="#0f172a"/><polygon points="260,440 520,160 800,440" fill="#1e293b"/><rect y="400" width="800" height="100" fill="#090d16"/></svg>',
+    },
+    {
+      id: 'demo-coast',
+      caption: 'Cliffside ocean trail',
+      album: 'Travel Favorites',
+      takenAt: Date.UTC(2025, 7, 2, 10, 30),
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500"><defs><linearGradient id="sea" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0ea5e9"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs><rect width="800" height="320" fill="#bae6fd"/><rect y="280" width="800" height="220" fill="url(#sea)"/><polygon points="0,240 280,295 210,500 0,500" fill="#1e293b"/><circle cx="180" cy="110" r="40" fill="#fef9c3"/></svg>',
+    },
+    {
+      id: 'demo-aurora',
+      caption: 'Midnight fjord glow',
+      album: 'Nordic Winter',
+      takenAt: Date.UTC(2025, 10, 19, 10, 30),
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500"><defs><linearGradient id="aur" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset=".5" stop-color="#22c55e"/><stop offset="1" stop-color="#6366f1"/></linearGradient></defs><rect width="800" height="500" fill="#050816"/><path d="M0 180 Q 220 70 460 170 T 800 120 L 800 280 L 0 280 Z" fill="url(#aur)" opacity=".55"/><polygon points="40,500 260,250 490,500" fill="#0b1120"/><polygon points="360,500 620,230 800,450 800,500" fill="#111827"/></svg>',
+    },
+  ];
+  const DEMO_PHOTO_ROOTS = [
+    { id: 'pictures', name: 'Pictures', providerHint: 'local', path: '~/Pictures/Favorites' },
+    { id: 'icloud-pics', name: 'iCloud Photos', providerHint: 'icloud', path: '~/Pictures/iCloud Photos' },
+    { id: 'od-pics', name: 'OneDrive › Pictures', providerHint: 'onedrive', path: '~/OneDrive/Pictures' },
+    { id: 'od-cloudonly', name: 'OneDrive › CloudOnly', providerHint: 'onedrive', path: '~/OneDrive/CloudOnly' },
+    { id: 'gd-drive', name: 'Google Drive › My Drive', providerHint: 'google', path: '~/Google Drive/My Drive' },
+    { id: 'db-cam', name: 'Dropbox › Camera Uploads', providerHint: 'dropbox', path: '~/Dropbox/Camera Uploads' },
+  ];
+  function findDemoWidgetOptions(c, widgetId) {
+    if (!widgetId) return {};
+    for (const p of c.pages || []) {
+      for (const w of p.widgets || []) {
+        if (w.type === 'photos' && w.id === widgetId) return w.options || {};
+      }
+    }
+    const idx = widgetId.indexOf(':');
+    if (idx > 0) {
+      const sid = widgetId.slice(0, idx), cid = widgetId.slice(idx + 1);
+      for (const p of c.pages || []) {
+        for (const w of p.widgets || []) {
+          if (w.type === 'stack' && w.id === sid) {
+            const sub = (w.options?.widgets || []).find((x) => x.id === cid && x.type === 'photos');
+            if (sub) return sub.options || {};
+          }
+        }
+      }
+    }
+    return {};
+  }
+  function demoPhotoFeed(opts = {}) {
+    const provider = opts.provider || 'local';
+    const hasCloudTarget = !!(opts.shareUrl || opts.folder || opts.albumId);
+    const configured = (provider === 'onedrive' || provider === 'google' || provider === 'dropbox') ? true
+      : hasCloudTarget;
+    if (!configured) {
+      return { configured: false, provider, sourceLabel: provider, title: opts.title || null, updatedAt: now(), stale: false,
+        error: provider === 'icloud' ? 'Paste an iCloud Shared Album link or pick a synced folder in Settings' : provider === 'nextcloud' ? 'Paste a Nextcloud public share link in Settings' : 'Choose a photo album or folder in PhoneBox Settings',
+        photos: [] };
+    }
+    const sourceLabel = opts.folder || (provider === 'icloud' ? 'iCloud Shared Album' : provider === 'nextcloud' ? 'Nextcloud Share' : provider);
+    if (/CloudOnly/i.test(opts.folder || '') && opts.downloadCloudFiles !== true) {
+      return {
+        configured: true, provider, sourceLabel, title: opts.title || null, updatedAt: now(), stale: false,
+        error: '3 cloud-only photos were not downloaded. Enable "Download cloud-only files on demand" in PhoneBox Settings to allow cloud downloads.',
+        photos: [], cloudOnlyCount: 3,
+      };
+    }
+    const items = DEMO_PHOTOS.map((p) => ({
+      id: p.id, url: `/api/photos/image/${p.id}`, caption: p.caption, takenAt: p.takenAt,
+      album: p.album, source: sourceLabel, width: 800, height: 500,
+    }));
+    if (opts.order === 'newest') items.sort((a, b) => b.takenAt - a.takenAt);
+    else if (opts.order === 'oldest') items.sort((a, b) => a.takenAt - b.takenAt);
+    else if (opts.order === 'name') items.sort((a, b) => a.caption.localeCompare(b.caption));
+    const cloudOnlyCount = /CloudOnly/i.test(opts.folder || '') ? 3 : 0;
+    return { configured: true, provider, sourceLabel, title: opts.title || null, updatedAt: now(), stale: false, error: null, photos: items, cloudOnlyCount };
+  }
 
   // ---- router
   const json = (o, status = 200, headers = {}) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
@@ -517,6 +607,85 @@
       return json({ ok: true });
     }
     if (path === '/api/work') return json(work());
+    if (path === '/api/photos/status') return json({
+      providers: ['onedrive', 'google', 'dropbox'].map((p) => ({
+        provider: p, clientConfigured: false, connected: false, account: null,
+        redirectUri: `http://127.0.0.1:8765/api/photos/oauth/callback/${p}`, localFolderDetected: true,
+      })),
+      localRoots: DEMO_PHOTO_ROOTS,
+    });
+    if (path === '/api/photos/local-roots') return json(DEMO_PHOTO_ROOTS);
+    if (path === '/api/photos/feed') {
+      const c = await config();
+      return json(demoPhotoFeed(findDemoWidgetOptions(c, q.get('widgetId'))));
+    }
+    if (path === '/api/photos/preview-feed' && method === 'POST') return json(demoPhotoFeed((parse(body) || {}).options || {}));
+    if (path === '/api/photos/browse' && method === 'POST') {
+      const req = parse(body) || {}, prov = req.provider || 'local';
+      if (prov === 'local') {
+        const list = req.path
+          ? [{ id: req.path + '/2025', name: '2025', kind: 'folder', path: req.path + '/2025' }, { id: req.path + '/Travel', name: 'Travel', kind: 'folder', path: req.path + '/Travel' }]
+          : DEMO_PHOTO_ROOTS.map((r) => ({ id: r.path, name: r.name, kind: 'folder', path: r.path }));
+        return json({ ok: true, provider: prov, currentPath: req.path || null, parentPath: null, entries: list });
+      }
+      if (prov === 'google') {
+        return json({
+          ok: true, provider: prov, currentPath: req.path || 'My Drive', parentPath: null,
+          entries: [
+            { id: 'google-fav', name: 'Travel Favorites', kind: 'folder', itemCount: 42, path: 'My Drive/Travel Favorites' },
+            { id: 'google-cam', name: 'Camera Roll', kind: 'folder', itemCount: 120, path: 'My Drive/Camera Roll' },
+          ],
+        });
+      }
+      if (prov === 'onedrive') {
+        if (req.parentId === 'albums') {
+          return json({
+            ok: true, provider: prov, currentPath: 'Photo Albums', parentPath: '/',
+            entries: [
+              { id: 'od-alb-1', name: 'Summer Trips', kind: 'album', itemCount: 24, path: 'Summer Trips' },
+            ],
+          });
+        }
+        return json({
+          ok: true, provider: prov, currentPath: req.path || '/', parentPath: null,
+          entries: [
+            { id: 'onedrive-cam', name: 'Pictures / Photos', kind: 'folder', itemCount: 120, path: '/Pictures/Photos' },
+            { id: 'albums', name: 'Photo Albums', kind: 'collection', itemCount: 3, path: 'Photo Albums' },
+          ],
+        });
+      }
+      return json({
+        ok: true, provider: prov, currentPath: req.path || '/', parentPath: null,
+        entries: [
+          { id: '/Camera Uploads', name: 'Camera Uploads', kind: 'folder', itemCount: 120, path: '/Camera Uploads' },
+          { id: '/Travel Favorites', name: 'Travel Favorites', kind: 'folder', itemCount: 42, path: '/Travel Favorites' },
+        ],
+      });
+    }
+    if (path === '/api/photos/test' && method === 'POST') {
+      const opts = (parse(body) || {}).options || {};
+      const feed = demoPhotoFeed(opts);
+      const cloudCount = feed.cloudOnlyCount || 0;
+      const prov = opts.provider || 'local';
+      const f = (opts.folder || '').trim();
+      const isLocalDir = (p) => /^\/(?:Users|home|Volumes|mnt|media|var|private|tmp)(?:\/|$)/.test(p)
+        || p === '~' || p.startsWith('~/') || p.startsWith('~\\')
+        || /^[A-Za-z]:[\\/]/.test(p) || p.startsWith('\\\\');
+      const remoteStream = prov === 'nextcloud'
+        || (prov === 'icloud' && !!(opts.shareUrl || '').trim())
+        || (['onedrive', 'google', 'dropbox'].includes(prov) && !!(opts.albumId || (!isLocalDir(f) && f)));
+      if (!feed.configured) return json({ ok: false, message: feed.error, count: 0, sourceLabel: '', cloudOnlyCount: 0, remoteStream });
+      if (feed.error) return json({ ok: false, message: feed.error, count: 0, sourceLabel: feed.sourceLabel, cloudOnlyCount: cloudCount, remoteStream });
+      const msg = cloudCount > 0 && opts.downloadCloudFiles
+        ? `Found ${feed.photos.length} photos in ${feed.sourceLabel} (${cloudCount} in cloud — photos will be downloaded onto this computer as they are shown)`
+        : `Found ${feed.photos.length} photos in ${feed.sourceLabel}`;
+      return json({ ok: true, message: msg, count: feed.photos.length, sourceLabel: feed.sourceLabel, cloudOnlyCount: cloudCount, remoteStream });
+    }
+    if (path.startsWith('/api/photos/image/')) {
+      const id = decodeURIComponent(path.slice('/api/photos/image/'.length));
+      const item = DEMO_PHOTOS.find((p) => p.id === id) || DEMO_PHOTOS[0];
+      return new Response(item.svg, { status: 200, headers: { 'Content-Type': 'image/svg+xml; charset=utf-8' } });
+    }
     if (path === '/api/procs') return json(procs());
     if (path === '/api/procs/detail') return json(procDetail(q.get('name')));
     if (path.startsWith('/api/widget/')) return json({ output: String(3 + Math.floor(Math.random() * 3)), at: now() - 8000, ok: true, running: false, durationMs: 412 });

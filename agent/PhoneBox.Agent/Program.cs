@@ -50,6 +50,8 @@ builder.Services.AddSingleton(configStore);
 builder.Services.AddSingleton(endpoint);
 builder.Services.AddSingleton<AudioControl>();
 builder.Services.AddSingleton<SpotifyControl>();
+builder.Services.AddSingleton<CloudPhotoAuth>();
+builder.Services.AddSingleton<CloudPhotoService>();
 builder.Services.AddSingleton<ControlDeck>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ControlDeck>());
 builder.Services.AddSingleton<PushStore>();
@@ -135,8 +137,11 @@ app.Use(async (ctx, next) =>
         var host = ctx.Request.Host.Host;
         var spotifyCallback = ctx.Request.Method == "GET" && ctx.Request.Path == "/api/controls/spotify/callback"
             && app.Services.GetRequiredService<SpotifyControl>().HasPendingState(ctx.Request.Query["state"]);
+        var photoOAuthCallback = ctx.Request.Method == "GET"
+            && ctx.Request.Path.StartsWithSegments("/api/photos/oauth/callback", out var photoProv)
+            && app.Services.GetRequiredService<CloudPhotoAuth>().HasPendingState(photoProv.Value?.TrimStart('/'), ctx.Request.Query["state"]);
         if ((host != "127.0.0.1" && host != "localhost") || (origin != "" && !SameOrigins.Contains(origin))
-            || (!spotifyCallback && BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path)))
+            || (!spotifyCallback && !photoOAuthCallback && BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path)))
         {
             ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
@@ -334,6 +339,53 @@ object State(IServiceProvider sp, long? ev)
 
 // Upcoming calendar events (Agenda widget); the feed URLs stay here.
 app.MapGet("/api/calendar", (CalendarMonitor cal) => Results.Json(cal.Snapshot()));
+
+// Cloud & local Photo frame widget (feed & proxied images work over USB and paired LAN; OAuth/browse/test stay local-only).
+app.MapGet("/api/photos/feed", async (string widgetId, bool? refresh, CloudPhotoService photos, CancellationToken ct) =>
+    Results.Json(await photos.GetWidgetFeedAsync(widgetId, refresh == true, ct)));
+app.MapGet("/api/photos/image/{id}", async (string id, CloudPhotoService photos, CancellationToken ct) =>
+    await photos.GetPhotoBytesAsync(id, ct) is { } img ? Results.File(img.Bytes, img.Mime) : Results.NotFound());
+app.MapPost("/api/photos/preview-feed", async (PhotoPreviewRequest body, CloudPhotoService photos, CancellationToken ct) =>
+    Results.Json(await photos.GetPreviewFeedAsync(body, ct)));
+app.MapGet("/api/photos/status", (CloudPhotoService photos) => Results.Json(photos.GetStatus()));
+app.MapGet("/api/photos/local-roots", (CloudPhotoService photos) => Results.Json(photos.DiscoverLocalRoots()));
+app.MapPost("/api/photos/browse", async (PhotoBrowseRequest body, CloudPhotoService photos, CancellationToken ct) =>
+    Results.Json(await photos.BrowseAsync(body, ct)));
+app.MapPost("/api/photos/test", async (PhotoTestRequest body, CloudPhotoService photos, CancellationToken ct) =>
+    Results.Json(await photos.TestSourceAsync(body, ct)));
+app.MapGet("/api/photos/oauth/connect/{provider}", (string provider, CloudPhotoAuth auth) =>
+{
+    try
+    {
+        var (url, redirectUri) = auth.Begin(provider);
+        return Results.Json(new { url, redirectUri });
+    }
+    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+app.MapPost("/api/photos/oauth/disconnect/{provider}", async (string provider, CloudPhotoAuth auth, CloudPhotoService photos, CancellationToken ct) =>
+{
+    await auth.DisconnectAsync(provider, ct);
+    photos.InvalidateProvider(provider);
+    return Results.Ok(new { ok = true });
+});
+app.MapGet("/api/photos/oauth/callback/{provider}", async (string provider, string? state, string? code, string? error, CloudPhotoAuth auth, CloudPhotoService photos, CancellationToken ct) =>
+{
+    if (!string.IsNullOrEmpty(error))
+    {
+        auth.CancelPending(provider, state);
+        return Results.Text($"{CloudPhotoAuth.ProviderDisplayName(provider)} sign-in was cancelled or refused. Return to PhoneBox settings.", "text/plain");
+    }
+    if (string.IsNullOrEmpty(state) || string.IsNullOrEmpty(code))
+        return Results.BadRequest("Missing OAuth state or code.");
+    var (ok, err) = await auth.CompleteAsync(provider, state, code, ct);
+    if (ok) photos.InvalidateProvider(provider);
+    return ok
+        ? Results.Text($"{CloudPhotoAuth.ProviderDisplayName(provider)} connected. Return to PhoneBox settings; this tab can be closed.", "text/plain")
+        : Results.BadRequest(err ?? "Sign-in failed.");
+});
 
 // Docker / Podman containers (Docker widget); start / stop / restart only if a widget allows it.
 app.MapGet("/api/docker", async (DockerMonitor docker, CancellationToken ct) =>

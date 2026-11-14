@@ -29,10 +29,17 @@ internal static class StackWidgets
     public static Dictionary<string, JsonElement>? PublicOptions(WidgetConfig w)
     {
         if (w.Type == "command") return w.Options?.Where(o => o.Key is "title" or "interval").ToDictionary();
+        if (w.Type == "photos") return PhotoWidgetOptions.ScrubPublic(w.Options);
         if (w.Type != "stack" || w.Options is null) return w.Options;
         var options = w.Options.ToDictionary();
         if (options.ContainsKey("widgets")) options["widgets"] = JsonSerializer.SerializeToElement(Children(w)
-            .Select(child => new { id = child.Id, type = child.Type, enabled = child.Enabled, options = child.Options }));
+            .Select(child => new
+            {
+                id = child.Id,
+                type = child.Type,
+                enabled = child.Enabled,
+                options = child.Type == "photos" ? PhotoWidgetOptions.ScrubPublic(child.Options) : child.Options
+            }));
         return options;
     }
 }

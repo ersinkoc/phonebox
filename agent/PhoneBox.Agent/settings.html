@@ -55,7 +55,7 @@ h2 { font-size: 20px; margin: 0 0 4px; }
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; min-width: 0; }
 .field label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
 .field .hint { font-size: 12px; color: var(--muted); }
-input[type=text], input[type=number], input[type=time], select, textarea {
+input[type=text], input[type=password], input[type=number], input[type=time], select, textarea {
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; outline: none; min-width: 0;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); }
@@ -158,6 +158,15 @@ table.items td.val { font-family: Consolas, monospace; font-size: 12px; max-widt
 .cal-row { display: grid; grid-template-columns: 160px minmax(0, 1fr) 44px auto; gap: 8px; align-items: center; margin-bottom: 8px; }
 .cal-row input[type=color] { width: 44px; height: 34px; padding: 2px; }
 @media (max-width: 700px) { .cal-row { grid-template-columns: 1fr 44px auto; } .cal-row .cal-url { grid-column: 1 / -1; grid-row: 2; } }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+.chip:hover, .chip.on { border-color: var(--accent); color: var(--accent); }
+.browse-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; max-height: 52vh; overflow-y: auto; }
+.browse-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); }
+.browse-row strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.photos-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: var(--panel-2); }
+.photos-warn { border: 1px solid color-mix(in srgb, #f59e0b 48%, var(--line)); background: color-mix(in srgb, #f59e0b 11%, var(--panel-2)); color: var(--text); border-radius: 10px; padding: 9px 12px; margin: 6px 0 12px; font-size: 12.5px; line-height: 1.45; }
+.photos-warn strong { color: #fbbf24; font-weight: 600; }
 
 /* shortcuts */
 .deck { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -406,6 +415,15 @@ dd { margin: 0; word-break: break-all; }
           <i>Publish a calendar</i> (ICS link); iCloud › share as a public calendar (<code>webcal://</code> works). The addresses stay on this computer.</p>
         <div id="calList"></div>
         <button class="btn sm" id="calAdd">＋ Add a calendar</button>
+      </div>
+
+      <div class="card" id="cloudPhotosCard">
+        <h3>Cloud photos</h3>
+        <p class="hint" style="margin:0 0 12px">For the <b>Photo frame</b> widget. Connect OneDrive, Google Drive or Dropbox with OAuth PKCE
+          to browse cloud folders and albums directly, or paste iCloud Shared Album / Nextcloud public links or choose synced folders on each widget.
+          Tokens stay on this computer.</p>
+        <div class="field" style="max-width:220px"><label>Cached photos limit (MB)</label><input type="number" min="20" max="2048" data-bind="cloudPhotos.cacheMaxMb" data-type="int"></div>
+        <div id="cloudPhotosProviders"></div>
       </div>
 
       <div class="card">
@@ -1074,7 +1092,7 @@ function renderInspector() {
         } }, 'Duplicate'),
         h('button', { class: 'btn sm danger', onclick: () => { p.widgets.splice(selWidget, 1); selWidget = -1; renderCanvas(); renderInspector(); changed(); } }, 'Remove'))),
     h('p', { class: 'hint', style: { margin: '0 0 12px' } }, d.desc),
-    ...d.options.map((o) => optionField(w, o)),
+    ...(w.type === 'photos' ? [renderPhotosOptionsPanel(w, (key, val) => setWOpt(w, key, val))] : d.options.map((o) => optionField(w, o))),
     appearanceEditor(w, () => [cfg.display?.appearance, p.appearance], 'Widget appearance', true),
     h('div', { class: 'row', style: { gap: '8px' } }, num('x', 'Column', 0, catalog.cols - 1), num('y', 'Row', 0, catalog.rows - 1),
       num('w', 'Width', d.minW, catalog.cols), num('h', 'Height', d.minH, catalog.rows)));
@@ -1199,11 +1217,17 @@ function renderStackWidgetsOption(w, o) {
           h('button', { type: 'button', class: 'stack-btn-sm', title: 'Close', onclick: (e) => { e.stopPropagation(); activeStackSubIdx = -1; renderInspector(); } }, '✕')
         ),
         ...(subOptions.length > 0
-          ? subOptions.map((subO) => optionField(subW, subO, (key, val) => {
-              item.options = item.options || {};
-              item.options[key] = val;
-              save(false);
-            }))
+          ? (item.type === 'photos'
+              ? [renderPhotosOptionsPanel(subW, (key, val) => {
+                  item.options = item.options || {};
+                  item.options[key] = val;
+                  save(false);
+                })]
+              : subOptions.map((subO) => optionField(subW, subO, (key, val) => {
+                  item.options = item.options || {};
+                  item.options[key] = val;
+                  save(false);
+                })))
           : [h('p', { class: 'hint', style: { margin: '2px 0 0', fontSize: '12px' } }, 'This widget has no additional settings.')])
       );
       rowsAndConfigs.push(configBox);
@@ -1335,6 +1359,537 @@ function optionField(w, o, onValChange) {
       return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
         w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, 'Send data with POST /api/push/<key> — see the Webhooks section.') : null);
   }
+}
+
+let photoStatusData = { providers: [], localRoots: [] };
+async function loadPhotoStatus() {
+  try {
+    const r = await fetch('/api/photos/status');
+    if (r.ok) {
+      photoStatusData = await r.json();
+      renderCloudPhotosSettings();
+      if (curPage()?.widgets[selWidget]?.type === 'photos') renderInspector();
+    }
+  } catch (_) {}
+}
+
+function renderCloudPhotosSettings() {
+  const root = $('cloudPhotosProviders');
+  if (!root) return;
+  cfg.cloudPhotos ??= { cacheMaxMb: 250 };
+  const meta = [
+    { id: 'onedrive', name: 'OneDrive', field: 'oneDriveClientId', secretField: null, hint: 'Azure Portal › App registrations › Mobile and desktop applications › add Redirect URI.' },
+    { id: 'google', name: 'Google Drive', field: 'googleClientId', secretField: 'googleClientSecret', hint: 'Google Cloud Console › Credentials › OAuth 2.0 Client ID (Desktop or Web app with Drive API enabled).' },
+    { id: 'dropbox', name: 'Dropbox', field: 'dropboxClientId', secretField: null, hint: 'Dropbox App Console › OAuth 2 › add Redirect URI and read permissions (files.metadata.read, files.content.read).' },
+  ];
+
+  root.replaceChildren(...meta.map((m) => {
+    const st = (photoStatusData.providers || []).find((x) => x.provider === m.id);
+    const box = h('div', { class: 'photos-box' });
+    const statusText = st?.connected
+      ? `Connected${st.account ? ' (' + st.account + ')' : ''}`
+      : st?.localFolderDetected
+        ? 'Not connected (local synced folder detected)'
+        : 'Not connected';
+    const msg = h('span', { class: 'hint' }, statusText);
+
+    const idInput = h('input', {
+      type: 'text',
+      value: cfg.cloudPhotos[m.field] ?? '',
+      placeholder: `${m.name} OAuth Client ID`,
+      spellcheck: 'false',
+      oninput: (e) => { cfg.cloudPhotos[m.field] = e.target.value.trim() || null; changed(); }
+    });
+
+    const kids = [
+      h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '6px' } },
+        h('strong', {}, m.name),
+        msg),
+      h('p', { class: 'hint', style: { margin: '0 0 8px' } }, m.hint),
+      h('div', { class: 'field' }, h('label', {}, 'Client ID'), idInput),
+    ];
+
+    if (m.secretField) {
+      kids.push(h('div', { class: 'field' },
+        h('label', {}, 'Client Secret (optional for Desktop clients)'),
+        h('input', {
+          type: 'password',
+          autocomplete: 'off',
+          value: cfg.cloudPhotos[m.secretField] ?? '',
+          oninput: (e) => { cfg.cloudPhotos[m.secretField] = e.target.value.trim() || null; changed(); }
+        })));
+    }
+
+    if (st?.redirectUri) {
+      kids.push(h('div', { class: 'hint', style: { marginBottom: '8px', wordBreak: 'break-all' } },
+        'Redirect URI: ', h('code', {}, st.redirectUri)));
+    }
+
+    const actions = h('div', { class: 'row', style: { gap: '8px' } },
+      h('button', {
+        type: 'button',
+        class: 'btn sm',
+        onclick: async () => {
+          if (!await save()) return;
+          const r = await fetch(`/api/photos/oauth/connect/${m.id}`);
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) { toast(j.error || 'Could not start sign-in', true); return; }
+          msg.textContent = 'Finish sign-in in the browser tab…';
+          window.open(j.url, '_blank', 'noopener');
+        }
+      }, `Connect ${m.name}`),
+      h('button', { type: 'button', class: 'btn sm', onclick: () => loadPhotoStatus() }, 'Check connection'),
+      st?.connected ? h('button', {
+        type: 'button',
+        class: 'btn sm danger',
+        onclick: async () => {
+          await fetch(`/api/photos/oauth/disconnect/${m.id}`, { method: 'POST' });
+          toast(`${m.name} disconnected`);
+          loadPhotoStatus();
+        }
+      }, 'Disconnect') : null
+    );
+    kids.push(actions);
+    box.replaceChildren(...kids);
+    return box;
+  }));
+}
+
+function openPhotosBrowser(provider, w, onPick) {
+  const navStack = [];
+  let curParentId = null;
+  let curPath = provider === 'local' ? (w.options?.folder || '') : '';
+
+  const loadLevel = async (parentId, path) => {
+    $('modalBody').replaceChildren(
+      h('h3', {}, `Browse ${provider === 'local' ? 'folders' : provider + ' folders & albums'}`),
+      h('p', { class: 'hint' }, 'Loading…')
+    );
+    $('modal').hidden = false;
+
+    try {
+      const r = await fetch('/api/photos/browse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          parentId,
+          path,
+          shareUrl: w.options?.shareUrl || '',
+          sharePassword: w.options?.sharePassword || '',
+        }),
+      });
+      const data = await r.json();
+      if (!data.ok) {
+        $('modalBody').replaceChildren(
+          h('h3', {}, 'Browse photos'),
+          h('p', { class: 'hint', style: { color: 'var(--danger)' } }, data.error || 'Could not list folders')
+        );
+        return;
+      }
+
+      curParentId = parentId;
+      curPath = data.currentPath ?? path ?? '';
+      const entries = Array.isArray(data.entries) ? data.entries : [];
+
+      const headerBar = h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '8px' } },
+        h('span', { class: 'hint', style: { wordBreak: 'break-all' } }, curPath || 'Choose a starting location'),
+        h('div', { class: 'row', style: { gap: '6px' } },
+          navStack.length > 0 ? h('button', {
+            type: 'button',
+            class: 'btn sm',
+            onclick: () => { const prev = navStack.pop(); loadLevel(prev.parentId, prev.path); }
+          }, '↑ Back') : null,
+          (curPath && curParentId !== 'albums') ? h('button', {
+            type: 'button',
+            class: 'btn sm primary',
+            onclick: () => {
+              const pickedAlbumId = provider === 'google'
+                ? (parentId || (curPath === 'My Drive' ? 'root' : ''))
+                : provider === 'onedrive'
+                  ? (parentId || (curPath === '/' ? 'root' : ''))
+                  : provider === 'dropbox'
+                    ? curPath
+                    : '';
+              onPick({ albumId: pickedAlbumId, folder: curPath });
+              closeModal();
+            }
+          }, 'Use this folder') : null
+        )
+      );
+
+      const listEl = h('div', { class: 'browse-list' },
+        ...(entries.length
+          ? entries.map((e) => h('div', { class: 'browse-row' },
+              h('span', {}, e.kind === 'album' ? '🖼️' : '📁'),
+              h('strong', { title: e.path || e.name }, e.name + (e.itemCount != null ? ` (${e.itemCount})` : '')),
+              h('div', { class: 'row', style: { gap: '6px' } },
+                e.kind !== 'collection' ? h('button', {
+                  type: 'button',
+                  class: 'btn sm',
+                  onclick: () => {
+                    onPick({ albumId: (e.kind === 'album' || (['google', 'onedrive', 'dropbox'].includes(provider) && e.kind !== 'local-folder')) ? e.id : '', folder: e.path || e.name });
+                    closeModal();
+                  }
+                }, 'Select') : null,
+                (e.kind !== 'album' && e.kind !== 'local-folder') ? h('button', {
+                  type: 'button',
+                  class: 'btn sm',
+                  onclick: () => { navStack.push({ parentId: curParentId, path: curPath }); loadLevel(e.id, e.path || e.name); }
+                }, 'Open ›') : null
+              )))
+          : [h('p', { class: 'hint' }, curParentId === 'albums' ? 'No albums found here.' : 'No subfolders found here.')])
+      );
+
+      $('modalBody').replaceChildren(
+        h('h3', {}, `Browse ${provider === 'local' ? 'folders' : provider}`),
+        headerBar,
+        listEl
+      );
+    } catch (_) {
+      $('modalBody').replaceChildren(h('h3', {}, 'Browse photos'), h('p', { class: 'hint' }, 'Failed to reach agent.'));
+    }
+  };
+
+  loadLevel(null, provider === 'local' ? '' : '');
+}
+
+function renderPhotosOptionsPanel(w, setFn) {
+  const def = widgetDef('photos');
+  const optsByKey = Object.fromEntries((def.options || []).map((o) => [o.key, o]));
+  const getVal = (key) => {
+    const raw = w.options?.[key];
+    return raw !== undefined ? raw : optsByKey[key]?.default;
+  };
+  const setOpt = (key, val) => {
+    w.options = w.options || {};
+    w.options[key] = val;
+    setFn(key, val);
+  };
+
+  const root = h('div', { class: 'photos-inspector' });
+  const dynamicBox = h('div');
+
+  const looksLikeLocalPath = (p) => {
+    const s = (p || '').trim();
+    return /^\/(?:Users|home|Volumes|mnt|media|var|private|tmp)(?:\/|$)/.test(s)
+      || s === '~' || s.startsWith('~/') || s.startsWith('~\\')
+      || /^[A-Za-z]:[\\/]/.test(s) || s.startsWith('\\\\');
+  };
+  const looksLikeCloudSyncedPath = (p, prov) =>
+    prov === 'onedrive' || prov === 'google' || prov === 'dropbox' || prov === 'icloud'
+    || /CloudStorage|OneDrive|iCloud|Mobile Documents|Google ?Drive|Dropbox/i.test(p || '');
+
+  let checkSeq = 0;
+  let checkAbort = null;
+  let resolvedRemote = null;
+  let detectedCloudOnly = 0;
+  let clearStatusEl = null;
+  let refreshWarnFn = null;
+
+  const sourceSnapshotKey = () => JSON.stringify([
+    getVal('provider') || 'local',
+    getVal('shareUrl') || '',
+    getVal('sharePassword') || '',
+    getVal('folder') || '',
+    getVal('albumId') || '',
+    getVal('subfolders') !== false,
+    getVal('downloadCloudFiles') === true,
+  ]);
+
+  const invalidateSourceCheck = (clearStatus = true) => {
+    checkSeq++;
+    if (checkAbort) {
+      checkAbort.abort();
+      checkAbort = null;
+    }
+    resolvedRemote = null;
+    detectedCloudOnly = 0;
+    if (clearStatus && clearStatusEl) clearStatusEl.textContent = '';
+    if (refreshWarnFn) refreshWarnFn();
+  };
+
+  const renderSourceFields = () => {
+    invalidateSourceCheck(true);
+    clearStatusEl = null;
+    refreshWarnFn = null;
+
+    const provider = getVal('provider') || 'local';
+    const kids = [];
+
+    const st = (photoStatusData.providers || []).find((x) => x.provider === provider);
+    if (['onedrive', 'google', 'dropbox'].includes(provider)) {
+      const msg = st?.connected
+        ? `Connected as ${st.account || provider}`
+        : `Not connected via OAuth yet (set up under General › Cloud photos, or pick a synced folder below).`;
+      kids.push(h('div', { class: 'hint', style: { marginBottom: '8px' } },
+        msg, ' ',
+        !st?.connected ? h('a', { href: '#general', onclick: (e) => { e.preventDefault(); location.hash = '#general'; } }, 'Open Cloud photos setup ›') : null));
+    }
+
+    const warnBox = h('div', { class: 'photos-warn', hidden: true });
+    const updateWarnBox = () => {
+      const shareUrl = (getVal('shareUrl') || '').trim();
+      const folder = (getVal('folder') || '').trim();
+      const albumId = (getVal('albumId') || '').trim();
+      const allowDl = getVal('downloadCloudFiles') === true;
+      const isRemoteStream = resolvedRemote === true || (resolvedRemote === null && (
+        provider === 'nextcloud'
+        || (provider === 'icloud' && shareUrl.length > 0)
+        || (['onedrive', 'google', 'dropbox'].includes(provider) && (albumId.length > 0 || (st?.connected && !looksLikeLocalPath(folder))))
+      ));
+
+      if (isRemoteStream) {
+        warnBox.replaceChildren('⚠️ ', h('strong', {}, 'Cloud download notice: '),
+          'Photos from this cloud source will be downloaded over the internet onto this computer and cached locally (up to the General › Cloud photos limit) as they are displayed.');
+        warnBox.hidden = false;
+      } else if (allowDl) {
+        warnBox.replaceChildren('⚠️ ', h('strong', {}, 'Cloud download enabled: '),
+          'Cloud-only (Files On-Demand) photos in this folder will be downloaded from your cloud storage onto this computer as the slideshow displays them, using network data and local disk space.');
+        warnBox.hidden = false;
+      } else if (detectedCloudOnly > 0) {
+        warnBox.replaceChildren('⚠️ ', h('strong', {}, `Cloud-only files detected (${detectedCloudOnly}): `),
+          'These photos are stored in the cloud and are not on disk yet. Enable "Download cloud-only files on demand" below to allow PhoneBox to download them onto this computer as they are shown.');
+        warnBox.hidden = false;
+      } else if (looksLikeCloudSyncedPath(folder, provider)) {
+        warnBox.replaceChildren('⚠️ ', h('strong', {}, 'Cloud-synced folder: '),
+          'Online-only (Files On-Demand) photos are not downloaded automatically unless you enable "Download cloud-only files on demand" below (which downloads photos from the cloud onto this computer when displayed).');
+        warnBox.hidden = false;
+      } else {
+        warnBox.hidden = true;
+      }
+    };
+    refreshWarnFn = updateWarnBox;
+
+    if (provider === 'icloud') {
+      kids.push(h('div', { class: 'field' },
+        h('label', {}, 'iCloud Shared Album link'),
+        h('input', {
+          type: 'text',
+          placeholder: 'https://www.icloud.com/sharedalbum/#...',
+          value: getVal('shareUrl') ?? '',
+          spellcheck: 'false',
+          oninput: (e) => { setOpt('shareUrl', e.target.value); invalidateSourceCheck(true); }
+        }),
+        h('span', { class: 'hint' }, 'Works immediately with any public iCloud Shared Album URL — no login required. Or leave blank and pick a synced iCloud Photos folder below.')));
+    } else if (provider === 'nextcloud') {
+      kids.push(
+        h('div', { class: 'field' },
+          h('label', {}, 'Nextcloud public share link'),
+          h('input', {
+            type: 'text',
+            placeholder: 'https://cloud.example.com/s/...',
+            value: getVal('shareUrl') ?? '',
+            spellcheck: 'false',
+            oninput: (e) => { setOpt('shareUrl', e.target.value); invalidateSourceCheck(true); }
+          })),
+        h('div', { class: 'field' },
+          h('label', {}, 'Share password (optional)'),
+          h('input', {
+            type: 'password',
+            autocomplete: 'off',
+            value: getVal('sharePassword') ?? '',
+            oninput: (e) => { setOpt('sharePassword', e.target.value); invalidateSourceCheck(true); }
+          }))
+      );
+    }
+
+    let folderInput = null;
+    const folderLabel = provider === 'icloud' ? 'Or synced local iCloud folder'
+      : provider === 'nextcloud' ? 'Subfolder inside share (optional)'
+      : 'Folder or album path';
+
+    const testState = h('span', { class: 'hint' }, '');
+    clearStatusEl = testState;
+    const runSourceCheck = async (silent = false) => {
+      const mySeq = ++checkSeq;
+      if (checkAbort) checkAbort.abort();
+      const myAbort = new AbortController();
+      checkAbort = myAbort;
+      const snap = sourceSnapshotKey();
+      if (!silent) testState.textContent = 'Checking source…';
+      try {
+        const r = await fetch('/api/photos/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ options: w.options || {} }),
+          signal: myAbort.signal,
+        });
+        const res = await r.json();
+        if (mySeq !== checkSeq || sourceSnapshotKey() !== snap) return;
+        detectedCloudOnly = res.cloudOnlyCount || 0;
+        resolvedRemote = typeof res.remoteStream === 'boolean' ? res.remoteStream : null;
+        updateWarnBox();
+        if (!silent || detectedCloudOnly > 0 || testState.textContent) {
+          testState.textContent = res.message || (res.ok ? 'OK' : 'Source check failed');
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError' || mySeq !== checkSeq || sourceSnapshotKey() !== snap) return;
+        if (!silent) testState.textContent = 'Could not reach agent';
+      } finally {
+        if (checkAbort === myAbort) checkAbort = null;
+      }
+    };
+
+    folderInput = h('input', {
+      type: 'text',
+      style: { flex: '1' },
+      placeholder: provider === 'local' ? 'Select or paste a folder path' : provider === 'nextcloud' ? 'e.g. Summer 2025' : 'e.g. Pictures/Favorites',
+      value: getVal('folder') ?? '',
+      spellcheck: 'false',
+      oninput: (e) => {
+        setOpt('folder', e.target.value);
+        if (getVal('albumId')) setOpt('albumId', '');
+        invalidateSourceCheck(true);
+      }
+    });
+
+    const browseBtn = h('button', {
+      type: 'button',
+      class: 'btn sm',
+      onclick: () => openPhotosBrowser(provider, w, (pick) => {
+        setOpt('folder', pick.folder || '');
+        setOpt('albumId', pick.albumId || '');
+        folderInput.value = pick.folder || '';
+        invalidateSourceCheck(true);
+        if (!pick.albumId && looksLikeLocalPath(pick.folder)) runSourceCheck(true);
+      })
+    }, 'Browse…');
+
+    kids.push(h('div', { class: 'field' },
+      h('label', {}, folderLabel),
+      h('div', { class: 'row', style: { gap: '8px' } }, folderInput, browseBtn)));
+
+    const matchingRoots = (photoStatusData.localRoots || []).filter((r) =>
+      provider === 'local' || r.providerHint === provider
+    );
+    if (matchingRoots.length > 0 && provider !== 'nextcloud') {
+      kids.push(h('div', { class: 'chip-row' },
+        ...matchingRoots.slice(0, 6).map((r) => h('button', {
+          type: 'button',
+          class: 'chip' + (getVal('folder') === r.path ? ' on' : ''),
+          onclick: () => {
+            setOpt('folder', r.path);
+            setOpt('albumId', '');
+            folderInput.value = r.path;
+            invalidateSourceCheck(true);
+            runSourceCheck(true);
+          }
+        }, r.name))));
+    }
+
+    if (provider !== 'nextcloud') {
+      kids.push(h('label', { class: 'check', style: { marginBottom: '8px' } },
+        h('input', {
+          type: 'checkbox',
+          checked: getVal('downloadCloudFiles') === true,
+          onchange: (e) => {
+            setOpt('downloadCloudFiles', e.target.checked);
+            invalidateSourceCheck(true);
+            if ((getVal('folder') || '').trim() && looksLikeLocalPath(getVal('folder'))) runSourceCheck(true);
+          }
+        }),
+        optsByKey.downloadCloudFiles?.label || 'Download cloud-only files on demand'));
+    }
+
+    updateWarnBox();
+    kids.push(warnBox);
+
+    kids.push(h('div', { class: 'row', style: { gap: '8px', marginBottom: '12px' } },
+      h('button', {
+        type: 'button',
+        class: 'btn sm',
+        onclick: () => runSourceCheck(false)
+      }, 'Test source'),
+      testState));
+
+    dynamicBox.replaceChildren(...kids);
+
+    if (provider !== 'nextcloud' && !(provider === 'icloud' && (getVal('shareUrl') || '').trim())
+        && !(getVal('albumId') || '').trim() && looksLikeLocalPath(getVal('folder'))
+        && looksLikeCloudSyncedPath(getVal('folder'), provider)) {
+      runSourceCheck(true);
+    }
+  };
+
+  const providerMeta = optsByKey.provider;
+  const providerSelect = h('select', {
+    onchange: (e) => {
+      setOpt('provider', e.target.value);
+      invalidateSourceCheck(true);
+      renderSourceFields();
+    }
+  }, ...providerMeta.choices.map(([k, l]) => h('option', { value: k, selected: k === (getVal('provider') || 'local') }, l)));
+
+  const intervalInput = h('input', {
+    type: 'number',
+    min: 5,
+    max: 86400,
+    style: { maxWidth: '130px' },
+    value: getVal('interval') ?? 60,
+    onchange: (e) => {
+      const n = Math.max(5, Math.min(86400, parseInt(e.target.value || '60', 10) || 60));
+      e.target.value = n;
+      setOpt('interval', n);
+    }
+  });
+  const presets = [[15, '15s'], [30, '30s'], [60, '1m'], [300, '5m'], [900, '15m'], [3600, '1h']];
+  const intervalField = h('div', { class: 'field' },
+    h('label', {}, 'Change photo every (seconds)'),
+    h('div', { class: 'row', style: { gap: '6px' } },
+      intervalInput,
+      ...presets.map(([sec, lbl]) => h('button', {
+        type: 'button',
+        class: 'chip',
+        onclick: () => { intervalInput.value = sec; setOpt('interval', sec); }
+      }, lbl))));
+
+  const makeSelect = (key) => {
+    const meta = optsByKey[key];
+    const cur = getVal(key) ?? meta.default;
+    return h('div', { class: 'field' },
+      h('label', {}, meta.label),
+      h('select', { onchange: (e) => setOpt(key, e.target.value) },
+        ...meta.choices.map(([k, l]) => h('option', { value: k, selected: k === cur }, l))));
+  };
+
+  const makeCheck = (key) => {
+    const meta = optsByKey[key];
+    return h('label', { class: 'check', style: { marginBottom: '10px' } },
+      h('input', {
+        type: 'checkbox',
+        checked: key === 'subfolders' ? getVal(key) !== false : getVal(key) === true,
+        onchange: (e) => {
+          setOpt(key, e.target.checked);
+          if (key === 'subfolders') invalidateSourceCheck(true);
+        }
+      }),
+      meta.label);
+  };
+
+  renderSourceFields();
+
+  root.replaceChildren(
+    h('div', { class: 'field' }, h('label', {}, providerMeta.label), providerSelect),
+    dynamicBox,
+    makeCheck('subfolders'),
+    intervalField,
+    makeSelect('order'),
+    makeSelect('fit'),
+    makeSelect('transition'),
+    makeSelect('info'),
+    makeSelect('tapAction'),
+    makeCheck('clockOverlay'),
+    h('div', { class: 'field' },
+      h('label', {}, optsByKey.title.label),
+      h('input', {
+        type: 'text',
+        value: getVal('title') ?? '',
+        placeholder: 'Optional overlay badge title',
+        oninput: (e) => setOpt('title', e.target.value)
+      }))
+  );
+  return root;
 }
 
 // ---- template picker: new page (index null) or replace the widgets of page <index>
@@ -2115,8 +2670,10 @@ async function load() {
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
+  cfg.cloudPhotos ??= { cacheMaxMb: 250 };
+  cfg.cloudPhotos.cacheMaxMb ??= 250;
   saved = JSON.stringify(cfg);
-  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderCharge(); bindForm(); changed(); loadInfo(); loadPhones();
+  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderCloudPhotosSettings(); renderCharge(); bindForm(); changed(); loadInfo(); loadPhones(); loadPhotoStatus();
 }
 
 async function save() {
@@ -2131,7 +2688,7 @@ async function save() {
 }
 
 $('save').onclick = save;
-$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderRules(); renderCalendars(); renderPhones(); renderCharge(); bindForm(); changed(); };
+$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderRules(); renderCalendars(); renderCloudPhotosSettings(); renderPhones(); renderCharge(); bindForm(); changed(); };
 $('openPhone').onclick = async () => { await fetch('/api/phone/open', { method: 'POST' }); toast('Opening the panel on the phone'); };
 $('cityBtn').onclick = searchCity;
 function renderUpdate(u) {
@@ -2190,7 +2747,7 @@ $('whClear').onclick = async () => { if (!confirm('Delete all pushed values?')) 
 setInterval(loadPushed, 4000);
 $('citySearch').onkeydown = (e) => { if (e.key === 'Enter') searchCity(); };
 $('applyJson').onclick = () => {
-  try { cfg = JSON.parse($('json').value); $('jsonErr').textContent = ''; renderPages(); renderDeck(); renderRules(); renderCalendars(); renderPhones(); renderCharge(); bindForm(); changed(); toast('JSON loaded into the form — remember to save'); }
+  try { cfg = JSON.parse($('json').value); $('jsonErr').textContent = ''; renderPages(); renderDeck(); renderRules(); renderCalendars(); renderCloudPhotosSettings(); renderPhones(); renderCharge(); bindForm(); changed(); toast('JSON loaded into the form — remember to save'); }
   catch (e) { $('jsonErr').textContent = e.message; }
 };
 document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (!$('save').disabled) save(); } });
