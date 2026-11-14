@@ -4,6 +4,7 @@ public sealed class ControlDeckConfig
 {
     public bool AllowListening { get; set; }
     public bool AllowPower { get; set; }
+    public bool AllowOnlineRadioLogos { get; set; }
     public List<DeckAction> Actions { get; set; } = [];
     public List<DeckProfile> Profiles { get; set; } = [];
     public string? SpotifyToken { get; set; }
@@ -24,6 +25,7 @@ public sealed class DeckAction
     public string? Argument { get; set; }
     public int Value { get; set; }
     public string? Device { get; set; }
+    public string? Icon { get; set; }
 }
 public sealed class DeckProfile
 {
@@ -36,7 +38,7 @@ public sealed class DeckProfile
     public Dictionary<string, string> Defaults { get; set; } = [];
 }
 public sealed record DeckLevel(string Kind, string Id, int Volume, bool Muted);
-public sealed record DeckItem(string Id, string Name, string Kind, string? State = null, bool Available = true);
+public sealed record DeckItem(string Id, string Name, string Kind, string? State = null, bool Available = true, string? Rev = null);
 public sealed record DeckDevice(string Id, string Name, string Direction, bool Default, int Volume, bool Muted,
     double Peak, int Channels, bool CanControl = true, IReadOnlyList<int>? ChannelVolumes = null);
 public sealed record DeckSession(string Id, string Name, int Pid, string DeviceId, int Volume, bool Muted, double Peak);

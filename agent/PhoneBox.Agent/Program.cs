@@ -83,6 +83,16 @@ app.MapPost("/api/controls/command/{kind}", async (string kind, string? id, stri
 app.MapGet("/api/controls/listen", async (HttpResponse response, ControlDeck deck, CancellationToken ct) => await deck.Listen(response, ct));
 app.MapPost("/api/controls/capture", (ControlDeck deck) => Results.Json(deck.CaptureProfile()));
 app.MapGet("/api/controls/task-output/{id}", (string id, ControlDeck deck) => Results.Text(deck.TaskOutput(id), "text/plain"));
+app.MapGet("/api/controls/radio-logo", async (string? id, ControlDeck deck, HttpContext ctx, CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(id)) return Results.NotFound();
+    var logo = await deck.RadioLogoAsync(id, ct);
+    if (logo is null) return Results.NotFound();
+    ctx.Response.Headers.CacheControl = logo.Value.IsFallback ? "no-store" : "public, max-age=3600";
+    ctx.Response.Headers.XContentTypeOptions = "nosniff";
+    ctx.Response.Headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'";
+    return Results.Bytes(logo.Value.Bytes, logo.Value.Mime);
+});
 app.MapGet("/api/controls/spotify/state", async (SpotifyControl spotify, CancellationToken ct) => Results.Json(await spotify.Snapshot(ct)));
 app.MapPost("/api/controls/spotify/action/{action}", async (string action, string? id, SpotifyControl spotify, CancellationToken ct) => Results.Json(await spotify.Act(action, id, ct)));
 app.MapGet("/api/controls/spotify/connect", (SpotifyControl spotify) =>

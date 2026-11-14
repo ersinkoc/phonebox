@@ -15,10 +15,10 @@
 }
 .w[data-widget-surface="borderless"] { background: transparent !important; background-image: none !important; }
 /* Keep control surfaces consistent without changing signal meters or round dials. */
-.w.has-widget-radius :is(.deck-channel,.deck-button,.deck-hold,.chip-btn,.sc) {
+.w.has-widget-radius :is(.deck-channel,.deck-button,.deck-hold,.radio-card,.chip-btn,.sc) {
   border-radius: min(var(--widget-radius), 12px);
 }
-.w[data-widget-surface="flat"] :is(.deck-channel,.deck-button,.deck-hold,.sc) {
+.w[data-widget-surface="flat"] :is(.deck-channel,.deck-button,.deck-hold,.radio-card,.sc) {
   background-image: none;
   box-shadow: none;
 }

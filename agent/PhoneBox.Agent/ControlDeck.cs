@@ -25,6 +25,9 @@ public sealed partial class ControlDeck : BackgroundService
     private readonly Dictionary<string, (int Original, int Applied)> _duck = [];
     private int? _duckPercent;
     private readonly Dictionary<string, long> _sleep = [];
+    private readonly RadioLogoCache _logos;
+    private readonly HashSet<string> _activeRadios = [];
+    private readonly Lock _radioState = new();
     private Task? _hardwareJob;
     private long _hardwareAt;
     private IReadOnlyList<DeckMonitor> _monitors = [];
@@ -32,6 +35,7 @@ public sealed partial class ControlDeck : BackgroundService
 
     private readonly PushStore? _push;
     private readonly AudioControl? _master;
+    private readonly Lock _radioGate = new();
     public ControlDeck(ConfigStore config, AudioControl audio, MediaMonitor media, ILogger<ControlDeck> log, SpotifyControl spotify, PushStore push)
         : this(config, CreateNative(audio, media), log, null, push, audio) { _spotify = spotify; }
 
@@ -43,12 +47,13 @@ public sealed partial class ControlDeck : BackgroundService
         return new PortableDeckNative(audio, media);
 #endif
     }
-    internal ControlDeck(ConfigStore config, IDeckNative native, ILogger<ControlDeck> log, Func<long>? now = null, PushStore? push = null, AudioControl? master = null)
+    internal ControlDeck(ConfigStore config, IDeckNative native, ILogger<ControlDeck> log, Func<long>? now = null, PushStore? push = null, AudioControl? master = null, RadioLogoCache? logos = null)
     {
         _config = config; _log = log; _push = push; _master = master;
         _now = now ?? (() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         _tasks = new(config, log);
         _native = native;
+        _logos = logos ?? new RadioLogoCache();
         _ptt = new(id => Audio().Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted,
             (id, muted) => { try { var ok = _native.Device(id, null, muted); Invalidate(); return ok; } catch { return false; } }, () => Environment.TickCount64);
     }
@@ -149,7 +154,10 @@ public sealed partial class ControlDeck : BackgroundService
                     ok = true;
                     foreach (var d in Audio().Devices) ok &= _native.Device(d.Id, null, true);
                     break;
-                case "sound-stop": _native.StopSound(string.IsNullOrEmpty(id) ? null : id); ok = true; break;
+                case "sound-stop":
+                    if (string.IsNullOrEmpty(id)) { StopAllRadios(); _native.StopSound(null); }
+                    else { StopRadio(id); }
+                    ok = true; break;
                 case "action": return await Action(id, op, value, ct);
                 case "brightness": ok = value is >= 0 and <= 100 && _native.Brightness(id, value.Value); break;
                 case "desktop": ok = value is -1 or 1 && await _native.PlatformAction("desktop", "", null, value.Value, ct); break;
@@ -227,10 +235,17 @@ public sealed partial class ControlDeck : BackgroundService
                 return await ShortcutAction(c, action.Target, op, ct);
             case "keys": KeySender.SendKeys(action.Target); return new(true);
             case "text": KeySender.TypeText(action.Target); return new(true);
-            case "sound": case "radio":
+            case "sound":
                 if (op == "stop") _native.StopSound(action.Id);
                 else _native.Play(action.Id, action.Target, action.Device, Math.Clamp(action.Value, 0, 100));
                 return new(true);
+            case "radio":
+                if (op == "stop" || (op == "toggle" && IsRadioPlaying(action)))
+                {
+                    StopRadio(action.Id);
+                    return new(true);
+                }
+                return StartRadio(action) ? new(true) : new(false, "Radio stream could not be opened");
             case "midi":
                 if (!int.TryParse(action.Device, out var port)) return new(false, "Choose a MIDI output port");
                 _native.Midi(port, action.Target, value ?? action.Value); return new(true);
@@ -320,7 +335,85 @@ public sealed partial class ControlDeck : BackgroundService
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
-        finally { _ptt.Sweep(all: true); RestoreDucking(); lock (_state) foreach (var player in _fades.Keys.ToArray()) RestoreFade(player); await _tasks.StopAsync(); DisposeMixer(); _native.Dispose(); }
+        finally { _ptt.Sweep(all: true); RestoreDucking(); lock (_state) foreach (var player in _fades.Keys.ToArray()) RestoreFade(player); await _tasks.StopAsync(); DisposeMixer(); _native.Dispose(); _logos.Dispose(); }
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        _logos.Dispose();
+    }
+
+    /// <summary>Fetches or generates the cached logo for the specified radio action.</summary>
+    internal async Task<RadioLogo?> RadioLogoAsync(string id, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id) || id.Length > 128) return null;
+        var c = _config.Get().Controls;
+        var action = c.Actions.FirstOrDefault(a => a.Id == id && a.Kind == "radio");
+        return action is null ? null : await _logos.GetAsync(action, c.AllowOnlineRadioLogos, ct);
+    }
+
+    /// <summary>Stops all active radio stations, optionally excluding one station ID.</summary>
+    public void StopAllRadios(string? exceptId = null)
+    {
+        lock (_radioGate) StopAllRadiosCore(exceptId);
+    }
+
+    private void StopAllRadiosCore(string? exceptId)
+    {
+        string[] tracked;
+        lock (_radioState)
+        {
+            tracked = _activeRadios.Where(id => id != exceptId).ToArray();
+            if (exceptId is null) _activeRadios.Clear();
+            else _activeRadios.RemoveWhere(id => id != exceptId);
+        }
+        var ids = _config.Get().Controls.Actions
+            .Where(a => a.Kind == "radio" && a.Id != exceptId).Select(a => a.Id)
+            .Concat(tracked).Distinct(StringComparer.Ordinal);
+        foreach (var radioId in ids) _native.StopSound(radioId);
+        Invalidate();
+    }
+
+    private void StopRadio(string id)
+    {
+        lock (_radioGate)
+        {
+            lock (_radioState) _activeRadios.Remove(id);
+            _native.StopSound(id);
+            Invalidate();
+        }
+    }
+
+    private bool StartRadio(DeckAction action)
+    {
+        lock (_radioGate)
+        {
+            StopAllRadiosCore(action.Id);
+            try { _native.Play(action.Id, action.Target, action.Device, Math.Clamp(action.Value, 0, 100)); }
+            catch (Exception ex)
+            {
+                _log.LogDebug(ex, "Radio stream {Id} failed to open", action.Id);
+                lock (_radioState) _activeRadios.Remove(action.Id);
+                Invalidate();
+                return false;
+            }
+            lock (_radioState) _activeRadios.Add(action.Id);
+            Invalidate();
+            return IsRadioPlaying(action);
+        }
+    }
+
+    internal bool IsRadioPlaying(DeckAction action)
+    {
+        var nativeState = _native.ActionState(action);
+        if (nativeState is not null)
+        {
+            var playing = nativeState == "Playing";
+            if (!playing) { lock (_radioState) _activeRadios.Remove(action.Id); }
+            return playing;
+        }
+        lock (_radioState) return _activeRadios.Contains(action.Id);
     }
     private async Task Tick(CancellationToken ct)
     {

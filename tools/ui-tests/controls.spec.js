@@ -128,3 +128,63 @@ for(const viewport of [{width:780,height:360},{width:360,height:780}]){
     await page.screenshot({path:'../../.temp_files/control-audio-'+viewport.width+'.png'});
   });
 }
+
+test('radio cards ignore overlapping taps while a station toggle command is in flight', async ({ page }) => {
+  await page.goto('/panel/');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config', JSON.stringify({
+      night: { enabled: false },
+      shortcuts: [],
+      controls: {
+        actions: [
+          { id: 'r1', label: 'Jazz FM', kind: 'radio', target: 'https://example.com/jazz.mp3' },
+          { id: 'r2', label: 'Rock FM', kind: 'radio', target: 'https://example.com/rock.mp3' },
+        ],
+      },
+      pages: [{ id: 'controls', title: 'Controls', widgets: [{ id: 'radio-w', type: 'radio', x: 0, y: 0, w: 12, h: 6, options: { view: 'grid' } }] }],
+    }));
+  });
+  await page.reload();
+  const jazz = page.getByRole('button', { name: /Jazz FM/ });
+  const rock = page.getByRole('button', { name: /Rock FM/ });
+  await expect(jazz).toBeVisible();
+  await expect(rock).toBeVisible();
+
+  await page.evaluate(() => {
+    const orig = window.fetch.bind(window);
+    window.__radioCmds = [];
+    window.__gateNextCmd = true;
+    let release;
+    window.__releaseCmd = () => release && release();
+    const gate = new Promise(r => { release = r; });
+    window.fetch = async (url, init) => {
+      if (String(url).includes('/controls/command/action')) {
+        window.__radioCmds.push(new URL(url, location.href).searchParams.get('id'));
+        if (window.__gateNextCmd) {
+          window.__gateNextCmd = false;
+          await gate;
+        }
+      }
+      return orig(url, init);
+    };
+  });
+
+  await jazz.click();
+  await expect.poll(() => page.evaluate(() => window.__radioCmds)).toEqual(['r1']);
+  await expect(jazz).toHaveAttribute('aria-pressed', 'true');
+
+  // Tapping another station while Jazz FM's command is still in flight must not send a second POST
+  await rock.click();
+  await page.waitForTimeout(80);
+  expect(await page.evaluate(() => window.__radioCmds)).toEqual(['r1']);
+
+  await page.evaluate(() => window.__releaseCmd());
+  await expect(jazz).toHaveAttribute('aria-pressed', 'true');
+
+  // Once the first command settles, tapping Rock FM switches playback normally
+  await rock.click();
+  await expect.poll(() => page.evaluate(() => window.__radioCmds)).toEqual(['r1', 'r2']);
+  await expect(rock).toHaveAttribute('aria-pressed', 'true');
+  await expect(jazz).toHaveAttribute('aria-pressed', 'false');
+});

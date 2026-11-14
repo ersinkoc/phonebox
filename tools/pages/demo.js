@@ -411,7 +411,11 @@
       const a = (c.controls?.actions || []).find(x => x.id === id); if (!a) return { ok: false, error: 'Control is not configured' };
       if (a.kind === 'server') actionState[id] = op === 'stop' ? 'Stopped' : 'Running';
       else if (a.kind === 'task') { actionState[id] = 'Running'; setTimeout(() => { actionState[id] = 'Finished'; }, 4000); }
-      else if (a.kind === 'sound' || a.kind === 'radio') actionState[id] = 'Playing';
+      else if (a.kind === 'radio') {
+        const stop = op === 'stop' || (op === 'toggle' && actionState[id] === 'Playing');
+        for (const r of (c.controls?.actions || []).filter(x => x.kind === 'radio')) actionState[r.id] = 'Stopped';
+        if (!stop) actionState[id] = 'Playing';
+      } else if (a.kind === 'sound') actionState[id] = 'Playing';
     } else if (kind === 'sound-stop') { for (const a of c.controls?.actions || []) if ((!id || a.id === id) && actionState[a.id] === 'Playing') delete actionState[a.id]; }
     else if (kind === 'power-arm' || kind === 'power') return { ok: false, error: 'Power controls are disabled in desktop settings' };
     else if (!['desktop', 'lock', 'monitor-off'].includes(kind)) return { ok: false, error: 'Unknown control' };
@@ -596,13 +600,16 @@
     return handle((init.method || 'GET').toUpperCase(), url.pathname.slice(i), url.searchParams, init.body, new Headers(init.headers || {}));
   };
 
-  // Album art is an <img>, which fetch() does not see: swap its address for the demo cover.
+  // Album art and radio logos are <img>, which fetch() does not see: swap their address for the demo cover.
+  const swapDemoImg = (img) => {
+    if (img.tagName === 'IMG' && /\/api\/(art|controls\/radio-logo)/.test(img.getAttribute('src') || '')) img.src = ART;
+  };
   new MutationObserver((list) => {
     for (const m of list) {
-      const img = m.target;
-      if (img.tagName === 'IMG' && /\/api\/art/.test(img.getAttribute('src') || '')) img.src = ART;
+      if (m.type === 'attributes') swapDemoImg(m.target);
+      else for (const n of m.addedNodes) if (n.nodeType === 1) { swapDemoImg(n); n.querySelectorAll?.('img').forEach(swapDemoImg); }
     }
-  }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['src'] });
+  }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['src'] });
 
   // A pretend Android bridge for phone-only widgets.
   if (!window.Android && document.currentScript.dataset.panel !== undefined)

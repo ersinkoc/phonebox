@@ -206,13 +206,259 @@ function actionsView(box, options, type) {
     if (!items.length) { empty(grid, 'Assign controls in the computer’s Control Deck settings'); return; }
     grid.replaceChildren(...items.map(item => {
       const label = h('span', '', item.name), state = h('small', '', item.state || 'Ready');
-      const b = button('', async () => { await deckCommand(item.kind === 'profile' ? 'profile' : 'action', { id: item.id, op: type === 'app-dock' ? 'focus' : '' }); signature = ''; });
+      const b = button('', async () => { await deckCommand(item.kind === 'profile' ? 'profile' : 'action', { id: item.id, op: item.kind === 'radio' ? 'toggle' : (type === 'app-dock' ? 'focus' : '') }); signature = ''; });
       b.disabled = item.available === false;
       b.append(label, state);
       if (type === 'dev-servers') return h('div', 'deck-task', b, button('Stop', () => deckCommand('action', { id: item.id, op: 'stop' }), 'Stop ' + item.name));
-      if (type === 'soundboard' || type === 'radio') return h('div', 'deck-task', b, button('Stop', () => deckCommand('sound-stop', { id: item.id }), 'Stop ' + item.name));
+      if (type === 'soundboard') return h('div', 'deck-task', b, button('Stop', () => deckCommand('sound-stop', { id: item.id }), 'Stop ' + item.name));
       return b;
     }));
+  };
+}
+
+function radioInitials(label) {
+  const parts = (label || 'FM').replace(/\([^)]*\)/g, '').trim().split(/[\s\-_.]+/).filter(Boolean);
+  if (!parts.length) return 'FM';
+  const chars = (s, n) => Array.from(s).slice(0, n).join('');
+  return parts.length > 1 ? (chars(parts[0], 1) + chars(parts[1], 1)).toUpperCase() : chars(parts[0], 2).toUpperCase();
+}
+
+function radioView(box, options) {
+  const isCarousel = options.view === 'carousel';
+  box.classList.add('deck-radio-widget', isCarousel ? 'is-carousel' : 'is-grid');
+  const wrap = h('div', isCarousel ? 'radio-carousel' : 'radio-grid-wrap');
+  const track = h('div', isCarousel ? 'radio-carousel-track' : 'radio-grid');
+  let prevBtn = null, nextBtn = null;
+
+  const syncNav = () => {
+    if (!isCarousel) return;
+    const max = Math.max(0, track.scrollWidth - track.clientWidth);
+    const canScroll = max > 6;
+    wrap.classList.toggle('can-scroll', canScroll);
+    if (prevBtn) prevBtn.disabled = !canScroll || track.scrollLeft <= 4;
+    if (nextBtn) nextBtn.disabled = !canScroll || track.scrollLeft >= max - 4;
+  };
+
+  if (isCarousel) {
+    const stepScroll = (dir) => {
+      haptic();
+      const step = Math.max(130, Math.round(track.clientWidth * 0.72));
+      track.scrollBy({ left: dir * step, behavior: 'smooth' });
+    };
+    prevBtn = h('button', 'radio-nav radio-nav-prev', '‹');
+    prevBtn.type = 'button';
+    prevBtn.setAttribute('aria-label', 'Previous stations');
+    prevBtn.onclick = (e) => { e.stopPropagation(); stepScroll(-1); };
+
+    nextBtn = h('button', 'radio-nav radio-nav-next', '›');
+    nextBtn.type = 'button';
+    nextBtn.setAttribute('aria-label', 'Next stations');
+    nextBtn.onclick = (e) => { e.stopPropagation(); stepScroll(1); };
+
+    track.addEventListener('scroll', syncNav, { passive: true });
+
+    let startX = 0, startY = 0;
+    track.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    track.addEventListener('touchmove', (e) => {
+      if (e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (Math.abs(dx) <= Math.abs(dy)) return;
+      const max = Math.max(0, track.scrollWidth - track.clientWidth);
+      if (max <= 1 || (track.scrollLeft <= 0 && dx > 0) || (track.scrollLeft >= max - 1 && dx < 0)) {
+        if (e.cancelable) e.preventDefault();
+      }
+    }, { passive: false });
+
+    let dragDown = false, dragged = false, dragStartX = 0, dragScrollLeft = 0;
+    track.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      dragDown = true; dragged = false;
+      dragStartX = e.clientX; dragScrollLeft = track.scrollLeft;
+    });
+    track.addEventListener('pointermove', (e) => {
+      if (!dragDown) return;
+      const dx = e.clientX - dragStartX;
+      if (Math.abs(dx) > 6) {
+        dragged = true;
+        track.classList.add('is-dragging');
+      }
+      if (dragged) track.scrollLeft = dragScrollLeft - dx;
+    });
+    const endDrag = () => {
+      if (!dragDown) return;
+      dragDown = false;
+      track.classList.remove('is-dragging');
+      if (dragged) setTimeout(() => { dragged = false; }, 0);
+    };
+    track.addEventListener('pointerup', endDrag);
+    track.addEventListener('pointercancel', endDrag);
+    track.addEventListener('pointerleave', endDrag);
+    track.addEventListener('click', (e) => {
+      if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; }
+    }, true);
+    track.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && track.scrollWidth > track.clientWidth) {
+        const max = Math.max(0, track.scrollWidth - track.clientWidth);
+        const canLeft = e.deltaY < 0 && track.scrollLeft > 0;
+        const canRight = e.deltaY > 0 && track.scrollLeft < max;
+        if (canLeft || canRight) {
+          e.preventDefault();
+          track.scrollLeft += e.deltaY;
+        }
+      }
+    }, { passive: false });
+
+    wrap.append(prevBtn, track, nextBtn);
+  } else {
+    wrap.append(track);
+  }
+  box.append(wrap);
+
+  const cards = new Map();
+  let latestItems = [];
+  let optimisticId = null;
+  let optimisticUntil = 0;
+  let lastScrolledPlayingId = '';
+  let cmdSeq = 0;
+  let commandBusy = false;
+
+  const effectivePlayingId = () => {
+    if (optimisticId !== null && performance.now() < optimisticUntil) return optimisticId;
+    optimisticId = null;
+    return latestItems.find(i => i.state === 'Playing')?.id || '';
+  };
+
+  const syncCardsState = (allowAutoScroll) => {
+    const activeId = effectivePlayingId();
+    for (const [id, entry] of cards.entries()) {
+      const playing = id === activeId;
+      const unavail = entry.item.available === false;
+      const subState = unavail && entry.item.state ? entry.item.state : '';
+      entry.el.classList.toggle('is-playing', playing);
+      entry.el.setAttribute('aria-pressed', String(playing));
+      entry.el.disabled = unavail;
+      entry.el.title = subState || entry.item.name;
+      entry.name.textContent = subState ? `${entry.item.name} · ${subState}` : entry.item.name;
+      entry.fallback.textContent = radioInitials(entry.item.name);
+      entry.el.setAttribute('aria-label', entry.item.name + (playing ? ' (Playing)' : subState ? ` (${subState})` : ''));
+    }
+    if (isCarousel && allowAutoScroll && activeId && activeId !== lastScrolledPlayingId) {
+      const activeEntry = cards.get(activeId);
+      if (activeEntry) {
+        const firstMount = !lastScrolledPlayingId;
+        lastScrolledPlayingId = activeId;
+        requestAnimationFrame(() => {
+          const target = Math.max(0, activeEntry.el.offsetLeft - (track.clientWidth - activeEntry.el.offsetWidth) / 2);
+          track.scrollTo({ left: target, behavior: firstMount ? 'auto' : 'smooth' });
+          syncNav();
+        });
+      }
+    } else if (!activeId) {
+      lastScrolledPlayingId = '';
+    }
+  };
+
+  const filterItems = (actions) => {
+    const list = (actions || []).filter(item => item.kind === 'radio');
+    if (!options.ids?.length) return list;
+    const byId = new Map(list.map(item => [item.id, item]));
+    return options.ids.map(id => byId.get(id)).filter(Boolean);
+  };
+
+  return (data) => {
+    const items = filterItems(data.actions);
+    latestItems = items;
+    if (!items.length) {
+      cards.clear();
+      empty(track, 'Assign radio streams in the computer’s Control Deck settings');
+      syncNav();
+      return;
+    }
+    const emptyEl = track.querySelector('.deck-empty');
+    if (emptyEl) emptyEl.remove();
+
+    const nodes = items.map(item => {
+      let entry = cards.get(item.id);
+      if (!entry) {
+        const fallback = h('span', 'radio-fallback', radioInitials(item.name));
+        const img = h('img', 'radio-logo');
+        img.alt = '';
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.draggable = false;
+        const eq = h('span', 'radio-eq', h('i'), h('i'), h('i'));
+        eq.setAttribute('aria-hidden', 'true');
+        const logoBox = h('div', 'radio-logo-box', fallback, img, eq);
+        img.onload = () => logoBox.classList.add('has-logo');
+        img.onerror = () => logoBox.classList.remove('has-logo');
+
+        const name = h('span', 'radio-name', item.name);
+        const el = h('button', 'radio-card');
+        el.type = 'button';
+        el.append(logoBox, name);
+
+        entry = { el, img, name, fallback, logoBox, item, busy: false, logoKey: '' };
+        el.onclick = async () => {
+          if (commandBusy || entry.busy) return;
+          haptic();
+          const seq = ++cmdSeq;
+          const wasPlaying = effectivePlayingId() === entry.item.id;
+          optimisticId = wasPlaying ? '' : entry.item.id;
+          optimisticUntil = performance.now() + 3000;
+          lastScrolledPlayingId = optimisticId;
+          syncCardsState(false);
+          if (isCarousel && optimisticId) {
+            const target = Math.max(0, el.offsetLeft - (track.clientWidth - el.offsetWidth) / 2);
+            track.scrollTo({ left: target, behavior: 'smooth' });
+          }
+          commandBusy = true;
+          entry.busy = true;
+          try {
+            await deckCommand('action', { id: entry.item.id, op: 'toggle' });
+            const fresh = await deckState(true);
+            if (seq !== cmdSeq) return;
+            latestItems = filterItems(fresh.actions);
+            for (const next of latestItems) { const c = cards.get(next.id); if (c) c.item = next; }
+            optimisticId = null; optimisticUntil = 0;
+            syncCardsState(false);
+          } catch (e) {
+            if (seq === cmdSeq) {
+              optimisticId = null; optimisticUntil = 0;
+              syncCardsState(false);
+            }
+            fail(e);
+          } finally {
+            commandBusy = false;
+            entry.busy = false;
+          }
+        };
+        cards.set(item.id, entry);
+      } else {
+        entry.item = item;
+      }
+      return entry.el;
+    });
+
+    reconcile(track, nodes);
+    for (const [id, entry] of cards.entries()) {
+      const rev = entry.item.rev || entry.item.name || '';
+      const nextKey = `${id}:${rev}`;
+      if (entry.logoKey !== nextKey) {
+        entry.logoKey = nextKey;
+        entry.logoBox.classList.remove('has-logo');
+        entry.img.src = `${API}/controls/radio-logo?id=${encodeURIComponent(id)}&v=${encodeURIComponent(rev)}`;
+      }
+    }
+    for (const id of [...cards.keys()]) {
+      if (!items.some(i => i.id === id)) cards.delete(id);
+    }
+    syncCardsState(true);
+    requestAnimationFrame(syncNav);
   };
 }
 
@@ -334,7 +580,8 @@ export function registerDeckWidget(type, title, mode = type) {
             rows.set(m.id, { ...s, el: h('div', 'deck-channel', h('div', 'deck-channel-name', m.name), s.input, s.number) }); }
             const row = rows.get(m.id); row.input.disabled = m.brightness == null; row.set(m.brightness || 0); if (m.brightness == null) row.number.textContent = 'DDC/CI unavailable'; return row.el; }));
         };
-      } else render = actionsView(box, o, type);
+      } else if (mode === 'radio') render = radioView(box, o);
+      else render = actionsView(box, o, type);
       return {
         async update() {
           if (loading || !alive || (!render && !component)) return;

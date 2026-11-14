@@ -790,6 +790,7 @@ function widgetSummary(w) {
     case 'checklist': return `${o.title || 'Today'} · ${(o.items || d.options[1].default).length} items`;
     case 'exchange': return `${o.base || 'EUR'} → ${(o.symbols || d.options[1].default).join(', ')}`;
     case 'crypto': return (o.coins || d.options[0].default).join(', ');
+    case 'radio': return choice('view');
     case 'image': return o.caption || (o.url || 'no address').replace(/^https?:\/\//, '').slice(0, 40);
     case 'stack': {
       const list = getStackItems(w, { key: 'widgets', default: d.options?.find((x) => x.key === 'widgets')?.default });
@@ -1893,7 +1894,7 @@ function renderControlSettings() {
     const b=e.currentTarget;b.disabled=true;try{await fn();}catch(error){toast(error.message,true);}finally{b.disabled=false;}
   }},text);
   root.replaceChildren(h('h3',{},'Control Deck'),h('p',{class:'hint'},'Define bindings here, then add widgets to a page. Save applies changes. Executable paths and credentials stay on this computer.'));
-  root.append(field('Allow PC audio listening',c,'allowListening','checkbox'),field('Enable hold-to-confirm power controls',c,'allowPower','checkbox'));
+  root.append(field('Allow PC audio listening',c,'allowListening','checkbox'),field('Enable hold-to-confirm power controls',c,'allowPower','checkbox'),field('Allow third-party radio logo lookup (Radio Browser / TuneIn)',c,'allowOnlineRadioLogos','checkbox'));
   const spotify=h('details',{},h('summary',{},'Spotify connection'));
   const auth=h('p',{class:'hint'},'Register the redirect address in your Spotify Developer app. A Client ID is sufficient; no client secret is used.');
   spotify.append(field('Spotify Client ID',c,'spotifyClientId'),field('Spotify device ID (optional)',c,'spotifyDevice'),auth,
@@ -1909,8 +1910,11 @@ function renderControlSettings() {
   const renderActions=()=>actions.replaceChildren(...c.actions.map(a=>{
     const box=h('details',{},h('summary',{},a.label || a.id));
     const kind=h('select',{'aria-label':'Control kind'},...Object.keys(hints).map(k=>h('option',{value:k,selected:a.kind===k},k)));
-    const hint=h('p',{class:'hint'},hints[a.kind] || 'Select a kind.');kind.onchange=()=>{a.kind=kind.value;hint.textContent=hints[a.kind];changed();};
-    box.append(field('Control ID',a,'id'),field('Control label',a,'label'),h('label',{},'Kind'),kind,hint,field('Target',a,'target'),field('Argument',a,'argument'),field('Device / port / branch',a,'device'),field('Value',a,'value','number'));
+    const hint=h('p',{class:'hint'},hints[a.kind] || 'Select a kind.');
+    const iconField=field('Icon / logo URL (optional)',a,'icon');
+    iconField.hidden=a.kind!=='radio';
+    kind.onchange=()=>{a.kind=kind.value;hint.textContent=hints[a.kind];iconField.hidden=a.kind!=='radio';changed();};
+    box.append(field('Control ID',a,'id'),field('Control label',a,'label'),h('label',{},'Kind'),kind,hint,field('Target',a,'target'),iconField,field('Argument',a,'argument'),field('Device / port / branch',a,'device'),field('Value',a,'value','number'));
     const output=h('pre',{style:{maxHeight:'240px',overflow:'auto',whiteSpace:'pre-wrap'}});
     box.append(btn('Show task output',async()=>{const r=await fetch('/api/controls/task-output/'+encodeURIComponent(a.id));if(!r.ok)throw new Error('Output unavailable');output.textContent=await r.text();}),btn('Remove control',()=>{c.actions=c.actions.filter(x=>x!==a);changed();renderActions();}),output);return box;
   }));renderActions();

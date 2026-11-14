@@ -1,3 +1,54 @@
 .control-deck{display:flex;flex-direction:column;padding:9px 12px;gap:8px;min-width:0;overflow:hidden}.control-deck>.w-title{flex:none}.deck-list{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;flex:1}.deck-channel{background:#ffffff08;border:1px solid #ffffff12;border-radius:9px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}.deck-channel-name{font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.deck-channel-foot,.deck-toolbar{display:flex;gap:6px;align-items:center;justify-content:space-between}.deck-value{font-variant-numeric:tabular-nums;font-size:20px;font-weight:700}.deck-button,.deck-hold{color:inherit;background:#ffffff0d;border:1px solid #ffffff20;border-radius:9px;padding:9px 10px;min-height:38px;font:inherit;cursor:pointer;touch-action:manipulation}.deck-button:active,.deck-hold.held{background:var(--accent,#60a5fa);color:#111827}.deck-button.selected,.deck-button[aria-pressed=true]{border-color:var(--accent,#60a5fa);background:#60a5fa25}.deck-button:disabled,.deck-hold:disabled{opacity:.4;cursor:default}.deck-slider{width:100%;min-width:0;accent-color:var(--accent,#60a5fa);height:25px;touch-action:pan-y}.deck-meter{height:5px;background:#ffffff10;border-radius:5px;overflow:hidden}.deck-meter i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#34d399,#facc15 75%,#fb7185);transform-origin:left;transition:transform .15s linear}.deck-muted .deck-meter i{opacity:.25}.deck-actions{display:grid;align-content:start;grid-template-columns:repeat(auto-fit,minmax(94px,1fr));gap:7px;min-height:0;overflow:auto;flex:1}.deck-actions>.deck-button,.deck-task>.deck-button:first-child{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;min-height:64px}.deck-actions small{opacity:.6;font-size:11px}.deck-caption,.deck-empty{font-size:12px;line-height:1.5;color:var(--muted,#94a3b8)}.deck-empty{padding:12px;text-align:center;margin:auto}.deck-track{font-weight:700;font-size:clamp(15px,2.5vw,24px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.deck-task{display:flex;flex-direction:column;gap:4px}.deck-task .deck-button:first-child{flex:1}.deck-hold{flex:1;min-height:46px;font-weight:700;user-select:none;-webkit-user-select:none;touch-action:none}.deck-offline{opacity:.6}.deck-offline::after{content:'Computer connection unavailable';font-size:11px;color:#fbbf24}.deck-vertical{display:grid;grid-template-columns:repeat(auto-fit,minmax(85px,1fr))}.deck-vertical .deck-channel{align-items:center}.deck-vertical .deck-slider::-webkit-slider-runnable-track{background:rgba(255,255,255,.14)}.deck-vertical .deck-slider{writing-mode:vertical-lr;direction:rtl;flex:1;height:100px;min-height:60px;width:28px}.deck-channel label{display:flex;align-items:center;gap:5px}.deck-channel label .deck-value{font-size:13px}
 
 .deck-power-grid{display:flex;gap:8px;min-height:0}.deck-power-item{flex:1;min-width:0}.deck-overdue{color:var(--red,#ef4444)}
+
+/* Internet Radio: Grid + Horizontal Sliding Cards */
+.deck-radio-widget{display:flex;flex-direction:column;min-height:0}
+.radio-grid-wrap,.radio-carousel{position:relative;flex:1;min-height:0;min-width:0;display:flex}
+.radio-grid{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;align-content:start;padding:2px}
+.radio-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px 6px 7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:12px;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;transition:transform .16s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease;min-width:0}
+.radio-card:active{transform:scale(.96)}
+.radio-card:disabled{opacity:.42;cursor:default}
+.radio-logo-box{position:relative;width:52px;height:52px;border-radius:12px;background:#f8fafc;box-shadow:0 3px 10px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.45);display:grid;place-items:center;overflow:hidden;flex-shrink:0}
+.radio-logo{width:100%;height:100%;object-fit:contain;padding:3px;opacity:0;transition:opacity .18s ease;pointer-events:none}
+.radio-logo-box.has-logo .radio-logo{opacity:1}
+.radio-fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:16px;font-weight:800;letter-spacing:.04em;color:#0f172a;background:linear-gradient(135deg,#e2e8f0,#cbd5e1)}
+.radio-logo-box.has-logo .radio-fallback{opacity:0;pointer-events:none}
+.radio-name{font-size:10.5px;font-weight:600;line-height:1.2;text-align:center;color:rgba(241,245,249,.9);max-width:100%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.radio-card.is-playing{border-color:#00c2d1;background:linear-gradient(180deg,rgba(0,194,209,.2),rgba(0,194,209,.07));box-shadow:0 0 0 1px rgba(0,194,209,.38),0 6px 18px rgba(0,194,209,.18)}
+.radio-card.is-playing .radio-name{color:#67e8f9;font-weight:700}
+
+/* Live playing equalizer badge */
+.radio-eq{position:absolute;right:3px;bottom:3px;display:none;align-items:flex-end;gap:1.5px;height:12px;padding:2px 3px;border-radius:5px;background:rgba(9,15,24,.84);backdrop-filter:blur(4px)}
+.radio-card.is-playing .radio-eq{display:inline-flex}
+.radio-eq i{display:block;width:2px;height:8px;border-radius:1px;background:#00e5f5;transform-origin:bottom;animation:radio-eq-bounce .75s ease-in-out infinite alternate}
+.radio-eq i:nth-child(2){animation-delay:.18s;height:10px}
+.radio-eq i:nth-child(3){animation-delay:.34s;height:6px}
+@keyframes radio-eq-bounce{0%{transform:scaleY(.3)}100%{transform:scaleY(1)}}
+
+/* Horizontal sliding station cards */
+.radio-carousel{container-type:size;align-items:center}
+.radio-carousel-track{flex:1;height:100%;min-width:0;display:flex;align-items:center;gap:10px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scroll-snap-type:x proximity;scrollbar-width:none;padding:3px 4px}
+.radio-carousel-track::-webkit-scrollbar{display:none}
+.radio-carousel-track.is-dragging{scroll-snap-type:none;cursor:grabbing}
+.radio-carousel .radio-card{flex:0 0 auto;scroll-snap-align:center;width:112px;height:100%;max-height:190px;padding:10px 8px 9px;gap:7px;border-radius:16px;background:linear-gradient(180deg,rgba(24,34,48,.94),rgba(12,18,27,.97));border:1px solid rgba(255,255,255,.1);box-shadow:0 6px 16px rgba(0,0,0,.32)}
+.radio-carousel .radio-card::after{content:'';position:absolute;left:24%;right:24%;bottom:0;height:2.5px;border-radius:3px 3px 0 0;background:transparent;transition:background .2s ease,box-shadow .2s ease}
+.radio-carousel .radio-card.is-playing{border-color:#00c2d1;background:linear-gradient(180deg,rgba(14,48,62,.96),rgba(9,24,34,.98));box-shadow:0 0 0 1px rgba(0,194,209,.45),0 8px 22px rgba(0,194,209,.24)}
+.radio-carousel .radio-card.is-playing::after{background:#00e5f5;box-shadow:0 0 8px #00e5f5}
+.radio-carousel .radio-logo-box{width:64px;height:64px;border-radius:14px}
+.radio-carousel .radio-name{font-size:11px;-webkit-line-clamp:1;white-space:nowrap;text-overflow:ellipsis;display:block;width:100%}
+
+@container (min-height: 1px){
+  .radio-carousel .radio-card{width:clamp(84px,78cqh,142px);padding:clamp(6px,5cqh,12px) 7px;gap:clamp(4px,4cqh,9px)}
+  .radio-carousel .radio-logo-box{width:clamp(42px,54cqh,88px);height:clamp(42px,54cqh,88px);border-radius:clamp(10px,10cqh,16px)}
+  .radio-carousel .radio-name{font-size:clamp(9.5px,7.5cqh,12px)}
+}
+
+.radio-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:24px;height:40px;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:rgba(10,15,24,.78);backdrop-filter:blur(6px);color:#e2e8f0;font-size:18px;line-height:1;display:none;place-items:center;cursor:pointer;padding:0;touch-action:manipulation;transition:opacity .15s ease}
+.radio-carousel.can-scroll .radio-nav{display:grid}
+.radio-nav:disabled{opacity:0;pointer-events:none}
+.radio-nav-prev{left:2px}
+.radio-nav-next{right:2px}
+@media (pointer: coarse){
+  .radio-nav{width:22px;height:34px;opacity:.72}
+}
