@@ -252,7 +252,19 @@ export function haState(e) {
 W.ha = {
   needs: ['tick'],
   create(box, { o }) {
-    const ids = String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.'));
+    // "items" (the entity editor) wins over the older comma-separated "entities"; an item without its own
+    // "control" follows the widget's. The agent checks the same rule before it switches anything.
+    const items = [];
+    const seenIds = new Set();
+    for (const it of Array.isArray(o.items) ? o.items : []) {
+      const id = it && typeof it.id === 'string' ? it.id.trim() : '';
+      if (!id.includes('.') || seenIds.has(id)) continue;
+      seenIds.add(id);
+      items.push({ id, name: String(it.name || '').trim(), icon: String(it.icon || '').trim(), showName: it.showName !== false, showIcon: it.showIcon !== false,
+        control: typeof it.control === 'boolean' ? it.control : o.control === true });
+    }
+    if (!items.length) for (const id of String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.'))) items.push({ id, name: '', icon: '', showName: true, showIcon: true, control: o.control === true });
+    const ids = items.map((i) => i.id);
     let data = null, lastKey = '', busy = null;
     const grid = h('div', 'ha-grid');
     if (o.title) box.append(h('div', 'w-title', o.title));
@@ -271,16 +283,18 @@ W.ha = {
       const key = JSON.stringify([data, busy]);
       if (!force && key === lastKey) return;
       lastKey = key;
-      if (!ids.length) { grid.replaceChildren(h('div', 'empty', 'List entity ids in the widget settings, e.g. light.desk')); return; }
+      if (!ids.length) { grid.replaceChildren(h('div', 'empty', 'Add entities in the widget settings, e.g. light.desk')); return; }
       if (!data) { grid.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
       if (!data.configured) { grid.replaceChildren(h('div', 'empty', data.error)); return; }
-      grid.replaceChildren(...data.entities.map((e) => {
+      const byId = new Map(data.entities.map((e) => [e.id, e]));
+      grid.replaceChildren(...items.map((it) => {
+        const e = byId.get(it.id) || { id: it.id, state: 'unknown', name: it.id };
         const dom = e.id.split('.')[0];
         const active = HA_ACTIVE.has(e.state);
-        const icon = dom === 'lock' ? (e.state === 'unlocked' ? '🔓' : '🔒') : HA_CLASS_ICONS[e.deviceClass] || HA_ICONS[dom] || '◻️';
-        const can = o.control === true && HA_SWITCHABLE.has(dom) && e.state !== 'unavailable';
+        const icon = it.icon || (dom === 'lock' ? (e.state === 'unlocked' ? '🔓' : '🔒') : HA_CLASS_ICONS[e.deviceClass] || HA_ICONS[dom] || '◻️');
+        const can = it.control && HA_SWITCHABLE.has(dom) && e.state !== 'unavailable';
         const tile = h('div', 'ha-tile' + (active ? ' on' : '') + (can ? ' can' : '') + (busy === e.id ? ' busy' : '') + (e.state === 'unavailable' ? ' gone' : ''),
-          h('span', 'ha-ico', icon), h('span', 'ha-name', e.name), h('b', 'ha-state', haState(e)));
+          ...(it.showIcon ? [h('span', 'ha-ico', icon)] : []), ...(it.showName ? [h('span', 'ha-name', it.name || e.name)] : []), h('b', 'ha-state', haState(e)));
         if (can) tile.addEventListener('click', () => toggle(e));
         return tile;
       }), ...(data.error ? [h('div', 'ha-err', '⚠ ' + data.error)] : []));
