@@ -9,6 +9,11 @@
   seconds after it leaves. The address and its password stay on the computer; the phone only gets the pictures (#209,
   asked for by [Hoangminhfcb](https://github.com/Hoangminhfcb)).
 
+**Agent**
+- Windows: a tap on a running app in the App dock brings its window to the front as it was. A maximized window stays
+  maximized instead of shrinking to its normal size, and the focus no longer fails with "Windows could not focus the
+  running application" when another app is in front (#213, [arrowssuhail-oss](https://github.com/arrowssuhail-oss)).
+
 ## 0.9.17 — 2026-11-17
 
 Shortcut keys with real icons, the settings page and widget catalog in Vietnamese, and a few panel fixes.
