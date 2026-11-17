@@ -9,7 +9,11 @@ namespace PhoneBox.Agent;
 public sealed class Dictation(ConfigStore config, ILogger<Dictation> log)
 {
     public const string WidgetType = "dictate";
-    public const int MaxChars = 2000;
+    /// <summary>
+    /// The longest dictation. Its time budget: typing gets at most 3 s + 20 ms a character (23 s, KeySender) plus up to
+    /// 2 s waiting for the previous text, inside the phone's 30 s request deadline.
+    /// </summary>
+    public const int MaxChars = 1000;
 
     internal Func<string, CancellationToken, bool> TypeText { get; set; } = KeySender.TryTypeText;
     internal Func<List<string>, bool> SendCombo { get; set; } = KeySender.SendCombo;
@@ -32,6 +36,7 @@ public sealed class Dictation(ConfigStore config, ILogger<Dictation> log)
         var w = PanelWidgets.Find(config.Get(), deviceId, widget, WidgetType);
         if (w?.Bool("control") != true)
             return (403, "typing is off: turn on \"Type the text on the computer\" in the dictation widget's settings");
+        if ((text ?? "").Length > MaxChars * 2) return (413, "the text is too long"); // the phone keeps to MaxChars
         var line = Clean(text);
         if (line.Length == 0) return (400, "nothing to type");
         // Windows drops input to an app running as administrator without a word (UIPI): say so instead

@@ -338,8 +338,9 @@
   ].map(([id, title, source, min]) => ({ id, title, source, published: now() - min * 60_000, openable: true }));
   // "pageId/widgetId", or "pageId/stackId:cardId" for a Smart Stack card (PanelWidgets.Find)
   const panelWidget = (c, key, type) => (c.pages || []).filter((p) => p.enabled !== false).flatMap((p) => (p.widgets || []).flatMap((w) =>
-    [[`${p.id}/${w.id}`, w], ...(w.type === 'stack' ? (w.options?.widgets || []).filter((x) => x.enabled !== false)
-      .map((x, i) => [`${p.id}/${w.id}:${x.id || `card-${i}`}`, x]) : [])]))
+    // card-<i> counts every card, disabled ones too, like StackWidgets.Children and stack.js
+    [[`${p.id}/${w.id}`, w], ...(w.type === 'stack' ? (w.options?.widgets || []).map((x, i) => [x, i]).filter(([x]) => x.enabled !== false)
+      .map(([x, i]) => [`${p.id}/${w.id}:${x.id || `card-${i}`}`, x]) : [])]))
     .find(([k, w]) => w.type === type && k === key)?.[1];
   const consoleWidget = (c, key) => panelWidget(c, key, 'app-console');
   const DEMO_CONSOLE = { id: 'photoshop', label: 'Photoshop', keys: ['Brush', 'Eraser', 'Undo', 'Redo', 'Zoom in', 'Zoom out', 'Fit', 'Save'],

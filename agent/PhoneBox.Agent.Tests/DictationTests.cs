@@ -109,8 +109,9 @@ public sealed class DictationTests : IDisposable
     [Fact]
     public async Task LongTextIsCut()
     {
-        await Make().TypeAsync(null, "p/d", new string('a', 5000), default);
+        await Make().TypeAsync(null, "p/d", new string('a', Dictation.MaxChars + 500), default);
         Assert.Equal(Dictation.MaxChars + 1, _typed.Single().Length); // plus the trailing space
+        Assert.Equal(413, (await Make().TypeAsync(null, "p/d", new string('a', Dictation.MaxChars * 3), default)).Status);
     }
 
     [Fact]

@@ -74,6 +74,19 @@ test('a session from another widget never answers or ends this one', async ({ pa
   expect(await page.evaluate(() => window.__posts)).toEqual([]);
 });
 
+test('a dictation too long to type whole is not sent cut short', async ({ page }) => {
+  await page.addInitScript(() => { window.__long = 'x'.repeat(1200); });
+  await layout(page, { control: true });
+  await page.evaluate(() => {
+    window.__hold = true; // no default events: only the long final below
+    const listen = window.Android.listen;
+    window.Android.listen = (key, lang, offline) => { const id = listen(key, lang, offline); setTimeout(() => window.onAndroidSpeech('final', window.__long, id), 80); return id; };
+  });
+  await page.locator('.dc-mic').click();
+  await expect(page.locator('.dc-note')).toContainText('too long');
+  expect(await page.evaluate(() => window.__posts)).toEqual([]);
+});
+
 test('dictation in a browser or an older app says to update', async ({ page }) => {
   await layout(page, { control: true }, { app: false });
   await expect(page.locator('.dc-note')).toHaveText('Update the PhoneBox app to dictate');

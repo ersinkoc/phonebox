@@ -12,6 +12,8 @@ import { W } from '../registry.js';
 const sessions = new Map();
 window.onAndroidSpeech = (kind, text, id) => { const handler = sessions.get(id); if (handler) handler(kind, text); };
 
+const MAX_CHARS = 1000; // Dictation.MaxChars on the agent
+
 const ERRORS = {
   '1': 'w.dictate.network', '2': 'w.dictate.network', '4': 'w.dictate.network', '13': 'w.dictate.network',
   '6': 'w.dictate.noMatch', '7': 'w.dictate.noMatch',
@@ -41,13 +43,15 @@ W.dictate = {
 
     async function send(text) {
       if (o.control !== true) { say('w.dictate.controlOff'); return; }
+      // in the query: the app's transport sends no request bodies. Nothing is cut short: a text the agent wouldn't take
+      // whole (Dictation.MaxChars, its 16 KB request line) isn't sent at all
+      const query = encodeURIComponent(text);
+      if (text.length > MAX_CHARS || query.length > 12_000) { say('w.dictate.tooLong'); return; }
+      // the agent may take up to 25 s for the longest text (typing plus the queue); the app's transport waits 30 s
       const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), 10_000);
-      // in the query: the app's transport sends no request bodies; cut to fit the agent's 8 KB request line
-      let part = text;
-      while (part && encodeURIComponent(part).length > 6000) part = part.slice(0, Math.floor(part.length * 0.9));
+      const timer = setTimeout(() => ctl.abort(), 30_000);
       try {
-        const r = await fetch(`${API}/dictate?${wq}&text=${encodeURIComponent(part)}`, { method: 'POST', cache: 'no-store', signal: ctl.signal,
+        const r = await fetch(`${API}/dictate?${wq}&text=${query}`, { method: 'POST', cache: 'no-store', signal: ctl.signal,
           headers: PANEL_HEADERS });
         if (!r.ok) {
           let error = 'HTTP ' + r.status;
