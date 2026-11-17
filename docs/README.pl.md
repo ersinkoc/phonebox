@@ -38,7 +38,7 @@ Windows, Linux i macOS. Bez roota, bez konta PhoneBox i bez chmury.</p>
 <p align="center"><img src="hero-0.6.png" width="900" alt="PhoneBox na trzech telefonach"><br>
 <sub>Przykładowe układy z danymi demonstracyjnymi.</sub></p>
 
-PhoneBox łączy pełnoekranową **aplikację Android** z lekkim **agentem na komputer**. Zaprojektuj panel w edytorze wizualnym w przeglądarce: **122 widżetów**, **30 szablonów**, wiele stron i podgląd na żywo.
+PhoneBox łączy pełnoekranową **aplikację Android** z lekkim **agentem na komputer**. Zaprojektuj panel w edytorze wizualnym w przeglądarce: **123 widżetów**, **30 szablonów**, wiele stron i podgląd na żywo.
 
 ## Możliwości
 

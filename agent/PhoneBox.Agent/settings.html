@@ -163,12 +163,13 @@ table.items td.val { font-family: Consolas, monospace; font-size: 12px; max-widt
 .phone-pages { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; }
 .cal-row { display: grid; grid-template-columns: 160px minmax(0, 1fr) 44px auto; gap: 8px; align-items: center; margin-bottom: 8px; }
 .feed-row { grid-template-columns: 160px minmax(0, 1fr) auto; }
+.cam-row { grid-template-columns: 160px minmax(0, 1fr) 80px auto; }
 .console-row { display: grid; grid-template-columns: 160px minmax(0, 1fr) auto; gap: 8px; align-items: start; margin-bottom: 14px; }
 .console-row textarea, .console-row .console-dial { grid-column: 1 / 3; }
 .console-row textarea { font-family: ui-monospace, Consolas, monospace; }
 .console-dial { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cal-row input[type=color] { width: 44px; height: 34px; padding: 2px; }
-@media (max-width: 700px) { .cal-row { grid-template-columns: 1fr 44px auto; } .feed-row { grid-template-columns: 1fr auto; } .cal-row .cal-url { grid-column: 1 / -1; grid-row: 2; } }
+@media (max-width: 700px) { .cal-row { grid-template-columns: 1fr 44px auto; } .feed-row { grid-template-columns: 1fr auto; } .cam-row { grid-template-columns: 1fr 80px auto; } .cal-row .cal-url { grid-column: 1 / -1; grid-row: 2; } }
 
 /* shortcuts */
 .deck { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -444,6 +445,15 @@ dd { margin: 0; word-break: break-all; }
         <p class="hint" style="margin:0 0 12px" data-i18n="s.feeds.hint">RSS or Atom feeds for the News feeds widget. This computer fetches each one at most every 15 minutes, only while a page shows a News feeds widget; the addresses stay here.</p>
         <div id="feedList"></div>
         <button class="btn sm" id="feedAdd" data-i18n="s.feeds.add">＋ Add a feed</button>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="s.camera.title">Cameras</h3>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.camera.hint">IP cameras for the Camera widget: a name and the camera’s RTSP address (rtsp://user:password@address:554/…, from its manual or app). This computer pulls a camera with ffmpeg only while a Camera widget shows it, and sends the phone a couple of pictures a second. The addresses stay on this computer, but while a camera runs they are visible in its process list.</p>
+        <div class="field"><label data-i18n="s.camera.ffmpeg">ffmpeg (full path; empty = find it in PATH)</label>
+          <input type="text" data-bind="cameras.ffmpeg" placeholder="C:\ffmpeg\bin\ffmpeg.exe" spellcheck="false" autocomplete="off"></div>
+        <div id="cameraList"></div>
+        <button class="btn sm" id="cameraAdd" data-i18n="s.camera.add">＋ Add a camera</button>
       </div>
 
       <div class="card">
@@ -1473,6 +1483,9 @@ function optionField(w, o, onValChange) {
     case 'color':
       return field(h('div', { class: 'row', style: { gap: '8px' } }, h('input', { type: 'color', value: v || '#fbbf24', oninput: (e) => set(o.key, e.target.value) }),
         h('div', { class: 'swatches' }, ...COLORS.map((c) => h('button', { style: { background: c }, onclick: () => { set(o.key, c); renderInspector(); } })))));
+    case 'camera':
+      return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, t('s.camera.pick')),
+        ...(cfg.cameras?.sources || []).map((c) => h('option', { value: c.id, selected: c.id === v }, c.name || (c.url || '').replace(/\/\/[^/@]*@/, '//')))));
     case 'shortcut':
       return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, '(first shortcut)'),
         ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, `${s.icon} ${s.label}`))),
@@ -1764,6 +1777,26 @@ $('feedAdd').onclick = () => {
   cfg.feeds.push({ name: '', url: '' });
   renderFeeds(); changed();
 };
+// ---------------------------------------------------------------- cameras
+// Ids are made here, not from the name: a widget points at its camera by id, so renaming one keeps its widgets.
+const cameraId = () => Array.from({ length: 12 }, () => '0123456789abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 36)]).join('');
+function renderCameras() {
+  cfg.cameras ??= { ffmpeg: '', sources: [] };
+  cfg.cameras.sources ??= [];
+  $('cameraList').replaceChildren(...cfg.cameras.sources.map((c, i) => h('div', { class: 'cal-row cam-row' },
+    h('input', { type: 'text', value: c.name || '', maxlength: '60', placeholder: t('s.camera.name'), oninput: (e) => { c.name = e.target.value; changed(); } }),
+    h('input', { type: 'text', class: 'cal-url', value: c.url || '', placeholder: 'rtsp://user:password@192.168.1.20:554/stream1', spellcheck: 'false', autocomplete: 'off',
+      oninput: (e) => { c.url = e.target.value.trim(); changed(); } }),
+    h('select', { title: 'RTSP transport', onchange: (e) => { c.transport = e.target.value; changed(); } },
+      ...[['tcp', 'TCP'], ['udp', 'UDP']].map(([v, l]) => h('option', { value: v, selected: (c.transport || 'tcp') === v }, l))),
+    h('button', { class: 'btn sm danger', onclick: () => { cfg.cameras.sources.splice(i, 1); renderCameras(); changed(); } }, t('s.js.remove')))));
+}
+$('cameraAdd').onclick = () => {
+  cfg.cameras ??= { ffmpeg: '', sources: [] };
+  cfg.cameras.sources ??= [];
+  cfg.cameras.sources.push({ id: cameraId(), name: '', url: '', transport: 'tcp' });
+  renderCameras(); changed();
+};
 $('calAdd').onclick = () => {
   cfg.calendars ??= [];
   cfg.calendars.push({ name: '', url: '', color: CAL_COLORS[cfg.calendars.length % CAL_COLORS.length] });
@@ -1818,7 +1851,7 @@ const RULE_PRESETS = [
 let activeRules = [];
 
 function renderRules() {
-  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.photos ??= { folder: '', subfolders: true }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.discord ??= { enabled: false };
+  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { folder: '', subfolders: true }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.discord ??= { enabled: false };
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
@@ -2593,6 +2626,7 @@ function bindLanguage() {
     renderRules();
     renderCalendars();
     renderFeeds();
+    renderCameras();
     renderConsole();
     renderCharge();
     if (typeof queuePreview === 'function') queuePreview();
@@ -2730,7 +2764,7 @@ async function load() {
   if (window.PhoneBoxI18n) applyLanguageUi(cfg.display?.language || 'auto');
   else localizeCatalog();
   saved = JSON.stringify(cfg);
-  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderConsole(); renderNetAdapters(); renderCharge(); bindForm(); changed(); loadInfo(); loadPhones();
+  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderCharge(); bindForm(); changed(); loadInfo(); loadPhones();
 }
 
 async function save() {
@@ -2745,7 +2779,7 @@ async function save() {
 }
 
 $('save').onclick = save;
-$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); };
+$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); };
 // Over USB this also wakes the phone and brings the panel to the front (adb); over Wi-Fi the phone switches to the
 // page selected in the editor through the live stream.
 $('openPhone').onclick = async () => {
@@ -2830,7 +2864,7 @@ $('applyJson').onclick = () => {
     cfg = c;
     fillDefaults();
     $('jsonErr').textContent = '';
-    renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); toast(t('s.jsonLoaded'));
+    renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); toast(t('s.jsonLoaded'));
   }
   catch (e) { $('jsonErr').textContent = e.message; }
 };

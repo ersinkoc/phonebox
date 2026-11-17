@@ -75,6 +75,7 @@ AddMonitor<ProcessMonitor>(builder.Services);
 AddMonitor<SessionMonitor>(builder.Services);
 AddMonitor<FeedMonitor>(builder.Services);
 builder.Services.AddSingleton<PhotoFrame>();
+builder.Services.AddSingleton<CameraFeeds>();
 AddMonitor<GitHubMonitor>(builder.Services);
 AddMonitor<PingMonitor>(builder.Services);
 AddMonitor<AdbReverse>(builder.Services);
@@ -344,7 +345,7 @@ app.MapGet("/api/settings", (ConfigStore cfg, HttpResponse res) =>
     return Results.Text(json, "application/json; charset=utf-8");
 });
 
-app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck deck, PhotoFrame photos, ShortcutIconUploads icons, ILogger<Program> log) =>
+app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck deck, PhotoFrame photos, CameraFeeds cameras, ShortcutIconUploads icons, ILogger<Program> log) =>
 {
     if (req.ContentType?.StartsWith("application/json") != true) return Results.StatusCode(415);
     using var r = new StreamReader(req.Body);
@@ -354,6 +355,7 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
     if (err is not null) return Results.BadRequest(new { error = err });
     deck.StopDisabledControls();
     photos.SettingsSaved();
+    cameras.SettingsSaved();
     deck.ReconcileRadios(waitForGate: true);
     icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id)); // drop uploads for shortcuts that got deleted
     ShortcutIcons.ClearHasIconCache();
@@ -477,6 +479,15 @@ app.MapGet("/api/photos/{id}", async (string id, PhotoFrame photos, HttpResponse
     if (bytes is null) return Results.Json(new { error }, statusCode: 404);
     res.Headers.CacheControl = "private, max-age=86400";
     return Results.File(bytes, type!);
+});
+// Camera widget: the latest picture of the camera a widget shows, as a JPEG. Pulling a camera starts with these requests
+// and stops a few seconds after the last one; without a fresh picture the answer is a state, never an older picture.
+app.MapGet("/api/camera", (string? widget, HttpRequest req, HttpResponse res, CameraFeeds cameras) =>
+{
+    var (status, jpeg, state) = cameras.Frame(req.Headers["X-PhoneBox-Device"].ToString(), widget);
+    res.Headers.CacheControl = "no-store";
+    res.Headers["X-Content-Type-Options"] = "nosniff";
+    return jpeg is null ? Results.Json(new { state }, statusCode: status) : Results.Bytes(jpeg, "image/jpeg");
 });
 app.MapPost("/api/feeds/open", (string? id, FeedMonitor feeds) =>
     feeds.Open(id) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));

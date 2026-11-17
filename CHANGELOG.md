@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+**New widget**
+- **Camera**: a live picture from an IP camera, a couple of frames a second. Add the camera in Settings › General ›
+  Cameras with its RTSP address (rtsp://user:password@…); the computer pulls it with ffmpeg, which you install (or
+  point PhoneBox at). A camera is pulled only while a Camera widget for it is on the phone's screen, and stops a few
+  seconds after it leaves. The address and its password stay on the computer; the phone only gets the pictures (#209,
+  asked for by [Hoangminhfcb](https://github.com/Hoangminhfcb)).
+
 ## 0.9.17 — 2026-11-17
 
 Shortcut keys with real icons, the settings page and widget catalog in Vietnamese, and a few panel fixes.

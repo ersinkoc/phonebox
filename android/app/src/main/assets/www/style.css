@@ -702,6 +702,13 @@ body.offline .offline-msg { display: flex; }
 .w.pf { padding: 0; overflow: hidden; background: #000; }
 .pf-img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1s ease; }
 .pf-img.on { opacity: 1; }
+/* Camera (widgets/camera.js) */
+.w.cam { padding: 0; overflow: hidden; background: #000; }
+.cam-img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; }
+.cam-img[hidden] { display: none; }
+.cam-note { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; }
+.cam-note[hidden] { display: none; }
+.cam-cap { position: absolute; left: 8px; bottom: 6px; padding: 2px 8px; border-radius: 6px; background: rgba(0, 0, 0, .55); color: #fff; font-size: 12px; max-width: calc(100% - 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pf-note { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; }
 .html-frame { width: 100%; height: 100%; border: 0; display: block; background: transparent; }
 .w-batteries { padding: 9px 12px; display: flex; flex-direction: column; gap: 4px; }

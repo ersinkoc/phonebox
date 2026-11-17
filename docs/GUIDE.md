@@ -79,13 +79,21 @@ keeps the screen on.
 | **Computer** | **Rules** (which hold, pause) · **Battery care** · On air (microphone / camera / OBS) · OBS Studio (live, recording, scenes) · **Dictation** (speak on the phone, typed on the PC; the app asks for the microphone on first use) · **App console** (Windows: keys and a dial for the app in front, set per app in Settings › General; use the focused app's process name from Task Manager's Details tab; packaged Store apps can all show up as `ApplicationFrameHost` and terminal tabs as `WindowsTerminal`, so a profile for those names covers all of them) · Device batteries (headphones, mice, keyboards) · Docker / Podman (containers, start / stop) · Metric tile · Gauge · Chart · GPU details · Memory & disks · Top processes · Processes · Now playing · Radio · Volume · **Spectrum bars** (Windows: a live spectrum of what the PC is playing, like the classic LED bar visualizers) · Shortcut grid · Big button · **Command** (PowerShell / bash / zsh output, refreshed every N seconds) |
 | **AI & code** | AI quotas · Quota ring · AI sessions · GitHub |
 | **Personal** | **Agenda** (Google / Outlook / iCloud calendars) · Note · Checklist (resets daily) · Counter · Breathe · Quote · Title · Phone battery · **Computers** (switch between paired computers) · **Photo frame** (a slideshow from a photo folder on the PC) |
-| **Web & data** | **Custom HTML** (your own widget, sandboxed) · **Home Assistant** (entities, tap to switch) · **Pushed value** · **Notifications** (both fed by [webhooks](#webhooks)) · **News feeds** (your RSS and Atom feeds; with its "Open articles on the PC" option, a tap opens the article on the PC) · Hacker News · Exchange rates (ECB) · Crypto prices · Image / webcam |
+| **Web & data** | **Custom HTML** (your own widget, sandboxed) · **Home Assistant** (entities, tap to switch) · **Pushed value** · **Notifications** (both fed by [webhooks](#webhooks)) · **News feeds** (your RSS and Atom feeds; with its "Open articles on the PC" option, a tap opens the article on the PC) · Hacker News · Exchange rates (ECB) · Crypto prices · Image / webcam · **Camera** (a live picture from an IP camera over RTSP, pulled by ffmpeg on the PC) |
 
 Widgets scale to the size you give them. Weather, air quality, rates, crypto and Hacker News come straight from free
 public APIs ([Open-Meteo](https://open-meteo.com), [Frankfurter](https://frankfurter.dev), [CoinGecko](https://www.coingecko.com),
 [HN](https://github.com/HackerNews/API)) on the phone, without API keys, and keep their last data when offline.
 If the phone has no internet, these five supported HTTPS feeds can fall back through the agent over USB.
 The feed proxy is not available over Wi-Fi. See [PRIVACY.md](../PRIVACY.md) for the services contacted.
+
+**Camera** shows an IP camera that streams over RTSP. Add it in **Settings › General › Cameras** with a name and its
+RTSP address (`rtsp://user:password@192.168.1.20:554/…`; the camera's manual or app has the exact path), then pick it
+in the widget. The agent pulls the stream with [ffmpeg](https://ffmpeg.org), which you install: `winget install
+Gyan.FFmpeg` on Windows, `brew install ffmpeg` on macOS, your distribution's `ffmpeg` package on Linux. Restart
+PhoneBox afterwards so it finds ffmpeg in PATH, or enter ffmpeg's full path in the same card. A camera runs only while
+a Camera widget for it is on the phone's screen, at a couple of frames a second, so expect a short delay. Choose
+**UDP** for a camera that doesn't stream over TCP. At most 4 cameras play at the same time.
 
 **Smart Stack** combines up to 12 widgets in one slot. Add it from the Layout category, then drag widgets into it or
 use its picker. Reorder cards, open their settings, or disable individual cards. Tap the dots or swipe vertically to

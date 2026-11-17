@@ -30,6 +30,8 @@ public sealed class AgentConfig
     public List<FeedSource> Feeds { get; set; } = [];
     /// <summary>The Photo frame widget's folder; like the feeds, it never goes to the phone.</summary>
     public PhotoFrameConfig Photos { get; set; } = new();
+    /// <summary>IP cameras for the Camera widget; their addresses (with the passwords in them) never go to the phone.</summary>
+    public CameraConfig Cameras { get; set; } = new();
     /// <summary>Home Assistant address and long-lived access token (the token never goes to the phone).</summary>
     public HomeAssistantConfig HomeAssistant { get; set; } = new();
     /// <summary>OBS Studio's WebSocket server (obs-websocket 5).</summary>
@@ -446,6 +448,9 @@ public sealed partial class ConfigStore(string path)
         if (cfg.Console.Profiles.Count > AppConsole.MaxProfiles) return $"The app console has more than {AppConsole.MaxProfiles} apps";
         foreach (var p in cfg.Console.Profiles)
             if (AppConsole.Validate(p) is { } consoleError) return consoleError;
+        foreach (var cam in cfg.Cameras.Sources)
+            if (!CameraFeeds.ValidUrl(cam.Url))
+                return $"Camera '{(cam.Name.Length > 0 ? cam.Name : "(no name)")}': the address must start with rtsp:// or rtsps://";
         if (cfg.Weather.Lat is < -90 or > 90 || cfg.Weather.Lon is < -180 or > 180) return "Invalid weather location";
         if (!HhMm().IsMatch(cfg.Night.Start ?? "") || !HhMm().IsMatch(cfg.Night.End ?? "")) return "Night mode times must be in HH:MM format";
 
@@ -583,6 +588,21 @@ public sealed partial class ConfigStore(string path)
         c.Photos ??= new();
         c.Photos.Folder = (c.Photos.Folder ?? "").Trim() is { Length: > 1024 } longFolder ? longFolder[..1024] : (c.Photos.Folder ?? "").Trim();
         foreach (var f in c.Feeds) { var n = f.Name?.Trim() ?? ""; f.Name = n.Length > 60 ? n[..60] : n; f.Url = f.Url?.Trim() ?? ""; }
+        c.Cameras ??= new();
+        c.Cameras.Ffmpeg = (c.Cameras.Ffmpeg ?? "").Trim() is { Length: > 1024 } longFfmpeg ? longFfmpeg[..1024] : (c.Cameras.Ffmpeg ?? "").Trim();
+        // a row left empty in the editor is dropped; ids are random and kept, so widgets keep pointing at the same camera
+        c.Cameras.Sources = (c.Cameras.Sources ?? []).Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Url)).Take(CameraFeeds.MaxCameras).ToList();
+        var cameraIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var cam in c.Cameras.Sources)
+        {
+            var n = cam.Name?.Trim() ?? "";
+            cam.Name = n.Length > 60 ? n[..60] : n;
+            cam.Url = cam.Url.Trim() is { Length: > 2048 } longUrl ? longUrl[..2048] : cam.Url.Trim();
+            cam.Transport = string.Equals(cam.Transport?.Trim(), "udp", StringComparison.OrdinalIgnoreCase) ? "udp" : "tcp";
+            var id = (cam.Id ?? "").Trim().ToLowerInvariant();
+            if (!CameraId().IsMatch(id) || !cameraIds.Add(id)) { id = Guid.NewGuid().ToString("N")[..12]; cameraIds.Add(id); }
+            cam.Id = id;
+        }
 
         c.Charge ??= new();
         c.Charge.Min = Math.Clamp(c.Charge.Min, 5, 95);
@@ -747,6 +767,9 @@ public sealed partial class ConfigStore(string path)
 
     [GeneratedRegex(@"^([01]\d|2[0-3]):[0-5]\d$")]
     private static partial Regex HhMm();
+
+    [GeneratedRegex("^[a-z0-9]{6,32}$")]
+    private static partial Regex CameraId();
 }
 
 public sealed class CodexBarConfig
