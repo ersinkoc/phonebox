@@ -68,10 +68,27 @@
 (function () {
   try {
     if (/[?&]preview(?:[=&]|$)/.test(location.search)) return;
-    if (window.CSS && typeof CSS.supports === 'function' && CSS.supports('font-size', '1cqw')) return;
-    try { if (sessionStorage.getItem('pb-wv-dismissed') === '1') return; } catch (_) {}
     var el = document.getElementById('webviewWarn'), btn = document.getElementById('webviewWarnClose');
     if (!el) return;
+    // A WebView older than Chromium 80 can't run the panel at all (modules, ?. and ??): the stock WebView of Android 5
+    // and 6 until it is updated. The panel would stay black, so say what to do, in English as the translations come
+    // with the code it can't run, and keep it up: there is nothing behind it.
+    var runs = 'noModule' in document.createElement('script');
+    try { new Function('return ({ a: 1 })?.a ?? 1_0'); } catch (_) { runs = false; }
+    if (!runs) {
+      var text = el.querySelector('span');
+      if (text) {
+        text.removeAttribute('data-i18n');
+        text.textContent = 'This Android System WebView is too old to run the panel. Update Android System WebView or '
+          + 'Google Chrome from Google Play (version 80 or later), then open PhoneBox again.';
+      }
+      if (btn) btn.style.display = 'none';
+      el.hidden = false; el.style.display = 'flex';
+      window.__pbTooOld = true;
+      return;
+    }
+    if (window.CSS && typeof CSS.supports === 'function' && CSS.supports('font-size', '1cqw')) return;
+    try { if (sessionStorage.getItem('pb-wv-dismissed') === '1') return; } catch (_) {}
     el.hidden = false; el.style.display = 'flex';
     if (btn) btn.onclick = function (e) {
       e.stopPropagation();
@@ -87,7 +104,8 @@
 (function () {
   var box = document.getElementById('jsfail'), lines = [];
   window.__pbFail = function (text) {
-    if (lines.indexOf(text) >= 0) return;
+    // the WebView notice already says what is wrong; its syntax errors would only bury it
+    if (window.__pbTooOld || lines.indexOf(text) >= 0) return;
     lines.push(text);
     if (!box) return;
     box.hidden = false; box.style.display = 'block';
@@ -124,7 +142,7 @@
   // A slow module graph can still arrive after this fires. The flag turning true means the message is stale, so
   // take it back instead of leaving a working panel reporting a failure for the rest of the session.
   setTimeout(function () {
-    if (window.__pbUp) return;
+    if (window.__pbUp || window.__pbTooOld) return;
     window.__pbFail('the panel did not finish booting in 8s\nUA: ' + navigator.userAgent);
     var watch = setInterval(function () {
       if (!window.__pbUp) return;

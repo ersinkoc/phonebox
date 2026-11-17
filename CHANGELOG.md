@@ -13,6 +13,8 @@
   and the WebView notice stays. Tried on a Galaxy Tab S with Android 6.0.1 and WebView 106: pairing over Wi-Fi, every
   widget and page swiping work. Not yet tried on an Android 5 device (#184, #194,
   [phongnguyen2277](https://github.com/phongnguyen2277)).
+- A WebView too old to run the panel at all (before Chromium 80, as Android 5 and 6 ship with) now says so on the phone
+  and in Settings, with how to update it, instead of leaving the screen black.
 
 ## 0.9.18 — 2026-11-17
 

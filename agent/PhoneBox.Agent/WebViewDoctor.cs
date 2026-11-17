@@ -17,6 +17,9 @@ public static class WebViewDoctor
     /// <summary>First Chromium milestone with CSS container query units used for widget scaling.</summary>
     public const int MinMajor = 105;
 
+    /// <summary>First Chromium milestone that runs the panel at all (modules, <c>?.</c> and <c>??</c>).</summary>
+    public const int RunMajor = 80;
+
     /// <summary>A phone report older than this does not raise the active connection banner.</summary>
     public const long FreshMs = 2 * 60_000;
 
@@ -55,7 +58,8 @@ public static class WebViewDoctor
             : w.Package.StartsWith("com.google.android.webview", StringComparison.OrdinalIgnoreCase)
                 ? "Update Android System WebView from Google Play."
                 : "Install or update Android System WebView (or Google Chrome), then select it in Developer options › WebView implementation.";
-        return $"{who} has an outdated WebView ({w.Major}, {w.Package}); widget scaling needs Chromium {MinMajor}+. {how}";
+        var needs = w.Major < RunMajor ? $"the panel needs Chromium {RunMajor}+ to run at all" : $"widget scaling needs Chromium {MinMajor}+";
+        return $"{who} has an outdated WebView ({w.Major}, {w.Package}); {needs}. {how}";
     }
 
     /// <summary>Finds the most recently seen active phone with an outdated WebView, or null.</summary>

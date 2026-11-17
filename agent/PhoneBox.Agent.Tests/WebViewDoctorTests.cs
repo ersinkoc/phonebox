@@ -16,6 +16,17 @@ public class WebViewDoctorTests
         Assert.Contains("Update Android System WebView from Google Play", msg);
     }
 
+    [Fact]
+    public void AWebViewThatCantRunThePanelSaysSo()
+    {
+        // the stock WebView of Android 5 is Chromium 37: no modules, no ?. — the panel stays black, not just unscaled
+        var msg = WebViewDoctor.Diagnose("com.google.android.webview/37.0.0.0", "SM-T800");
+        Assert.NotNull(msg);
+        Assert.Contains("the panel needs Chromium 80+ to run at all", msg);
+        Assert.DoesNotContain("widget scaling", msg);
+        Assert.Contains("widget scaling needs Chromium 105+", WebViewDoctor.Diagnose("com.google.android.webview/80.0.3987.99", "SM-T800"));
+    }
+
     [Theory]
     [InlineData("com.android.chrome/74.0.3729.185")]
     [InlineData("com.chrome.beta/90.0.4430.82")]
