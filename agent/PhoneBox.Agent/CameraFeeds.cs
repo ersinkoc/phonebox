@@ -209,15 +209,13 @@ public sealed partial class CameraFeeds : IDisposable
     internal static string Mask(string text, string url)
     {
         if (string.IsNullOrEmpty(text)) return "";
-        if (!string.IsNullOrEmpty(url))
-        {
-            text = text.Replace(url, "<camera>", StringComparison.OrdinalIgnoreCase);
-            // ffmpeg also names the host on its own ("Connection to tcp://10.0.0.9:554 failed"); a very short host could
-            // match inside other words, so only from 3 characters on
-            if (Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Host.Length >= 3) text = text.Replace(u.Host, "<host>", StringComparison.OrdinalIgnoreCase);
-        }
+        if (!string.IsNullOrEmpty(url)) text = text.Replace(url, "<camera>", StringComparison.OrdinalIgnoreCase);
+        // secrets first: a host that happens to be a word like "token" mustn't break "token=" before it is hidden
         text = UserInfo().Replace(text, "://***@");
         text = SecretParam().Replace(text, m => m.Groups[1].Value + "***");
+        // ffmpeg also names the host on its own ("Connection to tcp://10.0.0.9:554 failed"); a very short host could
+        // match inside other words, so only from 3 characters on
+        if (Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Host.Length >= 3) text = text.Replace(u.Host, "<host>", StringComparison.OrdinalIgnoreCase);
         return text.Length > 300 ? text[..300] : text;
     }
 

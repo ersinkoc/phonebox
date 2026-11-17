@@ -79,6 +79,9 @@ public sealed class CameraFeedsTests : IDisposable
         var host = CameraFeeds.Mask("Connection to tcp://192.168.1.20:554 failed: Connection timed out", Url);
         Assert.DoesNotContain("192.168.1.20", host);
         Assert.Contains("Connection timed out", host);
+        // a host named like a secret parameter doesn't stop the parameter from being hidden
+        var tricky = CameraFeeds.Mask("rtsp://token:554/live?token=secret123: Connection refused", "rtsp://admin:pw@token:554/live?token=secret123");
+        Assert.DoesNotContain("secret123", tricky);
         Assert.Contains("401 Unauthorized", masked);
     }
 
