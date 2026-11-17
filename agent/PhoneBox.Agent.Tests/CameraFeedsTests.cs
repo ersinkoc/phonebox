@@ -221,6 +221,38 @@ public sealed class CameraFeedsTests : IDisposable
     }
 
     [Fact]
+    public void ACameraThatNeverAnswersIsReportedUnreachable()
+    {
+        var (feeds, runs, advance) = Make(Store());
+        using var _ = feeds;
+        // ffmpeg waits on the connection without a word and no picture ever comes
+        for (var t = 0; t <= CameraFeeds.StallMs + 1000; t += 1000) { advance(1000); feeds.Frame(null, "p/w"); feeds.Tick(); }
+        Assert.True(runs[0].Run.Disposed);
+        Assert.Equal("unreachable", feeds.Frame(null, "p/w").State);
+    }
+
+    [Fact]
+    public void AStoppedFfmpegsLateFrameIsNotShownAndDoesNotResetTheBackoff()
+    {
+        var (feeds, runs, advance) = Make(Store());
+        using var _ = feeds;
+        feeds.Frame(null, "p/w");
+        runs[0].Run.HasEnded = true;
+        advance(1000); feeds.Tick();                 // ended: stopped, next try after a pause
+        runs[0].Frame(Jpeg(9));                      // a frame still in its pipe arrives after that
+        var r = feeds.Frame(null, "p/w");
+        Assert.Equal(503, r.Status);
+        Assert.Null(r.Jpeg);
+        Assert.Single(runs);                         // and the pause still holds: no new ffmpeg yet
+        advance(2500); feeds.Tick();
+        Assert.Equal(2, runs.Count);
+        runs[0].Frame(Jpeg(9));                      // the old one again, now that a new one runs
+        Assert.Equal(503, feeds.Frame(null, "p/w").Status);
+        runs[1].Frame(Jpeg(1));
+        Assert.Equal(Jpeg(1), feeds.Frame(null, "p/w").Jpeg);
+    }
+
+    [Fact]
     public void WithoutFfmpegNothingStartsAndThePanelIsTold()
     {
         var (feeds, runs, _) = Make(Store(), ffmpeg: null);

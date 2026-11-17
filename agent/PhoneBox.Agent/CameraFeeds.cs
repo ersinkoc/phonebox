@@ -74,6 +74,9 @@ public sealed partial class CameraFeeds : IDisposable
         public ICameraRun? Run;
         public byte[]? Frame;
         public long FrameAt, StartedAt, WantedUntil, RetryAt, Backoff;
+        /// <summary>Which start the running ffmpeg is: a stopped one's last buffered frame mustn't count for the next.</summary>
+        public int Generation;
+        public bool GotFrame;
         public string State = "starting";
     }
 
@@ -139,13 +142,17 @@ public sealed partial class CameraFeeds : IDisposable
                 if (feed.Run is { } run)
                 {
                     var ended = run.HasEnded;
-                    var stalled = now - Math.Max(feed.FrameAt, feed.StartedAt) > StallMs;
+                    var stalled = now - (feed.GotFrame ? feed.FrameAt : feed.StartedAt) > StallMs;
                     if (!ended && !stalled) continue;
-                    feed.State = feed.Frame is not null && !ended ? "no-picture" : Classify(run.LastError);
+                    // ffmpeg can wait on an unreachable camera for a long time without a word (and a timeout option
+                    // isn't usable: its meaning changed between ffmpeg versions), so silence before any picture counts
+                    // as unreachable
+                    feed.State = run.LastError is { } said ? Classify(said) : feed.GotFrame ? "no-picture" : "unreachable";
                     _log.LogInformation("camera {Name}: {What} ({Detail})", feed.Source.Name, ended ? "ffmpeg ended" : "no picture for a while",
                         Mask(run.LastError ?? "", feed.Source.Url));
                     stop.Add(run);
                     feed.Run = null;
+                    feed.Generation++;
                     feed.Frame = null;
                     feed.Backoff = Math.Min(MaxBackoffMs, feed.Backoff == 0 ? 2000 : feed.Backoff * 2);
                     feed.RetryAt = now + feed.Backoff;
@@ -165,9 +172,15 @@ public sealed partial class CameraFeeds : IDisposable
             feed.StartedAt = now;
             if (feed.State != "no-picture" && feed.State != "unreachable" && feed.State != "login") feed.State = "starting";
             var f = feed;
+            var generation = ++feed.Generation;
+            feed.GotFrame = false;
             feed.Run = _launch(ffmpeg, feed.Source, jpeg =>
             {
-                lock (_gate) { f.Frame = jpeg; f.FrameAt = _now(); f.State = "live"; f.Backoff = 0; }
+                lock (_gate)
+                {
+                    if (f.Generation != generation || f.Run is null) return; // from an ffmpeg that was stopped since
+                    f.Frame = jpeg; f.FrameAt = _now(); f.GotFrame = true; f.State = "live"; f.Backoff = 0;
+                }
             });
             _log.LogInformation("camera {Name}: started", feed.Source.Name);
         }
@@ -287,11 +300,13 @@ internal sealed class FfmpegRun : ICameraRun
 {
     private readonly Process _p;
     private readonly Queue<string> _errors = new();
-    private volatile bool _ended;
+    private volatile bool _disposed;
+    private Task _stdout = Task.CompletedTask, _stderr = Task.CompletedTask;
 
     private FfmpegRun(Process p) => _p = p;
 
-    public bool HasEnded => _ended;
+    /// <summary>Only once both pipes are read to the end, so the last error line is in before the run counts as over.</summary>
+    public bool HasEnded => _disposed || (_stdout.IsCompleted && _stderr.IsCompleted);
     public string? LastError { get { lock (_errors) return _errors.Count == 0 ? null : string.Join(" | ", _errors); } }
 
     public static FfmpegRun Start(string ffmpeg, CameraSource source, Action<byte[]> onFrame)
@@ -301,14 +316,16 @@ internal sealed class FfmpegRun : ICameraRun
             RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = false,
             UseShellExecute = false, CreateNoWindow = true,
         };
-        foreach (var a in new[] { "-hide_banner", "-nostdin", "-loglevel", "error", "-rtsp_transport", source.Transport == "udp" ? "udp" : "tcp",
+        // rtsps is TLS, which needs TCP
+        var transport = source.Transport == "udp" && !source.Url.StartsWith("rtsps:", StringComparison.OrdinalIgnoreCase) ? "udp" : "tcp";
+        foreach (var a in new[] { "-hide_banner", "-nostdin", "-loglevel", "error", "-rtsp_transport", transport,
                      "-i", source.Url, "-an", "-sn", "-dn", "-vf", $"fps={CameraFeeds.Fps},scale='min(1280,iw)':-2",
                      "-f", "image2pipe", "-c:v", "mjpeg", "-q:v", "6", "pipe:1" })
             psi.ArgumentList.Add(a);
         var p = Process.Start(psi) ?? throw new InvalidOperationException("ffmpeg did not start");
         if (OperatingSystem.IsWindows()) JobObject.Track(p); // ends with the agent, even if the agent is killed
         var run = new FfmpegRun(p);
-        _ = Task.Run(async () =>
+        run._stdout = Task.Run(async () =>
         {
             var split = new JpegSplitter(onFrame);
             var buf = new byte[64 * 1024];
@@ -318,10 +335,9 @@ internal sealed class FfmpegRun : ICameraRun
                 while ((n = await p.StandardOutput.BaseStream.ReadAsync(buf)) > 0) split.Push(buf.AsSpan(0, n));
             }
             catch { }
-            run._ended = true;
         });
         // drained all the time: ffmpeg blocks once a full pipe isn't read
-        _ = Task.Run(async () =>
+        run._stderr = Task.Run(async () =>
         {
             try
             {
@@ -338,7 +354,7 @@ internal sealed class FfmpegRun : ICameraRun
 
     public void Dispose()
     {
-        _ended = true;
+        _disposed = true;
         try { if (!_p.HasExited) _p.Kill(entireProcessTree: true); } catch { }
         _p.Dispose();
     }
