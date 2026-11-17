@@ -153,18 +153,11 @@ internal sealed partial class WindowsDeckNative
         var handle = Window(process); if (handle == 0) return false;
         ShowWindow(handle, IsIconic(handle) ? 9 : 5); // SW_RESTORE when minimized, otherwise SW_SHOW
         if (SetForegroundWindow(handle) && GetForegroundWindow() == handle) return true;
-        // Windows keeps a background process (the agent) from taking the foreground. Sharing the input queue of the
-        // window in front for a moment lifts that lock, without sending a key that some app might act on.
-        var front = GetForegroundWindow();
-        var frontThread = front == 0 ? 0u : GetWindowThreadProcessId(front, out _);
-        var self = GetCurrentThreadId();
-        var attached = frontThread != 0 && frontThread != self && AttachThreadInput(self, frontThread, true);
-        try
-        {
-            BringWindowToTop(handle);
-            SetForegroundWindow(handle);
-        }
-        finally { if (attached) AttachThreadInput(self, frontThread, false); }
+        // Windows keeps a background process (the agent) from taking the foreground unless it received the last input.
+        // A zero-pixel mouse move makes it so without a key some app could act on. (Attaching to the input queue of the
+        // window in front would also work, but hangs when that app stops responding.)
+        KeySender.NudgeInput();
+        SetForegroundWindow(handle);
         return GetForegroundWindow() == handle;
     }
     private static bool Layout(string process, string layout)
@@ -228,10 +221,6 @@ internal sealed partial class WindowsDeckNative
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(nint h);
     [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsIconic(nint h);
-    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool BringWindowToTop(nint h);
-    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint h, out uint processId);
-    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool AttachThreadInput(uint attach, uint attachTo, [MarshalAs(UnmanagedType.Bool)] bool doAttach);
-    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
     [DllImport("user32.dll")] private static extern bool SetWindowPos(nint h, nint after, int x, int y, int width, int height, uint flags);
     [DllImport("powrprof.dll", SetLastError = true)] private static extern bool SetSuspendState(bool hibernate, bool force, bool disableWake);
 }

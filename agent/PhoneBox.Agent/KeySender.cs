@@ -93,6 +93,13 @@ public static class KeySender
 #if WINDOWS
     private static void Send(List<string> combo) => SendCombo(combo);
 
+    /// <summary>
+    /// A mouse "move" of zero pixels: nothing on screen changes, but this process becomes the one that received the last
+    /// input, which Windows requires before it lets a process bring a window to the front.
+    /// </summary>
+    internal static bool NudgeInput() =>
+        SendInput(1, [new INPUT { type = 0 /* MOUSE */, u = new InputUnion { mi = new MOUSEINPUT { dwFlags = 1 /* MOVE, by 0 */ } } }], Marshal.SizeOf<INPUT>()) == 1;
+
     /// <summary>Presses one parsed combo; false when Windows took none or only part of the input.</summary>
     public static bool SendCombo(List<string> combo)
     {
