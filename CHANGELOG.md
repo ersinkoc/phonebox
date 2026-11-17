@@ -4,6 +4,9 @@
 
 **Panel**
 - The Note widget can be edited from the phone: tap it, write, save (#218, [cavalei](https://github.com/cavalei)).
+- News feeds widget: the list scrolls, so every headline is reachable, not just the ones that fit; an article opened
+  from the phone loses its accent bar; and a new option shows each headline over 2 or 3 lines (#108,
+  [Vampie](https://github.com/Vampie)).
 
 **Settings**
 - Saving after uploading or removing a shortcut's custom icon no longer fails with "The settings were changed in

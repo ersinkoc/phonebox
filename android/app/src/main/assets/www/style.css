@@ -908,9 +908,17 @@ body.offline .offline-msg { display: flex; }
 .hn-b { min-width: 0; flex: 1; }
 .hn-t { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hn-m { font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fd-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
-.fd-i { height: 30px; min-width: 0; border-left: 2px solid transparent; padding-left: 6px; }
+/* a column, so the list gets the height that is left and scrolls within it */
+.w-feeds { display: flex; flex-direction: column; }
+.fd-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; touch-action: pan-y; scrollbar-width: none; }
+.fd-list::-webkit-scrollbar { display: none; }
+.fd-i { flex: none; height: 30px; min-width: 0; border-left: 2px solid transparent; padding-left: 6px; }
+/* the accent bar: an article this phone hasn't opened yet */
 .fd-i.link { border-left-color: var(--c); cursor: pointer; }
+.fd-i.link.read { border-left-color: transparent; }
+.fd-i.read .fd-t { opacity: .65; }
+.fd-list.wrap .fd-i { height: auto; padding-top: 1px; padding-bottom: 1px; }
+.fd-list.wrap .fd-t { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--fl, 2); line-height: 1.25; }
 .fd-i.link:active { background: rgba(255, 255, 255, .06); }
 .fd-t { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fd-m { font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

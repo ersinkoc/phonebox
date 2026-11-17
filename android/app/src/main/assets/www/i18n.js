@@ -5254,6 +5254,7 @@
       'Shortcuts (none selected = all)': 'Phím tắt (không chọn = tất cả)',
       'Show covers (the phone loads them from Spotify\'s image server)': 'Hiện ảnh bìa (điện thoại tải từ máy chủ ảnh của Spotify)',
       'Show how old each headline is': 'Hiện mỗi tin đã cũ bao lâu',
+      'Lines per headline': 'Số dòng cho mỗi tin',
       'Show or hide sources in the current scene.': 'Hiện hoặc ẩn các nguồn trong cảnh hiện tại.',
       'Show recent notifications': 'Hiện thông báo gần đây',
       'Show stopped containers': 'Hiện container đã dừng',
