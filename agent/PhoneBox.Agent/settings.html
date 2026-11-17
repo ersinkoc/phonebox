@@ -1411,7 +1411,13 @@ function optionField(w, o, onValChange) {
   const field = (...kids) => h('div', { class: 'field' }, h('label', {}, o.label), ...kids);
   switch (o.type) {
     case 'bool':
-      return h('label', { class: 'check', style: { marginBottom: '10px' } }, h('input', { type: 'checkbox', checked: v !== false, onchange: (e) => set(o.key, e.target.checked) }), o.label);
+      {
+        // A Home Assistant widget without the key switches nothing (the agent and the phone read it as off), so show it unchecked;
+        // its rows that follow this box are drawn again when it changes.
+        const haFlag = w.type === 'ha' && o.key === 'control';
+        return h('label', { class: 'check', style: { marginBottom: '10px' } }, h('input', { type: 'checkbox', checked: haFlag ? w.options?.control === true : v !== false,
+          onchange: (e) => { set(o.key, e.target.checked); if (haFlag) renderInspector(); } }), o.label);
+      }
     case 'select':
       return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, ...o.choices.map(([k, l]) => h('option', { value: k, selected: k === v }, l))));
     case 'multi': {
@@ -1515,47 +1521,61 @@ function haLoadPicker(list) {
   fetch('/api/ha/entities').then((r) => r.json()).then((d) => { haPicker = d; if (!d.error) fill(d); }).catch(() => {});
 }
 function haItemsEditor(w, o, set) {
+  const HA_MAX = 200, MAX_ID = 120, MAX_NAME = 80, MAX_ICON = 16; // the agent and the phone read at most 200 usable rows
   const legacy = () => String(w.options?.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.')).map((id) => ({ id }));
   const stored = () => { const x = optVal(w, o); return Array.isArray(x) && x.length ? x : legacy(); };
-  let rows = stored().map((x) => ({ ...x }));
+  // What a row without a switching flag of its own does: it follows the widget's flag, and the agent reads a missing flag as off.
+  const widgetOn = () => w.options?.control === true;
+  let rows = stored().filter((x) => x && typeof x === 'object').map((x) => ({ ...x }));
   const list = h('datalist', { id: 'ha-entities-' + Math.random().toString(36).slice(2) });
   haLoadPicker(list);
   const box = h('div', { class: 'ha-rows' });
-  // the editor owns the list from the first edit on: the old text must not come back when every row is removed
-  const save = () => { set('entities', ''); set(o.key, rows.filter((r) => String(r.id || '').trim()).map((r) => {
-    const out = { id: r.id.trim() };
-    if (r.name) out.name = r.name;
-    if (r.icon) out.icon = r.icon;
-    if (r.showName === false) out.showName = false;
-    if (r.showIcon === false) out.showIcon = false;
-    if (typeof r.control === 'boolean') out.control = r.control;
-    return out;
-  })); };
+  // The editor owns the list from the first edit on: the old text must not come back when every row is removed, and every
+  // row is saved with the switching state it shows, so a later change of the widget's flag cannot switch it silently.
+  const save = () => {
+    const out = [];
+    for (const r of rows) {
+      const id = String(r.id ?? '').trim().slice(0, MAX_ID);
+      if (!id) continue;
+      if (out.length >= HA_MAX) break;
+      const item = { id };
+      const name = String(r.name ?? '').trim().slice(0, MAX_NAME), icon = String(r.icon ?? '').trim().slice(0, MAX_ICON);
+      if (name) item.name = name;
+      if (icon) item.icon = icon;
+      if (r.showName === false) item.showName = false;
+      if (r.showIcon === false) item.showIcon = false;
+      item.control = typeof r.control === 'boolean' ? r.control : widgetOn();
+      r.control = item.control;
+      out.push(item);
+    }
+    set('entities', '');
+    set(o.key, out);
+  };
   let picking = -1; // the row whose emoji grid is open
   const render = () => {
     box.replaceChildren(...rows.map((r, i) => {
-      const text = (key, ph, flex, extra = {}) => h('input', { type: 'text', value: r[key] ?? '', placeholder: ph, spellcheck: 'false', style: { flex, minWidth: '0' }, oninput: (e) => { r[key] = e.target.value; save(); }, ...extra });
-      const check = (key, label, dflt) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: (r[key] ?? dflt) !== false, onchange: (e) => { r[key] = e.target.checked; save(); } }), label);
-      const id = text('id', 'light.desk', '1 1 200px'); id.setAttribute('list', list.id);
-      const icon = text('icon', 'Icon', '0 0 64px');
+      const text = (key, ph, flex, max, extra = {}) => h('input', { type: 'text', value: r[key] ?? '', placeholder: ph, maxlength: max, spellcheck: 'false', style: { flex, minWidth: '0' }, oninput: (e) => { r[key] = e.target.value; save(); }, ...extra });
+      const check = (key, label, on) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: on, onchange: (e) => { r[key] = e.target.checked; save(); } }), label);
+      const id = text('id', 'light.desk', '1 1 200px', MAX_ID); id.setAttribute('list', list.id);
+      const icon = text('icon', t('s.ha.iconPh'), '0 0 64px', MAX_ICON);
       const pick = (em) => { r.icon = em; save(); picking = -1; render(); };
       return h('div', { class: 'ha-row' },
-        h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } }, id, text('name', 'Display name (empty = from Home Assistant)', '1 1 200px')),
+        h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } }, id, text('name', t('s.ha.namePh'), '1 1 200px', MAX_NAME)),
         h('div', { class: 'row', style: { gap: '6px', marginTop: '6px', flexWrap: 'wrap' } }, icon,
-          h('button', { class: 'btn sm', title: 'Choose an icon', onclick: () => { picking = picking === i ? -1 : i; render(); } }, picking === i ? 'Close' : 'Pick icon'),
-          h('button', { class: 'btn sm', title: 'Move up', disabled: i === 0, onclick: () => { [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; save(); render(); } }, '▲'),
-          h('button', { class: 'btn sm', title: 'Move down', disabled: i === rows.length - 1, onclick: () => { [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; save(); render(); } }, '▼'),
-          h('button', { class: 'btn sm', title: 'Remove', onclick: () => { rows.splice(i, 1); picking = -1; save(); render(); } }, '✕')),
-        picking === i ? h('div', { class: 'emojis' }, h('button', { title: 'Use the icon Home Assistant suggests', style: { width: 'auto', padding: '0 8px', fontSize: '12px' }, onclick: () => pick('') }, 'Default'),
+          h('button', { class: 'btn sm', title: t('s.ha.iconTitle'), onclick: () => { picking = picking === i ? -1 : i; render(); } }, picking === i ? t('s.ha.close') : t('s.ha.pickIcon')),
+          h('button', { class: 'btn sm', title: t('s.ha.up'), disabled: i === 0, onclick: () => { [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; save(); render(); } }, '▲'),
+          h('button', { class: 'btn sm', title: t('s.ha.down'), disabled: i === rows.length - 1, onclick: () => { [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; save(); render(); } }, '▼'),
+          h('button', { class: 'btn sm', title: t('s.ha.remove'), onclick: () => { rows.splice(i, 1); picking = -1; save(); render(); } }, '✕')),
+        picking === i ? h('div', { class: 'emojis' }, h('button', { title: t('s.ha.defaultIconTitle'), style: { width: 'auto', padding: '0 8px', fontSize: '12px' }, onclick: () => pick('') }, t('s.ha.defaultIcon')),
           ...HA_EMOJIS.map((em) => h('button', { onclick: () => pick(em) }, em))) : null,
-        h('div', { class: 'row', style: { gap: '4px', marginTop: '4px' } }, check('showIcon', 'Show icon', true), check('showName', 'Show name', true),
-          check('control', 'Allow switching from the phone', w.options?.control === true)));
-    }), ...(rows.length ? [] : [h('div', { class: 'hint' }, 'No entities yet.')]));
+        h('div', { class: 'row', style: { gap: '4px', marginTop: '4px' } }, check('showIcon', t('s.ha.showIcon'), r.showIcon !== false), check('showName', t('s.ha.showName'), r.showName !== false),
+          check('control', t('s.ha.allowSwitch'), typeof r.control === 'boolean' ? r.control : widgetOn())));
+    }), ...(rows.length ? [] : [h('div', { class: 'hint' }, t('s.ha.none'))]));
   };
   render();
   return h('div', { class: 'field' }, h('label', {}, o.label), box, list,
-    h('button', { class: 'btn sm', onclick: () => { rows.push({ id: '' }); render(); box.querySelector('.ha-row:last-child input')?.focus(); } }, '＋ Add entity'),
-    h('span', { class: 'hint', style: { display: 'block', marginTop: '6px' } }, 'Pick from the list or type an entity id. The picker needs Home Assistant set up in Settings › General.'));
+    h('button', { class: 'btn sm', onclick: () => { if (rows.length >= HA_MAX) return; rows.push({ id: '' }); render(); box.querySelector('.ha-row:last-child input')?.focus(); } }, '＋ ' + t('s.ha.add')),
+    h('span', { class: 'hint', style: { display: 'block', marginTop: '6px' } }, t('s.ha.hint')));
 }
 
 // ---- template picker: new page (index null) or replace the widgets of page <index>

@@ -232,6 +232,7 @@ export const HA_CLASS_ICONS = {
 };
 export const HA_SWITCHABLE = new Set(['light', 'switch', 'fan', 'input_boolean', 'automation', 'siren', 'humidifier', 'group', 'cover', 'media_player',
   'scene', 'script', 'button', 'input_button', 'lock', 'vacuum']);
+const HA_MAX_ITEMS = 200; // keep in step with HomeAssistant.MaxItems in the agent
 export const HA_ACTIVE = new Set(['on', 'open', 'opening', 'unlocked', 'playing', 'home', 'cleaning', 'heat', 'cool', 'heat_cool', 'auto', 'detected']);
 
 export function haState(e) {
@@ -260,12 +261,13 @@ W.ha = {
     for (const it of listed) {
       const id = it && typeof it.id === 'string' ? it.id.trim() : '';
       if (!id.includes('.') || seenIds.has(id)) continue;
+      if (seenIds.size >= HA_MAX_ITEMS) break; // the cap counts usable rows, like the agent's
       seenIds.add(id);
       items.push({ id, name: String(it.name || '').trim(), icon: String(it.icon || '').trim(), showName: it.showName !== false, showIcon: it.showIcon !== false,
         control: typeof it.control === 'boolean' ? it.control : o.control === true });
     }
     // like the agent: a non-empty "items" list is final, even when none of its rows is usable
-    if (!listed.length) for (const id of String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.'))) items.push({ id, name: '', icon: '', showName: true, showIcon: true, control: o.control === true });
+    if (!listed.length) for (const id of String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.')).slice(0, HA_MAX_ITEMS)) items.push({ id, name: '', icon: '', showName: true, showIcon: true, control: o.control === true });
     const ids = items.map((i) => i.id);
     let data = null, lastKey = '', busy = null;
     const grid = h('div', 'ha-grid');
@@ -285,7 +287,7 @@ W.ha = {
       const key = JSON.stringify([data, busy]);
       if (!force && key === lastKey) return;
       lastKey = key;
-      if (!ids.length) { grid.replaceChildren(h('div', 'empty', 'Add entities in the widget settings, e.g. light.desk')); return; }
+      if (!ids.length) { grid.replaceChildren(h('div', 'empty', t('w.ha.empty'))); return; }
       if (!data) { grid.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
       if (!data.configured) { grid.replaceChildren(h('div', 'empty', data.error)); return; }
       const byId = new Map(data.entities.map((e) => [e.id, e]));

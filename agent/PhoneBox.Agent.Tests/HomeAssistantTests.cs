@@ -126,6 +126,32 @@ public sealed class HomeAssistantTests : IDisposable
     }
 
     [Fact]
+    public async Task TheCapCountsUsableRowsNotAllRows()
+    {
+        // 300 unusable rows in front must not hide the valid one after them
+        var junk = Enumerable.Range(0, 300).Select(i => (object)new { id = $"nodot{i}" });
+        var ha = Client(control: true, items: junk.Append(new { id = "light.desk" }).ToArray());
+        var r = Json(await ha.StatesAsync(["light.desk"]));
+        Assert.Equal(["light.desk"], r.GetProperty("entities").EnumerateArray().Select(e => e.GetProperty("id").GetString()).ToList());
+    }
+
+    [Fact]
+    public void AtMostTwoHundredUsableRowsAreRead()
+    {
+        var items = Enumerable.Range(0, 250).Select(i => new { id = $"sensor.s{i}" }).ToArray();
+        var w = new WidgetConfig { Type = "ha", Options = new() { ["items"] = JsonSerializer.SerializeToElement(items) } };
+        Assert.Equal(200, HomeAssistant.ItemsOf(w).Count());
+    }
+
+    [Fact]
+    public async Task StatesOfAHiddenPagesWidgetAreNotRead()
+    {
+        var ha = Client(control: true, items: new object[] { new { id = "light.desk" } }, pageEnabled: false);
+        var r = Json(await ha.StatesAsync(["light.desk"]));
+        Assert.Empty(r.GetProperty("entities").EnumerateArray());
+    }
+
+    [Fact]
     public async Task AnEmptyItemsListFallsBackToTheLegacyEntityString()
     {
         var ha = Client(control: true, items: Array.Empty<object>());

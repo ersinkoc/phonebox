@@ -21,7 +21,8 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     private string? _error;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    private IEnumerable<WidgetConfig> Widgets => config.Get().Widgets().Where(w => w.Type == "ha");
+    // only widgets on enabled pages count, for reading states as for switching: hiding the page or removing the widget turns both off
+    private IEnumerable<WidgetConfig> Widgets => config.Get().Widgets(enabledPagesOnly: true).Where(w => w.Type == "ha");
 
     private const int MaxItems = 200;
 
@@ -36,9 +37,11 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
         var widgetControl = w.Bool("control") == true;
         if (w.Opt("items") is { ValueKind: JsonValueKind.Array } items && items.GetArrayLength() > 0)
         {
+            // the cap counts usable rows, so a run of unusable ones cannot hide the valid ones after it
             var seen = new HashSet<string>();
-            foreach (var item in items.EnumerateArray().Take(MaxItems))
+            foreach (var item in items.EnumerateArray())
             {
+                if (seen.Count >= MaxItems) yield break;
                 if (item.ValueKind != JsonValueKind.Object || !item.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.String) continue;
                 var id = idEl.GetString()!.Trim();
                 if (!id.Contains('.') || !seen.Add(id)) continue;
@@ -47,7 +50,7 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
             }
             yield break;
         }
-        foreach (var id in (w.Str("entities") ?? "").Split([',', '\n', ' ', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(e => e.Contains('.')))
+        foreach (var id in (w.Str("entities") ?? "").Split([',', '\n', ' ', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(e => e.Contains('.')).Take(MaxItems))
             yield return (id, widgetControl);
     }
 
@@ -128,8 +131,7 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     /// <summary>Switches an entity (toggle, press, run…) if a widget lists it with "Allow switching" on.</summary>
     public async Task<string?> ToggleAsync(string id)
     {
-        // only widgets on enabled pages count, so hiding the page or removing the widget turns switching off
-        if (!config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "ha" && ItemsOf(w).Any(i => i.Control && i.Id == id))) return "switching this entity is not allowed in the widget's settings";
+        if (!Widgets.Any(w => ItemsOf(w).Any(i => i.Control && i.Id == id))) return "switching this entity is not allowed in the widget's settings";
         var domain = id.Split('.')[0];
         var state = _states.TryGetValue(id, out var s) ? s.State : "";
         var (svcDomain, service) = domain switch
