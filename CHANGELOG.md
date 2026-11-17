@@ -7,6 +7,13 @@
   the next picture is decoded before it replaces the one on screen, so it no longer flickers black between frames, and
   an unchanged picture isn't sent again (#209, [Hoangminhfcb](https://github.com/Hoangminhfcb)).
 
+**Android app**
+- The app installs on Android 5.0 and 6.0 too (it was Android 7.0). On Android 6 widgets scale fully, as its WebView
+  updates go up to version 106. On Android 5 the last WebView is 95, so the panel runs but widgets don't scale as well
+  and the WebView notice stays. Tried on a Galaxy Tab S with Android 6.0.1 and WebView 106: pairing over Wi-Fi, every
+  widget and page swiping work. Not yet tried on an Android 5 device (#184, #194,
+  [phongnguyen2277](https://github.com/phongnguyen2277)).
+
 ## 0.9.18 — 2026-11-17
 
 A Camera widget for IP cameras, the App dock bringing a running app back as it was, and more of the panel in every
@@ -94,12 +101,6 @@ Settings tile, Vietnamese, controls at the top of the screen, and a choice of th
   the computer" option is on,
   and the phone only ever sends which key was tapped. macOS and Linux show that it needs Windows. Idea and first
   version in #48 by [blx10](https://github.com/blx10).
-
-**Android app**
-- The app installs on Android 5.0 and 6.0 too (it was Android 7.0). On Android 6 widgets scale fully, as its WebView
-  updates go up to version 106. On Android 5 the last WebView is 95, so the panel runs but widgets don't scale as well
-  and the WebView notice stays. Not yet tried on an Android 5 or 6 device (#184,
-  [phongnguyen2277](https://github.com/phongnguyen2277)).
 
 **Agent**
 - Wi-Fi pairing: on a PC whose network goes through a Hyper-V external switch, the pairing link carries the PC's

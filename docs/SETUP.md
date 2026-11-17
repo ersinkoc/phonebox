@@ -271,6 +271,15 @@ GPU values come from Windows itself (the temperature, as in Task Manager, needs 
 GitHub needs `gh auth login`, quotas and sessions need Claude Code / Codex to have been used on this PC.
 </details>
 
+<details><summary><b>On Android 5 or 6, the weather says "Weather unavailable".</b></summary>
+
+The weather and air quality come straight from Open-Meteo over HTTPS, and Android before 7.1.1 doesn't trust the
+certificate authority its certificate chains to (Let's Encrypt's ISRG Root X1). Download `isrgrootx1.pem` from
+[letsencrypt.org/certificates](https://letsencrypt.org/certificates/), rename it to `isrgrootx1.crt`, and install it
+under **Settings › Security › Install from device storage**. The panel itself talks to the computer and is not
+affected. Thanks to [phongnguyen2277](https://github.com/phongnguyen2277) for finding this (#184).
+</details>
+
 <details><summary><b>I want the volume keys to change the phone's volume.</b></summary>
 
 Turn off **Settings › General › Display › The phone's volume keys switch pages**.
