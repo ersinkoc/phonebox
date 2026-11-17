@@ -383,7 +383,7 @@ dd { margin: 0; word-break: break-all; }
         <div class="presets" id="rulePresets"></div>
       </div>
       <div class="card row" style="gap:10px;align-items:center">
-        <span id="rulesPausedState" class="hint" style="flex:1">Page switches count down on the phone and wait while you use it (General › Page switching).</span>
+        <span id="rulesPausedState" class="hint" style="flex:1" data-i18n="s.rules.countdown">Page switches count down on the phone and wait while you use it (General › Page switching).</span>
         <button class="btn sm" id="rulesPauseBtn" data-i18n="s.rules.pause1h">Pause all rules for 1 hour</button>
       </div>
       <div id="ruleList"></div>
@@ -409,7 +409,7 @@ dd { margin: 0; word-break: break-all; }
             <div class="field" style="flex:1"><label data-i18n="s.weather.lon">Longitude</label><input type="number" step="0.001" data-bind="weather.lon" data-type="num"></div>
           </div>
         </div>
-        <p class="hint" style="margin:8px 0 0">The phone asks Open-Meteo for this location only while a page has a widget that uses the weather (weather, forecast, sun &amp; moon, a clock with its weather line, Custom HTML).</p>
+        <p class="hint" style="margin:8px 0 0" data-i18n="s.weather.openMeteoHint">The phone asks Open-Meteo for this location only while a page has a widget that uses the weather (weather, forecast, sun &amp; moon, a clock with its weather line, Custom HTML).</p>
       </div>
 
       <div class="card">
@@ -509,7 +509,7 @@ dd { margin: 0; word-break: break-all; }
         </div>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.orientation">Orientation</label>
           <select data-bind="display.orientation"><option value="landscape" data-i18n="s.display.orientation.landscape">Landscape</option><option value="portrait" data-i18n="s.display.orientation.portrait">Portrait</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select>
-          <span class="hint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
+          <span class="hint" data-i18n="s.display.orientationHint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.timeFormat">Time format</label>
           <select data-bind="display.hour12" data-type="hour12"><option value="false" data-i18n="s.display.h24">24-hour (14:05)</option><option value="true" data-i18n="s.display.h12">12-hour (2:05 PM)</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select></div>
         <label class="check"><input type="checkbox" data-bind="display.showSeconds"> <span data-i18n="s.display.showSeconds">Show seconds on the clock</span></label>
@@ -523,33 +523,31 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.oled.title">OLED burn-in protection</h3>
-        <p class="hint" style="margin:0 0 12px">For OLED screens that show the same page for hours. The AMOLED black theme and the night screen help too.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.oled.lead">For OLED screens that show the same page for hours. The AMOLED black theme and the night screen help too.</p>
         <label class="check"><input type="checkbox" data-bind="display.pixelShift"> <span data-i18n="s.oled.pixelShift">Move the panel by a few pixels every 2 minutes, and the night clock around the screen</span></label>
         <div class="field" style="max-width:420px;margin-top:8px"><label data-i18n="s.oled.idleDim">Dim the panel after (minutes without a touch, 0 = never)</label><input type="number" min="0" max="1440" data-bind="display.idleDimMin" data-type="int">
-          <span class="hint">A touch brightens it again without pressing anything; so do a page switch, a notification and a permission prompt.</span></div>
+          <span class="hint" data-i18n="s.oled.idleDimHint">A touch brightens it again without pressing anything; so do a page switch, a notification and a permission prompt.</span></div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.pageSwitch.title">Page switching</h3>
-        <p class="hint" style="margin:0 0 12px">How rules, webhooks and the idle return change the page. Instead of jumping, the phone shows
-          <i>“Claude needs me — switching to AI in 3…”</i> with <b>Stay</b> and <b>Go now</b>, then fades over. It never pulls a page away while
-          you are using the panel, and rules that fire one after another wait their turn instead of bouncing the screen back and forth.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.pageSwitch.lead">How rules, webhooks and the idle return change the page. Instead of jumping, the phone shows “Claude needs me — switching to AI in 3…” with Stay and Go now, then fades over. It never pulls a page away while you are using the panel, and rules that fire one after another wait their turn instead of bouncing the screen back and forth.</p>
         <div class="grid2">
           <div class="field"><label data-i18n="s.pageSwitch.homePage">Home page</label><select id="homePageSel" onchange="cfg.display.homePage = this.value || null; changed(); renderPageEditor()"></select>
-            <span class="hint">Where the idle return and the Back key go.</span></div>
-          <div class="field"><label>Back home after (seconds without a touch, 0 = never)</label><input type="number" min="0" max="3600" data-bind="display.idleReturnSec" data-type="int">
-            <span class="hint">Each page can override this (page editor › Back home after).</span></div>
-          <div class="field"><label>Countdown before switching (seconds, 0 = at once)</label><input type="number" min="0" max="30" data-bind="display.switchCountdownSec" data-type="int"></div>
-          <div class="field"><label>Don't interrupt for (seconds after I touch the panel)</label><input type="number" min="0" max="600" data-bind="display.touchGraceSec" data-type="int"></div>
-          <div class="field"><label>At least (seconds between two automatic switches)</label><input type="number" min="0" max="600" data-bind="display.minDwellSec" data-type="int"></div>
-          <div class="field"><label>A rule keeps its page at most (minutes, 0 = while it lasts)</label><input type="number" min="0" max="1440" data-bind="display.holdMaxMin" data-type="int">
-            <span class="hint">After that the panel goes home when nobody touches it.</span></div>
+            <span class="hint" data-i18n="s.pageSwitch.homePageHint">Where the idle return and the Back key go.</span></div>
+          <div class="field"><label data-i18n="s.pageSwitch.backHome">Back home after (seconds without a touch, 0 = never)</label><input type="number" min="0" max="3600" data-bind="display.idleReturnSec" data-type="int">
+            <span class="hint" data-i18n="s.pageSwitch.backHomePerPage">Each page can override this (page editor › Back home after).</span></div>
+          <div class="field"><label data-i18n="s.pageSwitch.countdown">Countdown before switching (seconds, 0 = at once)</label><input type="number" min="0" max="30" data-bind="display.switchCountdownSec" data-type="int"></div>
+          <div class="field"><label data-i18n="s.pageSwitch.grace">Don't interrupt for (seconds after I touch the panel)</label><input type="number" min="0" max="600" data-bind="display.touchGraceSec" data-type="int"></div>
+          <div class="field"><label data-i18n="s.pageSwitch.minDwell">At least (seconds between two automatic switches)</label><input type="number" min="0" max="600" data-bind="display.minDwellSec" data-type="int"></div>
+          <div class="field"><label data-i18n="s.pageSwitch.holdMax">A rule keeps its page at most (minutes, 0 = while it lasts)</label><input type="number" min="0" max="1440" data-bind="display.holdMaxMin" data-type="int">
+            <span class="hint" data-i18n="s.pageSwitch.holdMaxHint">After that the panel goes home when nobody touches it.</span></div>
         </div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.kiosk.title">Kiosk</h3>
-        <p class="hint" style="margin:0 0 12px">Keep the phone on the panel. Neither needs root.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.kiosk.lead">Keep the phone on the panel. Neither needs root.</p>
         <label class="check"><input type="checkbox" data-bind="display.pin"> Pin the panel: Home and Recents stay on it (Android asks once; hold Back and Overview together to unpin)</label>
         <label class="check"><input type="checkbox" data-bind="display.homeScreen"> Use the panel as the phone's home screen: it starts after a reboot and Home returns to it (turn off to get your launcher back)</label>
         <label class="check"><input type="checkbox" data-bind="display.keepAwake"> Keep the phone awake: turn off Android's screen saver (it starts on the charger) and keep the screen on while plugged in (set over USB)</label>
@@ -566,12 +564,12 @@ dd { margin: 0; word-break: break-all; }
           <input type="number" min="5" max="95" data-bind="charge.min" data-type="int" style="width:70px"> % and
           <input type="number" min="10" max="100" data-bind="charge.max" data-type="int" style="width:70px"> %</div>
         <div class="grid2">
-          <div class="field"><label>Switch the power with</label><select data-bind="charge.method"><option value="ha">a Home Assistant switch (smart plug)</option><option value="shortcuts">two shortcuts (power on / power off)</option></select></div>
-          <div class="field" id="chargeHa"><label>Switch entity</label><input type="text" data-bind="charge.entity" placeholder="switch.phone_charger" spellcheck="false"></div>
-          <div class="field" id="chargeOn" hidden><label>Shortcut: power on</label><select id="chargeOnSel" onchange="cfg.charge.onShortcut = this.value || null; changed()"></select></div>
-          <div class="field" id="chargeOff" hidden><label>Shortcut: power off</label><select id="chargeOffSel" onchange="cfg.charge.offShortcut = this.value || null; changed()"></select></div>
+          <div class="field"><label data-i18n="s.battery.method">Switch the power with</label><select data-bind="charge.method"><option value="ha" data-i18n="s.battery.methodHa">a Home Assistant switch (smart plug)</option><option value="shortcuts" data-i18n="s.battery.methodShortcuts">two shortcuts (power on / power off)</option></select></div>
+          <div class="field" id="chargeHa"><label data-i18n="s.battery.entity">Switch entity</label><input type="text" data-bind="charge.entity" placeholder="switch.phone_charger" spellcheck="false"></div>
+          <div class="field" id="chargeOn" hidden><label data-i18n="s.battery.onShortcut">Shortcut: power on</label><select id="chargeOnSel" onchange="cfg.charge.onShortcut = this.value || null; changed()"></select></div>
+          <div class="field" id="chargeOff" hidden><label data-i18n="s.battery.offShortcut">Shortcut: power off</label><select id="chargeOffSel" onchange="cfg.charge.offShortcut = this.value || null; changed()"></select></div>
         </div>
-        <div class="row" style="gap:8px"><button class="btn sm" onclick="chargeTest('off')">Test: power off</button><button class="btn sm" onclick="chargeTest('on')">Test: power on</button>
+        <div class="row" style="gap:8px"><button class="btn sm" onclick="chargeTest('off')" data-i18n="s.battery.testOff">Test: power off</button><button class="btn sm" onclick="chargeTest('on')" data-i18n="s.battery.testOn">Test: power on</button>
           <span class="hint" id="chargeState"></span></div>
       </div>
 
@@ -583,13 +581,13 @@ dd { margin: 0; word-break: break-all; }
         <div class="row" style="margin-bottom:12px"><button class="btn" id="hookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="hookState"></span></div>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="claude.phoneApprovals"><span></span></label> <span data-i18n="s.claude.askOnPhone">Ask on the phone</span></div>
         <label class="check"><input type="checkbox" data-bind="claude.onlyWhenAway"> Only when I am away from the PC (no keyboard or mouse for a minute)</label>
-        <div class="field" style="max-width:260px;margin-top:12px"><label>Seconds to answer before the terminal takes over</label><input type="number" min="10" max="3600" data-bind="claude.timeoutSec" data-type="int"></div>
+        <div class="field" style="max-width:260px;margin-top:12px"><label data-i18n="s.claude.timeout">Seconds to answer before the terminal takes over</label><input type="number" min="10" max="3600" data-bind="claude.timeoutSec" data-type="int"></div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.quotas.title">AI quotas &amp; CodexBar</h3>
-        <p class="hint" style="margin:0 0 12px">Choose which AI coding services to track and show on the panel, and configure rotation.</p>
-        <div class="field"><label>Tracked AI services</label>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.quotas.lead">Choose which AI coding services to track and show on the panel, and configure rotation.</p>
+        <div class="field"><label data-i18n="s.quotas.tracked">Tracked AI services</label>
           <div class="opts">
             <label class="check"><input type="checkbox" id="cb_claude"> Claude</label>
             <label class="check"><input type="checkbox" id="cb_codex"> Codex</label>
@@ -597,28 +595,27 @@ dd { margin: 0; word-break: break-all; }
           </div>
         </div>
         <div class="field" style="margin-top:10px">
-          <label class="check"><input type="checkbox" data-bind="codexBar.rotate"> Rotate providers automatically</label>
+          <label class="check"><input type="checkbox" data-bind="codexBar.rotate"> <span data-i18n="s.quotas.rotate">Rotate providers automatically</span></label>
         </div>
         <div class="row" style="gap:12px;margin-top:10px">
-          <div class="field" style="max-width:180px"><label>Cards at a time</label><input type="number" min="0" max="6" data-bind="codexBar.pageSize" data-type="int"><span class="hint">0 = show all</span></div>
-          <div class="field" style="max-width:240px"><label>Rotate every (seconds)</label><input type="number" min="2" max="300" data-bind="codexBar.rotateInterval" data-type="int"><span class="hint">e.g. 5, 8, 15 seconds</span></div>
+          <div class="field" style="max-width:180px"><label data-i18n="s.quotas.pageSize">Cards at a time</label><input type="number" min="0" max="6" data-bind="codexBar.pageSize" data-type="int"><span class="hint" data-i18n="s.quotas.pageSizeHint">0 = show all</span></div>
+          <div class="field" style="max-width:240px"><label data-i18n="s.quotas.rotateInterval">Rotate every (seconds)</label><input type="number" min="2" max="300" data-bind="codexBar.rotateInterval" data-type="int"><span class="hint" data-i18n="s.quotas.rotateIntervalHint">e.g. 5, 8, 15 seconds</span></div>
         </div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.conn.title">Phone connection</h3>
         <div class="grid2">
-          <div class="field"><label data-i18n="s.conn.phoneToUse">Phone to use</label><select id="serial"></select><span class="hint">If several Android devices are connected, choose which one runs the panel.</span>
+          <div class="field"><label data-i18n="s.conn.phoneToUse">Phone to use</label><select id="serial"></select><span class="hint" data-i18n="s.conn.phoneToUseHint">If several Android devices are connected, choose which one runs the panel.</span>
             <div class="row" id="appMissing" hidden style="margin-top:8px"><button class="btn primary sm" id="installApp" data-i18n="s.conn.installApp">Install the phone app</button><span class="hint" id="appMissingText"></span></div></div>
-          <div class="field"><label>Path to adb.exe (empty = auto-detect)</label><input type="text" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
+          <div class="field"><label data-i18n="s.conn.adbPath">Path to adb.exe (empty = auto-detect)</label><input type="text" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
         </div>
         <p id="usbProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
         <p id="webviewProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
       </div>
       <div class="card">
         <h3 data-i18n="s.phones.title">Phones</h3>
-        <p class="hint" style="margin:0 0 12px">Several phones (or a phone and a tablet) can use this computer at once, over USB or Wi-Fi. Give each one a
-          name and choose the pages it shows; a phone shows all pages until you choose.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.phones.lead">Several phones (or a phone and a tablet) can use this computer at once, over USB or Wi-Fi. Give each one a name and choose the pages it shows; a phone shows all pages until you choose.</p>
         <div id="phoneList"><p class="hint" data-i18n="s.phones.empty">No phone has connected yet.</p></div>
       </div>
       <div class="card">
@@ -684,7 +681,7 @@ dd { margin: 0; word-break: break-all; }
         <div class="row" style="margin-top:10px"><button class="btn" id="applyJson" data-i18n="s.adv.applyJson">Apply JSON</button>
           <button class="btn" id="downloadJson" data-i18n="s.adv.download">Download settings</button><button class="btn" id="uploadJson" data-i18n="s.adv.upload">Load a settings file…</button>
           <span class="hint" id="jsonErr" style="color:var(--danger)"></span></div>
-        <p class="hint">The settings file includes your shortcut commands, tokens and keys: keep it private.</p>
+        <p class="hint" data-i18n="s.adv.privacy">The settings file includes your shortcut commands, tokens and keys: keep it private.</p>
       </div>
     </section>
   </main>
@@ -982,7 +979,7 @@ function renderPageEditor() {
       h('div', { class: 'row', style: { gap: '6px', marginTop: '10px' } },
         h('button', { class: 'btn sm', onclick: () => openTemplates(selPage) }, t('s.js.replaceTpl')),
         h('button', { class: 'btn sm', onclick: () => { const c = JSON.parse(JSON.stringify(p)); c.id = ''; c.title += t('s.js.dupPageSuffix'); cfg.pages.splice(selPage + 1, 0, c); selPage++; renderPages(); changed(); } }, t('s.js.dupPage')),
-        h('button', { class: 'btn sm', title: 'Save this page to a file to share it or use it on another computer', onclick: () => exportPages([p], 'phonebox-page-' + (p.id || 'page')) }, t('s.js.exportPage')),
+        h('button', { class: 'btn sm', title: t('s.js.exportPageHint'), onclick: () => exportPages([p], 'phonebox-page-' + (p.id || 'page')) }, t('s.js.exportPage')),
         h('button', { class: 'btn sm', onclick: () => { p.widgets = []; selWidget = -1; renderPageEditor(); changed(); } }, t('s.js.clear')),
         h('span', { class: 'spacer' }),
         h('button', { class: 'btn sm' + (isHome(p) ? ' on' : ''), title: 'The page the panel comes back to (idle return, Back key)',
@@ -1444,7 +1441,7 @@ function optionField(w, o, onValChange) {
     }
     case 'control-target': {
       let selected = v;
-      const select = h('select', { onchange: e => { selected=e.target.value; set(o.key, selected); } }, h('option', { value: '' }, '(automatic / all)'));
+      const select = h('select', { onchange: e => { selected=e.target.value; set(o.key, selected); } }, h('option', { value: '' }, t('s.js.automaticAll')));
       const load = async () => {
         try {
           const response = await fetch('/api/controls/state');
@@ -1453,9 +1450,9 @@ function optionField(w, o, onValChange) {
           let items = o.group === 'application' ? [...new Set((data.audio?.sessions || []).map(s => s.name))].map(name => ({ id: name, name }))
             : o.group === 'media' ? data.media || [] : o.group === 'monitor' ? data.monitors || []
             : (data.audio?.devices || []).filter(d => !o.group || d.direction === o.group);
-          select.replaceChildren(h('option', { value: '' }, '(automatic / all)'),
+          select.replaceChildren(h('option', { value: '' }, t('s.js.automaticAll')),
             ...items.map(item => h('option', { value: item.id, selected: item.id === selected }, item.name)));
-          if (selected && !items.some(item => item.id === selected)) select.append(h('option', { value: selected, selected: true }, 'Unavailable: ' + selected));
+          if (selected && !items.some(item => item.id === selected)) select.append(h('option', { value: selected, selected: true }, t('s.js.unavailable') + ' ' + selected));
         } catch (_) { }
       };
       load();
@@ -1465,17 +1462,17 @@ function optionField(w, o, onValChange) {
       return field(h('input', { type: 'number', min: o.min, max: o.max, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
     case 'textarea':
       return field(h('textarea', { rows: /^command/.test(o.key) ? 3 : 4, style: /^command/.test(o.key) ? { fontFamily: 'Consolas, monospace', fontSize: '12.5px' } : {}, oninput: (e) => set(o.key, e.target.value) }, v ?? ''),
-        o.key === 'command' ? h('span', { class: 'hint' }, 'Runs with PowerShell on Windows. The phone never sees the command, only its output. Tap the widget on the phone to run it now.')
-          : o.key === 'commandUnix' ? h('span', { class: 'hint' }, 'On Linux (bash) and macOS (zsh) this one runs instead; empty = the command above.') : null);
+        o.key === 'command' ? h('span', { class: 'hint' }, t('s.js.runHint'))
+          : o.key === 'commandUnix' ? h('span', { class: 'hint' }, t('s.js.commandUnixHint')) : null);
     case 'lines':
       return field(h('textarea', { rows: 5, oninput: (e) => set(o.key, e.target.value.split('\n').map((x) => x.trim()).filter(Boolean)) }, (Array.isArray(v) ? v : []).join('\n')));
     case 'color':
       return field(h('div', { class: 'row', style: { gap: '8px' } }, h('input', { type: 'color', value: v || '#fbbf24', oninput: (e) => set(o.key, e.target.value) }),
         h('div', { class: 'swatches' }, ...COLORS.map((c) => h('button', { style: { background: c }, onclick: () => { set(o.key, c); renderInspector(); } })))));
     case 'shortcut':
-      return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, '(first shortcut)'),
+      return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, t('s.js.firstShortcut')),
         ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, `${s.icon} ${s.label}`))),
-        h('span', { class: 'hint' }, 'New shortcuts get their id when you save.'));
+        h('span', { class: 'hint' }, t('s.js.newShortcutsId')));
     case 'shortcuts': {
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
       return field(h('div', { class: 'opts' }, ...cfg.shortcuts.map((s) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(s.id), onchange: (e) => {
@@ -1484,7 +1481,7 @@ function optionField(w, o, onValChange) {
     }
     default:
       return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
-        w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, 'Send data with POST /api/push/<key> — see the Webhooks section.') : null);
+        w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, t('s.js.pushHint')) : null);
   }
 }
 
@@ -1514,7 +1511,7 @@ function openTemplates(index) {
   $('modalBody').replaceChildren(
     h('h3', {}, index == null ? 'New page' : `Replace the widgets of "${cfg.pages[index].title}"`),
     h('div', { class: 'tpl-grid' },
-      h('button', { class: 'tpl', onclick: () => pick(null) }, h('div', { class: 'mini empty-mini' }, icon('plus')), h('b', {}, 'Blank page'), h('small', {}, 'Start from an empty grid.')),
+      h('button', { class: 'tpl', onclick: () => pick(null) }, h('div', { class: 'mini empty-mini' }, icon('plus')), h('b', {}, t('s.js.blankPage')), h('small', {}, t('s.js.blankPageHint'))),
       ...catalog.templates.map((t) => h('button', { class: 'tpl', onclick: () => pick(t) }, miniMap(t.widgets), h('b', {}, `${t.icon} ${t.title}`), h('small', {}, t.desc)))));
   $('modal').hidden = false;
 }
@@ -1540,17 +1537,17 @@ async function pairOverWifi() {
   const svg = (markup) => 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markup)));
   const left = h('b', {}, '');
   const pairBox = h('div', { class: 'pair-qr' },
-    h('b', {}, '2. Scan this with the phone’s camera'),
+    h('b', {}, t('s.wifi.step2')),
     h('img', { src: svg(r.qr), alt: 'Pairing QR code' }),
-    h('small', { class: 'hint' }, 'Open the link it shows and choose PhoneBox. The phone asks you to confirm the code ', h('b', {}, r.check), '. ', left));
+    h('small', { class: 'hint' }, t('s.wifi.step2Hint'), h('b', {}, r.check), '. ', left));
   $('modalBody').replaceChildren(
     h('h3', {}, `Pair a phone with ${r.pc}`),
-    h('p', { class: 'hint', style: 'margin:0' }, 'No USB cable, developer options or adb needed. The phone and this computer must be on the same network (or both on Tailscale).'),
+    h('p', { class: 'hint', style: 'margin:0' }, t('s.wifi.noCableHint')),
     h('div', { class: 'pair-qrs' },
       h('div', { class: 'pair-qr' },
-        h('b', {}, '1. Install the app (skip if it is installed)'),
+        h('b', {}, t('s.wifi.step1')),
         h('img', { src: svg(r.appQr), alt: 'QR code of the app download' }),
-        h('small', { class: 'hint' }, 'Downloads the PhoneBox app. Android asks once to allow installing apps from the browser.')),
+        h('small', { class: 'hint' }, t('s.wifi.step1Hint'))),
       pairBox),
     h('p', { class: 'hint', style: 'margin:0' }, r.hosts.length
       ? `The phone will connect to ${r.hosts.join(', ')} on port ${r.port}. The code works once, for 5 minutes; the key itself is not in the QR code.`
@@ -1770,6 +1767,9 @@ $('calAdd').onclick = () => {
 };
 
 // ---------------------------------------------------------------- rules
+// The trigger, action, priority and preset tables below are English text that the phone's dictionary cannot key by
+// name: they are translated by their English text through the same catalog lookup the widget catalog uses.
+const tl = (s) => (window.PhoneBoxI18n?.tc ? window.PhoneBoxI18n.tc(s) : s);
 const TRIGGERS = {
   'session-waiting': { label: 'an AI session needs me', match: 'any project (or: api|docs, codex)' },
   'session-busy': { label: 'an AI session is working', match: 'any project (or: api|docs, codex)' },
@@ -1821,7 +1821,7 @@ function renderRules() {
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
-  } }, label)));
+  } }, tl(label))));
   const list = $('ruleList');
   if (!cfg.rules.length) { list.replaceChildren(h('p', { class: 'hint' }, t('s.r.noRules'))); return; }
   list.replaceChildren(...cfg.rules.map((r, i) => ruleCard(r, i)));
@@ -1831,7 +1831,7 @@ function ruleCard(r, i) {
   const set = (k, v, rerender = false) => { r[k] = v; changed(); if (rerender) renderRules(); };
   const trig = TRIGGERS[r.when] || TRIGGERS['session-waiting'];
   const sel = (value, options, onchange) => h('select', { onchange: (e) => onchange(e.target.value) },
-    ...Object.entries(options).map(([k, v]) => h('option', { value: k, selected: k === value }, typeof v === 'string' ? v : v.label)));
+    ...Object.entries(options).map(([k, v]) => h('option', { value: k, selected: k === value }, tl(typeof v === 'string' ? v : v.label))));
   const text = (key, placeholder, cls = '') => h('input', { type: 'text', class: cls, value: r[key] ?? '', placeholder, oninput: (e) => set(key, e.target.value || null) });
 
   const cond = [];
@@ -1862,23 +1862,23 @@ function ruleCard(r, i) {
   const opts = h('details', { class: 'ropts', open: !!(r.days || r.during || r.forSec || r.cooldownMin || (r.priority ?? 5) !== 5 || r.countdownSec != null) },
     h('summary', {}, t('s.r.options'), h('span', { class: 'hint' }, ' ' + ruleSummary(r))),
     h('div', { class: 'line' }, h('b', {}, t('s.r.only')), dayBtns, h('span', { class: 'hint' }, t('s.r.between')), text('during', t('s.r.allDay'))),
-    h('div', { class: 'line' }, h('b', {}, t('s.r.wait')), h('span', { class: 'hint' }, t('s.r.actWhenLasts')), num('forSec', 0, 3600), h('span', { class: 'hint' }, 's · then rest'), num('cooldownMin', 0, 1440),
+    h('div', { class: 'line' }, h('b', {}, t('s.r.wait')), h('span', { class: 'hint' }, t('s.r.actWhenLasts')), num('forSec', 0, 3600), h('span', { class: 'hint' }, t('s.r.thenRest')), num('cooldownMin', 0, 1440),
       h('span', { class: 'hint' }, t('s.r.minBeforeAgain'))),
     r.then === 'goto' ? h('div', { class: 'line' }, h('b', {}, t('s.r.page')), h('span', { class: 'hint' }, t('s.r.priority')),
       sel(String(r.priority ?? 5), PRIORITIES[r.priority ?? 5] ? PRIORITIES : { ...PRIORITIES, [r.priority]: String(r.priority) }, (v) => set('priority', +v)),
-      h('span', { class: 'hint' }, '· ' + t('s.r.countdown')), num('countdownSec', 0, 30, 56), h('span', { class: 'hint' }, `s (empty = ${cfg.display.switchCountdownSec ?? 3} s, as in General)`)) : null);
+      h('span', { class: 'hint' }, '· ' + t('s.r.countdown')), num('countdownSec', 0, 30, 56), h('span', { class: 'hint' }, t('s.r.countdownEmpty', { n: cfg.display.switchCountdownSec ?? 3 }))) : null);
 
   const live = activeRules.includes(r.id);
   return h('div', { class: 'card rule' + (r.enabled === false ? ' off' : '') },
     h('div', { class: 'line' },
-      h('label', { class: 'switch', title: 'Enabled' }, h('input', { type: 'checkbox', checked: r.enabled !== false, onchange: (e) => set('enabled', e.target.checked, true) }), h('span')),
+      h('label', { class: 'switch', title: t('s.r.enabled') }, h('input', { type: 'checkbox', checked: r.enabled !== false, onchange: (e) => set('enabled', e.target.checked, true) }), h('span')),
       h('input', { type: 'text', class: 'grow', value: r.name || '', placeholder: t('s.r.namePlaceholder'), oninput: (e) => set('name', e.target.value) }),
-      live ? h('span', { class: 'live' }, '● active now') : null,
+      live ? h('span', { class: 'live' }, '● ' + t('s.r.activeNow')) : null,
       h('button', { class: 'btn sm', title: t('s.r.runOnce'), onclick: async () => {
         const res = await fetch('/api/rules/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r) });
         toast(res.ok ? t('s.r.done') : t('s.js.couldNotRun'), !res.ok);
-      } }, 'Test'),
-      h('button', { class: 'btn sm danger', onclick: () => { cfg.rules.splice(i, 1); renderRules(); changed(); } }, 'Delete')),
+      } }, t('s.r.test')),
+      h('button', { class: 'btn sm danger', onclick: () => { cfg.rules.splice(i, 1); renderRules(); changed(); } }, t('s.r.del'))),
     h('div', { class: 'line' }, h('b', {}, t('s.r.when')), sel(r.when, TRIGGERS, (v) => { r.match = null; r.value = null; set('when', v, true); }), ...cond),
     h('div', { class: 'line' }, h('b', {}, t('s.r.then')), sel(r.then, ACTIONS, (v) => { if (v === 'goto' && !cfg.pages.some((p) => p.id === r.page)) r.page = cfg.pages[0]?.id || null; set('then', v, true); }), ...act),
     r.then !== 'notify' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: r.whileActive !== false, onchange: (e) => set('whileActive', e.target.checked) }),
@@ -1890,11 +1890,11 @@ function ruleSummary(r) {
   const parts = [];
   if (r.days) parts.push(r.days.split(',').map((d) => d[0].toUpperCase() + d.slice(1, 2)).join(' '));
   if (r.during) parts.push(r.during);
-  if (r.forSec) parts.push(`after ${r.forSec} s`);
-  if (r.cooldownMin) parts.push(`rest ${r.cooldownMin} min`);
-  if (r.then === 'goto' && (r.priority ?? 5) !== 5) parts.push(`${PRIORITIES[r.priority] || r.priority} priority`);
-  if (r.then === 'goto' && r.countdownSec != null) parts.push(r.countdownSec ? `${r.countdownSec} s countdown` : 'no countdown');
-  return parts.length ? '· ' + parts.join(' · ') : '· every day, at once';
+  if (r.forSec) parts.push(t('s.r.afterSec', { n: r.forSec }));
+  if (r.cooldownMin) parts.push(t('s.r.restMin', { n: r.cooldownMin }));
+  if (r.then === 'goto' && (r.priority ?? 5) !== 5) parts.push(t('s.r.priorityPart', { level: tl(PRIORITIES[r.priority] || r.priority) }));
+  if (r.then === 'goto' && r.countdownSec != null) parts.push(r.countdownSec ? t('s.r.countdownSec', { n: r.countdownSec }) : t('s.r.noCountdown'));
+  return parts.length ? '· ' + parts.join(' · ') : '· ' + t('s.r.everyDayAtOnce');
 }
 
 // shows which rules hold right now while the Rules section is open
@@ -1905,8 +1905,8 @@ async function pollRules() {
     const next = s.rules || [];
     rulesPausedUntil = s.rulesPaused || null;
     $('rulesPauseBtn').textContent = rulesPausedUntil ? t('s.r.resumeRules') : t('s.rules.pause1h');
-    $('rulesPausedState').textContent = rulesPausedUntil ? `⏸ Rules are paused until ${new Date(rulesPausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
-      : 'Page switches count down on the phone and wait while you use it (General › Page switching).';
+    $('rulesPausedState').textContent = rulesPausedUntil ? t('s.rules.pausedUntil', { time: new Date(rulesPausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
+      : t('s.rules.countdown');
     if (next.join() !== activeRules.join()) { activeRules = next; if (!document.activeElement?.closest?.('#ruleList')) renderRules(); }
   } catch (_) {}
 }
@@ -1961,10 +1961,9 @@ function renderWebhooks(lan) {
     ['Refresh everything now', `curl -X POST ${local}/api/refresh`],
     ['PowerShell', `Invoke-RestMethod -Method Post ${local}/api/push/cpu-fan -Body 1450`],
   ];
-  $('whExamples').replaceChildren(...ex.map(([t, c]) => h('div', { class: 'ex' }, h('span', {}, t), h('code', { class: 'cmdline', title: 'Click to copy', onclick: () => { navigator.clipboard?.writeText(c); toast('Copied'); } }, c))));
+  $('whExamples').replaceChildren(...ex.map(([t, c]) => h('div', { class: 'ex' }, h('span', {}, t), h('code', { class: 'cmdline', title: t('s.wh.clickToCopy'), onclick: () => { navigator.clipboard?.writeText(c); toast(t('s.wh.copied')); } }, c))));
   $('whLan').replaceChildren(host
-    ? h('div', {}, h('p', { class: 'hint', style: { marginTop: 0 } }, 'From other machines on your network or Tailscale, with the webhook key (HTTPS with this PC\'s self-signed certificate, so curl needs -k). ' +
-        'The key can also go in ?token= for senders that cannot set headers. It only opens the webhook endpoints, never the phone API; replace it if it leaks.'),
+    ? h('div', {}, h('p', { class: 'hint', style: { marginTop: 0 } }, t('s.wh.lanHint')),
       h('div', { class: 'row', style: { gap: '8px', margin: '0 0 8px' } }, h('code', {}, token ? token.slice(0, 6) + '…' : '(generated on save)'),
         h('button', { class: 'btn sm', disabled: !token, onclick: () => { navigator.clipboard?.writeText(token); toast(t('s.js.webhookKeyCopied')); } }, t('s.wh.copyKey')),
         h('button', { class: 'btn sm', onclick: () => { cfg.lan = { ...(cfg.lan || {}), webhookToken: '' }; changed(); toast(t('s.js.webhookKeyOnSave')); } }, t('s.k.newKey'))),
@@ -1981,7 +1980,7 @@ async function loadPushed() {
     $('whItems').replaceChildren(...(items.length ? items.map(([k, v]) => h('tr', {},
       h('td', {}, h('code', {}, k)), h('td', { class: 'val' }, JSON.stringify(v.data)), h('td', { class: 'hint' }, new Date(v.at).toLocaleString()),
       h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, 'Delete'))))
-      : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, 'Nothing pushed yet.'))]));
+      : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, t('s.wh.nothingPushed')))]));
   } catch (_) {}
 }
 
@@ -2020,12 +2019,12 @@ function renderDeck() {
     dragSort(k, cfg.shortcuts, (from, to) => { selKey = to; renderDeck(); changed(); });
     deck.append(k);
   });
-  deck.append(h('div', { class: 'key add', onclick: addShortcut }, h('span', { class: 'ki' }, icon('plus')), h('span', { class: 'kl' }, 'New shortcut')));
+  deck.append(h('div', { class: 'key add', onclick: addShortcut }, h('span', { class: 'ki' }, icon('plus')), h('span', { class: 'kl' }, t('s.k.newShortcut'))));
   renderEditor();
 }
 
 function addShortcut() {
-  cfg.shortcuts.push({ id: '', label: 'New shortcut', icon: '⭐', color: '#0ea5e9', cmd: '' });
+  cfg.shortcuts.push({ id: '', label: t('s.k.newShortcut'), icon: '⭐', color: '#0ea5e9', cmd: '' });
   selKey = cfg.shortcuts.length - 1;
   renderDeck();
   changed();
@@ -2036,7 +2035,7 @@ function renderEditor() {
   const ed = $('editor');
   ed.textContent = '';
   const s = cfg.shortcuts[selKey];
-  if (!s) { ed.append(h('p', { class: 'lead', style: { margin: 0 } }, 'No shortcuts yet. Add one with "New shortcut".')); return; }
+  if (!s) { ed.append(h('p', { class: 'lead', style: { margin: 0 } }, t('s.k.noShortcuts'))); return; }
 
   const upd = (key, val, rerender = true) => { s[key] = val; if (rerender) renderDeckKeysOnly(); changed(); };
   const text = (key, label, ph = '', hint = '') => h('div', { class: 'field' }, h('label', {}, label),
@@ -2051,7 +2050,7 @@ function renderEditor() {
   markSwatch();
   const cmdIn = h('input', { type: 'text', value: s.cmd || '', placeholder: 'e.g. wt.exe, https://…, builtin:lock', oninput: (e) => upd('cmd', e.target.value, false) });
   const preset = h('select', { onchange: (e) => { if (e.target.value) { cmdIn.value = e.target.value; upd('cmd', e.target.value, false); cmdIn.focus(); } e.target.value = ''; } },
-    ...presets().map(([v, l]) => h('option', { value: v }, l)));
+    ...presets().map(([v, l]) => h('option', { value: v }, tl(l))));
 
   ed.append(
     h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '12px' } },
@@ -2088,7 +2087,7 @@ function actionFields(s, upd, text, cmdIn, preset) {
   if (kind === 'run') {
     fields.push(
       h('div', { class: 'field' }, h('label', {}, t('s.k.command')), cmdIn, preset,
-        h('span', { class: 'hint' }, osName === 'windows' ? 'Program, address or built-in command. Anything the Windows Run dialog accepts works.' : 'Program, address or built-in command.')),
+        h('span', { class: 'hint' }, osName === 'windows' ? t('s.js.commandHintWindows') : t('s.js.commandHint'))),
       text('args', t('s.k.arguments'), osName === 'windows' ? 'e.g. -d D:\\Projects claude' : 'e.g. --new-window ~/Projects'),
       text('cwd', t('s.k.workingFolder'), t('s.k.optional')));
   } else if (kind === 'keys') {
@@ -2098,19 +2097,19 @@ function actionFields(s, upd, text, cmdIn, preset) {
   } else {
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.steps')),
       area((s.steps || []).join('\n'), 'keys:ctrl+c\nwait:200\ntext:Hello\nshortcut:terminal', 6, (e) => upd('steps', e.target.value.split('\n').map((x) => x.trim()).filter(Boolean), false)),
-      h('span', { class: 'hint' }, 'keys:… presses keys, text:… types, wait:300 waits (milliseconds), shortcut:id runs another shortcut.')));
+      h('span', { class: 'hint' }, t('s.k.macroHint'))));
   }
-  if (osName === 'macos' && kind !== 'run') fields.push(h('p', { class: 'hint' }, 'macOS asks once to allow PhoneBoxAgent in System Settings › Privacy & Security › Accessibility.'));
-  if (osName === 'linux' && kind !== 'run') fields.push(h('p', { class: 'hint' }, 'Needs xdotool (X11) or wtype (Wayland).'));
+  if (osName === 'macos' && kind !== 'run') fields.push(h('p', { class: 'hint' }, t('s.k.macosPermission')));
+  if (osName === 'linux' && kind !== 'run') fields.push(h('p', { class: 'hint' }, t('s.k.linuxNeedsXdotool')));
 
   const isMute = s.cmd === 'builtin:mute';
   fields.push(h('label', { class: 'check', style: { marginTop: '4px' } },
     h('input', { type: 'checkbox', checked: !!s.toggle || isMute, disabled: isMute, onchange: (e) => { s.toggle = e.target.checked; changed(); renderEditor(); } }),
     isMute ? 'On / off key (shows whether the sound is muted)' : 'On / off key: the phone shows its state'));
   if (s.toggle && !isMute) {
-    fields.push(text('stateKey', 'State from a pushed value (optional)', 'e.g. teams-muted',
+    fields.push(text('stateKey', t('s.k.stateKey'), 'e.g. teams-muted',
       'A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.'));
-    if (kind === 'run') fields.push(text('offCmd', 'Command to switch off (optional)', 'empty = the same command'), text('offArgs', 'Arguments to switch off', ''));
+    if (kind === 'run') fields.push(text('offCmd', t('s.cd.offCmdPlaceholder'), t('s.cd.offCmdHint')), text('offArgs', t('s.k.offArgs'), ''));
   }
   return fields;
 }
@@ -2164,16 +2163,17 @@ function renderControlSettings() {
   root.replaceChildren(h('h3',{},'Control Deck'),h('p',{class:'hint'},t('s.cd.lead')));
   root.append(field(t('s.cd.audio'),c,'allowListening','checkbox'),field(t('s.cd.power'),c,'allowPower','checkbox'),field(t('s.cd.radioLogos'),c,'allowOnlineRadioLogos','checkbox'));
   const spotify=h('details',{},h('summary',{},t('s.cd.spotifyConn')));
-  const auth=h('p',{class:'hint'},'Register the redirect address in your Spotify Developer app. A Client ID is sufficient; no client secret is used.');
+  const auth=h('p',{class:'hint'},t('s.cd.spotifyAuthHint'));
   spotify.append(field(t('s.cd.clientId'),c,'spotifyClientId'),field(t('s.cd.deviceId'),c,'spotifyDevice'),auth,
     btn(t('s.cd.connect'),async()=>{
       if(!await save())return; const j=await request('spotify/connect','GET');
-      const live=$('controlSettings');const result=h('p',{},'Register redirect address: '+j.redirectUri,h('br'),h('a',{href:j.url,target:'_blank',rel:'noopener'},'Continue to Spotify sign-in'));live.prepend(result);
+      const live=$('controlSettings');const result=h('p',{},t('s.cd.registerRedirect')+j.redirectUri,h('br'),h('a',{href:j.url,target:'_blank',rel:'noopener'},t('s.cd.continueSpotify')));live.prepend(result);
     }),btn(t('s.cd.checkConn'),async()=>{const j=await request('spotify/state','GET');auth.textContent=j.connected?t('s.cd.connected'):j.error || t('s.cd.notConnected');}),
     btn(t('s.cd.disconnect'),async()=>{await request('spotify/disconnect');auth.textContent=t('s.cd.disconnected');}));
   root.append(spotify);
   const integration=h('details',{},h('summary',{},t('s.cd.audioInt')),field(t('s.cd.mixerExe'),c,'mixerExecutable'),field(t('s.cd.mixerDll'),c,'mixerLibrary'));root.append(integration);
-  const hints={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream or Windows-only HLS (.m3u8) URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
+  const hintsRaw={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream or Windows-only HLS (.m3u8) URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
+  const hints = Object.fromEntries(Object.entries(hintsRaw).map(([k, v]) => [k, tl(v)]));
   const stationFilter = h('input', { type: 'search', placeholder: t('s.cd.filterStations'), style: { marginBottom: '6px' } });
   const stationList = h('div', { class: 'stack-list' });
   const radioDetails = h('details', {}, h('summary', {}, t('s.cd.stations')),
@@ -2282,22 +2282,22 @@ function renderControlSettings() {
     renderStations();
   };
   renderActions();
-  root.append(btn('Add control', () => { c.actions.push({ id: 'control-' + crypto.randomUUID().slice(0, 8), label: 'New control', kind: 'shortcut', target: '', value: 75, enabled: true }); changed(); renderActions(); actions.lastChild.open = true; }));
+  root.append(btn(t('s.cd.addControl'), () => { c.actions.push({ id: 'control-' + crypto.randomUUID().slice(0, 8), label: t('s.cd.newControl'), kind: 'shortcut', target: '', value: 75, enabled: true }); changed(); renderActions(); actions.lastChild.open = true; }));
 
-  const radioDir = h('details', {}, h('summary', {}, 'Import & verify radio stations (radio-browser.info)'));
-  const countrySelect = h('select', { 'aria-label': 'Country', style: { minWidth: '200px' } }, h('option', { value: '' }, 'Load countries first…'));
+  const radioDir = h('details', {}, h('summary', {}, t('s.cd.radioImportTitle')));
+  const countrySelect = h('select', { 'aria-label': t('s.cd.country'), style: { minWidth: '200px' } }, h('option', { value: '' }, t('s.cd.loadCountriesFirst')));
   const limitInput = h('input', { type: 'number', min: 1, max: 100, value: 30, style: { width: '90px' }, 'aria-label': 'Station count' });
-  const dirStatus = h('p', { class: 'hint', style: { margin: '6px 0' } }, 'Import popular stations by country from the public radio-browser.info directory (CC0), or check configured radio stream URLs.');
+  const dirStatus = h('p', { class: 'hint', style: { margin: '6px 0' } }, t('s.cd.radioImportHint'));
   const checkReport = h('pre', { style: { maxHeight: '200px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
   radioDir.append(
     dirStatus,
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', marginBottom: '8px' } },
-      btn('Load countries', async () => {
+      btn(t('s.cd.loadCountries'), async () => {
         try {
           const res = await request('radio-directory/countries', 'GET');
           const list = res.countries || [];
           countrySelect.replaceChildren(
-            h('option', { value: '' }, '— Select country —'),
+            h('option', { value: '' }, t('s.cd.selectCountry')),
             ...list.map((cty) => h('option', { value: cty.code }, `${cty.name} (${cty.stationCount})`))
           );
           dirStatus.textContent = `Loaded ${list.length} countries.`;
@@ -2308,7 +2308,7 @@ function renderControlSettings() {
       }),
       countrySelect,
       limitInput,
-      btn('Import stations', async () => {
+      btn(t('s.cd.importStations'), async () => {
         const cc = countrySelect.value;
         if (!cc) { toast(t('s.js.pickCountry'), true); return; }
         const MAX_ACTIONS = 512;
@@ -2349,7 +2349,7 @@ function renderControlSettings() {
           throw e;
         }
       }),
-      btn('Check configured streams', async () => {
+      btn(t('s.cd.checkStreams'), async () => {
         const radios = c.actions.filter((a) => a.kind === 'radio');
         if (!radios.length) { toast(t('s.js.noRadio'), true); return; }
         dirStatus.textContent = `Checking ${radios.length} stream(s)…`;
@@ -2373,22 +2373,22 @@ function renderControlSettings() {
     checkReport
   );
   root.append(radioDir);
-  root.append(h('details',{},h('summary',{},'Available shortcut IDs'),h('p',{class:'hint'},'Create executable, text and macro shortcuts in Deck first.'),...cfg.shortcuts.map(s=>h('div',{},s.id+' — '+s.label))));
-  const profiles=h('div');root.append(h('h4',{},'Audio and routine profiles'),profiles);
+  root.append(h('details',{},h('summary',{},t('s.cd.availableShortcutIds')),h('p',{class:'hint'},t('s.cd.createShortcutsFirst')),...cfg.shortcuts.map(s=>h('div',{},s.id+' — '+s.label))));
+  const profiles=h('div');root.append(h('h4',{},t('s.cd.profilesTitle')),profiles);
   const renderProfiles=()=>profiles.replaceChildren(...c.profiles.map(p=>{
     const box=h('details',{},h('summary',{},p.label || p.id));
-    box.append(field('Profile ID',p,'id'),field('Profile label',p,'label'),field('Override output device ID',p,'output'),field('Override microphone device ID',p,'input'));
-    const levels=h('details',{},h('summary',{},'Captured audio levels'));
+    box.append(field(t('s.cd.profileId'),p,'id'),field(t('s.cd.profileLabel'),p,'label'),field(t('s.cd.overrideOutput'),p,'output'),field(t('s.cd.overrideInput'),p,'input'));
+    const levels=h('details',{},h('summary',{},t('s.cd.capturedLevelsTitle')));
     for(const level of p.levels || []) levels.append(h('p',{class:'hint'},level.kind+': '+level.id),field('Volume',level,'volume','number'),field('Muted',level,'muted','checkbox'));
     box.append(levels);
     const list=h('textarea',{'aria-label':'Profile action IDs',rows:3},(p.actions || []).join('\n'));
     list.onchange=()=>{p.actions=list.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);changed();};
-    box.append(h('label',{},'Control IDs to run in order'),list,h('p',{class:'hint'},(p.levels?.length || 0)+' captured levels. Explicit input/output overrides take precedence over captured audio roles.'),btn('Remove profile',()=>{c.profiles=c.profiles.filter(x=>x!==p);changed();renderProfiles();}));return box;
+    box.append(h('label',{},t('s.cd.controlIds')),list,h('p',{class:'hint'},t('s.cd.capturedLevels',{ n: (p.levels?.length || 0) })),btn(t('s.cd.removeProfile'),()=>{c.profiles=c.profiles.filter(x=>x!==p);changed();renderProfiles();}));return box;
   }));renderProfiles();
-  root.append(btn('Capture current audio profile',async()=>{c.profiles.push(await request('capture'));changed();renderProfiles();profiles.lastChild.open=true;}),btn('Add routine profile',()=>{c.profiles.push({id:'profile-'+crypto.randomUUID().slice(0,8),label:'New routine',levels:[],defaults:{},actions:[]});changed();renderProfiles();profiles.lastChild.open=true;}));
+  root.append(btn(t('s.cd.captureProfile'),async()=>{c.profiles.push(await request('capture'));changed();renderProfiles();profiles.lastChild.open=true;}),btn(t('s.cd.addProfile'),()=>{c.profiles.push({id:'profile-'+crypto.randomUUID().slice(0,8),label:t('s.cd.newRoutine'),levels:[],defaults:{},actions:[]});changed();renderProfiles();profiles.lastChild.open=true;}));
   const hardware=h('pre',{style:{maxHeight:'240px',overflow:'auto',whiteSpace:'pre-wrap'}});
-  root.append(btn('List device, monitor and MIDI IDs',async()=>{
-    const d=await request('state','GET');hardware.textContent=[...(d.audio?.devices || []).map(i=>i.direction+': '+i.name+'\n'+i.id),...(d.monitors || []).map(i=>'Monitor: '+i.name+'\n'+i.id),...(d.midi || []).map(i=>'MIDI: '+i.name+'\n'+i.id)].join('\n\n');if(d.hardwareLoading)hardware.textContent+='\nHardware discovery is running; refresh shortly.';
+  root.append(btn(t('s.cd.listDeviceIds'),async()=>{
+    const d=await request('state','GET');hardware.textContent=[...(d.audio?.devices || []).map(i=>i.direction+': '+i.name+'\n'+i.id),...(d.monitors || []).map(i=>'Monitor: '+i.name+'\n'+i.id),...(d.midi || []).map(i=>'MIDI: '+i.name+'\n'+i.id)].join('\n\n');if(d.hardwareLoading)hardware.textContent+='\n'+t('s.cd.discoveryRunning');
   }),hardware);
 }
 
@@ -2445,7 +2445,7 @@ function appearanceEditor(owner, parents, label, widget = false) {
     }
     root.replaceChildren(h('summary', {}, label), h('p', { class: 'hint' }, widget
       ? 'Overrides the page and global appearance. Inherit restores the preset or parent value.'
-      : 'Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.'), ...fields,
+      : tl('Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.')), ...fields,
       h('button', { type: 'button', class: 'btn sm', onclick: () => { delete owner.appearance; update(); render(); } }, t('s.appearance.reset')));
   };
   render(); return root;
@@ -2610,7 +2610,7 @@ async function loadInfo() {
     pill.querySelector('span').textContent = i.connected ? 'Phone connected' + (i.via ? ' · ' + i.via : '') : 'No phone connected';
     osName = i.os || 'windows';
     $('followComputerLockOption').style.display = osName === 'macos' ? '' : 'none';
-    $('adbFound').textContent = i.adb ? 'Found: ' + i.adb : 'adb not found — ' + ({ linux: 'sudo apt install adb', macos: 'brew install android-platform-tools' }[osName] || 'winget install Google.PlatformTools');
+    $('adbFound').textContent = i.adb ? t('s.conn.adbFound', { path: i.adb }) : t('s.conn.adbNotFound') + ' — ' + ({ linux: 'sudo apt install adb', macos: 'brew install android-platform-tools' }[osName] || 'winget install Google.PlatformTools');
     $('appMissing').hidden = !(i.appMissing && i.appMissing.length);
     $('usbProblem').hidden = !i.usbProblem;
     $('usbProblem').replaceChildren(...(i.usbProblem ? [icon('warn', 'm'), i.usbProblem] : []));
@@ -2627,7 +2627,7 @@ async function loadInfo() {
     $('lanHosts').textContent = lan.hosts.length
       ? lan.hosts.map((a) => a.startsWith('100.') ? a + ' (Tailscale)' : a).join(', ')
       : 'No LAN or Tailscale address found';
-    $('lanStatus').textContent = lan.active ? `Listening on port ${lan.port} (HTTPS)` : lan.configured ? 'Restart to start listening' : 'Off';
+    $('lanStatus').textContent = lan.active ? t('s.wifi.listening', { port: lan.port }) : lan.configured ? t('s.wifi.restartToListen') : t('s.wifi.off');
     $('restartBtn').hidden = !lan.restartNeeded;
     renderUpdate(await (await fetch('/api/update')).json());
     renderWebhooks(lan);
@@ -2638,7 +2638,7 @@ async function loadInfo() {
     $('hookBtn').dataset.installed = hk.installed ? '1' : '';
     $('info').replaceChildren(
       h('dt', {}, 'Version'), h('dd', {}, i.version),
-      h('dt', {}, 'Settings file'), h('dd', {}, h('code', {}, i.configPath)),
+      h('dt', {}, t('s.adv.settingsFile')), h('dd', {}, h('code', {}, i.configPath)),
       h('dt', {}, 'Log'), h('dd', {}, h('code', {}, i.logPath)),
       h('dt', {}, 'adb'), h('dd', {}, i.adb || '—'));
   } catch (_) {}
