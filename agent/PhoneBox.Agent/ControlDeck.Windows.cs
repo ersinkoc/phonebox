@@ -152,12 +152,25 @@ internal sealed partial class WindowsDeckNative
     {
         var handle = Window(process); if (handle == 0) return false;
         ShowWindow(handle, IsIconic(handle) ? 9 : 5); // SW_RESTORE when minimized, otherwise SW_SHOW
-        if (SetForegroundWindow(handle) && GetForegroundWindow() == handle) return true;
+        if (SetForegroundWindow(handle) && Activated(handle)) return true;
         // Windows keeps a background process (the agent) from taking the foreground unless it received the last input.
         // A zero-pixel mouse move makes it so without a key some app could act on. (Attaching to the input queue of the
         // window in front would also work, but hangs when that app stops responding.)
         KeySender.NudgeInput();
-        SetForegroundWindow(handle);
+        return SetForegroundWindow(handle) && Activated(handle);
+    }
+
+    /// <summary>
+    /// Whether the window became the foreground one. A window on another thread activates a moment after
+    /// SetForegroundWindow returns, so this waits for it, but never longer than half a second.
+    /// </summary>
+    private static bool Activated(nint handle)
+    {
+        for (var i = 0; i < 10; i++)
+        {
+            if (GetForegroundWindow() == handle) return true;
+            Thread.Sleep(50);
+        }
         return GetForegroundWindow() == handle;
     }
     private static bool Layout(string process, string layout)
