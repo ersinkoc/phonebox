@@ -73,3 +73,29 @@ test('the settings editor lists, edits, reorders and removes entities', async ({
   expect(saved).toEqual([{ id: 'light.desk', icon: '💡', showName: false }, { id: 'switch.coffee' }]); // the temperature row was moved up, then removed
   expect(errors).toEqual([]);
 });
+
+test('removing every row of an old widget does not bring the entity text back', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await open(page, '/settings/#pages', { control: true, entities: 'light.desk, sensor.office_temperature' });
+  await page.locator('#canvas .wb').first().click();
+  await page.locator('.ha-row').nth(0).getByRole('button', { name: '✕' }).click();
+  await page.locator('.ha-row').nth(0).getByRole('button', { name: '✕' }).click();
+  await expect(page.locator('.ha-row')).toHaveCount(0);
+  await page.locator('#save').click();
+  const o = await page.evaluate(() => JSON.parse(localStorage.getItem('pb-demo-config')).pages[0].widgets[0].options);
+  expect(o.items).toEqual([]);
+  expect(o.entities).toBe('');
+});
+
+test('the switching checkbox shows what the agent applies when the widget has no flag', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await open(page, '/settings/#pages', { items: [{ id: 'light.desk' }] }); // no "control" key at all
+  await page.locator('#canvas .wb').first().click();
+  await expect(page.locator('.ha-row').getByLabel('Allow switching from the phone')).not.toBeChecked();
+});
+
+test('a list of unusable items does not fall back to the old entity text', async ({ page }) => {
+  await open(page, '/panel/', { control: true, entities: 'light.desk', items: [{ id: 'unfinished' }] });
+  await expect(page.locator('.ha-tile')).toHaveCount(0);
+  await expect(page.locator('.empty')).toContainText('Add entities');
+});

@@ -116,6 +116,16 @@ public sealed class HomeAssistantTests : IDisposable
     }
 
     [Fact]
+    public async Task ANonEmptyItemsListIsFinalEvenWhenNoRowIsUsable()
+    {
+        var ha = Client(control: true, items: new object[] { new { id = "nodot" }, new { name = "no id" } });
+        var r = Json(await ha.StatesAsync(["switch.secret"])); // listed only in the legacy string
+        Assert.Empty(r.GetProperty("entities").EnumerateArray());
+        Assert.NotNull(await ha.ToggleAsync("switch.secret"));
+        Assert.Empty(_calls);
+    }
+
+    [Fact]
     public async Task AnEmptyItemsListFallsBackToTheLegacyEntityString()
     {
         var ha = Client(control: true, items: Array.Empty<object>());

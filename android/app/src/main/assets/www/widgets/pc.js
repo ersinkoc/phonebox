@@ -256,14 +256,16 @@ W.ha = {
     // "control" follows the widget's. The agent checks the same rule before it switches anything.
     const items = [];
     const seenIds = new Set();
-    for (const it of Array.isArray(o.items) ? o.items : []) {
+    const listed = Array.isArray(o.items) ? o.items : [];
+    for (const it of listed) {
       const id = it && typeof it.id === 'string' ? it.id.trim() : '';
       if (!id.includes('.') || seenIds.has(id)) continue;
       seenIds.add(id);
       items.push({ id, name: String(it.name || '').trim(), icon: String(it.icon || '').trim(), showName: it.showName !== false, showIcon: it.showIcon !== false,
         control: typeof it.control === 'boolean' ? it.control : o.control === true });
     }
-    if (!items.length) for (const id of String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.'))) items.push({ id, name: '', icon: '', showName: true, showIcon: true, control: o.control === true });
+    // like the agent: a non-empty "items" list is final, even when none of its rows is usable
+    if (!listed.length) for (const id of String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.'))) items.push({ id, name: '', icon: '', showName: true, showIcon: true, control: o.control === true });
     const ids = items.map((i) => i.id);
     let data = null, lastKey = '', busy = null;
     const grid = h('div', 'ha-grid');

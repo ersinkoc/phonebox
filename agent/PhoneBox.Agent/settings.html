@@ -1521,7 +1521,8 @@ function haItemsEditor(w, o, set) {
   const list = h('datalist', { id: 'ha-entities-' + Math.random().toString(36).slice(2) });
   haLoadPicker(list);
   const box = h('div', { class: 'ha-rows' });
-  const save = () => set(o.key, rows.filter((r) => String(r.id || '').trim()).map((r) => {
+  // the editor owns the list from the first edit on: the old text must not come back when every row is removed
+  const save = () => { set('entities', ''); set(o.key, rows.filter((r) => String(r.id || '').trim()).map((r) => {
     const out = { id: r.id.trim() };
     if (r.name) out.name = r.name;
     if (r.icon) out.icon = r.icon;
@@ -1529,7 +1530,7 @@ function haItemsEditor(w, o, set) {
     if (r.showIcon === false) out.showIcon = false;
     if (typeof r.control === 'boolean') out.control = r.control;
     return out;
-  }));
+  })); };
   let picking = -1; // the row whose emoji grid is open
   const render = () => {
     box.replaceChildren(...rows.map((r, i) => {
@@ -1548,7 +1549,7 @@ function haItemsEditor(w, o, set) {
         picking === i ? h('div', { class: 'emojis' }, h('button', { title: 'Use the icon Home Assistant suggests', style: { width: 'auto', padding: '0 8px', fontSize: '12px' }, onclick: () => pick('') }, 'Default'),
           ...HA_EMOJIS.map((em) => h('button', { onclick: () => pick(em) }, em))) : null,
         h('div', { class: 'row', style: { gap: '4px', marginTop: '4px' } }, check('showIcon', 'Show icon', true), check('showName', 'Show name', true),
-          check('control', 'Allow switching from the phone', w.options?.control !== false)));
+          check('control', 'Allow switching from the phone', w.options?.control === true)));
     }), ...(rows.length ? [] : [h('div', { class: 'hint' }, 'No entities yet.')]));
   };
   render();
