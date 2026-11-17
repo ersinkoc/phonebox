@@ -38,7 +38,7 @@ Windows, Linux et macOS. Sans root, sans compte PhoneBox et sans service cloud.<
 <p align="center"><img src="hero-0.6.png" width="900" alt="PhoneBox sur trois téléphones"><br>
 <sub>Exemples de mises en page avec données de démonstration.</sub></p>
 
-PhoneBox associe une **application Android** plein écran à un léger **agent de bureau**. Concevez votre panneau dans un éditeur visuel web : **121 widgets**, **30 modèles**, plusieurs pages et aperçu en direct.
+PhoneBox associe une **application Android** plein écran à un léger **agent de bureau**. Concevez votre panneau dans un éditeur visuel web : **122 widgets**, **30 modèles**, plusieurs pages et aperçu en direct.
 
 ## Ce que vous pouvez faire
 

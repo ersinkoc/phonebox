@@ -1199,3 +1199,10 @@ body.controls-top .page { padding-top: 17px; padding-bottom: 10px; }
 /* the header stays first; the buttons come right after it, above the request */
 body.controls-top .ap-head { order: -2; }
 body.controls-top .ap-foot { order: -1; margin-bottom: 4px; }
+
+/* Spectrum bars (widgets/spectrum.js) */
+.w-spectrum { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.w-spectrum .spec-wrap { flex: 1; min-height: 0; position: relative; }
+.w-spectrum .spec-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+.w-spectrum .spec-msg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; pointer-events: none; }
+.w-spectrum .spec-msg[hidden] { display: none; }

@@ -38,7 +38,7 @@ Windows, Linux e macOS. Nessun root, nessun account PhoneBox e nessun servizio c
 <p align="center"><img src="hero-0.6.png" width="900" alt="PhoneBox su tre telefoni"><br>
 <sub>Layout di esempio con dati dimostrativi.</sub></p>
 
-PhoneBox abbina un'**app Android** a schermo intero a un piccolo **agente desktop**. Progetta il tuo pannello nell'editor visivo browser: **121 widget**, **30 modelli**, più pagine e anteprima live.
+PhoneBox abbina un'**app Android** a schermo intero a un piccolo **agente desktop**. Progetta il tuo pannello nell'editor visivo browser: **122 widget**, **30 modelli**, più pagine e anteprima live.
 
 ## Cosa puoi fare
 

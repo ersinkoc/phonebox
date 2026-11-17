@@ -66,6 +66,7 @@ builder.Services.AddSingleton<ApprovalStore>();
 builder.Services.AddSingleton<HomeAssistant>();
 builder.Services.AddSingleton<AppConsole>();
 builder.Services.AddSingleton<Dictation>();
+builder.Services.AddSingleton<SpectrumAnalyzer>();
 AddMonitor<SystemMonitor>(builder.Services);
 AddMonitor<MediaMonitor>(builder.Services);
 AddMonitor<QuotaMonitor>(builder.Services);
@@ -571,7 +572,7 @@ app.MapGet("/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.R
 
 // Live stream (server-sent events) for the phone: "state" every second, "event" as soon as one happens, "work" when it
 // changes. The Android shell keeps one connection open instead of polling; the panel falls back to polling without it.
-app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, ILogger<Program> log) =>
+app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, SpectrumAnalyzer spectrum, ILogger<Program> log) =>
 {
     var ct = ctx.RequestAborted;
     var isPhone = ctx.Request.Headers.ContainsKey("X-PhoneBox-App");
@@ -593,6 +594,7 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
         var seq = push.Seq;
         var lastWork = "";
         var next = 0L;
+        var lastSpec = 0L;
         var tick = 0;
         while (!ct.IsCancellationRequested)
         {
@@ -610,7 +612,16 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
                 }
                 next = now + 1000;
             }
-            await wake.WaitAsync(TimeSpan.FromMilliseconds(Math.Max(5, next - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())), ct);
+            // spectrum frames for a visualizer on screen (SpectrumAnalyzer runs only while a panel asks for it)
+            var specActive = spectrum.Active;
+            if (specActive && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastSpec >= 1000 / SpectrumAnalyzer.Fps - 3)
+            {
+                lastSpec = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                if (spectrum.Frame() is { } bands) await Send("spectrum", new { b = bands });
+            }
+            var waitMs = next - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (specActive) waitMs = Math.Min(waitMs, lastSpec + 1000 / SpectrumAnalyzer.Fps - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            await wake.WaitAsync(TimeSpan.FromMilliseconds(Math.Max(5, waitMs)), ct);
         }
     }
     catch (OperationCanceledException) { }
@@ -638,6 +649,15 @@ app.MapDelete("/api/claude/hook", (ConfigStore cfg) => ClaudeHook.Configure(fals
 // Permission prompts waiting for the phone (posted by the Claude Code hook, see ClaudeHook.cs).
 app.MapGet("/api/approvals", (ApprovalStore a) => Results.Json(new { items = a.Snapshot() }));
 app.MapPost("/api/approvals/{id}", (string id, string decision, ApprovalStore a) => a.Decide(id, decision) ? Results.Ok() : Results.NotFound());
+
+// Spectrum bars widget: each call keeps audio capture running for a few seconds and returns the latest bands
+// (the live stream also sends them as "spectrum" events; panels without the stream poll this instead).
+// Only band levels leave the agent, never audio; nothing is captured unless an enabled page has the widget.
+app.MapGet("/api/spectrum", (SpectrumAnalyzer spectrum) =>
+{
+    var shown = spectrum.Want();
+    return Results.Json(new { shown, active = spectrum.Active, fps = SpectrumAnalyzer.Fps, b = shown ? spectrum.Frame() : null });
+});
 
 // Output of a command widget (the command itself stays here).
 app.MapGet("/api/widget/{page}/{widget}", (string page, string widget, bool? force, CommandRunner runner) =>

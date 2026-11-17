@@ -38,7 +38,7 @@ Windows, Linux và macOS. Không cần root, tài khoản PhoneBox hay dịch v�
 <p align="center"><img src="hero-0.6.png" width="900" alt="PhoneBox trên ba chiếc điện thoại hiển thị các trang tự động hóa, trang chủ và lập kế hoạch"><br>
 <sub>Các bố cục ví dụ với dữ liệu demo.</sub></p>
 
-PhoneBox ghép nối một **ứng dụng Android** toàn màn hình với một **tác nhân máy tính (agent)** nhỏ gọn. Hãy xây dựng bảng điều khiển của bạn trong trình chỉnh sửa trực quan chạy trên trình duyệt: **121 widget**, **30 mẫu**, nhiều trang và xem trước trực tiếp. Kết nối nhiều điện thoại, mỗi chiếc với bố cục riêng, hoặc chuyển một chiếc điện thoại giữa các máy tính đã ghép nối.
+PhoneBox ghép nối một **ứng dụng Android** toàn màn hình với một **tác nhân máy tính (agent)** nhỏ gọn. Hãy xây dựng bảng điều khiển của bạn trong trình chỉnh sửa trực quan chạy trên trình duyệt: **122 widget**, **30 mẫu**, nhiều trang và xem trước trực tiếp. Kết nối nhiều điện thoại, mỗi chiếc với bố cục riêng, hoặc chuyển một chiếc điện thoại giữa các máy tính đã ghép nối.
 
 ## Bạn có thể làm gì
 

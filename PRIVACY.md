@@ -24,6 +24,10 @@ Last updated: 2026-11-15 (PhoneBox 0.9.6).
 - **Computer data shown on the panel** (CPU, GPU, memory, disks, processes, media, volume, AI coding sessions and
   quotas, Docker / Podman, OBS) is read locally and goes only to your phone: over the USB cable (`adb reverse` to
   `127.0.0.1`) or, after pairing, over Wi-Fi / Tailscale with a pinned certificate and a key.
+- **Sound for the Spectrum bars widget** (Windows): while an enabled page with the widget is on the phone's screen,
+  the agent captures what the default output device plays, analyzes it in memory and sends only 48 loudness levels
+  per frame to the phone. Audio is never stored or sent; capture stops a few seconds after the widget leaves the
+  screen, and removing the widget or turning its page off turns it off.
 - **Local services**: LibreHardwareMonitor's web server (`127.0.0.1:8085`), a running Antigravity language server
   (loopback), the Docker / Podman socket, OBS WebSocket and the Discord desktop app's local connection (a named pipe
   or socket on this computer) are local connections.

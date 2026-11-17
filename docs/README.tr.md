@@ -38,7 +38,7 @@ Windows, Linux ve macOS. Root, PhoneBox hesabı veya bulut hizmeti gerekmez.</p>
 <p align="center"><img src="hero-0.6.png" width="900" alt="Otomasyon, ana sayfa ve planlayıcı sayfalarını gösteren üç telefonda PhoneBox"><br>
 <sub>Demo verileriyle örnek düzenler.</sub></p>
 
-PhoneBox, tam ekran bir **Android uygulamasını** küçük bir **masaüstü ajanıyla** eşleştirir. Tarayıcı tabanlı görsel düzenleyicide panelinizi oluşturun: **121 widget**, **30 şablon**, çoklu sayfalar ve canlı önizleme. Birden fazla telefonu kendi düzenleriyle bağlayın veya tek bir telefonu eşleştirilmiş bilgisayarlar arasında değiştirin.
+PhoneBox, tam ekran bir **Android uygulamasını** küçük bir **masaüstü ajanıyla** eşleştirir. Tarayıcı tabanlı görsel düzenleyicide panelinizi oluşturun: **122 widget**, **30 şablon**, çoklu sayfalar ve canlı önizleme. Birden fazla telefonu kendi düzenleriyle bağlayın veya tek bir telefonu eşleştirilmiş bilgisayarlar arasında değiştirin.
 
 ## Neler yapabilirsiniz?
 
