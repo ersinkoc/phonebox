@@ -26,7 +26,7 @@
 
   // Photo frame widget: the folder its slideshow shows (empty = off) and whether subfolders count
   "photos": { "folder": "", "subfolders": true },
-  // IP cameras for the Camera widget: { "id", "name", "url": "rtsp://user:password@host:554/…", "transport": "tcp" | "udp" }.
+  // IP cameras for the Camera widget: { "id", "name", "url": "rtsp://user:password@host:554/…", "transport": "tcp" | "udp", "fps": 1 to 10 (5) }.
   // "ffmpeg": its full path, or empty to find it in PATH. The addresses never go to the phone.
   "cameras": { "ffmpeg": "", "sources": [] },
 

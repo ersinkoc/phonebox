@@ -487,6 +487,7 @@ app.MapGet("/api/camera", (string? widget, HttpRequest req, HttpResponse res, Ca
     var (status, jpeg, state) = cameras.Frame(req.Headers["X-PhoneBox-Device"].ToString(), widget);
     res.Headers.CacheControl = "no-store";
     res.Headers["X-Content-Type-Options"] = "nosniff";
+    if (status == 204) return Results.NoContent(); // no newer picture than the one this widget has
     return jpeg is null ? Results.Json(new { state }, statusCode: status) : Results.Bytes(jpeg, "image/jpeg");
 });
 app.MapPost("/api/feeds/open", (string? id, FeedMonitor feeds) =>

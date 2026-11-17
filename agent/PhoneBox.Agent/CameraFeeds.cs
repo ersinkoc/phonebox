@@ -21,6 +21,8 @@ public sealed class CameraSource
     public string Url { get; set; } = "";
     /// <summary>"tcp" (default, works through most networks) or "udp" (for cameras that only stream over UDP).</summary>
     public string Transport { get; set; } = "tcp";
+    /// <summary>Pictures a second the phone gets (1 to <see cref="CameraFeeds.MaxFps"/>): smoother costs more CPU and bandwidth.</summary>
+    public int Fps { get; set; } = CameraFeeds.DefaultFps;
 }
 
 /// <summary>
@@ -35,8 +37,8 @@ public sealed partial class CameraFeeds : IDisposable
     public const int MaxCameras = 8;
     /// <summary>At most this many cameras are pulled at the same time (each one is a decoder running on this computer).</summary>
     public const int MaxRunning = 4;
-    /// <summary>Frames a second that ffmpeg produces, and how often the panel asks.</summary>
-    public const int Fps = 2;
+    /// <summary>Pictures a second ffmpeg produces for a camera unless its settings say otherwise, and the most it may ask for.</summary>
+    public const int DefaultFps = 5, MaxFps = 10;
     internal const long KeepMs = 10_000;      // a camera stops this long after the last request
     internal const long StallMs = 20_000;     // no frame for this long: ffmpeg is restarted
     internal const long FreshMs = 5_000;      // an older frame isn't shown as live
@@ -76,6 +78,10 @@ public sealed partial class CameraFeeds : IDisposable
         public long FrameAt, StartedAt, WantedUntil, RetryAt, Backoff;
         /// <summary>Which start the running ffmpeg is: a stopped one's last buffered frame mustn't count for the next.</summary>
         public int Generation;
+        /// <summary>Counts the pictures, so a panel that already has the latest one isn't sent it again.</summary>
+        public long FrameSeq;
+        /// <summary>The last picture each asker (phone + widget) got.</summary>
+        public readonly Dictionary<string, long> Served = new(StringComparer.Ordinal);
         public bool GotFrame;
         public string State = "starting";
     }
@@ -102,7 +108,15 @@ public sealed partial class CameraFeeds : IDisposable
             }
             feed.WantedUntil = now + KeepMs;
             if (feed.Run is null && now >= feed.RetryAt) StartLocked(feed, now);
-            if (feed.Frame is { } jpeg && now - feed.FrameAt <= FreshMs) return (200, jpeg, "live");
+            if (feed.Frame is { } jpeg && now - feed.FrameAt <= FreshMs)
+            {
+                // this phone's widget already has this picture: 204, nothing to download or decode again
+                var asker = (deviceId ?? "") + "\n" + widgetKey;
+                if (feed.Served.TryGetValue(asker, out var had) && had == feed.FrameSeq) return (204, null, "live");
+                if (feed.Served.Count > 64) feed.Served.Clear(); // a few phones and widgets at most; never grows without bound
+                feed.Served[asker] = feed.FrameSeq;
+                return (200, jpeg, "live");
+            }
             return (503, null, feed.State);
         }
     }
@@ -116,7 +130,7 @@ public sealed partial class CameraFeeds : IDisposable
         {
             foreach (var (id, feed) in _feeds.ToList())
             {
-                if (sources.TryGetValue(id, out var now) && now.Url == feed.Source.Url && now.Transport == feed.Source.Transport) { feed.Source = now; continue; }
+                if (sources.TryGetValue(id, out var now) && now.Url == feed.Source.Url && now.Transport == feed.Source.Transport && now.Fps == feed.Source.Fps) { feed.Source = now; continue; }
                 if (feed.Run is not null) stop.Add(feed.Run);
                 _feeds.Remove(id);
             }
@@ -179,7 +193,7 @@ public sealed partial class CameraFeeds : IDisposable
                 lock (_gate)
                 {
                     if (f.Generation != generation || f.Run is null) return; // from an ffmpeg that was stopped since
-                    f.Frame = jpeg; f.FrameAt = _now(); f.GotFrame = true; f.State = "live"; f.Backoff = 0;
+                    f.Frame = jpeg; f.FrameAt = _now(); f.FrameSeq++; f.GotFrame = true; f.State = "live"; f.Backoff = 0;
                 }
             });
             _log.LogInformation("camera {Name}: started", feed.Source.Name);
@@ -324,7 +338,7 @@ internal sealed class FfmpegRun : ICameraRun
         // rtsps is TLS, which needs TCP
         var transport = source.Transport == "udp" && !source.Url.StartsWith("rtsps:", StringComparison.OrdinalIgnoreCase) ? "udp" : "tcp";
         foreach (var a in new[] { "-hide_banner", "-nostdin", "-loglevel", "error", "-rtsp_transport", transport,
-                     "-i", source.Url, "-an", "-sn", "-dn", "-vf", $"fps={CameraFeeds.Fps},scale='min(1280,iw)':-2",
+                     "-i", source.Url, "-an", "-sn", "-dn", "-vf", $"fps={Math.Clamp(source.Fps, 1, CameraFeeds.MaxFps)},scale='min(1280,iw)':-2",
                      "-f", "image2pipe", "-c:v", "mjpeg", "-q:v", "6", "pipe:1" })
             psi.ArgumentList.Add(a);
         var p = Process.Start(psi) ?? throw new InvalidOperationException("ffmpeg did not start");

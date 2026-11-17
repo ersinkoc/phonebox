@@ -67,6 +67,8 @@ public sealed class AgentConfig
                 options = StackWidgets.PublicOptions(w),
             }),
         }),
+        // cameras: only how often the Camera widget may ask for a picture; the addresses and names stay on this computer
+        cameras = Cameras.Sources.Select(c => new { c.Id, c.Fps }),
         shortcuts = Shortcuts.Select(s => new { s.Id, s.Label, s.Icon, s.Color, toggle = s.Toggle || s.Cmd == "builtin:mute", iconRev = shortcutIconRev?.Invoke(s) }),
         // names only (for the Rules widget); what a rule matches on stays here
         rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When }),
@@ -600,6 +602,7 @@ public sealed partial class ConfigStore(string path)
             cam.Name = n.Length > 60 ? n[..60] : n;
             cam.Url = cam.Url.Trim() is { Length: > 2048 } longUrl ? longUrl[..2048] : cam.Url.Trim();
             cam.Transport = string.Equals(cam.Transport?.Trim(), "udp", StringComparison.OrdinalIgnoreCase) ? "udp" : "tcp";
+            cam.Fps = cam.Fps is >= 1 and <= CameraFeeds.MaxFps ? cam.Fps : CameraFeeds.DefaultFps;
             var id = (cam.Id ?? "").Trim().ToLowerInvariant();
             if (!CameraId().IsMatch(id) || !cameraIds.Add(id)) { id = Guid.NewGuid().ToString("N")[..12]; cameraIds.Add(id); }
             cam.Id = id;

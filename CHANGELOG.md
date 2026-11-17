@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Panel**
+- Camera widget: smoother. 5 pictures a second by default, and 1 to 10 per camera in Settings › General › Cameras;
+  the next picture is decoded before it replaces the one on screen, so it no longer flickers black between frames, and
+  an unchanged picture isn't sent again (#209, [Hoangminhfcb](https://github.com/Hoangminhfcb)).
+
 ## 0.9.18 — 2026-11-17
 
 A Camera widget for IP cameras, the App dock bringing a running app back as it was, and more of the panel in every

@@ -92,7 +92,7 @@ RTSP address (`rtsp://user:password@192.168.1.20:554/…`; the camera's manual o
 in the widget. The agent pulls the stream with [ffmpeg](https://ffmpeg.org), which you install: `winget install
 Gyan.FFmpeg` on Windows, `brew install ffmpeg` on macOS, your distribution's `ffmpeg` package on Linux. Restart
 PhoneBox afterwards so it finds ffmpeg in PATH, or enter ffmpeg's full path in the same card. A camera runs only while
-a Camera widget for it is on the phone's screen, at a couple of frames a second, so expect a short delay. Choose
+a Camera widget for it is on the phone's screen, at 5 frames a second by default; pick 1 to 10 next to the camera (smoother costs more CPU on the PC and more data to the phone), and expect a short delay. Choose
 **UDP** for a camera that doesn't stream over TCP. At most 4 cameras play at the same time.
 
 **Smart Stack** combines up to 12 widgets in one slot. Add it from the Layout category, then drag widgets into it or

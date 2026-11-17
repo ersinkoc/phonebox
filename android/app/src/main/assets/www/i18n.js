@@ -161,7 +161,7 @@
       's.feeds.add': '＋ Add a feed',
       's.feeds.hint': 'RSS or Atom feeds for the News feeds widget. This computer fetches each one at most every 15 minutes, only while a page shows a News feeds widget; the addresses stay here.',
       's.camera.title': 'Cameras',
-      's.camera.hint': 'IP cameras for the Camera widget: a name and the camera’s RTSP address (rtsp://user:password@address:554/…, from its manual or app). This computer pulls a camera with ffmpeg only while a Camera widget shows it, and sends the phone a couple of pictures a second. The addresses stay on this computer, but while a camera runs they are visible in its process list.',
+      's.camera.hint': 'IP cameras for the Camera widget: a name and the camera’s RTSP address (rtsp://user:password@address:554/…, from its manual or app). This computer pulls a camera with ffmpeg only while a Camera widget shows it, and sends the phone a few pictures a second (set next to each camera). The addresses stay on this computer, but while a camera runs they are visible in its process list.',
       's.camera.add': '＋ Add a camera',
       's.camera.ffmpeg': 'ffmpeg (full path; empty = find it in PATH)',
       's.camera.name': 'Name, e.g. Front door',

@@ -117,6 +117,36 @@ public sealed class CameraFeedsTests : IDisposable
         var pub = JsonSerializer.Serialize(Store().Get().ToPublic());
         Assert.DoesNotContain("s3cret", pub);
         Assert.DoesNotContain("192.168.1.20", pub);
+        Assert.DoesNotContain("Door", pub); // only the id and the frame rate, for pacing the widget
+        Assert.Contains("\"cameras\":[{\"Id\":\"cam000001\",\"Fps\":5}]", pub);
+    }
+
+    [Theory]
+    [InlineData(0, 5)]
+    [InlineData(1, 1)]
+    [InlineData(10, 10)]
+    [InlineData(60, 5)]
+    public void TheFrameRateStaysWithinItsRange(int asked, int kept)
+    {
+        var store = Store();
+        Assert.Null(store.Save($$$"""{"cameras":{"sources":[{"id":"cam000001","name":"Door","url":"rtsp://10.0.0.3/a","fps":{{{asked}}}}]}}"""));
+        Assert.Equal(kept, store.Get().Cameras.Sources[0].Fps);
+    }
+
+    [Fact]
+    public void APictureAWidgetAlreadyHasIsNotSentAgain()
+    {
+        var (feeds, runs, _) = Make(Store());
+        using var __ = feeds;
+        feeds.Frame("phone1", "p/w");
+        runs[0].Frame(Jpeg(1));
+        Assert.Equal(200, feeds.Frame("phone1", "p/w").Status);
+        Assert.Equal(204, feeds.Frame("phone1", "p/w").Status);   // nothing newer: nothing to download
+        Assert.Equal(200, feeds.Frame("phone2", "p/w").Status);   // another phone hasn't had it yet
+        runs[0].Frame(Jpeg(2));
+        var next = feeds.Frame("phone1", "p/w");
+        Assert.Equal(200, next.Status);
+        Assert.Equal(Jpeg(2), next.Jpeg);
     }
 
     [Fact]
@@ -289,12 +319,20 @@ public sealed class CameraFeedsTests : IDisposable
         Assert.Null(store.Save(File.ReadAllText(_path).Replace("\"Door\"", "\"Front door\"")));
         feeds.SettingsSaved();
         Assert.False(runs[0].Run.Disposed);
-        // new address: stopped, and the next request uses the new one
-        Assert.Null(store.Save(File.ReadAllText(_path).Replace("192.168.1.20", "192.168.1.21")));
+        // a new frame rate restarts it too (ffmpeg's filter has it)
+        var saved = File.ReadAllText(_path);
+        Assert.Contains("\"fps\": 5", saved);
+        Assert.Null(store.Save(saved.Replace("\"fps\": 5", "\"fps\": 8")));
         feeds.SettingsSaved();
         Assert.True(runs[0].Run.Disposed);
         feeds.Frame(null, "p/w");
-        Assert.Contains("192.168.1.21", runs[1].Source.Url);
+        Assert.Equal(8, runs[1].Source.Fps);
+        // new address: stopped, and the next request uses the new one
+        Assert.Null(store.Save(File.ReadAllText(_path).Replace("192.168.1.20", "192.168.1.21")));
+        feeds.SettingsSaved();
+        Assert.True(runs[1].Run.Disposed);
+        feeds.Frame(null, "p/w");
+        Assert.Contains("192.168.1.21", runs[2].Source.Url);
     }
 
     [Fact]

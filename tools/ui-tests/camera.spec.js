@@ -32,11 +32,23 @@ async function show(page, { widget = { camera: CAM.id }, cameras = [CAM], pages 
 test('the camera widget shows the latest picture and keeps it coming', async ({ page }) => {
   const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
   await show(page);
-  const img = page.locator('.cam-img');
+  const img = page.locator('.cam-img.on');
   await expect(img).toBeVisible();
   await expect(page.locator('.cam-note')).toBeHidden();
   const first = await img.getAttribute('src');
   await expect.poll(() => img.getAttribute('src')).not.toBe(first);
+  // two layers, and one of them is always showing a picture: no blank moment between frames
+  await expect(page.locator('.cam-img')).toHaveCount(2);
+  const blank = await page.evaluate(() => new Promise((done) => {
+    let gaps = 0;
+    const until = Date.now() + 2000;
+    const look = () => {
+      if (document.querySelectorAll('.cam-img.on[src]').length !== 1) gaps++;
+      if (Date.now() < until) requestAnimationFrame(look); else done(gaps);
+    };
+    requestAnimationFrame(look);
+  }));
+  expect(blank).toBe(0);
   // pictures are blobs, and the previous one is released (only one object URL is alive)
   expect(first).toMatch(/^blob:/);
   expect(errors).toEqual([]);
@@ -45,7 +57,7 @@ test('the camera widget shows the latest picture and keeps it coming', async ({ 
 test('without a chosen camera the widget says so and shows no picture', async ({ page }) => {
   await show(page, { widget: {} });
   await expect(page.locator('.cam-note')).toHaveText('Choose a camera in this widget’s settings');
-  await expect(page.locator('.cam-img')).toBeHidden();
+  await expect(page.locator('.cam-img.on')).toHaveCount(0);
 });
 
 test('a removed camera is treated like no camera', async ({ page }) => {
@@ -55,7 +67,7 @@ test('a removed camera is treated like no camera', async ({ page }) => {
 
 test('the widget stops asking under the night screen', async ({ page }) => {
   await show(page);
-  await expect(page.locator('.cam-img')).toBeVisible();
+  await expect(page.locator('.cam-img.on')).toBeVisible();
   await page.evaluate(() => document.body.classList.add('night'));
   await page.waitForTimeout(1200); // let a request in flight finish
   const n = await page.evaluate(() => window.__camRequests);
