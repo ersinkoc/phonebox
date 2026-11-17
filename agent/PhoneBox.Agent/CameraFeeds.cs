@@ -219,7 +219,7 @@ public sealed partial class CameraFeeds : IDisposable
         return text.Length > 300 ? text[..300] : text;
     }
 
-    [GeneratedRegex(@"://[^/\s@]*@")]
+    [GeneratedRegex(@"://[^/\s@?#]*@")]
     private static partial Regex UserInfo();
     [GeneratedRegex(@"((?:pass(?:word)?|pwd|token|key|auth|secret)=)[^&\s]*", RegexOptions.IgnoreCase)]
     private static partial Regex SecretParam();
@@ -349,7 +349,8 @@ internal sealed class FfmpegRun : ICameraRun
                 while (await p.StandardError.ReadLineAsync() is { } line)
                 {
                     if (line.Length == 0) continue;
-                    lock (run._errors) { run._errors.Enqueue(line.Length > 400 ? line[..400] : line); while (run._errors.Count > 3) run._errors.Dequeue(); }
+                    // kept whole (an address is at most 2048 characters): cutting it before Mask could leave half a password
+                    lock (run._errors) { run._errors.Enqueue(line.Length > 8192 ? line[..8192] : line); while (run._errors.Count > 3) run._errors.Dequeue(); }
                 }
             }
             catch { }

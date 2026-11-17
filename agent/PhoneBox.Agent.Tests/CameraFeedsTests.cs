@@ -82,6 +82,12 @@ public sealed class CameraFeedsTests : IDisposable
         // a host named like a secret parameter doesn't stop the parameter from being hidden
         var tricky = CameraFeeds.Mask("rtsp://token:554/live?token=secret123: Connection refused", "rtsp://admin:pw@token:554/live?token=secret123");
         Assert.DoesNotContain("secret123", tricky);
+        // user info stops at ? and #: "?token=x@" is a query, and its value is still hidden
+        Assert.DoesNotContain("secret123", CameraFeeds.Mask("rtsp://cam?token=secret123@x: refused", ""));
+        // a long line with the password far in is masked whole, then shortened
+        var longPassword = new string('p', 500);
+        var longLine = CameraFeeds.Mask($"[rtsp @ 0x1] rtsp://admin:{longPassword}@10.0.0.2/live: 401 Unauthorized", "");
+        Assert.DoesNotContain("pppp", longLine);
         Assert.Contains("401 Unauthorized", masked);
     }
 
