@@ -169,6 +169,9 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
                 using (var devices = new MMDeviceEnumerator())
                     device = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
                 capture = new WasapiLoopbackCapture(device);
+                // read before StartRecording: once the capture thread runs, a throw here would dispose it under _gate,
+                // and its RecordingStopped handler waits for _gate
+                var deviceId = device.ID;
                 var fmt = capture.WaveFormat;
                 _sampleRate = fmt.SampleRate;
                 var (started, startedOn) = (capture, device);
@@ -192,7 +195,7 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
                 capture.StartRecording();
                 _capture = capture;
                 _release = Release;
-                _deviceId = device.ID;
+                _deviceId = deviceId;
                 _timer = new System.Threading.Timer(_ => Tick(), null, 0, 1000 / Fps);
                 log.LogInformation("spectrum: capture started ({Rate} Hz, {Bits}-bit, {Ch} ch)", fmt.SampleRate, fmt.BitsPerSample, fmt.Channels);
             }
