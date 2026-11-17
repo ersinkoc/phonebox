@@ -1788,7 +1788,7 @@ function renderCameras() {
     h('input', { type: 'text', class: 'cal-url', value: c.url || '', placeholder: 'rtsp://user:password@192.168.1.20:554/stream1', spellcheck: 'false', autocomplete: 'off',
       oninput: (e) => { c.url = e.target.value.trim(); changed(); } }),
     h('select', { title: 'Pictures a second', onchange: (e) => { c.fps = +e.target.value; changed(); } },
-      ...[1, 2, 3, 5, 8, 10].map((n) => h('option', { value: n, selected: (c.fps || 5) === n }, `${n} fps`))),
+      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => h('option', { value: n, selected: (c.fps || 5) === n }, `${n} fps`))),
     h('select', { title: 'RTSP transport', onchange: (e) => { c.transport = e.target.value; changed(); } },
       ...[['tcp', 'TCP'], ['udp', 'UDP']].map(([v, l]) => h('option', { value: v, selected: (c.transport || 'tcp') === v }, l))),
     h('button', { class: 'btn sm danger', onclick: () => { cfg.cameras.sources.splice(i, 1); renderCameras(); changed(); } }, t('s.js.remove')))));

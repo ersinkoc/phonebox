@@ -143,6 +143,7 @@ public sealed class CameraFeedsTests : IDisposable
         Assert.Equal(200, feeds.Frame("phone1", "p/w").Status);
         Assert.Equal(204, feeds.Frame("phone1", "p/w").Status);   // nothing newer: nothing to download
         Assert.Equal(200, feeds.Frame("phone2", "p/w").Status);   // another phone hasn't had it yet
+        Assert.Equal(200, feeds.Frame("phone1", "p/w", fresh: true).Status); // the widget lost its picture: send it again
         runs[0].Frame(Jpeg(2));
         var next = feeds.Frame("phone1", "p/w");
         Assert.Equal(200, next.Status);

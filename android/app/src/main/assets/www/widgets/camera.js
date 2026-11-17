@@ -52,7 +52,10 @@ W.camera = {
       const deadline = new Promise((_, fail) => { late = setTimeout(() => { ctl.abort(); fail(new Error('timeout')); }, 8000); });
       deadline.catch(() => {});
       try {
-        const r = await Promise.race([fetch(`${API}/camera?${wq}`, { cache: 'no-store', headers: PANEL_HEADERS, signal: ctl.signal }), deadline]);
+        // nothing on screen (just shown again, or the last download failed): ask for the latest picture even if this widget
+        // was sent it before, instead of an "unchanged" 204
+        const fresh = urls[front] ? '' : '&fresh=1';
+        const r = await Promise.race([fetch(`${API}/camera?${wq}${fresh}`, { cache: 'no-store', headers: PANEL_HEADERS, signal: ctl.signal }), deadline]);
         if (r.status === 204) return every(); // the agent has nothing newer than what is shown
         if (r.ok) {
           const url = URL.createObjectURL(await Promise.race([r.blob(), deadline]));

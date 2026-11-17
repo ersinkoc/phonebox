@@ -91,7 +91,9 @@ public sealed partial class CameraFeeds : IDisposable
     /// of the states the panel shows: "unknown" (no such widget on an enabled page), "pick" (no camera chosen, or it was
     /// removed), "starting", "no-ffmpeg", "unreachable", "login", "no-picture", "busy" (too many cameras at once).
     /// </summary>
-    public (int Status, byte[]? Jpeg, string State) Frame(string? deviceId, string? widgetKey)
+    /// <param name="fresh">The widget shows no picture (it was hidden, or a download failed): send the latest one even if
+    /// this widget was sent it before.</param>
+    public (int Status, byte[]? Jpeg, string State) Frame(string? deviceId, string? widgetKey, bool fresh = false)
     {
         var cfg = _config.Get();
         if (PanelWidgets.Find(cfg, deviceId, widgetKey, WidgetType) is not { } widget) return (404, null, "unknown");
@@ -112,7 +114,7 @@ public sealed partial class CameraFeeds : IDisposable
             {
                 // this phone's widget already has this picture: 204, nothing to download or decode again
                 var asker = (deviceId ?? "") + "\n" + widgetKey;
-                if (feed.Served.TryGetValue(asker, out var had) && had == feed.FrameSeq) return (204, null, "live");
+                if (!fresh && feed.Served.TryGetValue(asker, out var had) && had == feed.FrameSeq) return (204, null, "live");
                 if (feed.Served.Count > 64) feed.Served.Clear(); // a few phones and widgets at most; never grows without bound
                 feed.Served[asker] = feed.FrameSeq;
                 return (200, jpeg, "live");
