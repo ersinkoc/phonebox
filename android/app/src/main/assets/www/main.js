@@ -1743,6 +1743,7 @@ export function tick() {
     else { navQueue.push({ kind: 'home', at: Date.now(), priority: -1 }); pump(); }
   }
   applyBurnIn();
+  document.body.classList.toggle('controls-top', cfg.display?.controlsTop === true);
   if (!nightOn) emit('tick');
   setTimeout(tick, 1000 - (Date.now() % 1000) + 5);
 }

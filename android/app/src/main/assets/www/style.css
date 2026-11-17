@@ -1181,3 +1181,12 @@ body.waking::after { opacity: 0; pointer-events: auto; transition: opacity .2s e
 .ac-knob::after { content: ""; position: absolute; top: 8%; left: 50%; width: 4px; height: 22%; margin-left: -2px; border-radius: 2px; background: var(--accent, #60a5fa); }
 .ac-note { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; }
 .ac-note[hidden] { display: none; }
+/* Settings › Display › controls at the top (#181): the page dots and the Allow / Deny buttons move up, for a panel that
+   stands below the screen, where the bottom edge is hard to reach */
+body.controls-top #dots { bottom: auto; top: 0; }
+body.controls-top #ptitle { top: 34px; }
+/* the space the dots need moves from the bottom to the top */
+body.controls-top .page { padding-top: 17px; padding-bottom: 10px; }
+/* the header stays first; the buttons come right after it, above the request */
+body.controls-top .ap-head { order: -2; }
+body.controls-top .ap-foot { order: -1; margin-bottom: 4px; }

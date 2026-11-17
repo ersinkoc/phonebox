@@ -18,6 +18,15 @@
   version in #48 by [blx10](https://github.com/blx10).
 
 **Agent**
+- Wi-Fi pairing: on a PC whose network goes through a Hyper-V external switch, the pairing link carries the PC's
+  address again instead of an empty host list (#175, #176, [Seyamalam](https://github.com/Seyamalam)).
+- Windows: no "adb.exe - Application Error (0xc0000142)" box at shutdown. The agent no longer starts adb once
+  Windows is ending the session (#179, [bakhus99](https://github.com/bakhus99)).
+- macOS and Linux: Restart and a self-update bring the agent back when it runs as the setup.sh login item (launchd)
+  or a systemd service. It now leaves the restart to the service manager instead of starting a copy that launchd
+  stopped with it (#182, [shobhit-lyzr](https://github.com/shobhit-lyzr)).
+- PRIVACY.md: on macOS the Claude quota reads the token from the Keychain (the default search list, normally the login Keychain) when
+  `~/.claude/.credentials.json` doesn't exist (#183, [shobhit-lyzr](https://github.com/shobhit-lyzr)).
 - Settings › General › Ping: choose which network adapters the network meters count. With a VPN that tunnels the same
   traffic, or a driver that reports it twice, the meters showed double; tick only the adapter you use (#190,
   [h2r2me453](https://github.com/h2r2me453); also a way around #169). None ticked keeps the automatic choice.
@@ -28,7 +37,15 @@
   Razer Synapse (#158, [MarsOldboy](https://github.com/MarsOldboy)). Only known Razer products are asked, only for
   the battery and charging state, and the BlackShark V2 Pro headset only while Synapse isn't running.
 
+**Android app**
+- A Quick Settings tile: add PhoneBox in the phone's Edit tiles, and a tap brings the panel to the front (#180,
+  [arrowssuhail-oss](https://github.com/arrowssuhail-oss)).
+- Wi-Fi pairing page: on Android, when "Open in PhoneBox" opens a store instead of the app (some browsers do that,
+  common on LineageOS), a second link opens the pairing link directly (#175, [hassanxs](https://github.com/hassanxs)).
+
 **Panel**
+- Settings › Display › "Page dots and the Allow / Deny buttons at the top of the screen", for a panel that stands below
+  the screen, where the bottom edge is hard to reach (#181, [Muhammadrizo04](https://github.com/Muhammadrizo04)).
 - Smart Stack: a rotation interval of 0 turns automatic rotation off, so the stack changes only when you swipe or tap
   a dot; the longest interval is now 10 minutes (#171, [MrKatsuragi](https://github.com/MrKatsuragi)).
 - The Spotify queue widget shows what is playing now and what comes next, with covers; tap a track to play it. Covers

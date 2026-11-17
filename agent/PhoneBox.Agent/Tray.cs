@@ -56,7 +56,8 @@ public sealed class Tray : IHostedService
         menu.Items.Add(status);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Settings…", null, (_, _) => OpenUrl(SettingsUrl)) { Font = new Font(menu.Font, FontStyle.Bold) });
-        menu.Items.Add("Open panel on phone", null, async (_, _) => await _adb.OpenPanelAsync());
+        // cancelled while Windows is ending the session (no adb is started then, for at most a minute): nothing to show
+        menu.Items.Add("Open panel on phone", null, async (_, _) => { try { await _adb.OpenPanelAsync(); } catch (OperationCanceledException) { } });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Edit config.json", null, (_, _) => Open("notepad.exe", AppPaths.ConfigPath));
         menu.Items.Add("Open log", null, (_, _) => Open("notepad.exe", AppPaths.LogPath));

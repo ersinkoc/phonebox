@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quick Settings tile: a phone on its side with a grid of widgets. Single colour; the system tints it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M3,5h18a2,2 0,0 1,2 2v10a2,2 0,0 1,-2 2H3a2,2 0,0 1,-2 -2V7a2,2 0,0 1,2 -2zM3,7v10h18V7zM5,9h6v3H5zM13,9h6v3h-6zM5,13h6v2H5zM13,13h6v2h-6z" />
+</vector>

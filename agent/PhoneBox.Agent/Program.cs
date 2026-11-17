@@ -744,7 +744,10 @@ app.Run();
 single.ReleaseMutex();
 single.Dispose();
 if (AppRestart.Requested && Environment.ProcessPath is { } exe)
-    System.Diagnostics.Process.Start(AppRestart.StartInfo(exe, args));
+{
+    if (AppRestart.ServiceManaged(Environment.GetEnvironmentVariable, Environment.ProcessId, AppRestart.ParentName)) Environment.ExitCode = AppRestart.ServiceRestartCode;
+    else System.Diagnostics.Process.Start(AppRestart.StartInfo(exe, args));
+}
 
 static void AddMonitor<T>(IServiceCollection s) where T : class, IHostedService
 {

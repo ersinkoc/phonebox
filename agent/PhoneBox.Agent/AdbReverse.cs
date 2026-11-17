@@ -32,10 +32,32 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     public string[] AllDevices => _all;
     public event Action? StateChanged;
 
+    /// <summary>
+    /// True for a minute after Windows starts ending the session (shutdown, restart, sign-out). A process started then
+    /// can't initialize, and Windows shows "adb.exe - Application Error (0xc0000142)" for it (#179), so no adb is
+    /// started. Windows sends no event when a shutdown is cancelled (an app refused to close); if the agent is still
+    /// running after the minute, the session went on, and adb runs again.
+    /// </summary>
+    internal static bool SessionEnding
+    {
+        get { var since = Interlocked.Read(ref _endingSince); return since != 0 && Clock() - since < EndingWindowMs; }
+    }
+
+    internal static void MarkSessionEnding() => Interlocked.Exchange(ref _endingSince, Math.Max(1, Clock()));
+    internal static Func<long> Clock { get; set; } = () => Environment.TickCount64;
+    internal const long EndingWindowMs = 60_000;
+    internal static void ResetSessionEnding() => Interlocked.Exchange(ref _endingSince, 0); // tests
+    private static long _endingSince;
+
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
+#if WINDOWS
+        Microsoft.Win32.SystemEvents.SessionEnding += (_, _) => MarkSessionEnding();
+#endif
         while (!ct.IsCancellationRequested)
         {
+            // while the session is ending nothing is started; the loop goes on, for a shutdown that is cancelled
+            if (SessionEnding) { await Task.Delay(TimeSpan.FromSeconds(4), ct); continue; }
             try { await Ensure(ct); }
             catch (OperationCanceledException) { return; }
             catch (Exception ex) { Report($"adb error: {ex.Message}"); }
@@ -211,6 +233,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
     internal static async Task<string> Adb(string adb, string args, CancellationToken ct, bool anyExit = false)
     {
+        if (SessionEnding) throw new OperationCanceledException("the session is ending");
         var psi = new ProcessStartInfo(adb, args)
         {
             RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,

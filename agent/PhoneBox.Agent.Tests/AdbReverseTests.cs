@@ -7,6 +7,7 @@ using Xunit;
 /// AdbReverse against a fake adb that logs its calls (never the real adb or a real phone). Every test checks first
 /// that the agent's own lookup lands on the fake, then runs the background loop and reads the call log.
 /// </summary>
+[Collection("adb session")] // SessionEndingTests flips the static session-ending window
 public sealed class AdbReverseTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "phonebox-adb-" + Guid.NewGuid().ToString("N"));

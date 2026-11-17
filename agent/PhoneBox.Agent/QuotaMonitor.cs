@@ -24,7 +24,8 @@ public sealed record QuotaProvider(string Id, string Name, string Plan, IReadOnl
 
 /// <summary>
 /// Collects quota usage of AI subscriptions:
-///  - Claude: api.anthropic.com/api/oauth/usage with the OAuth token from ~/.claude/.credentials.json
+///  - Claude: api.anthropic.com/api/oauth/usage with the OAuth token from ~/.claude/.credentials.json (on macOS, when
+///    that file doesn't exist, the "Claude Code-credentials" item from the default keychain search list, normally the login Keychain)
 ///    (the endpoint behind Claude Code's /usage command). The token is only read and NEVER refreshed;
 ///    Claude Code refreshes it itself (refreshing it here could break Claude Code's session).
 ///  - Codex: the last "rate_limits" record in the newest rollout file under ~/.codex/sessions (fully local).
