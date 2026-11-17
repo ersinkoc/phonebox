@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+**Panel**
+- The red problem box at the bottom of the panel no longer appears for a cover, photo or icon that fails to load (for
+  example a song's cover when its tab closes while the cover loads); the widgets already handle those. It still
+  reports the panel's own scripts and styles, and a tap puts it away (#200,
+  [Muhammadrizo04](https://github.com/Muhammadrizo04)).
+
 ## 0.9.16 — 2026-11-17
 
 A fix for Vietnamese: choosing it in the settings now sticks.

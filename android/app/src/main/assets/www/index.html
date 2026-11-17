@@ -105,9 +105,17 @@
   };
   window.addEventListener('error', function (e) {
     var t = e && e.target;
-    if (t && t !== window && (t.src || t.href)) { window.__pbFail('LOAD FAIL ' + (t.src || t.href)); return; }
+    if (t && t !== window && (t.src || t.href)) {
+      // only the panel's own code and styles: a cover, photo, icon or stream that fails is the widget's to handle
+      // (a media session that ended while its cover loaded answers 404), and it would stay here for good (#200)
+      var tag = String(t.tagName || '').toUpperCase();
+      if (tag === 'SCRIPT' || tag === 'LINK') window.__pbFail('LOAD FAIL ' + (t.src || t.href));
+      return;
+    }
     if (e && e.message) window.__pbFail('ERR ' + e.message + (e.filename ? '  ' + String(e.filename).split('/').pop() + ':' + e.lineno : ''));
   }, true);
+  // a tap puts the box away (it comes back with the next new problem)
+  if (box) box.addEventListener('click', function () { lines = []; box.hidden = true; box.style.display = 'none'; });
   window.addEventListener('unhandledrejection', function (e) {
     var r = e && e.reason;
     window.__pbFail('REJECT ' + ((r && (r.stack || r.message)) || String(r)));
