@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Settings**
+- Saving after uploading or removing a shortcut's custom icon no longer fails with "The settings were changed in
+  another tab or window". The agent sent the settings version as a number too large for the page to keep exactly, so
+  the page sent back a slightly different one; it is sent as text now.
+
 ## 0.9.19 — 2026-11-17
 
 A smoother Camera widget, and the app on Android 5.0 and 6.0.

@@ -360,7 +360,7 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
     icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id)); // drop uploads for shortcuts that got deleted
     ShortcutIcons.ClearHasIconCache();
     log.LogInformation("settings saved");
-    return Results.Ok(new { version = cfg.Version });
+    return Results.Ok(new { version = cfg.VersionText });
 });
 
 app.MapPost("/api/shortcuts/test", async (HttpRequest req, ConfigStore cfg, ILogger<Program> log) =>
@@ -813,7 +813,7 @@ app.MapPost("/api/settings/shortcut-icon", async (string id, HttpRequest req, Co
     var err = icons.Save(id, req.ContentType, bytes);
     if (err is not null) return Results.BadRequest(new { error = err });
     cfg.Touch();
-    return Results.Ok(new { version = cfg.Version });
+    return Results.Ok(new { version = cfg.VersionText });
 });
 
 // Removes a shortcut's uploaded icon; it falls back to its auto-detected program icon, or the emoji.
@@ -823,7 +823,7 @@ app.MapDelete("/api/settings/shortcut-icon", (string id, HttpRequest req, Config
     if (cfg.VersionConflict(req.Headers["X-Config-Version"])) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
     icons.Remove(id);
     cfg.Touch();
-    return Results.Ok(new { version = cfg.Version });
+    return Results.Ok(new { version = cfg.VersionText });
 });
 
 app.Lifetime.ApplicationStarted.Register(() =>

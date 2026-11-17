@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -396,6 +397,13 @@ public sealed partial class ConfigStore(string path)
 
     /// <summary>Version stamp (file write time) so the phone can notice changes.</summary>
     public long Version { get { Get(); return _seen.Ticks; } }
+
+    /// <summary>
+    /// <see cref="Version"/> for a JSON reply. File-time ticks (~6.4e17) are beyond what a JavaScript number holds
+    /// exactly (2^53), so as a JSON number the page gets it rounded, sends that back in X-Config-Version, and its next
+    /// save is refused as a conflict. As text it comes back exactly.
+    /// </summary>
+    public string VersionText => Version.ToString(CultureInfo.InvariantCulture);
 
     public AgentConfig Get()
     {
