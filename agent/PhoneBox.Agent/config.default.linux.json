@@ -26,6 +26,9 @@
 
   // Photo frame widget: the folder its slideshow shows (empty = off) and whether subfolders count
   "photos": { "folder": "", "subfolders": true },
+  // IP cameras for the Camera widget: { "id", "name", "url": "rtsp://user:password@host:554/…", "transport": "tcp" | "udp" }.
+  // "ffmpeg": its full path, or empty to find it in PATH. The addresses never go to the phone.
+  "cameras": { "ffmpeg": "", "sources": [] },
 
   // Pages in the order they appear on the phone. Each page is a 12 x 6 grid of widgets; the settings page has a
   // visual editor. { "template": "<id>" } creates a page from templates.json (home, ai, work, system, procs, deck,

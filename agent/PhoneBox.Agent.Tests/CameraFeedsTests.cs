@@ -61,6 +61,7 @@ public sealed class CameraFeedsTests : IDisposable
     [InlineData("rtsp://cam/x: Connection refused", "unreachable")]
     [InlineData("Connection to tcp://10.0.0.9:554 failed: Connection timed out", "unreachable")]
     [InlineData("rtsp://cam.local/x: Error number -138 occurred", "unreachable")]
+    [InlineData("[tcp @ 0x5601a4c0f401] Connection to tcp://10.0.0.9:5401/stream401 failed: Connection refused", "unreachable")]
     [InlineData("Invalid data found when processing input", "no-picture")]
     [InlineData(null, "no-picture")]
     public void FfmpegsMessagesBecomeAFixedState(string? error, string state) => Assert.Equal(state, CameraFeeds.Classify(error));
@@ -74,6 +75,10 @@ public sealed class CameraFeedsTests : IDisposable
         Assert.DoesNotContain("u:p@", masked);
         Assert.DoesNotContain("hunter2", masked);
         Assert.Contains("<camera>", masked);
+        // ffmpeg also names the host on its own
+        var host = CameraFeeds.Mask("Connection to tcp://192.168.1.20:554 failed: Connection timed out", Url);
+        Assert.DoesNotContain("192.168.1.20", host);
+        Assert.Contains("Connection timed out", host);
         Assert.Contains("401 Unauthorized", masked);
     }
 
@@ -116,6 +121,9 @@ public sealed class CameraFeedsTests : IDisposable
         Assert.Equal("cam000001", sources[0].Id); // renamed, same id: its widgets keep showing it
         Assert.Matches("^[a-z0-9]{12}$", sources[1].Id); // a new camera gets a random id, not one made from its name
         Assert.Equal("udp", sources[1].Transport);
+        // more than the limit is refused with a message, not silently cut
+        var nine = string.Join(",", Enumerable.Range(1, CameraFeeds.MaxCameras + 1).Select(i => $$"""{"name":"C{{i}}","url":"rtsp://10.0.0.{{i}}/a"}"""));
+        Assert.Contains($"more than {CameraFeeds.MaxCameras} cameras", store.Save("{\"cameras\":{\"sources\":[" + nine + "]}}"));
     }
 
     private sealed class FakeRun : ICameraRun

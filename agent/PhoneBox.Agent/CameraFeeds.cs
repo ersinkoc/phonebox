@@ -197,7 +197,8 @@ public sealed partial class CameraFeeds : IDisposable
     internal static string Classify(string? error)
     {
         var e = (error ?? "").ToLowerInvariant();
-        if (e.Contains("401") || e.Contains("unauthorized") || e.Contains("authorization failed") || e.Contains("403 forbidden")) return "login";
+        // not a bare "401": ffmpeg's text has pointers and the address in it ([rtsp @ 0x55d4401a2b0c], :5401, /stream401)
+        if (e.Contains("unauthorized") || e.Contains("authorization failed") || e.Contains("403 forbidden")) return "login";
         if (e.Contains("connection refused") || e.Contains("timed out") || e.Contains("no route to host") || e.Contains("unreachable")
             || e.Contains("could not resolve") || e.Contains("name or service not known") || e.Contains("no such host") || e.Contains("failed to resolve")
             || e.Contains("connection reset") || e.Contains("i/o error") || e.Contains("error number -138")) return "unreachable";
@@ -208,7 +209,13 @@ public sealed partial class CameraFeeds : IDisposable
     internal static string Mask(string text, string url)
     {
         if (string.IsNullOrEmpty(text)) return "";
-        if (!string.IsNullOrEmpty(url)) text = text.Replace(url, "<camera>", StringComparison.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(url))
+        {
+            text = text.Replace(url, "<camera>", StringComparison.OrdinalIgnoreCase);
+            // ffmpeg also names the host on its own ("Connection to tcp://10.0.0.9:554 failed"); a very short host could
+            // match inside other words, so only from 3 characters on
+            if (Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Host.Length >= 3) text = text.Replace(u.Host, "<host>", StringComparison.OrdinalIgnoreCase);
+        }
         text = UserInfo().Replace(text, "://***@");
         text = SecretParam().Replace(text, m => m.Groups[1].Value + "***");
         return text.Length > 300 ? text[..300] : text;

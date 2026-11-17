@@ -448,6 +448,7 @@ public sealed partial class ConfigStore(string path)
         if (cfg.Console.Profiles.Count > AppConsole.MaxProfiles) return $"The app console has more than {AppConsole.MaxProfiles} apps";
         foreach (var p in cfg.Console.Profiles)
             if (AppConsole.Validate(p) is { } consoleError) return consoleError;
+        if (cfg.Cameras.Sources.Count > CameraFeeds.MaxCameras) return $"There are more than {CameraFeeds.MaxCameras} cameras";
         foreach (var cam in cfg.Cameras.Sources)
             if (!CameraFeeds.ValidUrl(cam.Url))
                 return $"Camera '{(cam.Name.Length > 0 ? cam.Name : "(no name)")}': the address must start with rtsp:// or rtsps://";
@@ -591,7 +592,7 @@ public sealed partial class ConfigStore(string path)
         c.Cameras ??= new();
         c.Cameras.Ffmpeg = (c.Cameras.Ffmpeg ?? "").Trim() is { Length: > 1024 } longFfmpeg ? longFfmpeg[..1024] : (c.Cameras.Ffmpeg ?? "").Trim();
         // a row left empty in the editor is dropped; ids are random and kept, so widgets keep pointing at the same camera
-        c.Cameras.Sources = (c.Cameras.Sources ?? []).Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Url)).Take(CameraFeeds.MaxCameras).ToList();
+        c.Cameras.Sources = (c.Cameras.Sources ?? []).Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Url)).Take(100).ToList();
         var cameraIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var cam in c.Cameras.Sources)
         {

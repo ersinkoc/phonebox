@@ -28,7 +28,8 @@ W.camera = {
     const wq = 'widget=' + encodeURIComponent(`${page.id}/${w.id}`);
     let alive = true, running = false, shown = null, inflight = null;
 
-    const visible = () => alive && box.isConnected && !document.body.classList.contains('night')
+    // document.hidden: the app went to the background (another app, screen off)
+    const visible = () => alive && box.isConnected && !document.hidden && !document.body.classList.contains('night')
       && pages[curPage] === page && !box.closest('.stack-item:not(.active)');
     const say = (text) => { note.textContent = text || ''; note.hidden = !text; };
     const clear = () => { if (shown) { URL.revokeObjectURL(shown); shown = null; } img.removeAttribute('src'); img.hidden = true; };
