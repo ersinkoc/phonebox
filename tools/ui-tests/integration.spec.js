@@ -98,6 +98,27 @@ test('session sheet shows counters and keeps prompt content out of the panel', a
   await expect(dialog).toHaveCount(0);
 });
 
+test('session widget labels Antigravity and safely renders unknown providers', async ({ page }) => {
+  await layout(page, [widget('sessions')]);
+  await page.evaluate(async () => {
+    const { D, emit } = await import('/panel/main.js');
+    D.work = {
+      sessions: [
+        { id: 'antigravity:test', tool: 'antigravity', name: 'Antigravity session', project: 'project', status: 'busy', since: Date.now() },
+        { id: 'unknown:test', tool: 'new-provider', name: 'Unknown session', project: 'other', status: 'idle', since: Date.now() },
+      ],
+    };
+    emit('work');
+  });
+  await expect(page.locator('.s-list')).toContainText('✦');
+  await expect(page.locator('.s-list')).toContainText('Antigravity');
+  await page.getByRole('button', { name: /project/ }).first().click();
+  await expect(page.getByRole('dialog')).toContainText('Antigravity');
+  await page.getByRole('button', { name: 'Close session details' }).click();
+  await page.getByRole('button', { name: /other/ }).click();
+  await expect(page.getByRole('dialog')).toContainText('Unknown (new-provider)');
+});
+
 test('uncontrollable volume shows the reading with disabled controls', async ({ page }) => {
   await layout(page, [widget('volume')]);
   await page.evaluate(async () => {
