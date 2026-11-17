@@ -156,7 +156,7 @@ class MainActivity : Activity(), SensorEventListener {
                     Toast.makeText(this, getString(R.string.pair_done, pairing.pc), Toast.LENGTH_LONG).show()
                     stream.stop(); stream.start(); web.reload()
                 } else {
-                    AlertDialog.Builder(this).setTitle(getString(R.string.pair_failed_title)).setMessage(problem)
+                    AlertDialog.Builder(this).setTitle(getString(R.string.pair_failed_title)).setMessage(problem.message(this))
                         .setPositiveButton(getString(R.string.ok), null).setOnDismissListener { hideSystemUi() }.show().plainButtons()
                 }
             }

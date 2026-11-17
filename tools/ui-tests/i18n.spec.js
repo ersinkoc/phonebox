@@ -60,17 +60,23 @@ test('the breathe widget greets in the panel language before the first tap', asy
   await expect(page.locator('.br-w')).toHaveText('Tippen zum Starten');
 });
 
-// Settings-page strings were added for English and Vietnamese only: t() falls back to the English entry for a key a
-// language does not define, so a missing key never shows a key name. The languages that do define a key must not carry
-// English text in its place, which is the failure mode a plain "every key exists" check cannot see.
+// Panel keys are translated in all twelve languages and are checked strictly. Settings-page strings were added for
+// English and Vietnamese only: t() falls back to the English entry for a key a language does not define, so a missing
+// s.* key never shows a key name. The languages that do define a key must not carry English text in its place, which is
+// the failure mode a plain "every key exists" check cannot see.
 test('every translated key is really translated, and the rest fall back to English', async ({ page }) => {
   await page.goto('/panel/');
   const result = await page.evaluate(() => {
     const I18n = window.PhoneBoxI18n;
     const S = I18n.STRINGS;
     const en = S.en;
+    // Panel keys (everything outside s.*) are the strings the phone shows, and they are translated in all twelve
+    // languages, so a missing one is a regression. Settings-page keys (s.*) were added for English and Vietnamese only
+    // and are allowed to fall back; every other gap is a failure.
     const gaps = Object.keys(S).flatMap((lang) =>
-      lang === 'en' ? [] : Object.keys(en).filter((k) => !(k in S[lang])).map((k) => `${lang}:${k}`));
+      lang === 'en' ? [] : Object.keys(en)
+        .filter((k) => !k.startsWith('s.') && !(k in S[lang]))
+        .map((k) => `${lang}:${k}`));
     // a key whose text is identical to English is either a name that is not translated (Wi-Fi, USB, Client secret) or
     // padding; the Vietnamese dictionary is complete, so check it exactly, and spot-check the rest for copied sentences.
     const SAME_IS_FINE = new Set(['s.discord.clientSecret', 'status.wiFi', 'status.usb', 's.cd.clientId']);
@@ -85,7 +91,7 @@ test('every translated key is really translated, and the rest fall back to Engli
     const translated = I18n.t('s.js.addWidget');
     return { gaps, copied, fallback, translated };
   });
-  expect(result.gaps.length).toBeGreaterThanOrEqual(0); // allowed: t() falls back to English
+  expect(result.gaps).toEqual([]); // panel keys must exist in every language; s.* may fall back to English
   expect(result.copied).toEqual([]);
   expect(result.fallback).toBe('Add a widget');
   expect(result.translated).toBe('Thêm widget');

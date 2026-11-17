@@ -32,7 +32,7 @@ import javax.net.ssl.X509TrustManager
  * The phone remembers every computer it was paired with; one is active over Wi-Fi (the one last plugged in, or the one
  * picked in the panel's page overview). A USB cable always wins: the plugged-in computer is used and becomes active.
  */
-class AgentLink(context: Context) {
+class AgentLink(private val context: Context) {
 
     class Reply(val code: Int, val contentType: String?, val body: InputStream)
 
@@ -236,6 +236,28 @@ class AgentLink(context: Context) {
 
     fun pairedPc(): String? = activePc()?.name
 
+    /** Why a pairing failed, so the shell can say it in the phone's language instead of English inside a dialog. */
+    sealed class PairFailure {
+        /** No address answered: not the same network, or the firewall blocked PhoneBox. */
+        data class Unreachable(val pc: String, val hosts: List<String>) : PairFailure()
+
+        /** The agent refused the one-time code (it works once, for five minutes). */
+        data class CodeRejected(val pc: String) : PairFailure()
+
+        /** The agent answered, but with an HTTP status the pairing flow does not know. */
+        data class BadAnswer(val pc: String, val code: Int) : PairFailure()
+
+        /** The certificate is not the one in the QR code, so this is not the computer the user confirmed. */
+        data class WrongCertificate(val pc: String) : PairFailure()
+
+        fun message(context: Context): String = when (this) {
+            is Unreachable -> context.getString(R.string.pair_failed_unreachable, pc, hosts.joinToString())
+            is CodeRejected -> context.getString(R.string.pair_failed_code, pc)
+            is BadAnswer -> context.getString(R.string.pair_failed_answer, pc, code)
+            is WrongCertificate -> context.getString(R.string.pair_failed_certificate)
+        }
+    }
+
     /**
      * Pairing without USB: the computer's settings page shows a QR code with this link, and the phone trades the
      * one-time code for the Wi-Fi key. The certificate fingerprint in the link is pinned from the first connection,
@@ -293,12 +315,12 @@ class AgentLink(context: Context) {
 
     /**
      * Trades the link's one-time code for the Wi-Fi key and makes that computer the active one. Blocks (network):
-     * call it off the main thread. Returns null when paired, otherwise a message for the user.
+     * call it off the main thread. Returns null when paired, otherwise why it failed, which the shell shows in the
+     * phone's language.
      */
-    fun claim(link: PairLink): String? {
+    fun claim(link: PairLink): PairFailure? {
         val pinned = pinnedFactory(link.fingerprint)
-        var problem = "Could not reach ${link.pc} at ${link.hosts.joinToString()}. The phone and the computer must be " +
-            "on the same network (or both on Tailscale), and the computer's firewall must allow PhoneBox."
+        var problem: PairFailure = PairFailure.Unreachable(link.pc, link.hosts)
         for (host in link.hosts) {
             try {
                 val c = URL("https://$host:${link.port}/api/pair/claim").openConnection() as HttpsURLConnection
@@ -313,11 +335,11 @@ class AgentLink(context: Context) {
                 c.outputStream.use { it.write(JSONObject().put("code", link.code).toString().toByteArray()) }
                 when (c.responseCode) {
                     200 -> {}
-                    403 -> return "${link.pc} did not accept the code: it works once and for 5 minutes. Start pairing again on the computer."
-                    else -> { problem = "${link.pc} answered ${c.responseCode}."; continue }
+                    403 -> return PairFailure.CodeRejected(link.pc)
+                    else -> { problem = PairFailure.BadAnswer(link.pc, c.responseCode); continue }
                 }
                 val j = JSONObject(c.inputStream.bufferedReader().readText())
-                if (!j.optString("fingerprint").equals(link.fingerprint, ignoreCase = true)) return "${link.pc} sent a different certificate. Start pairing again."
+                if (!j.optString("fingerprint").equals(link.fingerprint, ignoreCase = true)) return PairFailure.WrongCertificate(link.pc)
                 val hosts = j.optJSONArray("hosts")?.let { a -> (0 until a.length()).map { a.getString(it) } }
                     ?.filter { PairLink.isLocalAddress(it) }?.takeIf { it.isNotEmpty() } ?: link.hosts
                 // the name the user confirmed; only an entry for this very certificate is replaced, never one that
@@ -330,7 +352,7 @@ class AgentLink(context: Context) {
                 }
                 return null
             } catch (e: javax.net.ssl.SSLException) {
-                problem = "The computer at $host has a different certificate than the QR code. Start pairing again."
+                problem = PairFailure.WrongCertificate(link.pc)
             } catch (e: Exception) {
                 // try the next address
             }

@@ -11,23 +11,17 @@ public sealed class Tray : IHostedService
 
     private readonly IHostApplicationLifetime _life;
     private readonly AdbReverse _adb;
-    private readonly ConfigStore _cfg;
     private Thread? _thread;
     private ApplicationContext? _ctx;
     private Control? _invoker;
     private NotifyIcon? _icon;
 
-    public Tray(IHostApplicationLifetime life, AdbReverse adb, AgentEndpoint endpoint, ConfigStore cfg)
+    public Tray(IHostApplicationLifetime life, AdbReverse adb, AgentEndpoint endpoint)
     {
         SettingsUrl = endpoint.SettingsUrl;
         _life = life;
         _adb = adb;
-        _cfg = cfg;
     }
-
-    /// <summary>Vietnamese is the only language with its own tray wording; every other code keeps English.</summary>
-    private string Tr(string en, string vi) =>
-        string.Equals(_cfg.Get().Display.Language, "vi", StringComparison.OrdinalIgnoreCase) ? vi : en;
 
     public Task StartAsync(CancellationToken ct)
     {
@@ -54,26 +48,26 @@ public sealed class Tray : IHostedService
 
         using var iconStream = AppPaths.Resource("phonebox.ico");
         var status = new ToolStripMenuItem { Enabled = false };
-        var autostart = new ToolStripMenuItem(Tr("Start with Windows", "Khởi động cùng Windows"));
+        var autostart = new ToolStripMenuItem("Start with Windows");
         autostart.Click += (_, _) => { ToggleAutostart(); autostart.Checked = File.Exists(AppPaths.StartupShortcut); };
 
         var menu = new ContextMenuStrip();
         menu.Items.Add(new ToolStripMenuItem($"PhoneBox {AppPaths.Version}") { Enabled = false });
         menu.Items.Add(status);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem(Tr("Settings…", "Cài đặt…"), null, (_, _) => OpenUrl(SettingsUrl)) { Font = new Font(menu.Font, FontStyle.Bold) });
+        menu.Items.Add(new ToolStripMenuItem("Settings…", null, (_, _) => OpenUrl(SettingsUrl)) { Font = new Font(menu.Font, FontStyle.Bold) });
         // cancelled while Windows is ending the session (no adb is started then, for at most a minute): nothing to show
-        menu.Items.Add(Tr("Open panel on phone", "Mở panel trên điện thoại"), null, async (_, _) => { try { await _adb.OpenPanelAsync(); } catch (OperationCanceledException) { } });
+        menu.Items.Add("Open panel on phone", null, async (_, _) => { try { await _adb.OpenPanelAsync(); } catch (OperationCanceledException) { } });
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(Tr("Edit config.json", "Sửa config.json"), null, (_, _) => Open("notepad.exe", AppPaths.ConfigPath));
-        menu.Items.Add(Tr("Open log", "Mở log"), null, (_, _) => Open("notepad.exe", AppPaths.LogPath));
+        menu.Items.Add("Edit config.json", null, (_, _) => Open("notepad.exe", AppPaths.ConfigPath));
+        menu.Items.Add("Open log", null, (_, _) => Open("notepad.exe", AppPaths.LogPath));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(autostart);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(Tr("Quit", "Thoát"), null, (_, _) => _life.StopApplication());
+        menu.Items.Add("Quit", null, (_, _) => _life.StopApplication());
         menu.Opening += (_, _) =>
         {
-            status.Text = _adb.Connected ? Tr($"Phone connected ({_adb.Devices})", $"Điện thoại đã kết nối ({_adb.Devices})") : Tr("No phone connected", "Chưa kết nối điện thoại");
+            status.Text = _adb.Connected ? $"Phone connected ({_adb.Devices})" : "No phone connected";
             autostart.Checked = File.Exists(AppPaths.StartupShortcut);
         };
 
@@ -87,7 +81,7 @@ public sealed class Tray : IHostedService
         _icon.DoubleClick += (_, _) => OpenUrl(SettingsUrl);
         _adb.StateChanged += () =>
         {
-            try { host.BeginInvoke(() => _icon.Text = _adb.Connected ? Tr("PhoneBox — phone connected", "PhoneBox — điện thoại đã kết nối") : Tr("PhoneBox — waiting for phone", "PhoneBox — đang chờ điện thoại")); } catch { }
+            try { host.BeginInvoke(() => _icon.Text = _adb.Connected ? "PhoneBox — phone connected" : "PhoneBox — waiting for phone"); } catch { }
         };
 
         Application.Run(_ctx);
@@ -106,7 +100,7 @@ public sealed class Tray : IHostedService
     }
 
     /// <summary>Adds/removes a Startup-folder shortcut (only when the user clicks the menu item).</summary>
-    private void ToggleAutostart()
+    private static void ToggleAutostart()
     {
         try
         {
@@ -121,7 +115,7 @@ public sealed class Tray : IHostedService
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Tr("Could not change the startup shortcut: ", "Không thể thay đổi lối tắt khởi động: ") + ex.Message, "PhoneBox", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Could not change the startup shortcut: " + ex.Message, "PhoneBox", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 }

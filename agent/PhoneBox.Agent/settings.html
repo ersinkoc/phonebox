@@ -988,7 +988,7 @@ function renderPageEditor() {
         h('button', { class: 'btn sm' + (isHome(p) ? ' on' : ''), title: 'The page the panel comes back to (idle return, Back key)',
           onclick: () => { if (!p.id) { toast(t('s.js.saveFirstForId'), true); return; } cfg.display.homePage = p.id; renderPageEditor(); changed(); } },
           icon('home', 'm'), isHome(p) ? t('s.js.homePage') : t('s.js.makeHome')),
-        h('label', { class: 'hint', title: t('s.js.homePage') }, t('s.js.backHomeAfter'),
+        h('label', { class: 'hint', title: t('s.js.backHomeAfterHint') }, t('s.js.backHomeAfter'),
           h('select', { onchange: (e) => { p.idleSec = e.target.value === '' ? null : +e.target.value; changed(); } },
             ...[['', `default (${fmtIdle(cfg.display.idleReturnSec ?? 90)})`], ['0', 'never'], ['30', '30 s'], ['60', '1 min'], ['120', '2 min'], ['300', '5 min'], ['900', '15 min'], ['3600', '1 hour']]
               .map(([v, l]) => h('option', { value: v, selected: String(p.idleSec ?? '') === v }, l)))),
@@ -2656,14 +2656,15 @@ function fillDefaults() {
 }
 
 async function load() {
-  if (!catalog.widgets.length) {
-    catalogRaw = await (await fetch('/api/catalog')).json();
-    localizeCatalog();
-  }
+  if (!catalogRaw) catalogRaw = await (await fetch('/api/catalog')).json();
   const res = await fetch('/api/settings');
   cfgVersion = res.headers.get('X-Config-Version');
   cfg = await res.json();
   fillDefaults();
+  // the saved language must be active before the first render: the settings page is built in JavaScript, so a browser
+  // in English that has display.language = "vi" would otherwise render every editor in English and never rebuild them
+  if (window.PhoneBoxI18n) applyLanguageUi(cfg.display?.language || 'auto');
+  else localizeCatalog();
   saved = JSON.stringify(cfg);
   renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderConsole(); renderNetAdapters(); renderCharge(); bindForm(); changed(); loadInfo(); loadPhones();
 }
