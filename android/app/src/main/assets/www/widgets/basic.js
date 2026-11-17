@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, MEDIA_HTML, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, haptic, hasProcessesPage, hist, hour12, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, haptic, hasProcessesPage, hist, hour12, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
 import { W } from '../registry.js';
 import { invalidateDeckState } from './controls.js';
 
@@ -101,7 +101,7 @@ W.forecast = {
 W.media = {
   needs: ['state', 'fast'],
   create(box) {
-    box.innerHTML = MEDIA_HTML;
+    box.innerHTML = mediaHtml();
     const q = (s) => box.querySelector(s);
     const img = q('.art'), vol = q('.volr');
     const sourceIcon = q('.m-source-icon');
@@ -188,8 +188,8 @@ W.media = {
           box.classList.remove('playing');
           q('.m-app-name').textContent = 'Media';
           sourceIcon.replaceChildren();
-          q('.m-title').textContent = 'Nothing playing';
-          q('.m-artist').textContent = 'Press ▶ to resume';
+          q('.m-title').textContent = t('w.nothingPlaying');
+          q('.m-artist').textContent = t('w.pressToResume');
           q('.fill').style.width = '0';
           q('.m-pos').textContent = q('.m-dur').textContent = '0:00';
           if (artId !== 0) { artId = 0; img.classList.remove('on'); setArtColor(null); }
@@ -576,11 +576,11 @@ W.sessions = {
   needs: ['work', 'tick'],
   create(box) {
     const sum = h('span', 'w-sum');
-    const list = h('div', 's-list', h('div', 'empty', 'Waiting for session data…'));
+    const list = h('div', 's-list', h('div', 'empty', t('sess.waitingData')));
     box.append(h('div', 'w-head', h('span', 's-label', 'Sessions'), sum), list);
     box.style.setProperty('--c', '#d97757');
     const tokens = (n) => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
-    const statusText = (s) => s.status === 'busy' ? 'Working' : s.status === 'waiting' ? 'Waiting' : s.status === 'shell' ? 'Running a command' : s.outcome === 'completed' ? 'Completed' : s.outcome === 'aborted' ? 'Aborted' : 'Idle';
+    const statusText = (s) => s.status === 'busy' ? t('sess.working') : s.status === 'waiting' ? t('sess.waiting') : s.status === 'shell' ? t('sess.shell') : s.outcome === 'completed' ? t('sess.completed') : s.outcome === 'aborted' ? t('sess.aborted') : t('sess.idle');
     const ageText = (since) => Date.now() - since < 60_000 ? 'just now' : shortDur(Date.now() - since) + ' ago';
     const openDetails = (s) => {
       haptic();

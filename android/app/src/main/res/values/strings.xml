@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The few strings the native Android shell shows outside the WebView panel. -->
+    <string name="pair_title">Pair with a computer?</string>
+    <string name="pair_message">\"%1$s\" at %2$s (port %3$d).\n\nCheck that the computer\'s pairing window shows the code %4$s.\n\nContinue only if you started pairing on that computer.</string>
+    <string name="pair_positive">Pair</string>
+    <string name="pair_negative">Cancel</string>
+    <string name="pair_progress">Pairing with %1$s…</string>
+    <string name="pair_done">Paired with %1$s</string>
+    <string name="pair_failed_title">Pairing did not work</string>
+    <string name="ok">OK</string>
+</resources>

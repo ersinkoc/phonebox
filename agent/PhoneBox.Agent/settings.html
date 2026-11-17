@@ -944,19 +944,19 @@ function renderPages() {
       h('span', { class: 'pt-n' }, String((p.widgets || []).length)));
     dragSort(row, cfg.pages, (from, to) => { selPage = to; renderPages(); changed(); });
     return row;
-  }), h('button', { class: 'btn', style: { width: '100%', marginTop: '8px' }, onclick: () => openTemplates(null) }, '＋ New page'),
+  }), h('button', { class: 'btn', style: { width: '100%', marginTop: '8px' }, onclick: () => openTemplates(null) }, t('s.js.newPage')),
     h('div', { class: 'row', style: { gap: '6px', marginTop: '8px' } },
-      h('button', { class: 'btn sm', style: { flex: '1' }, title: 'Save all pages to a file', onclick: () => exportPages(cfg.pages, 'phonebox-pages') }, icon('download', 'm'), 'Export'),
-      h('button', { class: 'btn sm', style: { flex: '1' }, title: 'Load pages from a file', onclick: importPages }, icon('upload', 'm'), 'Import')));
+      h('button', { class: 'btn sm', style: { flex: '1' }, title: 'Save all pages to a file', onclick: () => exportPages(cfg.pages, 'phonebox-pages') }, icon('download', 'm'), t('s.js.export')),
+      h('button', { class: 'btn sm', style: { flex: '1' }, title: 'Load pages from a file', onclick: importPages }, icon('upload', 'm'), t('s.js.import'))));
   renderPageEditor();
 }
 
-const fmtIdle = (s) => (!s ? 'never' : s < 60 ? `${s} s` : s % 60 ? `${Math.round(s / 6) / 10} min` : `${s / 60} min`);
+const fmtIdle = (s) => (!s ? t('s.js.never') : s < 60 ? `${s} s` : s % 60 ? `${Math.round(s / 6) / 10} ${t('s.js.min')}` : `${s / 60} ${t('s.js.min')}`);
 const isHome = (p) => (cfg.display.homePage ? cfg.display.homePage === p.id : cfg.pages.find((x) => x.enabled !== false) === p);
 function fillHomeSelect() {
   const sel = $('homePageSel');
   if (!sel) return;
-  sel.replaceChildren(h('option', { value: '' }, 'The first page'), ...cfg.pages.filter((p) => p.id).map((p) => h('option', { value: p.id, selected: p.id === cfg.display.homePage }, `${p.icon || ''} ${p.title}`.trim())));
+  sel.replaceChildren(h('option', { value: '' }, t('s.js.firstPage')), ...cfg.pages.filter((p) => p.id).map((p) => h('option', { value: p.id, selected: p.id === cfg.display.homePage }, `${p.icon || ''} ${p.title}`.trim())));
   sel.value = cfg.display.homePage || '';
 }
 
@@ -964,45 +964,45 @@ function renderPageEditor() {
   fillHomeSelect();
   const p = curPage();
   $('stage').hidden = !p;
-  if (!p) { $('peHead').replaceChildren(h('p', { class: 'lead' }, 'No pages. Add one with "New page".')); $('peRest').replaceChildren(); return; }
+  if (!p) { $('peHead').replaceChildren(h('p', { class: 'lead' }, t('s.js.noPages'))); $('peRest').replaceChildren(); return; }
   p.widgets ??= [];
   const move = (d) => { const j = selPage + d; [cfg.pages[selPage], cfg.pages[j]] = [cfg.pages[j], cfg.pages[selPage]]; selPage = j; renderPages(); changed(); };
   $('peHead').replaceChildren(
     h('div', { class: 'card' },
       h('div', { class: 'row', style: { gap: '10px' } },
         h('input', { type: 'text', class: 'icon-input', value: p.icon || '', maxlength: 8, title: 'Icon', oninput: (e) => { p.icon = e.target.value; changed(); renderTabsOnly(); } }),
-        h('input', { type: 'text', value: p.title || '', placeholder: 'Page name', style: { flex: '1', fontSize: '16px', fontWeight: '600' }, oninput: (e) => { p.title = e.target.value; changed(); renderTabsOnly(); } }),
+        h('input', { type: 'text', value: p.title || '', placeholder: t('s.js.pageName'), style: { flex: '1', fontSize: '16px', fontWeight: '600' }, oninput: (e) => { p.title = e.target.value; changed(); renderTabsOnly(); } }),
         h('label', { class: 'check', title: 'Show this page on the phone' }, h('label', { class: 'switch' },
           h('input', { type: 'checkbox', checked: p.enabled !== false, onchange: (e) => {
-            if (!e.target.checked && cfg.pages.filter((x) => x.enabled !== false).length === 1) { e.target.checked = true; toast('At least one page must stay enabled', true); return; }
+            if (!e.target.checked && cfg.pages.filter((x) => x.enabled !== false).length === 1) { e.target.checked = true; toast(t('s.js.keepOnePage'), true); return; }
             p.enabled = e.target.checked; changed(); renderTabsOnly();
-          } }), h('span')), 'Shown'),
+          } }), h('span')), t('s.js.shown')),
         h('button', { class: 'icon-btn', title: 'Move earlier', disabled: selPage === 0, onclick: () => move(-1) }, icon('chevron-up')),
         h('button', { class: 'icon-btn', title: 'Move later', disabled: selPage === cfg.pages.length - 1, onclick: () => move(1) }, icon('chevron-down'))),
       h('div', { class: 'row', style: { gap: '6px', marginTop: '10px' } },
-        h('button', { class: 'btn sm', onclick: () => openTemplates(selPage) }, 'Replace with template…'),
-        h('button', { class: 'btn sm', onclick: () => { const c = JSON.parse(JSON.stringify(p)); c.id = ''; c.title += ' copy'; cfg.pages.splice(selPage + 1, 0, c); selPage++; renderPages(); changed(); } }, 'Duplicate page'),
-        h('button', { class: 'btn sm', title: 'Save this page to a file to share it or use it on another computer', onclick: () => exportPages([p], 'phonebox-page-' + (p.id || 'page')) }, 'Export page'),
-        h('button', { class: 'btn sm', onclick: () => { p.widgets = []; selWidget = -1; renderPageEditor(); changed(); } }, 'Clear'),
+        h('button', { class: 'btn sm', onclick: () => openTemplates(selPage) }, t('s.js.replaceTpl')),
+        h('button', { class: 'btn sm', onclick: () => { const c = JSON.parse(JSON.stringify(p)); c.id = ''; c.title += t('s.js.dupPageSuffix'); cfg.pages.splice(selPage + 1, 0, c); selPage++; renderPages(); changed(); } }, t('s.js.dupPage')),
+        h('button', { class: 'btn sm', title: 'Save this page to a file to share it or use it on another computer', onclick: () => exportPages([p], 'phonebox-page-' + (p.id || 'page')) }, t('s.js.exportPage')),
+        h('button', { class: 'btn sm', onclick: () => { p.widgets = []; selWidget = -1; renderPageEditor(); changed(); } }, t('s.js.clear')),
         h('span', { class: 'spacer' }),
         h('button', { class: 'btn sm' + (isHome(p) ? ' on' : ''), title: 'The page the panel comes back to (idle return, Back key)',
-          onclick: () => { if (!p.id) { toast('Save first so the page gets an id', true); return; } cfg.display.homePage = p.id; renderPageEditor(); changed(); } },
-          icon('home', 'm'), isHome(p) ? 'Home page' : 'Make home page'),
-        h('label', { class: 'hint', title: 'Return to the home page when nobody touched the panel for this long' }, 'Back home after ',
+          onclick: () => { if (!p.id) { toast(t('s.js.saveFirstForId'), true); return; } cfg.display.homePage = p.id; renderPageEditor(); changed(); } },
+          icon('home', 'm'), isHome(p) ? t('s.js.homePage') : t('s.js.makeHome')),
+        h('label', { class: 'hint', title: t('s.js.homePage') }, t('s.js.backHomeAfter'),
           h('select', { onchange: (e) => { p.idleSec = e.target.value === '' ? null : +e.target.value; changed(); } },
             ...[['', `default (${fmtIdle(cfg.display.idleReturnSec ?? 90)})`], ['0', 'never'], ['30', '30 s'], ['60', '1 min'], ['120', '2 min'], ['300', '5 min'], ['900', '15 min'], ['3600', '1 hour']]
               .map(([v, l]) => h('option', { value: v, selected: String(p.idleSec ?? '') === v }, l)))),
         h('button', { class: 'btn sm danger', disabled: cfg.pages.length === 1, onclick: () => {
-          if (!confirm(`Delete the page "${p.title}"?`)) return;
+          if (!confirm(t('s.js.deletePageConfirm', { title: p.title }))) return;
           cfg.pages.splice(selPage, 1); selWidget = -1; renderPages(); changed();
         } }, 'Delete page'))));
-  $('peHead').append(appearanceEditor(p, () => [cfg.display?.appearance], 'Page appearance'));
+  $('peHead').append(appearanceEditor(p, () => [cfg.display?.appearance], t('s.js.pageAppearance')));
   $('peRest').replaceChildren(
-    h('p', { class: 'hint layout-hint', style: { margin: '6px 0 14px' } }, 'Drag a widget to move it, drag its corner to resize. Widgets cannot overlap. Click one to edit its options.'),
+    h('p', { class: 'hint layout-hint', style: { margin: '6px 0 14px' } }, t('s.js.layoutHint')),
     h('div', { class: 'ed-cols' },
       h('div', { class: 'card', id: 'inspector' }),
-      h('div', { class: 'card' }, h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '8px' } }, h('h3', { style: { margin: 0 } }, 'Add a widget'),
-        h('input', { type: 'search', id: 'palSearch', placeholder: `Search ${catalog.widgets.length} widgets…`, value: palQuery, style: { width: '210px' },
+      h('div', { class: 'card' }, h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '8px' } }, h('h3', { style: { margin: 0 } }, t('s.js.addWidget')),
+        h('input', { type: 'search', id: 'palSearch', placeholder: t('s.js.searchWidgets', { n: catalog.widgets.length }), value: palQuery, style: { width: '210px' },
           oninput: (e) => { palQuery = e.target.value; renderPalette(); } })), h('div', { class: 'palette', id: 'palette' }))));
   renderCanvas();
   renderPalette();
@@ -1100,7 +1100,7 @@ function renderCanvas() {
           selWidget = i;
           renderCanvas();
           renderInspector();
-          toast(`${widgetDef(type).name} added to the Smart Stack`);
+          toast(t('s.js.addedToStack', { name: widgetDef(type).name }));
         }
       });
     }
@@ -1156,13 +1156,13 @@ function renderPalette() {
       },
       onclick: () => addWidget(d)
     },
-      h('span', { class: 'pal-ico' }, d.icon), h('span', {}, h('b', {}, d.name), h('small', {}, d.desc))))]) : [h('p', { class: 'hint' }, 'No widget matches.')]));
+      h('span', { class: 'pal-ico' }, d.icon), h('span', {}, h('b', {}, d.name), h('small', {}, d.desc))))]) : [h('p', { class: 'hint' }, t('s.js.noWidgetMatch'))]));
 }
 
 function addWidget(d) {
   const p = curPage();
   const spot = freeSpot(p, d.w, d.h, d.minW, d.minH);
-  if (!spot) { toast('No free space on this page — make room first', true); return; }
+  if (!spot) { toast(t('s.js.noFreeSpace'), true); return; }
   p.widgets.push({ id: '', type: d.type, ...spot, options: defaultOptions(d.type) });
   selWidget = p.widgets.length - 1;
   renderCanvas(); renderInspector(); renderTabsOnly(); changed();
@@ -1173,13 +1173,13 @@ function renderInspector() {
   const box = $('inspector'), p = curPage();
   if (!box) return;
   const w = p?.widgets[selWidget];
-  if (!w) { box.replaceChildren(h('h3', {}, 'Widget'), h('p', { class: 'hint', style: { margin: 0 } }, 'Click a widget on the page to edit it, or add one from the list.')); return; }
+  if (!w) { box.replaceChildren(h('h3', {}, t('s.js.widget')), h('p', { class: 'hint', style: { margin: 0 } }, t('s.js.clickWidget'))); return; }
   const d = widgetDef(w.type);
   const num = (key, label, min, max) => h('div', { class: 'field', style: { flex: '1' } }, h('label', {}, label),
     h('input', { type: 'number', min, max, value: w[key], onchange: (e) => {
       const v = Math.max(min, Math.min(max, parseInt(e.target.value || '0', 10)));
       const n = { x: w.x, y: w.y, w: w.w, h: w.h, [key]: v };
-      if (n.x + n.w > catalog.cols || n.y + n.h > catalog.rows || overlaps(p, w, n.x, n.y, n.w, n.h)) { toast('That does not fit there', true); e.target.value = w[key]; return; }
+      if (n.x + n.w > catalog.cols || n.y + n.h > catalog.rows || overlaps(p, w, n.x, n.y, n.w, n.h)) { toast(t('s.js.doesNotFit'), true); e.target.value = w[key]; return; }
       w[key] = v; changed(); renderCanvas();
     } }));
   box.replaceChildren(
@@ -1188,15 +1188,15 @@ function renderInspector() {
       h('div', { class: 'row', style: { gap: '6px' } },
         h('button', { class: 'btn sm', onclick: () => {
           const spot = freeSpot(p, w.w, w.h, d.minW, d.minH);
-          if (!spot) { toast('No free space for a copy', true); return; }
+          if (!spot) { toast(t('s.js.noFreeSpaceCopy'), true); return; }
           p.widgets.push({ ...JSON.parse(JSON.stringify(w)), id: '', ...spot }); selWidget = p.widgets.length - 1; renderCanvas(); renderInspector(); changed();
-        } }, 'Duplicate'),
-        h('button', { class: 'btn sm danger', onclick: () => { p.widgets.splice(selWidget, 1); selWidget = -1; renderCanvas(); renderInspector(); changed(); } }, 'Remove'))),
+        } }, t('s.js.dup')),
+        h('button', { class: 'btn sm danger', onclick: () => { p.widgets.splice(selWidget, 1); selWidget = -1; renderCanvas(); renderInspector(); changed(); } }, t('s.js.remove')))),
     h('p', { class: 'hint', style: { margin: '0 0 12px' } }, d.desc),
     ...d.options.map((o) => optionField(w, o)),
-    appearanceEditor(w, () => [cfg.display?.appearance, p.appearance], 'Widget appearance', true),
-    h('div', { class: 'row', style: { gap: '8px' } }, num('x', 'Column', 0, catalog.cols - 1), num('y', 'Row', 0, catalog.rows - 1),
-      num('w', 'Width', d.minW, catalog.cols), num('h', 'Height', d.minH, catalog.rows)));
+    appearanceEditor(w, () => [cfg.display?.appearance, p.appearance], t('s.js.widgetAppearance'), true),
+    h('div', { class: 'row', style: { gap: '8px' } }, num('x', t('s.js.col'), 0, catalog.cols - 1), num('y', t('s.js.row'), 0, catalog.rows - 1),
+      num('w', t('s.js.width'), d.minW, catalog.cols), num('h', t('s.js.height'), d.minH, catalog.rows)));
 }
 
 function renderStackWidgetsOption(w, o) {
@@ -1225,7 +1225,7 @@ function renderStackWidgetsOption(w, o) {
   };
 
   const add = (type, atIdx = -1) => {
-    if (items.length >= 12) { toast('A stack can contain up to 12 widgets', true); return; }
+    if (items.length >= 12) { toast(t('s.js.stackFull'), true); return; }
     if (!type || ['stack', 'command'].includes(type) || !catalog.widgets.some((cw) => cw.type === type)) return;
     const newItem = { id: `card-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, type, enabled: true, options: defaultOptions(type) };
     let newIdx;
@@ -1238,7 +1238,7 @@ function renderStackWidgetsOption(w, o) {
     }
     activeStackSubIdx = newIdx;
     save();
-    toast(`${widgetDef(type).name} added to Smart Stack`);
+    toast(t('s.js.addedToStack', { name: widgetDef(type).name }));
   };
 
   const rowsAndConfigs = [];
@@ -1304,7 +1304,7 @@ function renderStackWidgetsOption(w, o) {
       h('div', { class: 'stack-row-actions' },
         h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move up', disabled: i === 0, onclick: (e) => { e.stopPropagation(); move(i, i - 1); } }, icon('chevron-up')),
         h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move down', disabled: i === items.length - 1, onclick: (e) => { e.stopPropagation(); move(i, i + 1); } }, icon('chevron-down')),
-        h('button', { type: 'button', class: 'stack-btn-sm stack-btn-del', title: 'Remove', onclick: (e) => { e.stopPropagation(); remove(i); } }, icon('x'))
+        h('button', { type: 'button', class: 'stack-btn-sm stack-btn-del', title: t('s.js.remove'), onclick: (e) => { e.stopPropagation(); remove(i); } }, icon('x'))
       )
     );
     rowsAndConfigs.push(row);
@@ -1368,7 +1368,7 @@ function renderStackWidgetsOption(w, o) {
   );
 
   return h('div', { class: 'field' },
-    h('label', {}, o.label || 'Widgets in stack'),
+    h('label', {}, o.label || t('s.js.widgetsInStack')),
     h('span', { class: 'hint', style: { margin: '2px 0 8px', display: 'block' } },
       'Click a widget row to edit its settings. Drag rows or use the arrows to reorder.'),
     h('div', {
@@ -1415,7 +1415,7 @@ function optionField(w, o, onValChange) {
           const knownOrder = currentChoices.map((c) => c[0]).filter((x) => picked.has(x));
           const preservedUnknown = [...picked].filter((x) => !knownOrder.includes(x));
           const next = [...knownOrder, ...preservedUnknown];
-          if (!next.length) { e.target.checked = true; toast('Keep at least one', true); return; }
+          if (!next.length) { e.target.checked = true; toast(t('s.js.keepOne'), true); return; }
           set(o.key, next);
         } }), l)));
       };
@@ -1459,7 +1459,7 @@ function optionField(w, o, onValChange) {
         } catch (_) { }
       };
       load();
-      return field(h('div', { class: 'row', style: { gap: '8px' } }, select, h('button', { class: 'btn sm', onclick: load }, 'Refresh')));
+      return field(h('div', { class: 'row', style: { gap: '8px' } }, select, h('button', { class: 'btn sm', onclick: load }, t('s.js.refresh'))));
     }
     case 'number':
       return field(h('input', { type: 'number', min: o.min, max: o.max, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
@@ -1530,7 +1530,7 @@ let pairAttempt = 0; // the dialog's current attempt: late answers from an older
 async function pairOverWifi() {
   const mine = ++pairAttempt;
   let r;
-  try { r = await (await fetch('/api/pair/start', { method: 'POST' })).json(); } catch (_) { toast('Could not start pairing', true); return; }
+  try { r = await (await fetch('/api/pair/start', { method: 'POST' })).json(); } catch (_) { toast(t('s.js.pairFailed'), true); return; }
   const cancel = () => fetch('/api/pair/cancel?attempt=' + encodeURIComponent(r.attempt), { method: 'POST' }).catch(() => {});
   if (mine !== pairAttempt) { if (r.enabled) cancel(); return; } // started again meanwhile
   if (!r.enabled) {
@@ -1556,12 +1556,12 @@ async function pairOverWifi() {
       ? `The phone will connect to ${r.hosts.join(', ')} on port ${r.port}. The code works once, for 5 minutes; the key itself is not in the QR code.`
       : 'No LAN or Tailscale address was found on this computer, so the phone has nothing to connect to.'),
     h('div', { class: 'row', style: 'margin-top:8px' },
-      h('button', { class: 'btn sm', onclick: () => { navigator.clipboard?.writeText(r.link); toast('Pairing link copied'); } }, 'Copy the pairing link')));
+      h('button', { class: 'btn sm', onclick: () => { navigator.clipboard?.writeText(r.link); toast(t('s.js.pairLinkCopied')); } }, 'Copy the pairing link')));
   const tick = async () => {
     try {
       const s = await (await fetch('/api/pair/status')).json();
       if (mine !== pairAttempt) return; // this dialog was closed (and maybe a new one opened) while waiting
-      if (s.claims > r.claims) { onModalClose = () => { pairAttempt++; clearInterval(timer); }; closeModal(); toast('Phone paired over Wi-Fi'); return; }
+      if (s.claims > r.claims) { onModalClose = () => { pairAttempt++; clearInterval(timer); }; closeModal(); toast(t('s.js.pairedWifi')); return; }
     } catch (_) { }
     if (mine !== pairAttempt) return;
     const ms = r.expiresAt - Date.now();
@@ -1633,10 +1633,10 @@ async function importPages() {
   const text = await pickFile();
   if (text == null) return;
   let data;
-  try { data = JSON.parse(text); } catch (e) { toast('Not a JSON file: ' + e.message, true); return; }
+  try { data = JSON.parse(text); } catch (e) { toast(t('s.js.notJson', { error: e.message }), true); return; }
   // a page file, a whole settings file, a list of pages or a single page
   const pages = Array.isArray(data) ? data : Array.isArray(data.pages) ? data.pages : data.widgets ? [data] : null;
-  if (!pages?.length || !pages.every((x) => x && typeof x === 'object' && Array.isArray(x.widgets))) { toast('No pages found in that file', true); return; }
+  if (!pages?.length || !pages.every((x) => x && typeof x === 'object' && Array.isArray(x.widgets))) { toast(t('s.js.noPagesInFile'), true); return; }
   const known = new Set(catalog.widgets.map((w) => w.type));
   const clean = fitPages(pages.map((x) => ({ ...JSON.parse(JSON.stringify(x)), id: '', widgets: x.widgets.filter((w) => known.has(w.type)).map((w) => ({ ...w, id: '' })) })));
   const dropped = pages.reduce((n, x) => n + x.widgets.length, 0) - clean.reduce((n, x) => n + x.widgets.length, 0);
@@ -1663,7 +1663,7 @@ $('uploadJson').onclick = async () => {
   const text = await pickFile();
   if (text == null) return;
   try { JSON.parse(text); } catch (e) { $('jsonErr').textContent = e.message; return; }
-  if (!confirm('This replaces all settings, including the commands that shortcuts and command widgets run on this computer. Only load your own or a trusted file. Continue?')) return;
+  if (!confirm(t('s.js.replaceAll'))) return;
   $('json').value = text;
   $('applyJson').click();
 };
@@ -1677,7 +1677,7 @@ function renderCalendars() {
     h('input', { type: 'text', class: 'cal-url', value: c.url || '', placeholder: 'https://calendar.google.com/calendar/ical/…/basic.ics', spellcheck: 'false',
       oninput: (e) => { c.url = e.target.value.trim(); changed(); } }),
     h('input', { type: 'color', value: c.color || CAL_COLORS[i % CAL_COLORS.length], title: 'Colour', oninput: (e) => { c.color = e.target.value; changed(); } }),
-    h('button', { class: 'btn sm danger', onclick: () => { cfg.calendars.splice(i, 1); renderCalendars(); changed(); } }, 'Remove'))));
+    h('button', { class: 'btn sm danger', onclick: () => { cfg.calendars.splice(i, 1); renderCalendars(); changed(); } }, t('s.js.remove')))));
 }
 $('installApp').onclick = async () => {
   $('installApp').disabled = true;
@@ -1724,7 +1724,7 @@ function renderConsole() {
       oninput: (e) => { p.keys = consoleKeysParse(e.target.value); changed(); } }, consoleKeysText(p)),
     h('div', { class: 'console-dial' },
       field(p, 'dialLeft', 'Dial left, e.g. ['), field(p, 'dialRight', 'Dial right, e.g. ]'), field(p, 'dialPress', 'Dial press, e.g. ctrl+0')),
-    h('button', { class: 'btn sm danger', onclick: () => { cfg.console.profiles.splice(i, 1); renderConsole(); changed(); } }, 'Remove'))));
+    h('button', { class: 'btn sm danger', onclick: () => { cfg.console.profiles.splice(i, 1); renderConsole(); changed(); } }, t('s.js.remove')))));
 }
 $('consoleAdd').onclick = () => {
   cfg.console ??= { profiles: [] };
@@ -1756,7 +1756,7 @@ function renderFeeds() {
     h('input', { type: 'text', value: f.name || '', maxlength: '60', placeholder: 'Name, e.g. News', oninput: (e) => { f.name = e.target.value; changed(); } }),
     h('input', { type: 'text', class: 'cal-url', value: f.url || '', placeholder: 'https://example.com/feed.xml', spellcheck: 'false',
       oninput: (e) => { f.url = e.target.value.trim(); changed(); } }),
-    h('button', { class: 'btn sm danger', onclick: () => { cfg.feeds.splice(i, 1); renderFeeds(); changed(); } }, 'Remove'))));
+    h('button', { class: 'btn sm danger', onclick: () => { cfg.feeds.splice(i, 1); renderFeeds(); changed(); } }, t('s.js.remove')))));
 }
 $('feedAdd').onclick = () => {
   cfg.feeds ??= [];
@@ -1823,66 +1823,66 @@ function renderRules() {
     renderRules(); changed();
   } }, label)));
   const list = $('ruleList');
-  if (!cfg.rules.length) { list.replaceChildren(h('p', { class: 'hint' }, 'No rules yet — start from one of the examples above.')); return; }
+  if (!cfg.rules.length) { list.replaceChildren(h('p', { class: 'hint' }, t('s.r.noRules'))); return; }
   list.replaceChildren(...cfg.rules.map((r, i) => ruleCard(r, i)));
 }
 
 function ruleCard(r, i) {
   const set = (k, v, rerender = false) => { r[k] = v; changed(); if (rerender) renderRules(); };
-  const t = TRIGGERS[r.when] || TRIGGERS['session-waiting'];
+  const trig = TRIGGERS[r.when] || TRIGGERS['session-waiting'];
   const sel = (value, options, onchange) => h('select', { onchange: (e) => onchange(e.target.value) },
     ...Object.entries(options).map(([k, v]) => h('option', { value: k, selected: k === value }, typeof v === 'string' ? v : v.label)));
   const text = (key, placeholder, cls = '') => h('input', { type: 'text', class: cls, value: r[key] ?? '', placeholder, oninput: (e) => set(key, e.target.value || null) });
 
   const cond = [];
-  if (t.match) cond.push(text('match', t.match, 'grow'));
+  if (trig.match) cond.push(text('match', trig.match, 'grow'));
   if (r.when === 'push') cond.push(sel(r.op || 'on', { on: 'is on', '>': 'is above', '<': 'is below', '=': 'equals', '!=': 'is not' }, (v) => set('op', v === 'on' ? null : v, true)),
     r.op ? text('arg', 'value', '') : null);
-  if (t.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? t.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, t.value));
+  if (trig.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? trig.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, trig.value));
 
   const act = [];
   if (r.then === 'goto') act.push(h('select', { onchange: (e) => set('page', e.target.value) },
-    ...(cfg.pages.some((p) => p.id === r.page) ? [] : [h('option', { value: r.page || '', selected: true }, '— pick a page —')]),
+    ...(cfg.pages.some((p) => p.id === r.page) ? [] : [h('option', { value: r.page || '', selected: true }, t('s.r.pickPage'))]),
     ...cfg.pages.map((p) => h('option', { value: p.id, selected: p.id === r.page }, `${p.icon || ''} ${p.title}`.trim()))));
-  if (r.then === 'notify') act.push(text('text', 'text ({detail} = what happened)', 'grow'),
+  if (r.then === 'notify') act.push(text('text', t('s.r.textPlaceholder'), 'grow'),
     sel(r.level || 'info', { info: 'info', ok: 'ok', warn: 'warning', error: 'error' }, (v) => set('level', v)));
-  if (r.then === 'push') act.push(text('key', 'key, e.g. onair'), text('pushValue', 'value (default: true)', 'grow'));
-  if (r.then === 'shortcut') act.push(h('select', { onchange: (e) => set('shortcut', e.target.value || null) }, h('option', { value: '' }, '— pick a shortcut —'),
+  if (r.then === 'push') act.push(text('key', t('s.r.keyPlaceholder')), text('pushValue', t('s.r.valuePlaceholder'), 'grow'));
+  if (r.then === 'shortcut') act.push(h('select', { onchange: (e) => set('shortcut', e.target.value || null) }, h('option', { value: '' }, t('s.r.pickShortcut')),
     ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === r.shortcut }, `${s.icon || ''} ${s.label}`.trim()))));
 
   const num = (key, min, max, width = 64) => h('input', { type: 'number', min, max, style: `width:${width}px`, value: r[key] ?? '', placeholder: '0',
     oninput: (e) => set(key, e.target.value === '' ? (key === 'countdownSec' ? null : 0) : +e.target.value) });
   const days = (r.days || '').split(',').filter(Boolean);
-  const dayBtns = h('span', { class: 'days' }, ...DAYS.map(([d, l]) => h('button', { class: 'day' + (!days.length || days.includes(d) ? ' on' : ''), title: 'Only on these days',
+  const dayBtns = h('span', { class: 'days' }, ...DAYS.map(([d, l]) => h('button', { class: 'day' + (!days.length || days.includes(d) ? ' on' : ''), title: t('s.r.onlyTheseDays'),
     onclick: () => {
       const cur = days.length ? days : DAYS.map(([x]) => x);
       const next = cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d];
       set('days', next.length === 7 || !next.length ? null : DAYS.map(([x]) => x).filter((x) => next.includes(x)).join(','), true);
     } }, l)));
   const opts = h('details', { class: 'ropts', open: !!(r.days || r.during || r.forSec || r.cooldownMin || (r.priority ?? 5) !== 5 || r.countdownSec != null) },
-    h('summary', {}, 'Options', h('span', { class: 'hint' }, ' ' + ruleSummary(r))),
-    h('div', { class: 'line' }, h('b', {}, 'Only'), dayBtns, h('span', { class: 'hint' }, 'between'), text('during', 'all day (or 09:00-18:00)')),
-    h('div', { class: 'line' }, h('b', {}, 'Wait'), h('span', { class: 'hint' }, 'act when it lasts'), num('forSec', 0, 3600), h('span', { class: 'hint' }, 's · then rest'), num('cooldownMin', 0, 1440),
-      h('span', { class: 'hint' }, 'min before it may act again')),
-    r.then === 'goto' ? h('div', { class: 'line' }, h('b', {}, 'Page'), h('span', { class: 'hint' }, 'priority'),
+    h('summary', {}, t('s.r.options'), h('span', { class: 'hint' }, ' ' + ruleSummary(r))),
+    h('div', { class: 'line' }, h('b', {}, t('s.r.only')), dayBtns, h('span', { class: 'hint' }, t('s.r.between')), text('during', t('s.r.allDay'))),
+    h('div', { class: 'line' }, h('b', {}, t('s.r.wait')), h('span', { class: 'hint' }, t('s.r.actWhenLasts')), num('forSec', 0, 3600), h('span', { class: 'hint' }, 's · then rest'), num('cooldownMin', 0, 1440),
+      h('span', { class: 'hint' }, t('s.r.minBeforeAgain'))),
+    r.then === 'goto' ? h('div', { class: 'line' }, h('b', {}, t('s.r.page')), h('span', { class: 'hint' }, t('s.r.priority')),
       sel(String(r.priority ?? 5), PRIORITIES[r.priority ?? 5] ? PRIORITIES : { ...PRIORITIES, [r.priority]: String(r.priority) }, (v) => set('priority', +v)),
-      h('span', { class: 'hint' }, '· countdown'), num('countdownSec', 0, 30, 56), h('span', { class: 'hint' }, `s (empty = ${cfg.display.switchCountdownSec ?? 3} s, as in General)`)) : null);
+      h('span', { class: 'hint' }, '· ' + t('s.r.countdown')), num('countdownSec', 0, 30, 56), h('span', { class: 'hint' }, `s (empty = ${cfg.display.switchCountdownSec ?? 3} s, as in General)`)) : null);
 
   const live = activeRules.includes(r.id);
   return h('div', { class: 'card rule' + (r.enabled === false ? ' off' : '') },
     h('div', { class: 'line' },
       h('label', { class: 'switch', title: 'Enabled' }, h('input', { type: 'checkbox', checked: r.enabled !== false, onchange: (e) => set('enabled', e.target.checked, true) }), h('span')),
-      h('input', { type: 'text', class: 'grow', value: r.name || '', placeholder: 'Name (shown on notifications)', oninput: (e) => set('name', e.target.value) }),
+      h('input', { type: 'text', class: 'grow', value: r.name || '', placeholder: t('s.r.namePlaceholder'), oninput: (e) => set('name', e.target.value) }),
       live ? h('span', { class: 'live' }, '● active now') : null,
-      h('button', { class: 'btn sm', title: 'Run the action once', onclick: async () => {
+      h('button', { class: 'btn sm', title: t('s.r.runOnce'), onclick: async () => {
         const res = await fetch('/api/rules/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r) });
-        toast(res.ok ? 'Done — look at the phone' : 'Could not run it', !res.ok);
+        toast(res.ok ? t('s.r.done') : t('s.js.couldNotRun'), !res.ok);
       } }, 'Test'),
       h('button', { class: 'btn sm danger', onclick: () => { cfg.rules.splice(i, 1); renderRules(); changed(); } }, 'Delete')),
-    h('div', { class: 'line' }, h('b', {}, 'When'), sel(r.when, TRIGGERS, (v) => { r.match = null; r.value = null; set('when', v, true); }), ...cond),
-    h('div', { class: 'line' }, h('b', {}, 'Then'), sel(r.then, ACTIONS, (v) => { if (v === 'goto' && !cfg.pages.some((p) => p.id === r.page)) r.page = cfg.pages[0]?.id || null; set('then', v, true); }), ...act),
+    h('div', { class: 'line' }, h('b', {}, t('s.r.when')), sel(r.when, TRIGGERS, (v) => { r.match = null; r.value = null; set('when', v, true); }), ...cond),
+    h('div', { class: 'line' }, h('b', {}, t('s.r.then')), sel(r.then, ACTIONS, (v) => { if (v === 'goto' && !cfg.pages.some((p) => p.id === r.page)) r.page = cfg.pages[0]?.id || null; set('then', v, true); }), ...act),
     r.then !== 'notify' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: r.whileActive !== false, onchange: (e) => set('whileActive', e.target.checked) }),
-      r.then === 'goto' ? 'Only while it lasts (then go back to the previous page)' : r.then === 'shortcut' ? 'Only while it lasts (a toggle shortcut switches back off)' : 'Only while it lasts (then remove the value)') : null,
+      r.then === 'goto' ? t('s.r.onlyWhileGoto') : r.then === 'shortcut' ? t('s.r.onlyWhileShortcut') : t('s.r.onlyWhileValue')) : null,
     opts);
 }
 
@@ -1904,7 +1904,7 @@ async function pollRules() {
     const s = await (await fetch('/api/state')).json();
     const next = s.rules || [];
     rulesPausedUntil = s.rulesPaused || null;
-    $('rulesPauseBtn').textContent = rulesPausedUntil ? 'Resume rules' : 'Pause all rules for 1 hour';
+    $('rulesPauseBtn').textContent = rulesPausedUntil ? t('s.r.resumeRules') : t('s.rules.pause1h');
     $('rulesPausedState').textContent = rulesPausedUntil ? `⏸ Rules are paused until ${new Date(rulesPausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
       : 'Page switches count down on the phone and wait while you use it (General › Page switching).';
     if (next.join() !== activeRules.join()) { activeRules = next; if (!document.activeElement?.closest?.('#ruleList')) renderRules(); }
@@ -1923,10 +1923,10 @@ function renderCharge() {
   const sc = cfg.charge.method === 'shortcuts';
   $('chargeHa').hidden = sc; $('chargeOn').hidden = $('chargeOff').hidden = !sc;
   for (const [id, key] of [['chargeOnSel', 'onShortcut'], ['chargeOffSel', 'offShortcut']])
-    $(id).replaceChildren(h('option', { value: '' }, '— pick a shortcut —'), ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === cfg.charge[key] }, `${s.icon || ''} ${s.label}`.trim())));
+    $(id).replaceChildren(h('option', { value: '' }, t('s.r.pickShortcut')), ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === cfg.charge[key] }, `${s.icon || ''} ${s.label}`.trim())));
 }
 async function chargeTest(action) {
-  if (JSON.stringify(cfg) !== saved) { toast('Save first, then test', true); return; }
+  if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveThenTest'), true); return; }
   const r = await fetch(`/api/charge/test?action=${action}`, { method: 'POST' });
   const j = await r.json().catch(() => ({}));
   toast(r.ok ? `Power ${action}` : j.error || 'Could not switch', !r.ok);
@@ -1966,8 +1966,8 @@ function renderWebhooks(lan) {
     ? h('div', {}, h('p', { class: 'hint', style: { marginTop: 0 } }, 'From other machines on your network or Tailscale, with the webhook key (HTTPS with this PC\'s self-signed certificate, so curl needs -k). ' +
         'The key can also go in ?token= for senders that cannot set headers. It only opens the webhook endpoints, never the phone API; replace it if it leaks.'),
       h('div', { class: 'row', style: { gap: '8px', margin: '0 0 8px' } }, h('code', {}, token ? token.slice(0, 6) + '…' : '(generated on save)'),
-        h('button', { class: 'btn sm', disabled: !token, onclick: () => { navigator.clipboard?.writeText(token); toast('Webhook key copied'); } }, 'Copy key'),
-        h('button', { class: 'btn sm', onclick: () => { cfg.lan = { ...(cfg.lan || {}), webhookToken: '' }; changed(); toast('A new webhook key is generated on save'); } }, 'New key')),
+        h('button', { class: 'btn sm', disabled: !token, onclick: () => { navigator.clipboard?.writeText(token); toast(t('s.js.webhookKeyCopied')); } }, t('s.wh.copyKey')),
+        h('button', { class: 'btn sm', onclick: () => { cfg.lan = { ...(cfg.lan || {}), webhookToken: '' }; changed(); toast(t('s.js.webhookKeyOnSave')); } }, t('s.k.newKey'))),
       h('code', { class: 'cmdline', onclick: () => { navigator.clipboard?.writeText(`curl -k -X POST ${host}/api/push/temperature -H "Authorization: Bearer ${token}" -d 21.5`); toast('Copied'); } },
         `curl -k -X POST ${host}/api/push/temperature -H "Authorization: Bearer ${token.slice(0, 6)}…" -d 21.5`))
     : h('p', { class: 'hint', style: { margin: 0 } }, 'Turn on "Wi-Fi & Tailscale" in General to accept webhooks from other machines too. From this PC no token is needed.'));
@@ -2055,48 +2055,48 @@ function renderEditor() {
 
   ed.append(
     h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '12px' } },
-      h('h3', { style: { margin: 0 } }, 'Edit shortcut'),
+      h('h3', { style: { margin: 0 } }, t('s.k.edit')),
       h('div', { class: 'row', style: { gap: '6px' } },
-        h('button', { class: 'btn sm', onclick: () => moveKey(-1), disabled: selKey === 0 }, '← Earlier'),
-        h('button', { class: 'btn sm', onclick: () => moveKey(1), disabled: selKey === cfg.shortcuts.length - 1 }, 'Later →'),
+        h('button', { class: 'btn sm', onclick: () => moveKey(-1), disabled: selKey === 0 }, t('s.js.earlier')),
+        h('button', { class: 'btn sm', onclick: () => moveKey(1), disabled: selKey === cfg.shortcuts.length - 1 }, t('s.js.later')),
         h('button', { class: 'btn sm', onclick: testKey }, icon('play', 'm'), 'Test'),
         h('button', { class: 'btn sm danger', onclick: delKey }, 'Delete'))),
     h('div', { class: 'grid2' },
       h('div', {},
-        text('label', 'Label', 'Text shown on the key'),
-        h('div', { class: 'field' }, h('label', {}, 'Icon (emoji)'), h('div', { class: 'row' }, iconIn),
+        text('label', t('s.k.label'), t('s.k.labelHint')),
+        h('div', { class: 'field' }, h('label', {}, t('s.z.iconEmoji')), h('div', { class: 'row' }, iconIn),
           h('div', { class: 'emojis' }, ...EMOJIS.map((em) => h('button', { onclick: () => { iconIn.value = em; upd('icon', em); } }, em)))),
-        h('div', { class: 'field' }, h('label', {}, 'Colour'), h('div', { class: 'row' }, colorIn), sw)),
+        h('div', { class: 'field' }, h('label', {}, t('s.z.colour')), h('div', { class: 'row' }, colorIn), sw)),
       h('div', {}, ...actionFields(s, upd, text, cmdIn, preset),
-        h('div', { class: 'field' }, h('label', {}, 'Id'), h('code', {}, s.id || '(generated on save)')))));
+        h('div', { class: 'field' }, h('label', {}, 'Id'), h('code', {}, s.id || t('s.k.genOnSave'))))));
 }
 
 // What a key does: run a program, press keys, type text or run a macro; plus the on / off (toggle) options.
-const KINDS = { run: 'Run a program, file or address', keys: 'Press keys', text: 'Type text', macro: 'Run a macro (several steps)' };
+const KINDS = () => ({ run: t('s.k.runProgram'), keys: t('s.k.pressKeys'), text: t('s.k.typeText'), macro: t('s.k.runMacro') });
 const kindOf = (s) => (s.cmd === 'builtin:keys' ? 'keys' : s.cmd === 'builtin:text' ? 'text' : s.cmd === 'builtin:macro' ? 'macro' : 'run');
 function actionFields(s, upd, text, cmdIn, preset) {
   const kind = kindOf(s);
   const area = (value, ph, rows, oninput) => h('textarea', { rows, placeholder: ph, spellcheck: 'false', oninput }, value);
-  const fields = [h('div', { class: 'field' }, h('label', {}, 'What it does'),
+  const fields = [h('div', { class: 'field' }, h('label', {}, t('s.k.whatItDoes')),
     h('select', { onchange: (e) => {
       const k = e.target.value;
       s.cmd = k === 'run' ? '' : 'builtin:' + k;
       if (k !== 'macro') delete s.steps;
       s.args = null; s.cwd = null;
       changed(); renderEditor();
-    } }, ...Object.entries(KINDS).map(([k, l]) => h('option', { value: k, selected: k === kind }, l))))];
+    } }, ...Object.entries(KINDS()).map(([k, l]) => h('option', { value: k, selected: k === kind }, l))))];
   if (kind === 'run') {
     fields.push(
-      h('div', { class: 'field' }, h('label', {}, 'Command'), cmdIn, preset,
+      h('div', { class: 'field' }, h('label', {}, t('s.k.command')), cmdIn, preset,
         h('span', { class: 'hint' }, osName === 'windows' ? 'Program, address or built-in command. Anything the Windows Run dialog accepts works.' : 'Program, address or built-in command.')),
-      text('args', 'Arguments', osName === 'windows' ? 'e.g. -d D:\\Projects claude' : 'e.g. --new-window ~/Projects'),
-      text('cwd', 'Working folder', 'optional'));
+      text('args', t('s.k.arguments'), osName === 'windows' ? 'e.g. -d D:\\Projects claude' : 'e.g. --new-window ~/Projects'),
+      text('cwd', t('s.k.workingFolder'), t('s.k.optional')));
   } else if (kind === 'keys') {
-    fields.push(text('args', 'Keys', 'e.g. ctrl+shift+m', 'Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, playpause, next, prev, mute, volumeup, volumedown.'));
+    fields.push(text('args', t('s.k.keys'), 'e.g. ctrl+shift+m', 'Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, playpause, next, prev, mute, volumeup, volumedown.'));
   } else if (kind === 'text') {
-    fields.push(h('div', { class: 'field' }, h('label', {}, 'Text to type'), area(s.args || '', 'Typed into whatever window has the focus', 3, (e) => upd('args', e.target.value, false))));
+    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.textToType')), area(s.args || '', 'Typed into whatever window has the focus', 3, (e) => upd('args', e.target.value, false))));
   } else {
-    fields.push(h('div', { class: 'field' }, h('label', {}, 'Steps, one per line'),
+    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.steps')),
       area((s.steps || []).join('\n'), 'keys:ctrl+c\nwait:200\ntext:Hello\nshortcut:terminal', 6, (e) => upd('steps', e.target.value.split('\n').map((x) => x.trim()).filter(Boolean), false)),
       h('span', { class: 'hint' }, 'keys:… presses keys, text:… types, wait:300 waits (milliseconds), shortcut:id runs another shortcut.')));
   }
@@ -2141,7 +2141,7 @@ async function testKey() {
   const s = cfg.shortcuts[selKey];
   const r = await fetch('/api/shortcuts/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) });
   const j = await r.json().catch(() => ({}));
-  r.ok ? toast(`Ran "${s.label}"`) : toast(j.error || 'Could not run it', true);
+  r.ok ? toast(`Ran "${s.label}"`) : toast(j.error || t('s.js.couldNotRun'), true);
 }
 
 // ---------------------------------------------------------------- general
@@ -2156,31 +2156,31 @@ function renderControlSettings() {
   };
   const request = async (path, method='POST') => {
     const r = await fetch('/api/controls/'+path,{method}); const j = await r.json().catch(()=>({}));
-    if (!r.ok || j.ok === false) throw new Error(j.error || 'Control request failed'); return j;
+    if (!r.ok || j.ok === false) throw new Error(j.error || t('s.cd.requestFailed')); return j;
   };
   const btn = (text, fn) => h('button',{class:'btn',type:'button',onclick:async e=>{
     const b=e.currentTarget;b.disabled=true;try{await fn();}catch(error){toast(error.message,true);}finally{b.disabled=false;}
   }},text);
-  root.replaceChildren(h('h3',{},'Control Deck'),h('p',{class:'hint'},'Define bindings here, then add widgets to a page. Save applies changes. Executable paths and credentials stay on this computer.'));
-  root.append(field('Allow PC audio listening',c,'allowListening','checkbox'),field('Enable hold-to-confirm power controls',c,'allowPower','checkbox'),field('Allow third-party radio logo lookup (Radio Browser / TuneIn)',c,'allowOnlineRadioLogos','checkbox'));
-  const spotify=h('details',{},h('summary',{},'Spotify connection'));
+  root.replaceChildren(h('h3',{},'Control Deck'),h('p',{class:'hint'},t('s.cd.lead')));
+  root.append(field(t('s.cd.audio'),c,'allowListening','checkbox'),field(t('s.cd.power'),c,'allowPower','checkbox'),field(t('s.cd.radioLogos'),c,'allowOnlineRadioLogos','checkbox'));
+  const spotify=h('details',{},h('summary',{},t('s.cd.spotifyConn')));
   const auth=h('p',{class:'hint'},'Register the redirect address in your Spotify Developer app. A Client ID is sufficient; no client secret is used.');
-  spotify.append(field('Spotify Client ID',c,'spotifyClientId'),field('Spotify device ID (optional)',c,'spotifyDevice'),auth,
-    btn('Connect Spotify',async()=>{
+  spotify.append(field(t('s.cd.clientId'),c,'spotifyClientId'),field(t('s.cd.deviceId'),c,'spotifyDevice'),auth,
+    btn(t('s.cd.connect'),async()=>{
       if(!await save())return; const j=await request('spotify/connect','GET');
       const live=$('controlSettings');const result=h('p',{},'Register redirect address: '+j.redirectUri,h('br'),h('a',{href:j.url,target:'_blank',rel:'noopener'},'Continue to Spotify sign-in'));live.prepend(result);
-    }),btn('Check Spotify connection',async()=>{const j=await request('spotify/state','GET');auth.textContent=j.connected?'Connected':j.error || 'Not connected';}),
-    btn('Disconnect Spotify',async()=>{await request('spotify/disconnect');auth.textContent='Disconnected';}));
+    }),btn(t('s.cd.checkConn'),async()=>{const j=await request('spotify/state','GET');auth.textContent=j.connected?t('s.cd.connected'):j.error || t('s.cd.notConnected');}),
+    btn(t('s.cd.disconnect'),async()=>{await request('spotify/disconnect');auth.textContent=t('s.cd.disconnected');}));
   root.append(spotify);
-  const integration=h('details',{},h('summary',{},'Optional audio integrations'),field('SoundVolumeView executable path',c,'mixerExecutable'),field('Installed Voicemeeter Remote DLL path (64-bit)',c,'mixerLibrary'));root.append(integration);
+  const integration=h('details',{},h('summary',{},t('s.cd.audioInt')),field(t('s.cd.mixerExe'),c,'mixerExecutable'),field(t('s.cd.mixerDll'),c,'mixerLibrary'));root.append(integration);
   const hints={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream or Windows-only HLS (.m3u8) URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
-  const stationFilter = h('input', { type: 'search', placeholder: 'Filter stations…', style: { marginBottom: '6px' } });
+  const stationFilter = h('input', { type: 'search', placeholder: t('s.cd.filterStations'), style: { marginBottom: '6px' } });
   const stationList = h('div', { class: 'stack-list' });
-  const radioDetails = h('details', {}, h('summary', {}, 'Radio stations (enable & order)'),
-    h('p', { class: 'hint' }, 'Order and enablement apply to all Radio widgets using the configured stations below.'),
+  const radioDetails = h('details', {}, h('summary', {}, t('s.cd.stations')),
+    h('p', { class: 'hint' }, t('s.cd.stationsHint')),
     stationFilter, stationList);
   root.append(radioDetails);
-  const actions = h('div'); root.append(h('h4', {}, 'Control bindings'), actions);
+  const actions = h('div'); root.append(h('h4', {}, t('s.cd.bindings')), actions);
 
   let renderStations = () => {};
   const moveRadio = (fromIdx, toIdx) => {
@@ -2200,7 +2200,7 @@ function renderControlSettings() {
     const q = stationFilter.value.trim().toLowerCase();
     const visible = q ? radios.filter((r) => (r.label || r.id || '').toLowerCase().includes(q)) : radios;
     if (!visible.length) {
-      stationList.replaceChildren(h('p', { class: 'hint', style: { margin: '6px 0' } }, radios.length ? 'No matching radio stations.' : 'No radio stations configured yet.'));
+      stationList.replaceChildren(h('p', { class: 'hint', style: { margin: '6px 0' } }, radios.length ? t('s.cd.noMatchStations') : t('s.cd.noStations')));
       return;
     }
     stationList.replaceChildren(...visible.map((station) => {
@@ -2235,7 +2235,7 @@ function renderControlSettings() {
           if (!Number.isNaN(fromIdx) && fromIdx !== idx) moveRadio(fromIdx, idx);
         }
       },
-        h('span', { class: 'stack-row-handle', title: q ? 'Clear search to drag' : 'Drag to reorder' }, '⋮⋮'),
+        h('span', { class: 'stack-row-handle', title: q ? t('s.cd.clearToDrag') : t('s.cd.dragReorder') }, '⋮⋮'),
         h('input', {
           type: 'checkbox',
           class: 'stack-row-check',
@@ -2265,18 +2265,18 @@ function renderControlSettings() {
     actions.replaceChildren(...c.actions.map((a) => {
       if (a.enabled === undefined) a.enabled = true;
       const box = h('details', {}, h('summary', {}, a.label || a.id));
-      const kind = h('select', { 'aria-label': 'Control kind' }, ...Object.keys(hints).map((k) => h('option', { value: k, selected: a.kind === k }, k)));
-      const hint = h('p', { class: 'hint' }, hints[a.kind] || 'Select a kind.');
-      const iconField = field('Icon / logo URL (optional)', a, 'icon');
+      const kind = h('select', { 'aria-label': t('s.cd.controlKind') }, ...Object.keys(hints).map((k) => h('option', { value: k, selected: a.kind === k }, k)));
+      const hint = h('p', { class: 'hint' }, hints[a.kind] || t('s.cd.selectKind'));
+      const iconField = field(t('s.cd.iconUrl'), a, 'icon');
       iconField.hidden = a.kind !== 'radio';
       kind.onchange = () => { a.kind = kind.value; hint.textContent = hints[a.kind]; iconField.hidden = a.kind !== 'radio'; changed(); renderStations(); };
-      const enField = field('Enabled', a, 'enabled', 'checkbox');
+      const enField = field(t('s.cd.enabled'), a, 'enabled', 'checkbox');
       enField.querySelector('input').addEventListener('change', () => renderStations());
-      const lblField = field('Control label', a, 'label');
+      const lblField = field(t('s.cd.controlLabel'), a, 'label');
       lblField.querySelector('input').addEventListener('change', () => renderStations());
-      box.append(enField, field('Control ID', a, 'id'), lblField, h('label', {}, 'Kind'), kind, hint, field('Target', a, 'target'), iconField, field('Argument', a, 'argument'), field('Device / port / branch', a, 'device'), field('Value', a, 'value', 'number'));
+      box.append(enField, field(t('s.cd.controlId'), a, 'id'), lblField, h('label', {}, 'Kind'), kind, hint, field(t('s.cd.target'), a, 'target'), iconField, field(t('s.cd.argument'), a, 'argument'), field(t('s.cd.device'), a, 'device'), field(t('s.cd.value'), a, 'value', 'number'));
       const output = h('pre', { style: { maxHeight: '240px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
-      box.append(btn('Show task output', async () => { const r = await fetch('/api/controls/task-output/' + encodeURIComponent(a.id)); if (!r.ok) throw new Error('Output unavailable'); output.textContent = await r.text(); }), btn('Remove control', () => { c.actions = c.actions.filter((x) => x !== a); changed(); renderActions(); }), output);
+      box.append(btn(t('s.cd.showOutput'), async () => { const r = await fetch('/api/controls/task-output/' + encodeURIComponent(a.id)); if (!r.ok) throw new Error(t('s.cd.outputUnavailable')); output.textContent = await r.text(); }), btn(t('s.cd.removeControl'), () => { c.actions = c.actions.filter((x) => x !== a); changed(); renderActions(); }), output);
       return box;
     }));
     renderStations();
@@ -2310,7 +2310,7 @@ function renderControlSettings() {
       limitInput,
       btn('Import stations', async () => {
         const cc = countrySelect.value;
-        if (!cc) { toast('Select a country first', true); return; }
+        if (!cc) { toast(t('s.js.pickCountry'), true); return; }
         const MAX_ACTIONS = 512;
         c.actions ||= [];
         if (c.actions.length >= MAX_ACTIONS) {
@@ -2351,7 +2351,7 @@ function renderControlSettings() {
       }),
       btn('Check configured streams', async () => {
         const radios = c.actions.filter((a) => a.kind === 'radio');
-        if (!radios.length) { toast('No radio controls configured', true); return; }
+        if (!radios.length) { toast(t('s.js.noRadio'), true); return; }
         dirStatus.textContent = `Checking ${radios.length} stream(s)…`;
         const r = await fetch('/api/controls/radio-directory/check', {
           method: 'POST',
@@ -2406,18 +2406,18 @@ function appearanceEditor(owner, parents, label, widget = false) {
   };
   const render = () => {
     const current = effective();
-    const style = h('select', { 'aria-label': 'Surface style', onchange: e => {
+    const style = h('select', { 'aria-label': t('s.ap.surface'), onchange: e => {
       if (e.target.value) owner.appearance = { style: e.target.value }; else delete owner.appearance;
       update(); render();
     } }, ...[['', 'Inherit / current look'], ['default', 'Original appearance'], ['cards', 'Rounded cards'], ['flat', 'Flat surfaces'], ['borderless', 'Content only'], ['seamless', 'Seamless panel']]
       .map(([value, text]) => h('option', { value, selected: (owner.appearance?.style || '') === value }, text)));
-    const fields = [h('div', { class: 'field' }, h('label', {}, 'Surface style'), style)];
+    const fields = [h('div', { class: 'field' }, h('label', {}, t('s.ap.surface')), style)];
     const fontLabels = { default: 'Original font', sans: 'Sans-serif', rounded: 'Rounded', condensed: 'Condensed', serif: 'Serif', mono: 'Monospace' };
     const inheritedFont = (() => {
       const inherited = { ...(owner.appearance || {}) }; delete inherited.font;
       return PhoneBoxAppearance.resolve(...parents(), inherited).font;
     })();
-    fields.push(h('div', { class: 'field' }, h('label', {}, 'Font'),
+    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.ap.font')),
       h('select', { 'aria-label': 'Font', onchange: e => { set('font', e.target.value || null); render(); } },
         h('option', { value: '', selected: owner.appearance?.font == null }, !inheritedFont || inheritedFont === 'default' ? 'Original widget font' : 'Inherit (' + fontLabels[inheritedFont] + ')'),
         ...Object.entries(fontLabels).map(([value, text]) => h('option', { value, selected: owner.appearance?.font === value }, text)))));
@@ -2426,15 +2426,15 @@ function appearanceEditor(owner, parents, label, widget = false) {
       const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? 'Automatic' : value + unit);
       const input = h('input', { type: 'range', min, max, step, value: value ?? fallback, 'aria-label': title, style: { flex: '1', minWidth: '60px' } });
       input.oninput = () => { set(key, Number(input.value)); output.textContent = input.value + unit; };
-      const reset = h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Inherit ' + title.toLowerCase(), onclick: () => { set(key, null); render(); } }, 'Inherit');
+      const reset = h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Inherit ' + title.toLowerCase(), onclick: () => { set(key, null); render(); } }, t('s.ap.inherit'));
       fields.push(h('div', { class: 'field' }, h('label', {}, title), h('div', { class: 'row', style: { gap: '10px' } }, input, output, reset)));
     };
-    numeric('fontScale', 'Font size', 200, 100, 50, 5, '%');
-    numeric('radius', 'Corner radius', 32, 16);
-    if (!widget) numeric('gap', 'Widget spacing', 24, 8);
-    numeric('padding', 'Widget inner padding', 24, 12);
-    if (!widget) numeric('pagePadding', 'Page edge padding', 32, 14);
-    for (const [key, title] of [['border', 'Widget border'], ['shadow', 'Widget shadow']]) {
+    numeric('fontScale', t('s.ap.fontSize'), 200, 100, 50, 5, '%');
+    numeric('radius', t('s.ap.radius'), 32, 16);
+    if (!widget) numeric('gap', t('s.ap.gap'), 24, 8);
+    numeric('padding', t('s.ap.padding'), 24, 12);
+    if (!widget) numeric('pagePadding', t('s.ap.pagePadding'), 32, 14);
+    for (const [key, title] of [['border', t('s.ap.border')], ['shadow', t('s.ap.shadow')]]) {
       const value = owner.appearance?.[key];
       const inherited = { ...(owner.appearance || {}) }; delete inherited[key];
       const fallback = PhoneBoxAppearance.resolve(...parents(), inherited)[key];
@@ -2472,16 +2472,39 @@ function renderAppearanceSettings() {
     }
     queuePreview();
   } }, t('s.appearance.showPreview'));
-  root.replaceChildren(h('h3', {}, t('s.appearance.title')), h('p', { class: 'hint' }, 'Global defaults → page overrides → widget overrides. Preview your unsaved changes, then Save to apply them to the phone.'),
+  root.replaceChildren(h('h3', {}, t('s.appearance.title')), h('p', { class: 'hint' }, t('s.ap.lead')),
     editor, h('div', { class: 'row', style: { gap: '10px', marginBottom: '12px' } }, selector, toggle), preview);
 }
 
 const t = (k, v) => (window.PhoneBoxI18n ? window.PhoneBoxI18n.t(k, v) : k);
+const tc = (s) => (window.PhoneBoxI18n?.tc ? window.PhoneBoxI18n.tc(s) : s);
+
+/** The catalog ships English names, descriptions and option labels; translate a copy so every render site
+ *  keeps working unchanged. The English original stays in catalogRaw for the next language switch. */
+let catalogRaw = null;
+function localizeCatalog() {
+  if (!catalogRaw) return;
+  catalog = JSON.parse(JSON.stringify(catalogRaw));
+  for (const w of catalog.widgets) {
+    w.name = tc(w.name);
+    w.desc = tc(w.desc);
+    w.category = tc(w.category);
+    for (const o of w.options || []) {
+      if (o.label) o.label = tc(o.label);
+      for (const c of o.choices || []) if (c[1]) c[1] = tc(c[1]);
+    }
+  }
+  for (const tpl of catalog.templates) {
+    tpl.title = tc(tpl.title);
+    tpl.desc = tc(tpl.desc);
+  }
+}
 
 function applyLanguageUi(langPref) {
   const I18n = window.PhoneBoxI18n;
   if (!I18n) return;
   I18n.setLang(langPref || 'auto');
+  localizeCatalog();
   I18n.populateSelect($('langSel'), true);
   I18n.populateSelect($('displayLangSel'), true);
   if ($('langSel')) $('langSel').value = I18n.getPref();
@@ -2498,8 +2521,16 @@ function bindLanguage() {
     cfg.display ??= {};
     cfg.display.language = val || 'auto';
     applyLanguageUi(cfg.display.language);
+    // every section holds localized strings: rebuild them all, not only the pages editor
     renderAppearanceSettings();
-    renderPages(); // the pages editor and inspector hold localized strings too
+    renderControlSettings();
+    renderPages();
+    renderDeck();
+    renderRules();
+    renderCalendars();
+    renderFeeds();
+    renderConsole();
+    renderCharge();
     if (typeof queuePreview === 'function') queuePreview();
     changed();
   };
@@ -2545,7 +2576,7 @@ function bindCodexBar() {
     el.onchange = () => {
       const cur = Array.isArray(cfg.codexBar.providers) ? cfg.codexBar.providers : [];
       const next = ['claude', 'codex', 'antigravity'].filter((x) => x === id ? el.checked : cur.includes(x));
-      if (!next.length) { el.checked = true; toast('Keep at least one AI service', true); return; }
+      if (!next.length) { el.checked = true; toast(t('s.js.keepOneAi'), true); return; }
       cfg.codexBar.providers = next;
       changed();
     };
@@ -2625,7 +2656,10 @@ function fillDefaults() {
 }
 
 async function load() {
-  if (!catalog.widgets.length) catalog = await (await fetch('/api/catalog')).json();
+  if (!catalog.widgets.length) {
+    catalogRaw = await (await fetch('/api/catalog')).json();
+    localizeCatalog();
+  }
   const res = await fetch('/api/settings');
   cfgVersion = res.headers.get('X-Config-Version');
   cfg = await res.json();
@@ -2665,7 +2699,7 @@ $('openPhone').onclick = async () => {
   if (p?.id && p.enabled !== false) {
     await fetch('/api/goto/' + encodeURIComponent(p.id) + '?countdown=0', { method: 'POST' });
     toast(`Showing ${p.title || 'this page'} on the phone`);
-  } else toast('Opening the panel on the phone');
+  } else toast(t('s.js.openingPanel'));
 };
 $('cityBtn').onclick = searchCity;
 function renderUpdate(u) {
@@ -2687,22 +2721,22 @@ $('updCheck').onclick = async () => {
 };
 $('updApply').onclick = async () => {
   await fetch('/api/update/apply', { method: 'POST' });
-  toast('Updating — the agent restarts by itself if it updates');
+  toast(t('s.js.updating'));
   setTimeout(loadInfo, 3000);
 };
 $('lanRegen').onclick = () => {
   cfg.lan = { ...(cfg.lan || {}), token: '' };
   changed();
-  toast('A new key is generated on save — plug the phone in once to pair again');
+  toast(t('s.js.newPairKey'));
 };
 $('restartBtn').onclick = async () => {
-  if (!$('save').disabled) { toast('Save your changes first', true); return; }
-  toast('Restarting the agent…');
+  if (!$('save').disabled) { toast(t('s.js.saveFirst'), true); return; }
+  toast(t('s.js.restarting'));
   try { await fetch('/api/restart', { method: 'POST' }); } catch (_) {}
   const started = Date.now();
   const wait = async () => {
     try { await fetch('/api/info', { cache: 'no-store' }); location.reload(); }
-    catch (_) { if (Date.now() - started < 30000) setTimeout(wait, 1000); else toast('The agent did not come back; check the log', true); }
+    catch (_) { if (Date.now() - started < 30000) setTimeout(wait, 1000); else toast(t('s.js.agentGone'), true); }
   };
   setTimeout(wait, 1500);
 };
@@ -2721,7 +2755,7 @@ $('whNotify').onclick = whTry(() => postJson('/api/notify', { title: 'PhoneBox',
 $('whPush').onclick = whTry(() => postJson('/api/push/demo', { value: Math.round(Math.random() * 100), unit: '%', sub: 'sent ' + new Date().toLocaleTimeString() }), 'Pushed "demo"');
 $('whRefresh').onclick = whTry(() => postJson('/api/refresh'), 'The panel refreshes');
 $('whReload').onclick = whTry(() => postJson('/api/refresh?reload=1'), 'The panel reloads');
-$('whClear').onclick = async () => { if (!confirm('Delete all pushed values?')) return; await fetch('/api/push', { method: 'DELETE' }); loadPushed(); };
+$('whClear').onclick = async () => { if (!confirm(t('s.js.deletePushed'))) return; await fetch('/api/push', { method: 'DELETE' }); loadPushed(); };
 setInterval(loadPushed, 4000);
 $('citySearch').onkeydown = (e) => { if (e.key === 'Enter') searchCity(); };
 $('applyJson').onclick = () => {

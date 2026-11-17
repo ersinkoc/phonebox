@@ -132,12 +132,10 @@ class MainActivity : Activity(), SensorEventListener {
         val pairing = AgentLink.PairLink.parse(intent?.data) ?: return
         intent?.data = null // not again after a configuration change
         AlertDialog.Builder(this)
-            .setTitle("Pair with a computer?")
-            .setMessage("\"${pairing.pc}\" at ${pairing.hosts.joinToString()} (port ${pairing.port}).\n\n" +
-                "Check that the computer's pairing window shows the code ${pairing.check}.\n\n" +
-                "Continue only if you started pairing on that computer.")
-            .setPositiveButton("Pair") { _, _ -> pair(pairing) }
-            .setNegativeButton("Cancel", null)
+            .setTitle(getString(R.string.pair_title))
+            .setMessage(getString(R.string.pair_message, pairing.pc, pairing.hosts.joinToString(), pairing.port, pairing.check))
+            .setPositiveButton(getString(R.string.pair_positive)) { _, _ -> pair(pairing) }
+            .setNegativeButton(getString(R.string.pair_negative), null)
             .setOnDismissListener { hideSystemUi() }
             .show()
             .plainButtons()
@@ -149,17 +147,17 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun pair(pairing: AgentLink.PairLink) {
-        Toast.makeText(this, "Pairing with ${pairing.pc}...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.pair_progress, pairing.pc), Toast.LENGTH_SHORT).show()
         Thread {
             val problem = link.claim(pairing)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread // the pairing is stored; there is no window to show it in
                 if (problem == null) {
-                    Toast.makeText(this, "Paired with ${pairing.pc}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, getString(R.string.pair_done, pairing.pc), Toast.LENGTH_LONG).show()
                     stream.stop(); stream.start(); web.reload()
                 } else {
-                    AlertDialog.Builder(this).setTitle("Pairing did not work").setMessage(problem)
-                        .setPositiveButton("OK", null).setOnDismissListener { hideSystemUi() }.show().plainButtons()
+                    AlertDialog.Builder(this).setTitle(getString(R.string.pair_failed_title)).setMessage(problem)
+                        .setPositiveButton(getString(R.string.ok), null).setOnDismissListener { hideSystemUi() }.show().plainButtons()
                 }
             }
         }.start()
