@@ -135,6 +135,9 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
     private long _lastAudio;
     private int _ticking, _tickCount;
     private WasapiLoopbackCapture? _capture;
+    // disposes the capture and the endpoint it was opened on (WasapiCapture.Dispose() does not release that), together
+    // and once: from RecordingStopped, or from Stop when StopRecording throws
+    private Action? _release;
     private string? _deviceId; // the output device being captured, to follow a change of the default output
     private System.Threading.Timer? _timer;
     private int _sampleRate = 48000;
@@ -147,7 +150,9 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
         try
         {
             using var devices = new MMDeviceEnumerator();
-            return devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia).ID;
+            // each lookup returns its own wrapper with a COM reference, and this runs once a second
+            using var device = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            return device.ID;
         }
         catch { return null; }
     }
@@ -157,32 +162,45 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
         lock (_gate)
         {
             if (_capture is not null) return;
+            MMDevice? device = null;
             WasapiLoopbackCapture? capture = null;
             try
             {
-                using var devices = new MMDeviceEnumerator();
-                var device = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                using (var devices = new MMDeviceEnumerator())
+                    device = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
                 capture = new WasapiLoopbackCapture(device);
                 var fmt = capture.WaveFormat;
                 _sampleRate = fmt.SampleRate;
-                var started = capture;
+                var (started, startedOn) = (capture, device);
+                var released = 0;
+                void Release()
+                {
+                    if (Interlocked.Exchange(ref released, 1) == 1) return;
+                    started.Dispose();
+                    startedOn.Dispose(); // after the capture: its thread uses the endpoint until it has stopped
+                }
                 capture.DataAvailable += (_, e) => OnData(e.Buffer, e.BytesRecorded, fmt);
                 capture.RecordingStopped += (_, e) =>
                 {
                     if (e.Exception is not null) log.LogInformation("spectrum: capture stopped: {Msg}", e.Exception.Message);
-                    lock (_gate) { if (_capture == started) { _capture = null; _timer?.Dispose(); _timer = null; } }
-                    started.Dispose();
+                    lock (_gate)
+                    {
+                        if (_capture == started) { _capture = null; _release = null; _timer?.Dispose(); _timer = null; }
+                    }
+                    Release();
                 };
                 capture.StartRecording();
                 _capture = capture;
+                _release = Release;
                 _deviceId = device.ID;
                 _timer = new System.Threading.Timer(_ => Tick(), null, 0, 1000 / Fps);
                 log.LogInformation("spectrum: capture started ({Rate} Hz, {Bits}-bit, {Ch} ch)", fmt.SampleRate, fmt.BitsPerSample, fmt.Channels);
             }
             catch (Exception ex)
             {
-                // a capture that failed to start raises no RecordingStopped, so nothing else would dispose it
+                // a capture that failed to start raises no RecordingStopped, so nothing else would dispose it or the endpoint
                 capture?.Dispose();
+                device?.Dispose();
                 log.LogWarning("spectrum: cannot capture the output device: {Msg}", ex.Message);
             }
         }
@@ -191,15 +209,20 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
     private void Stop(string why = "no visualizer on screen")
     {
         WasapiLoopbackCapture? capture;
+        Action? release;
         lock (_gate)
         {
             capture = _capture;
+            release = _release;
             _capture = null;
+            _release = null;
             _timer?.Dispose();
             _timer = null;
         }
         if (capture is null) return;
-        try { capture.StopRecording(); } catch { }
+        // StopRecording only asks the capture thread to stop; its RecordingStopped disposes the capture and the endpoint
+        // once the thread no longer uses them. If it throws, no RecordingStopped may follow, so release them here.
+        try { capture.StopRecording(); } catch { release?.Invoke(); }
         _frame = null;
         log.LogInformation("spectrum: capture stopped ({Why})", why);
     }
