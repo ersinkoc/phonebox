@@ -114,10 +114,10 @@ public sealed class NightConfig
 public sealed class DisplayConfig
 {
     public AppearanceConfig? Appearance { get; set; }
-    /// <summary>UI language code ("auto", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh").</summary>
+    /// <summary>UI language code ("auto", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "vi", "zh").</summary>
     public string Language { get; set; } = "auto";
     /// <summary>The codes the panel and the settings page are translated into (i18n.js).</summary>
-    internal static readonly string[] Languages = ["auto", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh"];
+    internal static readonly string[] Languages = ["auto", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "vi", "zh"];
     public bool ShowSeconds { get; set; } = true;
     /// <summary>false ("14:05", default), true ("2:05 PM") or "auto" (follow the phone).</summary>
     [JsonConverter(typeof(Hour12JsonConverter))]

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Agent**
+- Settings › Display › Language: choosing Tiếng Việt sticks. The agent didn't know the new language yet and saved
+  it as "Follow the phone", so a phone set to another language stayed in that one (#198,
+  [sonvivu](https://github.com/sonvivu)).
+
 ## 0.9.15 — 2026-11-17
 
 Four new widgets: Dictation types what you say on the phone into the PC, Photo frame shows a slideshow from a folder,

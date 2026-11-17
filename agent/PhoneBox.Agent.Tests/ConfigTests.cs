@@ -324,6 +324,7 @@ public class ConfigConcurrencyTests
     [Theory]
     [InlineData("\"TR\"", "tr")]       // any case
     [InlineData("\" de \"", "de")]     // stray spaces
+    [InlineData("\"vi\"", "vi")]       // added after the list was first written (#177)
     [InlineData("\"xx\"", "auto")]     // a language PhoneBox does not have
     [InlineData("null", "auto")]
     [InlineData("\"\"", "auto")]
@@ -343,6 +344,18 @@ public class ConfigConcurrencyTests
     {
         using var s = AppPaths.Resource("www/i18n.js");
         Assert.NotNull(s);
+    }
+
+    [Fact]
+    public void EveryLanguageThePanelHasCanBeSaved()
+    {
+        // a language added to i18n.js but not to DisplayConfig.Languages is saved as "auto", so picking it does nothing
+        using var s = AppPaths.Resource("www/i18n.js");
+        Assert.NotNull(s);
+        var js = new StreamReader(s!).ReadToEnd();
+        var codes = System.Text.RegularExpressions.Regex.Matches(js, @"\{\s*code:\s*'([a-z]{2,3})'").Select(m => m.Groups[1].Value).ToHashSet();
+        Assert.Contains("en", codes);
+        Assert.Equal(codes.Order(), DisplayConfig.Languages.Where(l => l != "auto").Order());
     }
 }
 
