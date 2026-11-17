@@ -612,7 +612,10 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
                 }
                 next = now + 1000;
             }
-            // spectrum frames for a visualizer on screen (SpectrumAnalyzer runs only while a panel asks for it)
+            // spectrum frames for a visualizer on screen (SpectrumAnalyzer runs only while a panel asks for it). While
+            // capture runs, every open stream gets them, also a second phone without a visualizer: the stream is opened
+            // by the app shell and /api/spectrum by the panel, and nothing ties the two together (over USB both phones
+            // are 127.0.0.1). The frames are small (48 numbers) and capture stops ~5 s after the last visible widget.
             var specActive = spectrum.Active;
             if (specActive && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastSpec >= 1000 / SpectrumAnalyzer.Fps - 3)
             {

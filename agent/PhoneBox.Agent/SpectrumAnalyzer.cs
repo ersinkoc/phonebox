@@ -4,6 +4,7 @@
 // _frame is only written by the Windows capture
 #pragma warning disable CS0649
 #if WINDOWS
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 #endif
 
@@ -132,42 +133,62 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
     private readonly float[] _last = new float[FftSize];
     private int _ringPos;
     private long _lastAudio;
+    private int _ticking, _tickCount;
     private WasapiLoopbackCapture? _capture;
+    private string? _deviceId; // the output device being captured, to follow a change of the default output
     private System.Threading.Timer? _timer;
     private int _sampleRate = 48000;
 
     private bool Running { get { lock (_gate) return _capture is not null; } }
+
+    /// <summary>The id of the default output device (the one loopback captures), or null when there is none.</summary>
+    private static string? DefaultOutputId()
+    {
+        try
+        {
+            using var devices = new MMDeviceEnumerator();
+            return devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia).ID;
+        }
+        catch { return null; }
+    }
 
     private void Start()
     {
         lock (_gate)
         {
             if (_capture is not null) return;
+            WasapiLoopbackCapture? capture = null;
             try
             {
-                var capture = new WasapiLoopbackCapture();
+                using var devices = new MMDeviceEnumerator();
+                var device = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                capture = new WasapiLoopbackCapture(device);
                 var fmt = capture.WaveFormat;
                 _sampleRate = fmt.SampleRate;
+                var started = capture;
                 capture.DataAvailable += (_, e) => OnData(e.Buffer, e.BytesRecorded, fmt);
                 capture.RecordingStopped += (_, e) =>
                 {
                     if (e.Exception is not null) log.LogInformation("spectrum: capture stopped: {Msg}", e.Exception.Message);
-                    lock (_gate) { if (_capture == capture) { _capture = null; _timer?.Dispose(); _timer = null; } }
-                    capture.Dispose();
+                    lock (_gate) { if (_capture == started) { _capture = null; _timer?.Dispose(); _timer = null; } }
+                    started.Dispose();
                 };
                 capture.StartRecording();
                 _capture = capture;
+                _deviceId = device.ID;
                 _timer = new System.Threading.Timer(_ => Tick(), null, 0, 1000 / Fps);
                 log.LogInformation("spectrum: capture started ({Rate} Hz, {Bits}-bit, {Ch} ch)", fmt.SampleRate, fmt.BitsPerSample, fmt.Channels);
             }
             catch (Exception ex)
             {
+                // a capture that failed to start raises no RecordingStopped, so nothing else would dispose it
+                capture?.Dispose();
                 log.LogWarning("spectrum: cannot capture the output device: {Msg}", ex.Message);
             }
         }
     }
 
-    private void Stop()
+    private void Stop(string why = "no visualizer on screen")
     {
         WasapiLoopbackCapture? capture;
         lock (_gate)
@@ -180,7 +201,7 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
         if (capture is null) return;
         try { capture.StopRecording(); } catch { }
         _frame = null;
-        log.LogInformation("spectrum: capture stopped (no visualizer on screen)");
+        log.LogInformation("spectrum: capture stopped ({Why})", why);
     }
 
     /// <summary>Downmixes to mono into the ring buffer. The loopback format is 32-bit float almost always; 16-bit PCM too.</summary>
@@ -206,12 +227,19 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
 
     private void Tick()
     {
-        // stop when no panel asked for a while, or the widget was removed or its page turned off since
-        if (Now >= Interlocked.Read(ref _wantedUntil) || !Shown()) { Stop(); return; }
-        // WASAPI loopback delivers nothing while the computer is silent: show silence instead of the last sound
-        if (Now - Interlocked.Read(ref _lastAudio) > 250) { _frame = new int[Bands]; return; }
+        // timer callbacks can overlap when one runs long; they would share _last, so a late tick is skipped
+        if (Interlocked.Exchange(ref _ticking, 1) == 1) return;
         try
         {
+            // stop when no panel asked for a while, or the widget was removed or its page turned off since (the config
+            // walk once a second is enough for that)
+            var everySecond = ++_tickCount % Fps == 0;
+            if (Now >= Interlocked.Read(ref _wantedUntil) || (everySecond && !Shown())) { Stop(); return; }
+            // loopback stays on the device it was opened on: follow the user to a new default output (speakers to
+            // headphones), or the bars would sit flat while the new device plays
+            if (everySecond && DefaultOutputId() is { } id && id != _deviceId) { Stop("default output changed"); Start(); return; }
+            // WASAPI loopback delivers nothing while the computer is silent: show silence instead of the last sound
+            if (Now - Interlocked.Read(ref _lastAudio) > 250) { _frame = new int[Bands]; return; }
             lock (_ring)
             {
                 var start = (_ringPos - FftSize + _ring.Length) % _ring.Length;
@@ -220,6 +248,7 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
             _frame = Analyze(_last, _sampleRate);
         }
         catch (Exception ex) { log.LogDebug("spectrum: {Msg}", ex.Message); }
+        finally { Interlocked.Exchange(ref _ticking, 0); }
     }
 
     public void Dispose() => Stop();

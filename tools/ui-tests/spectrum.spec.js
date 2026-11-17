@@ -63,3 +63,57 @@ test('spectrum bars say when the computer cannot capture its sound', async ({ pa
   await show(page);
   await expect(page.locator('.w-spectrum .spec-msg')).toHaveText('Can’t capture PC audio (Windows only)', { timeout: 6000 });
 });
+
+// The agent captures audio only while a panel asks; a widget that is mounted but not showing must not ask.
+async function asks(page, pages) {
+  await page.goto('/panel/');
+  await page.evaluate((pages) => {
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, rules: [], shortcuts: [], display: { idleReturnSec: 0 }, pages }));
+  }, pages);
+  await page.reload();
+  await page.evaluate(() => {
+    window.__asks = 0;
+    const demo = window.fetch;
+    window.fetch = (url, init) => { if (String(url).includes('/api/spectrum')) window.__asks++; return demo(url, init); };
+  });
+  await page.waitForTimeout(1500);
+  return page.evaluate(() => window.__asks);
+}
+const spec = { id: 'sp', type: 'spectrum', x: 0, y: 0, w: 12, h: 3, options: {} };
+const clock = { id: 'c', type: 'clock', x: 0, y: 0, w: 12, h: 3, options: {} };
+
+test('spectrum bars on another page do not keep the agent capturing', async ({ page }) => {
+  expect(await asks(page, [{ id: 'one', title: 'One', widgets: [clock] }, { id: 'two', title: 'Two', widgets: [spec] }])).toBe(0);
+});
+
+test('spectrum bars in a hidden Smart Stack card do not keep the agent capturing', async ({ page }) => {
+  const stack = { id: 's', type: 'stack', x: 0, y: 0, w: 12, h: 6, options: { interval: 0, widgets: [{ type: 'clock' }, { type: 'spectrum' }] } };
+  expect(await asks(page, [{ id: 'one', title: 'One', widgets: [stack] }])).toBe(0);
+  // shown once its card is chosen
+  await page.getByRole('button', { name: 'spectrum', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__asks)).toBeGreaterThan(0);
+});
+
+test('spectrum bars under the night screen stop asking', async ({ page }) => {
+  expect(await asks(page, [{ id: 'one', title: 'One', widgets: [spec] }])).toBeGreaterThan(0);
+  await page.evaluate(() => document.body.classList.add('night'));
+  await page.waitForTimeout(300); // a request already in flight may still finish
+  const before = await page.evaluate(() => window.__asks);
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => window.__asks)).toBe(before);
+});
+
+test('spectrum bars on the next page do not animate the frames meant for this one', async ({ page }) => {
+  await asks(page, [{ id: 'one', title: 'One', widgets: [spec] }, { id: 'two', title: 'Two', widgets: [{ ...spec, id: 'sp2' }] }]);
+  const canvases = page.locator('.w-spectrum canvas');
+  await expect(canvases).toHaveCount(2); // the neighbouring page is mounted too
+  const litOf = (i) => canvases.nth(i).evaluate((c) => {
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let k = 3; k < d.length; k += 4) if (d[k] > 200) n++;
+    return n;
+  });
+  await expect.poll(() => litOf(0)).toBeGreaterThan(500);
+  expect(await litOf(1)).toBe(0);
+});

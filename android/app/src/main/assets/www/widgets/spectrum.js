@@ -2,7 +2,7 @@
 // Frames arrive as "spectrum" stream events (~30 per second, 48 bands of 0–100); this widget merges them into its
 // own number of bars and animates the fall and the peak caps itself, so it stays smooth between frames.
 import { W } from '../registry.js';
-import { h, api, D, emit, pageOf, streaming, t } from '../main.js';
+import { h, api, D, emit, streaming, t, pages, curPage } from '../main.js';
 
 const PALETTES = {
   classic: [[0, '#16a34a'], [0.55, '#84cc16'], [0.72, '#facc15'], [0.88, '#f97316'], [1, '#ef4444']],
@@ -22,12 +22,21 @@ function frame(d) {
 }
 window.addEventListener('phonebox-spectrum', (e) => frame(e.detail));
 
-// Keep the agent capturing while a visualizer is on the visible page (it stops by itself a few seconds after the last
-// request), and poll the frames when there is no live stream (desktop live preview, or the stream is reconnecting).
+// Every mounted Spectrum bars widget, with its page. A widget counts as on screen only while it is really visible:
+// not under the night screen, on the current page, and not in a Smart Stack card that is not showing. Mounted is not
+// enough: neighbouring pages and hidden stack cards stay mounted, and asking for them would keep the agent capturing.
+const mountedBars = new Set();
+const shows = (m) => !document.body.classList.contains('night')
+  && m.box.isConnected && pages[curPage] === m.page && !m.box.closest('.stack-item:not(.active)');
+const onScreen = () => [...mountedBars].some(shows);
+
+// Keep the agent capturing while a visualizer is on screen (it stops by itself a few seconds after the last request),
+// and poll the frames when there is no live stream (desktop live preview, or the stream is reconnecting).
 // Fast only while polling frames; otherwise a slow check, so a panel without a visualizer barely notices this.
 async function keepAlive() {
   let fast = false;
-  if (pageOf('spectrum')) {
+  for (const m of mountedBars) if (!m.box.isConnected) mountedBars.delete(m);
+  if (onScreen()) {
     const stream = streaming();
     fast = !stream;
     if (!stream || Date.now() - (D.spectrumWantAt || 0) >= 2000) {
@@ -42,7 +51,7 @@ async function keepAlive() {
   }
   setTimeout(keepAlive, fast ? 40 : 250);
 }
-// not right away: main.js imports this module before its own exports (pageOf) are initialized
+// not right away: main.js imports this module before its own exports (pages, curPage) are initialized
 setTimeout(keepAlive, 250);
 
 function mix(stops, f) {
@@ -59,7 +68,9 @@ W.spectrum = {
   needs: ['spectrum'],
   create(box, ctx) {
     const o = ctx.o;
-    const bars = Math.max(4, Math.min(48, Math.round(+o.bars || 24)));
+    const me = { box, page: ctx.page };
+    mountedBars.add(me);
+    const bars =Math.max(4, Math.min(48, Math.round(+o.bars || 24)));
     const style = PALETTES[o.style] ? o.style : (o.style === 'single' ? 'single' : 'classic');
     const color = /^#[0-9a-f]{6}$/i.test(o.color || '') ? o.color : '#2dd4bf';
     const stops = style === 'single' ? [[0, color], [1, color]] : PALETTES[style];
@@ -135,6 +146,9 @@ W.spectrum = {
     const step = (t) => {
       raf = 0;
       if (!box.isConnected) return;
+      // neighbouring pages stay mounted and still get frames meant for the page on screen: an instance that is not
+      // showing stops its loop and starts flat when it shows again (the next frame's update() kicks it)
+      if (!shows(me)) { level.fill(0); peak.fill(0); target.fill(0); last = 0; draw(); return; }
       const dt = last ? Math.min(0.1, (t - last) / 1000) : 0;
       last = t;
       let moving = false;
@@ -150,7 +164,7 @@ W.spectrum = {
       if (moving || Date.now() - (D.spectrumAt || 0) < 600) raf = requestAnimationFrame(step);
       else last = 0;
     };
-    const kick = () => { if (!raf) raf = requestAnimationFrame(step); };
+    const kick = () => { if (!raf && shows(me)) raf = requestAnimationFrame(step); };
 
     // the hint only while nothing arrives; it also says when the agent cannot capture (not Windows) or refuses to
     // (live preview of a page that is not saved yet: capture only runs for a widget on an enabled, saved page)
