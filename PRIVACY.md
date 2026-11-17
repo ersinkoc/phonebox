@@ -24,6 +24,10 @@ Last updated: 2026-11-15 (PhoneBox 0.9.6).
 - **Computer data shown on the panel** (CPU, GPU, memory, disks, processes, media, volume, AI coding sessions and
   quotas, Docker / Podman, OBS) is read locally and goes only to your phone: over the USB cable (`adb reverse` to
   `127.0.0.1`) or, after pairing, over Wi-Fi / Tailscale with a pinned certificate and a key.
+- **Sound for the Spectrum bars widget** (Windows): while an enabled page with the widget is on the phone's screen,
+  the agent captures what the default output device plays, analyzes it in memory and sends only 48 loudness levels
+  per frame to the phone. Audio is never stored or sent; capture stops a few seconds after the widget leaves the
+  screen, and removing the widget or turning its page off turns it off.
 - **Local services**: LibreHardwareMonitor's web server (`127.0.0.1:8085`), a running Antigravity language server
   (loopback), the Docker / Podman socket, OBS WebSocket and the Discord desktop app's local connection (a named pipe
   or socket on this computer) are local connections.
@@ -66,6 +70,7 @@ identifies your GitHub account to GitHub.
 | News feeds widget | The RSS and Atom addresses you add in **Settings › General**, fetched by the agent at most every 15 minutes and only while a page shows the widget; the phone never contacts the feed sites. With the widget's **Open articles on the PC** option on (off by default), tapping a headline opens its article in the computer's browser. Turn the requests off by removing the feeds in **Settings › General › News feeds**, or the widget from your pages | The request to that address, with the feed's last `ETag` / `Last-Modified` so an unchanged feed is not sent again |
 | Home Assistant | Your Home Assistant server | The access token you enter |
 | Image widget | The image address you enter | The request to that address |
+| Camera widget | The RTSP cameras you add in **Settings › General › Cameras**, pulled by ffmpeg on this computer only while an enabled page shows a Camera widget for them, and stopped a few seconds after it leaves the screen. The phone gets JPEG pictures (5 a second by default, 1 to 10 per camera) over USB or the paired Wi-Fi link and never contacts the camera. The addresses, with the user names and passwords in them, stay in `config.json` and never go to the phone, but while a camera runs its address is visible in this computer's process list (ffmpeg's command line). The pictures are not stored, and the log names the camera, never its address | The camera's own RTSP login and stream requests |
 | Photo frame widget | Nothing outside your network: the photos in the folder you choose in **Settings › General** go from the agent to the phone over USB or the paired Wi-Fi link (on Windows and macOS large JPEG and PNG photos are scaled down first), one at a time and only while an enabled page shows the widget. Clearing the folder setting or removing the widget stops it, and clearing the folder also deletes the scaled copies. Photos that are only in the cloud (OneDrive Files On-Demand and the like) are skipped, so nothing is downloaded for the slideshow | Nothing |
 | Album art on Linux | The artwork address your music player reports | The request to that address |
 | OSC controls (Control Deck) | The OSC host and port you configure, over UDP | The control value |

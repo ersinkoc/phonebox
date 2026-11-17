@@ -117,6 +117,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
                 "org.mozilla.firefox" => "Firefox",
                 "com.apple.Music" => "Music",
                 "com.spotify.client" => "Spotify",
+                "com.github.th-ch.youtube-music" => "YouTube Music",
                 _ => string.IsNullOrEmpty(bundle) ? "Mac" : bundle.Split('.').Last(),
             };
             var sourceKey = bundle + "\n" + title;

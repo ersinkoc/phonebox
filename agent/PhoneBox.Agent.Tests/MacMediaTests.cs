@@ -24,6 +24,16 @@ public sealed class MacMediaTests
     public void MissingOrMalformedMetadataIsUnavailable(string json) =>
         Assert.Null(new MediaMonitor(NullLogger<MediaMonitor>.Instance).ReadMacSystemMedia(json).Item1);
 
+    [Theory]
+    [InlineData("com.spotify.client", "Spotify")]
+    [InlineData("com.github.th-ch.youtube-music", "YouTube Music")]
+    [InlineData("org.example.player", "player")]
+    public void KnownPlayersAreNamedAfterTheirBundle(string bundle, string expected)
+    {
+        var json = $$"""{"kMRMediaRemoteNowPlayingInfoTitle":"Track","kMRMediaRemoteNowPlayingInfoClientBundleIdentifier":"{{bundle}}","kMRMediaRemoteNowPlayingInfoPlaybackRate":1}""";
+        Assert.Equal(expected, new MediaMonitor(NullLogger<MediaMonitor>.Instance).ReadMacSystemMedia(json).Item1!.App);
+    }
+
     [Fact]
     public void DelayedMacArtworkRefreshUpdatesArtIdAndClearsWhenMissing()
     {

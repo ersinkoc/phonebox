@@ -13,6 +13,7 @@
   <a href="docs/README.nl.md">Nederlands</a> ·
   <a href="docs/README.pl.md">Polski</a> ·
   <a href="docs/README.ru.md">Русский</a> ·
+  <a href="docs/README.vi.md">Tiếng Việt</a> ·
   <a href="docs/README.zh.md">中文 (简体)</a>
 </p>
 
@@ -38,7 +39,7 @@ Windows, Linux and macOS. No root, PhoneBox account or cloud service required.</
 <sub>Example layouts with demo data.</sub></p>
 
 PhoneBox pairs a full-screen **Android app** with a small **desktop agent**. Build your panel in a browser-based
-visual editor: **121 widgets**, **30 templates**, multiple pages and a live preview. Connect several phones with
+visual editor: **123 widgets**, **30 templates**, multiple pages and a live preview. Connect several phones with
 their own layouts, or switch one phone between paired computers.
 
 ## What you can do

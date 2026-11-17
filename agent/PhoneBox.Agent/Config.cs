@@ -30,6 +30,8 @@ public sealed class AgentConfig
     public List<FeedSource> Feeds { get; set; } = [];
     /// <summary>The Photo frame widget's folder; like the feeds, it never goes to the phone.</summary>
     public PhotoFrameConfig Photos { get; set; } = new();
+    /// <summary>IP cameras for the Camera widget; their addresses (with the passwords in them) never go to the phone.</summary>
+    public CameraConfig Cameras { get; set; } = new();
     /// <summary>Home Assistant address and long-lived access token (the token never goes to the phone).</summary>
     public HomeAssistantConfig HomeAssistant { get; set; } = new();
     /// <summary>OBS Studio's WebSocket server (obs-websocket 5).</summary>
@@ -49,7 +51,7 @@ public sealed class AgentConfig
     }
 
     /// <summary>The part sent to the phone: commands (shortcut cmd/args/cwd, command widget scripts) are never included.</summary>
-    public object ToPublic(string? deviceId = null) => new
+    public object ToPublic(string? deviceId = null, Func<Shortcut, long?>? shortcutIconRev = null) => new
     {
         weather = Weather,
         codexBar = CodexBar,
@@ -65,7 +67,9 @@ public sealed class AgentConfig
                 options = StackWidgets.PublicOptions(w),
             }),
         }),
-        shortcuts = Shortcuts.Select(s => new { s.Id, s.Label, s.Icon, s.Color, toggle = s.Toggle || s.Cmd == "builtin:mute" }),
+        // cameras: only how often the Camera widget may ask for a picture; the addresses and names stay on this computer
+        cameras = Cameras.Sources.Select(c => new { c.Id, c.Fps }),
+        shortcuts = Shortcuts.Select(s => new { s.Id, s.Label, s.Icon, s.Color, toggle = s.Toggle || s.Cmd == "builtin:mute", iconRev = shortcutIconRev?.Invoke(s) }),
         // names only (for the Rules widget); what a rule matches on stays here
         rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When }),
         charge = new { Charge.Enabled, Charge.Min, Charge.Max },
@@ -114,10 +118,10 @@ public sealed class NightConfig
 public sealed class DisplayConfig
 {
     public AppearanceConfig? Appearance { get; set; }
-    /// <summary>UI language code ("auto", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh").</summary>
+    /// <summary>UI language code ("auto", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "vi", "zh").</summary>
     public string Language { get; set; } = "auto";
     /// <summary>The codes the panel and the settings page are translated into (i18n.js).</summary>
-    internal static readonly string[] Languages = ["auto", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh"];
+    internal static readonly string[] Languages = ["auto", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "vi", "zh"];
     public bool ShowSeconds { get; set; } = true;
     /// <summary>false ("14:05", default), true ("2:05 PM") or "auto" (follow the phone).</summary>
     [JsonConverter(typeof(Hour12JsonConverter))]
@@ -418,6 +422,16 @@ public sealed partial class ConfigStore(string path)
     /// <summary>Save refused: the file changed after the caller loaded it (<see cref="Save"/> with an expected version).</summary>
     public const string Conflict = "The settings were changed in another tab or window after this one loaded them. Reload the page to see them; the changes made here were not saved.";
 
+    /// <summary>True when <paramref name="header"/> (X-Config-Version) names a version other than the current one.
+    /// Missing or unparseable is not a conflict: scripts and other callers that never send it still go through.</summary>
+    public bool VersionConflict(string? header) => long.TryParse(header, out var expected) && expected != Version;
+
+    /// <summary>
+    /// Advances <see cref="Version"/> without touching the saved settings: for a write that bypasses <see cref="Save"/>
+    /// (a shortcut icon upload or removal), so another tab's own optimistic-concurrency check still notices it.
+    /// </summary>
+    public void Touch() { lock (_lock) { try { File.SetLastWriteTimeUtc(path, DateTime.UtcNow); } catch { } } }
+
     /// <summary>
     /// Validates and saves the settings. Returns an error message, or null on success. With
     /// <paramref name="expectedVersion"/> (the <see cref="Version"/> the caller loaded), a save over a newer file is
@@ -429,12 +443,17 @@ public sealed partial class ConfigStore(string path)
         try { cfg = JsonSerializer.Deserialize<AgentConfig>(json, ReadOpts) ?? throw new JsonException("empty"); }
         catch (JsonException ex) { return "Invalid JSON: " + ex.Message; }
 
-        cfg = Normalize(cfg);
+        var staleIds = Get().Shortcuts.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        cfg = Normalize(cfg, staleIds);
         foreach (var s in cfg.Shortcuts)
             if (string.IsNullOrWhiteSpace(s.Cmd)) return $"Shortcut '{s.Label}' has no command";
         if (cfg.Console.Profiles.Count > AppConsole.MaxProfiles) return $"The app console has more than {AppConsole.MaxProfiles} apps";
         foreach (var p in cfg.Console.Profiles)
             if (AppConsole.Validate(p) is { } consoleError) return consoleError;
+        if (cfg.Cameras.Sources.Count > CameraFeeds.MaxCameras) return $"There are more than {CameraFeeds.MaxCameras} cameras";
+        foreach (var cam in cfg.Cameras.Sources)
+            if (!CameraFeeds.ValidUrl(cam.Url))
+                return $"Camera '{(cam.Name.Length > 0 ? cam.Name : "(no name)")}': the address must start with rtsp:// or rtsps://";
         if (cfg.Weather.Lat is < -90 or > 90 || cfg.Weather.Lon is < -180 or > 180) return "Invalid weather location";
         if (!HhMm().IsMatch(cfg.Night.Start ?? "") || !HhMm().IsMatch(cfg.Night.End ?? "")) return "Night mode times must be in HH:MM format";
 
@@ -455,7 +474,7 @@ public sealed partial class ConfigStore(string path)
     }
 
     /// <summary>Fills in defaults: builds pages from templates, migrates old pages, generates unique ids.</summary>
-    private static AgentConfig Normalize(AgentConfig c)
+    private static AgentConfig Normalize(AgentConfig c, IReadOnlySet<string>? staleIds = null)
     {
         c.Weather ??= new();
         c.CodexBar ??= new();
@@ -500,15 +519,33 @@ public sealed partial class ConfigStore(string path)
 
         var used = new HashSet<string>();
         c.Shortcuts = (c.Shortcuts ?? []).Where(s => s is not null).ToList(); // "shortcuts": [null] in a hand-written file
+
+        // Pass 1: reserve every explicitly-provided id first. Otherwise a blank-id (brand-new) shortcut processed
+        // earlier in the list than one that explicitly keeps an id could grab that id for itself, since at that
+        // point nothing yet says it is taken — bumping the one that actually owns it to an unrelated id instead.
+        var reserved = new Dictionary<Shortcut, string>();
+        foreach (var s in c.Shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Id)))
+        {
+            var id = Slug(s.Id);
+            if (id == "") id = "shortcut";
+            var unique = id;
+            for (var i = 2; !used.Add(unique); i++) unique = $"{id}-{i}";
+            reserved[s] = unique;
+        }
+
         foreach (var s in c.Shortcuts)
         {
             s.Label = s.Label?.Trim() ?? "";
             s.Icon = IconText.Repair(s.Icon);
-            var id = string.IsNullOrWhiteSpace(s.Id) ? Slug(s.Label) : Slug(s.Id);
-            if (id == "") id = "shortcut";
-            var unique = id;
-            for (var i = 2; !used.Add(unique); i++) unique = $"{id}-{i}";
-            s.Id = unique;
+            if (reserved.TryGetValue(s, out var keptId)) s.Id = keptId;
+            else
+            {
+                var id = Slug(s.Label);
+                if (id == "") id = "shortcut";
+                var unique = id;
+                for (var i = 2; staleIds?.Contains(unique) == true || !used.Add(unique); i++) unique = $"{id}-{i}";
+                s.Id = unique;
+            }
             if (string.IsNullOrWhiteSpace(s.Args)) s.Args = null;
             if (string.IsNullOrWhiteSpace(s.Cwd)) s.Cwd = null;
             s.Steps = s.Steps?.Where(x => x is not null).Select(x => x.Trim()).Where(x => x.Length > 0).Take(50).ToList();
@@ -554,6 +591,22 @@ public sealed partial class ConfigStore(string path)
         c.Photos ??= new();
         c.Photos.Folder = (c.Photos.Folder ?? "").Trim() is { Length: > 1024 } longFolder ? longFolder[..1024] : (c.Photos.Folder ?? "").Trim();
         foreach (var f in c.Feeds) { var n = f.Name?.Trim() ?? ""; f.Name = n.Length > 60 ? n[..60] : n; f.Url = f.Url?.Trim() ?? ""; }
+        c.Cameras ??= new();
+        c.Cameras.Ffmpeg = (c.Cameras.Ffmpeg ?? "").Trim() is { Length: > 1024 } longFfmpeg ? longFfmpeg[..1024] : (c.Cameras.Ffmpeg ?? "").Trim();
+        // a row left empty in the editor is dropped; ids are random and kept, so widgets keep pointing at the same camera
+        c.Cameras.Sources = (c.Cameras.Sources ?? []).Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Url)).Take(100).ToList();
+        var cameraIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var cam in c.Cameras.Sources)
+        {
+            var n = cam.Name?.Trim() ?? "";
+            cam.Name = n.Length > 60 ? n[..60] : n;
+            cam.Url = cam.Url.Trim() is { Length: > 2048 } longUrl ? longUrl[..2048] : cam.Url.Trim();
+            cam.Transport = string.Equals(cam.Transport?.Trim(), "udp", StringComparison.OrdinalIgnoreCase) ? "udp" : "tcp";
+            cam.Fps = cam.Fps is >= 1 and <= CameraFeeds.MaxFps ? cam.Fps : CameraFeeds.DefaultFps;
+            var id = (cam.Id ?? "").Trim().ToLowerInvariant();
+            if (!CameraId().IsMatch(id) || !cameraIds.Add(id)) { id = Guid.NewGuid().ToString("N")[..12]; cameraIds.Add(id); }
+            cam.Id = id;
+        }
 
         c.Charge ??= new();
         c.Charge.Min = Math.Clamp(c.Charge.Min, 5, 95);
@@ -718,6 +771,9 @@ public sealed partial class ConfigStore(string path)
 
     [GeneratedRegex(@"^([01]\d|2[0-3]):[0-5]\d$")]
     private static partial Regex HhMm();
+
+    [GeneratedRegex("^[a-z0-9]{6,32}$")]
+    private static partial Regex CameraId();
 }
 
 public sealed class CodexBarConfig

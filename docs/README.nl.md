@@ -13,6 +13,7 @@
   <b>Nederlands</b> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
+  <a href="README.vi.md">Tiếng Việt</a> ·
   <a href="README.zh.md">中文 (简体)</a>
 </p>
 
@@ -37,7 +38,7 @@ Windows, Linux en macOS. Geen root, geen PhoneBox-account en geen clouddienst no
 <p align="center"><img src="hero-0.6.png" width="900" alt="PhoneBox op drie telefoons"><br>
 <sub>Voorbeeldindelingen met demogegevens.</sub></p>
 
-PhoneBox koppelt een schermvullende **Android-app** aan een lichte **desktop-agent**. Ontwerp je paneel in de visuele editor in je browser: **121 widgets**, **30 sjablonen**, meerdere pagina's en een live voorbeeld.
+PhoneBox koppelt een schermvullende **Android-app** aan een lichte **desktop-agent**. Ontwerp je paneel in de visuele editor in je browser: **123 widgets**, **30 sjablonen**, meerdere pagina's en een live voorbeeld.
 
 ## Wat je kunt doen
 

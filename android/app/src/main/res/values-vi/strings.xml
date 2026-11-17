@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Vietnamese strings for the native Android shell (the WebView panel has its own dictionary). -->
+    <string name="pair_title">Ghép nối với máy tính?</string>
+    <string name="pair_message">\"%1$s\" tại %2$s (cổng %3$d).\n\nHãy kiểm tra cửa sổ ghép nối trên máy tính có hiện mã %4$s.\n\nChỉ tiếp tục nếu bạn đã bắt đầu ghép nối trên máy tính đó.</string>
+    <string name="pair_positive">Ghép nối</string>
+    <string name="pair_negative">Hủy</string>
+    <string name="pair_progress">Đang ghép nối với %1$s…</string>
+    <string name="pair_done">Đã ghép nối với %1$s</string>
+    <string name="pair_failed_title">Ghép nối không thành công</string>
+    <!-- %1$s là tên máy tính, %2$s là các địa chỉ của máy đó. -->
+    <string name="pair_failed_unreachable">Không kết nối được tới %1$s tại %2$s. Điện thoại và máy tính phải cùng một mạng (hoặc cùng dùng Tailscale), và tường lửa trên máy tính phải cho phép PhoneBox.</string>
+    <string name="pair_failed_code">%1$s không chấp nhận mã này: mã chỉ dùng một lần và có hiệu lực 5 phút. Hãy bắt đầu ghép nối lại trên máy tính.</string>
+    <string name="pair_failed_answer">%1$s trả lời mã %2$d.</string>
+    <string name="pair_failed_certificate">Máy tính này có chứng chỉ khác với mã QR. Hãy bắt đầu ghép nối lại.</string>
+    <string name="ok">OK</string>
+</resources>

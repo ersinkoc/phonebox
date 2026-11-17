@@ -13,6 +13,7 @@
   <a href="README.nl.md">Nederlands</a> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
+  <a href="README.vi.md">Tiếng Việt</a> ·
   <a href="README.zh.md">中文 (简体)</a>
 </p>
 
@@ -37,7 +38,7 @@ Windows, Linux und macOS. Kein Root, kein PhoneBox-Konto und kein Cloud-Dienst n
 <p align="center"><img src="hero-0.6.png" width="900" alt="PhoneBox auf drei Smartphones mit Automatisierungs-, Start- und Planerseiten"><br>
 <sub>Beispiellayouts mit Demodaten.</sub></p>
 
-PhoneBox verbindet eine Vollbild-**Android-App** mit einem schlanken **Desktop-Agenten**. Gestalte dein Panel im browserbasierten visuellen Editor: **121 Widgets**, **30 Vorlagen**, mehrere Seiten und Live-Vorschau. Verbinde mehrere Telefone mit eigenen Layouts oder wechsle mit einem Telefon zwischen gekoppelten Computern.
+PhoneBox verbindet eine Vollbild-**Android-App** mit einem schlanken **Desktop-Agenten**. Gestalte dein Panel im browserbasierten visuellen Editor: **123 Widgets**, **30 Vorlagen**, mehrere Seiten und Live-Vorschau. Verbinde mehrere Telefone mit eigenen Layouts oder wechsle mit einem Telefon zwischen gekoppelten Computern.
 
 ## Funktionen
 

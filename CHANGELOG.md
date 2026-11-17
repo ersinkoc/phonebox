@@ -2,7 +2,77 @@
 
 ## Unreleased
 
+**Panel**
+- Camera widget: smoother. 5 pictures a second by default, and 1 to 10 per camera in Settings › General › Cameras;
+  the next picture is decoded before it replaces the one on screen, so it no longer flickers black between frames, and
+  an unchanged picture isn't sent again (#209, [Hoangminhfcb](https://github.com/Hoangminhfcb)).
+
+## 0.9.18 — 2026-11-17
+
+A Camera widget for IP cameras, the App dock bringing a running app back as it was, and more of the panel in every
+language.
+
 **New widget**
+- **Camera**: a live picture from an IP camera, a couple of frames a second. Add the camera in Settings › General ›
+  Cameras with its RTSP address (rtsp://user:password@…); the computer pulls it with ffmpeg, which you install (or
+  point PhoneBox at). A camera is pulled only while a Camera widget for it is on the phone's screen, and stops a few
+  seconds after it leaves. The address and its password stay on the computer; the phone only gets the pictures (#209,
+  asked for by [Hoangminhfcb](https://github.com/Hoangminhfcb)).
+
+**Panel**
+- The Sessions, Processes and Memory widgets and their empty states are in every language (#210,
+  [cavalei](https://github.com/cavalei)).
+
+**Agent**
+- Windows: a tap on a running app in the App dock brings its window to the front as it was. A maximized window stays
+  maximized instead of shrinking to its normal size, and the focus no longer fails with "Windows could not focus the
+  running application" when another app is in front (#213, [arrowssuhail-oss](https://github.com/arrowssuhail-oss)).
+
+## 0.9.17 — 2026-11-17
+
+Shortcut keys with real icons, the settings page and widget catalog in Vietnamese, and a few panel fixes.
+
+**Panel**
+- A shortcut key shows a real icon instead of only an emoji: the program's own icon when the command is a program on
+  the computer, or a PNG, WEBP or SVG you upload for it in Settings › Shortcuts. The emoji stays as the fallback.
+  Uploads stay on the computer, and only the settings page can change them (#202, #205,
+  [ThalesAugusto0](https://github.com/ThalesAugusto0); asked for by [arrowssuhail-oss](https://github.com/arrowssuhail-oss)).
+- The red problem box at the bottom of the panel no longer appears for a cover, photo or icon that fails to load (for
+  example a song's cover when its tab closes while the cover loads); the widgets already handle those. It still
+  reports the panel's own scripts and styles, and a tap puts it away (#200,
+  [Muhammadrizo04](https://github.com/Muhammadrizo04)).
+- Discord widget: server tiles drop their border and background card, showing just the icon, name and channel count,
+  so more servers fit per row (#206, [ThalesAugusto0](https://github.com/ThalesAugusto0)).
+- Vietnamese: the settings page, the widget and template catalog, the weather conditions, session states and the
+  phone's pairing dialog are translated too. The weather, session and status texts are translated in every language;
+  the rest of the settings page stays English in the other languages for now (#198,
+  [sonvivu](https://github.com/sonvivu)).
+
+**Agent**
+- macOS: music from the YouTube Music desktop app shows "YouTube Music" as its source in Now playing (#207,
+  [Necwolf](https://github.com/Necwolf)).
+
+## 0.9.16 — 2026-11-17
+
+A fix for Vietnamese: choosing it in the settings now sticks.
+
+**Agent**
+- Settings › Display › Language: choosing Tiếng Việt sticks. The agent didn't know the new language yet and saved
+  it as "Follow the phone", so a phone set to another language stayed in that one (#198,
+  [sonvivu](https://github.com/sonvivu)).
+
+## 0.9.15 — 2026-11-17
+
+Four new widgets: Dictation types what you say on the phone into the PC, Photo frame shows a slideshow from a folder,
+App console gives the app in front its own keys and dial, and Spectrum bars shows what the PC is playing. Also a Quick
+Settings tile, Vietnamese, controls at the top of the screen, and a choice of the adapters the network meters count.
+
+**New widget**
+- **Spectrum bars** (Windows): a live spectrum analyzer of the sound the PC is playing, with LED segments and falling
+  peak caps in four colour styles. The agent analyzes the default output device in memory and sends the phone only 48
+  loudness levels per frame; audio is never stored or sent. It captures only while the widget is on the phone's screen
+  (not under the night screen or in a hidden Smart Stack card) and stops a few seconds after it leaves (#195, #196,
+  [joshua-jebadurai](https://github.com/joshua-jebadurai)).
 - **Dictation**: tap the microphone and speak, and the text is typed into the app in front on the PC. The phone's own
   speech recognizer does the listening (on most phones Google's, which may use its servers; the widget's "Recognize on
   the phone only" option uses Android 12's on-device recognizer, which keeps the audio on the phone, and refuses on
@@ -58,6 +128,8 @@
   common on LineageOS), a second link opens the pairing link directly (#175, [hassanxs](https://github.com/hassanxs)).
 
 **Panel**
+- Vietnamese: the panel and settings in Tiếng Việt, and a Vietnamese README (#177,
+  [dung997tb](https://github.com/dung997tb)).
 - Settings › Display › "Page dots and the Allow / Deny buttons at the top of the screen", for a panel that stands below
   the screen, where the bottom edge is hard to reach (#181, [Muhammadrizo04](https://github.com/Muhammadrizo04)).
 - Smart Stack: a rotation interval of 0 turns automatic rotation off, so the stack changes only when you swipe or tap

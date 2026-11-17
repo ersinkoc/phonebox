@@ -710,7 +710,7 @@ integrationWidget('media-queue', 'Spotify queue', 'spotify/state', (root,data,se
   }
 });
 integrationWidget('media-favorites', 'Spotify favorites', 'spotify/state', (root,data,send)=>{
-  root.append(h('div','deck-track',data.current?.name || 'Nothing playing'),h('div','deck-caption',data.current?.artist || ''));
+  root.append(h('div','deck-track',data.current?.name || t('w.nothingPlaying')),h('div','deck-caption',data.current?.artist || ''));
   const b=button('Save to library',()=>send('favorite'));b.disabled=!data.current?.id;root.append(b);
 });
 W['meeting-timer'] = {needs:['tick'],create(box,{o}){

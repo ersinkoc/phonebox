@@ -60,12 +60,69 @@ test('the breathe widget greets in the panel language before the first tap', asy
   await expect(page.locator('.br-w')).toHaveText('Tippen zum Starten');
 });
 
-test('every language covers every key English defines', async ({ page }) => {
+// Panel keys are translated in all twelve languages and are checked strictly. Settings-page strings were added for
+// English and Vietnamese only: t() falls back to the English entry for a key a language does not define, so a missing
+// s.* key never shows a key name. The languages that do define a key must not carry English text in its place, which is
+// the failure mode a plain "every key exists" check cannot see.
+test('every translated key is really translated, and the rest fall back to English', async ({ page }) => {
+  await page.goto('/panel/');
+  const result = await page.evaluate(() => {
+    const I18n = window.PhoneBoxI18n;
+    const S = I18n.STRINGS;
+    const en = S.en;
+    // Panel keys (everything outside s.*) are the strings the phone shows, and they are translated in all twelve
+    // languages, so a missing one is a regression. Settings-page keys (s.*) were added for English and Vietnamese only
+    // and are allowed to fall back; every other gap is a failure.
+    const gaps = Object.keys(S).flatMap((lang) =>
+      lang === 'en' ? [] : Object.keys(en)
+        .filter((k) => !k.startsWith('s.') && !(k in S[lang]))
+        .map((k) => `${lang}:${k}`));
+    // a key whose text is identical to English is either a name that is not translated (Wi-Fi, USB, Client secret) or
+    // padding; the Vietnamese dictionary is complete, so check it exactly, and spot-check the rest for copied sentences.
+    const SAME_IS_FINE = new Set(['s.discord.clientSecret', 'status.wiFi', 'status.usb', 's.cd.clientId']);
+    const copied = Object.keys(S).filter((lang) => lang !== 'en').flatMap((lang) =>
+      Object.keys(S[lang])
+        .filter((k) => S[lang][k] === en[k] && !SAME_IS_FINE.has(k) && en[k].length > 12 && /[a-z]{4,} [a-z]{3,}/.test(en[k]))
+        .map((k) => `${lang}:${k}`));
+    // a missing key must fall back to English, not print the key
+    I18n.setLang('de');
+    const fallback = I18n.t('s.js.addWidget');
+    I18n.setLang('vi');
+    const translated = I18n.t('s.js.addWidget');
+    return { gaps, copied, fallback, translated };
+  });
+  expect(result.gaps).toEqual([]); // panel keys must exist in every language; s.* may fall back to English
+  expect(result.copied).toEqual([]);
+  expect(result.fallback).toBe('Add a widget');
+  expect(result.translated).toBe('Thêm widget');
+});
+
+test('the Vietnamese panel dictionary is complete', async ({ page }) => {
   await page.goto('/panel/');
   const gaps = await page.evaluate(() => {
     const S = window.PhoneBoxI18n.STRINGS;
-    return Object.keys(S).flatMap((lang) =>
-      lang === 'en' ? [] : Object.keys(S.en).filter((k) => !(k in S[lang])).map((k) => `${lang}:${k}`));
+    return Object.keys(S.en).filter((k) => !(k in S.vi));
   });
   expect(gaps).toEqual([]);
+});
+
+test('the widget catalog translates by its English text', async ({ page }) => {
+  await page.goto('/panel/');
+  const out = await page.evaluate(() => {
+    const I18n = window.PhoneBoxI18n;
+    I18n.setLang('vi');
+    return {
+      name: I18n.tc('Clock'),
+      desc: I18n.tc('Clock, weather, now playing and PC tiles.'),
+      category: I18n.tc('Weather & sky'),
+      untouched: I18n.tc('not in the catalog'),
+      // the catalog is keyed by English, so another language keeps the English name rather than a wrong one
+      other: (I18n.setLang('de'), I18n.tc('Clock')),
+    };
+  });
+  expect(out.name).toBe('Đồng hồ');
+  expect(out.desc).toContain('Đồng hồ');
+  expect(out.category).toBe('Thời tiết & bầu trời');
+  expect(out.untouched).toBe('not in the catalog');
+  expect(out.other).toBe('Clock');
 });
