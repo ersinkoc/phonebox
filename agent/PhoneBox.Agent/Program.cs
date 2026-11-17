@@ -482,9 +482,10 @@ app.MapGet("/api/photos/{id}", async (string id, PhotoFrame photos, HttpResponse
 });
 // Camera widget: the latest picture of the camera a widget shows, as a JPEG. Pulling a camera starts with these requests
 // and stops a few seconds after the last one; without a fresh picture the answer is a state, never an older picture.
-app.MapGet("/api/camera", (string? widget, bool? fresh, HttpRequest req, HttpResponse res, CameraFeeds cameras) =>
+// "fresh" is read as text, not bound as a bool: a value the bool binder can't parse ("1") would answer 400 instead
+app.MapGet("/api/camera", (string? widget, string? fresh, HttpRequest req, HttpResponse res, CameraFeeds cameras) =>
 {
-    var (status, jpeg, state) = cameras.Frame(req.Headers["X-PhoneBox-Device"].ToString(), widget, fresh == true);
+    var (status, jpeg, state) = cameras.Frame(req.Headers["X-PhoneBox-Device"].ToString(), widget, fresh is "true" or "1");
     res.Headers.CacheControl = "no-store";
     res.Headers["X-Content-Type-Options"] = "nosniff";
     if (status == 204) return Results.NoContent(); // no newer picture than the one this widget has

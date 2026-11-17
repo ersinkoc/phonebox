@@ -7,12 +7,13 @@ const CAM = { id: 'cam0000door', name: 'Front door', url: 'rtsp://u:p@10.0.0.2/l
 async function show(page, { widget = { camera: CAM.id }, cameras = [CAM], pages } = {}) {
   await page.addInitScript(() => {
     window.__camRequests = 0;
+    window.__camUrls = [];
     const wrap = () => {
       const f = window.fetch;
       if (!f || f.__cam) return;
       const g = (input, init) => {
         const url = typeof input === 'string' ? input : input.url;
-        if (url.includes('/api/camera')) window.__camRequests++;
+        if (url.includes('/api/camera')) { window.__camRequests++; window.__camUrls.push(url); }
         return f(input, init);
       };
       g.__cam = true;
@@ -49,6 +50,11 @@ test('the camera widget shows the latest picture and keeps it coming', async ({ 
     requestAnimationFrame(look);
   }));
   expect(blank).toBe(0);
+  // the first request (nothing on screen) asks for the latest picture whatever was sent before, in a form the agent's
+  // query binding accepts; once a picture shows, the requests drop it so an unchanged picture can be skipped
+  const urls = await page.evaluate(() => window.__camUrls);
+  expect(urls[0]).toContain('fresh=true');
+  expect(urls[urls.length - 1]).not.toContain('fresh');
   // pictures are blobs, and the previous one is released (only one object URL is alive)
   expect(first).toMatch(/^blob:/);
   expect(errors).toEqual([]);

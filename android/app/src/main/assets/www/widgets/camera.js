@@ -54,7 +54,7 @@ W.camera = {
       try {
         // nothing on screen (just shown again, or the last download failed): ask for the latest picture even if this widget
         // was sent it before, instead of an "unchanged" 204
-        const fresh = urls[front] ? '' : '&fresh=1';
+        const fresh = urls[front] ? '' : '&fresh=true';
         const r = await Promise.race([fetch(`${API}/camera?${wq}${fresh}`, { cache: 'no-store', headers: PANEL_HEADERS, signal: ctl.signal }), deadline]);
         if (r.status === 204) return every(); // the agent has nothing newer than what is shown
         if (r.ok) {
