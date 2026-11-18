@@ -49,6 +49,8 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     internal string CacheDir { get; init; } = System.IO.Path.Combine(AppPaths.LocalDir, "photos-cache");
     /// <summary>Test seam: the clock (Environment.TickCount64).</summary>
     internal Func<long> Now { get; init; } = () => Environment.TickCount64;
+    /// <summary>Test seam: lists a folder (<see cref="Scan"/>).</summary>
+    internal Func<string, bool, Library> Scanner { get; init; } = Scan;
 
     /// <summary>Test seam: scans now and waits for it.</summary>
     internal void ScanNow() { lock (_gate) _library = null; Current(config.Get().Photos, wait: true); }
@@ -86,21 +88,24 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
                 launched = _scan = Task.Run(() =>
                 {
                     Library next;
-                    try { next = Scan(root, subfolders); }
+                    try { next = Scanner(root, subfolders); }
                     catch (Exception ex)
                     {
                         log.LogDebug("photo scan: {Msg}", ex.Message);
                         next = new(root, subfolders, [], 0, "The photo folder can't be read");
                     }
-                    // always cleared for the active scan; stale scans from a cleared/switched folder are dropped
-                    bool current;
+                    // always cleared for the active scan; stale scans from a cleared/switched folder are dropped, and
+                    // so is an older scan for the same selection that no longer owns the slot. The cache is cleaned in
+                    // the same lock, so a copy cached for a folder chosen since can't be deleted by this scan.
                     lock (_gate)
                     {
-                        current = _generation == gen && _scanKey == key;
-                        if (current) _library = next with { ScannedAt = Now() };
+                        if (_scan == launched && _generation == gen && _scanKey == key)
+                        {
+                            _library = next with { ScannedAt = Now() };
+                            try { CleanCacheLocked(next); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                        }
                         if (_scan == launched) { _scan = null; _scanKey = null; }
                     }
-                    if (current) try { CleanCache(next); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
                 });
             }
             scan = _scan!;
@@ -205,12 +210,14 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     /// <summary>After the settings are saved: a cleared folder takes its scaled copies with it, widget or not.</summary>
     public void SettingsSaved()
     {
-        var folder = config.Get().Photos.Folder.Trim();
+        var photos = config.Get().Photos;
+        var folder = photos.Folder.Trim();
         if (string.IsNullOrWhiteSpace(folder)) { ForgetCache(); return; }
+        // Subfolders counts as much as the folder: a recursive scan in flight must not publish after it was turned off
         lock (_gate)
         {
-            if (_library is { } lib && lib.Root != folder) { _library = null; _generation++; }
-            else if (_scanKey is { } sk && sk.Root != folder) _generation++;
+            if (_library is { } lib && (lib.Root != folder || lib.Subfolders != photos.Subfolders)) { _library = null; _generation++; }
+            else if (_scanKey is { } sk && (sk.Root != folder || sk.Subfolders != photos.Subfolders)) _generation++;
         }
     }
 
@@ -307,17 +314,16 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
         }
     }
 
-    /// <summary>After a scan: scaled copies of photos that are gone, changed or in another folder are deleted.</summary>
-    private void CleanCache(Library lib)
+    /// <summary>
+    /// After a scan, under <see cref="_gate"/> (the lock WriteCache publishes with, so a copy being written is never
+    /// pulled away mid-move): scaled copies of photos that are gone, changed or in another folder are deleted.
+    /// </summary>
+    private void CleanCacheLocked(Library lib)
     {
         var keep = lib.Photos.Select(p => CacheKey(p) + ".jpg").ToHashSet(StringComparer.Ordinal);
-        // under the lock WriteCache publishes with: a copy being written (its .tmp file) is never pulled away mid-move
-        lock (_gate)
-        {
-            if (!Directory.Exists(CacheDir)) return;
-            foreach (var f in Directory.EnumerateFiles(CacheDir))
-                if (!keep.Contains(System.IO.Path.GetFileName(f))) try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-        }
+        if (!Directory.Exists(CacheDir)) return;
+        foreach (var f in Directory.EnumerateFiles(CacheDir))
+            if (!keep.Contains(System.IO.Path.GetFileName(f))) try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     /// <summary>No folder any more: no scaled copies of its photos either.</summary>

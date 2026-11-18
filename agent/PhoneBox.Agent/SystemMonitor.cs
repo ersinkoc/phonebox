@@ -249,8 +249,10 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         double? hottest = null;
         void Visit(JsonElement node, bool inCpu)
         {
+            // a null or non-object entry is skipped, not allowed to throw away the readings after it
+            if (node.ValueKind != JsonValueKind.Object) return;
             inCpu = inCpu || IsCpuNode(node);
-            if (inCpu && node.TryGetProperty("Text", out var text) && text.GetString() is { } name && CoreSensor().IsMatch(name)
+            if (inCpu && StrProp(node, "Text") is { } name && CoreSensor().IsMatch(name)
                 && ReadCelsius(node) is { } t && (hottest is null || t > hottest))
                 hottest = t;
             if (node.TryGetProperty("Children", out var kids) && kids.ValueKind == JsonValueKind.Array)
@@ -260,16 +262,22 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         return hottest;
     }
 
+    /// <summary>A string property of an object node; null when it is missing or not a string.</summary>
+    private static string? StrProp(JsonElement node, string name) =>
+        node.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
     private static bool IsCpuNode(JsonElement node) =>
-        (node.TryGetProperty("HardwareId", out var id) && id.GetString() is { } hw
+        (StrProp(node, "HardwareId") is { } hw
             && (hw.StartsWith("/intelcpu/", StringComparison.OrdinalIgnoreCase) || hw.StartsWith("/amdcpu/", StringComparison.OrdinalIgnoreCase)))
-        || (node.TryGetProperty("ImageURL", out var img) && img.GetString() is { } url && url.EndsWith("/cpu.png", StringComparison.OrdinalIgnoreCase));
+        || (StrProp(node, "ImageURL") is { } url && url.EndsWith("/cpu.png", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>A temperature value such as "54,0 °C" or "140.0 °F"; load and clock sensors share the core names but have no °.</summary>
     private static double? ReadCelsius(JsonElement node)
     {
         if (!node.TryGetProperty("Value", out var val) || val.ValueKind != JsonValueKind.String || val.GetString() is not { } s || !s.Contains('°')) return null;
-        if (node.TryGetProperty("Type", out var type) && type.ValueKind == JsonValueKind.String && type.GetString() is { } ty && ty != "Temperature") return null;
+        // an older reply has no type; one that names a type must name a temperature
+        if (node.TryGetProperty("Type", out var type) && type.ValueKind != JsonValueKind.Null
+            && (type.ValueKind != JsonValueKind.String || type.GetString() != "Temperature")) return null;
         return Gpus.ParseLhmValue(s, "Temperature") is { Kind: "temp" } parsed ? parsed.Value : null;
     }
 
@@ -278,6 +286,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
 
     private static double? FindTemp(JsonElement node, string[] names)
     {
+        if (node.ValueKind != JsonValueKind.Object) return null;
         if (node.TryGetProperty("Text", out var text) && text.ValueKind == JsonValueKind.String && names.Contains(text.GetString())
             && ReadCelsius(node) is { } temp)
             return temp;

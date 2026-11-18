@@ -195,7 +195,7 @@ public class IcsTests
         var start = new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc);
         var events = Ics.Parse(Cal($"UID:m\nDTSTART:{first}\nRRULE:FREQ=MONTHLY;BYDAY={byDay};BYMONTHDAY={byMonthDay};COUNT=3"),
             start, start.AddMonths(4));
-        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd"))));
+        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd", System.Globalization.CultureInfo.InvariantCulture))));
     }
 
     [Theory]
@@ -207,7 +207,7 @@ public class IcsTests
         var events = Ics.Parse(Cal($"UID:overlap\nDTSTART;VALUE=DATE:{first}\nRRULE:FREQ=MONTHLY;COUNT=3;{filters}"),
             from, from.AddMonths(4));
 
-        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd"))));
+        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd", System.Globalization.CultureInfo.InvariantCulture))));
     }
 
     [Theory]
@@ -220,7 +220,7 @@ public class IcsTests
         var events = Ics.Parse(Cal($"UID:year\nDTSTART;VALUE=DATE:{first}\nRRULE:FREQ=YEARLY;COUNT=3;{filters}"),
             from, from.AddYears(4));
 
-        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("yyyy-MM-dd"))));
+        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))));
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public class IcsTests
         var from = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
         var events = Ics.Parse(Cal($"UID:x\nDTSTART;VALUE=DATE:{start}\nRRULE:FREQ={frequency};BYMONTH=11;COUNT=2"),
             from, from.AddYears(2));
-        Assert.Equal(expected, string.Join(",", events.Select(e => Utc(e.Start).ToString("yyyy-MM-dd"))));
+        Assert.Equal(expected, string.Join(",", events.Select(e => Utc(e.Start).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))));
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public class IcsTests
     {
         var events = Ics.Parse(Cal($"UID:x\nDTSTART:{start}\nRRULE:{rrule}\nSUMMARY:S"),
             new DateTime(1997, 9, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(1998, 1, 1, 0, 0, 0, DateTimeKind.Utc));
-        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd"))));
+        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd", System.Globalization.CultureInfo.InvariantCulture))));
     }
 
     [Fact]

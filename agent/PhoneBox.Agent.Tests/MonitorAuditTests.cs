@@ -191,7 +191,30 @@ public sealed class MonitorAuditTests : IDisposable
         var inst = Assert.Single(detail.Instances, i => i.Pid == pid);
         Assert.Equal("newest", inst.Session);
         Assert.True(inst.Locked);
-        Assert.True(detail.Locked);
+        // the group lock depends on every same-name process (another test host may be running), so only check that it
+        // follows the instances it was computed from
+        if (detail.Instances.All(i => i.Locked)) Assert.True(detail.Locked);
+    }
+
+    [Fact]
+    public void CodexProjectComesFromALongOrBomPrefixedFirstRecordAndWaitsForAnIncompleteOne()
+    {
+        var readCwd = typeof(SessionMonitor).GetMethod("ReadCodexCwd", BindingFlags.Static | BindingFlags.NonPublic)!;
+        string Cwd(byte[] content)
+        {
+            var file = Path.Combine(_dir, $"rollout-{Guid.NewGuid():N}.jsonl");
+            File.WriteAllBytes(file, content);
+            return (string)readCwd.Invoke(null, [file])!;
+        }
+        static byte[] Utf8(string s) => Encoding.UTF8.GetBytes(s);
+        const string Meta = """{"type":"session_meta","payload":{"cwd":"/work/demo","instructions":"__PAD__"}}""";
+
+        // base instructions and tool definitions can make the first record longer than 64 KiB
+        var longMeta = Meta.Replace("__PAD__", new string('x', 70 * 1024));
+        Assert.Equal("/work/demo", Cwd(Utf8(longMeta + "\n{\"type\":\"event_msg\"}\n")));
+        Assert.Equal("/work/demo", Cwd([0xEF, 0xBB, 0xBF, .. Utf8(Meta.Replace("__PAD__", "") + "\n")]));
+        // still being written: nothing yet, so the next poll reads it again
+        Assert.Equal("", Cwd(Utf8(longMeta)));
     }
 
     [Fact]

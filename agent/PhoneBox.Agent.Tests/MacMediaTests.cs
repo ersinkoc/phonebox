@@ -77,19 +77,6 @@ public sealed class MacMediaTests
         using var loopback = new TcpListener(IPAddress.Loopback, 0);
         loopback.Start();
         var port = ((IPEndPoint)loopback.LocalEndpoint).Port;
-        var hit = false;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                using var c = await loopback.AcceptTcpClientAsync();
-                hit = true;
-                const string svg = "<svg><script>alert(1)</script></svg>";
-                await c.GetStream().WriteAsync(Encoding.ASCII.GetBytes(
-                    $"HTTP/1.1 200 OK\r\nContent-Type: image/svg+xml\r\nContent-Length: {svg.Length}\r\nConnection: close\r\n\r\n{svg}"));
-            }
-            catch { }
-        });
 
         try
         {
@@ -111,8 +98,9 @@ public sealed class MacMediaTests
             File.WriteAllText(disguisedPng, "{\"not\":\"an-image\"}");
             Assert.Null(await InvokeLoadArt(new Uri(disguisedPng).AbsoluteUri));
 
-            Assert.Null(await InvokeLoadArt($"http://127.0.0.1:{port}/art.png"));
-            Assert.False(hit);
+            // nothing accepts on the listener, so a connection that got through stays queued for Pending() to see
+            Assert.Null(await InvokeLoadArt($"http://127.0.0.1:{port}/art.png").WaitAsync(TimeSpan.FromSeconds(10)));
+            Assert.False(loopback.Pending());
 
             var t0 = DateTimeOffset.UtcNow;
             const string json10 = """{"kMRMediaRemoteNowPlayingInfoTitle":"Track","kMRMediaRemoteNowPlayingInfoClientBundleIdentifier":"com.spotify.client","kMRMediaRemoteNowPlayingInfoDuration":120,"kMRMediaRemoteNowPlayingInfoElapsedTime":10,"kMRMediaRemoteNowPlayingInfoPlaybackRate":1}""";
@@ -127,6 +115,37 @@ public sealed class MacMediaTests
         {
             try { loopback.Stop(); } catch { }
             try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task ArtworkDownloadDeadlineCoversAStalledBody()
+    {
+        using var server = new TcpListener(IPAddress.Loopback, 0);
+        server.Start();
+        var port = ((IPEndPoint)server.LocalEndpoint).Port;
+        using var release = new CancellationTokenSource();
+        var serving = Task.Run(async () =>
+        {
+            using var c = await server.AcceptTcpClientAsync();
+            var stream = c.GetStream();
+            if (await stream.ReadAsync(new byte[4096]) == 0) return; // the request (any part of it will do)
+            // the headers and the first bytes of a PNG, then nothing more until the test ends
+            await stream.WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: 4096\r\n\r\n"));
+            await stream.WriteAsync(new byte[] { 0x89, 0x50, 0x4e, 0x47 });
+            try { await Task.Delay(Timeout.Infinite, release.Token); } catch (OperationCanceledException) { }
+        });
+        try
+        {
+            using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+            var download = MediaMonitor.DownloadArt(http, $"http://127.0.0.1:{port}/art.png", TimeSpan.FromMilliseconds(300));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => download.WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+        finally
+        {
+            release.Cancel();
+            server.Stop();
+            try { await serving.WaitAsync(TimeSpan.FromSeconds(5)); } catch { }
         }
     }
 }

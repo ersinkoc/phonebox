@@ -9,7 +9,7 @@ namespace PhoneBox.Agent;
 /// (D3DKMT and the GPU performance counters, the same data Task Manager shows), Linux sysfs (and DRM fdinfo for Intel's
 /// load) and macOS ioreg.
 /// The same card can come from more than one source; the entries are matched by name and the earlier source wins,
-/// a later one only fills what the earlier one left empty.
+/// a later one only fills what the earlier one left empty (except the Windows adapter's integrated flag, see Merge).
 /// </summary>
 internal static partial class Gpus
 {
@@ -41,7 +41,11 @@ internal static partial class Gpus
             .ToList();
     }
 
-    /// <summary>Fields of <paramref name="a"/> win; <paramref name="b"/> fills the gaps.</summary>
+    /// <summary>
+    /// Fields of <paramref name="a"/> win; <paramref name="b"/> fills the gaps. One exception: the Windows adapter list
+    /// (merged last) marking a GPU integrated is kept, since Windows knows a hybrid laptop's integrated GPU that the name
+    /// heuristic of the sources before it can miss. A guess such as sysfs's small-VRAM rule doesn't override an earlier source.
+    /// </summary>
     public static GpuInfo Merge(GpuInfo a, GpuInfo b) => a with
     {
         Util = a.Util ?? b.Util,
@@ -54,7 +58,7 @@ internal static partial class Gpus
         Clock = a.Clock ?? b.Clock,
         Vendor = a.Vendor ?? b.Vendor,
         Source = a.Source is null ? b.Source : b.Source is null || a.Source.Contains(b.Source) ? a.Source : a.Source + "+" + b.Source,
-        Integrated = a.Integrated,
+        Integrated = a.Integrated || (b.Integrated && b.Source == "windows"),
         HotSpot = a.HotSpot ?? b.HotSpot,
         MemTemp = a.MemTemp ?? b.MemTemp,
         MemClock = a.MemClock ?? b.MemClock,

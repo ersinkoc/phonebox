@@ -232,21 +232,129 @@ public sealed class PhotoFrameTests : IDisposable
         File.WriteAllBytes(Path.Combine(other, "only.png"), Png);
         var path = Path.Combine(_dir, "config.json");
         var store = new ConfigStore(path);
-        var racing = new PhotoFrame(store, NullLogger<PhotoFrame>.Instance) { CacheDir = Path.Combine(_dir, "cache-race") };
-        var gate = (Lock)typeof(PhotoFrame).GetField("_gate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(racing)!;
-        var scanField = typeof(PhotoFrame).GetField("_scan", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-        Task firstScan, secondScan;
-        using (gate.EnterScope())
+        // the old folder's scan is held just before it publishes until the new folder's scan has finished
+        var oldReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var oldRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var racing = new PhotoFrame(store, NullLogger<PhotoFrame>.Instance)
         {
-            _ = racing.List();
-            firstScan = (Task)scanField.GetValue(racing)!;
-            File.WriteAllText(path, File.ReadAllText(path).Replace(JsonSerializer.Serialize(Photos), JsonSerializer.Serialize(other)));
-            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(2));
-            racing.SettingsSaved();
-            _ = racing.List();
-            secondScan = (Task)scanField.GetValue(racing)!;
-        }
-        await Task.WhenAll(firstScan, secondScan);
+            CacheDir = Path.Combine(_dir, "cache-race"),
+            Scanner = (root, subfolders) =>
+            {
+                var lib = PhotoFrame.Scan(root, subfolders);
+                if (root == Photos) { oldReached.TrySetResult(); oldRelease.Task.Wait(TimeSpan.FromSeconds(10)); }
+                return lib;
+            },
+        };
+        _ = racing.List();
+        var firstScan = ScanTask(racing);
+        await oldReached.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        File.WriteAllText(path, File.ReadAllText(path).Replace(JsonSerializer.Serialize(Photos), JsonSerializer.Serialize(other)));
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(2));
+        racing.SettingsSaved();
+        _ = racing.List();
+        await ScanTask(racing).WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal([PhotoFrame.IdOf(other, "only.png")], racing.List().Ids);
+        oldRelease.SetResult();
+        await firstScan.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal([PhotoFrame.IdOf(other, "only.png")], racing.List().Ids);
+    }
+
+    // a cleared slot means that scan has already finished
+    private static Task ScanTask(PhotoFrame frame) =>
+        (Task?)typeof(PhotoFrame).GetField("_scan", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(frame)
+        ?? Task.CompletedTask;
+
+    private static PhotoFrame.Library? Published(PhotoFrame frame) =>
+        (PhotoFrame.Library?)typeof(PhotoFrame).GetField("_library", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(frame);
+
+    /// <summary>A frame whose scans each wait for the test to let them publish, in the order they were started.</summary>
+    private (PhotoFrame Frame, List<(bool Subfolders, TaskCompletionSource Reached, TaskCompletionSource Release)> Scans) HeldScans(ConfigStore store)
+    {
+        var scans = new List<(bool, TaskCompletionSource, TaskCompletionSource)>();
+        var frame = new PhotoFrame(store, NullLogger<PhotoFrame>.Instance)
+        {
+            CacheDir = Path.Combine(_dir, "cache-held"),
+            Scanner = (root, subfolders) =>
+            {
+                var lib = PhotoFrame.Scan(root, subfolders);
+                (bool, TaskCompletionSource Reached, TaskCompletionSource Release) mine;
+                lock (scans) scans.Add(mine = (subfolders, new(TaskCreationOptions.RunContinuationsAsynchronously), new(TaskCreationOptions.RunContinuationsAsynchronously)));
+                mine.Reached.TrySetResult();
+                mine.Release.Task.Wait(TimeSpan.FromSeconds(10));
+                return lib;
+            },
+        };
+        return (frame, scans);
+    }
+
+    private static void SetSubfolders(string path, bool on, int minutes)
+    {
+        File.WriteAllText(path, File.ReadAllText(path).Replace($"\"subfolders\":{(on ? "false" : "true")}", $"\"subfolders\":{(on ? "true" : "false")}"));
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(minutes));
+    }
+
+    private static async Task Reached(List<(bool Subfolders, TaskCompletionSource Reached, TaskCompletionSource Release)> scans, int count)
+    {
+        for (var i = 0; i < 1000; i++)
+        {
+            lock (scans) if (scans.Count >= count) break;
+            await Task.Delay(10);
+        }
+        Task reached;
+        lock (scans) reached = scans[count - 1].Reached.Task;
+        await reached.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task AnOlderScanForTheSameSelectionCannotPublishOverTheOneThatOwnsTheSlot()
+    {
+        File.WriteAllBytes(Path.Combine(Photos, "a.jpg"), Jpeg);
+        _ = Frame();
+        var path = Path.Combine(_dir, "config.json");
+        var (frame, scans) = HeldScans(new ConfigStore(path));
+        try
+        {
+            // recursive, then not, then recursive again (two requests that read the settings around a save)
+            _ = frame.List();
+            var first = ScanTask(frame);
+            await Reached(scans, 1);
+            SetSubfolders(path, false, 2);
+            _ = frame.List();
+            await Reached(scans, 2);
+            SetSubfolders(path, true, 4);
+            _ = frame.List();
+            var third = ScanTask(frame);
+            await Reached(scans, 3);
+            Assert.NotSame(first, third);
+
+            scans[0].Release.SetResult();
+            await first.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Null(Published(frame));
+            Assert.True(frame.List().Scanning);
+        }
+        finally { lock (scans) foreach (var s in scans) s.Release.TrySetResult(); }
+    }
+
+    [Fact]
+    public async Task TurningSubfoldersOffDropsTheRecursiveScanInFlight()
+    {
+        File.WriteAllBytes(Path.Combine(Photos, "a.jpg"), Jpeg);
+        Directory.CreateDirectory(Path.Combine(Photos, "trip"));
+        File.WriteAllBytes(Path.Combine(Photos, "trip", "b.jpg"), Jpeg);
+        _ = Frame();
+        var path = Path.Combine(_dir, "config.json");
+        var (frame, scans) = HeldScans(new ConfigStore(path));
+        try
+        {
+            _ = frame.List();
+            var recursive = ScanTask(frame);
+            await Reached(scans, 1);
+            SetSubfolders(path, false, 2);
+            frame.SettingsSaved();
+            scans[0].Release.SetResult();
+            await recursive.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Null(Published(frame));
+        }
+        finally { lock (scans) foreach (var s in scans) s.Release.TrySetResult(); }
     }
 }
