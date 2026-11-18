@@ -24,6 +24,7 @@ import android.text.format.DateFormat
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
@@ -50,7 +51,9 @@ import org.json.JSONObject
 class MainActivity : Activity(), SensorEventListener {
 
     private lateinit var web: WebView
-    private val dictation by lazy { Dictation(this) { script -> web.evaluateJavascript(script, null) } }
+    // Set first in onDestroy: dictation and stream callbacks already queued on the UI thread then skip the destroyed WebView.
+    private var destroyed = false
+    private val dictation by lazy { Dictation(this) { script -> if (!destroyed) web.evaluateJavascript(script, null) } }
     private lateinit var link: AgentLink
     private lateinit var stream: AgentStream
     @Volatile private var resumed = false
@@ -73,7 +76,7 @@ class MainActivity : Activity(), SensorEventListener {
         link = AgentLink(this)
         stream = AgentStream(link) { event, data ->
             val js = "window.onAgentStream && window.onAgentStream(${JSONObject.quote(event)}, ${JSONObject.quote(data)})"
-            runOnUiThread { web.evaluateJavascript(js, null) }
+            runOnUiThread { if (!destroyed) web.evaluateJavascript(js, null) }
         }
 
         web = WebView(this)
@@ -251,11 +254,13 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     override fun onDestroy() {
+        destroyed = true
         resumed = false
         dictation.cancel(0)
         sensors?.unregisterListener(this)
         stream.stop()
         link.close()
+        (web.parent as? ViewGroup)?.removeView(web) // a WebView must be detached before destroy()
         web.destroy()
         super.onDestroy()
     }

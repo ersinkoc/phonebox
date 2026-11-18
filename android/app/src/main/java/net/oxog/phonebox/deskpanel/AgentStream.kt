@@ -44,6 +44,14 @@ class AgentStream(private val link: AgentLink, private val deliver: (event: Stri
         worker?.interrupt()
     }
 
+    /**
+     * Delivers only while generation [gen] is current. The check and the delivery happen under [gate], so stop() waits
+     * for a delivery in flight and nothing is delivered after it returns. [deliver] must not block (it only posts).
+     */
+    private fun dispatch(gen: Int, event: String, data: String) {
+        synchronized(gate) { if (running && gen == generation) deliver(event, data) }
+    }
+
     private fun loop(gen: Int) {
         val alive = { running && gen == generation }
         while (alive()) {
@@ -64,7 +72,7 @@ class AgentStream(private val link: AgentLink, private val deliver: (event: Stri
                 if (!attached) { reply.body.close(); break }
                 reply.body.bufferedReader(Charsets.UTF_8).use { r ->
                     if (!alive()) return@use
-                    deliver("open", "{\"route\":\"${route.name.lowercase()}\"}")
+                    dispatch(gen, "open", "{\"route\":\"${route.name.lowercase()}\"}")
                     val since = System.currentTimeMillis()
                     var event = "message"
                     val data = StringBuilder()
@@ -73,7 +81,7 @@ class AgentStream(private val link: AgentLink, private val deliver: (event: Stri
                         if (!alive()) break
                         when {
                             line.isEmpty() -> {
-                                if (data.isNotEmpty() && alive()) deliver(event, data.toString())
+                                if (data.isNotEmpty()) dispatch(gen, event, data.toString())
                                 event = "message"
                                 data.setLength(0)
                                 if (route == AgentLink.Route.WIFI && System.currentTimeMillis() - since > 60_000) break
@@ -87,7 +95,7 @@ class AgentStream(private val link: AgentLink, private val deliver: (event: Stri
             } finally {
                 synchronized(gate) { if (current === body) current = null } // a newer thread may own it already
             }
-            if (opened && alive()) deliver("close", "{}")
+            if (opened) dispatch(gen, "close", "{}")
             if (alive()) try { Thread.sleep(if (opened) 300 else 2000) } catch (_: InterruptedException) {}
         }
     }

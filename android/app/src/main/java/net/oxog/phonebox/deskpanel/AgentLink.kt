@@ -219,24 +219,7 @@ class AgentLink(private val context: Context) {
         try {
             background.execute {
                 try {
-                    val c = URL("$USB_BASE/api/pair").openConnection() as HttpURLConnection
-                    c.instanceFollowRedirects = false
-                    c.connectTimeout = 800
-                    c.readTimeout = 3000
-                    val j = JSONObject(c.inputStream.bufferedReader().readText())
-                    val name = j.optString("pc")
-                    if (j.optBoolean("enabled")) {
-                        // add or refresh this computer and make it the active one
-                        val hosts = j.getJSONArray("hosts")
-                        val pc = Pc(j.getString("fingerprint"), name, (0 until hosts.length()).map { hosts.getString(it) }, j.getInt("port"), j.getString("token"))
-                        synchronized(pcsLock) { savePcs(pcs.filter { it.id != pc.id && !(name.isNotEmpty() && it.name == name) } + pc, pc.id) }
-                    } else if (name.isNotEmpty()) {
-                        // Wi-Fi was turned off on this computer: forget its pairing, keep the others
-                        synchronized(pcsLock) {
-                            val rest = pcs.filter { it.name != name }
-                            if (rest.size != pcs.size) savePcs(rest, rest.firstOrNull { it.id == activeId }?.id ?: rest.firstOrNull()?.id)
-                        }
-                    }
+                    refreshPairing(URL("$USB_BASE/api/pair").openConnection() as HttpURLConnection)
                 } catch (_: Exception) {
                 }
             }
@@ -244,7 +227,41 @@ class AgentLink(private val context: Context) {
         }
     }
 
+    private fun refreshPairing(c: HttpURLConnection) {
+        c.instanceFollowRedirects = false
+        c.connectTimeout = 800
+        c.readTimeout = 3000
+        val code = c.responseCode
+        if (code != 200) {
+            // a redirect or error body is not the agent's pairing answer: it must not add or forget a computer
+            try { (if (code >= 400) c.errorStream else c.inputStream)?.close() } catch (_: Exception) {}
+            c.disconnect()
+            return
+        }
+        val j = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
+        val name = j.optString("pc")
+        if (j.optBoolean("enabled")) {
+            // add or refresh this computer and make it the active one
+            val hosts = j.getJSONArray("hosts")
+            val pc = Pc(j.getString("fingerprint"), name, (0 until hosts.length()).map { hosts.getString(it) }, j.getInt("port"), j.getString("token"))
+            synchronized(pcsLock) { if (!closed) savePcs(pcs.filter { it.id != pc.id && !(name.isNotEmpty() && it.name == name) } + pc, pc.id) }
+        } else if (name.isNotEmpty()) {
+            // Wi-Fi was turned off on this computer: forget its pairing, keep the others
+            synchronized(pcsLock) {
+                val rest = pcs.filter { it.name != name }
+                if (!closed && rest.size != pcs.size) savePcs(rest, rest.firstOrNull { it.id == activeId }?.id ?: rest.firstOrNull()?.id)
+            }
+        }
+    }
+
+    /**
+     * Set by [close] under [pcsLock]. shutdownNow() does not wait for a refresh already running; one that reaches the
+     * lock after close() must not save this instance's list over a newer instance's change (e.g. a forgotten computer).
+     */
+    private var closed = false
+
     fun close() {
+        synchronized(pcsLock) { closed = true }
         background.shutdownNow()
     }
 

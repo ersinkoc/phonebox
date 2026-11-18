@@ -97,6 +97,40 @@ private fun lateData(): List<String> {
     return synchronized(events) { events.toList() }
 }
 
+/**
+ * A worker that passed its generation check must not deliver after stop() returned: stop() has to wait for a delivery
+ * in flight. The "open" callback stalls here (as a descheduled worker would); stop() runs on another thread.
+ * Returns whether stop() was still waiting while the delivery was stalled, and the events delivered after it returned.
+ */
+private fun stopDuringDelivery(): Pair<Boolean, List<String>> {
+    val inDelivery = CountDownLatch(1)
+    val release = CountDownLatch(1)
+    val stopReturned = AtomicBoolean()
+    val late = Collections.synchronizedList(mutableListOf<String>())
+    val calls = AtomicInteger()
+    val stream = AgentStream(AgentLink {
+        if (calls.getAndIncrement() > 0) throw java.io.IOException("offline fixture")
+        ByteArrayInputStream(byteArrayOf())
+    }) { event, _ ->
+        if (stopReturned.get()) late.add(event)
+        if (event == "open") { inDelivery.countDown(); release.await(5, TimeUnit.SECONDS) }
+    }
+    stream.start()
+    val thread = worker(stream)
+    inDelivery.reached()
+    val stopper = Thread { stream.stop(); stopReturned.set(true) }.apply { isDaemon = true; start() }
+    val waited = try {
+        stopper.join(300)
+        stopper.isAlive
+    } finally {
+        release.countDown()
+    }
+    stopper.join(5000)
+    check(!stopper.isAlive) { "stop() did not return" }
+    thread.ended()
+    return waited to synchronized(late) { late.toList() }
+}
+
 private fun closesBodyBeforeNotifying(failOn: String?): Boolean {
     val result = AtomicBoolean()
     val notified = CountDownLatch(1)
@@ -162,6 +196,10 @@ fun main(args: Array<String>) {
     val data = lateData()
     println("EXPECTED: no notify or close after stop | ACTUAL: $data")
     check("notify" !in data && "close" !in data) { "Stopped stream published post-stop event: $data" }
+    val (waited, late) = stopDuringDelivery()
+    println("EXPECTED: stop() waits for an in-flight delivery, nothing after it | ACTUAL: waited=$waited, after stop=$late")
+    check(waited) { "stop() returned while a delivery was in flight" }
+    check(late.isEmpty()) { "Event delivered after stop() returned: $late" }
     naturalCloseControl() // repeated start/stop cleanup still completes
     openDeliveryCleanup(mode)
 }

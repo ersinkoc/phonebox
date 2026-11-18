@@ -176,7 +176,51 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLServerSocket
 
+/** The USB /api/pair answer, without a network: a status and a body, recording whether it was released. */
+class PairAnswer(private val status: Int, private val body: String) : java.net.HttpURLConnection(java.net.URL("http://127.0.0.1/api/pair")) {
+    var bodyClosed = false
+    var disconnected = false
+    private fun stream() = object : java.io.ByteArrayInputStream(body.toByteArray()) { override fun close() { bodyClosed = true } }
+    override fun connect() {}
+    override fun disconnect() { disconnected = true }
+    override fun usingProxy() = false
+    override fun getResponseCode() = status
+    override fun getInputStream(): java.io.InputStream = if (status >= 400) throw java.io.IOException("HTTP $status") else stream()
+    override fun getErrorStream(): java.io.InputStream? = if (status >= 400) stream() else null
+}
+
+/** The USB pairing refresh: only a 200 answer changes the saved computers, and nothing is saved after close(). */
+fun checkPairRefresh() {
+    val refresh = AgentLink::class.java.getDeclaredMethod("refreshPairing", java.net.HttpURLConnection::class.java).apply { isAccessible = true }
+    val office = JSONArray().put(JSONObject().put("id", "fp1").put("name", "Office").put("hosts", JSONArray(listOf("10.0.0.2"))).put("port", 8766).put("token", "t1")).toString()
+    val off = JSONObject().put("pc", "Office").put("enabled", false).toString()
+    val home = JSONObject().put("pc", "Home").put("enabled", true).put("fingerprint", "fp2").put("hosts", JSONArray(listOf("10.0.0.3"))).put("port", 8766).put("token", "t2").toString()
+    fun paired(): Pair<AgentLink, Context> {
+        val ctx = Context()
+        ctx.getSharedPreferences("pairing", 0).edit().putString("pcs", office).putString("active", "fp1").apply()
+        return AgentLink(ctx) to ctx
+    }
+    fun saved(ctx: Context) = ctx.getSharedPreferences("pairing", 0).getString("pcs", null)
+    fun answer(link: AgentLink, status: Int, body: String) = PairAnswer(status, body).also { refresh.invoke(link, it) }
+
+    paired().let { (link, ctx) -> answer(link, 200, off); check(!saved(ctx)!!.contains("Office")) { "Control: a 200 with enabled=false must forget the computer" } }
+    paired().let { (link, ctx) -> answer(link, 200, home); check(saved(ctx)!!.contains("Home")) { "Control: a 200 with enabled=true must save the computer" } }
+    for (status in listOf(302, 404)) {
+        val (link, ctx) = paired()
+        val a = answer(link, status, off)
+        check(saved(ctx) == office) { "A $status pairing answer changed the saved computers: ${saved(ctx)}" }
+        check(a.bodyClosed && a.disconnected) { "A $status pairing answer was not released" }
+    }
+    val (link, ctx) = paired()
+    link.close()
+    answer(link, 200, home)
+    answer(link, 200, off)
+    check(saved(ctx) == office) { "A pairing refresh saved after close(): ${saved(ctx)}" }
+    println("PAIR VERIFIED")
+}
+
 fun main(args: Array<String>) {
+    checkPairRefresh()
     val ks = KeyStore.getInstance("PKCS12")
     java.io.FileInputStream(args[0]).use { ks.load(it, "changeit".toCharArray()) }
     val cert = ks.getCertificate(ks.aliases().nextElement())
@@ -184,9 +228,8 @@ fun main(args: Array<String>) {
     val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply { init(ks, "changeit".toCharArray()) }
     val ssl = SSLContext.getInstance("TLS").apply { init(kmf.keyManagers, null, null) }
     val server = ssl.serverSocketFactory.createServerSocket(0) as SSLServerSocket
+    // Redirect target: kept listening (no accept) until the requests are done, then checked for a queued connection.
     val spy = java.net.ServerSocket(0)
-    val spyHit = java.util.concurrent.atomic.AtomicBoolean(false)
-    Thread { try { spy.accept().use { spyHit.set(true) } } catch (_: Exception) {} }.apply { isDaemon = true; start() }
     val replies = ArrayDeque(listOf(
         "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: 11\\r\\nConnection: close\\r\\n\\r\\n{\\"ok\\":true}",
         "HTTP/1.1 302 Found\\r\\nLocation: https://127.0.0.1:${spy.localPort}/leak\\r\\nContent-Length: 0\\r\\nConnection: close\\r\\n\\r\\n",
@@ -215,13 +258,15 @@ fun main(args: Array<String>) {
         check(code() == 502) { "Expected 502 for same-scheme 302 redirect" }
         check(code() == 502) { "Expected 502 for cross-scheme 302 redirect" }
         check(code() == 502) { "Expected 502 for 304 response" }
-        spy.close()
-        check(!spyHit.get()) { "AgentLink followed unpinned redirect" }
+        spy.soTimeout = 500
+        val contacted = try { spy.accept().close(); true } catch (_: java.net.SocketTimeoutException) { false } finally { spy.close() }
+        check(!contacted) { "AgentLink followed unpinned redirect" }
         link.close()
         val bg = AgentLink::class.java.getDeclaredField("background").apply { isAccessible = true }.get(link) as ExecutorService
         check(bg.isShutdown) { "AgentLink.close() did not shut down background executor" }
         println("LINK VERIFIED")
     } finally {
+        spy.close()
         server.close()
         serverThread.join(2000)
     }
