@@ -1271,3 +1271,19 @@ body.controls-top .ap-foot { order: -1; margin-bottom: 4px; }
 .note-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; width: min(92vw, 560px); display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); }
 .note-ta { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; line-height: 1.4; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); resize: vertical; }
 .note-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Pager scrollLeft, grid x coordinates and media seek math use physical LTR coordinates.
+   Only widget content and the surrounding UI change reading direction. */
+html[dir="rtl"] #pager, html[dir="rtl"] .grid, html[dir="rtl"] #dots,
+html[dir="rtl"] .ov-map, html[dir="rtl"] .bar, html[dir="rtl"] .m-controls,
+html[dir="rtl"] input[type="range"] { direction: ltr; }
+html[dir="rtl"] .w { direction: rtl; }
+html[dir="rtl"] .w-title { letter-spacing: normal; }
+html[dir="rtl"] .w-sub, html[dir="rtl"] .mini-btn, html[dir="rtl"] #ovPcs,
+html[dir="rtl"] .q-upd, html[dir="rtl"] .chips { margin-left: 0; margin-right: auto; }
+html[dir="rtl"] .ico.m { margin-right: 0; margin-left: .35em; }
+html[dir="rtl"] .ov-tile { text-align: start; }
+html[dir="rtl"] .cmd-o, html[dir="rtl"] pre, html[dir="rtl"] code,
+html[dir="rtl"] .clock, html[dir="rtl"] .times, html[dir="rtl"] .t-val, html[dir="rtl"] .q-pct {
+  direction: ltr; unicode-bidi: isolate;
+}

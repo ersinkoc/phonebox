@@ -14,6 +14,18 @@ public class ConfigTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData("{}", "avibroner/phonebox")]
+    [InlineData("{\"updates\":{}}", "avibroner/phonebox")]
+    [InlineData("{\"updates\":{\"repo\":null}}", "avibroner/phonebox")]
+    [InlineData("{\"updates\":{\"repo\":\" \"}}", "avibroner/phonebox")]
+    [InlineData("{\"updates\":{\"repo\":\"ersinkoc/phonebox\"}}", "ersinkoc/phonebox")]
+    [InlineData("{\"updates\":{\"repo\":\"custom/phonebox\"}}", "custom/phonebox")]
+    public void UpdateSourceDefaultsToThisForkAndPreservesExplicitConfiguration(string json, string expected)
+    {
+        Assert.Equal(expected, Load(json).Updates.Repo);
+    }
+
     [Fact]
     public void EmptyConfigGetsTheDefaultPagesAndFreshTokens()
     {
@@ -479,6 +491,8 @@ public class ConfigConcurrencyTests
     [InlineData("\"TR\"", "tr")]       // any case
     [InlineData("\" de \"", "de")]     // stray spaces
     [InlineData("\"vi\"", "vi")]       // added after the list was first written (#177)
+    [InlineData("\"he\"", "he")]       // Hebrew must survive a settings save
+    [InlineData("\"HE\"", "he")]
     [InlineData("\"xx\"", "auto")]     // a language PhoneBox does not have
     [InlineData("null", "auto")]
     [InlineData("\"\"", "auto")]
