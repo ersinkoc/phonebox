@@ -5647,6 +5647,7 @@
       'Fader layout': 'Kiểu thanh trượt',
       'Feeds': 'Nguồn tin',
       'Fill': 'Lấp đầy',
+      'Fill the button with the shortcut\'s picture': 'Phủ kín nút bằng hình ảnh của phím tắt',
       'Fill the widget (crop)': 'Lấp đầy widget (cắt bớt)',
       'First (5-hour session / weekly)': 'Thứ nhất (phiên 5 giờ / hằng tuần)',
       'Fit': 'Vừa khung',

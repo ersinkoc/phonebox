@@ -508,19 +508,35 @@ export async function runShortcut(btn, id) {
   setTimeout(() => btn.classList.remove('ok', 'err'), 900);
 }
 
-export function keyButton(s) {
+/** A shortcut key. With `cover` (the Big button's option), a picture large enough to fill the key becomes its
+ *  background instead of the centred icon. */
+export function keyButton(s, { cover = false } = {}) {
   const icon = h('span', 'k-icon', s.icon || '•');
   const b = h('button', 'key' + (s.toggle ? ' toggle' : ''), icon, h('span', 'k-label', s.label));
   b.style.setProperty('--k', s.color || '#6b7280');
   b.dataset.id = s.id;
   b.addEventListener('click', () => runShortcut(b, s.id));
-  if (s.iconRev != null) applyShortcutIcon(icon, s.id);
+  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover);
   return b;
 }
 
-function applyShortcutIcon(icon, id) {
+// A program's own icon is 32-48 px and turns into a blur when stretched across a key, so only an uploaded picture of
+// at least this size fills it; anything smaller stays the centred icon. An SVG without a size of its own reports 0.
+const COVER_MIN_PX = 128;
+
+function applyShortcutIcon(b, icon, id, cover) {
   const img = new Image();
-  img.onload = () => { icon.replaceChildren(img); icon.classList.add('k-icon-img'); };
+  img.onload = () => {
+    const size = Math.min(img.naturalWidth, img.naturalHeight);
+    if (cover && (size === 0 || size >= COVER_MIN_PX)) {
+      img.className = 'k-bg';
+      img.alt = '';
+      b.prepend(img, h('span', 'k-shade'));
+      b.classList.add('k-cover');
+      return;
+    }
+    icon.replaceChildren(img); icon.classList.add('k-icon-img');
+  };
   img.src = `${API}/shortcuts/icon?id=${encodeURIComponent(id)}`;
 }
 

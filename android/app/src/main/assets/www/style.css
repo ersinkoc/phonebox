@@ -543,6 +543,13 @@ body.offline .offline-msg { display: flex; }
 .w-button .key .k-icon { font-size: min(40cqh, 30cqw); }
 .w-button .key .k-icon.k-icon-img img { width: 40px; height: 40px; width: min(40cqh, 30cqw); height: min(40cqh, 30cqw); }
 .w-button .key .k-label { font-size: clamp(10px, 15cqh, 18px); }
+/* Big button with "fill with the picture": the picture covers the key, the label sits on a shade at the bottom. */
+.key.k-cover { justify-content: flex-end; padding-bottom: 7%; }
+.key.k-cover .k-icon { display: none; }
+.key.k-cover .k-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.key.k-cover .k-shade { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: linear-gradient(to top, rgba(0, 0, 0, .7), rgba(0, 0, 0, 0) 55%); pointer-events: none; }
+.key.k-cover .k-label { position: relative; text-shadow: 0 1px 3px rgba(0, 0, 0, .8); color: #fff; }
+.key.k-cover::before, .key.k-cover::after { z-index: 1; }
 .key::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit; box-shadow: inset 0 0 0 2px transparent; transition: box-shadow .2s; }
 .key.ok::after { box-shadow: inset 0 0 0 2px var(--ok); }
 .key.err::after { box-shadow: inset 0 0 0 2px var(--err); }
