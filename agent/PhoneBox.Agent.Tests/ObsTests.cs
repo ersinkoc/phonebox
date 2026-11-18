@@ -221,7 +221,14 @@ public sealed class ObsTests : IDisposable
             var discovery = obs.DeckSnapshot(default);
             await _inputsEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
             const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-            var refresh = (Task<JsonObject>)typeof(ObsMonitor).GetField("_deckRefresh", fields)!.GetValue(obs)!;
+            // DeckSnapshot stores the shared discovery once it first yields, which can be just after the request arrives
+            Task<JsonObject>? refresh = null;
+            for (var i = 0; i < 40 && refresh is null; i++)
+            {
+                refresh = (Task<JsonObject>?)typeof(ObsMonitor).GetField("_deckRefresh", fields)!.GetValue(obs);
+                if (refresh is null) await Task.Delay(50);
+            }
+            Assert.NotNull(refresh);
 
             try { await _activeSocket!.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "bye", default); } catch { }
             _activeSocket?.Abort();
