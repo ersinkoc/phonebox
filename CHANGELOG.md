@@ -24,8 +24,8 @@
 
 **Agent**
 - Antigravity quotas show up with newer Antigravity IDE versions (reported with 2.32), whose language server answers
-  over HTTPS on a port it picks at start-up: the agent tries the loopback ports that process listens on and accepts its self-signed
-  certificate only for this computer (#227, [goutam-prusty](https://github.com/goutam-prusty)).
+  over HTTPS on a port it picks at start-up: the agent tries the loopback ports that process listens on, and accepts
+  its self-signed certificate only for this computer (#227, [goutam-prusty](https://github.com/goutam-prusty)).
 
 ## 0.9.19 — 2026-11-17
 
