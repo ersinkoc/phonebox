@@ -167,7 +167,8 @@ app.Use((ctx, next) =>
 
 // Security:
 //  - Local port 8765 listens on 127.0.0.1 only; the Host check blocks DNS rebinding. The phone's USB proxy sends
-//    no Origin header; from browsers only the settings page itself (same origin) is accepted (no CSRF).
+//    no Origin header; from browsers only the settings page itself (same origin) is accepted (no CSRF), and an
+//    extension listed in push.origins, for POST/PUT /api/push/<key> only.
 //  - The optional Wi-Fi port only serves the phone API, only over TLS, and only with the paired token.
 app.UseRouting();
 app.Use(async (ctx, next) =>
@@ -200,8 +201,10 @@ app.Use(async (ctx, next) =>
         var host = ctx.Request.Host.Host;
         var spotifyCallback = ctx.Request.Method == "GET" && ctx.Request.Path == "/api/controls/spotify/callback"
             && app.Services.GetRequiredService<SpotifyControl>().HasPendingState(ctx.Request.Query["state"]);
-        if ((host != "127.0.0.1" && host != "localhost") || (origin != "" && !SameOrigins.Contains(origin))
-            || (!spotifyCallback && BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path)))
+        // a browser extension named in push.origins may set a pushed value, and nothing else (LocalPush)
+        var listedExtension = origin != "" && LocalPush.Allows(configStore.Get().Push, origin, ctx.Request.Method, ctx.Request.Path);
+        if ((host != "127.0.0.1" && host != "localhost") || (origin != "" && !SameOrigins.Contains(origin) && !listedExtension)
+            || (!spotifyCallback && !listedExtension && BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path)))
         {
             ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;

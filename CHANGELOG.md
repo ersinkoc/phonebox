@@ -9,6 +9,9 @@
   lighting, Havdalah and the weekly portion, from Hebcal for the weather location. Hebrew names by default.
 - Work clock widget: the running entry of a time tracker and today's total, pushed with `POST /api/push/workclock`
   (`running`, `startedAt`, `client`, `project`, `task`, `todaySec`, `targetHours`); the phone counts the seconds itself.
+- A browser extension on the computer can feed a pushed value: list its origin in the settings file under
+  `"push": { "origins": ["chrome-extension://<id>"] }`. Such an extension may `POST`/`PUT /api/push/<key>` on the local
+  port and nothing else; every other origin is refused as before.
 
 Big buttons that show a picture, and an audit of the agent, the panel, the phone app and the installers: each fix came
 with a test that failed before it, kept as a regression test (#234, #235, #236, #237).

@@ -17,6 +17,7 @@ public sealed class AgentConfig
     public NightConfig Night { get; set; } = new();
     public DisplayConfig Display { get; set; } = new();
     public LanConfig Lan { get; set; } = new();
+    public LocalPushConfig Push { get; set; } = new();
     public UpdateConfig Updates { get; set; } = new();
     public ClaudeConfig Claude { get; set; } = new();
     public List<PageConfig> Pages { get; set; } = [];
@@ -190,6 +191,13 @@ public sealed class LanConfig
     public string? Token { get; set; }
     /// <summary>Separate key for the webhook API from other machines (push/notify/goto/refresh only). May appear in URLs.</summary>
     public string? WebhookToken { get; set; }
+}
+
+public sealed class LocalPushConfig
+{
+    /// <summary>Browser extensions on this computer that may set pushed values on the local port (see <see cref="LocalPush"/>),
+    /// each as its origin: "chrome-extension://&lt;id&gt;". Empty = none.</summary>
+    public List<string> Origins { get; set; } = [];
 }
 
 public sealed class UpdateConfig
@@ -474,6 +482,10 @@ public sealed partial class ConfigStore(string path)
             if (!CameraFeeds.ValidUrl(cam.Url))
                 return $"Camera '{(cam.Name.Length > 0 ? cam.Name : "(no name)")}': the address must start with rtsp:// or rtsps://";
         if (cfg.Weather.Lat is < -90 or > 90 || cfg.Weather.Lon is < -180 or > 180) return "Invalid weather location";
+        var pushOrigins = (cfg.Push?.Origins ?? []).Where(o => !string.IsNullOrWhiteSpace(o)).Select(o => o.Trim()).ToList();
+        if (pushOrigins.Count > LocalPush.MaxOrigins) return $"There are more than {LocalPush.MaxOrigins} push origins";
+        foreach (var pushOrigin in pushOrigins)
+            if (!LocalPush.ValidOrigin(pushOrigin)) return $"Push origin '{pushOrigin}': it must be an extension origin such as chrome-extension://<id>";
         if (!HhMm().IsMatch(cfg.Night.Start ?? "") || !HhMm().IsMatch(cfg.Night.End ?? "")) return "Night mode times must be in HH:MM format";
 
         lock (_lock)
@@ -522,6 +534,8 @@ public sealed partial class ConfigStore(string path)
         c.Display.MinDwellSec = Math.Clamp(c.Display.MinDwellSec, 0, 600);
         c.Display.HoldMaxMin = Math.Clamp(c.Display.HoldMaxMin, 0, 1440);
         c.Lan ??= new();
+        c.Push ??= new();
+        c.Push.Origins = (c.Push.Origins ?? []).Where(o => !string.IsNullOrWhiteSpace(o)).Select(o => o.Trim()).Distinct(StringComparer.Ordinal).ToList();
         c.Updates ??= new();
         c.Ping ??= new();
         c.Ping.Host = c.Ping.Host?.Trim() ?? "";
