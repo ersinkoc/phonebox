@@ -88,6 +88,15 @@ public sealed class HomeAssistantStateTests : IDisposable
     }
 
     [Fact]
+    public async Task ALockToggleWithAnUnknownStateCallsNothing()
+    {
+        Configure(_a);
+        _a.Door = "unknown";
+        Assert.NotNull(await Client().ToggleAsync("lock.door").WaitAsync(TimeSpan.FromSeconds(15)));
+        Assert.Empty(_a.Calls);
+    }
+
+    [Fact]
     public async Task ALockToggleUsesTheStateOfTheServerItCalls()
     {
         _b.Door = "unlocked";

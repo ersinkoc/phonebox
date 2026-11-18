@@ -184,7 +184,9 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
             // a fresh read, not the widgets' 3-second cache: a door unlocked by hand a moment ago must get "lock"
             var (error, states) = await ReadStatesAsync(cfg, [id], fresh: true);
             if (error is not null) return error;
-            if (states.FirstOrDefault().Entity is not { State: not "unavailable" } entity) return "Home Assistant does not report this entity's state";
+            // "unknown" (or nothing) is no state either: guessing would start a vacuum or lock a door on a hunch
+            if (states.FirstOrDefault().Entity is not { State: { Length: > 0 } and not ("unavailable" or "unknown") } entity)
+                return "Home Assistant does not report this entity's state";
             state = entity.State;
             // the read awaited Home Assistant: the widget may have been hidden or the connection replaced meanwhile
             var now = config.Get();
