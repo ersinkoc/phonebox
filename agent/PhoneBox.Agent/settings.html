@@ -584,6 +584,14 @@ dd { margin: 0; word-break: break-all; }
       </div>
 
       <div class="card">
+        <h3 data-i18n="s.antigravity.title">Antigravity permission prompts &amp; notifications</h3>
+        <p class="hint" style="margin:0 0 12px">When Antigravity (IDE or agy CLI) requests tool execution, the phone shows the request with
+          <b>Allow</b> and <b>Deny</b>. Turn completion (Stop) notifies your phone when Antigravity waits for your next prompt.
+          This configures <code>~/.gemini/config/hooks.json</code> with the PhoneBox bridge.</p>
+        <div class="row" style="margin-bottom:12px"><button class="btn" id="agyHookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="agyHookState"></span></div>
+      </div>
+
+      <div class="card">
         <h3 data-i18n="s.quotas.title">AI quotas &amp; CodexBar</h3>
         <p class="hint" style="margin:0 0 12px">Choose which AI coding services to track and show on the panel, and configure rotation.</p>
         <div class="field"><label>Tracked AI services</label>
@@ -2584,6 +2592,12 @@ async function loadInfo() {
     $('hookBtn').dataset.i18n = hk.installed ? 's.claude.removeHook' : 's.claude.installHook';
     $('hookBtn').textContent = t($('hookBtn').dataset.i18n);
     $('hookBtn').dataset.installed = hk.installed ? '1' : '';
+
+    const agyHk = await (await fetch('/api/antigravity/hook')).json();
+    $('agyHookState').textContent = agyHk.installed ? 'Installed in ' + agyHk.path : 'Not installed';
+    $('agyHookBtn').dataset.i18n = agyHk.installed ? 's.claude.removeHook' : 's.claude.installHook';
+    $('agyHookBtn').textContent = t($('agyHookBtn').dataset.i18n);
+    $('agyHookBtn').dataset.installed = agyHk.installed ? '1' : '';
     $('info').replaceChildren(
       h('dt', {}, 'Version'), h('dd', {}, i.version),
       h('dt', {}, 'Settings file'), h('dd', {}, h('code', {}, i.configPath)),
@@ -2690,6 +2704,13 @@ $('hookBtn').onclick = async () => {
   const r = await fetch('/api/claude/hook', { method: remove ? 'DELETE' : 'POST' });
   const j = await r.json().catch(() => ({}));
   r.ok ? toast(remove ? 'Hook removed' : 'Hook installed — new Claude Code sessions pick it up') : toast(j.error || 'Could not change the hook', true);
+  loadInfo();
+};
+$('agyHookBtn').onclick = async () => {
+  const remove = !!$('agyHookBtn').dataset.installed;
+  const r = await fetch('/api/antigravity/hook', { method: remove ? 'DELETE' : 'POST' });
+  const j = await r.json().catch(() => ({}));
+  r.ok ? toast(remove ? 'Antigravity hook removed' : 'Antigravity hook installed — new sessions pick it up') : toast(j.error || 'Could not change the hook', true);
   loadInfo();
 };
 $('modalClose').onclick = closeModal;

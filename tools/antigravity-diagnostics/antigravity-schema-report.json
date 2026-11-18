@@ -1,0 +1,1960 @@
+{
+  "report_type": "antigravity_sqlite_schema_sanitized",
+  "privacy": "Read-only schema inspection without prompts, user inputs, messages, credentials, or personal contents.",
+  "databases": [
+    {
+      "category": "ide_summary",
+      "relative_location": "conversation_summaries.db",
+      "user_version": 3,
+      "journal_mode": "wal",
+      "tables": [
+        {
+          "name": "conversation_parents",
+          "type": "table",
+          "sql": "CREATE TABLE conversation_parents (conversation_id TEXT PRIMARY KEY, parent_id TEXT NOT NULL) WITHOUT ROWID",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "conversation_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "parent_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_conversation_parents_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "conversation_id"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "conversation_summaries",
+          "type": "table",
+          "sql": "CREATE TABLE `conversation_summaries` (`conversation_id` text,`title` text NOT NULL DEFAULT \"\",`preview` text NOT NULL DEFAULT \"\",`step_count` integer NOT NULL DEFAULT 0,`last_modified_time` datetime NOT NULL,`workspace_uris` text NOT NULL,`status` text NOT NULL DEFAULT \"\",`source` text NOT NULL DEFAULT \"\",`project_id` text NOT NULL DEFAULT \"\",`agent_name` text NOT NULL DEFAULT \"\",`parent_conversation_id` text NOT NULL DEFAULT \"\",`nesting_depth` integer NOT NULL DEFAULT 0,`battle_id` text NOT NULL DEFAULT \"\",`winning_conversation_id` text NOT NULL DEFAULT \"\",`not_fully_idle` numeric NOT NULL DEFAULT false,`killed` numeric NOT NULL DEFAULT false,`last_user_input_time` datetime NOT NULL,`last_user_input_step_index` integer NOT NULL DEFAULT -1,`app_data_dir` text NOT NULL DEFAULT \"\",`raw_summary` blob,`group_id` text NOT NULL DEFAULT \"\",PRIMARY KEY (`conversation_id`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "conversation_id",
+              "type": "TEXT",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "title",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "preview",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "step_count",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            },
+            {
+              "cid": 4,
+              "name": "last_modified_time",
+              "type": "datetime",
+              "notnull": true,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 5,
+              "name": "workspace_uris",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 6,
+              "name": "status",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 7,
+              "name": "source",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 8,
+              "name": "project_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 9,
+              "name": "agent_name",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 10,
+              "name": "parent_conversation_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 11,
+              "name": "nesting_depth",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            },
+            {
+              "cid": 12,
+              "name": "battle_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 13,
+              "name": "winning_conversation_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 14,
+              "name": "not_fully_idle",
+              "type": "numeric",
+              "notnull": true,
+              "default_value": "false",
+              "pk": 0
+            },
+            {
+              "cid": 15,
+              "name": "killed",
+              "type": "numeric",
+              "notnull": true,
+              "default_value": "false",
+              "pk": 0
+            },
+            {
+              "cid": 16,
+              "name": "last_user_input_time",
+              "type": "datetime",
+              "notnull": true,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 17,
+              "name": "last_user_input_step_index",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "-1",
+              "pk": 0
+            },
+            {
+              "cid": 18,
+              "name": "app_data_dir",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 19,
+              "name": "raw_summary",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 20,
+              "name": "group_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "idx_conversation_summaries_last_modified_time",
+              "unique": false,
+              "origin": "c",
+              "columns": [
+                "last_modified_time"
+              ]
+            },
+            {
+              "name": "idx_conversation_summaries_last_user_input_time",
+              "unique": false,
+              "origin": "c",
+              "columns": [
+                "last_user_input_time"
+              ]
+            },
+            {
+              "name": "sqlite_autoindex_conversation_summaries_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "conversation_id"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "conversations_fts",
+          "type": "table",
+          "sql": "CREATE VIRTUAL TABLE conversations_fts USING fts5(\n\t\t\tconversation_id UNINDEXED,\n\t\t\tchunk_index UNINDEXED,\n\t\t\tchunk_first_step UNINDEXED,\n\t\t\tchunk_last_step UNINDEXED,\n\t\t\tlast_modified_time UNINDEXED,\n\t\t\tstep_count UNINDEXED,\n\t\t\tlast_step_created_at UNINDEXED,\n\t\t\tarchived UNINDEXED,\n\t\t\tuser_step_byte_offsets UNINDEXED,\n\t\t\tagent_step_byte_offsets UNINDEXED,\n\t\t\ttitle,\n\t\t\tworkspace,\n\t\t\tproject,\n\t\t\tuser_body,\n\t\t\tagent_body,\n\t\t\ttokenize = 'unicode61 remove_diacritics 2',\n\t\t\tprefix = '1 2 3'\n\t\t)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "conversation_id",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 1,
+              "name": "chunk_index",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "chunk_first_step",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "chunk_last_step",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 4,
+              "name": "last_modified_time",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 5,
+              "name": "step_count",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 6,
+              "name": "last_step_created_at",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 7,
+              "name": "archived",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 8,
+              "name": "user_step_byte_offsets",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 9,
+              "name": "agent_step_byte_offsets",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 10,
+              "name": "title",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 11,
+              "name": "workspace",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 12,
+              "name": "project",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 13,
+              "name": "user_body",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 14,
+              "name": "agent_body",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "conversations_fts_config",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "k",
+              "type": "",
+              "notnull": true,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "v",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_conversations_fts_config_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "k"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "conversations_fts_content",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_content'(id INTEGER PRIMARY KEY, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "id",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "c0",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "c1",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "c2",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 4,
+              "name": "c3",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 5,
+              "name": "c4",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 6,
+              "name": "c5",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 7,
+              "name": "c6",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 8,
+              "name": "c7",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 9,
+              "name": "c8",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 10,
+              "name": "c9",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 11,
+              "name": "c10",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 12,
+              "name": "c11",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 13,
+              "name": "c12",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 14,
+              "name": "c13",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 15,
+              "name": "c14",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "conversations_fts_data",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_data'(id INTEGER PRIMARY KEY, block BLOB)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "id",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "block",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "conversations_fts_docsize",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "id",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "sz",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "conversations_fts_idx",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "segid",
+              "type": "",
+              "notnull": true,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "term",
+              "type": "",
+              "notnull": true,
+              "default_value": null,
+              "pk": 2
+            },
+            {
+              "cid": 2,
+              "name": "pgno",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_conversations_fts_idx_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "segid",
+                "term"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "search_schema_version",
+          "type": "table",
+          "sql": "CREATE TABLE search_schema_version (\n\t\t\tversion INTEGER PRIMARY KEY\n\t\t)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "version",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        }
+      ]
+    },
+    {
+      "category": "cli_summary",
+      "relative_location": "conversation_summaries.db",
+      "user_version": 3,
+      "journal_mode": "wal",
+      "tables": [
+        {
+          "name": "conversation_parents",
+          "type": "table",
+          "sql": "CREATE TABLE conversation_parents (conversation_id TEXT PRIMARY KEY, parent_id TEXT NOT NULL) WITHOUT ROWID",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "conversation_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "parent_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_conversation_parents_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "conversation_id"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "conversation_summaries",
+          "type": "table",
+          "sql": "CREATE TABLE `conversation_summaries` (`conversation_id` text,`title` text NOT NULL DEFAULT \"\",`preview` text NOT NULL DEFAULT \"\",`step_count` integer NOT NULL DEFAULT 0,`last_modified_time` datetime NOT NULL,`workspace_uris` text NOT NULL,`status` text NOT NULL DEFAULT \"\",`source` text NOT NULL DEFAULT \"\",`project_id` text NOT NULL DEFAULT \"\",`agent_name` text NOT NULL DEFAULT \"\",`parent_conversation_id` text NOT NULL DEFAULT \"\",`nesting_depth` integer NOT NULL DEFAULT 0,`battle_id` text NOT NULL DEFAULT \"\",`winning_conversation_id` text NOT NULL DEFAULT \"\",`not_fully_idle` numeric NOT NULL DEFAULT false,`killed` numeric NOT NULL DEFAULT false,`last_user_input_time` datetime NOT NULL,`last_user_input_step_index` integer NOT NULL DEFAULT -1,`app_data_dir` text NOT NULL DEFAULT \"\",`raw_summary` blob, group_id TEXT NOT NULL DEFAULT '',PRIMARY KEY (`conversation_id`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "conversation_id",
+              "type": "TEXT",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "title",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "preview",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "step_count",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            },
+            {
+              "cid": 4,
+              "name": "last_modified_time",
+              "type": "datetime",
+              "notnull": true,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 5,
+              "name": "workspace_uris",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 6,
+              "name": "status",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 7,
+              "name": "source",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 8,
+              "name": "project_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 9,
+              "name": "agent_name",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 10,
+              "name": "parent_conversation_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 11,
+              "name": "nesting_depth",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            },
+            {
+              "cid": 12,
+              "name": "battle_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 13,
+              "name": "winning_conversation_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 14,
+              "name": "not_fully_idle",
+              "type": "numeric",
+              "notnull": true,
+              "default_value": "false",
+              "pk": 0
+            },
+            {
+              "cid": 15,
+              "name": "killed",
+              "type": "numeric",
+              "notnull": true,
+              "default_value": "false",
+              "pk": 0
+            },
+            {
+              "cid": 16,
+              "name": "last_user_input_time",
+              "type": "datetime",
+              "notnull": true,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 17,
+              "name": "last_user_input_step_index",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "-1",
+              "pk": 0
+            },
+            {
+              "cid": 18,
+              "name": "app_data_dir",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "\"\"",
+              "pk": 0
+            },
+            {
+              "cid": 19,
+              "name": "raw_summary",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 20,
+              "name": "group_id",
+              "type": "TEXT",
+              "notnull": true,
+              "default_value": "''",
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "idx_conversation_summaries_last_modified_time",
+              "unique": false,
+              "origin": "c",
+              "columns": [
+                "last_modified_time"
+              ]
+            },
+            {
+              "name": "idx_conversation_summaries_last_user_input_time",
+              "unique": false,
+              "origin": "c",
+              "columns": [
+                "last_user_input_time"
+              ]
+            },
+            {
+              "name": "sqlite_autoindex_conversation_summaries_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "conversation_id"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "conversations_fts",
+          "type": "table",
+          "sql": "CREATE VIRTUAL TABLE conversations_fts USING fts5(\n\t\t\tconversation_id UNINDEXED,\n\t\t\tchunk_index UNINDEXED,\n\t\t\tchunk_first_step UNINDEXED,\n\t\t\tchunk_last_step UNINDEXED,\n\t\t\tlast_modified_time UNINDEXED,\n\t\t\tstep_count UNINDEXED,\n\t\t\tlast_step_created_at UNINDEXED,\n\t\t\tarchived UNINDEXED,\n\t\t\tuser_step_byte_offsets UNINDEXED,\n\t\t\tagent_step_byte_offsets UNINDEXED,\n\t\t\ttitle,\n\t\t\tworkspace,\n\t\t\tproject,\n\t\t\tuser_body,\n\t\t\tagent_body,\n\t\t\ttokenize = 'unicode61 remove_diacritics 2',\n\t\t\tprefix = '1 2 3'\n\t\t)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "conversation_id",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 1,
+              "name": "chunk_index",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "chunk_first_step",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "chunk_last_step",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 4,
+              "name": "last_modified_time",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 5,
+              "name": "step_count",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 6,
+              "name": "last_step_created_at",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 7,
+              "name": "archived",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 8,
+              "name": "user_step_byte_offsets",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 9,
+              "name": "agent_step_byte_offsets",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 10,
+              "name": "title",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 11,
+              "name": "workspace",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 12,
+              "name": "project",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 13,
+              "name": "user_body",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 14,
+              "name": "agent_body",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "conversations_fts_config",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "k",
+              "type": "",
+              "notnull": true,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "v",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_conversations_fts_config_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "k"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "conversations_fts_content",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_content'(id INTEGER PRIMARY KEY, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "id",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "c0",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "c1",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "c2",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 4,
+              "name": "c3",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 5,
+              "name": "c4",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 6,
+              "name": "c5",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 7,
+              "name": "c6",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 8,
+              "name": "c7",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 9,
+              "name": "c8",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 10,
+              "name": "c9",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 11,
+              "name": "c10",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 12,
+              "name": "c11",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 13,
+              "name": "c12",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 14,
+              "name": "c13",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 15,
+              "name": "c14",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "conversations_fts_data",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_data'(id INTEGER PRIMARY KEY, block BLOB)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "id",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "block",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "conversations_fts_docsize",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "id",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "sz",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "conversations_fts_idx",
+          "type": "table",
+          "sql": "CREATE TABLE 'conversations_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "segid",
+              "type": "",
+              "notnull": true,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "term",
+              "type": "",
+              "notnull": true,
+              "default_value": null,
+              "pk": 2
+            },
+            {
+              "cid": 2,
+              "name": "pgno",
+              "type": "",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_conversations_fts_idx_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "segid",
+                "term"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "search_schema_version",
+          "type": "table",
+          "sql": "CREATE TABLE search_schema_version (\n\t\t\tversion INTEGER PRIMARY KEY\n\t\t)",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "version",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        }
+      ]
+    },
+    {
+      "category": "ide_individual_conversation",
+      "relative_location": "0a78347e-9c19-49cb-bb4a-25ea3e38dceb.db",
+      "user_version": 1,
+      "journal_mode": "wal",
+      "tables": [
+        {
+          "name": "battle_mode_infos",
+          "type": "table",
+          "sql": "CREATE TABLE `battle_mode_infos` (`idx` integer,`data` blob,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "executor_metadata",
+          "type": "table",
+          "sql": "CREATE TABLE `executor_metadata` (`idx` integer,`data` blob,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "gen_metadata",
+          "type": "table",
+          "sql": "CREATE TABLE `gen_metadata` (`idx` integer,`data` blob,`size` integer NOT NULL DEFAULT 0,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "size",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "parent_references",
+          "type": "table",
+          "sql": "CREATE TABLE `parent_references` (`idx` integer,`data` blob,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "steps",
+          "type": "table",
+          "sql": "CREATE TABLE `steps` (`idx` integer,`step_type` integer NOT NULL DEFAULT 0,`status` integer NOT NULL DEFAULT 0,`has_subtrajectory` numeric NOT NULL DEFAULT false,`metadata` blob,`error_details` blob,`permissions` blob,`task_details` blob,`render_info` blob,`step_payload` blob,`step_format` integer NOT NULL DEFAULT 0,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "step_type",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "status",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "has_subtrajectory",
+              "type": "numeric",
+              "notnull": true,
+              "default_value": "false",
+              "pk": 0
+            },
+            {
+              "cid": 4,
+              "name": "metadata",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 5,
+              "name": "error_details",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 6,
+              "name": "permissions",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 7,
+              "name": "task_details",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 8,
+              "name": "render_info",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 9,
+              "name": "step_payload",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 10,
+              "name": "step_format",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "idx_steps_step_type",
+              "unique": false,
+              "origin": "c",
+              "columns": [
+                "step_type"
+              ]
+            },
+            {
+              "name": "idx_steps_status",
+              "unique": false,
+              "origin": "c",
+              "columns": [
+                "status"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trajectory_meta",
+          "type": "table",
+          "sql": "CREATE TABLE `trajectory_meta` (`trajectory_id` text,`cascade_id` text,`trajectory_type` integer,`source` integer,PRIMARY KEY (`trajectory_id`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "trajectory_id",
+              "type": "TEXT",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "cascade_id",
+              "type": "TEXT",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "trajectory_type",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "source",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_trajectory_meta_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "trajectory_id"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trajectory_metadata_blob",
+          "type": "table",
+          "sql": "CREATE TABLE `trajectory_metadata_blob` (`id` text DEFAULT \"main\",`data` blob,PRIMARY KEY (`id`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "id",
+              "type": "TEXT",
+              "notnull": false,
+              "default_value": "\"main\"",
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_trajectory_metadata_blob_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "id"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "category": "cli_individual_conversation",
+      "relative_location": "10d4dd46-d622-4385-b0db-b177285bdf72.db",
+      "user_version": 1,
+      "journal_mode": "wal",
+      "tables": [
+        {
+          "name": "battle_mode_infos",
+          "type": "table",
+          "sql": "CREATE TABLE `battle_mode_infos` (`idx` integer,`data` blob,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "executor_metadata",
+          "type": "table",
+          "sql": "CREATE TABLE `executor_metadata` (`idx` integer,`data` blob,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "gen_metadata",
+          "type": "table",
+          "sql": "CREATE TABLE `gen_metadata` (`idx` integer,`data` blob,`size` integer NOT NULL DEFAULT 0,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "size",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "parent_references",
+          "type": "table",
+          "sql": "CREATE TABLE `parent_references` (`idx` integer,`data` blob,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": []
+        },
+        {
+          "name": "steps",
+          "type": "table",
+          "sql": "CREATE TABLE `steps` (`idx` integer,`step_type` integer NOT NULL DEFAULT 0,`status` integer NOT NULL DEFAULT 0,`has_subtrajectory` numeric NOT NULL DEFAULT false,`metadata` blob,`error_details` blob,`permissions` blob,`task_details` blob,`render_info` blob,`step_payload` blob,`step_format` integer NOT NULL DEFAULT 0,PRIMARY KEY (`idx`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "idx",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "step_type",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "status",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "has_subtrajectory",
+              "type": "numeric",
+              "notnull": true,
+              "default_value": "false",
+              "pk": 0
+            },
+            {
+              "cid": 4,
+              "name": "metadata",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 5,
+              "name": "error_details",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 6,
+              "name": "permissions",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 7,
+              "name": "task_details",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 8,
+              "name": "render_info",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 9,
+              "name": "step_payload",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 10,
+              "name": "step_format",
+              "type": "INTEGER",
+              "notnull": true,
+              "default_value": "0",
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "idx_steps_step_type",
+              "unique": false,
+              "origin": "c",
+              "columns": [
+                "step_type"
+              ]
+            },
+            {
+              "name": "idx_steps_status",
+              "unique": false,
+              "origin": "c",
+              "columns": [
+                "status"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trajectory_meta",
+          "type": "table",
+          "sql": "CREATE TABLE `trajectory_meta` (`trajectory_id` text,`cascade_id` text,`trajectory_type` integer,`source` integer,PRIMARY KEY (`trajectory_id`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "trajectory_id",
+              "type": "TEXT",
+              "notnull": false,
+              "default_value": null,
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "cascade_id",
+              "type": "TEXT",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 2,
+              "name": "trajectory_type",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            },
+            {
+              "cid": 3,
+              "name": "source",
+              "type": "INTEGER",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_trajectory_meta_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "trajectory_id"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trajectory_metadata_blob",
+          "type": "table",
+          "sql": "CREATE TABLE `trajectory_metadata_blob` (`id` text DEFAULT \"main\",`data` blob,PRIMARY KEY (`id`))",
+          "columns": [
+            {
+              "cid": 0,
+              "name": "id",
+              "type": "TEXT",
+              "notnull": false,
+              "default_value": "\"main\"",
+              "pk": 1
+            },
+            {
+              "cid": 1,
+              "name": "data",
+              "type": "BLOB",
+              "notnull": false,
+              "default_value": null,
+              "pk": 0
+            }
+          ],
+          "foreign_keys": [],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_trajectory_metadata_blob_1",
+              "unique": true,
+              "origin": "pk",
+              "columns": [
+                "id"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "comparisons": {
+    "summaries": {
+      "compared": [
+        "ide_summary",
+        "cli_summary"
+      ],
+      "identical_table_names": true,
+      "differences": []
+    },
+    "individual_conversations": {
+      "compared": [
+        "ide_individual_conversation",
+        "cli_individual_conversation"
+      ],
+      "identical_table_names": true,
+      "differences": []
+    }
+  }
+}

@@ -37,6 +37,7 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log) : BackgroundServ
             var list = new List<AgentSession>();
             try { list.AddRange(ReadClaude()); } catch (Exception ex) { log.LogDebug("claude sessions: {Msg}", ex.Message); }
             try { list.AddRange(ReadCodex()); } catch (Exception ex) { log.LogDebug("codex sessions: {Msg}", ex.Message); }
+            try { list.AddRange(ReadAntigravity()); } catch (Exception ex) { log.LogDebug("antigravity sessions: {Msg}", ex.Message); }
             _sessions = list;
             await Task.Delay(2000, ct);
         }
@@ -220,6 +221,116 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log) : BackgroundServ
         }
         return new CodexDetails(model, effort, totalTokens, inputTokens, outputTokens, cachedInputTokens,
             reasoningTokens, lastInputTokens, contextWindow, lastActivityAt, turnStartedAt, lifecycle, lastTool, start + complete);
+    }
+
+    internal static IEnumerable<AgentSession> ReadAntigravity(string? geminiHome = null, Func<int, bool>? isAlive = null)
+    {
+        var root = geminiHome ?? Path.Combine(Home, ".gemini");
+        if (!Directory.Exists(root)) yield break;
+
+        var seen = new HashSet<string>();
+
+        // 1. Check metadata cache under antigravity-cli/cache/conversation_metadata.json
+        var metaFile = Path.Combine(root, "antigravity-cli", "cache", "conversation_metadata.json");
+        if (File.Exists(metaFile))
+        {
+            JsonDocument? doc = null;
+            try
+            {
+                using var fs = new FileStream(metaFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                doc = JsonDocument.Parse(fs);
+            }
+            catch { }
+
+            if (doc is not null)
+            {
+                using (doc)
+                {
+                    if (doc.RootElement.TryGetProperty("conversations", out var convs) && convs.ValueKind == JsonValueKind.Object)
+                    {
+                        foreach (var prop in convs.EnumerateObject())
+                        {
+                            var cid = prop.Name;
+                            var obj = prop.Value;
+                            var summary = obj.TryGetProperty("summary", out var sm) && sm.ValueKind == JsonValueKind.Object ? sm : default;
+                            var title = (summary.ValueKind == JsonValueKind.Object ? Str(summary, "Title") : null) ?? "";
+                            var wsUris = summary.ValueKind == JsonValueKind.Object && summary.TryGetProperty("WorkspaceURIs", out var wsu) && wsu.ValueKind == JsonValueKind.Array ? wsu : default;
+                            var workspace = "";
+                            if (wsUris.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var u in wsUris.EnumerateArray())
+                                {
+                                    if (u.ValueKind == JsonValueKind.String && u.GetString() is { } uriStr)
+                                    {
+                                        workspace = NormalizeUri(uriStr);
+                                        break;
+                                    }
+                                }
+                            }
+                            var project = Path.GetFileName(workspace.TrimEnd('\\', '/'));
+                            if (string.IsNullOrWhiteSpace(project)) project = "antigravity";
+
+                            var lastModStr = Str(obj, "last_modified_time") ?? (summary.ValueKind == JsonValueKind.Object ? Str(summary, "UpdatedAt") : null);
+                            var since = DateTimeOffset.TryParse(lastModStr, out var dto) ? dto.ToUnixTimeMilliseconds() : 0L;
+
+                            seen.Add(cid);
+                            yield return new AgentSession(
+                                Id: "antigravity:" + cid,
+                                Tool: "antigravity",
+                                Name: string.IsNullOrWhiteSpace(title) ? project : title,
+                                Project: project,
+                                Status: (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - since < 300_000) ? "busy" : "idle",
+                                WaitingFor: null,
+                                Since: since,
+                                StartedAt: since);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Discover individual conversation files under antigravity/conversations and antigravity-cli/conversations
+        foreach (var sub in new[] { "antigravity", "antigravity-cli" })
+        {
+            var convDir = Path.Combine(root, sub, "conversations");
+            if (!Directory.Exists(convDir)) continue;
+            foreach (var db in Directory.EnumerateFiles(convDir, "*.db"))
+            {
+                var name = Path.GetFileNameWithoutExtension(db);
+                if (seen.Contains(name)) continue;
+                var fi = new FileInfo(db);
+                if (!fi.Exists) continue;
+                var since = new DateTimeOffset(fi.LastWriteTimeUtc).ToUnixTimeMilliseconds();
+                var started = new DateTimeOffset(fi.CreationTimeUtc).ToUnixTimeMilliseconds();
+                var status = (DateTime.UtcNow - fi.LastWriteTimeUtc < TimeSpan.FromMinutes(5)) ? "busy" : "idle";
+                seen.Add(name);
+                yield return new AgentSession(
+                    Id: "antigravity:" + name,
+                    Tool: "antigravity",
+                    Name: "antigravity-" + (name.Length > 8 ? name[..8] : name),
+                    Project: "antigravity",
+                    Status: status,
+                    WaitingFor: null,
+                    Since: since,
+                    StartedAt: started);
+            }
+        }
+    }
+
+    private static string NormalizeUri(string uriStr)
+    {
+        try
+        {
+            var uri = new Uri(uriStr);
+            var path = Uri.UnescapeDataString(uri.AbsolutePath);
+            if (OperatingSystem.IsWindows() && path.StartsWith('/') && path.Length > 2 && path[2] == ':')
+                path = path[1..];
+            return path.Replace('/', '\\');
+        }
+        catch
+        {
+            return uriStr;
+        }
     }
 
     /// <summary>Claude Code writes its process' start time (a FILETIME) into the session file; another process with the same PID started later.</summary>
