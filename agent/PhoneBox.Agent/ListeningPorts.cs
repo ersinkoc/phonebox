@@ -34,8 +34,9 @@ internal static class ListeningPorts
                 : OperatingSystem.IsLinux() ? Linux(pid)
                 : OperatingSystem.IsMacOS() ? MacOs(pid)
                 : [];
+            // two sockets on one port (127.0.0.1 and [::1]) are different servers, so both stay
             return found.OrderBy(l => l.Port).ThenBy(l => l.Address.AddressFamily == AddressFamily.InterNetworkV6)
-                .DistinctBy(l => l.Port).Take(max).ToArray();
+                .Distinct().Take(max).ToArray();
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -43,17 +44,26 @@ internal static class ListeningPorts
         }
     }
 
+    /// <summary>An IPv4-mapped IPv6 address (::ffff:127.0.0.2) as the IPv4 address it stands for.</summary>
+    private static IPAddress Plain(IPAddress address) => address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
+
     /// <summary>Whether a listener on this local address answers connections to the loopback address of its family.</summary>
-    internal static bool ReachableOnLoopback(IPAddress address) =>
-        IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any);
+    internal static bool ReachableOnLoopback(IPAddress address)
+    {
+        address = Plain(address);
+        return IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any);
+    }
 
     /// <summary>
     /// Where to reach a listener: its own address when it is bound to a loopback address (127.0.0.2 is one too), the
     /// loopback address of its family when it is bound to every interface.
     /// </summary>
-    internal static IPAddress LoopbackFor(IPAddress listener) =>
-        IPAddress.IsLoopback(listener) ? listener
+    internal static IPAddress LoopbackFor(IPAddress listener)
+    {
+        listener = Plain(listener);
+        return IPAddress.IsLoopback(listener) ? listener
             : listener.AddressFamily == AddressFamily.InterNetworkV6 ? IPAddress.IPv6Loopback : IPAddress.Loopback;
+    }
 
     /// <summary>The address as a URL host: IPv6 in brackets.</summary>
     internal static string UrlHost(IPAddress address) =>

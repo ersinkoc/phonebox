@@ -121,6 +121,37 @@ public sealed class ListeningPortsTests
         Assert.Contains(V6(port), ListeningPorts.ForProcess(Environment.ProcessId, int.MaxValue));
     }
 
+    [Fact]
+    public void BothFamiliesOnOnePortAreKept()
+    {
+        if (!Socket.OSSupportsIPv6) return;
+        var v4 = new TcpListener(IPAddress.Loopback, 0);
+        v4.Start();
+        try
+        {
+            var port = ((IPEndPoint)v4.LocalEndpoint).Port;
+            using var v6 = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp) { DualMode = false };
+            v6.Bind(new IPEndPoint(IPAddress.IPv6Loopback, port));
+            v6.Listen();
+            var found = ListeningPorts.ForProcess(Environment.ProcessId, int.MaxValue);
+            Assert.Contains(V4(port), found);
+            Assert.Contains(V6(port), found);
+        }
+        finally { v4.Stop(); }
+    }
+
+    [Theory]
+    [InlineData("::ffff:127.0.0.2", "127.0.0.2")]
+    [InlineData("::ffff:0.0.0.0", "127.0.0.1")]
+    [InlineData("::1", "::1")]
+    [InlineData("::", "::1")]
+    public void MappedAddressesAreReadAsIpv4(string listener, string expected)
+    {
+        var address = IPAddress.Parse(listener);
+        Assert.True(ListeningPorts.ReachableOnLoopback(address));
+        Assert.Equal(IPAddress.Parse(expected), ListeningPorts.LoopbackFor(address));
+    }
+
     private static ListeningPorts.Listener V4(int port) => new(IPAddress.Loopback, port);
     private static ListeningPorts.Listener V6(int port) => new(IPAddress.IPv6Loopback, port);
 
