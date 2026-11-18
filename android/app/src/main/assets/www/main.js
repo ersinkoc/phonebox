@@ -508,8 +508,8 @@ export async function runShortcut(btn, id) {
   setTimeout(() => btn.classList.remove('ok', 'err'), 900);
 }
 
-/** A shortcut key. The Big button's options: with `cover`, a picture large enough to fill the key becomes its
- *  background instead of the centred icon; without `label`, the key shows no name (screen readers still get it). */
+/** A shortcut key. The Big button's options: with `cover`, a picture the user uploaded becomes the key's background
+ *  instead of the centred icon; without `label`, the key shows no name (screen readers still get it). */
 export function keyButton(s, { cover = false, label = true } = {}) {
   const icon = h('span', 'k-icon', s.icon || '•');
   const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
@@ -518,20 +518,17 @@ export function keyButton(s, { cover = false, label = true } = {}) {
   b.style.setProperty('--k', s.color || '#6b7280');
   b.dataset.id = s.id;
   b.addEventListener('click', () => runShortcut(b, s.id));
-  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover);
+  // Only an upload fills the key: a program's own icon is 32 px on Windows, 64 px on macOS, and on Linux whatever logo
+  // the icon theme has, none of them a picture the user chose for the button. The agent says which is which, since the
+  // picture's size cannot tell (an SVG reports a default size, often 24 px from an icon set).
+  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true);
   return b;
 }
-
-// A program's own icon is 32-48 px and turns into a blur when stretched across a key, so only a picture whose shorter
-// side is at least this size fills it; anything smaller stays the centred icon. The shorter side, because the picture
-// is cropped to the key's shape and that side is the one stretched. An SVG without a size of its own reports 0.
-const COVER_MIN_PX = 128;
 
 function applyShortcutIcon(b, icon, id, cover) {
   const img = new Image();
   img.onload = () => {
-    const size = Math.min(img.naturalWidth, img.naturalHeight);
-    if (cover && (size === 0 || size >= COVER_MIN_PX)) {
+    if (cover) {
       img.className = 'k-bg';
       img.alt = '';
       b.prepend(img, h('span', 'k-shade'));

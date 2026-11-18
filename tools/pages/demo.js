@@ -112,10 +112,10 @@
       weather: c.weather, codexBar: c.codexBar, night: c.night, display: c.display,
       pages: (c.pages || []).map((p) => ({ id: p.id, title: p.title, icon: p.icon, enabled: p.enabled !== false, idleSec: p.idleSec ?? null, appearance: p.appearance ?? null,
         widgets: (p.widgets || []).map((w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, appearance: w.appearance ?? null, options: options(w) })) })),
-      // iconRev: the agent sets it when a shortcut has a picture. The demo has no uploads and serves no
-      // /agent/api/shortcuts/icon, so a config that sets it also needs that image mocked (see button-cover.spec.js);
-      // without one the key keeps its emoji.
-      shortcuts: (c.shortcuts || []).map(({ id, label, icon, color, toggle, cmd, iconRev }) => ({ id, label, icon, color, toggle: !!toggle || cmd === 'builtin:mute', iconRev: iconRev ?? null })),
+      // iconRev / iconUpload: the agent sets them when a shortcut has a picture (and when the user uploaded it). The demo
+      // has no uploads and serves no /agent/api/shortcuts/icon, so a config that sets them also needs that image mocked
+      // (see button-cover.spec.js); without one the key keeps its emoji.
+      shortcuts: (c.shortcuts || []).map(({ id, label, icon, color, toggle, cmd, iconRev, iconUpload }) => ({ id, label, icon, color, toggle: !!toggle || cmd === 'builtin:mute', iconRev: iconRev ?? null, iconUpload: iconUpload === true })),
       rules: (c.rules || []).map(({ id, name, enabled, when }) => ({ id, name, enabled: enabled !== false, when })),
       charge: { enabled: !!c.charge?.enabled, min: c.charge?.min ?? 50, max: c.charge?.max ?? 80 },
     };

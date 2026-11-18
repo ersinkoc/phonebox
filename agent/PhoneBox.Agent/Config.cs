@@ -52,7 +52,9 @@ public sealed class AgentConfig
     }
 
     /// <summary>The part sent to the phone: commands (shortcut cmd/args/cwd, command widget scripts) are never included.</summary>
-    public object ToPublic(string? deviceId = null, Func<Shortcut, long?>? shortcutIconRev = null) => new
+    /// <param name="shortcutIconUploaded">Whether the shortcut's picture is one the user uploaded, rather than its program's
+    /// own icon: only an upload may fill a Big button (a program icon is small, or on Linux a theme logo).</param>
+    public object ToPublic(string? deviceId = null, Func<Shortcut, long?>? shortcutIconRev = null, Func<Shortcut, bool>? shortcutIconUploaded = null) => new
     {
         weather = Weather,
         codexBar = CodexBar,
@@ -70,7 +72,7 @@ public sealed class AgentConfig
         }),
         // cameras: only how often the Camera widget may ask for a picture; the addresses and names stay on this computer
         cameras = Cameras.Sources.Select(c => new { c.Id, c.Fps }),
-        shortcuts = Shortcuts.Select(s => new { s.Id, s.Label, s.Icon, s.Color, toggle = s.Toggle || s.Cmd == "builtin:mute", iconRev = shortcutIconRev?.Invoke(s) }),
+        shortcuts = Shortcuts.Select(s => new { s.Id, s.Label, s.Icon, s.Color, toggle = s.Toggle || s.Cmd == "builtin:mute", iconRev = shortcutIconRev?.Invoke(s), iconUpload = shortcutIconUploaded?.Invoke(s) == true }),
         // names only (for the Rules widget); what a rule matches on stays here
         rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When }),
         charge = new { Charge.Enabled, Charge.Min, Charge.Max },

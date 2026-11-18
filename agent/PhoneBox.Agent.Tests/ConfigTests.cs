@@ -177,6 +177,21 @@ public class ConfigTests
     }
 
     [Fact]
+    public void ThePhoneLearnsWhichShortcutPicturesAreUploads()
+    {
+        // only an uploaded picture may fill a Big button; a program's own icon (also with an iconRev) may not
+        var c = Load("""{ "shortcuts": [ { "id": "up", "label": "Up", "cmd": "a.exe" }, { "id": "own", "label": "Own", "cmd": "b.exe" } ] }""");
+        var pub = JsonSerializer.SerializeToElement(c.ToPublic(null, _ => 7, s => s.Id == "up"));
+        var byId = pub.GetProperty("shortcuts").EnumerateArray().ToDictionary(s => s.GetProperty("Id").GetString()!);
+        Assert.True(byId["up"].GetProperty("iconUpload").GetBoolean());
+        Assert.False(byId["own"].GetProperty("iconUpload").GetBoolean());
+        Assert.Equal(7, byId["own"].GetProperty("iconRev").GetInt64());
+        // without the lookup (tests, older callers) nothing counts as an upload
+        Assert.All(JsonSerializer.SerializeToElement(c.ToPublic()).GetProperty("shortcuts").EnumerateArray(),
+            s => Assert.False(s.GetProperty("iconUpload").GetBoolean()));
+    }
+
+    [Fact]
     public void RulesAreCleanedUp()
     {
         var c = Load("""{ "rules": [ { "when": "explode", "then": "goto" }, { "name": "Away", "when": "idle", "value": 99999, "then": "notify", "level": "weird" }, { "name": "Away", "when": "idle", "then": "goto" } ] }""");

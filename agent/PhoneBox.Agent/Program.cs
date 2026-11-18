@@ -702,7 +702,7 @@ app.MapGet("/api/widget/{page}/{widget}", (string page, string widget, bool? for
 
 app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req, ShortcutIconUploads icons) =>
     Results.Json(new { version = cfg.Version.ToString(), config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString(),
-        s => icons.Revision(s.Id) ?? ShortcutIcons.Revision(s)) }));
+        s => icons.Revision(s.Id) ?? ShortcutIcons.Revision(s), s => icons.Revision(s.Id) is not null) }));
 
 // Phones that have talked to this agent, with their settings (Settings › Phones).
 app.MapGet("/api/phones", (ConfigStore cfg) =>
