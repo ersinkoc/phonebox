@@ -120,14 +120,17 @@ public sealed class AppConsole(ConfigStore config, ILogger<AppConsole> log)
             for (var t = 0; t < times; t++)
                 foreach (var combo in combos)
                 {
+                    // checked again before every combo: a click elsewhere mid-macro must not send the rest there.
+                    // Looked up first, so a binding saved while this runs is still seen by the checks below.
+                    var app = Focused();
                     // the switch can be turned off (or the widget removed) while this waits or runs
                     var current = config.Get();
                     if (WidgetFor(current, deviceId, widget)?.Bool("control") != true) return (403, "sending keys was turned off");
                     var currentProfile = current.Console.Profiles.FirstOrDefault(p => p.Id == profileId);
                     if (currentProfile is null || currentProfile.Spec(slot) != spec) return (409, "the app console binding changed");
-                    // checked again before every combo: a click elsewhere mid-macro must not send the rest there
-                    var app = Focused();
-                    if (app is null || !currentProfile.Matches(app.Process)) return (409, "the focused app changed");
+                    // the app the macro started for, as the profile named it then and names it now: a profile moved to
+                    // another app mid-macro doesn't take the rest of the keys with it
+                    if (app is null || !profile.Matches(app.Process) || !currentProfile.Matches(app.Process)) return (409, "the focused app changed");
                     if (app.Elevated && !AgentElevated) return (409, "the focused app runs as administrator, so Windows doesn't let the agent send keys to it");
                     // the checks above take a moment: the same window must still be in front as the keys go out
                     if (app.Window != 0 && ForegroundWindow() != app.Window) return (409, "the focused app changed");

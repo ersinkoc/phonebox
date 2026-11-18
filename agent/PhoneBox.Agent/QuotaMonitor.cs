@@ -713,7 +713,7 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         var fileLen = fs.Length;
         var len = Math.Min(fileLen, 1 << 20);
-        fs.Seek(-len, SeekOrigin.End);
+        fs.Seek(fileLen - len, SeekOrigin.Begin); // from the length read above: an append since then must not shift the window past a record minIndex trusts
         var buf = new byte[len];
         fs.ReadExactly(buf);
         var lines = Encoding.UTF8.GetString(buf).Split('\n');
@@ -763,7 +763,7 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         var fileLen = fs.Length;
         var len = Math.Min(fileLen, 1 << 20);
-        fs.Seek(-len, SeekOrigin.End);
+        fs.Seek(fileLen - len, SeekOrigin.Begin); // from the length read above: an append since then must not shift the window past a record minIndex trusts
         var buf = new byte[len];
         fs.ReadExactly(buf);
         var lines = Encoding.UTF8.GetString(buf).Split('\n');

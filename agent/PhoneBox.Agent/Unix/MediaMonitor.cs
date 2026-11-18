@@ -12,6 +12,7 @@ namespace PhoneBox.Agent;
 public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
 {
     private const int MaxArtBytes = 5 * 1024 * 1024;
+    private static readonly TimeSpan ArtDeadline = TimeSpan.FromSeconds(5);
     private static readonly HttpClient Http = CreatePublicHttpClient();
     private readonly SemaphoreSlim _pollGate = new(1, 1);
     private volatile MediaSnapshot? _snap;
@@ -341,6 +342,28 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
     private static bool HasAllowedArtExtension(string path) =>
         Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif";
 
+    /// <summary>
+    /// The body of a cover art URL, or null when the server refuses it or it is larger than <see cref="MaxArtBytes"/>.
+    /// One deadline covers the request and every body read: HttpClient.Timeout ends at the headers, and a server that
+    /// stops mid-body would otherwise hold the poll (and every media control waiting on it) for good.
+    /// </summary>
+    internal static async Task<byte[]?> DownloadArt(HttpClient http, string url, TimeSpan deadline)
+    {
+        using var cts = new CancellationTokenSource(deadline);
+        using var r = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+        if (!r.IsSuccessStatusCode || r.Content.Headers.ContentLength > MaxArtBytes) return null;
+        await using var stream = await r.Content.ReadAsStreamAsync(cts.Token);
+        using var ms = new MemoryStream();
+        var buf = new byte[16 * 1024];
+        int read;
+        while ((read = await stream.ReadAsync(buf, cts.Token)) > 0)
+        {
+            if (ms.Length + read > MaxArtBytes) return null;
+            ms.Write(buf, 0, read);
+        }
+        return ms.ToArray();
+    }
+
     private async Task<AlbumArt?> LoadArt(string url)
     {
         try
@@ -358,19 +381,8 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
             }
             if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
             {
-                using var r = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-                if (!r.IsSuccessStatusCode || r.Content.Headers.ContentLength > MaxArtBytes) return null;
-                await using var stream = await r.Content.ReadAsStreamAsync();
-                using var ms = new MemoryStream();
-                var buf = new byte[16 * 1024];
-                int read;
-                while ((read = await stream.ReadAsync(buf)) > 0)
-                {
-                    if (ms.Length + read > MaxArtBytes) return null;
-                    ms.Write(buf, 0, read);
-                }
-                var bytes = ms.ToArray();
-                return SniffImageMime(bytes) is { } mime ? new AlbumArt(bytes, mime) : null;
+                var bytes = await DownloadArt(Http, url, ArtDeadline);
+                return bytes is not null && SniffImageMime(bytes) is { } mime ? new AlbumArt(bytes, mime) : null;
             }
         }
         catch (Exception ex) { log.LogDebug("cover art: {Msg}", ex.Message); }

@@ -143,16 +143,34 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log) : BackgroundServ
         }
     }
 
+    // the first record carries the base instructions and tool definitions, so it can be far longer than one read
+    private const int MaxCodexMetaBytes = 4 * 1024 * 1024;
+
+    /// <summary>The project folder from a rollout's first record; "" while that record is still being written.</summary>
     private static string ReadCodexCwd(string path)
     {
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        var buf = new byte[(int)Math.Min(fs.Length, 65536)];
-        var n = fs.Read(buf, 0, buf.Length);
-        var nl = Array.IndexOf(buf, (byte)'\n', 0, n);
-        if (nl <= 0) return "";
+        var buf = new byte[64 * 1024];
+        int len = 0, nl = -1;
+        while (nl < 0)
+        {
+            if (len == buf.Length)
+            {
+                if (buf.Length >= MaxCodexMetaBytes) return "";
+                Array.Resize(ref buf, Math.Min(buf.Length * 2, MaxCodexMetaBytes));
+            }
+            var n = fs.Read(buf, len, buf.Length - len);
+            if (n <= 0) return ""; // no complete record yet: the next poll reads it again
+            nl = Array.IndexOf(buf, (byte)'\n', len, n);
+            len += n;
+        }
+        var record = buf.AsMemory(0, nl);
+        // JsonDocument.Parse on bytes refuses a UTF-8 BOM (a StreamReader used to drop it)
+        if (record.Span.StartsWith("﻿"u8)) record = record[3..];
+        if (record.IsEmpty) return "";
         try
         {
-            using var doc = JsonDocument.Parse(buf.AsMemory(0, nl));
+            using var doc = JsonDocument.Parse(record);
             return doc.RootElement.TryGetProperty("payload", out var p) ? Str(p, "cwd") ?? "" : "";
         }
         catch (JsonException) { return ""; }
