@@ -71,6 +71,7 @@ export let cfgVersion = null;
 export function setCfgVersion(v) { if (v != null) cfgVersion = v; }
 let configRequest = 0;
 let appliedConfigRequest = 0;
+let writeBarrier = 0; // config reads numbered below this started before the panel's own last write
 export let online = null;
 export let lastTouch = Date.now();
 export let lastUserTouch = 0;     // last real touch or key (rules wait a while after it)
@@ -1805,12 +1806,22 @@ export function applyDisplay() {
   applyBrightness(true);
 }
 
+/** A mark taken before the panel writes the config itself (a note save). */
+export function configMark() { return configRequest; }
+/** Whether a config read that started after `mark` has been applied: it already shows the write, or a later one. */
+export function configReadSince(mark) { return appliedConfigRequest > mark; }
+/** The panel's own write was stored as version `v`: a config read that started before it must not apply over it. */
+export function localWriteStored(v) {
+  if (v != null) cfgVersion = v;
+  writeBarrier = configRequest + 1;
+}
+
 export async function loadConfig() {
   if (PREVIEW) return;
   const request = ++configRequest;
   try {
     const r = await api('/config');
-    if (request < appliedConfigRequest) return;
+    if (request < appliedConfigRequest || request < writeBarrier) return;
     const before = JSON.stringify(cfg);
     const first = cfgVersion === null;
     cfg = { ...DEFAULT_CFG, ...r.config };
@@ -1891,7 +1902,8 @@ export function applyState(s, replayGen = null) {
   lastStateAt = Date.now();
   // compares the agent's wall clock across responses: if the PC's clock steps back (NTP), polled events are
   // ignored until it catches up — the stream still delivers them meanwhile
-  const fresh = s.ts == null || s.ts >= stateTs;
+  // a late answer is at most a few seconds old (the request deadline), so a bigger step back is the clock itself
+  const fresh = s.ts == null || s.ts >= stateTs || stateTs - s.ts > 10_000;
   // the answer to a ?ev=0 replay can be overtaken by streamed states on the way; its events are still the backlog.
   // they go through evOffer like live ones: while a replay is armed the queue merges them before dispatch
   if (fresh || replayGen === evGen) for (const e of s.events || []) evOffer(e);

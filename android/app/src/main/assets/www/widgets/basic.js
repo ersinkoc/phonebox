@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, haptic, hasProcessesPage, hist, hour12, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, setCfgVersion, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, haptic, hasProcessesPage, hist, hour12, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
 import { W } from '../registry.js';
 import { invalidateDeckState } from './controls.js';
 
@@ -1038,7 +1038,8 @@ W.note = {
       const ta = document.createElement('textarea');
       ta.className = 'note-ta';
       ta.value = String(o.text ?? '');
-      const opened = cfgVersion;
+      let opened = cfgVersion;
+      let unsure = null; // the text of a save that timed out: the agent may have stored it anyway
       ta.maxLength = NOTE_MAX;
       ta.rows = 6;
       const row = h('div', 'note-actions');
@@ -1052,17 +1053,41 @@ W.note = {
         try {
           const path = '/widget/' + encodeURIComponent(page.id) + '/' + encodeURIComponent(w.id)
             + '/note?text=' + encodeURIComponent(submitted) + '&version=' + encodeURIComponent(opened ?? '');
+          const mark = configMark();
           const result = await api(path, 'POST', 8000);
-          setCfgVersion(result?.version);
           o.text = submitted;
+          // a config read that started after this save already holds it (or something newer): leave it alone.
+          // Otherwise the config the panel holds gets the text first, then the version, so an identical refresh keeps
+          // it and a rebuild doesn't bring the old text back; reads that started before the save can't apply over it
+          if (!configReadSince(mark)) {
+            const saved = (cfg.pages || []).find((p) => p.id === page.id)?.widgets?.find((x) => x.id === w.id);
+            if (saved) { saved.options = { ...(saved.options || {}), text: submitted }; store.set('cfg', cfg); }
+            localWriteStored(result?.version);
+          }
           paint();
+          // a refresh while the editor was open rebuilt the page under it: draw the new widget from the updated config
+          if (!box.isConnected) buildLayout();
           wrap.remove();
         } catch (error) {
           if (error?.status === 409) {
+            // a save that timed out may have been stored: then this conflict is our own, so save again on top of it
+            if (unsure != null) {
+              const earlier = unsure;
+              unsure = null;
+              // read the agent's config without applying it: a rebuild now would replace this widget under the editor
+              const current = await api('/config').catch(() => null);
+              const now = (current?.config?.pages || []).find((p) => p.id === page.id)?.widgets?.find((x) => x.id === w.id)?.options?.text;
+              if (now === earlier && current?.version != null) {
+                opened = current.version;
+                return save.onclick();
+              }
+            }
             wrap.remove();
             toast(t('w.note.changed'));
             return;
           }
+          // no HTTP answer (a timeout or a dropped connection): the agent may still have stored it
+          if (error?.status == null) unsure = submitted;
           save.disabled = false;
           ta.disabled = false;
           toast(t('w.note.failed'));
