@@ -295,6 +295,9 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
                 return (true, "");
             case "push":
             {
+                if (r.Op == "stale")
+                    return match.Length == 0 ? (false, "")
+                        : Stale(match, push.Get(match), r.Arg, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), StartedAtMs);
                 if (match.Length == 0 || !push.Snapshot().TryGetValue(match, out var item)) return (false, "");
                 var d = item.Data;
                 if (!string.IsNullOrEmpty(r.Op) && r.Op != "on") return Compare(d, r.Op, r.Arg) ? (true, Text(d)) : (false, "");
@@ -317,7 +320,32 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
 
     private static string Text(JsonElement d) => d.ValueKind == JsonValueKind.String ? d.GetString()! : d.ToString();
 
-    /// <summary>Compares a pushed value: above / below a number, or equals / differs from a text (case-insensitive).</summary>
+    /// <summary>When the agent started (unix ms); the tests move it back to skip the start-up grace.</summary>
+    internal long StartedAtMs { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    /// <summary>
+    /// "Has not been updated for N seconds": holds when the value is older than that, or when it is not there at all
+    /// (never pushed, deleted, or expired by its ttl). The time counts from the agent's start at the earliest, so a
+    /// value kept from before a restart, or one whose sender has not had the chance to post yet, is not stale at once.
+    /// </summary>
+    internal static (bool Holds, string Detail) Stale(string key, PushItem? item, string? arg, long nowMs, long startedAtMs)
+    {
+        if (!double.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var sec) || sec <= 0)
+            return (false, "");
+        var since = Math.Max(item?.At ?? 0, startedAtMs);
+        if (nowMs - since < sec * 1000) return (false, "");
+        return (true, item is null ? $"{key}: no value" : $"{key}: no update for {Age(nowMs - item.At)}");
+    }
+
+    private static string Age(long ms) => ms switch
+    {
+        < 120_000 => $"{Math.Max(0, ms / 1000)} s",
+        < 2 * 3_600_000 => $"{ms / 60_000} min",
+        < 2 * 86_400_000L => $"{ms / 3_600_000} h",
+        _ => $"{ms / 86_400_000L} days",
+    };
+
+    /// <summary>Compares a pushed value: above / at least / below / at most a number, or equals / differs from a text (case-insensitive).</summary>
     public static bool Compare(JsonElement d, string op, string? arg)
     {
         var text = d.ValueKind == JsonValueKind.Object && d.TryGetProperty("value", out var inner) ? inner : d;
@@ -328,7 +356,9 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
         return op switch
         {
             ">" => num is not null && argNum is not null && num > argNum,
+            ">=" => num is not null && argNum is not null && num >= argNum,
             "<" => num is not null && argNum is not null && num < argNum,
+            "<=" => num is not null && argNum is not null && num <= argNum,
             "=" => num is not null && argNum is not null ? num == argNum : string.Equals(str, arg ?? "", StringComparison.OrdinalIgnoreCase),
             "!=" => num is not null && argNum is not null ? num != argNum : !string.Equals(str, arg ?? "", StringComparison.OrdinalIgnoreCase),
             _ => false,

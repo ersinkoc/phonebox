@@ -215,7 +215,8 @@ for senders that cannot set headers). That key opens only the webhook endpoints,
 | the CPU stays above a percentage for 15 s | |
 | you have been away from the keyboard for N minutes | |
 | it is between two times (`22:00-07:00`) | |
-| a pushed value is on, or above / below / equal to a value (a webhook from Home Assistant, a doorbell…) | run a shortcut |
+| a pushed value is on, or above / at least / below / at most / equal to a value (a webhook from Home Assistant, a doorbell…) | run a shortcut |
+| a pushed value has had no update for N seconds (a sensor or a bridge stopped posting; counted from the agent's start at the earliest) | |
 | an AI quota is above a percentage | |
 | a GitHub review is requested · CI fails on my pull request | |
 | a device battery is low · the network is slow or unreachable | |

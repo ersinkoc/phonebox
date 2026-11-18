@@ -38,8 +38,132 @@ public class RuleTests
     [InlineData("\"closed\"", "!=", "open", true)]
     [InlineData("{\"value\":31,\"sub\":\"living room\"}", ">", "30", true)]
     [InlineData("\"warm\"", ">", "20", false)]       // not a number
+    [InlineData("28", ">=", "28", true)]              // the boundary counts for >= and <=, not for > and <
+    [InlineData("27.9", ">=", "28", false)]
+    [InlineData("28", ">", "28", false)]
+    [InlineData("20", "<=", "20", true)]
+    [InlineData("\"20.5\"", "<=", "20", false)]
+    [InlineData("20", "<", "20", false)]
+    [InlineData("{\"value\":30,\"sub\":\"living room\"}", ">=", "30", true)]
+    [InlineData("\"warm\"", "<=", "20", false)]
     public void PushedValuesCompare(string json, string op, string arg, bool expected) =>
         Assert.Equal(expected, RuleEngine.Compare(JsonDocument.Parse(json).RootElement, op, arg));
+
+    private const long Start = 1_800_000_000_000; // the agent's start, unix ms
+    private static PushItem Pushed(long at) => new(JsonSerializer.SerializeToElement(21.5), at, null);
+
+    [Fact]
+    public void StaleHoldsOnceAValueIsOlderThanTheLimit()
+    {
+        var now = Start + 3_600_000;
+        Assert.False(RuleEngine.Stale("temp", Pushed(now - 30_000), "60", now, Start).Holds);  // fresh
+        var (holds, detail) = RuleEngine.Stale("temp", Pushed(now - 5 * 60_000), "60", now, Start);
+        Assert.True(holds);
+        Assert.Equal("temp: no update for 5 min", detail);
+        Assert.True(RuleEngine.Stale("temp", Pushed(now - 60_000), "60", now, Start).Holds);   // exactly the limit
+    }
+
+    [Fact]
+    public void StaleGivesTheSenderTimeAfterTheAgentStarts()
+    {
+        // missing (never pushed, deleted or expired): not stale during the first N seconds, stale after them
+        Assert.False(RuleEngine.Stale("temp", null, "60", Start + 59_000, Start).Holds);
+        var (holds, detail) = RuleEngine.Stale("temp", null, "60", Start + 60_000, Start);
+        Assert.True(holds);
+        Assert.Equal("temp: no value", detail);
+        // a value kept from before a restart counts from the start too, but reports its real age
+        var old = Pushed(Start - 2 * 3_600_000);
+        Assert.False(RuleEngine.Stale("temp", old, "60", Start + 10_000, Start).Holds);
+        Assert.Equal("temp: no update for 2 h", RuleEngine.Stale("temp", old, "60", Start + 60_000, Start).Detail);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("soon")]
+    [InlineData("0")]
+    [InlineData("-5")]
+    public void StaleWithoutAValidTimeNeverHolds(string? arg) =>
+        Assert.False(RuleEngine.Stale("temp", null, arg, Start + 86_400_000, Start).Holds);
+
+    [Theory]
+    [InlineData("\"90\"", "90")]
+    [InlineData("\"2.4\"", "2")]
+    [InlineData("\"999999\"", "86400")]
+    [InlineData("\"soon\"", "60")]
+    [InlineData("null", "60")]
+    public void StaleTimesAreCleaned(string arg, string expected)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"phonebox-cfg-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, $$"""{ "rules": [ { "when": "push", "match": "temp", "op": "stale", "arg": {{arg}}, "then": "notify" }, { "when": "push", "match": "temp", "op": ">=", "arg": "30", "then": "notify" } ] }""");
+        try
+        {
+            var rules = new ConfigStore(path).Get().Rules;
+            Assert.Equal("stale", rules[0].Op);
+            Assert.Equal(expected, rules[0].Arg);
+            Assert.Equal(">=", rules[1].Op);
+            Assert.Equal("30", rules[1].Arg);   // other operators keep their value as typed
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void StaleRuleFiresForAnExpiredValueAndEndsWhenTheValueComesBack()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"phonebox-rule-stale-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        PushStore? push = null;
+        try
+        {
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, """
+            { "rules": [ { "id": "quiet", "name": "Quiet", "when": "push", "match": "a3-vibration", "op": "stale", "arg": "5",
+                           "then": "notify", "text": "{detail}", "whileActive": false } ] }
+            """);
+            var cfg = new ConfigStore(cfgPath);
+            push = new PushStore(Microsoft.Extensions.Logging.Abstractions.NullLogger<PushStore>.Instance, Path.Combine(dir, "push.json"));
+            var engine = NewEngine(cfg, push);
+
+            // pushed with a one-second ttl, then expired: the store no longer has it
+            push.Set("a3-vibration", JsonSerializer.SerializeToElement(0.01), 1);
+            Thread.Sleep(1200);
+            Assert.Null(push.Get("a3-vibration"));
+
+            engine.Evaluate();   // just started: the sender still has time
+            Assert.Empty(engine.Active());
+
+            engine.StartedAtMs -= 10_000;
+            var seq = push.Seq;
+            engine.Evaluate();
+            Assert.Equal(["quiet"], engine.Active());
+            Assert.Equal("a3-vibration: no value", push.Since(seq).Single(e => e.Kind == "notify").Data!.Value.GetProperty("text").GetString());
+
+            push.Set("a3-vibration", JsonSerializer.SerializeToElement(0.01), null);
+            engine.Evaluate();
+            Assert.Equal(["quiet"], engine.Active());           // a rule ends once its condition stays off a while
+            Thread.Sleep(RuleEngine.ReleaseSec * 1000 + 200);
+            engine.Evaluate();
+            Assert.Empty(engine.Active());
+        }
+        finally
+        {
+            push?.Dispose();
+            Directory.Delete(dir, true);
+        }
+    }
+
+    private static RuleEngine NewEngine(ConfigStore cfg, PushStore push) => new(cfg, push,
+        new SessionMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SessionMonitor>.Instance),
+        new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance),
+        new SystemMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SystemMonitor>.Instance),
+        new PrivacyMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<PrivacyMonitor>.Instance),
+        new CalendarMonitor(cfg, Microsoft.Extensions.Logging.Abstractions.NullLogger<CalendarMonitor>.Instance),
+        new ObsMonitor(cfg, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsMonitor>.Instance),
+        new QuotaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<QuotaMonitor>.Instance),
+        new GitHubMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<GitHubMonitor>.Instance),
+        new BatteryMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<BatteryMonitor>.Instance),
+        new PingMonitor(), new AudioControl(),
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<RuleEngine>.Instance);
 
     [Theory]
     [InlineData("08:30-typo", 8, 30, false)]

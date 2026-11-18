@@ -1952,8 +1952,10 @@ function ruleCard(r, i) {
   const cond = [];
   // the trigger table keeps English as its key, so the example value inside the box is translated too
   if (trig.match) cond.push(text('match', tl(trig.match), 'grow'));
-  if (r.when === 'push') cond.push(sel(r.op || 'on', { on: 'is on', '>': 'is above', '<': 'is below', '=': 'equals', '!=': 'is not' }, (v) => set('op', v === 'on' ? null : v, true)),
-    r.op ? text('arg', 'value', '') : null);
+  if (r.when === 'push') cond.push(sel(r.op || 'on', { on: 'is on', '>': 'is above', '>=': 'is at least', '<': 'is below', '<=': 'is at most', '=': 'equals', '!=': 'is not', stale: 'has no update for' },
+    (v) => { if (v === 'stale' && !(+r.arg > 0)) r.arg = '60'; set('op', v === 'on' ? null : v, true); }),
+    r.op === 'stale' ? h('input', { type: 'number', min: 1, max: 86400, style: 'width:90px', value: r.arg ?? '60', oninput: (e) => set('arg', e.target.value || null) }) : r.op ? text('arg', 'value', '') : null,
+    r.op === 'stale' ? h('span', { class: 'hint' }, tl('seconds')) : null);
   if (trig.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? trig.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, trig.value));
 
   const act = [];

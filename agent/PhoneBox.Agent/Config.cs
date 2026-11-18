@@ -287,7 +287,10 @@ public sealed class RuleConfig
     public string? During { get; set; }
     /// <summary>Seconds the phone counts down before switching pages; null = the phone's setting, 0 = at once.</summary>
     public int? CountdownSec { get; set; }
-    /// <summary>Push trigger: compare the value instead of "is on" (&gt;, &lt;, =, !=) with <see cref="Arg"/>.</summary>
+    /// <summary>
+    /// Push trigger: compare the value instead of "is on" (&gt;, &gt;=, &lt;, &lt;=, =, !=) with <see cref="Arg"/>, or
+    /// "stale": the value has not been updated for <see cref="Arg"/> seconds (or is not there at all).
+    /// </summary>
     public string? Op { get; set; }
     public string? Arg { get; set; }
 
@@ -662,7 +665,11 @@ public sealed partial class ConfigStore(string path)
             if (r.CountdownSec is { } cd) r.CountdownSec = Math.Clamp(cd, 0, 30);
             r.Days = RuleEngine.NormalizeDays(r.Days);
             r.During = string.IsNullOrWhiteSpace(r.During) ? null : r.During.Trim();
-            r.Op = r.Op is ">" or "<" or "=" or "!=" ? r.Op : null;
+            r.Op = r.Op is ">" or ">=" or "<" or "<=" or "=" or "!=" or "stale" ? r.Op : null;
+            // seconds without an update: 1 s to a day, a minute when the box was left empty or holds text
+            if (r.Op == "stale")
+                r.Arg = (double.TryParse(r.Arg, NumberStyles.Float, CultureInfo.InvariantCulture, out var staleSec) && staleSec > 0
+                    ? Math.Clamp(Math.Round(staleSec), 1, 86400) : 60).ToString(CultureInfo.InvariantCulture);
             r.Shortcut = string.IsNullOrWhiteSpace(r.Shortcut) ? null : r.Shortcut.Trim();
             if (r.Page is { } page) r.Page = PageId(page);
         }
