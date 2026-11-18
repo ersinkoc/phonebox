@@ -6,7 +6,8 @@ namespace PhoneBox.Agent;
 
 /// <summary>
 /// The GPU list from several sources: nvidia-smi, LibreHardwareMonitor's web server, the Windows graphics kernel
-/// (D3DKMT and the GPU performance counters, the same data Task Manager shows), Linux sysfs and macOS ioreg.
+/// (D3DKMT and the GPU performance counters, the same data Task Manager shows), Linux sysfs (and DRM fdinfo for Intel's
+/// load) and macOS ioreg.
 /// The same card can come from more than one source; the entries are matched by name and the earlier source wins,
 /// a later one only fills what the earlier one left empty.
 /// </summary>
@@ -245,17 +246,22 @@ internal static partial class Gpus
     private static string? Str(JsonElement node, string key) =>
         node.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
-    // ---------------------------------------------------------------- Linux sysfs (amdgpu, i915 / xe)
+    // ---------------------------------------------------------------- Linux sysfs (amdgpu, i915 / xe) and DRM fdinfo
+
+    /// <summary>Keeps the previous fdinfo sample between calls, for the Intel load.</summary>
+    private static readonly DrmUsage IntelUsage = new();
 
     /// <summary>
     /// AMD and Intel GPUs from <c>/sys/class/drm/card*/device</c>. amdgpu reports load, VRAM and GTT (shared) memory,
-    /// clocks and its hwmon sensors; Intel reports little more than the clock and, on Arc, a temperature.
-    /// NVIDIA cards are left to nvidia-smi.
+    /// clocks and its hwmon sensors; Intel's i915 and xe report the clock and, on Arc, a temperature, and their load is
+    /// added up from the DRM fdinfo of the processes in <paramref name="procRoot"/> (see <see cref="DrmUsage"/>), so it
+    /// shows from the second call on. NVIDIA cards are left to nvidia-smi.
     /// </summary>
-    public static List<GpuInfo> ReadSysfs(string drmRoot = "/sys/class/drm", string? pciIds = null)
+    public static List<GpuInfo> ReadSysfs(string drmRoot = "/sys/class/drm", string? pciIds = null, string procRoot = "/proc", DrmUsage? usage = null)
     {
         var list = new List<GpuInfo>();
         if (!Directory.Exists(drmRoot)) return list;
+        var intelLoad = new List<(int Index, string Pdev)>(); // Intel cards without gpu_busy_percent
         foreach (var card in Directory.GetDirectories(drmRoot).Where(d => CardDir().IsMatch(Path.GetFileName(d))).Order(StringComparer.Ordinal))
         {
             try
@@ -280,8 +286,9 @@ internal static partial class Gpus
                 var clock = vendor == "amd" ? DpmCurrent(Read(dev, "pp_dpm_sclk"))
                     : Num(card, "gt_cur_freq_mhz") ?? Num(dev, Path.Combine("tile0", "gt0", "freq0", "cur_freq"));
 
+                var util = Num(dev, "gpu_busy_percent");
                 list.Add(new GpuInfo(name,
-                    Util: Num(dev, "gpu_busy_percent"),
+                    Util: util,
                     Temp: Temp("edge", 1),
                     Power: power is { } p ? Math.Round(p / 1e6, 1) : null,
                     PowerLimit: cap is { } c && c > 0 ? Math.Round(c / 1e6) : null,
@@ -300,11 +307,37 @@ internal static partial class Gpus
                     SharedTotal: Num(dev, "mem_info_gtt_total") is { } gt ? gt / GiB : null,
                     FanRpm: fanRpm,
                     TempMax: Num(hw, "temp1_crit") is { } tc && tc > 0 ? tc / 1000 : null));
+                if (util is null && vendor == "intel" && PciAddress(dev) is { } pdev) intelLoad.Add((list.Count - 1, pdev));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
+        if (intelLoad.Count > 0)
+        {
+            var load = (usage ?? IntelUsage).Sample(procRoot, intelLoad.Select(c => c.Pdev).ToList());
+            foreach (var (i, pdev) in intelLoad)
+                if (load.TryGetValue(pdev, out var u)) list[i] = list[i] with { Util = u };
+        }
         return list;
+    }
+
+    /// <summary>
+    /// The card's PCI address ("0000:00:02.0"), as DRM fdinfo names it in <c>drm-pdev</c>: from the device's uevent, or the
+    /// name the <c>device</c> link points to.
+    /// </summary>
+    internal static string? PciAddress(string dev)
+    {
+        foreach (var line in (Read(dev, "uevent") ?? "").Split('\n'))
+            if (line.StartsWith("PCI_SLOT_NAME=", StringComparison.Ordinal) && line["PCI_SLOT_NAME=".Length..].Trim() is var slot && PciSlot().IsMatch(slot))
+                return slot.ToLowerInvariant();
+        try
+        {
+            var target = new DirectoryInfo(dev).LinkTarget;
+            var name = target is null ? null : Path.GetFileName(target.TrimEnd('/'));
+            return name is not null && PciSlot().IsMatch(name) ? name.ToLowerInvariant() : null;
+        }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
     }
 
     private static Dictionary<string, double> HwmonTemps(string? hw)
@@ -383,4 +416,5 @@ internal static partial class Gpus
     [GeneratedRegex(@"^card\d+$")] private static partial Regex CardDir();
     [GeneratedRegex(@"^\s*\d+:\s*(\d+)\s*[Mm][Hh]z")] private static partial Regex DpmLine();
     [GeneratedRegex(@"\[([^\]]+)\]")] private static partial Regex Bracket();
+    [GeneratedRegex(@"^[0-9a-fA-F]{4,}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$")] private static partial Regex PciSlot();
 }

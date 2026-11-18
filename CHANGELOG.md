@@ -22,6 +22,11 @@
   and update cards and the webhook examples, complete in Vietnamese. The webhooks section no longer stops rendering
   part-way, which a translation helper shadowed by a variable had caused (#219, [sonvivu](https://github.com/sonvivu)).
 
+**Agent**
+- Linux: Intel GPUs (`i915` and `xe`, such as the Arc 130V) show their load, not just the clock. Like nvtop, the agent
+  adds it up from the GPU usage counters of the running programs; without root, other users' programs aren't counted
+  (#224, [comptechguy2009](https://github.com/comptechguy2009)).
+
 ## 0.9.19 — 2026-11-17
 
 A smoother Camera widget, and the app on Android 5.0 and 6.0.

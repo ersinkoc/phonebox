@@ -172,7 +172,7 @@ deletes the settings, and `-Apk` / `--apk` removes the app from the connected ph
 |---|---|---|---|
 | CPU, RAM, network, disks, ping | ✓ | ✓ | ✓ |
 | CPU temperature | LibreHardwareMonitor | ✓ (hwmon) | — |
-| GPU load, VRAM, temperature | Any vendor (Windows GPU counters); NVIDIA adds power, fan and clocks (`nvidia-smi`), AMD / Intel add them with LibreHardwareMonitor | NVIDIA (`nvidia-smi`), AMD (`amdgpu` sysfs), Intel (clock) | Apple silicon (`ioreg`) |
+| GPU load, VRAM, temperature | Any vendor (Windows GPU counters); NVIDIA adds power, fan and clocks (`nvidia-smi`), AMD / Intel add them with LibreHardwareMonitor | NVIDIA (`nvidia-smi`), AMD (`amdgpu` sysfs), Intel (`i915` / `xe`: load and clock) | Apple silicon (`ioreg`) |
 | Now playing + controls | ✓ (any app) | ✓ (MPRIS via `playerctl`) | System media, including browser video, with `nowplaying-cli`; Spotify and Music fallback |
 | Volume | ✓ | ✓ (`wpctl` / `pactl`) | ✓ |
 | Processes, end one / all | ✓ | ✓ (your own) | ✓ (your own) |
@@ -267,7 +267,7 @@ cable, or a port straight on the computer instead of a hub or a front-panel port
 
 <details><summary><b>Some widgets show "—" or "No data".</b></summary>
 
-GPU values come from Windows itself (the temperature, as in Task Manager, needs Windows 10 2004 or later and a WDDM 2.4 driver), `nvidia-smi` for NVIDIA cards, `amdgpu` sysfs on Linux, or IORegistry on Apple silicon. The GPU hot spot and an AMD or Intel card's watts, fan and clocks need LibreHardwareMonitor. CPU temperature needs LibreHardwareMonitor's web server on port 8085,
+GPU values come from Windows itself (the temperature, as in Task Manager, needs Windows 10 2004 or later and a WDDM 2.4 driver), `nvidia-smi` for NVIDIA cards, `amdgpu` sysfs on Linux, an Intel card's DRM usage counters on Linux (the load shows from the second reading; programs of other users are counted only when the agent runs as root), or IORegistry on Apple silicon. The GPU hot spot and an AMD or Intel card's watts, fan and clocks need LibreHardwareMonitor. CPU temperature needs LibreHardwareMonitor's web server on port 8085,
 GitHub needs `gh auth login`, quotas and sessions need Claude Code / Codex to have been used on this PC.
 </details>
 
