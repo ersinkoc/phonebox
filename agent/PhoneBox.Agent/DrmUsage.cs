@@ -29,10 +29,14 @@ internal sealed class DrmUsage(Func<double>? clock = null)
     private List<DrmClient>? _prev;
     private double _prevAt;
     private string? _prevRoot;
+    // cards a client with busy counters was seen on: an older kernel (i915 before 5.19, early xe) has none, and its card
+    // stays without a value instead of showing 0
+    private readonly HashSet<string> _counting = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Scans <paramref name="procRoot"/> and returns the load in % of each of <paramref name="pdevs"/> since the previous
-    /// call. The first call only takes the baseline: a card is missing from the answer (no value yet, not 0).
+    /// call. The first call only takes the baseline, and a card whose clients never showed busy counters has no value
+    /// either: such a card is missing from the answer (no value, not 0).
     /// </summary>
     public Dictionary<string, double> Sample(string procRoot, IReadOnlyCollection<string> pdevs)
     {
@@ -40,7 +44,12 @@ internal sealed class DrmUsage(Func<double>? clock = null)
         {
             var now = _clock();
             var cur = Scan(procRoot);
-            var load = _prev is not null && _prevRoot == procRoot ? Utilization(_prev, cur, now - _prevAt, pdevs) : [];
+            if (_prevRoot != procRoot) _counting.Clear();
+            foreach (var c in cur)
+                if (c.Pdev is { } p && c.Busy.Count > 0) _counting.Add(p);
+            var load = _prev is not null && _prevRoot == procRoot
+                ? Utilization(_prev, cur, now - _prevAt, pdevs.Where(_counting.Contains).ToList())
+                : [];
             (_prev, _prevAt, _prevRoot) = (cur, now, procRoot);
             return load;
         }

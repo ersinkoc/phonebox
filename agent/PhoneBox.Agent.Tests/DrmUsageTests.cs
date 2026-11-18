@@ -177,10 +177,34 @@ public sealed class DrmUsageTests
             var proc = root.FullName;
             var now = 10.0;
             var usage = new DrmUsage(() => now);
+            W(Path.Combine(proc, "300", "fdinfo", "5"), I915("1", 4_000_000_000));
             Assert.Empty(usage.Sample(proc, [Igpu])); // first sample: a baseline, no value
             now = 12;
+            Directory.Delete(Path.Combine(proc, "300"), true); // the only client exited
             Assert.Equal(0, usage.Sample(proc, [Igpu])[Igpu]);
             Assert.Empty(new DrmUsage().Sample(Path.Combine(proc, "missing"), [Igpu]));
+        }
+        finally { root.Delete(true); }
+    }
+
+    [Fact]
+    public void AKernelWithoutBusyCountersLeavesTheLoadEmptyNotZero()
+    {
+        var root = Directory.CreateTempSubdirectory("pb-proc-");
+        try
+        {
+            var proc = root.FullName;
+            // early xe: client, card and memory lines, but no drm-cycles; i915 before 5.19: no drm-* lines at all
+            W(Path.Combine(proc, "300", "fdinfo", "5"), "pos:\t0\nflags:\t0100002\nmnt_id:\t26\nino:\t1061\ndrm-driver:\txe\n" +
+                "drm-client-id:\t3\ndrm-pdev:\t0000:00:02.0\ndrm-total-system:\t0\ndrm-resident-gtt:\t192 KiB\n");
+            W(Path.Combine(proc, "301", "fdinfo", "4"), "pos:\t0\nflags:\t02100002\nmnt_id:\t26\nino:\t685\n");
+            var now = 10.0;
+            var usage = new DrmUsage(() => now);
+            Assert.Empty(usage.Sample(proc, [Igpu]));
+            now = 12;
+            Assert.Empty(usage.Sample(proc, [Igpu]));
+            now = 14;
+            Assert.Empty(usage.Sample(proc, [Igpu]));
         }
         finally { root.Delete(true); }
     }
