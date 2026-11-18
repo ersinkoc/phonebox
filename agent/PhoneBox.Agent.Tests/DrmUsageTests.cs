@@ -155,8 +155,8 @@ public sealed class DrmUsageTests
         var prev = new[] { P(I915("1", 5_000_000_000, 0)) };
         var cur = new[] { P(I915("1", 1_000_000_000, 600_000_000)) };
         Assert.Equal(30, Load(prev, cur));
-        // xe: the total going backwards too
-        Assert.Equal(0, Load([P(Xe("1", 500, 9000))], [P(Xe("1", 600, 8000))]));
+        // xe: the total going backwards too, so nothing was measured at all
+        Assert.Null(Load([P(Xe("1", 500, 9000))], [P(Xe("1", 600, 8000))]));
     }
 
     [Fact]
@@ -175,6 +175,51 @@ public sealed class DrmUsageTests
         Assert.Equal(0, Value(meter.Update([P(Xe("1", 800, 11_000))], 1, [Igpu])));
         Assert.Equal(0, Value(meter.Update([P(Xe("1", 1000, 12_000))], 2, [Igpu])));
         Assert.Equal(20, Value(meter.Update([P(Xe("1", 1200, 13_000))], 3, [Igpu])));
+    }
+
+    [Fact]
+    public void OnlySharesOverTheSameIntervalAreAddedUp()
+    {
+        // A is busy from 0 to 2 s and idle after, but its 2 s read fails; B is 20 % busy from 2 to 4 s.
+        // Measured from 0 s, A would add 50 % to B's 20 %; it missed a sample, so it takes a new baseline instead.
+        var meter = new DrmUsage.Meter();
+        meter.Update([P(I915("A", 0))], 0, [Igpu]);
+        meter.Update([P(I915("A", 0))], 1, [Igpu]);
+        meter.Update([P(I915("B", 0))], 2, [Igpu], unread: new HashSet<(string, string)> { (Igpu, "A") });
+        Assert.Equal(20, Value(meter.Update([P(I915("A", 2_000_000_000)), P(I915("B", 400_000_000))], 4, [Igpu])));
+        Assert.Equal(0, Value(meter.Update([P(I915("A", 2_000_000_000)), P(I915("B", 400_000_000))], 6, [Igpu])));
+    }
+
+    [Fact]
+    public void ACardIsMeasuredOnlyWhenTimePassed()
+    {
+        var meter = new DrmUsage.Meter();
+        meter.Update([P(I915("1", 0))], 5, [Igpu]);
+        Assert.Null(Value(meter.Update([P(I915("1", 0))], 5, [Igpu]))); // two reads at the same clock value
+        Assert.Equal(0, Value(meter.Update([P(I915("1", 0))], 6, [Igpu]))); // an idle second: a real 0
+
+        meter = new DrmUsage.Meter();
+        meter.Update([P(Xe("1", 100, 1000))], 0, [Igpu]);
+        Assert.Null(Value(meter.Update([P(Xe("1", 100, 1000))], 2, [Igpu]))); // the GPU clock didn't move
+        Assert.Equal(0, Value(meter.Update([P(Xe("1", 100, 2000))], 4, [Igpu])));
+    }
+
+    [Fact]
+    public void AnXeClientWithoutCountersForAMomentIsUnknownNotIdle()
+    {
+        // xe prints the client without drm-cycles when it can't wake the GPU
+        var noCounters = "drm-driver:\txe\ndrm-client-id:\t1\ndrm-pdev:\t0000:00:02.0\ndrm-total-gtt:\t192 KiB\n";
+        var meter = new DrmUsage.Meter();
+        meter.Update([P(Xe("1", 0, 1000))], 0, [Igpu]);
+        Assert.Equal(25, Value(meter.Update([P(Xe("1", 300, 2200))], 2, [Igpu])));
+        Assert.Null(Value(meter.Update([P(noCounters)], 4, [Igpu]))); // the card's only client: no value, not 0
+        Assert.Null(Value(meter.Update([P(Xe("1", 900, 3400))], 6, [Igpu]))); // back, but it missed a sample: a new baseline
+        Assert.Equal(50, Value(meter.Update([P(Xe("1", 1500, 4600))], 8, [Igpu])));
+
+        // next to a client that was measured, the card shows that one
+        meter = new DrmUsage.Meter();
+        meter.Update([P(Xe("1", 0, 1000)), P(Xe("2", 0, 1000))], 0, [Igpu]);
+        Assert.Equal(10, Value(meter.Update([P(noCounters), P(Xe("2", 100, 2000))], 2, [Igpu])));
     }
 
     [Fact]
@@ -249,12 +294,50 @@ public sealed class DrmUsageTests
             now = 4;
             Assert.Empty(usage.Sample(proc, [Igpu])); // its load is unknown this time, not 0
 
-            // readable again: still known without a new pass, and measured against the baseline from 2 s, not as new
+            // readable again and still known without a new pass; it missed a sample, so it takes a new baseline first
             Directory.Delete(fdinfo);
             W(fdinfo, I915("1", 1_400_000_000));
             now = 6;
-            Assert.Equal(30, usage.Sample(proc, [Igpu])[Igpu]); // 1.2 s busy in 4 s
+            Assert.Empty(usage.Sample(proc, [Igpu]));
+            W(fdinfo, I915("1", 1_800_000_000));
+            now = 8;
+            Assert.Equal(20, usage.Sample(proc, [Igpu])[Igpu]);
             Assert.Equal(1, usage.Discoveries);
+        }
+        finally { root.Delete(true); }
+    }
+
+    [Fact]
+    public void AClientUnreadableDuringADiscoveryPassIsKeptAndRetried()
+    {
+        var root = Directory.CreateTempSubdirectory("pb-proc-");
+        try
+        {
+            var proc = root.FullName;
+            var fdinfo = Path.Combine(proc, "300", "fdinfo", "5");
+            var now = 0.0;
+            var usage = new DrmUsage(() => now, discoverySeconds: 30);
+            W(fdinfo, I915("1", 0));
+            usage.Sample(proc, [Igpu]);
+            now = 2;
+            W(fdinfo, I915("1", 200_000_000));
+            Assert.Equal(10, usage.Sample(proc, [Igpu])[Igpu]);
+
+            // unreadable while the 30 s pass walks /proc: the pass doesn't find it, but it isn't forgotten
+            File.Delete(fdinfo);
+            Directory.CreateDirectory(fdinfo);
+            now = 30;
+            Assert.Empty(usage.Sample(proc, [Igpu])); // unknown, not 0
+            Assert.Equal(2, usage.Discoveries);
+
+            Directory.Delete(fdinfo);
+            W(fdinfo, I915("1", 1_000_000_000));
+            now = 32;
+            Assert.Empty(usage.Sample(proc, [Igpu])); // re-read by the 2 s poll: a new baseline
+            W(fdinfo, I915("1", 1_600_000_000));
+            now = 34;
+            Assert.Equal(30, usage.Sample(proc, [Igpu])[Igpu]);
+            Assert.Equal(2, usage.Discoveries);
         }
         finally { root.Delete(true); }
     }

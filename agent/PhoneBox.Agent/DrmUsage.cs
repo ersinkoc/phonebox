@@ -56,7 +56,17 @@ internal sealed class DrmUsage(Func<double>? clock = null, double discoverySecon
             {
                 var found = Discover(procRoot);
                 cur = found.Select(f => f.Client).ToList();
-                _known = found.Select(f => (f.Path, Meter.KeyOf(f.Client))).ToList();
+                var known = found.Select(f => (f.Path, Meter.KeyOf(f.Client))).ToList();
+                if (_known is not null)
+                {
+                    // a known client the walk didn't get (unreadable for a moment, or past the cap) is tried once more and
+                    // kept while it isn't confirmed gone, so that it keeps its baseline
+                    var walked = known.Select(k => k.Path).ToHashSet(StringComparer.Ordinal);
+                    var missed = _known.Where(k => !walked.Contains(k.Path)).ToList();
+                    cur.AddRange(Reread(missed, out unread));
+                    known.AddRange(missed);
+                }
+                _known = known;
                 _discoveredAt = now;
                 Discoveries++;
             }
@@ -104,17 +114,20 @@ internal sealed class DrmUsage(Func<double>? clock = null, double discoverySecon
 
     /// <summary>
     /// The load arithmetic, without any I/O; <see cref="DrmUsage"/> calls it under its lock. Per client and engine class it
-    /// keeps the highest busy counter accepted so far with its reference (the read time for i915, the total cycles for xe), and
-    /// measures the next reading against it. A counter that reads lower is ignored until it catches up again, as
-    /// drm-usage-stats asks of userspace. Per engine class the busy shares are summed over the clients and divided by the
-    /// class's engine count, and a card's load is its busiest class (what nvtop and intel_gpu_top show).
+    /// keeps the highest busy counter accepted so far with its reference (the read time for i915, the total cycles for xe) and
+    /// the sample it came from. Only a baseline from the sample just before counts, so every share added up covers the same
+    /// interval; a client that missed a sample (unreadable, newly found, no counters) takes a new baseline and counts from
+    /// the next one. A counter that reads lower is ignored until it catches up again, as drm-usage-stats asks of userspace.
+    /// Per engine class the busy shares are summed over the clients and divided by the class's engine count, and a card's
+    /// load is its busiest class (what nvtop and intel_gpu_top show).
     /// </summary>
     internal sealed class Meter
     {
-        private readonly Dictionary<(string Pdev, string ClientId, string Class), (ulong Busy, ulong Total, double At)> _base = [];
-        // cards with a client measured against a baseline: they have a value from then on (0 once their last client is gone);
-        // a card whose clients never show busy counters (i915 before 5.19, early xe) stays without one
+        private readonly Dictionary<(string Pdev, string ClientId, string Class), (ulong Busy, ulong Total, double At, long Sample)> _base = [];
+        // cards with a valid measurement so far: from then on a card with no clients left is idle (0); a card whose clients
+        // never show busy counters (i915 before 5.19, early xe) stays without a value
         private readonly HashSet<string> _measured = [];
+        private long _sample;
 
         /// <summary>A client is one open file description: several fds can share it and show the same counters.</summary>
         internal static (string Pdev, string ClientId) KeyOf(DrmClient c) => ((c.Pdev ?? "").ToLowerInvariant(), c.ClientId);
@@ -127,49 +140,67 @@ internal sealed class DrmUsage(Func<double>? clock = null, double discoverySecon
 
         /// <summary>
         /// Takes the clients read at <paramref name="now"/> (seconds) and returns the load in % of those of
-        /// <paramref name="pdevs"/> that have a value. Clients in <paramref name="unread"/> couldn't be read this time and keep
-        /// their baselines; any other client that is missing has gone, and its baselines with it.
+        /// <paramref name="pdevs"/> that have a value. Clients in <paramref name="unread"/> couldn't be read this time, and a
+        /// client without busy counters this time (xe prints none when it can't wake the GPU) is in the same state: both keep
+        /// their baselines and count from their next sample. Any other client that is missing has gone, and its baselines
+        /// with it. A card has a value when one of its clients was measured over this interval (0 when they were all idle), or
+        /// when a card measured before has no clients left; otherwise its load is unknown and it is left out.
         /// </summary>
         public Dictionary<string, double> Update(IEnumerable<DrmClient> clients, double now, IEnumerable<string> pdevs,
             IReadOnlySet<(string, string)>? unread = null)
         {
+            var sample = ++_sample;
             var shares = new Dictionary<(string Pdev, string Class), double>();
-            var seen = new HashSet<(string, string)>();
+            var counted = new HashSet<(string, string)>(); // clients read with busy counters
+            var unknown = new HashSet<(string Pdev, string ClientId)>(unread ?? new HashSet<(string, string)>());
+            var present = new HashSet<string>(); // cards with a client this time
             var measuredNow = new HashSet<string>();
+            var seen = new HashSet<(string, string)>();
             foreach (var c in clients)
             {
                 if (c.Pdev is null || !seen.Add(KeyOf(c))) continue;
                 var (pdev, id) = KeyOf(c);
+                present.Add(pdev);
+                if (c.Busy.Count == 0) { unknown.Add((pdev, id)); continue; }
+                counted.Add((pdev, id));
                 foreach (var (cls, busy) in c.Busy)
                 {
                     var xe = c.TotalCycles.TryGetValue(cls, out var total);
                     if (!_base.TryGetValue((pdev, id, cls), out var b))
                     {
-                        _base[(pdev, id, cls)] = (busy, total, now); // first sight: a baseline, nothing to measure yet
+                        _base[(pdev, id, cls)] = (busy, total, now, sample); // first sight: a baseline, nothing to measure yet
                         continue;
                     }
-                    _measured.Add(pdev);
-                    measuredNow.Add(pdev);
                     if (busy < b.Busy) continue; // keep the higher value until the counter catches up
-                    double share;
+                    if (b.Sample != sample - 1)
+                    {
+                        _base[(pdev, id, cls)] = (busy, total, now, sample); // missed a sample: its delta spans another interval
+                        continue;
+                    }
                     // xe: busy cycles over the GPU cycles that passed for this client, independent of the wall clock
-                    if (xe) { if (total <= b.Total) continue; share = (busy - b.Busy) / (double)(total - b.Total); }
-                    else { if (!(now > b.At)) continue; share = (busy - b.Busy) / ((now - b.At) * 1e9); }
-                    _base[(pdev, id, cls)] = (busy, total, now);
+                    var passed = xe ? total > b.Total : now > b.At;
+                    if (!passed)
+                    {
+                        _base[(pdev, id, cls)] = b with { Sample = sample }; // no time passed: same baseline, nothing measured
+                        continue;
+                    }
+                    var share = xe ? (busy - b.Busy) / (double)(total - b.Total) : (busy - b.Busy) / ((now - b.At) * 1e9);
+                    _base[(pdev, id, cls)] = (busy, total, now, sample);
                     var engines = c.Capacity.TryGetValue(cls, out var n) && n > 1 ? n : 1;
                     shares[(pdev, cls)] = shares.GetValueOrDefault((pdev, cls)) + share / engines;
+                    _measured.Add(pdev);
+                    measuredNow.Add(pdev);
                 }
             }
-            foreach (var key in _base.Keys.Where(k => !seen.Contains((k.Pdev, k.ClientId)) && unread?.Contains((k.Pdev, k.ClientId)) != true).ToList())
+            foreach (var key in _base.Keys.Where(k => !counted.Contains((k.Pdev, k.ClientId)) && !unknown.Contains((k.Pdev, k.ClientId))).ToList())
                 _base.Remove(key);
 
             var load = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             foreach (var card in pdevs)
             {
                 var pdev = card.ToLowerInvariant();
-                if (!_measured.Contains(pdev)) continue;
-                // its only clients couldn't be read this time: their load is unknown, not 0
-                if (!measuredNow.Contains(pdev) && unread?.Any(k => k.Item1 == pdev) == true) continue;
+                var idle = _measured.Contains(pdev) && !present.Contains(pdev) && !unknown.Any(k => k.Pdev == pdev);
+                if (!measuredNow.Contains(pdev) && !idle) continue;
                 var max = shares.Where(s => s.Key.Pdev == pdev).Select(s => s.Value).DefaultIfEmpty(0).Max();
                 load[card] = Math.Round(Math.Clamp(max * 100, 0, 100), 1);
             }
