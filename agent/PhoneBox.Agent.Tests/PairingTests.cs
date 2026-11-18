@@ -141,13 +141,15 @@ public sealed class PairingTests
         Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(shared, "GET", "/api/state", "", "Bearer same-tok", null));
         Assert.Equal(Lan.LanAccess.Webhook, Lan.AuthorizeRequest(shared, "POST", "/api/push/ci", "", "Bearer same-tok", null));
 
+        // the settings page's save refuses it (other writes, like a Note from the phone, still go through)
+        Assert.True(Program.LanKeysShared("""{"lan":{"enabled":true,"token":"same-tok","webhookToken":"same-tok"}}"""));
+        Assert.True(Program.LanKeysShared("""{"lan":{"token":"a","webhookToken":"b"},"LAN":{"token":"c","webhookToken":"c"}}"""));
+        Assert.False(Program.LanKeysShared("""{"lan":{"enabled":true,"token":"phone-tok","webhookToken":"hook-tok"}}"""));
+        Assert.False(Program.LanKeysShared("""{"lan":{"token":"","webhookToken":""}}""")); // both get new, different keys
+        Assert.False(Program.LanKeysShared("""{"lan":{"token":"c","webhookToken":"c"},"lan":{"token":"a","webhookToken":"b"}}"""));
+
         var dir = Directory.CreateTempSubdirectory("phonebox-shared-key-").FullName;
-        try
-        {
-            var cfg = new ConfigStore(Path.Combine(dir, "config.json"));
-            Assert.NotNull(cfg.Save("""{"lan":{"enabled":true,"token":"same-tok","webhookToken":"same-tok"}}"""));
-            Assert.Null(cfg.Save("""{"lan":{"enabled":true,"token":"phone-tok","webhookToken":"hook-tok"}}"""));
-        }
+        try { Assert.Null(new ConfigStore(Path.Combine(dir, "config.json")).Save("""{"lan":{"token":"same-tok","webhookToken":"same-tok"}}""")); }
         finally { Directory.Delete(dir, recursive: true); }
     }
 

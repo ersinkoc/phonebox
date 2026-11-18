@@ -468,9 +468,6 @@ public sealed partial class ConfigStore(string path)
                 return $"Camera '{(cam.Name.Length > 0 ? cam.Name : "(no name)")}': the address must start with rtsp:// or rtsps://";
         if (cfg.Weather.Lat is < -90 or > 90 || cfg.Weather.Lon is < -180 or > 180) return "Invalid weather location";
         if (!HhMm().IsMatch(cfg.Night.Start ?? "") || !HhMm().IsMatch(cfg.Night.End ?? "")) return "Night mode times must be in HH:MM format";
-        // a webhook sender holding the phone's key could do everything the phone can (see Lan.AuthorizeRequest)
-        if (string.Equals(cfg.Lan.Token, cfg.Lan.WebhookToken, StringComparison.Ordinal))
-            return "The Wi-Fi key and the webhook key must be different: make a new key for one of them";
 
         lock (_lock)
         {

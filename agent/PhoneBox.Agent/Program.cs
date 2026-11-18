@@ -336,6 +336,8 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
     var body = await r.ReadToEndAsync();
     if (LanPortCollidesWithLocal(body, Port))
         return Results.BadRequest(new { error = $"Wi-Fi port cannot be the same as the local port ({Port})" });
+    if (LanKeysShared(body))
+        return Results.BadRequest(new { error = "The Wi-Fi key and the webhook key must be different: make a new key for one of them" });
     string? err;
     long savedVersion;
     lock (IconCommit) err = cfg.Save(body, expected, out savedVersion);
@@ -878,6 +880,37 @@ public partial class Program
                 collides = enabled && port == localPort;
             }
             return collides;
+        }
+        catch (JsonException) { }
+        return false;
+    }
+
+    /// <summary>
+    /// True when settings JSON gives the phone key and the webhook key the same value: every webhook sender would then
+    /// hold the phone's key (Lan.AuthorizeRequest no longer trusts it as one). Checked on the settings page's save
+    /// only, so other writes (a Note from the phone) still go through on a config that was edited by hand.
+    /// </summary>
+    internal static bool LanKeysShared(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return false;
+            string? token = null, webhook = null;
+            // last-wins for repeated members, like ConfigStore.Save; blank keys are replaced by new ones there
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (!prop.Name.Equals("lan", StringComparison.OrdinalIgnoreCase)) continue;
+                token = webhook = null;
+                if (prop.Value.ValueKind != JsonValueKind.Object) continue;
+                foreach (var lp in prop.Value.EnumerateObject())
+                {
+                    var text = lp.Value.ValueKind == JsonValueKind.String ? lp.Value.GetString() : null;
+                    if (lp.Name.Equals("token", StringComparison.OrdinalIgnoreCase)) token = text;
+                    else if (lp.Name.Equals("webhookToken", StringComparison.OrdinalIgnoreCase)) webhook = text;
+                }
+            }
+            return !string.IsNullOrWhiteSpace(token) && string.Equals(token, webhook, StringComparison.Ordinal);
         }
         catch (JsonException) { }
         return false;
