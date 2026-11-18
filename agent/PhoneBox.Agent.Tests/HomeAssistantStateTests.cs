@@ -92,7 +92,8 @@ public sealed class HomeAssistantStateTests : IDisposable
     {
         Configure(_a);
         _a.Door = "unknown";
-        Assert.NotNull(await Client().ToggleAsync("lock.door").WaitAsync(TimeSpan.FromSeconds(15)));
+        Assert.Equal("Home Assistant does not report this entity's state",
+            await Client().ToggleAsync("lock.door").WaitAsync(TimeSpan.FromSeconds(15)));
         Assert.Empty(_a.Calls);
     }
 
