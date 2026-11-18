@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Fixed**
+- GitHub widget: pull request titles in Hebrew (and other scripts outside the Windows console code page) are no
+  longer garbled; the agent now reads the GitHub CLI's output as UTF-8.
+
 **Israel**
 - Settings › General › Weather: a list of places in Israel, grouped by region, that fills in the name and the
   coordinates without a search. The forecast itself was always real (Open-Meteo); the default place is still Tallinn.

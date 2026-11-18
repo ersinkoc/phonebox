@@ -91,11 +91,22 @@ public sealed class GitHubMonitor(ILogger<GitHubMonitor> log) : BackgroundServic
         review, ci,
         DateTimeOffset.TryParse(Str(n, "updatedAt"), out var u) ? u.ToUnixTimeMilliseconds() : 0);
 
-    internal static Task<string> Gh(string[] args, CancellationToken ct)
+    internal static Task<string> Gh(string[] args, CancellationToken ct) => RunGh(GhStart(args), ct);
+
+    /// <summary>
+    /// gh writes UTF-8 whatever the console is set to. Without saying so, Windows reads the output in the system's
+    /// OEM code page, and a pull request title in Hebrew (or any script outside that page) reaches the phone as
+    /// mojibake.
+    /// </summary>
+    internal static ProcessStartInfo GhStart(string[] args)
     {
-        var psi = new ProcessStartInfo("gh");
+        var psi = new ProcessStartInfo("gh")
+        {
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
+        };
         foreach (var a in args) psi.ArgumentList.Add(a);
-        return RunGh(psi, ct);
+        return psi;
     }
 
     internal static async Task<string> RunGh(ProcessStartInfo psi, CancellationToken ct)
