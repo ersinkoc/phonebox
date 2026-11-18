@@ -135,7 +135,11 @@ internal static partial class RadioBrowserDirectory
             if (ms.Length + read > maxBytes) return null;
             ms.Write(buf, 0, read);
         }
-        return System.Text.Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
+        // ReadAsStringAsync dropped a UTF-8 byte-order mark; the JSON parser rejects one left in the text
+        var bytes = ms.GetBuffer();
+        var length = (int)ms.Length;
+        var start = length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
+        return System.Text.Encoding.UTF8.GetString(bytes, start, length - start);
     }
 
     // Every directory call used here (countries, station search) answers with a JSON array.
@@ -362,6 +366,7 @@ internal static partial class RadioBrowserDirectory
             if (ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6Multicast || ip.IsIPv6Teredo) return false;
             var b = ip.GetAddressBytes();
             if ((b[0] & 0xE0) != 0x20) return false; // global unicast 2000::/3 only
+            if (b[0] == 0x3F && b[1] == 0xFF && b[2] < 0x10) return false; // 3fff::/20 documentation (RFC 9637)
             if (b[0] == 0x20 && b[1] == 0x01)
             {
                 if (b[2] == 0x00 && b[3] == 0x00) return false; // 2001:0000::/32 Teredo
