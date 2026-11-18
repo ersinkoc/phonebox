@@ -126,3 +126,24 @@ test('the widget catalog translates by its English text', async ({ page }) => {
   expect(out.untouched).toBe('not in the catalog');
   expect(out.other).toBe('Clock');
 });
+
+// A JavaScript object literal keeps the last of two equal keys without a warning, so a key defined twice in one
+// language silently replaces the first text (s.ha.hint once showed the token setup paragraph in the entity picker).
+test('i18n.js defines every key once per language', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const lines = fs.readFileSync(path.join(__dirname, '..', '..', 'android', 'app', 'src', 'main', 'assets', 'www', 'i18n.js'), 'utf8').split('\n');
+  const BLOCK = /^ {4}([a-z]{2}(?:-[A-Za-z]+)?|'[^']+'):\s*\{\s*$/;
+  const KEY = /^ {6}('(?:[^'\\]|\\.)*'|[A-Za-z_.$][\w.$]*):/;
+  const dupes = [];
+  let block = null, seen = new Map();
+  lines.forEach((line, i) => {
+    const b = BLOCK.exec(line);
+    if (b) { block = b[1]; seen = new Map(); return; }
+    const k = block && KEY.exec(line);
+    if (!k) return;
+    if (seen.has(k[1])) dupes.push(`${block} ${k[1]} (lines ${seen.get(k[1])} and ${i + 1})`);
+    else seen.set(k[1], i + 1);
+  });
+  expect(dupes).toEqual([]);
+});
