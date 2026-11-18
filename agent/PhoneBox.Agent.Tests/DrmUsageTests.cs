@@ -188,6 +188,81 @@ public sealed class DrmUsageTests
     }
 
     [Fact]
+    public void BetweenDiscoveryPassesOnlyTheKnownClientsAreRead()
+    {
+        var root = Directory.CreateTempSubdirectory("pb-proc-");
+        try
+        {
+            var proc = root.FullName;
+            string F(string pid) => Path.Combine(proc, pid, "fdinfo", "5");
+            var now = 0.0;
+            var usage = new DrmUsage(() => now, discoverySeconds: 30);
+            W(F("300"), I915("1", 0));
+            Assert.Empty(usage.Sample(proc, [Igpu]));
+            Assert.Equal(1, usage.Discoveries);
+
+            W(F("400"), I915("2", 0)); // a new client: not seen until the next pass
+            now = 2;
+            W(F("300"), I915("1", 200_000_000));
+            Assert.Equal(10, usage.Sample(proc, [Igpu])[Igpu]);
+
+            now = 4;
+            W(F("300"), I915("1", 400_000_000));
+            W(F("400"), I915("2", 1_000_000_000)); // would add 50 % had pid 400 been walked at 2 s
+            Assert.Equal(10, usage.Sample(proc, [Igpu])[Igpu]);
+            Assert.Equal(1, usage.Discoveries);
+
+            now = 30; // the next pass finds pid 400 and takes its baseline
+            Assert.Equal(0, usage.Sample(proc, [Igpu])[Igpu]);
+            Assert.Equal(2, usage.Discoveries);
+
+            now = 32;
+            W(F("400"), I915("2", 1_600_000_000));
+            Assert.Equal(30, usage.Sample(proc, [Igpu])[Igpu]);
+            Assert.Equal(2, usage.Discoveries);
+        }
+        finally { root.Delete(true); }
+    }
+
+    [Fact]
+    public void AClientWhoseFdinfoIsGoneIsDroppedWithoutAFullPass()
+    {
+        var root = Directory.CreateTempSubdirectory("pb-proc-");
+        try
+        {
+            var proc = root.FullName;
+            string F(string pid) => Path.Combine(proc, pid, "fdinfo", "5");
+            var now = 0.0;
+            var usage = new DrmUsage(() => now, discoverySeconds: 30);
+            W(F("300"), I915("1", 0));
+            W(F("301"), I915("2", 0));
+            Assert.Empty(usage.Sample(proc, [Igpu]));
+
+            now = 2;
+            W(F("300"), I915("1", 200_000_000));
+            W(F("301"), I915("2", 200_000_000));
+            Assert.Equal(20, usage.Sample(proc, [Igpu])[Igpu]);
+
+            Directory.Delete(Path.Combine(proc, "301"), true); // the process exited
+            now = 4;
+            W(F("300"), I915("1", 400_000_000));
+            Assert.Equal(10, usage.Sample(proc, [Igpu])[Igpu]);
+
+            // a new process under the same path is not read again before the next pass
+            W(F("301"), I915("2", 0));
+            for (var i = 1; i <= 2; i++)
+            {
+                now = 4 + 2 * i;
+                W(F("300"), I915("1", 400_000_000 + 200_000_000UL * (ulong)i));
+                W(F("301"), I915("2", 1_000_000_000UL * (ulong)i));
+                Assert.Equal(10, usage.Sample(proc, [Igpu])[Igpu]);
+            }
+            Assert.Equal(1, usage.Discoveries);
+        }
+        finally { root.Delete(true); }
+    }
+
+    [Fact]
     public void AKernelWithoutBusyCountersLeavesTheLoadEmptyNotZero()
     {
         var root = Directory.CreateTempSubdirectory("pb-proc-");

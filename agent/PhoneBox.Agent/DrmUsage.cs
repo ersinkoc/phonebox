@@ -16,12 +16,15 @@ internal sealed record DrmClient(string Driver, string ClientId, string? Pdev,
 /// the load is added up from the usage counters every client's DRM fdinfo has (kernel doc: drm-usage-stats), between two
 /// samples. Only the counters are read, and only from processes this user may look at: without root, other users'
 /// processes are not counted.
+/// Walking every fd of every process is the expensive part, so a full discovery pass runs at most every
+/// <c>discoverySeconds</c>; the samples in between re-read only the fdinfo files that pass found, and a new GPU client is
+/// picked up by the next pass.
 /// </summary>
-internal sealed class DrmUsage(Func<double>? clock = null)
+internal sealed class DrmUsage(Func<double>? clock = null, double discoverySeconds = 30)
 {
-    /// <summary>fdinfo files read per sample at most; the scan stops there.</summary>
+    /// <summary>fdinfo files read per discovery pass at most; the pass stops there.</summary>
     internal const int MaxFdinfoReads = 4096;
-    /// <summary>Open files looked at per sample at most (most are skipped by their link target without being read).</summary>
+    /// <summary>Open files looked at per discovery pass at most (most are skipped by their link target without being read).</summary>
     internal const int MaxFds = 200_000;
 
     private readonly Lock _lock = new();
@@ -29,22 +32,37 @@ internal sealed class DrmUsage(Func<double>? clock = null)
     private List<DrmClient>? _prev;
     private double _prevAt;
     private string? _prevRoot;
+    // the fdinfo files of the GPU clients the last discovery pass found, and when it ran
+    private List<string>? _known;
+    private double _discoveredAt;
     // cards a client with busy counters was seen on: an older kernel (i915 before 5.19, early xe) has none, and its card
     // stays without a value instead of showing 0
     private readonly HashSet<string> _counting = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Full discovery passes so far (for tests).</summary>
+    internal int Discoveries { get; private set; }
+
     /// <summary>
-    /// Scans <paramref name="procRoot"/> and returns the load in % of each of <paramref name="pdevs"/> since the previous
-    /// call. The first call only takes the baseline, and a card whose clients never showed busy counters has no value
-    /// either: such a card is missing from the answer (no value, not 0).
+    /// Reads the GPU clients under <paramref name="procRoot"/> and returns the load in % of each of <paramref name="pdevs"/>
+    /// since the previous call. The first call only takes the baseline, and a card whose clients never showed busy counters
+    /// has no value either: such a card is missing from the answer (no value, not 0).
     /// </summary>
     public Dictionary<string, double> Sample(string procRoot, IReadOnlyCollection<string> pdevs)
     {
         lock (_lock)
         {
             var now = _clock();
-            var cur = Scan(procRoot);
-            if (_prevRoot != procRoot) _counting.Clear();
+            if (_prevRoot != procRoot) { _counting.Clear(); _known = null; }
+            List<DrmClient> cur;
+            if (_known is null || !(now - _discoveredAt < discoverySeconds))
+            {
+                var found = Discover(procRoot);
+                cur = found.Select(f => f.Client).ToList();
+                _known = found.Select(f => f.Path).ToList();
+                _discoveredAt = now;
+                Discoveries++;
+            }
+            else cur = Reread(_known);
             foreach (var c in cur)
                 if (c.Pdev is { } p && c.Busy.Count > 0) _counting.Add(p);
             var load = _prev is not null && _prevRoot == procRoot
@@ -53,6 +71,34 @@ internal sealed class DrmUsage(Func<double>? clock = null)
             (_prev, _prevAt, _prevRoot) = (cur, now, procRoot);
             return load;
         }
+    }
+
+    /// <summary>
+    /// The clients behind fdinfo files a discovery pass found. A file that is gone (the fd was closed, the process exited),
+    /// can't be read any more or no longer is an i915 / xe client is dropped from <paramref name="known"/>.
+    /// </summary>
+    private static List<DrmClient> Reread(List<string> known)
+    {
+        var list = new List<DrmClient>(known.Count);
+        known.RemoveAll(path =>
+        {
+            if (ReadClient(path) is not { } c) return true;
+            list.Add(c);
+            return false;
+        });
+        return list;
+    }
+
+    private static DrmClient? ReadClient(string path)
+    {
+        try
+        {
+            var text = File.ReadAllText(path);
+            if (!text.Contains("drm-driver:", StringComparison.Ordinal)) return null;
+            return ParseFdinfo(text) is { Driver: "i915" or "xe", Pdev: not null } c ? c : null;
+        }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
     }
 
     /// <summary>
@@ -169,13 +215,17 @@ internal sealed class DrmUsage(Func<double>? clock = null)
         return ulong.TryParse(number, NumberStyles.None, CultureInfo.InvariantCulture, out var v) ? v : null;
     }
 
+    /// <summary>The i915 and xe clients of every process this user can read (one discovery pass).</summary>
+    internal static List<DrmClient> Scan(string procRoot) => Discover(procRoot).Select(f => f.Client).ToList();
+
     /// <summary>
-    /// The i915 and xe clients of every process this user can read. Pids are visited in order and the work is bounded, so a
-    /// capped scan sees the same processes each time. Anything unreadable (another user's process, one that just exited) is skipped.
+    /// The discovery pass: the i915 and xe clients of every process this user can read, with their fdinfo files. Pids are
+    /// visited in order and the work is bounded, so a capped pass sees the same processes each time. Anything unreadable
+    /// (another user's process, one that just exited) is skipped.
     /// </summary>
-    internal static List<DrmClient> Scan(string procRoot)
+    private static List<(string Path, DrmClient Client)> Discover(string procRoot)
     {
-        var list = new List<DrmClient>();
+        var list = new List<(string, DrmClient)>();
         string[] dirs;
         try { dirs = Directory.GetDirectories(procRoot); }
         catch (IOException) { return list; }
@@ -196,14 +246,7 @@ internal sealed class DrmUsage(Func<double>? clock = null)
                 if (++fds > MaxFds || reads >= MaxFdinfoReads) return list;
                 if (!MaybeGpu(Path.Combine(proc, "fd", Path.GetFileName(file)))) continue;
                 reads++;
-                try
-                {
-                    var text = File.ReadAllText(file);
-                    if (!text.Contains("drm-driver:", StringComparison.Ordinal)) continue;
-                    if (ParseFdinfo(text) is { Driver: "i915" or "xe", Pdev: not null } c) list.Add(c);
-                }
-                catch (IOException) { }
-                catch (UnauthorizedAccessException) { }
+                if (ReadClient(file) is { } c) list.Add((file, c));
             }
         }
         return list;
