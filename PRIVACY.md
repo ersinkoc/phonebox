@@ -51,6 +51,7 @@ identifies your GitHub account to GitHub.
 | Network latency (ping metric, "ping high" rule) | `1.1.1.1` (Cloudflare DNS) by default, an ICMP echo every 5 seconds | An empty ping packet | From 0.9.6: empty **Settings › General › Ping**, or enter another host. 0.9.5 and earlier: not switchable; block ICMP to `1.1.1.1` in your firewall |
 | Weather (phone) | `api.open-meteo.com`, every 15 minutes | The coordinates of the city you chose (Tallinn by default) | From 0.9.6: asked only while a page has a widget that shows the weather (weather, forecast, sun & moon, a clock with its weather line, or a Custom HTML widget, which gets the weather too); remove those, or turn off the clock's weather line. 0.9.5 and earlier: asked while the panel runs; choose a city you are comfortable sharing in **Settings › General › Weather** |
 | Air quality widget (phone) | `air-quality-api.open-meteo.com`, while the widget is on a page | The same coordinates | Remove the widget |
+| Zmanim widget (phone) | `www.hebcal.com`, twice a day while the widget is on a page | The same coordinates, the time zone and the date | Remove the widget |
 | City search (settings page) | `geocoding-api.open-meteo.com` | The city name you type, only when you search | Don't search |
 
 ## Connections made only when you use a feature

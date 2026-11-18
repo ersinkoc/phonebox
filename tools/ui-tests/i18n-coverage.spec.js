@@ -97,8 +97,11 @@ test('the settings page shows no English left in Vietnamese, with every section 
     return out;
   });
 
+  // The weather picker lists places in Israel by name (il-places.js): names of towns are data, not interface text.
+  const placeNames = await page.evaluate(() => window.PhoneBoxIL.PLACES.map((p) => p.en));
+
   // Product names and platform names that are not translated on purpose, and demo/sample data the config carries.
-  const leftoversKept = englishLeftovers(leftovers, [
+  const leftoversKept = englishLeftovers(leftovers, placeNames.concat([
     'Control Deck', 'PhoneBox', 'Spotify', 'Claude', 'Codex', 'GitHub', 'OBS Studio', 'Home Assistant',
     'Discord', 'Antigravity', 'Tailscale', 'Windows', 'macOS', 'Linux', 'Android', 'WebView',
     'Windows Terminal', 'File Explorer (args: folder)', 'Task Manager', 'AppID', 'PowerShell',
@@ -118,7 +121,7 @@ test('the settings page shows no English left in Vietnamese, with every section 
     ['English', 'Deutsch', 'Français', 'Español', 'Italiano', 'Nederlands', 'Polski', 'Русский', '中文', 'Türkçe', 'Português'],
     // the sample config: page, rule, shortcut, adapter and device names come from the file, not from the UI
     DEMO_NAMES,
-  ));
+  )));
 
   expect(leftoversKept, `untranslated text still on the settings page:\n${leftoversKept.join('\n')}`).toEqual([]);
 });

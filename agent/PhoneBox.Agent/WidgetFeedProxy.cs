@@ -17,6 +17,7 @@ public static class WidgetFeedProxy
         "hacker-news.firebaseio.com",
         "api.frankfurter.dev",
         "api.coingecko.com",
+        "www.hebcal.com",
     };
 
     private static readonly HttpClient SharedClient = CreateHttpClient();

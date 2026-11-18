@@ -912,6 +912,34 @@ body.offline .offline-msg { display: flex; }
 .aq-c { font-size: clamp(11px, 8cqh, 15px); color: var(--muted); }
 .aq-chips { display: flex; gap: 5px; flex-wrap: wrap; overflow: hidden; max-height: 24px; }
 @container (max-height: 100px) { .w-air .aq-chips { display: none; } }
+/* zmanim (Hebcal): the next time large, the day's list beside it, the Shabbat line below */
+.w-zmanim { padding: 9px 12px; display: flex; flex-direction: column; gap: 5px; }
+.w-zmanim[dir="rtl"] .w-title, .w-workclock[dir="rtl"] .w-title { letter-spacing: 0; }
+.w-zmanim[dir="rtl"] .w-sub, .w-workclock[dir="rtl"] .w-sub { margin-left: 0; margin-right: auto; }
+.zm-body { flex: 1; min-height: 0; display: flex; gap: 14px; }
+.zm-next { flex: 0 0 auto; min-width: 36%; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.zm-nl { font-size: clamp(11px, 8cqh, 15px); color: var(--muted); white-space: nowrap; }
+.zm-nt { font-size: min(34cqh, 17cqw); font-weight: 400; line-height: 1; color: var(--accent, var(--text)); font-variant-numeric: tabular-nums; }
+.zm-ni { font-size: clamp(10.5px, 7cqh, 13px); color: var(--dim); white-space: nowrap; }
+.zm-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow: hidden; font-size: clamp(10.5px, 6.4cqh, 13.5px); }
+.zm-i { flex: none; display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.zm-i span:first-child { overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.zm-i.past { opacity: .38; }
+.zm-i.on span { color: var(--accent, var(--text)); font-weight: 600; }
+.zm-shab { font-size: clamp(10.5px, 6.5cqh, 13px); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid var(--line); padding-top: 4px; }
+@container (max-width: 230px) { .w-zmanim .zm-list { display: none; } }
+@container (max-height: 110px) { .w-zmanim .zm-list, .w-zmanim .zm-shab { display: none; } }
+/* work clock: the running entry counts up, today's total and the daily target below */
+.w-workclock { padding: 9px 12px; display: flex; flex-direction: column; gap: 4px; }
+.w-workclock.run { --wk: var(--ok); }
+.w-workclock.run .w-sub { color: var(--ok); }
+.wk-main { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.wk-t { font-size: min(42cqh, 19cqw); font-weight: 400; line-height: 1; color: var(--wk, var(--muted)); font-variant-numeric: tabular-nums; }
+.wk-p { font-size: clamp(11px, 8cqh, 15px); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-foot { display: flex; align-items: center; gap: 8px; font-size: clamp(10.5px, 7cqh, 13px); color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wk-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.wk-bar i { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--wk, var(--muted)); }
+@container (max-height: 100px) { .w-workclock .wk-foot { display: none; } }
 
 /* ---------- hacker news, exchange rates, crypto ---------- */
 .w-hackernews { padding: 9px 12px; display: flex; flex-direction: column; gap: 4px; }

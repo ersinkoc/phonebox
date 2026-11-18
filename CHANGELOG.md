@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+**Israel**
+- Settings › General › Weather: a list of places in Israel, grouped by region, that fills in the name and the
+  coordinates without a search. The forecast itself was always real (Open-Meteo); the default place is still Tallinn.
+- Zmanim widget: the halachic times of the day with the next one large, the Hebrew date (it turns at sunset), candle
+  lighting, Havdalah and the weekly portion, from Hebcal for the weather location. Hebrew names by default.
+- Work clock widget: the running entry of a time tracker and today's total, pushed with `POST /api/push/workclock`
+  (`running`, `startedAt`, `client`, `project`, `task`, `todaySec`, `targetHours`); the phone counts the seconds itself.
+
 Big buttons that show a picture, and an audit of the agent, the panel, the phone app and the installers: each fix came
 with a test that failed before it, kept as a regression test (#234, #235, #236, #237).
 

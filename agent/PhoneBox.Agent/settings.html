@@ -402,6 +402,10 @@ dd { margin: 0; word-break: break-all; }
       <div class="card">
         <h3 data-i18n="s.weather.title">Weather</h3>
         <div class="field">
+          <label for="ilPlace" data-i18n="s.weather.israel">Place in Israel</label>
+          <select id="ilPlace"></select>
+        </div>
+        <div class="field">
           <label data-i18n="s.weather.searchCity">Search for a city</label>
           <div class="row"><input type="text" id="citySearch" data-i18n-placeholder="s.weather.searchPlaceholder" placeholder="e.g. Tallinn, Berlin…" style="flex:1"><button class="btn" id="cityBtn" data-i18n="s.weather.searchBtn">Search</button></div>
           <div class="results" id="cityResults" hidden></div>
@@ -704,6 +708,7 @@ dd { margin: 0; word-break: break-all; }
 
 <script src="../panel/i18n.js"></script>
 <script src="../panel/appearance.js"></script>
+<script src="../panel/il-places.js"></script>
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
@@ -2722,6 +2727,7 @@ function bindLanguage() {
     renderCameras();
     renderConsole();
     renderCharge();
+    renderIlPlaces();
     if (typeof queuePreview === 'function') queuePreview();
     changed();
   };
@@ -2754,6 +2760,7 @@ function bindForm() {
     };
   });
   bindCodexBar();
+  renderIlPlaces();
   $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
 }
 
@@ -2773,6 +2780,25 @@ function bindCodexBar() {
       changed();
     };
   });
+}
+
+// The places in Israel (il-places.js), grouped by region. Choosing one fills in the name and the coordinates, the same
+// three fields a city search fills in; the list is part of the page, so it needs no network.
+function renderIlPlaces() {
+  const sel = $('ilPlace'), IL = window.PhoneBoxIL;
+  if (!sel || !IL) return;
+  const lang = IL.hebrew() ? 'he' : 'en';
+  const w = cfg.weather || {};
+  const at = IL.PLACES.findIndex((p) => p.lat === w.lat && p.lon === w.lon);
+  sel.replaceChildren(h('option', { value: '' }, t('s.weather.israelPick')), ...IL.REGIONS.map((r) =>
+    h('optgroup', { label: r[lang] }, ...IL.PLACES.map((p, i) => (p.region === r.id ? h('option', { value: i }, p[lang]) : null)))));
+  sel.value = at < 0 ? '' : String(at);
+  sel.onchange = () => {
+    const p = IL.PLACES[sel.value];
+    if (!p) return;
+    cfg.weather = { city: p[lang], lat: p.lat, lon: p.lon };
+    bindForm(); changed(); toast(p[lang]);
+  };
 }
 
 async function searchCity() {
