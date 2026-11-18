@@ -16,7 +16,7 @@ public sealed class AppConsoleTests : IDisposable
            "dialLeft": "minus", "dialRight": "equals" }]
         """;
 
-    public void Dispose() { try { File.Delete(_path); } catch { } }
+    public void Dispose() { try { File.Delete(_path); File.Delete(_path + ".bak"); } catch { } }
 
     private AppConsole Make(bool control = true, bool pageEnabled = true)
     {
@@ -105,6 +105,71 @@ public sealed class AppConsoleTests : IDisposable
         };
         Assert.Equal(403, (await console.Act(null, "p/c", "ps", "k1", 1, default)).Status);
         Assert.Equal(["ctrl+s"], _sent);
+    }
+
+    [Theory]
+    [InlineData("rename", 200, 2)]
+    [InlineData("binding", 409, 1)]
+    [InlineData("remove", 409, 1)]
+    [InlineData("app", 409, 1)]
+    public async Task AnInProgressMacroUsesTheCurrentProfileContract(string edit, int status, int count)
+    {
+        var console = Make();
+        File.SetLastWriteTimeUtc(_path, new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        console.SendCombo = combo =>
+        {
+            _sent.Add(string.Join("+", combo));
+            if (_sent.Count == 1)
+            {
+                var before = File.ReadAllText(_path);
+                var after = edit switch
+                {
+                    "rename" => before.Replace("\"label\": \"Photoshop\"", "\"label\": \"Editor\""),
+                    "binding" => before.Replace("ctrl+s, ctrl+shift+s", "F5"),
+                    "remove" => before.Replace(Profiles, "[]"),
+                    "app" => before.Replace("photoshop.exe, gimp", "notepad"),
+                    _ => throw new ArgumentOutOfRangeException(nameof(edit)),
+                };
+                var store = new ConfigStore(_path);
+                Assert.Null(store.Save(after));
+            }
+            return true;
+        };
+        var actual = await console.Act(null, "p/c", "ps", "k1", 1, default);
+        Assert.True(actual.Status == status && _sent.Count == count,
+            $"EXPECTED: status={status}, sent={count} | ACTUAL: status={actual.Status}, sent={_sent.Count}");
+    }
+
+    [Theory]
+    [InlineData("none")]
+    [InlineData("focused")]
+    [InlineData("foreground")]
+    public async Task CancellationDuringFocusChecksDoesNotSendACombo(string cancelAt)
+    {
+        var console = Make();
+        using var cts = new CancellationTokenSource();
+        console.Focused = () =>
+        {
+            if (cancelAt == "focused") cts.Cancel();
+            return new FocusedApp("photoshop", false, 42);
+        };
+        console.ForegroundWindow = () =>
+        {
+            if (cancelAt == "foreground") cts.Cancel();
+            return 42;
+        };
+        var error = await Record.ExceptionAsync(() => console.Act(null, "p/c", "ps", "k0", 1, cts.Token));
+        if (cancelAt == "none")
+        {
+            Assert.Null(error);
+            Assert.Equal(["ctrl+z"], _sent);
+            return;
+        }
+        Assert.True(error is OperationCanceledException && _sent.Count == 0,
+            $"EXPECTED: cancelled=true, sent=0 | ACTUAL: cancelled={error is OperationCanceledException}, sent={_sent.Count}");
+        console.Focused = () => _focused;
+        Assert.Equal(200, (await console.Act(null, "p/c", "ps", "k0", 1, default)).Status);
+        Assert.Equal(["ctrl+z"], _sent);
     }
 
     [Fact]

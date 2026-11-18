@@ -70,6 +70,84 @@ public class RuleTests
         }
         finally { File.Delete(path); }
     }
+
+    [Fact]
+    public void WhileActiveShortcutRulesKeepAlreadyOnTogglesOnAndReviewRequestedCountsOnlyMatchingNonDrafts()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"phonebox-rule-toggle-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        PushStore? push = null;
+        try
+        {
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, """
+            {
+              "shortcuts": [{ "id": "lamp", "label": "Lamp", "cmd": "builtin:macro", "toggle": true }],
+              "rules": [
+                { "id": "call", "name": "Call", "when": "push", "match": "mic", "then": "shortcut", "shortcut": "lamp", "whileActive": true },
+                { "id": "rev", "name": "Rev", "when": "review-requested", "match": "org/target", "then": "notify", "text": "{detail}" }
+              ]
+            }
+            """);
+            var cfg = new ConfigStore(cfgPath);
+            push = new PushStore(Microsoft.Extensions.Logging.Abstractions.NullLogger<PushStore>.Instance, Path.Combine(dir, "push.json"));
+            var gh = new GitHubMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<GitHubMonitor>.Instance);
+            typeof(GitHubMonitor).GetField("_snap", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .SetValue(gh, new GhSnapshot("me", 0,
+                [
+                    new GhPr("org/target", 42, "Ready", "alice", Draft: false, null, null, 0),
+                    new GhPr("org/target", 43, "Draft", "bob", Draft: true, null, null, 0),
+                    new GhPr("org/other", 99, "Other", "eve", Draft: false, null, null, 0),
+                ], [], 0, null));
+
+            var engine = new RuleEngine(cfg, push,
+                new SessionMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SessionMonitor>.Instance),
+                new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance),
+                new SystemMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SystemMonitor>.Instance),
+                new PrivacyMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<PrivacyMonitor>.Instance),
+                new CalendarMonitor(cfg, Microsoft.Extensions.Logging.Abstractions.NullLogger<CalendarMonitor>.Instance),
+                new ObsMonitor(cfg, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsMonitor>.Instance),
+                new QuotaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<QuotaMonitor>.Instance),
+                gh,
+                new BatteryMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<BatteryMonitor>.Instance),
+                new PingMonitor(), new AudioControl(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<RuleEngine>.Instance);
+
+            var lamp = cfg.Get().Shortcuts.Single();
+            Assert.Null(Shortcuts.Run(cfg.Get(), "lamp", Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, push));
+            Assert.Equal(true, Shortcuts.State(lamp, push, null));
+
+            push.Set("mic", JsonSerializer.SerializeToElement(true), null);
+            var seq = push.Seq;
+            engine.Evaluate();
+            Assert.Equal(true, Shortcuts.State(lamp, push, null));
+            Assert.Equal("org/target#42", push.Since(seq).Single(e => e.Kind == "notify").Data!.Value.GetProperty("text").GetString());
+
+            engine.Pause(5);
+            engine.Evaluate();
+            Assert.Equal(false, Shortcuts.State(lamp, push, null));
+        }
+        finally
+        {
+            push?.Dispose();
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void MacroShortcutStepsUpdateToggleStateAndRunOffCmd()
+    {
+        var lampId = "macro-lamp-" + Guid.NewGuid().ToString("N");
+        var lamp = new Shortcut { Id = lampId, Label = "Lamp", Toggle = true, Cmd = "builtin:macro", OffCmd = "builtin:keys", OffArgs = "bad_off_key" };
+        var macro = new Shortcut { Id = "scene", Label = "Scene", Cmd = "builtin:macro", Steps = [$"shortcut:{lampId}"] };
+        var cfg = new AgentConfig { Shortcuts = [lamp, macro] };
+
+        Assert.Null(Shortcuts.Run(cfg, "scene", Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance));
+        Assert.Equal(true, Shortcuts.State(lamp, null, null));
+        var second = Shortcuts.Run(cfg, "scene", Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+        Assert.NotNull(second);
+        Assert.Contains("bad_off_key", second);
+    }
 }
 
 public class ChargeGuardTests
@@ -130,6 +208,25 @@ public class UsbDoctorTests
     [Fact]
     public void ChargingWithoutDataBlamesTheCable() =>
         Assert.Contains("only carries power", UsbDoctor.Diagnose(R(true, "none", source: "ac"), false, Now));
+
+    [Fact]
+    public void WirelessChargingWithoutUsbDoesNotBlameACable()
+    {
+        Assert.Contains("only carries power", UsbDoctor.Diagnose(R(true, "none", source: "usb"), false, Now));
+        var actual = UsbDoctor.Diagnose(R(true, "none", source: "wireless"), false, Now);
+        Assert.True(actual is null, $"EXPECTED: no diagnosis | ACTUAL: {actual}");
+        Assert.Contains("USB debugging is off", UsbDoctor.Diagnose(R(true, "connected", source: "wireless"), false, Now));
+    }
+
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(-1, false)]
+    [InlineData(-300_000, false)]
+    public void BatteryReportsFromBeforeAClockRollbackDoNotRaiseADiagnosis(long ageMs, bool expected)
+    {
+        var actual = UsbDoctor.Diagnose(R(true, "none", ageMs, "ac"), false, Now) is not null;
+        Assert.True(expected == actual, $"EXPECTED: diagnosis={expected} | ACTUAL: diagnosis={actual}");
+    }
 
     [Fact]
     public void ConnectedWithAdbButUnseenBlamesThePort() =>

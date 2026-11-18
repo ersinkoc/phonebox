@@ -12,7 +12,7 @@ public static class UsbDoctor
     /// <summary>A sentence for the settings page and the log, or null when there is nothing to explain.</summary>
     public static string? Diagnose(PhoneBatteryReport? r, bool adbSeesPhone, long now)
     {
-        if (adbSeesPhone || r is null || now - r.At > FreshMs) return null;
+        if (adbSeesPhone || r is null || now - r.At is < 0 or > FreshMs) return null;
         if (r.Usb is null) return null; // an older app that does not report its USB link
         var usb = r.Usb.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var connected = usb.Contains("connected");
@@ -21,7 +21,7 @@ public static class UsbDoctor
                 + "Try another USB port (straight on the computer, not a hub), or restart adb (adb kill-server).";
         if (connected)
             return "The phone is connected over USB but USB debugging is off. Turn it on in the phone's Developer options.";
-        if (r.Plugged)
+        if (r.Plugged && r.Source != "wireless")
             return "The phone is charging but has no USB data connection: the cable or the port only carries power. "
                 + "Try another cable or port; until then the panel runs over Wi-Fi.";
         return null;

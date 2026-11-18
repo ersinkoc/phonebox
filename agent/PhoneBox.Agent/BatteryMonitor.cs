@@ -15,6 +15,7 @@ public sealed record DeviceBattery(string Name, int Level, string Kind, bool? Ch
 /// </summary>
 public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : BackgroundService
 {
+    private const long NoRequest = long.MinValue;
     private volatile IReadOnlyList<DeviceBattery> _devices = [];
 #if WINDOWS
     private readonly object _publishLock = new();
@@ -22,8 +23,8 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
     private IReadOnlyList<DeviceBattery> _razerDevices = [];
     private Task? _razerTask;
 #endif
-    private long _lastRequest;
-    private long _readAt;
+    private long _lastRequest = NoRequest;
+    private long? _readAt;
 
     public IReadOnlyList<DeviceBattery> Snapshot()
     {
@@ -35,10 +36,12 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
     {
         while (!ct.IsCancellationRequested)
         {
-            var wanted = Environment.TickCount64 - Interlocked.Read(ref _lastRequest) < 120_000;
-            if (wanted && Environment.TickCount64 - _readAt > 60_000)
+            var lastRequest = Interlocked.Read(ref _lastRequest);
+            var now = Environment.TickCount64;
+            var wanted = lastRequest != NoRequest && now - lastRequest < 120_000;
+            if (wanted && (_readAt is null || now - _readAt.Value > 60_000))
             {
-                _readAt = Environment.TickCount64;
+                _readAt = now;
 #if WINDOWS
                 try
                 {
@@ -185,20 +188,39 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
             if (json is not null)
             {
                 using var doc = JsonDocument.Parse(json);
-                foreach (var section in doc.RootElement.GetProperty("SPBluetoothDataType").EnumerateArray())
-                    if (section.TryGetProperty("device_connected", out var connected))
-                        foreach (var dev in connected.EnumerateArray())
-                            foreach (var prop in dev.EnumerateObject())
-                            {
-                                int? Level(string key) => prop.Value.TryGetProperty(key, out var v) && int.TryParse(v.GetString()?.TrimEnd('%'), out var n) ? n : null;
-                                var levels = new[] { Level("device_batteryLevelLeft"), Level("device_batteryLevelRight"), Level("device_batteryLevelMain") }.Where(x => x is not null).ToList();
-                                if (levels.Count == 0 || list.Any(d => d.Name == prop.Name)) continue;
-                                list.Add(new DeviceBattery(prop.Name, levels.Min()!.Value, KindOf(prop.Name) is "other" ? "headphones" : KindOf(prop.Name), null));
-                            }
+                AddMacBluetoothBatteries(doc.RootElement, list);
             }
         }
         catch { }
         return list;
+    }
+
+    internal static void AddMacBluetoothBatteries(JsonElement root, List<DeviceBattery> list)
+    {
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("SPBluetoothDataType", out var sections) || sections.ValueKind != JsonValueKind.Array) return;
+
+        foreach (var section in sections.EnumerateArray())
+        {
+            if (section.ValueKind != JsonValueKind.Object ||
+                !section.TryGetProperty("device_connected", out var connected) || connected.ValueKind != JsonValueKind.Array) continue;
+
+            foreach (var device in connected.EnumerateArray())
+            {
+                if (device.ValueKind != JsonValueKind.Object) continue;
+                foreach (var prop in device.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind != JsonValueKind.Object) continue;
+                    int? Level(string key) => prop.Value.TryGetProperty(key, out var value) &&
+                        value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString()?.TrimEnd('%'), out var level) ? level : null;
+
+                    var levels = new[] { Level("device_batteryLevelLeft"), Level("device_batteryLevelRight"), Level("device_batteryLevelMain") }.Where(x => x is not null).ToList();
+                    if (levels.Count == 0 || list.Any(d => d.Name == prop.Name)) continue;
+                    var kind = KindOf(prop.Name);
+                    list.Add(new DeviceBattery(prop.Name, levels.Min()!.Value, kind is "other" ? "headphones" : kind, null));
+                }
+            }
+        }
     }
 #endif
 }

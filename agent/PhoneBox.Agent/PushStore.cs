@@ -19,9 +19,12 @@ public sealed partial class PushStore : IDisposable
     public const int MaxBytes = 64 * 1024;
     private const int MaxItems = 200;
     private const int MaxEvents = 50;
+    private const int SaveDelayMs = 2000;
+    private const int MaxSaveRetryMs = 30_000;
 
     private readonly string _dataPath;
     private readonly ConcurrentDictionary<string, PushItem> _items = new();
+    private readonly Lock _setLock = new();
     private readonly Lock _evLock = new();
     private readonly LinkedList<PanelEvent> _events = new();
     private readonly ILogger<PushStore> _log;
@@ -34,7 +37,7 @@ public sealed partial class PushStore : IDisposable
     public PushStore(ILogger<PushStore> log, string? dataPath = null)
     {
         _log = log;
-        _dataPath = dataPath ?? Path.Combine(AppPaths.ConfigDir, "data.json");
+        _dataPath = Path.GetFullPath(dataPath ?? Path.Combine(AppPaths.ConfigDir, "data.json"));
         _saveTimer = new System.Threading.Timer(_ => Persist(), null, Timeout.Infinite, Timeout.Infinite);
         try
         {
@@ -84,13 +87,18 @@ public sealed partial class PushStore : IDisposable
     {
         if (!ValidKey(key)) return "key must be 1-64 characters: letters, digits, '.', '_' or '-'";
         PurgeExpired(); // expired values do not count against the limit
-        if (!_items.ContainsKey(key) && _items.Count >= MaxItems) return $"too many keys (max {MaxItems}); delete some first";
         // {"ttl": 300, ...} inside the payload works too
         if (ttlSec is null && data.ValueKind == JsonValueKind.Object && data.TryGetProperty("ttl", out var t)
             && t.ValueKind == JsonValueKind.Number && t.TryGetInt32(out var tt)) ttlSec = tt;
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        _items[key] = new PushItem(data.Clone(), now, ttlSec is > 0 ? now + ttlSec.Value * 1000L : null);
-        Changed();
+        var item = new PushItem(data.Clone(), now, ttlSec is > 0 ? now + ttlSec.Value * 1000L : null);
+        // ConcurrentDictionary does not make the capacity check and insertion atomic.
+        lock (_setLock)
+        {
+            if (!_items.ContainsKey(key) && _items.Count >= MaxItems) return $"too many keys (max {MaxItems}); delete some first";
+            _items[key] = item;
+            Changed();
+        }
         return null;
     }
 
@@ -142,6 +150,7 @@ public sealed partial class PushStore : IDisposable
 
     private readonly Lock _persistLock = new();
     private bool _disposed;
+    private int _saveRetryMs = SaveDelayMs;
 
     private void Changed()
     {
@@ -153,7 +162,7 @@ public sealed partial class PushStore : IDisposable
         } while (Interlocked.CompareExchange(ref _version, Math.Max(now, previous + 1), previous) != previous);
         if (Interlocked.Exchange(ref _savePending, 1) != 0) return;
         lock (_persistLock)
-            if (!_disposed) _saveTimer.Change(2000, Timeout.Infinite);
+            if (!_disposed) _saveTimer.Change(SaveDelayMs, Timeout.Infinite);
     }
 
     private void Persist()
@@ -183,8 +192,16 @@ public sealed partial class PushStore : IDisposable
             var tmp = _dataPath + ".tmp";
             AppPaths.WriteAllTextPrivate(tmp, JsonSerializer.Serialize(Snapshot()));
             File.Move(tmp, _dataPath, overwrite: true);
+            _saveRetryMs = SaveDelayMs;
         }
-        catch (Exception ex) { _log.LogWarning("could not save pushed data: {Msg}", ex.Message); }
+        catch (Exception ex)
+        {
+            _log.LogWarning("could not save pushed data: {Msg}", ex.Message);
+            if (_disposed) return;
+            Interlocked.Exchange(ref _savePending, 1);
+            _saveTimer.Change(_saveRetryMs, Timeout.Infinite);
+            _saveRetryMs = Math.Min(2 * _saveRetryMs, MaxSaveRetryMs);
+        }
     }
 
     /// <summary>Reads a webhook body: JSON as-is, anything else as a trimmed string; ?value= wins when given.</summary>

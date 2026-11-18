@@ -153,5 +153,61 @@ public sealed class MonitorAuditTests : IDisposable
         Assert.Equal(40, shown.Limits.Single(l => l.Label == "Weekly").Percent);
     }
 
+    [Fact]
+    public void CodexRolloutsUnderOneMegabyteDoNotDropFirstLineTurnContextOrRateLimits()
+    {
+        var readUsage = typeof(QuotaMonitor).GetMethod("ReadCodexUsage", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var lastLineWith = typeof(QuotaMonitor).GetMethod("LastLineWith", BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        var usageFile = Path.Combine(_dir, "rollout-line0.jsonl");
+        File.WriteAllText(usageFile, string.Join('\n',
+            """{"type":"turn_context","payload":{"model":"gpt-5","effort":"high"}}""",
+            """{"timestamp":"2026-11-17T10:00:00Z","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":1200}}}}""") + "\n", Encoding.UTF8);
+
+        var usage = (CodexUsage?)readUsage.Invoke(null, [usageFile]);
+        Assert.NotNull(usage);
+        Assert.Equal("gpt-5", usage!.Model);
+        Assert.Equal("high", usage.Effort);
+
+        var rateFile = Path.Combine(_dir, "rollout-rate0.jsonl");
+        File.WriteAllText(rateFile, """{"payload":{"rate_limits":{"primary":{"used_percent":42,"window_minutes":300}}}}""" + "\n", Encoding.UTF8);
+        Assert.NotNull(lastLineWith.Invoke(null, [rateFile, "\"rate_limits\""]));
+    }
+
+    [Fact]
+    public void ProcessDetailToleratesDuplicateSessionPidsAndLocksAgentProcess()
+    {
+        var selfProc = System.Diagnostics.Process.GetCurrentProcess();
+        var pid = selfProc.Id;
+        var sessionsField = typeof(SessionMonitor).GetField("_sessions", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var sessionMon = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
+        sessionsField.SetValue(sessionMon, new[]
+        {
+            new AgentSession("claude:s1", "claude", "older", "demo", "idle", null, 1000, 500, Pid: pid),
+            new AgentSession("claude:s2", "claude", "newest", "demo", "busy", null, 5000, 500, Pid: pid),
+        });
+        var procMon = new ProcessMonitor(NullLogger<ProcessMonitor>.Instance, sessionMon);
+        var detail = procMon.Detail(selfProc.ProcessName);
+        var inst = Assert.Single(detail.Instances, i => i.Pid == pid);
+        Assert.Equal("newest", inst.Session);
+        Assert.True(inst.Locked);
+        Assert.True(detail.Locked);
+    }
+
+    [Fact]
+    public void ColdProcessIconDoesNotCacheNullAndShortenArgsHandlesTabSeparators()
+    {
+        var procMon = new ProcessMonitor(NullLogger<ProcessMonitor>.Instance, new SessionMonitor(NullLogger<SessionMonitor>.Instance));
+        const string missing = "missing-proc-f390";
+        Assert.Null(procMon.Icon(missing));
+        var iconsField = typeof(ProcessMonitor).GetField("_icons", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var iconsDict = (System.Collections.Concurrent.ConcurrentDictionary<string, byte[]?>)iconsField.GetValue(procMon)!;
+        Assert.False(iconsDict.ContainsKey(missing));
+
+        Assert.Equal("--daemon", ProcessMonitor.ShortenArgs("tool.exe\t--daemon"));
+        Assert.Equal("--port 9000", ProcessMonitor.ShortenArgs("\"C:\\Program Files\\My App\\tool.exe\"\t--port 9000"));
+        Assert.Null(ProcessMonitor.ShortenArgs("tool.exe"));
+    }
+
     // ------------------------------------------------------------------ 5. Windows time zone names without ICU (run with DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1)
 }

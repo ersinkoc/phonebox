@@ -1,4 +1,10 @@
+using System.Net;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
@@ -170,5 +176,112 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
         Assert.Equal(["A"], UpdateService.NextPhoneRetry(["A"], attempted: [], failed: []));          // A unplugged: kept
         Assert.Empty(UpdateService.NextPhoneRetry(["A"], attempted: ["A"], failed: []));               // A worked
         Assert.Equal(["C", "B"], UpdateService.NextPhoneRetry(["A", "C"], attempted: ["A", "B"], failed: ["B"]));
+    }
+
+    [Fact]
+    public async Task ApplyClearsErrorAfterRetrySuccessAndZeroTargetsPreserveAppVersion()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pb-upd-retry-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var prevAppVer = UpdateService.AppVersion;
+        try
+        {
+            string fakeAdb;
+            var modePath = Path.Combine(dir, "mode.txt");
+            File.WriteAllText(modePath, "fail");
+            if (OperatingSystem.IsWindows())
+            {
+                fakeAdb = Path.Combine(dir, "adb.cmd");
+                File.WriteAllText(fakeAdb, $"""
+                    @echo off
+                    set /p MODE=<"{modePath}"
+                    if "%3"=="install" (
+                      if "%MODE%"=="fail" ( echo Failure [LOCKED] & exit /b 1 )
+                      echo Success
+                      exit /b 0
+                    )
+                    echo ok
+                    """);
+            }
+            else
+            {
+                fakeAdb = Path.Combine(dir, "adb");
+                File.WriteAllText(fakeAdb, $"#!/bin/sh\nMODE=$(cat \"{modePath}\")\nif [ \"$3\" = \"install\" ]; then\n  if [ \"$MODE\" = \"fail\" ]; then echo 'Failure [LOCKED]'; exit 1; fi\n  echo 'Success'; exit 0\nfi\necho ok\n");
+                File.SetUnixFileMode(fakeAdb, (UnixFileMode)0b111_101_101);
+            }
+
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, JsonSerializer.Serialize(new { adbPath = fakeAdb, updates = new { auto = false } }));
+            var cfg = new ConfigStore(cfgPath);
+            var adb = new AdbReverse(cfg, NullLogger<AdbReverse>.Instance);
+            var devicesField = typeof(AdbReverse).GetField("_devices", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            var ver = AppPaths.Version;
+            var apkBytes = "apk-v-test"u8.ToArray();
+            var sums = $"{Convert.ToHexStringLower(SHA256.HashData(apkBytes))}  PhoneBox-{ver}.apk\n";
+            var relJson = $$"""
+                {
+                  "tag_name": "v{{ver}}",
+                  "html_url": "https://example.invalid/release",
+                  "assets": [
+                    { "name": "PhoneBox-{{ver}}.apk", "browser_download_url": "https://example.invalid/PhoneBox-{{ver}}.apk" },
+                    { "name": "SHA256SUMS-{{ver}}.txt", "browser_download_url": "https://example.invalid/SHA256SUMS-{{ver}}.txt" }
+                  ]
+                }
+                """;
+
+            var httpField = typeof(UpdateService).GetField("_http", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var svc = new UpdateService(cfg, adb, new NoopLifetime(), NullLogger<UpdateService>.Instance) { DownloadsDir = Path.Combine(dir, "dl1") };
+            httpField.SetValue(svc, new HttpClient(new FakeReleaseHandler(relJson, apkBytes, sums)));
+
+            UpdateService.AppVersion = "0.0.1";
+            devicesField.SetValue(adb, new[] { "SER1" });
+            await svc.CheckAsync();
+            await svc.ApplyAsync();
+            Assert.NotNull(svc.Status().Error);
+            Assert.True(svc.Status().AppUpdate);
+
+            File.WriteAllText(modePath, "ok");
+            await svc.ApplyAsync();
+            Assert.Null(svc.Status().Error);
+            Assert.False(svc.Status().AppUpdate);
+            Assert.Equal(ver, UpdateService.AppVersion);
+
+            var svc2 = new UpdateService(cfg, adb, new NoopLifetime(), NullLogger<UpdateService>.Instance) { DownloadsDir = Path.Combine(dir, "dl2") };
+            httpField.SetValue(svc2, new HttpClient(new FakeReleaseHandler(relJson, apkBytes, sums, () => devicesField.SetValue(adb, Array.Empty<string>()))));
+            UpdateService.AppVersion = "0.0.1";
+            devicesField.SetValue(adb, new[] { "SER1" });
+            await svc2.CheckAsync();
+            await svc2.ApplyAsync();
+            Assert.Equal("0.0.1", UpdateService.AppVersion);
+            Assert.True(svc2.Status().AppUpdate);
+        }
+        finally
+        {
+            UpdateService.AppVersion = prevAppVer;
+            try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    private sealed class FakeReleaseHandler(string relJson, byte[] apk, string sums, Action? onApk = null) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var u = request.RequestUri!.AbsoluteUri;
+            if (u.EndsWith("/releases/latest"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(relJson, Encoding.UTF8, "application/json") });
+            if (u.EndsWith(".txt"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(sums, Encoding.UTF8, "text/plain") });
+            onApk?.Invoke();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(apk) });
+        }
+    }
+
+    private sealed class NoopLifetime : IHostApplicationLifetime
+    {
+        public CancellationToken ApplicationStarted => CancellationToken.None;
+        public CancellationToken ApplicationStopping => CancellationToken.None;
+        public CancellationToken ApplicationStopped => CancellationToken.None;
+        public void StopApplication() { }
     }
 }

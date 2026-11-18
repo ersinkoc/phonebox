@@ -33,19 +33,32 @@ public static class WidgetFeedProxy
             ConnectCallback = async (ctx, token) =>
             {
                 var addresses = await Dns.GetHostAddressesAsync(ctx.DnsEndPoint.Host, token);
-                var publicIp = addresses.FirstOrDefault(IsPublicAddress)
-                    ?? throw new HttpRequestException("Refused non-public address for feed host");
-                var socket = new Socket(publicIp.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
-                try
+                var publicIps = addresses.Where(IsPublicAddress)
+                    .OrderBy(a => a.AddressFamily == AddressFamily.InterNetwork ? 0 : 1)
+                    .ToArray();
+                if (publicIps.Length == 0)
+                    throw new HttpRequestException("Refused non-public address for feed host");
+                Exception? last = null;
+                foreach (var publicIp in publicIps)
                 {
-                    await socket.ConnectAsync(new IPEndPoint(publicIp, ctx.DnsEndPoint.Port), token);
-                    return new NetworkStream(socket, ownsSocket: true);
+                    var socket = new Socket(publicIp.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+                    try
+                    {
+                        await socket.ConnectAsync(new IPEndPoint(publicIp, ctx.DnsEndPoint.Port), token);
+                        return new NetworkStream(socket, ownsSocket: true);
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        socket.Dispose();
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        socket.Dispose();
+                        last = ex;
+                    }
                 }
-                catch
-                {
-                    socket.Dispose();
-                    throw;
-                }
+                throw last ?? new HttpRequestException("Could not connect to feed host");
             },
         };
         return new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan };
@@ -86,10 +99,18 @@ public static class WidgetFeedProxy
         if (ip.AddressFamily == AddressFamily.InterNetworkV6)
         {
             if (ip.Equals(IPAddress.IPv6Any) || ip.Equals(IPAddress.IPv6None)
-                || ip.IsIPv6LinkLocal || ip.IsIPv6Multicast || ip.IsIPv6SiteLocal)
+                || ip.IsIPv6LinkLocal || ip.IsIPv6Multicast || ip.IsIPv6SiteLocal || ip.IsIPv6Teredo)
                 return false;
             var b = ip.GetAddressBytes();
-            if ((b[0] & 0xFE) == 0xFC) return false; // fc00::/7 unique local
+            if ((b[0] & 0xE0) != 0x20) return false; // global unicast 2000::/3 only (excludes ::/8, 64:ff9b:: NAT64, 100::/64, fc00::/7)
+            if (b[0] == 0x20 && b[1] == 0x01)
+            {
+                if (b[2] == 0x00 && b[3] == 0x00) return false; // 2001:0000::/32 Teredo
+                if (b[2] == 0x00 && b[3] == 0x02 && b[4] == 0x00 && b[5] == 0x00) return false; // 2001:0002::/48 benchmarking
+                if (b[2] == 0x0D && b[3] == 0xB8) return false; // 2001:0db8::/32 documentation
+            }
+            if (b[0] == 0x20 && b[1] == 0x02)
+                return IsPublicAddress(new IPAddress(b.AsSpan(2, 4))); // 2002::/16 6to4 must wrap a public IPv4
             return true;
         }
 
@@ -134,7 +155,7 @@ public static class WidgetFeedProxy
         {
             return Results.StatusCode(StatusCodes.Status504GatewayTimeout);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
             return Results.StatusCode(StatusCodes.Status502BadGateway);
         }

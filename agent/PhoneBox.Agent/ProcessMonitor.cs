@@ -123,7 +123,7 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
                     long mem = 0;
                     try { mem = p.WorkingSet64; } catch { }
 
-                    var locked = Protected.Contains(name) || !Mine(p);
+                    var locked = p.Id == _selfPid || Protected.Contains(name) || !Mine(p);
                     acc.TryGetValue(name, out var a);
                     acc[name] = (a.Count + 1, a.Cpu + cpu, a.Mem + mem, a.Locked || locked, a.Pid == 0 ? p.Id : a.Pid);
                 }
@@ -136,7 +136,11 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
         _groups = acc
             .Select(kv =>
             {
-                var meta = _meta.GetOrAdd(kv.Key, _ => ReadMeta(kv.Value.Pid, kv.Key));
+                if (!_meta.TryGetValue(kv.Key, out var meta) || meta.Path is null)
+                {
+                    meta = ReadMeta(kv.Value.Pid, kv.Key);
+                    if (meta.Path is not null) _meta[kv.Key] = meta;
+                }
                 return new ProcGroup(kv.Key, meta.Title, kv.Value.Count, Math.Round(kv.Value.Cpu, 1),
                     Math.Round(kv.Value.Mem / 1048576.0), kv.Value.Locked, meta.Path is not null);
             })
@@ -149,7 +153,9 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
     public ProcDetail Detail(string name)
     {
         Touch();
-        var claudeByPid = sessions.Snapshot().Where(s => s.Pid is not null).ToDictionary(s => s.Pid!.Value, s => s.Name);
+        var claudeByPid = sessions.Snapshot().Where(s => s.Pid is not null)
+            .GroupBy(s => s.Pid!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.Since).First().Name);
         var cpu = _pidCpu;
         var list = new List<ProcInstance>();
         foreach (var p in Process.GetProcessesByName(name))
@@ -164,15 +170,21 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
                     try { started = new DateTimeOffset(p.StartTime).ToUnixTimeMilliseconds(); } catch { }
                     string? window = null;
                     try { window = string.IsNullOrWhiteSpace(p.MainWindowTitle) ? null : p.MainWindowTitle; } catch { }
-                    var locked = Protected.Contains(name) || !Mine(p);
+                    var locked = p.Id == _selfPid || Protected.Contains(name) || !Mine(p);
                     list.Add(new ProcInstance(p.Id, Math.Round(cpu.GetValueOrDefault(p.Id), 1), Math.Round(mem / 1048576.0),
                         started, claudeByPid.GetValueOrDefault(p.Id), window, _args.GetOrAdd(p.Id, ReadArgs), locked));
                 }
                 catch { }
             }
         }
-        var meta = _meta.TryGetValue(name, out var m) ? m : (name, null);
-        return new ProcDetail(name, meta.Title, Protected.Contains(name),
+        if ((!_meta.TryGetValue(name, out var meta) || meta.Path is null) && list.Count > 0)
+        {
+            meta = ReadMeta(list[0].Pid, name);
+            if (meta.Path is not null) _meta[name] = meta;
+        }
+        else if (!_meta.TryGetValue(name, out meta)) meta = (name, null);
+        var groupLocked = Protected.Contains(name) || (list.Count > 0 && list.All(i => i.Locked));
+        return new ProcDetail(name, meta.Title, groupLocked,
             list.OrderByDescending(i => i.Cpu).ThenByDescending(i => i.MemMb).ToList());
     }
 
@@ -187,7 +199,7 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
         {
             using (p)
             {
-                if (!Mine(p)) { failed++; continue; }
+                if (p.Id == _selfPid || !Mine(p)) { failed++; continue; }
                 try { p.Kill(); killed++; }
                 catch { failed++; }
             }
@@ -274,24 +286,46 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
 #endif
     }
 
-    public byte[]? Icon(string name) => _icons.GetOrAdd(name, n =>
+    public byte[]? Icon(string name)
     {
-#if !WINDOWS
-        return UnixProc.Icon(n, _meta.TryGetValue(n, out var um) ? um.Path : null);
-#else
-        if (!_meta.TryGetValue(n, out var meta) || meta.Path is null) return null;
-        try
+        if (_icons.TryGetValue(name, out var cached) && cached is not null) return cached;
+        if (!_meta.TryGetValue(name, out var meta) || meta.Path is null)
         {
-            using var ico = System.Drawing.Icon.ExtractAssociatedIcon(meta.Path);
-            if (ico is null) return null;
-            using var bmp = ico.ToBitmap();
-            using var ms = new MemoryStream();
-            bmp.Save(ms, ImageFormat.Png);
-            return ms.ToArray();
+            foreach (var p in Process.GetProcessesByName(name))
+            {
+                using (p)
+                {
+                    if (meta.Path is null)
+                    {
+                        try { meta = ReadMeta(p.Id, name); } catch { }
+                        if (meta.Path is not null) _meta[name] = meta;
+                    }
+                }
+            }
         }
-        catch { return null; }
+        byte[]? png = null;
+#if !WINDOWS
+        png = UnixProc.Icon(name, meta.Path);
+#else
+        if (meta.Path is not null)
+        {
+            try
+            {
+                using var ico = System.Drawing.Icon.ExtractAssociatedIcon(meta.Path);
+                if (ico is not null)
+                {
+                    using var bmp = ico.ToBitmap();
+                    using var ms = new MemoryStream();
+                    bmp.Save(ms, ImageFormat.Png);
+                    png = ms.ToArray();
+                }
+            }
+            catch { }
+        }
 #endif
-    });
+        if (png is not null) _icons[name] = png;
+        return png;
+    }
 
     private static (string Title, string? Path) ReadMeta(int pid, string name)
     {
@@ -313,6 +347,18 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
         }
         return (title, path);
 #endif
+    }
+
+    internal static string? ShortenArgs(string? cmd)
+    {
+        if (string.IsNullOrWhiteSpace(cmd)) return null;
+        cmd = cmd.Trim();
+        // drop the executable (quoted or not)
+        var rest = cmd.StartsWith('"') ? cmd[(cmd.IndexOf('"', 1) is var q && q > 0 ? q + 1 : cmd.Length)..]
+                                      : cmd[(cmd.IndexOfAny([' ', '\t']) is var s && s > 0 ? s : cmd.Length)..];
+        rest = rest.Trim();
+        if (rest.Length == 0) return null;
+        return rest.Length > 140 ? rest[..137] + "…" : rest;
     }
 
 #if WINDOWS
@@ -353,7 +399,7 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
             try
             {
                 if (NtQueryInformationProcess(h, 60, buf, len, out _) != 0) return null;
-                var chars = Marshal.ReadInt16(buf) / 2; // UNICODE_STRING.Length is in bytes
+                var chars = (ushort)Marshal.ReadInt16(buf) / 2; // UNICODE_STRING.Length is an unsigned USHORT in bytes
                 var cmd = Marshal.PtrToStringUni(Marshal.ReadIntPtr(buf, IntPtr.Size), chars);
                 return ShortenArgs(cmd);
             }
@@ -361,18 +407,6 @@ public sealed class ProcessMonitor(ILogger<ProcessMonitor> log, SessionMonitor s
         }
         catch { return null; }
         finally { CloseHandle(h); }
-    }
-
-    private static string? ShortenArgs(string? cmd)
-    {
-        if (string.IsNullOrWhiteSpace(cmd)) return null;
-        cmd = cmd.Trim();
-        // drop the executable (quoted or not)
-        var rest = cmd.StartsWith('"') ? cmd[(cmd.IndexOf('"', 1) is var q && q > 0 ? q + 1 : cmd.Length)..]
-                                      : cmd[(cmd.IndexOf(' ') is var s && s > 0 ? s : cmd.Length)..];
-        rest = rest.Trim();
-        if (rest.Length == 0) return null;
-        return rest.Length > 140 ? rest[..137] + "…" : rest;
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]

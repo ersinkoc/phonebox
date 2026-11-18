@@ -58,7 +58,7 @@ public sealed partial class ControlDeck : BackgroundService
         _native = native;
         _logos = logos ?? new RadioLogoCache();
         _native.SoundStopped += OnNativeSoundStopped;
-        _ptt = new(id => Audio().Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted,
+        _ptt = new(id => _native.Audio().Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted,
             (id, muted) => { try { var ok = _native.Device(id, null, muted); Invalidate(); return ok; } catch { return false; } }, () => Environment.TickCount64);
     }
     private DeckAudio Audio()
@@ -166,9 +166,12 @@ public sealed partial class ControlDeck : BackgroundService
                     lock (_state) { RestoreFade(id); if (value is null or <= 0) _sleep.Remove(id); else _sleep[id] = _now() + Math.Clamp(value.Value, 1, 360) * 60_000L; }
                     ok = true; break;
                 case "panic":
-                    if (!Audio().Available || Audio().Devices.Count == 0) return new(false, "Audio is unavailable");
+                    var panicAudio = _native.Audio();
+                    var controllable = panicAudio.Devices.Where(d => d.CanControl).ToArray();
+                    if (!panicAudio.Available || controllable.Length == 0) return new(false, "Audio is unavailable");
+                    _ptt.AbandonAll();
                     ok = true;
-                    foreach (var d in Audio().Devices) ok &= _native.Device(d.Id, null, true);
+                    foreach (var d in controllable) ok &= _native.Device(d.Id, null, true);
                     break;
                 case "sound-stop":
                     if (string.IsNullOrEmpty(id)) { StopAllRadios(clearLast: true); _native.StopSound(null); }
@@ -250,7 +253,8 @@ public sealed partial class ControlDeck : BackgroundService
     {
         foreach (var a in _config.Get().Controls.Actions.Where(a => !a.Enabled))
         {
-            if (a.Kind is "radio" or "sound") _native.StopSound(a.Id);
+            if (a.Kind == "radio") StopRadio(a.Id, clearLast: true);
+            else if (a.Kind == "sound") _native.StopSound(a.Id);
             else if (a.Kind is "task" or "server") _tasks.StopIfRunning(a.Id);
         }
         Invalidate();
@@ -285,7 +289,10 @@ public sealed partial class ControlDeck : BackgroundService
                         StopRadio(action.Id, clearLast: true);
                         return new DeckResult(true);
                     }
-                    var started = await StartRadioAndPauseMediaCoreAsync(action, token);
+                    var current = _config.Get().Controls.Actions.FirstOrDefault(a => a.Kind == "radio" && a.Id == action.Id);
+                    if (current is null) return new DeckResult(false, "Choose a configured control in desktop settings");
+                    if (!current.Enabled) return new DeckResult(false, "Control is disabled");
+                    var started = await StartRadioAndPauseMediaCoreAsync(current, token);
                     return new DeckResult(started, started ? null : "Radio stream is unavailable");
                 }, ct);
             case "midi":
@@ -395,7 +402,18 @@ public sealed partial class ControlDeck : BackgroundService
         return action is null ? null : await _logos.GetAsync(action, c.AllowOnlineRadioLogos, ct);
     }
 
-    public override void Dispose() { _native.SoundStopped -= OnNativeSoundStopped; base.Dispose(); _logos.Dispose(); }
+    public override void Dispose()
+    {
+        _native.SoundStopped -= OnNativeSoundStopped;
+        base.Dispose();
+        _ptt.Sweep(all: true);
+        RestoreDucking();
+        lock (_state) foreach (var player in _fades.Keys.ToArray()) RestoreFade(player);
+        _tasks.Dispose();
+        DisposeMixer();
+        _native.Dispose();
+        _logos.Dispose();
+    }
     private async Task Tick(CancellationToken ct)
     {
         ReconcileRadios();
@@ -461,16 +479,23 @@ public sealed partial class ControlDeck : BackgroundService
 
     internal void ReconcileRadios(bool waitForGate = false)
     {
-        string[] active;
-        lock (_radioState)
+        if (!waitForGate)
         {
-            if (_activeRadios.Count == 0 && _lastRadioId is null) return;
-            active = [.. _activeRadios];
+            lock (_radioState)
+            {
+                if (_activeRadios.Count == 0 && _lastRadioId is null) return;
+            }
+            if (!_radioGate.TryEnter()) return;
         }
-        if (waitForGate) _radioGate.Enter();
-        else if (!_radioGate.TryEnter()) return;
+        else _radioGate.Enter();
         try
         {
+            string[] active;
+            lock (_radioState)
+            {
+                if (_activeRadios.Count == 0 && _lastRadioId is null) return;
+                active = [.. _activeRadios];
+            }
             var actions = _config.Get().Controls.Actions;
             var removedAny = false;
             foreach (var id in active)
@@ -579,11 +604,20 @@ public sealed partial class ControlDeck : BackgroundService
     {
         lock (_radioGate)
         {
+            if (!_config.Get().Controls.Actions.Any(a => a.Kind == "radio" && a.Id == action.Id && a.Enabled))
+                return false;
             StopAllRadiosCore(action.Id, clearLast: false);
             try { _native.Play(action.Id, action.Target, action.Device, Math.Clamp(action.Value, 0, 100)); }
             catch (Exception ex)
             {
                 _log.LogDebug(ex, "Radio stream {Id} failed to open", action.Id);
+                lock (_radioState) _activeRadios.Remove(action.Id);
+                Invalidate();
+                return false;
+            }
+            if (!_config.Get().Controls.Actions.Any(a => a.Kind == "radio" && a.Id == action.Id && a.Enabled))
+            {
+                _native.StopSound(action.Id);
                 lock (_radioState) _activeRadios.Remove(action.Id);
                 Invalidate();
                 return false;

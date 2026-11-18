@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
@@ -174,7 +175,8 @@ public sealed class CameraFeedsTests : IDisposable
         public void Dispose() => Disposed = true;
     }
 
-    private (CameraFeeds Feeds, List<(FakeRun Run, Action<byte[]> Frame, CameraSource Source)> Runs, Func<long, long> Advance) Make(ConfigStore store, string? ffmpeg = "ffmpeg")
+    private (CameraFeeds Feeds, List<(FakeRun Run, Action<byte[]> Frame, CameraSource Source)> Runs, Func<long, long> Advance) Make(
+        ConfigStore store, string? ffmpeg = "ffmpeg", Action? beforeClockRead = null)
     {
         var runs = new List<(FakeRun, Action<byte[]>, CameraSource)>();
         long now = 1_000_000;
@@ -183,8 +185,43 @@ public sealed class CameraFeedsTests : IDisposable
             var r = new FakeRun();
             runs.Add((r, onFrame, source));
             return r;
-        }, () => now, () => ffmpeg, timer: false);
+        }, () => { beforeClockRead?.Invoke(); return now; }, () => ffmpeg, timer: false);
         return (feeds, runs, ms => now += ms);
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(8)]
+    [InlineData(10)]
+    public async Task AQueuedFrameRequestStartsWithCurrentCameraSettings(int fps)
+    {
+        var store = Store();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var (feeds, runs, _) = Make(store, beforeClockRead: () =>
+        {
+            entered.TrySetResult();
+            release.Task.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        });
+        using var camera = feeds;
+        var pending = Task.Run(() => camera.Frame(null, "p/w"));
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if (fps != CameraFeeds.DefaultFps)
+            {
+                var settings = JsonNode.Parse(File.ReadAllText(store.Path))!;
+                settings["cameras"]!["sources"]![0]!["fps"] = fps;
+                Assert.Null(store.Save(settings.ToJsonString()));
+                camera.SettingsSaved();
+            }
+        }
+        finally { release.TrySetResult(); }
+
+        var frame = await pending.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal((503, "starting"), (frame.Status, frame.State));
+        var actual = Assert.Single(runs).Source.Fps;
+        Assert.True(actual == fps, $"EXPECTED: fps={fps} | ACTUAL: fps={actual}");
     }
 
     [Fact]

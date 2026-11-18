@@ -514,7 +514,6 @@ public sealed partial class ConfigStore(string path)
         c.Display.TouchGraceSec = Math.Clamp(c.Display.TouchGraceSec, 0, 600);
         c.Display.MinDwellSec = Math.Clamp(c.Display.MinDwellSec, 0, 600);
         c.Display.HoldMaxMin = Math.Clamp(c.Display.HoldMaxMin, 0, 1440);
-        c.Display.HomePage = string.IsNullOrWhiteSpace(c.Display.HomePage) ? null : c.Display.HomePage.Trim();
         c.Lan ??= new();
         c.Updates ??= new();
         c.Ping ??= new();
@@ -528,7 +527,9 @@ public sealed partial class ConfigStore(string path)
         if (string.IsNullOrWhiteSpace(c.Lan.WebhookToken)) c.Lan.WebhookToken = NewToken();
         c.Night.Brightness = Math.Clamp(c.Night.Brightness, 0.01, 1);
 
-        c.Pages = NormalizePages(c.Pages);
+        c.Pages = NormalizePages(c.Pages, out var originalPageIds);
+        string PageId(string id) => originalPageIds.GetValueOrDefault(id, id);
+        c.Display.HomePage = string.IsNullOrWhiteSpace(c.Display.HomePage) ? null : PageId(c.Display.HomePage).Trim();
 
         var used = new HashSet<string>();
         c.Shortcuts = (c.Shortcuts ?? []).Where(s => s is not null).ToList(); // "shortcuts": [null] in a hand-written file
@@ -568,7 +569,12 @@ public sealed partial class ConfigStore(string path)
             if (string.IsNullOrWhiteSpace(s.OffArgs)) s.OffArgs = null;
         }
         c.Phones = (c.Phones ?? []).Where(p => p is not null && !string.IsNullOrWhiteSpace(p.Id)).GroupBy(p => p.Id).Select(g => g.First()).Take(20).ToList();
-        foreach (var ph in c.Phones) { ph.Name = ph.Name?.Trim() ?? ""; if (ph.Pages is { Count: 0 }) ph.Pages = null; }
+        foreach (var ph in c.Phones)
+        {
+            ph.Name = ph.Name?.Trim() ?? "";
+            ph.Pages = ph.Pages?.Where(id => !string.IsNullOrWhiteSpace(id)).Select(PageId).Distinct().ToList();
+            if (ph.Pages is { Count: 0 }) ph.Pages = null;
+        }
         c.Ping ??= new();
         c.Ping.Adapters = (c.Ping.Adapters ?? []).Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(16).ToList();
         c.Obs ??= new();
@@ -647,16 +653,20 @@ public sealed partial class ConfigStore(string path)
             r.During = string.IsNullOrWhiteSpace(r.During) ? null : r.During.Trim();
             r.Op = r.Op is ">" or "<" or "=" or "!=" ? r.Op : null;
             r.Shortcut = string.IsNullOrWhiteSpace(r.Shortcut) ? null : r.Shortcut.Trim();
+            if (r.Page is { } page) r.Page = PageId(page);
         }
         return c;
     }
 
     /// <summary>Expands templates, migrates the old fixed pages, keeps widgets on the grid and makes ids unique.</summary>
-    private static List<PageConfig> NormalizePages(List<PageConfig>? input)
+    private static List<PageConfig> NormalizePages(List<PageConfig>? input, out Dictionary<string, string> originalIds)
     {
+        originalIds = new(StringComparer.Ordinal);
+        input = input?.Where(p => p is not null).ToList();
         var src = input is { Count: > 0 } ? input : DefaultPages.Select(t => new PageConfig { Template = t }).ToList();
         var pages = new List<PageConfig>();
         var pageIds = new HashSet<string>();
+        var reservedPages = ReserveLayoutIds(src, p => p.Id, _ => "page", pageIds);
         foreach (var p in src)
         {
             if (p is null) continue;
@@ -672,31 +682,28 @@ public sealed partial class ConfigStore(string path)
             p.Icon = IconText.Repair(p.Icon);
             p.Title = p.Title.Trim();
             if (p.IdleSec is { } idleSec) p.IdleSec = Math.Clamp(idleSec, 0, 86400);
-            var id = Slug(string.IsNullOrWhiteSpace(p.Id) ? (tpl?.Id ?? p.Title) : p.Id);
-            if (id == "") id = "page";
-            var unique = id;
-            for (var i = 2; !pageIds.Add(unique); i++) unique = $"{id}-{i}";
-            p.Id = unique;
+            var originalId = p.Id;
+            p.Id = reservedPages.TryGetValue(p, out var reservedPage)
+                ? reservedPage : UniqueLayoutId(LayoutId(tpl?.Id ?? p.Title, "page"), pageIds);
+            if (!string.IsNullOrWhiteSpace(originalId)) originalIds.TryAdd(originalId, p.Id);
             p.Template = null;
             p.Type = null;
             p.Options = null;
 
             var widgetIds = new HashSet<string>();
             var widgets = new List<WidgetConfig>();
-            foreach (var w in p.Widgets ?? [])
+            var supportedWidgets = (p.Widgets ?? []).Where(w => w?.Type is not null && Catalog.IsWidget(w.Type)).ToList();
+            var reservedWidgets = ReserveLayoutIds(supportedWidgets, w => w.Id, w => w.Type, widgetIds);
+            foreach (var w in supportedWidgets)
             {
-                if (w?.Type is null || !Catalog.IsWidget(w.Type)) continue;
                 w.Appearance?.Normalize(widget: true);
                 var (minW, minH) = Catalog.MinSize(w.Type);
                 w.W = Math.Clamp(w.W, Math.Min(minW, Catalog.Cols), Catalog.Cols);
                 w.H = Math.Clamp(w.H, Math.Min(minH, Catalog.Rows), Catalog.Rows);
                 w.X = Math.Clamp(w.X, 0, Catalog.Cols - w.W);
                 w.Y = Math.Clamp(w.Y, 0, Catalog.Rows - w.H);
-                var wid = Slug(string.IsNullOrWhiteSpace(w.Id) ? w.Type : w.Id);
-                if (wid == "") wid = w.Type;
-                var wu = wid;
-                for (var i = 2; !widgetIds.Add(wu); i++) wu = $"{wid}-{i}";
-                w.Id = wu;
+                w.Id = reservedWidgets.TryGetValue(w, out var reservedWidget)
+                    ? reservedWidget : UniqueLayoutId(LayoutId(w.Type, w.Type), widgetIds);
                 widgets.Add(w);
             }
             p.Widgets = widgets;
@@ -704,6 +711,34 @@ public sealed partial class ConfigStore(string path)
         }
         if (pages.Count > 0 && pages.All(p => !p.Enabled)) pages[0].Enabled = true;
         return pages;
+    }
+
+    private static Dictionary<T, string> ReserveLayoutIds<T>(IEnumerable<T> items, Func<T, string> getId,
+        Func<T, string> fallback, HashSet<string> used) where T : class
+    {
+        var reserved = new Dictionary<T, string>();
+        var collisions = new List<(T Item, string Id)>();
+        var explicitIds = items.Select(item => (Item: item, Original: getId(item)))
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Original))
+            .Select(entry => (entry.Item, entry.Original, Id: LayoutId(entry.Original, fallback(entry.Item))))
+            .OrderByDescending(entry => entry.Id == entry.Original);
+        // Reserve existing canonical IDs and each explicit base before allocating suffixes.
+        foreach (var (item, _, id) in explicitIds)
+        {
+            if (used.Add(id)) reserved[item] = id;
+            else collisions.Add((item, id));
+        }
+        foreach (var (item, id) in collisions) reserved[item] = UniqueLayoutId(id, used);
+        return reserved;
+    }
+
+    private static string LayoutId(string text, string fallback) => Slug(text) is { Length: > 0 } id ? id : fallback;
+
+    private static string UniqueLayoutId(string id, HashSet<string> used)
+    {
+        var unique = id;
+        for (var i = 2; !used.Add(unique); i++) unique = $"{id}-{i}";
+        return unique;
     }
 
     /// <summary>Carries the options of a pre-0.6.2 fixed page over to the widgets of its template.</summary>
@@ -719,7 +754,7 @@ public sealed partial class ConfigStore(string path)
                 var clock = Find("clock");
                 clock?.Set("weather", On("weather"));
                 var tiles = p.Options?.TryGetValue("tiles", out var t) == true && t.ValueKind == JsonValueKind.Array
-                    ? t.EnumerateArray().Select(x => x.GetString()).OfType<string>().ToList()
+                    ? t.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToList()
                     : ["cpu", "gpu", "ram", "net"];
                 ws.RemoveAll(w => w.Type == "stat");
                 if (!On("media")) { ws.RemoveAll(w => w.Type == "media"); if (clock is not null) clock.W = 12; }
@@ -743,7 +778,7 @@ public sealed partial class ConfigStore(string path)
                 Find("processes")?.Set("allowKill", On("allowKill"));
                 break;
             case "deck":
-                if (p.Options?.TryGetValue("columns", out var cols) == true && cols.TryGetInt32(out var n)) Find("shortcuts")?.Set("columns", n);
+                if (p.Options?.TryGetValue("columns", out var cols) == true && cols.ValueKind == JsonValueKind.Number && cols.TryGetInt32(out var n)) Find("shortcuts")?.Set("columns", n);
                 break;
         }
     }

@@ -12,6 +12,7 @@ public sealed class HomeAssistantTests : IDisposable
     private readonly string _url;
     private readonly string _configPath = Path.Combine(Path.GetTempPath(), $"phonebox-test-{Guid.NewGuid():N}.json");
     private readonly List<string> _calls = [];
+    private string _doorState = "locked";
     private readonly Task _loop;
 
     public HomeAssistantTests()
@@ -31,11 +32,11 @@ public sealed class HomeAssistantTests : IDisposable
             string body;
             if (ctx.Request.Headers["Authorization"] != "Bearer secret") { ctx.Response.StatusCode = 401; body = "{}"; }
             else if (path == "/api/states")
-                body = """
+                body = $$$"""
                 [
                   {"entity_id":"light.desk","state":"on","attributes":{"friendly_name":"Desk lamp"},"last_changed":"2026-11-07T10:00:00+00:00"},
                   {"entity_id":"sensor.temp","state":"21.43","attributes":{"friendly_name":"Office","unit_of_measurement":"°C","device_class":"temperature"}},
-                  {"entity_id":"lock.door","state":"locked","attributes":{"friendly_name":"Door"}},
+                  {"entity_id":"lock.door","state":"{{{_doorState}}}","attributes":{"friendly_name":"Door"}},
                   {"entity_id":"switch.secret","state":"off","attributes":{"friendly_name":"Not in any widget"}}
                 ]
                 """;
@@ -44,6 +45,8 @@ public sealed class HomeAssistantTests : IDisposable
                 using var r = new StreamReader(ctx.Request.InputStream);
                 var call = path + " " + await r.ReadToEndAsync();
                 lock (_calls) _calls.Add(call);
+                if (path == "/api/services/lock/unlock") _doorState = "unlocked";
+                else if (path == "/api/services/lock/lock") _doorState = "locked";
                 body = "[]";
             }
             var bytes = Encoding.UTF8.GetBytes(body);
@@ -212,6 +215,43 @@ public sealed class HomeAssistantTests : IDisposable
     {
         Assert.Equal("Connected", await HomeAssistant.TestAsync(_url, "secret"));
         Assert.Equal("The token was rejected", await HomeAssistant.TestAsync(_url, "wrong"));
+    }
+
+    [Fact]
+    public async Task ToggleHandlesUnconfiguredSettingsColdLockCacheAndWidgetEntityEdits()
+    {
+        File.WriteAllText(_configPath, """{"pages":[{"id":"home","title":"Home","widgets":[{"id":"ha","type":"ha","x":0,"y":0,"w":6,"h":3,"options":{"entities":"light.desk","control":true}}]}]}""");
+        var uncfg = new HomeAssistant(new ConfigStore(_configPath), NullLogger<HomeAssistant>.Instance);
+        var err = await uncfg.ToggleAsync("light.desk");
+        Assert.NotNull(err);
+        Assert.DoesNotContain("Object reference", err, StringComparison.OrdinalIgnoreCase);
+
+        _doorState = "locked";
+        var ha = Client(control: true);
+        Assert.Null(await ha.ToggleAsync("lock.door"));
+        Assert.Null(await ha.ToggleAsync("lock.door"));
+        Assert.Equal([
+            "/api/services/lock/unlock {\"entity_id\":\"lock.door\"}",
+            "/api/services/lock/lock {\"entity_id\":\"lock.door\"}",
+        ], _calls);
+
+        File.WriteAllText(_configPath, JsonSerializer.Serialize(new
+        {
+            homeAssistant = new { url = _url, token = "secret" },
+            pages = new[] { new { id = "home", title = "Home", widgets = new object[] { new { id = "ha", type = "ha", x = 0, y = 0, w = 6, h = 3, options = new { entities = "light.desk", control = true } } } } },
+        }));
+        var store = new ConfigStore(_configPath);
+        var cacheHa = new HomeAssistant(store, NullLogger<HomeAssistant>.Instance);
+        _ = await cacheHa.StatesAsync(["light.desk"]);
+
+        File.WriteAllText(_configPath, JsonSerializer.Serialize(new
+        {
+            homeAssistant = new { url = _url, token = "secret" },
+            pages = new[] { new { id = "home", title = "Home", widgets = new object[] { new { id = "ha", type = "ha", x = 0, y = 0, w = 6, h = 3, options = new { entities = "light.desk, sensor.temp", control = true } } } } },
+        }));
+        File.SetLastWriteTimeUtc(_configPath, DateTime.UtcNow.AddSeconds(5));
+        var updated = Json(await cacheHa.StatesAsync(["light.desk", "sensor.temp"]));
+        Assert.Equal("21.43", updated.GetProperty("entities")[1].GetProperty("state").GetString());
     }
 
     public void Dispose()

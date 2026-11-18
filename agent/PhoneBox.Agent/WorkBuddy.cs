@@ -13,6 +13,7 @@ public static class WorkBuddyNames
     private static readonly object Gate = new();
     private static readonly IReadOnlyDictionary<string, string> Empty = new Dictionary<string, string>();
     private static string _stamp = "";
+    private static string? _cachedFile;
     private static IReadOnlyDictionary<string, string> _names = Empty;
 
     /// <summary>The display name of a WorkBuddy workspace, or null when WorkBuddy is not installed or has no name for it.</summary>
@@ -40,7 +41,8 @@ public static class WorkBuddyNames
             var names = Read(file, out var settled);
             // A read that failed is not a refresh: the old names stay and the next request tries again. Storing the
             // stamp here would keep the folder fallback until something happened to touch the file.
-            if (!settled) return _names;
+            if (!settled) return file == _cachedFile ? _names : Empty;
+            _cachedFile = file;
             _stamp = stamp;
             _names = names;
             return names;

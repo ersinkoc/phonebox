@@ -298,22 +298,10 @@ internal sealed class RadioLogoCache : IDisposable
     }
 
     /// <summary>
-    /// Rejects loopback, private LAN, link-local, CGNAT, and non-HTTP(S) URIs to prevent SSRF.
+    /// Rejects loopback, private LAN, link-local, CGNAT, local hostnames, and non-HTTP(S) URIs to prevent SSRF.
     /// </summary>
-    internal static bool IsSafePublicUri(Uri uri)
-    {
-        if (uri.Scheme is not ("http" or "https")) return false;
-        var host = uri.DnsSafeHost;
-        if (string.IsNullOrWhiteSpace(host) || host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
-            return false;
-        if (IPAddress.TryParse(host, out var ip))
-            return IsPublicIpAddress(ip);
-        return true;
-    }
+    internal static bool IsSafePublicUri(Uri uri) => RadioBrowserDirectory.IsSafePublicUri(uri);
 
-    /// <summary>
-    /// Checks whether an IPv4 or IPv6 address is publicly routable (not loopback, private, link-local, or unspecified).
-    /// </summary>
     /// <summary>A directory search answer, at most 1 MB (the lookup is opt-in, but the answer still comes from the internet).</summary>
     private static async Task<byte[]> ReadSearchAsync(HttpResponseMessage resp, CancellationToken ct)
     {
@@ -331,34 +319,7 @@ internal sealed class RadioLogoCache : IDisposable
         return buffer.ToArray();
     }
 
-    internal static bool IsPublicIpAddress(IPAddress ip)
-    {
-        if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
-        if (IPAddress.IsLoopback(ip) || ip.Equals(IPAddress.Any) || ip.Equals(IPAddress.None) || ip.Equals(IPAddress.IPv6Any) || ip.Equals(IPAddress.IPv6None))
-            return false;
-        if (ip.AddressFamily == AddressFamily.InterNetwork)
-        {
-            var b = ip.GetAddressBytes();
-            if (b[0] is 0 or 10 or 127) return false;
-            if (b[0] == 100 && b[1] is >= 64 and <= 127) return false; // CGNAT / Tailscale
-            if (b[0] == 169 && b[1] == 254) return false; // link-local
-            if (b[0] == 172 && b[1] is >= 16 and <= 31) return false; // RFC 1918
-            if (b[0] == 192 && b[1] == 168) return false; // RFC 1918
-            if (b[0] == 192 && b[1] == 0 && b[2] == 0) return false; // IETF protocol assignments
-            if (b[0] == 198 && b[1] is 18 or 19) return false; // benchmarking
-            if (b[0] >= 224) return false; // multicast / reserved
-            return true;
-        }
-        if (ip.AddressFamily == AddressFamily.InterNetworkV6)
-        {
-            if (ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6Multicast) return false;
-            var b = ip.GetAddressBytes();
-            if ((b[0] & 0xFE) == 0xFC) return false; // fc00::/7 unique local
-            if (b[0] == 0 && b[1] == 0x64 && b[2] == 0xff && b[3] == 0x9b) return false; // 64:ff9b::/96 NAT64
-            return true;
-        }
-        return false;
-    }
+    internal static bool IsPublicIpAddress(IPAddress ip) => RadioBrowserDirectory.IsPublicIpAddress(ip);
 
     /// <summary>Resolves DNS and connects only to publicly routable IP addresses.</summary>
     private static async ValueTask<Stream> ConnectPublicEndpointAsync(SocketsHttpConnectionContext context, CancellationToken ct)
@@ -400,8 +361,8 @@ internal sealed class RadioLogoCache : IDisposable
     }
 
     /// <summary>Strips parenthetical suffixes from a station label before directory search.</summary>
-    internal static string CleanSearchName(string label) =>
-        Regex.Replace(label, @"\s*\([^)]*\)\s*", " ").Trim();
+    internal static string CleanSearchName(string? label) =>
+        string.IsNullOrEmpty(label) ? "" : Regex.Replace(label, @"\s*\([^)]*\)\s*", " ").Trim();
 
     /// <summary>Normalizes a station name into lowercase ASCII alphanumeric characters for matching.</summary>
     internal static string NormalizeKey(string text)
@@ -464,7 +425,7 @@ internal sealed class RadioLogoCache : IDisposable
     /// <summary>Computes the logo cache and revision key for a radio action.</summary>
     internal static string CacheKey(DeckAction action, bool allowOnlineLookup)
     {
-        var raw = $"{action.Icon?.Trim()}\n{action.Label.Trim()}\n{action.Target.Trim()}\n{(allowOnlineLookup ? "1" : "0")}";
+        var raw = $"{action.Icon?.Trim()}\n{(action.Label ?? "").Trim()}\n{(action.Target ?? "").Trim()}\n{(allowOnlineLookup ? "1" : "0")}";
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(raw)))[..24];
     }
 
@@ -477,7 +438,7 @@ internal sealed class RadioLogoCache : IDisposable
             var mimePath = Path.Combine(_cacheDir, key + ".mime");
             if (!File.Exists(binPath) || !File.Exists(mimePath)) return null;
             var ageMs = now - new DateTimeOffset(File.GetLastWriteTimeUtc(binPath)).ToUnixTimeMilliseconds();
-            if (ageMs > DiskTtlMs)
+            if (ageMs is < 0 or > DiskTtlMs)
             {
                 try { File.Delete(binPath); File.Delete(mimePath); } catch { }
                 return null;
@@ -499,10 +460,13 @@ internal sealed class RadioLogoCache : IDisposable
         try
         {
             Directory.CreateDirectory(_cacheDir);
-            var tmp = Path.Combine(_cacheDir, key + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp");
-            File.WriteAllBytes(tmp, bytes);
-            File.Move(tmp, Path.Combine(_cacheDir, key + ".bin"), overwrite: true);
-            File.WriteAllText(Path.Combine(_cacheDir, key + ".mime"), mime);
+            var suffix = "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+            var tmpMime = Path.Combine(_cacheDir, key + ".mime" + suffix);
+            var tmpBin = Path.Combine(_cacheDir, key + ".bin" + suffix);
+            File.WriteAllText(tmpMime, mime);
+            File.WriteAllBytes(tmpBin, bytes);
+            File.Move(tmpMime, Path.Combine(_cacheDir, key + ".mime"), overwrite: true);
+            File.Move(tmpBin, Path.Combine(_cacheDir, key + ".bin"), overwrite: true);
             PruneDiskCache();
         }
         catch { }

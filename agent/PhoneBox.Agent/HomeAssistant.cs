@@ -18,6 +18,7 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
     private Dictionary<string, HaEntity> _states = [];
     private DateTime _statesAt = DateTime.MinValue;
+    private string _cacheKey = "";
     private string? _error;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -63,15 +64,15 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
         if (string.IsNullOrWhiteSpace(ha.Url) || string.IsNullOrWhiteSpace(ha.Token))
             return new { configured = false, error = "Set up Home Assistant in Settings › General", entities = Array.Empty<HaEntity>() };
         var allowed = Widgets.SelectMany(EntitiesOf).ToHashSet();
+        var key = $"{ha.Url.TrimEnd('/')}\n{ha.Token}\n{string.Join(',', allowed.OrderBy(x => x, StringComparer.Ordinal))}";
         await _lock.WaitAsync();
         try
         {
-            if (DateTime.UtcNow - _statesAt > TimeSpan.FromSeconds(3))
+            if (DateTime.UtcNow - _statesAt > TimeSpan.FromSeconds(3) || _cacheKey != key)
             {
-                _statesAt = DateTime.UtcNow;
                 try
                 {
-                    using var req = Request(HttpMethod.Get, "/api/states");
+                    using var req = Request(HttpMethod.Get, "/api/states", ha);
                     using var res = await Http.SendAsync(req);
                     if (!res.IsSuccessStatusCode) throw new HttpRequestException($"Home Assistant answered {(int)res.StatusCode} {res.ReasonPhrase}");
                     using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
@@ -88,10 +89,14 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
                     }
                     _states = map;
                     _error = null;
+                    _cacheKey = key;
+                    _statesAt = DateTime.UtcNow;
                 }
                 catch (Exception ex)
                 {
                     _error = ex is TaskCanceledException ? "Home Assistant did not answer" : ex.Message;
+                    _statesAt = DateTime.UtcNow;
+                    _cacheKey = key;
                     log.LogDebug("home assistant: {Msg}", _error);
                 }
             }
@@ -132,8 +137,23 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     public async Task<string?> ToggleAsync(string id)
     {
         if (!Widgets.Any(w => ItemsOf(w).Any(i => i.Control && i.Id == id))) return "switching this entity is not allowed in the widget's settings";
+        var ha = config.Get().HomeAssistant;
+        if (string.IsNullOrWhiteSpace(ha.Url) || string.IsNullOrWhiteSpace(ha.Token)
+            || !Uri.TryCreate(ha.Url, UriKind.Absolute, out var address) || address.Scheme is not ("http" or "https"))
+            return "Set up Home Assistant in Settings › General";
         var domain = id.Split('.')[0];
-        var state = _states.TryGetValue(id, out var s) ? s.State : "";
+        var state = "";
+        if (domain is "lock" or "vacuum")
+        {
+            bool needRefresh;
+            await _lock.WaitAsync();
+            try { needRefresh = DateTime.UtcNow - _statesAt > TimeSpan.FromSeconds(3) || !_states.ContainsKey(id); }
+            finally { _lock.Release(); }
+            if (needRefresh) await StatesAsync([id]);
+            await _lock.WaitAsync();
+            try { if (_states.TryGetValue(id, out var s)) state = s.State; }
+            finally { _lock.Release(); }
+        }
         var (svcDomain, service) = domain switch
         {
             "light" or "switch" or "fan" or "input_boolean" or "automation" or "siren" or "humidifier" or "group" => ("homeassistant", "toggle"),
@@ -150,29 +170,41 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
         if (service == "") return $"{domain} entities cannot be switched";
         try
         {
-            using var req = Request(HttpMethod.Post, $"/api/services/{svcDomain}/{service}");
+            using var req = Request(HttpMethod.Post, $"/api/services/{svcDomain}/{service}", ha);
             req.Content = new StringContent(JsonSerializer.Serialize(new { entity_id = id }), Encoding.UTF8, "application/json");
             using var res = await Http.SendAsync(req);
             log.LogInformation("home assistant: {Service} {Id} -> {Code}", $"{svcDomain}.{service}", id, (int)res.StatusCode);
-            _statesAt = DateTime.MinValue; // show the new state on the next poll
+            await _lock.WaitAsync();
+            try { _statesAt = DateTime.MinValue; }
+            finally { _lock.Release(); }
             return res.IsSuccessStatusCode ? null : $"Home Assistant answered {(int)res.StatusCode}";
         }
         catch (Exception ex) { return ex is TaskCanceledException ? "Home Assistant did not answer" : ex.Message; }
     }
 
     /// <summary>Turns an entity on or off (the charge guard's smart plug; set in the local-only settings).</summary>
-    public async Task<string?> SwitchAsync(string id, bool on)
+    public async Task<string?> SwitchAsync(string id, bool on) =>
+        (await SwitchAsync(id, on, config.Get().HomeAssistant)).Error;
+
+    internal sealed record PowerSwitchResult(string? Error, bool Submitted);
+
+    internal async Task<PowerSwitchResult> SwitchAsync(string id, bool on, HomeAssistantConfig settings)
     {
-        if (!id.Contains('.')) return "not an entity id";
+        if (!id.Contains('.')) return new("not an entity id", false);
+        if (!Uri.TryCreate(settings.Url, UriKind.Absolute, out var address)
+            || address.Scheme is not ("http" or "https"))
+            return new("Home Assistant address must be an absolute HTTP or HTTPS URL", false);
+        var submitted = false;
         try
         {
-            using var req = Request(HttpMethod.Post, $"/api/services/homeassistant/{(on ? "turn_on" : "turn_off")}");
+            using var req = Request(HttpMethod.Post, $"/api/services/homeassistant/{(on ? "turn_on" : "turn_off")}", settings);
             req.Content = new StringContent(JsonSerializer.Serialize(new { entity_id = id }), Encoding.UTF8, "application/json");
+            submitted = true;
             using var res = await Http.SendAsync(req);
             _statesAt = DateTime.MinValue;
-            return res.IsSuccessStatusCode ? null : $"Home Assistant answered {(int)res.StatusCode}";
+            return new(res.IsSuccessStatusCode ? null : $"Home Assistant answered {(int)res.StatusCode}", true);
         }
-        catch (Exception ex) { return ex is TaskCanceledException ? "Home Assistant did not answer" : ex.Message; }
+        catch (Exception ex) { return new(ex is TaskCanceledException ? "Home Assistant did not answer" : ex.Message, submitted); }
     }
 
     /// <summary>Settings › Test: checks a URL and token (possibly unsaved).</summary>
@@ -188,9 +220,9 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
         catch (Exception ex) { return ex is TaskCanceledException ? "No answer (check the address)" : ex.Message; }
     }
 
-    private HttpRequestMessage Request(HttpMethod method, string path)
+    private HttpRequestMessage Request(HttpMethod method, string path, HomeAssistantConfig? settings = null)
     {
-        var ha = config.Get().HomeAssistant;
+        var ha = settings ?? config.Get().HomeAssistant;
         var req = new HttpRequestMessage(method, ha.Url!.TrimEnd('/') + path);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ha.Token);
         return req;

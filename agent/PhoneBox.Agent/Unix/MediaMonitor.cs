@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using System.Text.Json;
 
 namespace PhoneBox.Agent;
@@ -9,7 +11,8 @@ namespace PhoneBox.Agent;
 /// </summary>
 public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(5) };
+    private const int MaxArtBytes = 5 * 1024 * 1024;
+    private static readonly HttpClient Http = CreatePublicHttpClient();
     private readonly SemaphoreSlim _pollGate = new(1, 1);
     private volatile MediaSnapshot? _snap;
     private string _artUrl = "";
@@ -45,7 +48,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         try
         {
             var (snap, art) = OperatingSystem.IsMacOS() ? ReadMac() : ReadLinux();
-            if (snap is null) { _snap = null; Art = null; _macArtKey = ""; _macArtEncoded = ""; _artUrl = ""; return; }
+            if (snap is null) { _snap = null; Art = null; _macArtKey = ""; _macArtEncoded = ""; _macPositionKey = ""; _artUrl = ""; return; }
             if (_macSystemMedia)
             {
                 _snap = snap with { ArtId = Art is null ? 0 : _artId };
@@ -96,19 +99,19 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
     internal (MediaSnapshot?, string) ReadMacSystemMedia(string? suppliedJson = null, DateTimeOffset? sampledAt = null)
     {
         var json = suppliedJson ?? Sh.Run("nowplaying-cli", "get-raw");
-        if (string.IsNullOrWhiteSpace(json)) return (null, "");
+        if (string.IsNullOrWhiteSpace(json)) { _macPositionKey = ""; return (null, ""); }
         try
         {
             using var doc = JsonDocument.Parse(json);
             var data = doc.RootElement;
-            if (data.ValueKind != JsonValueKind.Object) return (null, "");
+            if (data.ValueKind != JsonValueKind.Object) { _macPositionKey = ""; return (null, ""); }
             const string prefix = "kMRMediaRemoteNowPlayingInfo";
             string Str(string key) => data.TryGetProperty(prefix + key, out var value) && value.ValueKind == JsonValueKind.String
                 ? value.GetString() ?? "" : "";
             double Num(string key) => data.TryGetProperty(prefix + key, out var value) && value.ValueKind == JsonValueKind.Number
                 && value.TryGetDouble(out var number) && double.IsFinite(number) ? number : 0;
             var title = Str("Title");
-            if (string.IsNullOrWhiteSpace(title)) return (null, "");
+            if (string.IsNullOrWhiteSpace(title)) { _macPositionKey = ""; return (null, ""); }
             var bundle = Str("ClientBundleIdentifier");
             var app = bundle switch
             {
@@ -143,7 +146,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
             else
             {
                 var predicted = _macPositionMs + (playing ? (long)(now - _macPositionAt).TotalMilliseconds : 0);
-                _macPositionMs = Math.Abs(rawPosition - _macLastRawPositionMs) > 500 ? rawPosition : predicted;
+                _macPositionMs = rawPosition != _macLastRawPositionMs ? rawPosition : predicted;
                 _macLastRawPositionMs = rawPosition;
             }
             _macPositionAt = now;
@@ -176,7 +179,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
             return (new MediaSnapshot(app, title, Str("Artist"), Str("Album"), playing,
                 _macPositionMs, durationMs, Art is null ? 0 : _artId, duration > 0), "");
         }
-        catch (JsonException) { return (null, ""); }
+        catch (JsonException) { _macPositionKey = ""; return (null, ""); }
     }
 
     private static string ReadYouTubeSource(string bundle, string title)
@@ -288,19 +291,86 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         return (new MediaSnapshot(f[0], f[2], f[3], f[4], f[1] == "playing", Sec(f[5]), Sec(f[6]), 0, true), f[7]);
     }
 
+    private static HttpClient CreatePublicHttpClient()
+    {
+        var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            UseProxy = false,
+            ConnectTimeout = TimeSpan.FromSeconds(4),
+            ConnectCallback = async (ctx, token) =>
+            {
+                var addresses = await Dns.GetHostAddressesAsync(ctx.DnsEndPoint.Host, token);
+                var publicIps = addresses.Where(WidgetFeedProxy.IsPublicAddress)
+                    .OrderBy(a => a.AddressFamily == AddressFamily.InterNetwork ? 0 : 1)
+                    .ToArray();
+                if (publicIps.Length == 0)
+                    throw new HttpRequestException("Refused non-public cover art host");
+                Exception? last = null;
+                foreach (var ip in publicIps)
+                {
+                    var socket = new Socket(ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+                    try
+                    {
+                        await socket.ConnectAsync(new IPEndPoint(ip, ctx.DnsEndPoint.Port), token);
+                        return new NetworkStream(socket, ownsSocket: true);
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested) { socket.Dispose(); throw; }
+                    catch (Exception ex) { socket.Dispose(); last = ex; }
+                }
+                throw last ?? new HttpRequestException("Could not connect to cover art host");
+            },
+        };
+        return new HttpClient(handler, disposeHandler: true) { Timeout = TimeSpan.FromSeconds(5) };
+    }
+
+    internal static string? SniffImageMime(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff)
+            return "image/jpeg";
+        if (bytes.Length >= 4 && bytes[..4].SequenceEqual(new byte[] { 0x89, 0x50, 0x4e, 0x47 }))
+            return "image/png";
+        if (bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes.Slice(8, 4).SequenceEqual("WEBP"u8))
+            return "image/webp";
+        if (bytes.Length >= 6 && (bytes[..6].SequenceEqual("GIF87a"u8) || bytes[..6].SequenceEqual("GIF89a"u8)))
+            return "image/gif";
+        return null;
+    }
+
+    private static bool HasAllowedArtExtension(string path) =>
+        Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif";
+
     private async Task<AlbumArt?> LoadArt(string url)
     {
         try
         {
-            if (url.StartsWith("file://"))
+            if (url.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
             {
-                var path = Uri.UnescapeDataString(new Uri(url).AbsolutePath);
-                return File.Exists(path) ? new AlbumArt(await File.ReadAllBytesAsync(path), path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg") : null;
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.IsUnc) return null;
+                var path = Uri.UnescapeDataString(uri.AbsolutePath);
+                if (!File.Exists(path) && uri.IsFile) path = uri.LocalPath;
+                if (!HasAllowedArtExtension(path) || !File.Exists(path)) return null;
+                var info = new FileInfo(path);
+                if (info.Length is <= 0 or > MaxArtBytes) return null;
+                var bytes = await File.ReadAllBytesAsync(path);
+                return bytes.Length <= MaxArtBytes && SniffImageMime(bytes) is { } mime ? new AlbumArt(bytes, mime) : null;
             }
-            if (url.StartsWith("https://") || url.StartsWith("http://"))
+            if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
             {
-                using var r = await Http.GetAsync(url);
-                return r.IsSuccessStatusCode ? new AlbumArt(await r.Content.ReadAsByteArrayAsync(), r.Content.Headers.ContentType?.MediaType ?? "image/jpeg") : null;
+                using var r = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                if (!r.IsSuccessStatusCode || r.Content.Headers.ContentLength > MaxArtBytes) return null;
+                await using var stream = await r.Content.ReadAsStreamAsync();
+                using var ms = new MemoryStream();
+                var buf = new byte[16 * 1024];
+                int read;
+                while ((read = await stream.ReadAsync(buf)) > 0)
+                {
+                    if (ms.Length + read > MaxArtBytes) return null;
+                    ms.Write(buf, 0, read);
+                }
+                var bytes = ms.ToArray();
+                return SniffImageMime(bytes) is { } mime ? new AlbumArt(bytes, mime) : null;
             }
         }
         catch (Exception ex) { log.LogDebug("cover art: {Msg}", ex.Message); }

@@ -711,15 +711,18 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     private static CodexUsage? ReadCodexUsage(string path)
     {
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        var len = Math.Min(fs.Length, 1 << 20);
+        var fileLen = fs.Length;
+        var len = Math.Min(fileLen, 1 << 20);
         fs.Seek(-len, SeekOrigin.End);
         var buf = new byte[len];
         fs.ReadExactly(buf);
         var lines = Encoding.UTF8.GetString(buf).Split('\n');
+        var minIndex = fileLen > len ? 1 : 0;
+        if (minIndex == 0 && lines.Length > 0) lines[0] = lines[0].TrimStart('\uFEFF');
         string? model = null, effort = null;
         JsonElement? info = null;
         long updatedAt = new DateTimeOffset(File.GetLastWriteTimeUtc(path)).ToUnixTimeMilliseconds();
-        for (var i = lines.Length - 1; i >= 1 && (info is null || model is null); i--)
+        for (var i = lines.Length - 1; i >= minIndex && (info is null || model is null); i--)
         {
             var line = lines[i];
             if (!line.Contains("\"token_count\"") && !line.Contains("\"turn_context\"")) continue;
@@ -758,12 +761,15 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     private static string? LastLineWith(string path, string needle)
     {
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        var len = Math.Min(fs.Length, 1 << 20);
+        var fileLen = fs.Length;
+        var len = Math.Min(fileLen, 1 << 20);
         fs.Seek(-len, SeekOrigin.End);
         var buf = new byte[len];
         fs.ReadExactly(buf);
         var lines = Encoding.UTF8.GetString(buf).Split('\n');
-        for (var i = lines.Length - 1; i >= 1; i--) // the first line may be partial
+        var minIndex = fileLen > len ? 1 : 0;
+        if (minIndex == 0 && lines.Length > 0) lines[0] = lines[0].TrimStart('﻿'); // the first line may be partial when reading a tail slice
+        for (var i = lines.Length - 1; i >= minIndex; i--)
         {
             if (!lines[i].Contains(needle) || !lines[i].Contains("\"primary\"")) continue;
             try

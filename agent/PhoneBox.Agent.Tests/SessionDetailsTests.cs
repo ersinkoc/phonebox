@@ -133,5 +133,22 @@ public sealed class SessionDetailsTests : IDisposable
         Assert.Equal(ignored ? 0 : 1, sessions.Count);
     }
 
+    [Fact]
+    public void Codex_EmptyOrPartialInitialRolloutRecoversProjectOnceSessionMetaFlushes()
+    {
+        var day = DateTime.UtcNow;
+        var dir = Path.Combine(_root, day.ToString("yyyy"), day.ToString("MM"), day.ToString("dd"));
+        Directory.CreateDirectory(dir);
+        var file = Path.Combine(dir, "rollout-2026-11-17-0000-12345678.jsonl");
+        File.WriteAllText(file, "");
+        _ = _monitor.ReadCodex(_root).ToList();
+
+        File.AppendAllText(file, Line("session_meta", new { cwd = "/work/recovered-app" }) + Line("event_msg", new { type = "task_started" }));
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddSeconds(2));
+        var s = Assert.Single(_monitor.ReadCodex(_root));
+        Assert.Equal("recovered-app", s.Project);
+        Assert.Equal("recovered-app-1234", s.Name);
+    }
+
     public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
 }

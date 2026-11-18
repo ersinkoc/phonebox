@@ -91,6 +91,7 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
                 if (msg != lastError) { log.LogInformation("discord: {Msg}", msg); lastError = msg; }
             }
             failures = _loggedIn ? 0 : failures + 1;
+            if (!config.Get().Discord.Enabled) { _snap = Empty(null); refusedFor = null; failures = 0; continue; }
             await Task.Delay(Backoff(failures), ct);
         }
     }
@@ -156,6 +157,11 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
             _notesWanted = false;
             stop.Cancel();
             try { await reader; } catch { }
+            lock (_lock)
+            {
+                _notes.Clear();
+                if (_snap.Connected) _snap = Empty(config.Get().Discord.Enabled ? "Discord is not running" : null);
+            }
             foreach (var p in _pending.Values) p.TrySetResult(null);
             _pending.Clear();
         }
@@ -199,9 +205,9 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
 
     private sealed record Tokens(string ClientId, string Access, string Refresh, long Expires);
 
-    private static string TokenPath => Path.Combine(AppPaths.ConfigDir, "discord-token.json");
+    internal string TokenPath => Path.Combine(Path.GetDirectoryName(Path.GetFullPath(config.Path)) ?? AppPaths.ConfigDir, "discord-token.json");
 
-    private static Tokens? LoadTokens(string clientId)
+    private Tokens? LoadTokens(string clientId)
     {
         try
         {
@@ -224,7 +230,7 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
         var t = new Tokens(cfg.ClientId!, j?["access_token"]?.GetValue<string>() ?? "", j?["refresh_token"]?.GetValue<string>() ?? "",
             DateTimeOffset.UtcNow.ToUnixTimeSeconds() + (j?["expires_in"]?.GetValue<long>() ?? 3600));
         if (t.Access == "") return null;
-        try { Directory.CreateDirectory(AppPaths.ConfigDir); AppPaths.WriteAllTextPrivate(TokenPath, JsonSerializer.Serialize(t)); } catch (Exception ex) { log.LogDebug(ex, "discord: could not save the login"); }
+        try { var tokenPath = TokenPath; Directory.CreateDirectory(Path.GetDirectoryName(tokenPath)!); AppPaths.WriteAllTextPrivate(tokenPath, JsonSerializer.Serialize(t)); } catch (Exception ex) { log.LogDebug(ex, "discord: could not save the login"); }
         return t;
     }
 
@@ -268,9 +274,15 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
             using var res = await ImageHttp.GetAsync($"https://cdn.discordapp.com/{(kind == "guild" ? "icons" : "avatars")}/{id}/{hash}.png?size=64", ct);
             if (!res.IsSuccessStatusCode) return null;
             var data = await res.Content.ReadAsByteArrayAsync(ct);
-            if (data.Length is 0 or > 512 * 1024) return null;
-            if (Interlocked.Add(ref _imageBytes, data.Length) > ImageCacheLimit) { _images.Clear(); Interlocked.Exchange(ref _imageBytes, data.Length); }
-            return _images[key] = (data, "image/png");
+            if (data.Length is 0 or > 512 * 1024 || PhotoFrame.MimeOf(data) is not { } mime) return null;
+            var entry = (data, mime);
+            if (_images.TryAdd(key, entry) && Interlocked.Add(ref _imageBytes, data.Length) > ImageCacheLimit)
+            {
+                _images.Clear();
+                Interlocked.Exchange(ref _imageBytes, data.Length);
+                _images[key] = entry;
+            }
+            return _images.GetOrAdd(key, entry);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { return null; }
     }
@@ -312,6 +324,8 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
         return complete;
     }
 
+    private static string? JsonStr(JsonNode? node) => node is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+
     internal async Task ReadLoop(Stream io, CancellationToken ct)
     {
         try
@@ -327,25 +341,30 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
                     try { await WriteFrame(io, 4, msg as JsonObject ?? new JsonObject(), ct); } finally { _send.Release(); }
                     continue;
                 }
-                if (op == 4 || msg is null) continue; // PONG
-                var evt = msg["evt"]?.GetValue<string>();
+                if (op == 4 || msg is not JsonObject obj) continue; // PONG or non-object payload
+                var evt = JsonStr(obj["evt"]);
                 if (evt == "NOTIFICATION_CREATE")
                 {
-                    if (!NotesNow()) continue;
-                    var d = msg["data"];
-                    var title = d?["title"]?.GetValue<string>() ?? "";
-                    var body = d?["body"]?.GetValue<string>() ?? d?["message"]?["content"]?.GetValue<string>() ?? "";
+                    if (!NotesNow() || obj["data"] is not JsonObject d) continue;
+                    var title = JsonStr(d["title"]) ?? "";
+                    var body = JsonStr(d["body"]) ?? JsonStr((d["message"] as JsonObject)?["content"]) ?? "";
                     lock (_lock) { _notes.Insert(0, new(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), title, body)); if (_notes.Count > 20) _notes.RemoveAt(20); }
                     continue;
                 }
-                var id = msg["nonce"]?.GetValue<string>();
+                var id = JsonStr(obj["nonce"]);
                 if (id is null || !_pending.TryRemove(id, out var tcs)) continue;
-                if (evt == "ERROR") tcs.TrySetException(new Exception(msg["data"]?["message"]?.GetValue<string>() ?? "Discord refused the request"));
-                else tcs.TrySetResult(msg["data"]?.DeepClone());
+                if (evt == "ERROR") tcs.TrySetException(new Exception(JsonStr((obj["data"] as JsonObject)?["message"]) ?? "Discord refused the request"));
+                else tcs.TrySetResult(obj["data"]?.DeepClone());
             }
         }
         finally
         {
+            _notesWanted = false;
+            lock (_lock)
+            {
+                _notes.Clear();
+                if (_snap.Connected) _snap = Empty(config.Get().Discord.Enabled ? "Discord is not running" : null);
+            }
             // the connection ended (Discord closed or restarted): answer whatever still waits, so a pending login
             // prompt ends now as "no answer" instead of timing out as a refusal two minutes later
             foreach (var p in _pending.Values) p.TrySetResult(null);

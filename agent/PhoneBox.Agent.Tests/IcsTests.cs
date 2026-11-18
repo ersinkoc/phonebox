@@ -121,6 +121,49 @@ public class IcsTests
         Assert.Equal(3, until.Count());
     }
 
+    [Theory]
+    [InlineData("FREQ=WEEKLY;BYDAY=MO,WE;COUNT=3", false)]
+    [InlineData("freq=weekly;byday=mo,we;count=3", false)]
+    [InlineData("FrEq=Weekly;ByDaY=Mo,wE;COUNT=3", true)]
+    public void RecurrenceTokensAreCaseInsensitive(string rule, bool mixedEnvelope)
+    {
+        var calendar = Cal($"UID:case\nDTSTART:20261109T090000Z\nRRULE:{rule}\nSUMMARY:Keep My Case");
+        if (mixedEnvelope)
+            calendar = calendar.Replace("BEGIN:VEVENT", "begin:vEvent").Replace("END:VEVENT", "End:vevent");
+        var result = Ics.Parse(calendar, From, To).ToArray();
+        Assert.All(result, item => Assert.Equal("Keep My Case", item.Title));
+        var actual = string.Join(",", result.Select(e => Utc(e.Start).Day));
+        Assert.True(actual == "9,11,16", $"EXPECTED: 9,11,16 | ACTUAL: {actual}");
+    }
+
+    [Theory]
+    [InlineData("FREQ=DAILY;COUNT=1")]
+    [InlineData("FREQ=DAILY;COUNT=1;COUNT=2")]
+    [InlineData("FREQ=WEEKLY;freq=DAILY")]
+    public void AnInvalidRecurrenceRuleDoesNotDiscardOtherEvents(string rule)
+    {
+        string[] expected = ["First", "Second"];
+        var error = Record.Exception(() =>
+        {
+            var events = Ics.Parse(Cal($"UID:one\nDTSTART:20261109T090000Z\nRRULE:{rule}\nSUMMARY:First",
+                "UID:two\nDTSTART:20261110T100000Z\nSUMMARY:Second"), From, To);
+            Assert.Equal(expected, events.Select(e => e.Title).ToArray());
+        });
+        Assert.True(error is null, $"EXPECTED: both first occurrences | ACTUAL: {error?.GetType().Name} {error?.Message}");
+    }
+
+    [Theory]
+    [InlineData("20261101", "", "11-01,11-02,11-03")]
+    [InlineData("20261101", ";BYMONTHDAY=1", "11-01,12-01,01-01")]
+    [InlineData("20261130", ";BYMONTHDAY=-1", "11-30,12-31,01-31")]
+    public void DailyRulesLimitCandidatesToTheirMonthDays(string start, string filter, string expected)
+    {
+        var from = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+        var events = Ics.Parse(Cal($"UID:m\nDTSTART;VALUE=DATE:{start}\nRRULE:FREQ=DAILY;COUNT=3{filter}"), from, from.AddMonths(4));
+        var actual = string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd", System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.True(actual == expected, $"EXPECTED: {expected} | ACTUAL: {actual}");
+    }
+
     [Fact]
     public void DailyWithByDayKeepsOnlyThoseWeekdays()
     {
@@ -153,6 +196,31 @@ public class IcsTests
         var events = Ics.Parse(Cal($"UID:m\nDTSTART:{first}\nRRULE:FREQ=MONTHLY;BYDAY={byDay};BYMONTHDAY={byMonthDay};COUNT=3"),
             start, start.AddMonths(4));
         Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd"))));
+    }
+
+    [Theory]
+    [InlineData("20260101", "BYMONTHDAY=1,-31", "01-01,02-01,03-01")]
+    [InlineData("20260105", "BYDAY=1MO,MO", "01-05,01-12,01-19")]
+    public void OverlappingMonthlyFiltersCountDistinctOccurrences(string first, string filters, string dates)
+    {
+        var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var events = Ics.Parse(Cal($"UID:overlap\nDTSTART;VALUE=DATE:{first}\nRRULE:FREQ=MONTHLY;COUNT=3;{filters}"),
+            from, from.AddMonths(4));
+
+        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("MM-dd"))));
+    }
+
+    [Theory]
+    [InlineData("20250519", "BYDAY=20MO", "2025-05-19,2026-05-18,2027-05-17")]
+    [InlineData("20251229", "BYDAY=-1MO", "2025-12-29,2026-12-28,2027-12-27")]
+    [InlineData("20260131", "BYMONTHDAY=31", "2026-01-31,2026-03-31,2026-05-31")]
+    public void YearlyDayFiltersWithoutMonthApplyToTheEntireYear(string first, string filters, string dates)
+    {
+        var from = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var events = Ics.Parse(Cal($"UID:year\nDTSTART;VALUE=DATE:{first}\nRRULE:FREQ=YEARLY;COUNT=3;{filters}"),
+            from, from.AddYears(4));
+
+        Assert.Equal(dates, string.Join(",", events.Select(e => Utc(e.Start).ToString("yyyy-MM-dd"))));
     }
 
     [Fact]

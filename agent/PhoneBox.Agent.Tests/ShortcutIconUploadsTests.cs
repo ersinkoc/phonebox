@@ -76,6 +76,26 @@ public sealed class ShortcutIconUploadsTests : IDisposable
         Assert.Null(_uploads.Read("terminal")); // the rejected upload left no file behind
     }
 
+    [Theory]
+    [InlineData("<?xml version='1.0'?><note>Office</note>")]
+    [InlineData("<svg xmlns='http://www.w3.org/2000/svg'><rect></svg>")]
+    public void AFileThatCannotBeRenderedAsSvgDoesNotReplaceAnExistingIcon(string text)
+    {
+        Assert.Null(_uploads.Save("terminal", "image/png", Png));
+        var revision = _uploads.Revision("terminal");
+        Assert.Contains("SVG", _uploads.Save("terminal", "image/svg+xml", Encoding.UTF8.GetBytes(text)));
+        Assert.Equal(Png, _uploads.Read("terminal")!.Value.Bytes);
+        Assert.Equal(revision, _uploads.Revision("terminal"));
+    }
+
+    [Fact]
+    public void AnSvgCanStartWithAComment()
+    {
+        var bytes = Encoding.UTF8.GetBytes("<!-- Icon -->\n<svg xmlns='http://www.w3.org/2000/svg' />");
+        Assert.Null(_uploads.Save("terminal", "image/svg+xml", bytes));
+        Assert.Equal(bytes, _uploads.Read("terminal")!.Value.Bytes);
+    }
+
     [Fact]
     public void APngWithACorruptedSignatureIsRejected() =>
         Assert.Contains("PNG", _uploads.Save("terminal", "image/png", [0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0]));
@@ -94,6 +114,26 @@ public sealed class ShortcutIconUploadsTests : IDisposable
         var (bytes, contentType) = _uploads.Read("terminal")!.Value;
         Assert.Equal("image/svg+xml", contentType);
         Assert.Equal(Svg, bytes);
+    }
+
+    [Fact]
+    public void AFailedReplacementKeepsTheExistingIconAndItsRevision()
+    {
+        Assert.Null(_uploads.Save("terminal", "image/png", Png));
+        var revision = _uploads.Revision("terminal");
+        var destination = Directory.CreateDirectory(Path.Combine(_dir, "terminal.svg"));
+
+        Assert.NotNull(Record.Exception(() => _uploads.Save("terminal", "image/svg+xml", Svg)));
+
+        var saved = Assert.IsType<ValueTuple<byte[], string>>(_uploads.Read("terminal"));
+        Assert.Equal(Png, saved.Item1);
+        Assert.Equal("image/png", saved.Item2);
+        Assert.Equal(revision, _uploads.Revision("terminal"));
+        Assert.False(File.Exists(destination.FullName + ".tmp"));
+
+        destination.Delete();
+        Assert.Null(_uploads.Save("terminal", "image/svg+xml", Svg));
+        Assert.Equal(Svg, _uploads.Read("terminal")!.Value.Bytes);
     }
 
     [Fact]

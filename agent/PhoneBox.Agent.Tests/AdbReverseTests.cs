@@ -19,7 +19,8 @@ public sealed class AdbReverseTests : IDisposable
     /// <summary>A fake adb: <paramref name="devices"/> attached, "reverse --list" prints <paramref name="reverseList"/>,
     /// the app is installed, and "cmd package set-home-activity" fails on <paramref name="homeRefused"/> the way Android
     /// refuses it (an error line, exit code 1).</summary>
-    private string FakeAdb(string[] devices, string reverseList, string? homeRefused)
+    private string FakeAdb(string[] devices, string reverseList, string? homeRefused, bool installed = true,
+        string? reverseRefused = null)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -28,8 +29,9 @@ public sealed class AdbReverseTests : IDisposable
                 "@echo off",
                 ">>\"%~dp0calls.log\" echo %*",
                 "if \"%1\"==\"devices\" (echo List of devices attached" + string.Concat(devices.Select(d => "& echo " + d + "\tdevice")) + "& exit /b 0)",
+                "if \"%2\"==\"" + reverseRefused + "\" if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (exit /b 1)",
                 "if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (" + (reverseList.Length == 0 ? "exit /b 0)" : "echo " + reverseList + "& exit /b 0)"),
-                "if \"%4\"==\"pm\" (echo package:/data/app/base.apk& exit /b 0)",
+                "if \"%4\"==\"pm\" (" + (installed ? "echo package:/data/app/base.apk& exit /b 0)" : "exit /b 1)"),
                 "if \"%6\"==\"set-home-activity\" if \"%2\"==\"" + homeRefused + "\" (echo Error: Failed to set default home.& exit /b 1)",
                 "if \"%6\"==\"set-home-activity\" (echo Success& exit /b 0)",
                 "exit /b 0", ""));
@@ -40,8 +42,9 @@ public sealed class AdbReverseTests : IDisposable
             "#!/bin/sh",
             "echo \"$*\" >> \"$(dirname \"$0\")/calls.log\"",
             "if [ \"$1\" = devices ]; then printf 'List of devices attached\\n" + string.Concat(devices.Select(d => d + "\\tdevice\\n")) + "'; exit 0; fi",
+            "if [ \"$2\" = '" + reverseRefused + "' ] && [ \"$3\" = reverse ] && [ \"$4\" = --list ]; then exit 1; fi",
             "if [ \"$3\" = reverse ] && [ \"$4\" = --list ]; then " + (reverseList.Length == 0 ? "" : "echo '" + reverseList + "'; ") + "exit 0; fi",
-            "if [ \"$4\" = pm ]; then echo package:/data/app/base.apk; exit 0; fi",
+            "if [ \"$4\" = pm ]; then " + (installed ? "echo package:/data/app/base.apk; exit 0; fi" : "exit 1; fi"),
             "if [ \"$6\" = set-home-activity ] && [ \"$2\" = '" + homeRefused + "' ]; then echo 'Error: Failed to set default home.'; exit 1; fi",
             "if [ \"$6\" = set-home-activity ]; then echo Success; exit 0; fi",
             "exit 0", ""));
@@ -67,6 +70,114 @@ public sealed class AdbReverseTests : IDisposable
             }
             catch (IOException) when (attempt < 50) { Thread.Sleep(20); }
         }
+    }
+
+    [Fact]
+    public void CommandLogCanBeReadWhileTheFakeAdbWriterIsOpen()
+    {
+        File.WriteAllText(CallLog, "devices\n");
+        Assert.Equal(["devices"], Calls());
+        using var writer = new FileStream(CallLog, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+        Assert.Equal(["devices"], Calls());
+    }
+
+    [Fact]
+    public async Task UnpluggingAllPhonesRemovesMissingAppInstallTargets()
+    {
+        var fake = FakeAdb(["FAKE1"], "", null, installed: false);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Task Pass() => (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        await Pass();
+        Assert.Equal(["FAKE1"], adb.MissingApp);
+        FakeAdb([], "", null, installed: false);
+        await Pass();
+        Assert.Empty(adb.MissingApp);
+        Assert.False(adb.Connected);
+        await Pass();
+        Assert.Empty(adb.MissingApp);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task KeepAwakeIsReappliedOnlyAfterDisconnect(bool disconnect, bool secondPhone)
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";
+        const string awake = "shell settings put global stay_on_while_plugged_in 7";
+        string[] devices = secondPhone ? ["FAKE1", "FAKE2"] : ["FAKE1"];
+        var fake = FakeAdb(devices, rule, null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = true } }));
+        var store = new ConfigStore(path);
+        Assert.Equal(fake, AdbReverse.FindAdb(store.Get().AdbPath));
+        using var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Task Pass() => (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+
+        await Pass();
+        Assert.Single(Calls(), call => call == "-s FAKE1 " + awake);
+        if (disconnect)
+        {
+            FakeAdb(secondPhone ? ["FAKE2"] : [], rule, null);
+            await Pass();
+            Assert.Equal(secondPhone, adb.Connected);
+            FakeAdb(devices, rule, null);
+        }
+        await Pass();
+        Assert.True(adb.Connected);
+        var calls = Calls();
+        Assert.Equal(disconnect ? 2 : 1, calls.Count(call => call == "-s FAKE1 " + awake));
+        Assert.Equal(secondPhone ? 1 : 0, calls.Count(call => call == "-s FAKE2 " + awake));
+    }
+
+    [Fact]
+    public async Task FailedReverseQueryDoesNotBlockNextPhone()
+    {
+        var devices = new[] { "FAKE1", "FAKE2" };
+        var path = Path.Combine(_dir, "config.json");
+        var fake = FakeAdb(devices, "", homeRefused: null);
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false, followComputerLock = false } }));
+        var store = new ConfigStore(path);
+        Assert.Equal(fake, AdbReverse.FindAdb(store.Get().AdbPath));
+        using var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Task Pass() => (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        const string first = "-s FAKE1 reverse tcp:8765 tcp:8765";
+        const string second = "-s FAKE2 reverse tcp:8765 tcp:8765";
+
+        await Pass();
+        Assert.Contains(first, Calls());
+        Assert.Contains(second, Calls());
+        File.Delete(CallLog);
+
+        FakeAdb(devices, "", homeRefused: null, reverseRefused: "FAKE1");
+        var error = await Record.ExceptionAsync(Pass);
+        var calls = Calls();
+        var secondConfigured = calls.Contains(second);
+        Assert.True(error is null && secondConfigured,
+            $"CONTROL: both phones configured normally. EXPECTED: next phone configured, round succeeds | ACTUAL: next phone configured={secondConfigured}, error={error?.Message}");
+        Assert.DoesNotContain(first, calls);
+    }
+
+    [Theory]
+    [InlineData(new[] { "FAKE1" }, "FAKE1", null)]
+    [InlineData(new[] { "FAKE2", "FAKE1" }, "FAKE1", "FAKE2")]
+    public async Task RefusedReverseQueriesPreserveTheOtherPhones(string[] devices, string refused, string? working)
+    {
+        var path = Path.Combine(_dir, "config.json");
+        var fake = FakeAdb(devices, "", homeRefused: null, reverseRefused: refused);
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false, followComputerLock = false } }));
+        var store = new ConfigStore(path);
+        Assert.Equal(fake, AdbReverse.FindAdb(store.Get().AdbPath));
+        using var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        Assert.DoesNotContain($"-s {refused} reverse tcp:8765 tcp:8765", Calls());
+        if (working is not null) Assert.Contains($"-s {working} reverse tcp:8765 tcp:8765", Calls());
     }
 
     /// <summary>Runs the loop until <paramref name="done"/> holds or three rounds ("adb devices" calls) went by.</summary>

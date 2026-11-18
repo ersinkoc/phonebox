@@ -109,12 +109,19 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log) : BackgroundServ
             AgentSession? s = null;
             try
             {
-                var cwd = _codexCwd.GetOrAdd(f.FullName, ReadCodexCwd);
                 var hasCached = _codexDetails.TryGetValue(f.FullName, out var cached);
-                var details = hasCached && cached.LastWrite == f.LastWriteTimeUtc && cached.Length == f.Length
+                var unchanged = hasCached && cached.LastWrite == f.LastWriteTimeUtc && cached.Length == f.Length;
+                var appended = hasCached && f.Length > cached.Length;
+                if (!_codexCwd.TryGetValue(f.FullName, out var cwd) || cwd.Length == 0 || (!unchanged && !appended))
+                {
+                    cwd = ReadCodexCwd(f.FullName);
+                    if (cwd.Length > 0) _codexCwd[f.FullName] = cwd;
+                    else _codexCwd.TryRemove(f.FullName, out _);
+                }
+                var details = unchanged
                     ? cached.Details : ReadCodexDetails(f.FullName,
-                        hasCached && f.Length > cached.Length ? cached.Details : null,
-                        hasCached && f.Length > cached.Length ? cached.Details.ReadOffset : 0);
+                        appended ? cached.Details : null,
+                        appended ? cached.Details.ReadOffset : 0);
                 _codexDetails[f.FullName] = (f.LastWriteTimeUtc, f.Length, details);
                 var age = DateTime.UtcNow - f.LastWriteTimeUtc;
                 var status = details.Lifecycle == "task_started" && age < TimeSpan.FromMinutes(3) ? "busy" : "idle";
@@ -139,11 +146,16 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log) : BackgroundServ
     private static string ReadCodexCwd(string path)
     {
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var sr = new StreamReader(fs);
-        var first = sr.ReadLine();
-        if (first is null) return "";
-        using var doc = JsonDocument.Parse(first);
-        return doc.RootElement.TryGetProperty("payload", out var p) ? Str(p, "cwd") ?? "" : "";
+        var buf = new byte[(int)Math.Min(fs.Length, 65536)];
+        var n = fs.Read(buf, 0, buf.Length);
+        var nl = Array.IndexOf(buf, (byte)'\n', 0, n);
+        if (nl <= 0) return "";
+        try
+        {
+            using var doc = JsonDocument.Parse(buf.AsMemory(0, nl));
+            return doc.RootElement.TryGetProperty("payload", out var p) ? Str(p, "cwd") ?? "" : "";
+        }
+        catch (JsonException) { return ""; }
     }
 
     private sealed record CodexDetails(string? Model, string? Effort, long? TotalTokens, long? InputTokens,

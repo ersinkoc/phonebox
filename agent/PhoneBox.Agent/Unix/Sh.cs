@@ -31,13 +31,13 @@ public static class Sh
         if (path is null) return null;
         try
         {
-            var psi = new ProcessStartInfo(path) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, WorkingDirectory = AppPaths.NeutralCwd };
+            var psi = new ProcessStartInfo(path);
             foreach (var a in args) psi.ArgumentList.Add(a);
-            using var p = Process.Start(psi)!;
-            var output = p.StandardOutput.ReadToEndAsync();
-            _ = p.StandardError.ReadToEndAsync();
-            if (!p.WaitForExit(timeoutMs)) { try { p.Kill(true); } catch { } return null; }
-            return p.ExitCode == 0 ? output.Result : null;
+            // The subprocess and its output pipes share one deadline. Run off the caller's context
+            // because this API waits synchronously for the asynchronous process helper.
+            var result = Task.Run(() => ToolProcess.RunAsync(psi, TimeSpan.FromMilliseconds(timeoutMs), CancellationToken.None))
+                .GetAwaiter().GetResult();
+            return result.ExitCode == 0 ? result.Output : null;
         }
         catch { return null; }
     }

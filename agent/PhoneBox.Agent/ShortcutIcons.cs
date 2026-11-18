@@ -20,7 +20,11 @@ internal static class ShortcutIcons
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> ResolvedPathCache = new();
     private static string? CachedResolvePath(string cmd)
     {
-        if (ResolvedPathCache.TryGetValue(cmd, out var cached)) return cached;
+        if (ResolvedPathCache.TryGetValue(cmd, out var cached))
+        {
+            if (IsResolvedProgram(cached)) return cached;
+            ResolvedPathCache.TryRemove(new KeyValuePair<string, string>(cmd, cached));
+        }
         var resolved = ResolvePath(cmd);
         if (resolved is not null) ResolvedPathCache[cmd] = resolved;
         return resolved;
@@ -96,7 +100,7 @@ internal static class ShortcutIcons
         cmd = cmd.Trim().Trim('"');
         if (cmd.StartsWith("~")) cmd = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + cmd[1..];
 #if WINDOWS
-        if (Path.IsPathRooted(cmd)) return IsRealFile(cmd) ? cmd : null;
+        if (Path.IsPathRooted(cmd)) return IsResolvedProgram(cmd) ? cmd : null;
         var name = cmd.Contains('.') ? cmd : cmd + ".exe";
         var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator)
             .Append(Environment.SystemDirectory)
@@ -105,12 +109,12 @@ internal static class ShortcutIcons
         {
             string full;
             try { full = Path.Combine(dir, name); } catch { continue; }
-            if (IsRealFile(full)) return full;
+            if (IsResolvedProgram(full)) return full;
         }
         return null;
 #else
-        if (cmd.EndsWith(".app", StringComparison.OrdinalIgnoreCase)) return Directory.Exists(cmd) ? cmd : null;
-        if (cmd.Contains('/')) return File.Exists(cmd) ? cmd : null;
+        if (cmd.EndsWith(".app", StringComparison.OrdinalIgnoreCase) || cmd.Contains('/'))
+            return IsResolvedProgram(cmd) ? cmd : null;
         return Sh.Which(cmd); // a bare command name: resolve it through PATH, like the shell would
 #endif
     }
@@ -121,10 +125,13 @@ internal static class ShortcutIcons
     /// WindowsApps\ for a packaged app, e.g. wt.exe, ms-teams.exe) is a reparse point, not a real PE file: Windows
     /// hands back a generic "unknown program" icon for it instead of the app's real one, so this rejects those.
     /// </summary>
-    private static bool IsRealFile(string path)
+    private static bool IsResolvedProgram(string path)
     {
         try { return File.Exists(path) && !File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint); }
         catch { return false; }
     }
+#else
+    private static bool IsResolvedProgram(string path) =>
+        path.EndsWith(".app", StringComparison.OrdinalIgnoreCase) ? Directory.Exists(path) : File.Exists(path);
 #endif
 }

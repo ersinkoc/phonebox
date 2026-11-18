@@ -97,7 +97,7 @@ public sealed class FeedMonitor(ConfigStore config, ILogger<FeedMonitor> log) : 
             }
             await FetchAsync(src, st, ct);
         }
-        Publish(sources);
+        Publish(Sources()); // a completed request can outlive a feed rename or removal
     }
 
     private List<FeedSource> Sources() => config.Get().Feeds

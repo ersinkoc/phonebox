@@ -216,4 +216,37 @@ public sealed class PhotoFrameTests : IDisposable
         var pub = JsonSerializer.Serialize(new ConfigStore(path).Get().ToPublic());
         Assert.DoesNotContain("phonebox-photos-", pub);
     }
+
+    [Fact]
+    public async Task InFlightScansDoNotOutliveFolderChangesAndZeroOrOverflowPngSizesAreRejected()
+    {
+        File.WriteAllBytes(Path.Combine(Photos, "zero.png"), PngOf(0, 16));
+        File.WriteAllBytes(Path.Combine(Photos, "overflow.png"), PngOf(unchecked((int)0x80000010u), 16));
+        var frame = Frame();
+        frame.ScanNow();
+        Assert.Null((await frame.Get(PhotoFrame.IdOf(Photos, "zero.png"), CancellationToken.None)).Bytes);
+        Assert.Null((await frame.Get(PhotoFrame.IdOf(Photos, "overflow.png"), CancellationToken.None)).Bytes);
+
+        var other = Path.Combine(_dir, "photos-other");
+        Directory.CreateDirectory(other);
+        File.WriteAllBytes(Path.Combine(other, "only.png"), Png);
+        var path = Path.Combine(_dir, "config.json");
+        var store = new ConfigStore(path);
+        var racing = new PhotoFrame(store, NullLogger<PhotoFrame>.Instance) { CacheDir = Path.Combine(_dir, "cache-race") };
+        var gate = (Lock)typeof(PhotoFrame).GetField("_gate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(racing)!;
+        var scanField = typeof(PhotoFrame).GetField("_scan", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        Task firstScan, secondScan;
+        using (gate.EnterScope())
+        {
+            _ = racing.List();
+            firstScan = (Task)scanField.GetValue(racing)!;
+            File.WriteAllText(path, File.ReadAllText(path).Replace(JsonSerializer.Serialize(Photos), JsonSerializer.Serialize(other)));
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(2));
+            racing.SettingsSaved();
+            _ = racing.List();
+            secondScan = (Task)scanField.GetValue(racing)!;
+        }
+        await Task.WhenAll(firstScan, secondScan);
+        Assert.Equal([PhotoFrame.IdOf(other, "only.png")], racing.List().Ids);
+    }
 }

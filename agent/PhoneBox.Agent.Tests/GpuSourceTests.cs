@@ -311,4 +311,35 @@ public sealed class GpuSourceTests
         Assert.Null(Gpus.DpmCurrent("0: 500Mhz\n1: 2482Mhz\n"));
         Assert.Null(Gpus.DpmCurrent(null));
     }
+
+    [Fact]
+    public void UnicodeArcTrademarksFourGigRadeonSysfsMergePriorityAndCommaNvidiaNamesAreHandledCleanly()
+    {
+        Assert.False(Gpus.LooksIntegrated("Intel® Arc™ A770 Graphics"));
+        Assert.False(Gpus.LooksIntegrated("Intel® Arc™ B580 Graphics"));
+        Assert.True(Gpus.LooksIntegrated("Intel® Arc™ Graphics"));
+        Assert.True(Gpus.LooksIntegrated("Intel® Arc™ 140V GPU"));
+
+        var root = Directory.CreateTempSubdirectory("pb-drm-f392-");
+        try
+        {
+            var dev = Directory.CreateDirectory(Path.Combine(root.FullName, "card0", "device")).FullName;
+            File.WriteAllText(Path.Combine(dev, "vendor"), "0x1002\n");
+            File.WriteAllText(Path.Combine(dev, "device"), "0x743f\n");
+            File.WriteAllText(Path.Combine(dev, "product_name"), "AMD Radeon RX 6500 XT\n");
+            File.WriteAllText(Path.Combine(dev, "mem_info_vram_total"), ((4L << 30) - (32L << 20)).ToString() + "\n");
+
+            var sysfsCard = Assert.Single(Gpus.ReadSysfs(root.FullName));
+            Assert.False(sysfsCard.Integrated);
+
+            var primary = new GpuInfo("AMD Radeon RX 6500 XT", 40, 55, 80, 107, 2.0, 3.98, 35, 2600, Vendor: "amd", Source: "lhm", Integrated: false);
+            var secondary = new GpuInfo("AMD Radeon RX 6500 XT", null, null, null, null, null, 3.98, null, null, Vendor: "amd", Source: "sysfs", Integrated: true);
+            Assert.False(Gpus.Merge(primary, secondary).Integrated);
+
+            var nv = Gpus.ParseNvidiaNames("0, NVIDIA Tegra, Orin, 540.3.0\n1, NVIDIA Tegra, Xavier, [N/A]\n");
+            Assert.Equal(("NVIDIA Tegra, Orin", "540.3.0"), nv[0]);
+            Assert.Equal(("NVIDIA Tegra, Xavier", null), nv[1]);
+        }
+        finally { root.Delete(true); }
+    }
 }

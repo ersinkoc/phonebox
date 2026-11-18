@@ -21,6 +21,19 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
     private string? _last;      // "on" / "off"
     private long _lastAt;
     private string? _error;
+    private readonly SemaphoreSlim _switchGate = new(1, 1);
+    private sealed record HaTarget(string? Entity, string? Url, string? Token);
+    private HaTarget? _offHa;
+
+    private static bool SameSupply(HaTarget? a, HaTarget b) => a is not null && a.Entity == b.Entity && a.Url == b.Url;
+    private static HaTarget RecoveryTarget(HaTarget owner, HaTarget current) =>
+        owner.Url == current.Url && current.Token is { } token ? owner with { Token = token } : owner;
+
+    private HaTarget Target(ChargeConfig c)
+    {
+        var connection = config.Get().HomeAssistant;
+        return new(c.Entity, connection.Url, connection.Token);
+    }
 
     /// <summary>Called by the phone (POST /api/phone/battery).</summary>
     public static void Report(int level, bool plugged, double? temp, string? source = null, string? usb = null) =>
@@ -52,7 +65,7 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
     /// <summary>What to do for a battery reading: "on", "off" or null (leave the power as it is).</summary>
     public static string? Decide(ChargeConfig c, PhoneBatteryReport? r, long now, string? last, long lastAt)
     {
-        if (r is null || now - r.At > SilentMs) return last == "off" ? "on" : null; // lost the phone: never leave it unpowered
+        if (r is null || now - r.At is < 0 or > SilentMs) return last == "off" ? "on" : null; // lost the phone: never leave it unpowered
         var retry = now - lastAt > RetryMs;
         if (r.Level >= c.Max && r.Plugged && (last != "off" || retry)) return "off";
         if (r.Level <= c.Min && !r.Plugged && (last != "on" || retry)) return "on";
@@ -61,13 +74,41 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
 
     private async Task Check()
     {
-        var c = config.Get().Charge;
-        if (!c.Enabled) { if (_last == "off") await Switch(c, "on"); return; } // turning the guard off restores the power
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        if (Decide(c, _report, now, _last, _lastAt) is { } action) await Switch(c, action);
+        await _switchGate.WaitAsync();
+        try
+        {
+            var c = config.Get().Charge;
+            var target = Target(c);
+            if (_offHa is { } owner && (!c.Enabled || c.Method == "shortcuts" || !SameSupply(owner, target)
+                || (owner.Token is not null && target.Token is null)))
+            {
+                // Recover the supply we cut before acting on replacement settings.
+                if (await SwitchCore(new ChargeConfig { Method = "ha" }, "on", RecoveryTarget(owner, target)) is null
+                    && (c.Method == "shortcuts" || !SameSupply(owner, target)))
+                { _last = null; _lastAt = 0; }
+                return;
+            }
+            if (!c.Enabled) { if (_last == "off") await SwitchCore(c, "on", target); return; }
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (Decide(c, _report, now, _last, _lastAt) is { } action) await SwitchCore(c, action, target);
+        }
+        finally { _switchGate.Release(); }
     }
 
     public async Task<string?> Switch(ChargeConfig c, string action)
+    {
+        var target = Target(c);
+        await _switchGate.WaitAsync();
+        try
+        {
+            if (action == "off" && _offHa is { } owner && (c.Method == "shortcuts" || !SameSupply(owner, target)))
+                if (await SwitchCore(new ChargeConfig { Method = "ha" }, "on", RecoveryTarget(owner, target)) is { } error) return error;
+            return await SwitchCore(c, action, target);
+        }
+        finally { _switchGate.Release(); }
+    }
+
+    private async Task<string?> SwitchCore(ChargeConfig c, string action, HaTarget target)
     {
         string? error;
         if (c.Method == "shortcuts")
@@ -75,7 +116,17 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
             var id = action == "on" ? c.OnShortcut : c.OffShortcut;
             error = string.IsNullOrWhiteSpace(id) ? $"no shortcut set for power {action}" : Shortcuts.Run(config.Get(), id, log, push, audio);
         }
-        else error = string.IsNullOrWhiteSpace(c.Entity) ? "no Home Assistant switch set" : await ha.SwitchAsync(c.Entity, action == "on");
+        else if (string.IsNullOrWhiteSpace(target.Entity)) error = "no Home Assistant switch set";
+        else
+        {
+            var recovery = action == "on" && SameSupply(_offHa, target) ? _offHa : null;
+            var result = await ha.SwitchAsync(target.Entity, action == "on",
+                new HomeAssistantConfig { Url = target.Url, Token = target.Token ?? recovery?.Token });
+            error = result.Error;
+            // A failed response can follow a successful switch; retain that possible off target too.
+            if (action == "off" && result.Submitted) _offHa = target;
+            if (action == "on" && error is null && SameSupply(_offHa, target)) _offHa = null;
+        }
         // a failed "on" leaves the plug off: keep the old state so the next pass asks again (never leave the phone unpowered)
         if (error is null || action == "off") _last = action;
         _lastAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

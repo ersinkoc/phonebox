@@ -161,7 +161,11 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
                 push.Set(r.Key, PushStore.ParseValue(value), null);
                 break;
             case "shortcut" when !string.IsNullOrWhiteSpace(r.Shortcut):
-                if (Shortcuts.Run(config.Get(), r.Shortcut, log, push, audio) is { } error) log.LogWarning("rule {Id}: {Error}", r.Id, error);
+                var cfgNow = config.Get();
+                if (r.WhileActive && cfgNow.Shortcuts.FirstOrDefault(s => s.Id == r.Shortcut) is { } target
+                    && (target.Toggle || target.Cmd == "builtin:mute") && Shortcuts.State(target, push, audio) == true)
+                    break;
+                if (Shortcuts.Run(cfgNow, r.Shortcut, log, push, audio) is { } error) log.LogWarning("rule {Id}: {Error}", r.Id, error);
                 break;
         }
     }
@@ -170,8 +174,8 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
     {
         if (r.Then == "goto") push.Emit("back", JsonSerializer.SerializeToElement(new { rule = r.Id }));
         else if (r.Then == "push" && !string.IsNullOrWhiteSpace(r.Key)) push.Remove(r.Key);
-        else if (r.Then == "shortcut" && config.Get().Shortcuts.FirstOrDefault(s => s.Id == r.Shortcut) is { Toggle: true } sc
-                 && Shortcuts.State(sc, push, audio) != false)
+        else if (r.Then == "shortcut" && config.Get().Shortcuts.FirstOrDefault(s => s.Id == r.Shortcut) is { } sc
+                 && (sc.Toggle || sc.Cmd == "builtin:mute") && Shortcuts.State(sc, push, audio) != false)
             Shortcuts.Run(config.Get(), sc.Id, log, push, audio); // a toggle switches back off
     }
 
@@ -251,9 +255,10 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
             }
             case "review-requested":
             {
-                var reviews = github.Snapshot()?.ReviewRequests ?? [];
-                var pr = reviews.FirstOrDefault(p => !p.Draft && (names.Length == 0 || names.Any(n => p.Repo.Contains(n, StringComparison.OrdinalIgnoreCase))));
-                return pr is null ? (false, "") : (true, reviews.Count > 1 ? $"{reviews.Count} reviews waiting" : $"{pr.Repo}#{pr.Number}");
+                var matching = (github.Snapshot()?.ReviewRequests ?? [])
+                    .Where(p => !p.Draft && (names.Length == 0 || names.Any(n => p.Repo.Contains(n, StringComparison.OrdinalIgnoreCase))))
+                    .ToList();
+                return matching.Count == 0 ? (false, "") : (true, matching.Count > 1 ? $"{matching.Count} reviews waiting" : $"{matching[0].Repo}#{matching[0].Number}");
             }
             case "ci-failed":
             {

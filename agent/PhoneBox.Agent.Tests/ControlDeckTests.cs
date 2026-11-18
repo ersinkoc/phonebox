@@ -610,6 +610,102 @@ public sealed class ControlDeckTests
         }
     }
 
+    [Fact]
+    public async Task DisablingOrRemovingARadioAcrossFocusAndPlayGatesNeverLeavesItPlaying()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "phonebox-radio-disable-gates-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            // 1. StopDisabledControls alone clears both native playback and EffectiveMedia state.
+            var cfgA = Path.Combine(dir, "a.json");
+            File.WriteAllText(cfgA, """{"controls":{"actions":[{"id":"r-1","label":"S1","kind":"radio","target":"https://example.com/1.mp3","value":80}]}}""");
+            var storeA = new ConfigStore(cfgA);
+            var nativeA = new FakeRadioDeckNative();
+            using (var deckA = new ControlDeck(storeA, nativeA, NullLogger<ControlDeck>.Instance))
+            {
+                Assert.True((await deckA.Act("action", "r-1", "", null, null, null, default)).Ok);
+                Assert.Null(storeA.Save("""{"controls":{"actions":[{"id":"r-1","label":"S1","kind":"radio","target":"https://example.com/1.mp3","value":80,"enabled":false}]}}"""));
+                deckA.StopDisabledControls();
+                Assert.Empty(nativeA.PlayingRadios);
+                Assert.Null(deckA.EffectiveMedia(null));
+            }
+
+            // 2. Queued behind _focusGate when disabled in settings -> rejected after gate releases.
+            var cfgB = Path.Combine(dir, "b.json");
+            File.WriteAllText(cfgB, """
+                {
+                  "controls": {
+                    "actions": [
+                      { "id": "r-1", "label": "S1", "kind": "radio", "target": "https://example.com/1.mp3", "value": 80 },
+                      { "id": "r-2", "label": "S2", "kind": "radio", "target": "https://example.com/2.mp3", "value": 80 }
+                    ]
+                  }
+                }
+                """);
+            var storeB = new ConfigStore(cfgB);
+            var nativeB = new FakeRadioDeckNative();
+            var pauseEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releasePause = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            nativeB.OnPauseCurrentMedia = async _ =>
+            {
+                pauseEntered.TrySetResult();
+                await releasePause.Task;
+                return true;
+            };
+            using (var deckB = new ControlDeck(storeB, nativeB, NullLogger<ControlDeck>.Instance))
+            {
+                var t1 = deckB.Act("action", "r-1", "", null, null, null, default);
+                await pauseEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                var t2 = deckB.Act("action", "r-2", "", null, null, null, default);
+                Assert.Null(storeB.Save("""
+                    {
+                      "controls": {
+                        "actions": [
+                          { "id": "r-1", "label": "S1", "kind": "radio", "target": "https://example.com/1.mp3", "value": 80 },
+                          { "id": "r-2", "label": "S2", "kind": "radio", "target": "https://example.com/2.mp3", "value": 80, "enabled": false }
+                        ]
+                      }
+                    }
+                    """));
+                deckB.StopDisabledControls();
+                deckB.ReconcileRadios(waitForGate: true);
+                releasePause.SetResult();
+
+                Assert.True((await t1.WaitAsync(TimeSpan.FromSeconds(5))).Ok);
+                var res2 = await t2.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.False(res2.Ok);
+                Assert.Equal("Control is disabled", res2.Error);
+                Assert.Equal(["r-1"], nativeB.PlayingRadios.ToArray());
+            }
+
+            // 3. Disabled while _native.Play is mid-open inside _radioGate -> stopped before committing active state.
+            var cfgC = Path.Combine(dir, "c.json");
+            File.WriteAllText(cfgC, """{"controls":{"actions":[{"id":"r-3","label":"S3","kind":"radio","target":"https://example.com/3.mp3","value":80}]}}""");
+            var storeC = new ConfigStore(cfgC);
+            var nativeC = new FakeRadioDeckNative();
+            using var blockPlay = new ManualResetEventSlim(false);
+            nativeC.BlockPlayGate = blockPlay;
+            using (var deckC = new ControlDeck(storeC, nativeC, NullLogger<ControlDeck>.Instance))
+            {
+                var playTask = Task.Factory.StartNew(
+                    () => deckC.Act("action", "r-3", "", null, null, null, default),
+                    CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).Unwrap();
+                Assert.True(nativeC.PlayEnteredGate.Wait(TimeSpan.FromSeconds(5)));
+                Assert.Null(storeC.Save("""{"controls":{"actions":[{"id":"r-3","label":"S3","kind":"radio","target":"https://example.com/3.mp3","value":80,"enabled":false}]}}"""));
+                blockPlay.Set();
+                var res3 = await playTask.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.False(res3.Ok);
+                Assert.Empty(nativeC.PlayingRadios);
+                Assert.Null(deckC.EffectiveMedia(null));
+            }
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private sealed class FakeHttpHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
@@ -725,5 +821,92 @@ public sealed class ControlDeckTests
         public async IAsyncEnumerable<DeckAudioPacket> Listen([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
         { await Task.CompletedTask; yield break; }
         public void Dispose() { lock (_gate) PlayingRadios.Clear(); }
+    }
+
+    [Fact]
+    public async Task PanicMuteDropsActivePttLeasesAndPttSamplesUncachedAudioAndSweepsOnDispose()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "phonebox-ptt-panic-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, "{}");
+
+            var n1 = new FakePttDeckNative(initialMicMuted: false, includeReadOnly: true);
+            using (var deck = new ControlDeck(new ConfigStore(cfgPath), n1, NullLogger<ControlDeck>.Instance))
+            {
+                var lease = (await deck.Act("ptt", "mic-1", "begin", null, null, null, default)).Lease!;
+                Assert.True((await deck.Act("panic", null, null, null, null, null, default)).Ok);
+                Assert.True(n1.MicMuted);
+                Assert.False((await deck.Act("ptt", "mic-1", "end", null, null, lease, default)).Ok);
+                Assert.True(n1.MicMuted);
+            }
+
+            var n2 = new FakePttDeckNative(initialMicMuted: true, includeReadOnly: false);
+            using (var deck = new ControlDeck(new ConfigStore(cfgPath), n2, NullLogger<ControlDeck>.Instance))
+            {
+                _ = await deck.Snapshot(default);
+                n2.MicMuted = false;
+                var lease = (await deck.Act("ptt", "mic-1", "begin", null, null, null, default)).Lease!;
+                Assert.True((await deck.Act("ptt", "mic-1", "end", null, null, lease, default)).Ok);
+                Assert.False(n2.MicMuted);
+            }
+
+            var n3 = new FakePttDeckNative(initialMicMuted: true, includeReadOnly: false);
+            using (var deck = new ControlDeck(new ConfigStore(cfgPath), n3, NullLogger<ControlDeck>.Instance))
+            {
+                _ = await deck.Act("ptt", "mic-1", "begin", null, null, null, default);
+                Assert.False(n3.MicMuted);
+            }
+            Assert.True(n3.MicMuted);
+            Assert.True(n3.Disposed);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    private sealed class FakePttDeckNative(bool initialMicMuted, bool includeReadOnly) : IDeckNative
+    {
+        public bool MicMuted { get; set; } = initialMicMuted;
+        public bool SpeakerMuted { get; set; }
+        public bool Disposed { get; private set; }
+        public event Action<string>? SoundStopped { add { } remove { } }
+
+        public DeckAudio Audio()
+        {
+            var devices = new List<DeckDevice>
+            {
+                new("spk-1", "Speakers", "output", true, 60, SpeakerMuted, 0, 2, CanControl: true),
+                new("mic-1", "Desk Mic", "input", true, 80, MicMuted, 0, 1, CanControl: true),
+            };
+            if (includeReadOnly) devices.Add(new("hdmi-ro", "HDMI", "output", false, 100, false, 0, 2, CanControl: false));
+            return new(true, null, devices, []);
+        }
+
+        public bool Device(string id, int? volume, bool? muted, int? channel = null)
+        {
+            if (id == "hdmi-ro") return false;
+            if (id == "spk-1") { if (muted is { } m) SpeakerMuted = m; return true; }
+            if (id == "mic-1") { if (muted is { } m) MicMuted = m; return true; }
+            return false;
+        }
+
+        public bool Session(string id, int? volume, bool? muted) => false;
+        public bool DefaultDevice(string id, int? role = null) => false;
+        public IReadOnlyList<DeckMonitor> Monitors() => [];
+        public bool Brightness(string id, int value) => false;
+        public IReadOnlyList<DeckItem> PowerPlans() => [];
+        public Task<bool> PlatformAction(string kind, string target, string? argument, int value, CancellationToken ct) => Task.FromResult(false);
+        public Task<IReadOnlyList<DeckMedia>> Media(CancellationToken ct) => Task.FromResult<IReadOnlyList<DeckMedia>>([]);
+        public Task<bool> MediaAction(string id, string action, long value, CancellationToken ct) => Task.FromResult(false);
+        public Task<bool> PauseCurrentMedia(CancellationToken ct) => Task.FromResult(false);
+        public string? ActionState(DeckAction action) => null;
+        public void Play(string id, string file, string? device, int volume) { }
+        public void StopSound(string? id) { }
+        public IReadOnlyList<DeckItem> MidiPorts() => [];
+        public void Midi(int port, string message, int value) { }
+        public async IAsyncEnumerable<DeckAudioPacket> Listen([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        { await Task.CompletedTask; yield break; }
+        public void Dispose() => Disposed = true;
     }
 }

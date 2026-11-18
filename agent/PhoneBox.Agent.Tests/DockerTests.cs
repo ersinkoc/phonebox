@@ -124,4 +124,57 @@ public class DockerTests
         Assert.Equal(2.5, c.Cpu);
         Assert.Equal("24.5MiB", c.Mem);
     }
+
+    [Fact]
+    public async Task ColdCacheActWarmsSnapshotSpacedLabelsExtractProjectAndIsoStartedAtFormatsStatus()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "phonebox-docker-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, """
+                {
+                  "pages": [
+                    { "id": "p1", "title": "Main", "enabled": true, "widgets": [ { "id": "d1", "type": "docker", "x": 0, "y": 0, "w": 6, "h": 4, "options": { "control": true } } ] }
+                  ]
+                }
+                """);
+            var restarted = false;
+            var mon = new DockerMonitor(new ConfigStore(cfgPath), Microsoft.Extensions.Logging.Abstractions.NullLogger<DockerMonitor>.Instance)
+            {
+                CliOverride = "docker",
+                RunnerOverride = (_, _, args) =>
+                {
+                    if (args is ["ps", ..])
+                        return Task.FromResult((0, "{\"ID\":\"a1b2c3d4e5f6\",\"Image\":\"redis:7\",\"Names\":\"cache-1\",\"State\":\"running\",\"Status\":\"Up 5 minutes\"}\n", ""));
+                    if (args is ["stats", ..])
+                        throw new OperationCanceledException("simulated stats timeout");
+                    if (args is ["restart", "a1b2c3d4e5f6"])
+                    {
+                        restarted = true;
+                        return Task.FromResult((0, "", ""));
+                    }
+                    return Task.FromResult((1, "", "unexpected"));
+                },
+            };
+
+            Assert.Null(await mon.ActAsync("a1b2c3d4e5f6", "restart"));
+            Assert.True(restarted);
+            Assert.Null(mon.Snapshot().Error);
+            Assert.Equal("unknown container", await mon.ActAsync("missing00000", "stop"));
+
+            var isoStarted = DateTimeOffset.UtcNow.AddHours(-3).ToString("O");
+            var parsed = DockerMonitor.ParseContainers($$"""
+                {"ID":"b2c3d4e5f6a1","Image":"nginx:alpine","Labels":"role=edge, com.docker.compose.project= , io.podman.compose.project=edge-stack","Names":"edge-1","State":"running","Status":"","StartedAt":"{{isoStarted}}","CreatedAt":"2026-01-01T00:00:00Z"}
+                """);
+            var single = Assert.Single(parsed);
+            Assert.Equal("edge-stack", single.Project);
+            Assert.StartsWith("Up 3 hours", single.Status);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
 }

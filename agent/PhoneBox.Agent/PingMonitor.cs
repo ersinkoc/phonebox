@@ -15,7 +15,11 @@ public sealed class PingMonitor(ConfigStore? config = null) : BackgroundService
     private volatile PingSnapshot? _snap;
     private string? _host;
 
-    public PingSnapshot? Snapshot() => _snap;
+    public PingSnapshot? Snapshot()
+    {
+        var snapshot = _snap;
+        return snapshot is not null && snapshot.Host == CurrentHost() ? snapshot : null;
+    }
 
     private string? CurrentHost() => config is null ? DefaultHost : config.Get().Ping.Host;
 

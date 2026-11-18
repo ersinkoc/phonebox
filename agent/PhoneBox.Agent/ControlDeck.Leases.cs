@@ -51,6 +51,14 @@ internal sealed class MicrophoneLeases(Func<string, bool?> read, Func<string, bo
             foreach (var device in _original.Keys.ToArray()) Restore(device);
         }
     }
+    public void AbandonAll()
+    {
+        lock (_gate)
+        {
+            _leases.Clear();
+            _original.Clear();
+        }
+    }
     private void Restore(string device)
     {
         if (_leases.Values.Any(l => l.Device == device)) return;

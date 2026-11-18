@@ -59,6 +59,31 @@ public sealed class WorkBuddyNamesTests : IDisposable
     }
 
     [Fact]
+    public void BrokenWorkspaceFileNeverUsesAnotherHomesNames()
+    {
+        const string project = @"C:\work\project";
+        Workspaces((project, "First workspace"));
+        Assert.Equal("First workspace", WorkBuddyNames.For(project, _home));
+
+        var other = Path.Combine(_home, "other");
+        var directory = Path.Combine(other, ".workbuddy");
+        Directory.CreateDirectory(directory);
+        var file = Path.Combine(directory, "workspace-display-names.json");
+        File.WriteAllText(file, "{ not json");
+        var actual = WorkBuddyNames.For(project, other);
+        Assert.True(actual is null, $"EXPECTED: no workspace name | ACTUAL: {actual}");
+        Assert.Equal("First workspace", WorkBuddyNames.For(project, _home));
+
+        File.WriteAllText(file, JsonSerializer.Serialize(new
+        {
+            workspaces = new Dictionary<string, object> { [project] = new { displayName = "Second name" } },
+        }));
+        Assert.Equal("Second name", WorkBuddyNames.For(project, other));
+        File.WriteAllText(file, "{ half-written");
+        Assert.Equal("Second name", WorkBuddyNames.For(project, other));
+    }
+
+    [Fact]
     public void AReadThatFailedIsRetriedInsteadOfRemembered()
     {
         Workspaces((@"C:\work\project", "First name"));

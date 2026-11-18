@@ -74,4 +74,35 @@ public sealed class MediaArtworkTests
         now = 1000; await cache.UpdateAsync("same", 0, Read);
         Assert.Equal(id, cache.Id); Assert.NotNull(cache.Current);
     }
+
+    [Fact]
+    public async Task CancelledReadsNeitherWipePreviousTrackArtworkNorThrottleImmediateRetry()
+    {
+        long now = 0; var cache = new MediaArtworkCache(() => now);
+        await cache.UpdateAsync("track-1", 0, _ => Task.FromResult<AlbumArt?>(Image(1)));
+
+        using var preCancelled = new CancellationTokenSource();
+        preCancelled.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            cache.UpdateAsync("track-2", 0, _ => Task.FromResult<AlbumArt?>(Image(9)), preCancelled.Token));
+        Assert.Equal(new byte[] { 1 }, cache.Current!.Bytes);
+
+        now = 10_000;
+        using var midCancel = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var inflight = cache.UpdateAsync("track-1", 1, async ct =>
+        {
+            entered.TrySetResult();
+            await release.Task.WaitAsync(ct);
+            return Image(2);
+        }, midCancel.Token);
+        await entered.Task;
+        midCancel.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => inflight);
+
+        now = 10_050;
+        await cache.UpdateAsync("track-1", 1, _ => Task.FromResult<AlbumArt?>(Image(2)));
+        Assert.Equal(new byte[] { 2 }, cache.Current!.Bytes);
+    }
 }

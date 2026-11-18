@@ -127,12 +127,18 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (problem is not null) log.LogWarning("USB: {Problem}", problem);
             if (problem is null && devices.Length > 0) log.LogInformation("USB: the phone is back on USB");
         }
+        _missingApp = _missingApp.Where(devices.Contains).ToArray();
         if (devices.Length == 0) { Report("no phone connected, waiting..."); return; }
 
-        _missingApp = _missingApp.Where(devices.Contains).ToArray();
         foreach (var d in devices)
         {
-            var list = await Adb(adb, $"-s {d} reverse --list", ct);
+            string list;
+            try { list = await Adb(adb, $"-s {d} reverse --list", ct); }
+            catch (Exception ex) when (ex is IOException or TimeoutException)
+            {
+                log.LogWarning("{Device}: could not list adb reverse rules ({Message})", d, ex.Message);
+                continue;
+            }
             var ruled = HasOwnRule(list);
             if (ruled && !_missingApp.Contains(d)) continue;
             // is the app there at all? (the agent may have been installed on its own, with winget or Scoop)
@@ -181,7 +187,6 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             }
         }
         else _awakeSet.Clear();
-        _awakeSet.IntersectWith(devices);
         Report($"phone connected: {Devices}");
     }
 
@@ -195,6 +200,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
     private void SetDevices(string[] devices)
     {
+        _awakeSet.IntersectWith(devices);
         var changed = string.Join(",", devices) != string.Join(",", _devices);
         _devices = devices;
         if (changed) StateChanged?.Invoke();

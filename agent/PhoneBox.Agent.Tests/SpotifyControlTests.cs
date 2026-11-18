@@ -148,4 +148,52 @@ public sealed class SpotifyControlTests
     [InlineData("https://example.com/",false)]
     [InlineData("spotify:playlist:../../token",false)]
     public void PlaybackTargetsAreSpotifyUrisOnly(string uri,bool valid)=>Assert.Equal(valid,SpotifyControl.PlaybackUri(uri));
+
+    [Fact]
+    public async Task ClientChangesInvalidateSnapshotReconnectClearsRateLimitAndEmptyRefreshPreservesToken()
+    {
+        using var fixture = new Fixture(manual: true);
+        var rateLimit = false;
+        var tokenCalls = 0;
+        using var spotify = fixture.Create(req =>
+        {
+            if (req.RequestUri!.Host == "accounts.spotify.com")
+            {
+                tokenCalls++;
+                return Task.FromResult(tokenCalls == 1
+                    ? Json("""{"access_token":"a1","refresh_token":"keep-refresh","expires_in":30}""")
+                    : Json("""{"access_token":"a2","refresh_token":"","expires_in":30}"""));
+            }
+            if (rateLimit)
+            {
+                var r429 = Json("{}", HttpStatusCode.TooManyRequests);
+                r429.Headers.RetryAfter = new(TimeSpan.FromSeconds(120));
+                return Task.FromResult(r429);
+            }
+            return Task.FromResult(req.RequestUri.AbsolutePath.EndsWith("/queue")
+                ? Json("""{"queue":[]}""")
+                : Json("""{"is_playing":true,"item":{"uri":"spotify:track:1111111111111111111111","name":"Song","artists":[]}}"""));
+        });
+
+        Assert.True((await spotify.Snapshot(default))["connected"]!.GetValue<bool>());
+
+        // Changing clientId invalidates cached snapshot immediately
+        File.WriteAllText(fixture.Config.Path, JsonSerializer.Serialize(new { controls = new { spotifyClientId = "other-client" } }));
+        File.SetLastWriteTimeUtc(fixture.Config.Path, DateTime.UtcNow.AddMinutes(1));
+        Assert.False((await spotify.Snapshot(default))["connected"]!.GetValue<bool>());
+
+        // Rate limit lockout is cleared on PKCE Complete, and empty refresh_token="" preserves keep-refresh across refreshes
+        File.WriteAllText(fixture.Config.Path, JsonSerializer.Serialize(new { controls = new { spotifyClientId = "pkce-client", spotifyToken = "temp-tok" } }));
+        File.SetLastWriteTimeUtc(fixture.Config.Path, DateTime.UtcNow.AddMinutes(2));
+        rateLimit = true;
+        Assert.False((await spotify.Snapshot(default))["connected"]!.GetValue<bool>());
+        rateLimit = false;
+        await spotify.Disconnect(default);
+        File.WriteAllText(fixture.Config.Path, JsonSerializer.Serialize(new { controls = new { spotifyClientId = "pkce-client" } }));
+        File.SetLastWriteTimeUtc(fixture.Config.Path, DateTime.UtcNow.AddMinutes(3));
+        var state = QueryHelpers.ParseQuery(new Uri(spotify.Begin()).Query)["state"].ToString();
+        Assert.True(await spotify.Complete(state, "code", default));
+        Assert.True((await spotify.Snapshot(default))["connected"]!.GetValue<bool>());
+        Assert.Equal(3, tokenCalls); // 1 Complete + 2 refreshes (proving second refresh kept "keep-refresh")
+    }
 }

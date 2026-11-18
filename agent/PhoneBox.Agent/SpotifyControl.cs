@@ -20,7 +20,9 @@ public sealed class SpotifyControl : IDisposable
     private Pending? _pending;
     private Token? _token;
     private JsonObject? _snapshot;
+    private (string ClientId, string ManualToken) _snapshotAuth;
     private long _readAt, _retryAt;
+    private (string ClientId, string ManualToken) CurrentAuth() { var c = _config.Get().Controls; return (c.SpotifyClientId ?? "", c.SpotifyToken ?? ""); }
     private string CredentialPath => _config.Path + ".spotify.json";
     public string RedirectUri => $"http://127.0.0.1:{_endpoint.Port}/api/controls/spotify/callback";
 
@@ -58,7 +60,7 @@ public sealed class SpotifyControl : IDisposable
         {
             var token = await TokenRequest(new() { ["client_id"] = pending.ClientId, ["grant_type"] = "authorization_code",
                 ["code"] = code, ["redirect_uri"] = RedirectUri, ["code_verifier"] = pending.Verifier }, pending.ClientId, "", ct);
-            Save(token); _readAt = 0; return true;
+            Save(token); _snapshot = null; _readAt = 0; _retryAt = 0; return true;
         }
         finally { _tokenGate.Release(); }
     }
@@ -71,7 +73,7 @@ public sealed class SpotifyControl : IDisposable
         var root = doc.RootElement;
         var access = root.GetProperty("access_token").GetString();
         if (string.IsNullOrWhiteSpace(access)) throw new IOException("Spotify returned no access token");
-        var refresh = root.TryGetProperty("refresh_token", out var r) ? r.GetString() ?? oldRefresh : oldRefresh;
+        var refresh = root.TryGetProperty("refresh_token", out var r) && r.ValueKind == JsonValueKind.String && r.GetString() is { Length: > 0 } nextRefresh ? nextRefresh : oldRefresh;
         var seconds = root.TryGetProperty("expires_in", out var e) && e.TryGetInt32(out var value) ? Math.Clamp(value, 30, 86400) : 3600;
         return new(client, access, refresh, Now + seconds * 1000L);
     }
@@ -91,7 +93,7 @@ public sealed class SpotifyControl : IDisposable
     public async Task Disconnect(CancellationToken ct)
     {
         await _tokenGate.WaitAsync(ct);
-        try { lock (_gate) _pending = null; Save(new(_config.Get().Controls.SpotifyClientId ?? "", "", "", 0)); _snapshot = null; _readAt = 0; }
+        try { lock (_gate) _pending = null; Save(new(_config.Get().Controls.SpotifyClientId ?? "", "", "", 0)); _snapshot = null; _readAt = 0; _retryAt = 0; }
         finally { _tokenGate.Release(); }
     }
     private async Task<string?> Access(bool force, CancellationToken ct)
@@ -103,6 +105,7 @@ public sealed class SpotifyControl : IDisposable
             if (_token is null && File.Exists(CredentialPath))
                 try { _token = JsonSerializer.Deserialize<Token>(File.ReadAllText(CredentialPath)); } catch (JsonException) { }
             if (_token is { } wrong && wrong.ClientId != client) _token = null;
+            if (_token is { Expires: 0 } cur && !File.Exists(CredentialPath) && cur.Access != (_config.Get().Controls.SpotifyToken ?? "")) _token = null;
             if (_token is null && _config.Get().Controls.SpotifyToken is { Length: > 0 } manual)
                 _token = new(client, manual, _config.Get().Controls.SpotifyRefreshToken ?? "", 0);
             if (_token is null) return null;
@@ -137,11 +140,13 @@ public sealed class SpotifyControl : IDisposable
     }
     public async Task<JsonObject> Snapshot(CancellationToken ct)
     {
-        if (_snapshot is not null && Now - _readAt < 5000) return _snapshot;
+        var auth = CurrentAuth();
+        if (_snapshot is not null && _snapshotAuth == auth && Now - _readAt < 5000) return _snapshot;
         await _readGate.WaitAsync(ct);
         try
         {
-            if (_snapshot is not null && Now - _readAt < 5000) return _snapshot;
+            auth = CurrentAuth();
+            if (_snapshot is not null && _snapshotAuth == auth && Now - _readAt < 5000) return _snapshot;
             try
             {
                 // episodes too: without additional_types an episode that is playing comes back empty
@@ -153,6 +158,7 @@ public sealed class SpotifyControl : IDisposable
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex) when (ex is IOException or HttpRequestException or JsonException or OperationCanceledException)
             { _snapshot = new() { ["connected"] = false, ["error"] = ex is IOException ? ex.Message : "Spotify is unavailable" }; }
+            _snapshotAuth = auth;
             _readAt = Now; return _snapshot;
         }
         finally { _readGate.Release(); }

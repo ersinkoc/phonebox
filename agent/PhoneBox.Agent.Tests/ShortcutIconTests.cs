@@ -52,6 +52,28 @@ public sealed class ShortcutIconTests
         Assert.False(ShortcutIcons.HasIcon(sc));
     }
 
+    [Fact]
+    public void RemovingAResolvedProgramStopsAdvertisingItsIcon()
+    {
+        var file = Path.Combine(Path.GetTempPath(), "phonebox-shortcut-icon-" + Guid.NewGuid().ToString("N") + ".exe");
+        var shortcut = new Shortcut { Cmd = file.Replace('\\', '/') };
+        try
+        {
+            File.WriteAllText(file, "fixture");
+            Assert.True(ShortcutIcons.HasIcon(shortcut));
+            Assert.NotNull(ShortcutIcons.Revision(shortcut));
+
+            File.Delete(file);
+            Assert.False(ShortcutIcons.HasIcon(shortcut));
+            Assert.Null(ShortcutIcons.Revision(shortcut));
+
+            File.WriteAllText(file, "replacement");
+            Assert.True(ShortcutIcons.HasIcon(shortcut));
+            Assert.NotNull(ShortcutIcons.Revision(shortcut));
+        }
+        finally { File.Delete(file); }
+    }
+
     [Theory]
     [InlineData("builtin:lock")]
     [InlineData("this-program-does-not-exist-12345")]

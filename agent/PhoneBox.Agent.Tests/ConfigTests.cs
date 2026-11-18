@@ -45,6 +45,70 @@ public class ConfigTests
         Assert.Null(c.Pages[0].Template);
     }
 
+    [Theory]
+    [InlineData("Desk / Live", "desk-live")]
+    [InlineData("Desk + Live", "desk-live-2")]
+    [InlineData("kitchen", "kitchen")]
+    public void PageReferencesFollowIdNormalizationOnSaveAndReload(string reference, string expectedId)
+    {
+        var directory = Directory.CreateTempSubdirectory("phonebox-page-references-");
+        try
+        {
+            var path = Path.Combine(directory.FullName, "config.json");
+            var json = JsonSerializer.Serialize(new
+            {
+                pages = new[] { new { id = "Desk / Live" }, new { id = "Desk + Live" }, new { id = "kitchen" } },
+                display = new { homePage = reference },
+                phones = new[] { new { id = "desk", pages = new[] { reference } } },
+                rules = new[] { new { when = "time", then = "goto", page = reference } },
+            });
+            var store = new ConfigStore(path);
+            Assert.Null(store.Save(json));
+
+            foreach (var config in new[] { store.Get(), new ConfigStore(path).Get() })
+            {
+                Assert.Equal(["desk-live", "desk-live-2", "kitchen"], config.Pages.Select(p => p.Id));
+                var actual = (Home: config.Display.HomePage, Phone: string.Join(",", config.PagesFor("desk").Select(p => p.Id)),
+                    Rule: Assert.Single(config.Rules).Page);
+                Assert.Equal((expectedId, expectedId, expectedId), actual);
+            }
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void ANewTemplateCannotTakeAnExistingPagesId()
+    {
+        var config = Load("""
+            {
+              "pages": [
+                { "template": "music" },
+                { "id": "music", "title": "Existing music page" }
+              ]
+            }
+            """);
+
+        Assert.Equal(["music-2", "music"], config.Pages.Select(p => p.Id));
+    }
+
+    [Fact]
+    public void ANewWidgetCannotTakeAnExistingWidgetsPersistenceKey()
+    {
+        var config = Load("""
+            {
+              "pages": [{
+                "id": "desk",
+                "widgets": [
+                  { "type": "timer" },
+                  { "type": "timer", "id": "timer" }
+                ]
+              }]
+            }
+            """);
+
+        Assert.Equal(["timer-2", "timer"], Assert.Single(config.Pages).Widgets!.Select(w => w.Id));
+    }
+
     [Fact]
     public void TurkishCapitalDottedIKeepsItsLetterInIds()
     {

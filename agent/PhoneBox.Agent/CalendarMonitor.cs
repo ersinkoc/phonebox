@@ -103,8 +103,8 @@ public static class Ics
         var nestedDepth = 0;
         foreach (var line in Unfold(text))
         {
-            if (line == "BEGIN:VEVENT") { cur = []; nestedDepth = 0; continue; }
-            if (line == "END:VEVENT") { if (cur is not null) events.Add(cur); cur = null; continue; }
+            if (line.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase)) { cur = []; nestedDepth = 0; continue; }
+            if (line.Equals("END:VEVENT", StringComparison.OrdinalIgnoreCase)) { if (cur is not null) events.Add(cur); cur = null; continue; }
             if (cur is null) continue;
             // VALARM can have its own DURATION and other event-like properties.
             if (line.StartsWith("BEGIN:", StringComparison.OrdinalIgnoreCase)) { nestedDepth++; continue; }
@@ -152,7 +152,9 @@ public static class Ics
                 // computer's zone, like ToUtc reads it; only a UTC start ("...Z") repeats in UTC
                 var zone = dtStart.Value.Trim().EndsWith('Z') ? null
                     : (dtStart.Params.TryGetValue("TZID", out var tz) ? FindZone(tz) : null) ?? local;
-                starts = Expand(start, rrule, zone, allDay, fromUtc, toUtc, local)
+                // Older occurrences may still overlap the window; fast-forward from their earliest possible start.
+                var earliestStart = fromUtc.AddTicks(-Math.Min(fromUtc.Ticks, Math.Max(0, length.Ticks)));
+                starts = Expand(start, rrule, zone, allDay, earliestStart, toUtc, local)
                     .Where(s => !exdates.Contains(s.Ticks) && !overrides.Contains((uid, s.Ticks)));
             }
             try
@@ -179,8 +181,18 @@ public static class Ics
     /// <summary>Occurrence starts (UTC) of a recurring event; wall-clock times stay put across DST changes.</summary>
     private static IEnumerable<DateTime> Expand(DateTime firstUtc, string rrule, TimeZoneInfo? zone, bool allDay, DateTime fromUtc, DateTime toUtc, TimeZoneInfo localZone)
     {
-        var r = rrule.Split(';').Select(x => x.Split('=', 2)).Where(x => x.Length == 2).ToDictionary(x => x[0].ToUpperInvariant(), x => x[1]);
-        var freq = r.GetValueOrDefault("FREQ", "");
+        var r = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var part in rrule.Split(';'))
+        {
+            var pair = part.Split('=', 2);
+            if (pair.Length == 2 && !r.TryAdd(pair[0], pair[1]))
+            {
+                // A repeated rule part makes the recurrence ambiguous. Keep DTSTART and the rest of the calendar.
+                yield return firstUtc;
+                yield break;
+            }
+        }
+        var freq = r.GetValueOrDefault("FREQ", "").ToUpperInvariant();
         var interval = int.TryParse(r.GetValueOrDefault("INTERVAL"), out var iv) && iv > 0 ? iv : 1;
         var count = int.TryParse(r.GetValueOrDefault("COUNT"), out var c) ? c : int.MaxValue;
         DateTime? until = r.TryGetValue("UNTIL", out var u) && ToUtc(new Prop("UNTIL", [], u), out _, localZone) is { } ut ? ut : null;
@@ -189,6 +201,8 @@ public static class Ics
         var byMonth = r.TryGetValue("BYMONTH", out var bm) ? bm.Split(',').Select(x => int.TryParse(x, out var n) ? n : 0).Where(n => n is >= 1 and <= 12).Distinct().ToList() : [];
         var wkst = r.TryGetValue("WKST", out var ws) && ParseDay(ws) is { Item1: 0 } start ? start.Item2 : DayOfWeek.Monday;
         var bySetPos = r.TryGetValue("BYSETPOS", out var bsp) ? bsp.Split(',').Select(x => int.TryParse(x, out var n) ? n : 0).Where(n => n != 0).ToList() : [];
+        var yearDayFilters = (byDay.Count > 0 || byMonthDay.Count > 0)
+            && !r.ContainsKey("BYWEEKNO") && !r.ContainsKey("BYYEARDAY");
 
         // work in the event's local wall-clock time
         var local = allDay || zone is null ? firstUtc : TimeZoneInfo.ConvertTimeFromUtc(firstUtc, zone);
@@ -206,6 +220,7 @@ public static class Ics
         // an AddDays/AddMonths/AddYears past DateTime.MaxValue throws and takes the whole feed down.
         var maxDays = (DateTime.MaxValue.Date - local.Date).Days;
         var maxMonths = (9999 - local.Year) * 12 + 12 - local.Month;
+        var maxFilterYears = Math.Min(9999, toUtc.Year + 1) - local.Year;
         var emitted = 0;
         for (var period = skip; period < skip + 3000 && emitted < count; period++)
         {
@@ -218,6 +233,7 @@ public static class Ics
                 "MONTHLY" => n <= maxMonths ? MonthDays(local, (int)n, byDay, byMonthDay) : [],
                 // BYMONTH (with BYDAY / BYMONTHDAY) picks days within those months: "second Sunday of May"
                 "YEARLY" when byMonth.Count > 0 => byMonth.SelectMany(m => n * 12 + m - local.Month is var mo && mo <= maxMonths ? MonthDays(local, (int)mo, byDay, byMonthDay) : Enumerable.Empty<DateTime>()),
+                "YEARLY" when yearDayFilters => n <= maxFilterYears ? YearDays(local, (int)n, byDay, byMonthDay) : [],
                 // AddYears turns 29 February into the 28th; RFC 5545 skips the invalid date (leap-day birthdays)
                 "YEARLY" => n <= 9999 - local.Year && local.AddYears((int)n) is var year && year.Day == local.Day ? [year] : [],
                 _ => period == 0 ? [local] : [],
@@ -225,11 +241,13 @@ public static class Ics
             // YEARLY uses BYMONTH to generate candidates. For faster rules it limits them.
             if (byMonth.Count > 0 && freq is ("DAILY" or "WEEKLY" or "MONTHLY"))
                 candidates = candidates.Where(date => byMonth.Contains(date.Month));
-            var set = candidates.OrderBy(x => x).ToList();
+            if (byMonthDay.Count > 0 && freq == "DAILY")
+                candidates = candidates.Where(date => MatchesMonthDay(date, byMonthDay));
+            var set = candidates.Distinct().Order().ToList();
             // BYSETPOS picks from each period's set: "the last weekday of the month" (Outlook) is BYDAY=MO,…,FR;BYSETPOS=-1
             if (bySetPos.Count > 0)
             {
-                var all = set.Distinct().ToList();
+                var all = set;
                 set = bySetPos.Select(p => p > 0 ? p - 1 : all.Count + p).Where(i => i >= 0 && i < all.Count).Distinct().Order().Select(i => all[i]).ToList();
             }
             var any = false;
@@ -286,11 +304,30 @@ public static class Ics
         }
     }
 
+    private static IEnumerable<DateTime> YearDays(DateTime first, int years, List<(int Nth, DayOfWeek Day)> byDay, List<int> byMonthDay)
+    {
+        var start = new DateTime(first.Year + years, 1, 1) + first.TimeOfDay;
+        var days = DateTime.IsLeapYear(start.Year) ? 366 : 365;
+        for (var offset = 0; offset < days; offset++)
+        {
+            var date = start.AddDays(offset);
+            if (byMonthDay.Count > 0 && !MatchesMonthDay(date, byMonthDay)) continue;
+            var weekdayFromStart = offset / 7 + 1;
+            var weekdayFromEnd = -((days - 1 - offset) / 7 + 1);
+            if (byDay.Count == 0 || byDay.Any(day => day.Day == date.DayOfWeek
+                && (day.Nth == 0 || day.Nth == weekdayFromStart || day.Nth == weekdayFromEnd)))
+                yield return date;
+        }
+    }
+
+    private static bool MatchesMonthDay(DateTime date, List<int> days) =>
+        days.Contains(date.Day) || days.Contains(date.Day - DateTime.DaysInMonth(date.Year, date.Month) - 1);
+
     private static (int, DayOfWeek)? ParseDay(string s)
     {
         s = s.Trim();
         if (s.Length < 2) return null;
-        var code = s[^2..];
+        var code = s[^2..].ToUpperInvariant();
         var nth = s.Length > 2 && int.TryParse(s[..^2], out var n) ? n : 0;
         DayOfWeek? day = code switch
         {

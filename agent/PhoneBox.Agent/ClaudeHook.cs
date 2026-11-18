@@ -18,6 +18,7 @@ public static class ClaudeHook
     /// <summary>Handles one hook call; returns the JSON for the hook to print, or null for "no decision".</summary>
     public static async Task<object?> HandleAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals, SessionMonitor sessions, CancellationToken aborted)
     {
+        if (input.ValueKind != JsonValueKind.Object) return null;
         var c = cfg.Get().Claude;
         if (!c.PhoneApprovals) return null;
         if (c.OnlyWhenAway && Idle.Seconds() < 60) return null;
@@ -82,7 +83,7 @@ public static class ClaudeHook
             "WebSearch" => Str(ti, "query"),
             _ => null,
         };
-        if (tool is "Edit" && Str(ti, "new_string") is { } ns) s += "\n\n" + Head(ns, 12);
+        if (tool is "Edit" && s is not null && Str(ti, "new_string") is { } ns) s += "\n\n" + Head(ns, 12);
         s ??= JsonSerializer.Serialize(ti, new JsonSerializerOptions { WriteIndented = true });
         return s.Length > 3000 ? s[..3000] + "…" : s;
     }
@@ -94,6 +95,7 @@ public static class ClaudeHook
         if (ti.ValueKind == JsonValueKind.Object && ti.TryGetProperty("questions", out var qs) && qs.ValueKind == JsonValueKind.Array)
             foreach (var q in qs.EnumerateArray())
             {
+                if (q.ValueKind != JsonValueKind.Object) continue;
                 if (sb.Length > 0) sb.Append("\n\n");
                 var header = Str(q, "header");
                 sb.Append(header is { Length: > 0 } ? header + ": " : "").Append(Str(q, "question") ?? "");
@@ -101,8 +103,9 @@ public static class ClaudeHook
                 if (q.TryGetProperty("options", out var os) && os.ValueKind == JsonValueKind.Array)
                     foreach (var o in os.EnumerateArray())
                     {
+                        if (o.ValueKind != JsonValueKind.Object || Str(o, "label") is not { Length: > 0 } label) continue;
                         var d = Str(o, "description");
-                        sb.Append("\n  • ").Append(Str(o, "label") ?? "").Append(d is { Length: > 0 } ? " — " + d : "");
+                        sb.Append("\n  • ").Append(label).Append(d is { Length: > 0 } ? " — " + d : "");
                     }
             }
         var s = sb.ToString();
@@ -124,30 +127,44 @@ public static class ClaudeHook
     private static string HookCommand(int port) =>
         $"{(OperatingSystem.IsWindows() ? "curl.exe" : "curl")} -s --max-time 3600 -X POST http://127.0.0.1:{port}{Endpoint} -H \"Content-Type: application/json\" --data-binary \"@-\"";
 
-    private static bool IsOurs(JsonNode? hook) => hook?["command"]?.GetValue<string>()?.Contains(Endpoint) == true;
+    private static bool IsOurs(JsonNode? hook) =>
+        hook is JsonObject obj && obj["command"] is JsonValue v && v.TryGetValue<string>(out var cmd)
+        && cmd.Contains(Endpoint, StringComparison.Ordinal);
 
-    public static bool Installed()
+    public static bool Installed() => Installed(SettingsPath);
+
+    internal static bool Installed(string path)
     {
         try
         {
-            var root = JsonNode.Parse(File.ReadAllText(SettingsPath), documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-            return root?["hooks"]?["PermissionRequest"]?.AsArray().Any(g => g?["hooks"]?.AsArray().Any(IsOurs) == true) == true;
+            var root = JsonNode.Parse(File.ReadAllText(path), documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            return root is JsonObject obj
+                && obj["hooks"] is JsonObject hooks
+                && hooks["PermissionRequest"] is JsonArray groups
+                && groups.Any(g => g is JsonObject go && go["hooks"] is JsonArray hs && hs.Any(IsOurs));
         }
         catch { return false; }
     }
 
     /// <summary>Adds (or, with install = false, removes) the PhoneBox hook, keeping everything else and a backup.</summary>
-    public static string? Configure(bool install, int port, int timeoutSec)
+    public static string? Configure(bool install, int port, int timeoutSec) =>
+        Configure(install, port, timeoutSec, SettingsPath);
+
+    internal static string? Configure(bool install, int port, int timeoutSec, string path)
     {
         try
         {
             JsonObject root;
-            if (File.Exists(SettingsPath))
+            if (File.Exists(path))
             {
-                var text = File.ReadAllText(SettingsPath);
-                root = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }) as JsonObject
-                       ?? throw new InvalidDataException("settings.json is not a JSON object");
-                File.WriteAllText(SettingsPath + ".phonebox.bak", text);
+                var text = File.ReadAllText(path);
+                if (string.IsNullOrWhiteSpace(text)) root = new JsonObject();
+                else
+                {
+                    root = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }) as JsonObject
+                           ?? throw new InvalidDataException("settings.json is not a JSON object");
+                    File.WriteAllText(path + ".phonebox.bak", text);
+                }
             }
             else root = new JsonObject();
 
@@ -156,7 +173,7 @@ public static class ClaudeHook
             // drop our old entries (and groups that become empty)
             foreach (var g in groups.ToList())
             {
-                if (g?["hooks"] is not JsonArray hs) continue;
+                if (g is not JsonObject go || go["hooks"] is not JsonArray hs) continue;
                 foreach (var h in hs.Where(IsOurs).ToList()) hs.Remove(h);
                 if (hs.Count == 0) groups.Remove(g);
             }
@@ -171,13 +188,21 @@ public static class ClaudeHook
                         ["timeout"] = Math.Clamp(timeoutSec, 10, 3600) + 15,
                     }),
                 });
-            if (groups.Count > 0) hooks["PermissionRequest"] = groups; else hooks.Remove("PermissionRequest");
-            if (hooks.Count > 0) root["hooks"] = hooks; else root.Remove("hooks");
+            if (groups.Count > 0)
+            {
+                if (!ReferenceEquals(hooks["PermissionRequest"], groups)) hooks["PermissionRequest"] = groups;
+            }
+            else hooks.Remove("PermissionRequest");
+            if (hooks.Count > 0)
+            {
+                if (!ReferenceEquals(root["hooks"], hooks)) root["hooks"] = hooks;
+            }
+            else root.Remove("hooks");
 
-            Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-            var tmp = SettingsPath + ".tmp";
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var tmp = path + ".tmp";
             File.WriteAllText(tmp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
-            File.Move(tmp, SettingsPath, overwrite: true);
+            File.Move(tmp, path, overwrite: true);
             return null;
         }
         catch (Exception ex) { return ex.Message; }

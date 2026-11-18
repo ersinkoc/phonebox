@@ -15,11 +15,15 @@ public static class Shortcuts
     public static string? Run(AgentConfig cfg, string id, ILogger log, PushStore? push = null, AudioControl? audio = null)
     {
         var sc = cfg.Shortcuts.FirstOrDefault(s => s.Id == id);
-        if (sc is null) return $"no such shortcut: {id}";
-        if (!sc.Toggle) return Execute(sc, log, cfg);
+        return sc is null ? $"no such shortcut: {id}" : RunCore(cfg, sc, log, push, audio, 0);
+    }
+
+    private static string? RunCore(AgentConfig? cfg, Shortcut sc, ILogger log, PushStore? push, AudioControl? audio, int depth)
+    {
+        if (!sc.Toggle) return Execute(sc, log, cfg, depth, push, audio);
         var on = State(sc, push, audio) ?? false;
         var target = on && sc.OffCmd is not null ? new Shortcut { Label = sc.Label, Cmd = sc.OffCmd, Args = sc.OffArgs, Cwd = sc.Cwd } : sc;
-        var err = Execute(target, log, cfg);
+        var err = Execute(target, log, cfg, depth, push, audio);
         if (err is null && sc.StateKey is null && sc.Cmd != "builtin:mute") Remembered[sc.Id] = !on;
         return err;
     }
@@ -53,7 +57,7 @@ public static class Shortcuts
     }
 
     /// <returns>An error message, or null on success.</returns>
-    public static string? Execute(Shortcut sc, ILogger log, AgentConfig? cfg = null, int depth = 0)
+    public static string? Execute(Shortcut sc, ILogger log, AgentConfig? cfg = null, int depth = 0, PushStore? push = null, AudioControl? audio = null)
     {
         try
         {
@@ -78,7 +82,7 @@ public static class Shortcuts
                             case "wait": Thread.Sleep(Math.Clamp(int.TryParse(value, out var ms) ? ms : 0, 0, 10_000)); break;
                             case "shortcut":
                                 var other = cfg?.Shortcuts.FirstOrDefault(s => s.Id == value) ?? throw new InvalidOperationException($"no such shortcut: {value}");
-                                if (Execute(other, log, cfg, depth + 1) is { } err) throw new InvalidOperationException(err);
+                                if (RunCore(cfg, other, log, push, audio, depth + 1) is { } err) throw new InvalidOperationException(err);
                                 break;
                             default: throw new InvalidOperationException($"unknown macro step \"{step}\" (use keys:, text:, wait: or shortcut:)");
                         }
@@ -106,7 +110,7 @@ public static class Shortcuts
                     else Unix("xset", "dpms", "force", "off");
                     break;
                 case "builtin:mute":
-                    new AudioControl().ToggleMute();
+                    (audio ?? new AudioControl()).ToggleMute();
                     break;
 #endif
                 default:

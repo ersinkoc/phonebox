@@ -95,13 +95,13 @@ public sealed partial class CameraFeeds : IDisposable
     /// this widget was sent it before.</param>
     public (int Status, byte[]? Jpeg, string State) Frame(string? deviceId, string? widgetKey, bool fresh = false)
     {
-        var cfg = _config.Get();
-        if (PanelWidgets.Find(cfg, deviceId, widgetKey, WidgetType) is not { } widget) return (404, null, "unknown");
-        var id = widget.Str("camera");
-        if (string.IsNullOrEmpty(id) || cfg.Cameras.Sources.FirstOrDefault(s => s.Id == id) is not { } source) return (404, null, "pick");
         var now = _now();
         lock (_gate)
         {
+            var cfg = _config.Get();
+            if (PanelWidgets.Find(cfg, deviceId, widgetKey, WidgetType) is not { } widget) return (404, null, "unknown");
+            var id = widget.Str("camera");
+            if (string.IsNullOrEmpty(id) || cfg.Cameras.Sources.FirstOrDefault(s => s.Id == id) is not { } source) return (404, null, "pick");
             if (_disposed) return (503, null, "starting");
             if (!_feeds.TryGetValue(id, out var feed))
             {

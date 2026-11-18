@@ -55,6 +55,35 @@ public sealed class RadioDirectoryTests
         Assert.False(RadioBrowserDirectory.IsSafePublicUri(new Uri("http://192.168.1.50/stream.mp3")));
     }
 
+    [Fact]
+    public void StreamIdentityPreservesPathAndQueryCase()
+    {
+        var stations = RadioBrowserDirectory.ParseStations("""
+            [
+              { "name": "Upper path", "url": "https://stream.example.com/Live?channel=A" },
+              { "name": "Lower path", "url": "https://stream.example.com/live?channel=A" },
+              { "name": "Lower channel", "url": "https://stream.example.com/live?channel=a" },
+              { "name": "Same upper path", "url": "HTTPS://STREAM.EXAMPLE.COM:443/Live?channel=A" }
+            ]
+            """, "TR", 10);
+
+        Assert.Equal(["Upper path", "Lower path", "Lower channel"], stations.Select(st => st.Label));
+    }
+
+    [Fact]
+    public void ADiscardedStationNameDoesNotReserveItsStream()
+    {
+        var stations = RadioBrowserDirectory.ParseStations("""
+            [
+              { "name": "First station", "url": "https://stream.example.com/first" },
+              { "name": "First station", "url": "https://stream.example.com/second" },
+              { "name": "Second station", "url": "https://stream.example.com/second" }
+            ]
+            """, "TR", 10);
+
+        Assert.Equal(["First station", "Second station"], stations.Select(st => st.Label));
+    }
+
     [Theory]
     [InlineData("http://router/stream.mp3")]
     [InlineData("http://nas.lan/radio")]
@@ -65,8 +94,16 @@ public sealed class RadioDirectoryTests
     [InlineData("http://192.168.1.1.nip.io/live")]
     [InlineData("http://10-0-0-7.sslip.io/live")]
     [InlineData("http://app.127.0.0.1.nip.io/x")]
-    public void HostnamesThatPointIntoTheHomeNetworkAreNotImported(string url) =>
-        Assert.False(RadioBrowserDirectory.IsSafePublicUri(new Uri(url)));
+    [InlineData("http://[64:ff9b::7f00:1]/live")]
+    [InlineData("http://[64:ff9b::c0a8:101]/live")]
+    [InlineData("http://198.18.0.10/live")]
+    [InlineData("http://192.0.0.5/live")]
+    public void HostnamesThatPointIntoTheHomeNetworkAreNotImported(string url)
+    {
+        var uri = new Uri(url);
+        Assert.False(RadioBrowserDirectory.IsSafePublicUri(uri));
+        Assert.False(RadioLogoCache.IsSafePublicUri(uri));
+    }
 
     [Theory]
     [InlineData("https://stream.example.com/live.mp3")]
@@ -139,6 +176,37 @@ public sealed class RadioDirectoryTests
         await Assert.ThrowsAsync<RadioDirectoryUnavailableException>(() => RadioBrowserDirectory.GetCountriesAsync(default, allBad));
     }
 
+    [Theory]
+    [InlineData("http://[2002:7f00:1::1]/live")]
+    [InlineData("http://[2002:c0a8:101::1]/live")]
+    [InlineData("http://[2001:0:4136:e378:8000:63bf:80ff:fffe]/live")]
+    [InlineData("http://[::7f00:1]/live")]
+    [InlineData("http://[::ffff:0:c0a8:101]/live")]
+    [InlineData("http://[2001:db8::1]/live")]
+    [InlineData("http://[2001:2::1]/live")]
+    [InlineData("http://[100::1]/live")]
+    [InlineData("http://192.0.2.10/live")]
+    [InlineData("http://198.51.100.10/live")]
+    [InlineData("http://203.0.113.10/live")]
+    [InlineData("http://192.88.99.1/live")]
+    public void PrivateTunnelAndReservedAddressesAreRejectedAndNonHttpRedirectsReportInvalidRedirect(string unsafeUrl)
+    {
+        var uri = new Uri(unsafeUrl);
+        Assert.False(RadioBrowserDirectory.IsSafePublicUri(uri));
+        Assert.False(RadioLogoCache.IsSafePublicUri(uri));
+        Assert.True(RadioBrowserDirectory.IsSafePublicUri(new Uri("http://[2002:0808:0808::1]/live")));
+    }
+
+    [Fact]
+    public async Task NonHttpRedirectSchemeReportsInvalidRedirectInsteadOfLocalAddress()
+    {
+        using var http = new HttpClient(new FakeHandler());
+        var results = await RadioBrowserDirectory.CheckStreamsAsync(
+            [new RadioCheckItem("s-ftp", "https://stream.example.com/ftp-redirect.mp3")], default, http);
+        Assert.False(results[0].Ok);
+        Assert.Equal("Invalid redirect", results[0].Status);
+    }
+
     private sealed class BodyByHostHandler(Func<string, (string Body, string MediaType)> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -165,6 +233,12 @@ public sealed class RadioDirectoryTests
             {
                 var redir = new HttpResponseMessage(HttpStatusCode.Redirect);
                 redir.Headers.Location = new Uri("https://127.0.0.1/internal");
+                return Task.FromResult(redir);
+            }
+            if (path.EndsWith("/ftp-redirect.mp3"))
+            {
+                var redir = new HttpResponseMessage(HttpStatusCode.Redirect);
+                redir.Headers.Location = new Uri("ftp://files.example.com/stream.mp3");
                 return Task.FromResult(redir);
             }
             var isHtml = path.EndsWith(".html");

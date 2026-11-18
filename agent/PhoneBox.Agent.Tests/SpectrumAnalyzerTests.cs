@@ -18,6 +18,24 @@ public sealed class SpectrumAnalyzerTests : IDisposable
     public void SilenceIsAllZero() =>
         Assert.All(SpectrumAnalyzer.Analyze(new float[SpectrumAnalyzer.FftSize], 48000), b => Assert.Equal(0, b));
 
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    [InlineData(float.NegativeInfinity)]
+    public void ACorruptSampleDoesNotBlankTheRestOfTheWindow(float corruptSample)
+    {
+        var clean = Sine(1000, 0.5);
+        clean[512] = 0;
+        var expected = SpectrumAnalyzer.Analyze(clean, 48000);
+        Assert.True(expected.Max() > 0);
+
+        clean[512] = corruptSample;
+        var actual = SpectrumAnalyzer.Analyze(clean, 48000);
+        Assert.True(expected.SequenceEqual(actual),
+            $"EXPECTED: intact spectrum, peak={expected.Max()} | ACTUAL: peak={actual.Max()}");
+    }
+
     [Fact]
     public void BassLandsInTheBassBars()
     {

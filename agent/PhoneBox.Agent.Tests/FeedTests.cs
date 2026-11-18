@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Xml;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -333,8 +334,51 @@ public sealed class FeedMonitorTests : IDisposable
 
     private const string Rss = """<rss><channel><item><title>Hello</title><link>https://feeds.example/hello</link><pubDate>Mon, 16 Nov 2026 09:30:00 GMT</pubDate></item><item><title>Nolink</title></item></channel></rss>""";
 
-    private FeedMonitor Monitor(ConfigStore cfg, FeedHttpTests.Fake handler, List<Uri>? opened = null) =>
+    private FeedMonitor Monitor(ConfigStore cfg, HttpMessageHandler handler, List<Uri>? opened = null) =>
         new(cfg, NullLogger<FeedMonitor>.Instance) { Handler = handler, Now = () => _now, Opener = u => opened?.Add(u) };
+
+    private sealed class GatedFeed : HttpMessageHandler
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Entered.TrySetResult();
+            await Release.Task.WaitAsync(ct);
+            return FeedHttpTests.Ok(Rss);
+        }
+    }
+
+    [Theory]
+    [InlineData("Blog")]
+    [InlineData("Renamed")]
+    [InlineData(null)]
+    public async Task InFlightFetchPublishesOnlyCurrentSources(string? name)
+    {
+        var cfg = Config();
+        using var handler = new GatedFeed();
+        using var monitor = Monitor(cfg, handler);
+        var pending = monitor.TickAsync(CancellationToken.None);
+        try
+        {
+            await handler.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if (name != "Blog")
+            {
+                var settings = JsonNode.Parse(File.ReadAllText(cfg.Path))!;
+                if (name is null) settings["feeds"] = new JsonArray();
+                else settings["feeds"]![0]!["name"] = name;
+                Assert.Null(cfg.Save(settings.ToJsonString()));
+            }
+        }
+        finally { handler.Release.TrySetResult(); }
+
+        await pending.WaitAsync(TimeSpan.FromSeconds(5));
+        var actual = monitor.Snapshot().Items.Select(item => item.Source).ToArray();
+        string[] expected = name is null ? [] : [name, name];
+        Assert.True(expected.SequenceEqual(actual),
+            $"EXPECTED: sources=[{string.Join(", ", expected)}] | ACTUAL: sources=[{string.Join(", ", actual)}]");
+    }
 
     [Fact]
     public async Task EachFeedIsFetchedAtMostEveryFifteenMinutes()

@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using System.Text;
+using System.Xml;
 
 namespace PhoneBox.Agent;
 
@@ -47,14 +47,17 @@ public sealed class ShortcutIconUploads(string? iconsDir = null)
     /// <summary>The uploaded icon for a shortcut and its content type, or null when none was uploaded.</summary>
     public (byte[] Bytes, string ContentType)? Read(string id)
     {
-        foreach (var (contentType, ext) in ExtensionByContentType)
+        lock (_gate)
         {
-            var path = PathFor(id, ext);
-            if (!File.Exists(path)) continue;
-            try { return (File.ReadAllBytes(path), contentType); }
-            catch { return null; }
+            foreach (var (contentType, ext) in ExtensionByContentType)
+            {
+                var path = PathFor(id, ext);
+                if (!File.Exists(path)) continue;
+                try { return (File.ReadAllBytes(path), contentType); }
+                catch { return null; }
+            }
+            return null;
         }
-        return null;
     }
 
     /// <summary>
@@ -88,11 +91,17 @@ public sealed class ShortcutIconUploads(string? iconsDir = null)
         var tmp = target + ".tmp";
         lock (_gate)
         {
-            // Written in full before anything existing is touched: a failed write (e.g. a full disk) leaves
-            // whatever icon was there before untouched, instead of losing it to a Remove() with no replacement.
-            File.WriteAllBytes(tmp, bytes);
-            RemoveLocked(id);
-            File.Move(tmp, target, overwrite: true);
+            // Publish the replacement before removing other formats so a failed write or move preserves the old icon.
+            try
+            {
+                File.WriteAllBytes(tmp, bytes);
+                File.Move(tmp, target, overwrite: true);
+            }
+            finally
+            {
+                try { File.Delete(tmp); } catch { }
+            }
+            RemoveLocked(id, exceptExtension: ext);
             _revisionCache[id] = ContentRevision(bytes);
         }
         return null;
@@ -101,10 +110,13 @@ public sealed class ShortcutIconUploads(string? iconsDir = null)
     /// <summary>Deletes a shortcut's custom icon, in whichever format it was saved.</summary>
     public void Remove(string id) { lock (_gate) { RemoveLocked(id); _revisionCache.Remove(id); } }
 
-    private void RemoveLocked(string id)
+    private void RemoveLocked(string id, string? exceptExtension = null)
     {
         foreach (var ext in ExtensionByContentType.Values)
+        {
+            if (ext == exceptExtension) continue;
             try { File.Delete(PathFor(id, ext)); } catch { }
+        }
     }
 
     /// <summary>Deletes uploads for shortcuts that no longer exist (deleted, or never saved past "New shortcut").</summary>
@@ -144,13 +156,25 @@ public sealed class ShortcutIconUploads(string? iconsDir = null)
     {
         ".png" => b.Length >= 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47 && b[4] == 0x0D && b[5] == 0x0A && b[6] == 0x1A && b[7] == 0x0A,
         ".webp" => b.Length >= 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F' && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P',
-        ".svg" => LooksLikeSvg(b),
+        ".svg" => IsSvg(b),
         _ => false,
     };
 
-    private static bool LooksLikeSvg(byte[] b)
+    private static bool IsSvg(byte[] bytes)
     {
-        var head = Encoding.UTF8.GetString(b, 0, Math.Min(b.Length, 256)).TrimStart('﻿', ' ', '\t', '\r', '\n');
-        return head.StartsWith("<svg", StringComparison.OrdinalIgnoreCase) || head.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            using var stream = new MemoryStream(bytes, writable: false);
+            using var xml = XmlReader.Create(stream, new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Ignore,
+                XmlResolver = null,
+            });
+            if (xml.MoveToContent() != XmlNodeType.Element || xml.LocalName != "svg"
+                || xml.NamespaceURI is not ("" or "http://www.w3.org/2000/svg")) return false;
+            while (xml.Read()) { } // Check that the entire document is well formed.
+            return true;
+        }
+        catch (XmlException) { return false; }
     }
 }

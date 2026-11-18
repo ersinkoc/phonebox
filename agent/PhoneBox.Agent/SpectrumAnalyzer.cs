@@ -64,7 +64,11 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
         if (samples.Length != FftSize) throw new ArgumentException($"needs {FftSize} samples", nameof(samples));
         var re = new double[FftSize];
         var im = new double[FftSize];
-        for (var i = 0; i < FftSize; i++) re[i] = samples[i] * Window[i];
+        for (var i = 0; i < FftSize; i++)
+        {
+            var sample = samples[i];
+            re[i] = float.IsFinite(sample) ? sample * Window[i] : 0;
+        }
         Fft(re, im);
         var binHz = (double)sampleRate / FftSize;
         var top = Math.Min(MaxHz, sampleRate / 2.0 * 0.95);
@@ -230,20 +234,28 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
         log.LogInformation("spectrum: capture stopped ({Why})", why);
     }
 
-    /// <summary>Downmixes to mono into the ring buffer. The loopback format is 32-bit float almost always; 16-bit PCM too.</summary>
+    /// <summary>Downmixes 32-bit float or 16/32-bit PCM samples to mono in the ring buffer.</summary>
     private void OnData(byte[] buf, int bytes, WaveFormat fmt)
     {
         var ch = Math.Max(1, fmt.Channels);
-        var isFloat = fmt.BitsPerSample == 32;
+        var encoding = (fmt is WaveFormatExtensible extended ? extended.ToStandardWaveFormat() : fmt).Encoding;
+        var isFloat = encoding == WaveFormatEncoding.IeeeFloat;
+        var bits = fmt.BitsPerSample;
         var frameBytes = fmt.BlockAlign;
-        if (frameBytes <= 0 || (fmt.BitsPerSample != 32 && fmt.BitsPerSample != 16)) return;
+        if (frameBytes <= 0 || (isFloat ? bits != 32 : encoding != WaveFormatEncoding.Pcm || bits is not (16 or 32))) return;
+        var sampleBytes = bits / 8;
         lock (_ring)
         {
             for (var off = 0; off + frameBytes <= bytes; off += frameBytes)
             {
                 double sum = 0;
                 for (var c = 0; c < ch; c++)
-                    sum += isFloat ? BitConverter.ToSingle(buf, off + c * 4) : BitConverter.ToInt16(buf, off + c * 2) / 32768.0;
+                {
+                    var sampleOffset = off + c * sampleBytes;
+                    sum += isFloat ? BitConverter.ToSingle(buf, sampleOffset)
+                        : bits == 32 ? BitConverter.ToInt32(buf, sampleOffset) / 2147483648.0
+                        : BitConverter.ToInt16(buf, sampleOffset) / 32768.0;
+                }
                 _ring[_ringPos] = (float)(sum / ch);
                 _ringPos = (_ringPos + 1) % _ring.Length;
             }

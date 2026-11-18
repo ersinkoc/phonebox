@@ -21,6 +21,8 @@ public sealed class ObsTests : IDisposable
     private bool _recording;
     private string _scene = "Desk";
     private TaskCompletionSource? _inputsReady;
+    private TaskCompletionSource? _inputsEntered;
+    private WebSocket? _activeSocket;
 
     public ObsTests()
     {
@@ -43,6 +45,7 @@ public sealed class ObsTests : IDisposable
     {
         var wsc = await ctx.AcceptWebSocketAsync("obswebsocket.json");
         var ws = wsc.WebSocket;
+        _activeSocket = ws;
         async Task Send(object o) => await ws.SendAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(o)), WebSocketMessageType.Text, true, default);
         async Task<JsonNode?> Receive()
         {
@@ -66,6 +69,7 @@ public sealed class ObsTests : IDisposable
                 if (m is null) break;
                 var d = m["d"]!;
                 var type = d["requestType"]!.GetValue<string>();
+                if (type == "GetInputList") _inputsEntered?.TrySetResult();
                 if (type == "GetInputList" && _inputsReady is { } ready) await ready.Task;
                 lock (_requests) _requests.Add(type + (d["requestData"]?["sceneName"] is { } sn ? ":" + sn.GetValue<string>() : ""));
                 object data = type switch
@@ -202,6 +206,35 @@ public sealed class ObsTests : IDisposable
     {
         Assert.StartsWith("Connected", await ObsMonitor.TestAsync(_ws, Password));
         Assert.NotEqual("Connected", await ObsMonitor.TestAsync(_ws, "wrong"));
+    }
+
+    [Fact]
+    public async Task DisconnectingMidDiscoveryNeverPoisonsCachedDeckSnapshot()
+    {
+        _inputsEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inputsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var obs = Monitor(Password);
+        await obs.StartAsync(default);
+        try
+        {
+            await Until(() => obs.Snapshot().Connected);
+            var discovery = obs.DeckSnapshot(default);
+            await _inputsEntered.Task;
+
+            try { await _activeSocket!.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "bye", default); } catch { }
+            _activeSocket?.Abort();
+            _inputsReady.TrySetResult();
+
+            var snap = await discovery;
+            Assert.False(snap["connected"]!.GetValue<bool>());
+            var cached = typeof(ObsMonitor).GetField("_deck", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(obs);
+            Assert.Null(cached);
+        }
+        finally
+        {
+            _inputsReady.TrySetResult();
+            await obs.StopAsync(default);
+        }
     }
 
     public void Dispose()

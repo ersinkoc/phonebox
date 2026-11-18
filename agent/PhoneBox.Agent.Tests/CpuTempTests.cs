@@ -73,4 +73,25 @@ public sealed class CpuTempTests
 
     [Fact]
     public void NoCpuSensorsMeansNoTemperature() => Assert.Null(Temp(Root()));
+
+    [Fact]
+    public void FahrenheitSensorsConvertToCelsiusAndNullChildrenAreTolerated()
+    {
+        var json = """
+        {
+          "Text": "Sensor",
+          "Children": [
+            { "Text": "Motherboard", "Children": null },
+            {
+              "Text": "Intel Core i7",
+              "HardwareId": "/intelcpu/0",
+              "Children": [
+                { "Text": "Temperatures", "Children": [{ "Text": "CPU Package", "Value": "140,0 °F", "Type": "Temperature", "Children": null }] }
+              ]
+            }
+          ]
+        }
+        """;
+        Assert.Equal(60.0, Temp(json));
+    }
 }

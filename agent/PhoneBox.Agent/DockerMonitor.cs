@@ -23,6 +23,8 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
     private readonly SemaphoreSlim _gate = new(1, 1);
     private static readonly Lazy<IReadOnlyList<string>> Clis = new(FindClis);
     private volatile string? _activeCli;
+    internal string? CliOverride { init => _activeCli = value; }
+    internal Func<string, CancellationToken, string[], Task<(int Code, string Out, string Err)>>? RunnerOverride { get; init; }
 
     public DockerSnapshot Snapshot()
     {
@@ -79,21 +81,21 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
     private async Task RefreshCore(CancellationToken ct)
     {
         var clis = Clis.Value;
-        if (clis.Count == 0)
+        var cli = _activeCli ?? clis.FirstOrDefault();
+        if (cli is null)
         {
             _snap = new(false, "Docker is not installed (no docker or podman command found)", [], Now());
             return;
         }
 
-        var cli = _activeCli ?? clis[0];
         var fmt = FormatArg(cli);
-        var (code, output, error) = await Run(cli, ct, "ps", "-a", "--format", fmt);
+        var (code, output, error) = await Exec(cli, ct, "ps", "-a", "--format", fmt);
         if (code != 0 && clis.Count > 1)
         {
             foreach (var alt in clis.Where(c => c != cli))
             {
                 var altFmt = FormatArg(alt);
-                var res = await Run(alt, ct, "ps", "-a", "--format", altFmt);
+                var res = await Exec(alt, ct, "ps", "-a", "--format", altFmt);
                 if (res.Code == 0)
                 {
                     cli = _activeCli = alt;
@@ -118,12 +120,16 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
         {
             // Stamp before the call so a stats timeout does not make every later poll wait for it again.
             _statsAt = DateTime.UtcNow;
-            var (sc, so, _) = await Run(cli, ct, "stats", "--no-stream", "--format", fmt);
-            if (sc == 0)
+            try
             {
-                _stats = ParseStats(so);
-                _snap = new(true, null, ParseContainers(output, _stats), Now());
+                var (sc, so, _) = await Exec(cli, ct, "stats", "--no-stream", "--format", fmt);
+                if (sc == 0)
+                {
+                    _stats = ParseStats(so);
+                    _snap = new(true, null, ParseContainers(output, _stats), Now());
+                }
             }
+            catch (Exception) when (!ct.IsCancellationRequested) { }
         }
     }
 
@@ -191,16 +197,17 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
 
     /// <summary>Whether some Docker widget allows start / stop / restart from the phone.</summary>
     public bool ControlAllowed() =>
-        config.Get().Widgets().Any(w => w.Type == "docker" && w.Bool("control") == true);
+        config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "docker" && w.Bool("control") == true);
 
     public async Task<string?> ActAsync(string id, string action)
     {
         if (!ControlAllowed()) return "starting and stopping containers is turned off in the widget's settings";
         if (action is not ("start" or "stop" or "restart")) return "unknown action";
+        if (_snap.Updated == 0) await RefreshColdCacheAsync();
         if (!_snap.Containers.Any(c => c.Id == id)) return "unknown container";
         var cli = _activeCli ?? Clis.Value.FirstOrDefault();
         if (cli is null) return "no docker or podman command found";
-        var (code, _, error) = await Run(cli, CancellationToken.None, action, id);
+        var (code, _, error) = await Exec(cli, CancellationToken.None, action, id);
         log.LogInformation("docker {Action} {Id}: {Result}", action, id, code == 0 ? "ok" : error);
         _statsAt = DateTime.MinValue;
         Interlocked.Exchange(ref _lastRequest, Environment.TickCount64);
@@ -217,6 +224,9 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
 
     private static string FormatArg(string cli) =>
         Path.GetFileNameWithoutExtension(cli).Equals("podman", StringComparison.OrdinalIgnoreCase) ? "json" : "{{json .}}";
+
+    private Task<(int Code, string Out, string Err)> Exec(string cli, CancellationToken ct, params string[] args) =>
+        RunnerOverride is { } fn ? fn(cli, ct, args) : Run(cli, ct, args);
 
     private static async Task<(int Code, string Out, string Err)> Run(string cli, CancellationToken ct, params string[] args)
     {
@@ -241,9 +251,12 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
         timeout.CancelAfter(TimeSpan.FromSeconds(20));
         var stdout = p.StandardOutput.ReadToEndAsync(timeout.Token);
         var stderr = p.StandardError.ReadToEndAsync(timeout.Token);
-        try { await p.WaitForExitAsync(timeout.Token); }
+        try
+        {
+            await p.WaitForExitAsync(timeout.Token);
+            return (p.ExitCode, await stdout, await stderr);
+        }
         catch (OperationCanceledException) { try { p.Kill(true); } catch { } throw; }
-        return (p.ExitCode, await stdout, await stderr);
     }
 
     private static IReadOnlyList<string> FindClis()
@@ -306,10 +319,13 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
         {
             if (labels.ValueKind == JsonValueKind.String && labels.GetString() is { } s)
             {
-                var p = s.Split(',').FirstOrDefault(l =>
-                    l.StartsWith("com.docker.compose.project=", StringComparison.Ordinal) ||
-                    l.StartsWith("io.podman.compose.project=", StringComparison.Ordinal))?.Split('=', 2)[1];
-                if (!string.IsNullOrWhiteSpace(p)) return p;
+                foreach (var l in s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if ((l.StartsWith("com.docker.compose.project=", StringComparison.Ordinal) ||
+                         l.StartsWith("io.podman.compose.project=", StringComparison.Ordinal)) &&
+                        l.Split('=', 2)[1].Trim() is { Length: > 0 } p)
+                        return p;
+                }
             }
             else if (labels.ValueKind == JsonValueKind.Object)
             {
@@ -329,15 +345,25 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
 
     private static string FallbackStatus(JsonElement j, string state)
     {
-        if (state == "running" && Num(j, "StartedAt") is { } started && started > 0)
+        if (state == "running" && TryStartedUnixSeconds(j) is { } started && started > 0)
         {
-            var sec = Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - (long)started);
+            var sec = Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - started);
             if (sec >= 86400) return $"Up {sec / 86400} days";
             if (sec >= 3600) return $"Up {sec / 3600} hours";
             if (sec >= 60) return $"Up {sec / 60} minutes";
             return $"Up {sec} seconds";
         }
         return Str(j, "CreatedAt") is { Length: > 0 } ca ? ca : state;
+    }
+
+    private static long? TryStartedUnixSeconds(JsonElement j)
+    {
+        if (Num(j, "StartedAt") is { } n && n > 0) return (long)n;
+        if (Str(j, "StartedAt") is { Length: > 0 } s &&
+            DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto) &&
+            dto.Year > 1970)
+            return dto.ToUnixTimeSeconds();
+        return null;
     }
 
     private static string FormatBytes(double bytes) => bytes switch

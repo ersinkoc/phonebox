@@ -36,6 +36,7 @@ internal static partial class RadioBrowserDirectory
     ];
     private static volatile string? _preferredMirror;
     private const int MaxRedirects = 5;
+    private const int MaxDirectoryBytes = 4 * 1024 * 1024;
 
     private sealed class NonPublicAddressException() : Exception("local address, not checked");
 
@@ -105,10 +106,8 @@ internal static partial class RadioBrowserDirectory
                 attemptCts.CancelAfter(TimeSpan.FromSeconds(5));
                 using var res = await SendPublicGetAsync(http, uri, attemptCts.Token);
                 if (res is null || !res.IsSuccessStatusCode) continue;
-                var body = await res.Content.ReadAsStringAsync(attemptCts.Token);
-                // a mirror that answers 200 with something else (a maintenance page, an error object) is skipped like
-                // a failing one, and does not become the preferred mirror
-                if (!IsJsonArray(body)) continue;
+                var body = await ReadBoundedStringAsync(res, MaxDirectoryBytes, attemptCts.Token);
+                if (body is null || !IsJsonArray(body)) continue;
                 if (client is null) _preferredMirror = host;
                 return body;
             }
@@ -122,6 +121,21 @@ internal static partial class RadioBrowserDirectory
             }
         }
         throw new RadioDirectoryUnavailableException("Could not reach radio-browser.info mirrors. Check your internet connection or try again shortly.");
+    }
+
+    private static async Task<string?> ReadBoundedStringAsync(HttpResponseMessage res, int maxBytes, CancellationToken ct)
+    {
+        if (res.Content.Headers.ContentLength is { } cl && cl > maxBytes) return null;
+        await using var stream = await res.Content.ReadAsStreamAsync(ct);
+        using var ms = new MemoryStream();
+        var buf = new byte[16 * 1024];
+        int read;
+        while ((read = await stream.ReadAsync(buf, ct)) > 0)
+        {
+            if (ms.Length + read > maxBytes) return null;
+            ms.Write(buf, 0, read);
+        }
+        return System.Text.Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
     }
 
     // Every directory call used here (countries, station search) answers with a JSON array.
@@ -173,7 +187,7 @@ internal static partial class RadioBrowserDirectory
     {
         using var doc = JsonDocument.Parse(json);
         if (doc.RootElement.ValueKind != JsonValueKind.Array) return [];
-        var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenUrls = new HashSet<string>(StringComparer.Ordinal);
         var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var results = new List<RadioStationCandidate>();
         var cc = countryCode.ToLowerInvariant();
@@ -185,9 +199,11 @@ internal static partial class RadioBrowserDirectory
             var streamUrl = !string.IsNullOrEmpty(resolved) ? resolved : Str(el, "url")?.Trim();
             if (string.IsNullOrEmpty(rawName) || string.IsNullOrEmpty(streamUrl)) continue;
             if (!Uri.TryCreate(streamUrl, UriKind.Absolute, out var uri) || !IsSafePublicUri(uri)) continue;
-            if (!seenUrls.Add(streamUrl)) continue;
             var cleanName = CleanStationName(rawName);
-            if (string.IsNullOrEmpty(cleanName) || !seenNames.Add(cleanName)) continue;
+            if (string.IsNullOrEmpty(cleanName) || seenNames.Contains(cleanName)) continue;
+            var streamKey = uri.GetComponents(UriComponents.AbsoluteUri & ~UriComponents.Fragment, UriFormat.UriEscaped);
+            if (!seenUrls.Add(streamKey)) continue;
+            seenNames.Add(cleanName);
 
             var favicon = Str(el, "favicon")?.Trim();
             var logoUrl = !string.IsNullOrEmpty(favicon) && Uri.TryCreate(favicon, UriKind.Absolute, out var favUri)
@@ -280,7 +296,7 @@ internal static partial class RadioBrowserDirectory
             if ((int)res.StatusCode is >= 300 and <= 399 && res.Headers.Location is { } loc)
             {
                 res.Dispose();
-                if (!Uri.TryCreate(current, loc, out var next)) return null;
+                if (!Uri.TryCreate(current, loc, out var next) || next.Scheme is not ("http" or "https")) return null;
                 if (current.Scheme == Uri.UriSchemeHttps && next.Scheme == Uri.UriSchemeHttp) return null;
                 if (!IsSafePublicUri(next)) throw new NonPublicAddressException();
                 current = next;
@@ -320,7 +336,7 @@ internal static partial class RadioBrowserDirectory
     [System.Text.RegularExpressions.GeneratedRegex(@"(?<![0-9])(?:[0-9]{1,3}[.-]){3}[0-9]{1,3}(?![0-9])")]
     private static partial System.Text.RegularExpressions.Regex EmbeddedIpv4();
 
-    private static bool IsPublicIpAddress(IPAddress ip)
+    internal static bool IsPublicIpAddress(IPAddress ip)
     {
         if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
         if (IPAddress.IsLoopback(ip) || ip.Equals(IPAddress.Any) || ip.Equals(IPAddress.None) || ip.Equals(IPAddress.IPv6Any) || ip.Equals(IPAddress.IPv6None))
@@ -333,14 +349,27 @@ internal static partial class RadioBrowserDirectory
             if (b[0] == 169 && b[1] == 254) return false;
             if (b[0] == 172 && b[1] is >= 16 and <= 31) return false;
             if (b[0] == 192 && b[1] == 168) return false;
+            if (b[0] == 192 && b[1] == 0 && b[2] is 0 or 2) return false;
+            if (b[0] == 192 && b[1] == 88 && b[2] == 99) return false;
+            if (b[0] == 198 && b[1] is 18 or 19) return false;
+            if (b[0] == 198 && b[1] == 51 && b[2] == 100) return false;
+            if (b[0] == 203 && b[1] == 0 && b[2] == 113) return false;
             if (b[0] >= 224) return false;
             return true;
         }
         if (ip.AddressFamily == AddressFamily.InterNetworkV6)
         {
-            if (ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6Multicast) return false;
+            if (ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6Multicast || ip.IsIPv6Teredo) return false;
             var b = ip.GetAddressBytes();
-            if ((b[0] & 0xFE) == 0xFC) return false;
+            if ((b[0] & 0xE0) != 0x20) return false; // global unicast 2000::/3 only
+            if (b[0] == 0x20 && b[1] == 0x01)
+            {
+                if (b[2] == 0x00 && b[3] == 0x00) return false; // 2001:0000::/32 Teredo
+                if (b[2] == 0x00 && b[3] == 0x02 && b[4] == 0x00 && b[5] == 0x00) return false; // 2001:0002::/48 benchmarking
+                if (b[2] == 0x0D && b[3] == 0xB8) return false; // 2001:0db8::/32 documentation
+            }
+            if (b[0] == 0x20 && b[1] == 0x02)
+                return IsPublicIpAddress(new IPAddress(b.AsSpan(2, 4))); // 2002::/16 6to4 must wrap a public IPv4
             return true;
         }
         return false;

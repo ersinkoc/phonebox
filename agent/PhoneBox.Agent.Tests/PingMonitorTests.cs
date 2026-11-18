@@ -8,7 +8,7 @@ public sealed class PingMonitorTests
         var path = Path.Combine(Path.GetTempPath(), "phonebox-ping-" + Guid.NewGuid().ToString("N") + ".json");
         File.WriteAllText(path, json);
         try { check(new ConfigStore(path)); }
-        finally { File.Delete(path); }
+        finally { File.Delete(path); File.Delete(path + ".bak"); }
     }
 
     [Fact]
@@ -22,6 +22,24 @@ public sealed class PingMonitorTests
     [InlineData("""{"ping":{"host":"bad host"}}""", PingMonitor.DefaultHost)]
     public void HostIsTrimmedEmptyMeansOffAndJunkFallsBack(string json, string expected) => WithConfig(json, store =>
         Assert.Equal(expected, store.Get().Ping.Host));
+
+    [Theory]
+    [InlineData("current.example", true)]
+    [InlineData("next.example", false)]
+    [InlineData("", false)]
+    public void ChangingTheTargetImmediatelyHidesPreviousMeasurements(string newHost, bool visible) =>
+        WithConfig("""{"ping":{"host":"current.example"}}""", store =>
+        {
+            var monitor = new PingMonitor(store);
+            monitor.Sample(12, "current.example");
+            Assert.Equal("current.example", monitor.Snapshot()?.Host);
+
+            Assert.Null(store.Save(System.Text.Json.JsonSerializer.Serialize(new { ping = new { host = newHost } })));
+            monitor.Sample(15, "current.example"); // an already-started old probe completes after the save
+            var actual = monitor.Snapshot()?.Host;
+            var expected = visible ? "current.example" : null;
+            Assert.True(actual == expected, $"EXPECTED: {expected ?? "no snapshot"} | ACTUAL: {actual ?? "no snapshot"}");
+        });
 
     [Fact]
     public async Task AnEmptyHostSendsNothingAndClearsTheSnapshot()

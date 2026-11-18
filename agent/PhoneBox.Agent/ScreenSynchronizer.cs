@@ -24,7 +24,7 @@ internal sealed class ScreenSynchronizer(Func<bool?> readLock, Func<string, bool
                     await apply(device, locked.Value, ct);
                     _applied[device] = locked.Value;
                 }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { _applied.Remove(device); throw; }
                 catch (Exception ex) { _applied.Remove(device); failures.Add(ex); }
             }
             if (failures.Count > 0) throw new AggregateException("Could not synchronize phone screens", failures);

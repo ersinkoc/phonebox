@@ -339,6 +339,42 @@ public sealed class RadioCardViewsTests
         }
     }
 
+    [Fact]
+    public async Task NullActionStringsAndFutureDatedDiskLogosFallBackSafely()
+    {
+        var cacheDir = Path.Combine(Path.GetTempPath(), "phonebox-logos-null-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(cacheDir);
+        try
+        {
+            using var http = new HttpClient(new FakeHandler(req => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req }));
+            using var cache = new RadioLogoCache(cacheDir, http);
+
+            var nullAction = System.Text.Json.JsonSerializer.Deserialize<DeckAction>(
+                """{"id":"r-null","kind":"radio","label":null,"target":null}""",
+                new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+            var nullLogo = await cache.GetAsync(nullAction, allowOnlineLookup: true);
+            Assert.True(nullLogo.IsFallback);
+            Assert.Equal("image/svg+xml", nullLogo.Mime);
+
+            var okAction = new DeckAction { Id = "r-ok", Label = "Jazz FM", Kind = "radio", Target = "https://example.com/jazz.mp3" };
+            var key = RadioLogoCache.CacheKey(okAction, false);
+            var fakePng = new byte[48];
+            new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }.CopyTo(fakePng, 0);
+            var binPath = Path.Combine(cacheDir, key + ".bin");
+            File.WriteAllBytes(binPath, fakePng);
+            File.WriteAllText(Path.Combine(cacheDir, key + ".mime"), "image/png");
+            File.SetLastWriteTimeUtc(binPath, DateTime.UtcNow.AddMinutes(10));
+
+            var futureLogo = await cache.GetAsync(okAction, allowOnlineLookup: false);
+            Assert.True(futureLogo.IsFallback);
+            Assert.False(File.Exists(binPath));
+        }
+        finally
+        {
+            if (Directory.Exists(cacheDir)) Directory.Delete(cacheDir, recursive: true);
+        }
+    }
+
     private static HttpResponseMessage BytesResponse(HttpRequestMessage req, byte[] body, string mediaType)
     {
         var res = new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req, Content = new ByteArrayContent(body) };

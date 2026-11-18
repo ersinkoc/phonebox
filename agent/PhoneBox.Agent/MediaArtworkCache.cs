@@ -15,7 +15,9 @@ internal sealed class MediaArtworkCache(Func<long>? clock = null)
 
     public async Task UpdateAsync(string track, long revision, Func<CancellationToken, Task<AlbumArt?>>? read, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         long generation;
+        long sampleTime;
         lock (_gate)
         {
             var now = _clock();
@@ -28,7 +30,7 @@ internal sealed class MediaArtworkCache(Func<long>? clock = null)
             // Chromium may publish the previous video's thumbnail before the new one arrives.
             var interval = now - _started <= 8000 ? 1000 : 30000;
             if (read is null || _reading || (_hasRead && now - _lastRead < interval)) return;
-            generation = _generation; _reading = true; _hasRead = true; _lastRead = now;
+            generation = _generation; sampleTime = now; _reading = true;
         }
         try
         {
@@ -37,6 +39,7 @@ internal sealed class MediaArtworkCache(Func<long>? clock = null)
             lock (_gate)
             {
                 if (generation != _generation || art is not { Bytes.Length: > 0 }) return;
+                _hasRead = true; _lastRead = sampleTime;
                 if (_current is null || _current.Mime != art.Mime || !_current.Bytes.AsSpan().SequenceEqual(art.Bytes))
                 { _current = art; _id++; }
             }

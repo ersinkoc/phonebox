@@ -7,23 +7,35 @@ public sealed class FileLoggerProvider : ILoggerProvider
 
     private readonly StreamWriter _writer;
     private readonly Lock _lock = new();
+    private bool _disposed;
 
-    public FileLoggerProvider()
+    public FileLoggerProvider() : this(LogPath) { }
+
+    internal FileLoggerProvider(string logPath)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-        var fi = new FileInfo(LogPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+        var fi = new FileInfo(logPath);
         var append = !(fi.Exists && fi.Length > 2 * 1024 * 1024); // start over once it exceeds 2 MB
-        _writer = new StreamWriter(new FileStream(LogPath, append ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+        _writer = new StreamWriter(new FileStream(logPath, append ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
         { AutoFlush = true };
     }
 
     public ILogger CreateLogger(string category) => new FileLogger(this, category);
 
-    public void Dispose() => _writer.Dispose();
+    public void Dispose()
+    {
+        lock (_lock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _writer.Dispose();
+        }
+    }
 
     private void Write(string line)
     {
-        lock (_lock) _writer.WriteLine(line);
+        lock (_lock)
+            if (!_disposed) _writer.WriteLine(line);
     }
 
     private sealed class FileLogger(FileLoggerProvider owner, string category) : ILogger

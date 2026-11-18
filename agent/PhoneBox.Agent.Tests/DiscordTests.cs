@@ -285,4 +285,30 @@ public sealed class DiscordTests : IDisposable
         Assert.False(monitor.IsKnownImage("user", "42", "icon1"));        // a server id is not a user id
         Assert.Null(await monitor.ImageAsync("guild", "43", "icon1", CancellationToken.None));
     }
+
+    [Fact]
+    public async Task TokenPathFollowsConfigDirectoryAndReadLoopSurvivesMalformedFramesAndClearsOnClose()
+    {
+        var monitor = Monitor(false);
+        Assert.Equal(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(_configPath))!, "discord-token.json"), monitor.TokenPath);
+
+        var (server, client) = await Pipe();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using (client)
+        {
+            monitor.NotificationsOn = true;
+            monitor.PublishPoll(monitor.VoiceRevision, false, false, Polled());
+            var loop = monitor.ReadLoop(client, cts.Token);
+            await server.WriteAsync(Frame(1, "[1,2,3]"), cts.Token);
+            await server.WriteAsync(Frame(1, """{"nonce":123,"evt":456}"""), cts.Token);
+            await server.WriteAsync(Frame(3, """{"nonce":"still-alive"}"""), cts.Token);
+            var (op, body) = await ReadFrame(server);
+            Assert.Equal(4, op);
+            Assert.Contains("still-alive", body);
+
+            await server.DisposeAsync();
+            await loop.WaitAsync(cts.Token);
+            Assert.False(monitor.Snapshot().Connected);
+        }
+    }
 }

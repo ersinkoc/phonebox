@@ -28,6 +28,18 @@ public sealed class QuestionPromptTests
     public void WithoutQuestionsItStillTellsYouToLookAtTheTerminal(string input) =>
         Assert.Contains("terminal", ClaudeHook.QuestionDetail(Json(input)));
 
+    [Theory]
+    [InlineData("null")]
+    [InlineData("0")]
+    [InlineData("false")]
+    [InlineData("[]")]
+    [InlineData("\"text\"")]
+    public void InvalidQuestionEntriesDoNotHideTheirValidNeighbors(string entry)
+    {
+        Assert.Contains("terminal", ClaudeHook.QuestionDetail(Json("{\"questions\":[" + entry + "]}")));
+        Assert.Equal("Continue?", ClaudeHook.QuestionDetail(Json("{\"questions\":[" + entry + ",{\"question\":\"Continue?\"}," + entry + "]}")));
+    }
+
     [Fact]
     public async Task GotItEndsTheRequestWithoutAnAnswerSoTheTerminalKeepsTheQuestion()
     {
@@ -41,5 +53,69 @@ public sealed class QuestionPromptTests
         Assert.Equal("skip", await asking);
         Assert.False(store.Decide("q1", "skip")); // already finished
         Assert.False(store.Decide("q2", "maybe"));
+    }
+
+    [Fact]
+    public async Task NonObjectPayloadsEditWithoutFilePathMalformedOptionsAndSettingsHookConfigureBehaveSafely()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "phonebox-ch-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        PushStore? push = null;
+        try
+        {
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, """{"claude":{"phoneApprovals":true,"onlyWhenAway":false,"timeoutSec":30}}""");
+            var cfg = new ConfigStore(cfgPath);
+            push = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(dir, "push.json"));
+            var approvals = new ApprovalStore(push, NullLogger<ApprovalStore>.Instance);
+            var sessions = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
+            Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+            Assert.Null(await ClaudeHook.HandleAsync(Json("[]"), cfg, approvals, sessions, CancellationToken.None));
+            Assert.Null(await ClaudeHook.HandleAsync(Json("\"ping\""), cfg, approvals, sessions, CancellationToken.None));
+
+            var editTask = ClaudeHook.HandleAsync(
+                Json("""{"tool_name":"Edit","tool_input":{"path":"src/App.cs","old_string":"oldVal","new_string":"newVal"}}"""),
+                cfg, approvals, sessions, CancellationToken.None);
+            var approval = Assert.Single(approvals.Snapshot());
+            Assert.Contains("oldVal", approval.Detail);
+            Assert.Contains("newVal", approval.Detail);
+            Assert.False(approval.Detail.StartsWith("\n\n"));
+            approvals.Decide(approval.Id, "skip");
+            await editTask;
+
+            var qText = ClaudeHook.QuestionDetail(Json("""
+                {"questions":[{"header":"Pick","question":"Which?","options":[null, 42, {}, {"label":""}, {"label":"A","description":"ok"}]}]}
+                """));
+            Assert.Equal("Pick: Which?\n  • A — ok", qText);
+
+            var settingsPath = Path.Combine(dir, "settings.json");
+            File.WriteAllText(settingsPath, "  ");
+            Assert.Null(ClaudeHook.Configure(true, 18765, 30, settingsPath));
+            Assert.True(ClaudeHook.Installed(settingsPath));
+
+            File.WriteAllText(settingsPath, """
+                {
+                  "theme": "dark",
+                  "hooks": {
+                    "PermissionRequest": [
+                      "bad-entry",
+                      { "matcher": "Bash", "hooks": [ ["not-obj"], { "command": 123 }, { "type": "command", "command": "echo user-hook" } ] }
+                    ]
+                  }
+                }
+                """);
+            Assert.False(ClaudeHook.Installed(settingsPath));
+            Assert.Null(ClaudeHook.Configure(true, 18765, 30, settingsPath));
+            Assert.True(ClaudeHook.Installed(settingsPath));
+            Assert.Null(ClaudeHook.Configure(false, 18765, 30, settingsPath));
+            Assert.False(ClaudeHook.Installed(settingsPath));
+            Assert.Contains("echo user-hook", File.ReadAllText(settingsPath));
+        }
+        finally
+        {
+            push?.Dispose();
+            Directory.Delete(dir, true);
+        }
     }
 }

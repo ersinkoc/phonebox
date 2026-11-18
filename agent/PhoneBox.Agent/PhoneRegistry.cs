@@ -12,6 +12,7 @@ public static class PhoneRegistry
 {
     private static readonly ConcurrentDictionary<string, PhoneSeen> Seen = new();
     private static readonly ConcurrentDictionary<string, string?> Warned = new();
+    private static readonly Lock WarningGate = new();
 
     public static string? Touch(string? id, string? model, string via, string? webView = null)
     {
@@ -20,9 +21,12 @@ public static class PhoneRegistry
         var normalized = WebViewDoctor.Normalize(webView);
         Seen[id] = new PhoneSeen(id, model, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), via, normalized);
         var problem = WebViewDoctor.Diagnose(normalized, model);
-        var prev = Warned.TryGetValue(id, out var old) ? old : null;
-        Warned[id] = problem;
-        return problem != prev ? problem : null;
+        lock (WarningGate)
+        {
+            var prev = Warned.TryGetValue(id, out var old) ? old : null;
+            Warned[id] = problem;
+            return problem != prev ? problem : null;
+        }
     }
 
     public static IReadOnlyCollection<PhoneSeen> All() => Seen.Values.ToList();
