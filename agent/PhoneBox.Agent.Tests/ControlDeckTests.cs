@@ -541,7 +541,7 @@ public sealed class ControlDeckTests
             {
                 native.MediaSessions[0] = native.MediaSessions[0] with { Playing = false };
                 pauseEntered.TrySetResult();
-                await releasePause.Task;
+                await releasePause.Task.WaitAsync(TimeSpan.FromSeconds(10));
                 return true;
             };
 
@@ -555,8 +555,8 @@ public sealed class ControlDeckTests
             Assert.False(playPauseTask.IsCompleted);
 
             releasePause.SetResult();
-            Assert.True((await startRadioTask).Ok);
-            Assert.True((await playPauseTask).Ok);
+            Assert.True((await startRadioTask.WaitAsync(TimeSpan.FromSeconds(10))).Ok);
+            Assert.True((await playPauseTask.WaitAsync(TimeSpan.FromSeconds(10))).Ok);
 
             Assert.True(native.MediaSessions[0].Playing);
             Assert.Empty(native.PlayingRadios);
@@ -650,7 +650,7 @@ public sealed class ControlDeckTests
             nativeB.OnPauseCurrentMedia = async _ =>
             {
                 pauseEntered.TrySetResult();
-                await releasePause.Task;
+                await releasePause.Task.WaitAsync(TimeSpan.FromSeconds(10));
                 return true;
             };
             using (var deckB = new ControlDeck(storeB, nativeB, NullLogger<ControlDeck>.Instance))
@@ -691,9 +691,18 @@ public sealed class ControlDeckTests
                 var playTask = Task.Factory.StartNew(
                     () => deckC.Act("action", "r-3", "", null, null, null, default),
                     CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).Unwrap();
-                Assert.True(nativeC.PlayEnteredGate.Wait(TimeSpan.FromSeconds(5)));
-                Assert.Null(storeC.Save("""{"controls":{"actions":[{"id":"r-3","label":"S3","kind":"radio","target":"https://example.com/3.mp3","value":80,"enabled":false}]}}"""));
-                blockPlay.Set();
+                try
+                {
+                    Assert.True(nativeC.PlayEnteredGate.Wait(TimeSpan.FromSeconds(5)));
+                    Assert.Null(storeC.Save("""{"controls":{"actions":[{"id":"r-3","label":"S3","kind":"radio","target":"https://example.com/3.mp3","value":80,"enabled":false}]}}"""));
+                }
+                finally
+                {
+                    // Play holds the fake's lock that disposing the deck needs: release it and let Play end first,
+                    // without hiding the assertion that failed
+                    blockPlay.Set();
+                    await Task.WhenAny(playTask, Task.Delay(TimeSpan.FromSeconds(5)));
+                }
                 var res3 = await playTask.WaitAsync(TimeSpan.FromSeconds(5));
                 Assert.False(res3.Ok);
                 Assert.Empty(nativeC.PlayingRadios);
@@ -803,7 +812,7 @@ public sealed class ControlDeckTests
             lock (_gate)
             {
                 PlayEnteredGate.Set();
-                BlockPlayGate?.Wait();
+                BlockPlayGate?.Wait(TimeSpan.FromSeconds(10));
                 if (FailingRadios.Contains(id)) throw new InvalidOperationException("Stream open failed");
                 PlayingRadios.Add(id);
             }
@@ -836,7 +845,9 @@ public sealed class ControlDeckTests
             var n1 = new FakePttDeckNative(initialMicMuted: false, includeReadOnly: true);
             using (var deck = new ControlDeck(new ConfigStore(cfgPath), n1, NullLogger<ControlDeck>.Instance))
             {
-                var lease = (await deck.Act("ptt", "mic-1", "begin", null, null, null, default)).Lease!;
+                var begin = await deck.Act("ptt", "mic-1", "begin", null, null, null, default);
+                Assert.True(begin.Ok);
+                var lease = Assert.IsType<string>(begin.Lease);
                 Assert.True((await deck.Act("panic", null, null, null, null, null, default)).Ok);
                 Assert.True(n1.MicMuted);
                 Assert.False((await deck.Act("ptt", "mic-1", "end", null, null, lease, default)).Ok);
