@@ -265,11 +265,20 @@ W.checklist = {
 
 // The time in words, to the nearest five minutes ("quarter past ten").
 const NUM_WORDS = ['twelve', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven'];
-export function timeInWords(d) {
+export function timeInWords(d, locale = LOCALE) {
   const total = d.getHours() * 60 + d.getMinutes();
   const r = Math.round(total / 5) * 5;
   const exact = r === total, over = total > r;
   const m = r % 60, hr = Math.floor(r / 60) % 24;
+  if (/^(he|iw)(-|_|$)/i.test(locale)) {
+    const hours = ['שתים עשרה', 'אחת', 'שתיים', 'שלוש', 'ארבע', 'חמש', 'שש', 'שבע', 'שמונה', 'תשע', 'עשר', 'אחת עשרה'];
+    const minutes = { 5: 'חמישה', 10: 'עשרה', 15: 'רבע', 20: 'עשרים', 25: 'עשרים וחמישה', 30: 'חצי' };
+    let main;
+    if (m === 0) main = hr === 0 ? ['חצות'] : [hours[hr % 12]];
+    else if (m <= 30) main = [hours[hr % 12], 'ו' + minutes[m]];
+    else main = [minutes[60 - m], 'ל' + hours[(hr + 1) % 12]];
+    return { lead: exact ? 'השעה' : over ? 'קצת אחרי' : 'כמעט', main };
+  }
   const hourName = (x) => NUM_WORDS[x % 12];
   const minutes = { 5: 'five', 10: 'ten', 15: 'quarter', 20: 'twenty', 25: 'twenty-five', 30: 'half' };
   let main;
