@@ -77,6 +77,17 @@ public sealed class HomeAssistantStateTests : IDisposable
     }
 
     [Fact]
+    public async Task ALockToggleReadsTheStateAgainInsteadOfTheWidgetCache()
+    {
+        Configure(_a);
+        var ha = Client();
+        await ha.StatesAsync(["lock.door"]).WaitAsync(TimeSpan.FromSeconds(15)); // the widget poll caches "locked"
+        _a.Door = "unlocked";                                                     // unlocked by hand right after
+        Assert.Null(await ha.ToggleAsync("lock.door").WaitAsync(TimeSpan.FromSeconds(15)));
+        Assert.Equal(["/api/services/lock/lock"], _a.Calls);
+    }
+
+    [Fact]
     public async Task ALockToggleUsesTheStateOfTheServerItCalls()
     {
         _b.Door = "unlocked";
@@ -167,8 +178,10 @@ public sealed class HomeAssistantStateTests : IDisposable
                     lock (_calls) _calls.Add(path);
                     if (path == "/api/services/lock/unlock") Door = "unlocked";
                     else if (path == "/api/services/lock/lock") Door = "locked";
-                    if (AbortServiceAnswers) { ctx.Response.Abort(); return; }
-                    body = "[]";
+                    // the call was applied but the answer is a failure: the same on every platform, unlike
+                    // HttpListener.Abort(), which can still send a default 200 on Linux and macOS
+                    if (AbortServiceAnswers) { ctx.Response.StatusCode = 504; body = "{}"; }
+                    else body = "[]";
                 }
                 var bytes = Encoding.UTF8.GetBytes(body);
                 ctx.Response.ContentType = "application/json";

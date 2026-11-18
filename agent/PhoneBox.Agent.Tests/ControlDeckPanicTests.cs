@@ -56,6 +56,22 @@ public sealed class ControlDeckPanicTests : IDisposable
         Assert.True(native.MicMuted);
     }
 
+    [Fact]
+    public async Task AFailedManualMuteKeepsThePanicMutePending()
+    {
+        var native = new PanicNative(micMuted: true);
+        using var deck = new ControlDeck(new ConfigStore(_cfg), native, NullLogger<ControlDeck>.Instance);
+        var hold = await deck.Act("ptt", "mic-1", "begin", null, null, null, default);
+        Assert.True(hold.Ok);
+
+        native.FailMicMute = true;
+        Assert.False((await deck.Act("panic", null, null, null, null, null, default)).Ok);
+        // the user taps mute on the panel, and that fails too: the panic mute must stay pending
+        Assert.False((await deck.Act("device", "mic-1", null, null, true, null, default)).Ok);
+        Assert.False((await deck.Act("ptt", "mic-1", "begin", null, null, null, default)).Ok);
+        Assert.False(native.MicMuted);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_dir, recursive: true); } catch (IOException) { }

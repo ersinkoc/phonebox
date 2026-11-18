@@ -79,7 +79,7 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     /// (null when the latest successful read for these settings did not include it), and the read error if any.
     /// The connection must be set in <paramref name="cfg"/>.
     /// </summary>
-    private async Task<(string? Error, List<(string Id, HaEntity? Entity)> States)> ReadStatesAsync(AgentConfig cfg, IEnumerable<string> ids)
+    private async Task<(string? Error, List<(string Id, HaEntity? Entity)> States)> ReadStatesAsync(AgentConfig cfg, IEnumerable<string> ids, bool fresh = false)
     {
         var ha = cfg.HomeAssistant;
         var allowed = Widgets(cfg).SelectMany(EntitiesOf).ToHashSet();
@@ -88,7 +88,7 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
         await _lock.WaitAsync();
         try
         {
-            if (DateTime.UtcNow - _statesAt > TimeSpan.FromSeconds(3) || _cacheKey != key)
+            if (fresh || DateTime.UtcNow - _statesAt > TimeSpan.FromSeconds(3) || _cacheKey != key)
             {
                 try
                 {
@@ -181,7 +181,8 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
         {
             // The service depends on the current state, so it must come from a successful read with the settings the
             // call goes to: a failed read or another server's cached state could unlock a door or start a vacuum.
-            var (error, states) = await ReadStatesAsync(cfg, [id]);
+            // a fresh read, not the widgets' 3-second cache: a door unlocked by hand a moment ago must get "lock"
+            var (error, states) = await ReadStatesAsync(cfg, [id], fresh: true);
             if (error is not null) return error;
             if (states.FirstOrDefault().Entity is not { State: not "unavailable" } entity) return "Home Assistant does not report this entity's state";
             state = entity.State;

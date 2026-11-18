@@ -358,7 +358,10 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
 app.MapPost("/api/widget/{pageId}/{widgetId}/note", (string pageId, string widgetId, string? text, string? version, ConfigStore cfg) =>
 {
     long? expected = long.TryParse(version, out var v) ? v : null;
-    var r = NoteEdit.Apply(cfg, pageId, widgetId, text, expected);
+    // the same lock as the settings save and the icon commits, so an icon upload can't report a version that
+    // already holds a Note edit it never checked
+    NoteEdit.Result r;
+    lock (IconCommit) r = NoteEdit.Apply(cfg, pageId, widgetId, text, expected);
     return r.Status switch
     {
         200 => Results.Ok(new { version = r.Version }),

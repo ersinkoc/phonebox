@@ -151,7 +151,17 @@ public sealed partial class ControlDeck : BackgroundService
                 case "device":
                     if (value is null && muted is null) return new(false, "Choose a volume or mute state");
                     if (!Audio().Devices.Any(d => d.Id == id && d.CanControl) || value is < 0 or > 100) return new(false, "Audio device is unavailable");
-                    if (muted is not null) lock (_pttGate) _panicPending.Remove(id); // the user's own choice replaces a pending panic mute
+                    if (muted is not null)
+                    {
+                        // the user's own mute choice replaces a pending panic mute, but only once it took effect: a
+                        // failed request must leave the panic mute pending (retried, and push-to-talk refused)
+                        lock (_pttGate)
+                        {
+                            ok = _native.Device(id, value, muted, op is "left" ? 0 : op is "right" ? 1 : null);
+                            if (ok) _panicPending.Remove(id);
+                        }
+                        break;
+                    }
                     ok = _native.Device(id, value, muted, op is "left" ? 0 : op is "right" ? 1 : null); break;
                 case "session":
                     if (value is null && muted is null) return new(false, "Choose a volume or mute state");
