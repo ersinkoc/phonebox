@@ -513,7 +513,8 @@ export async function runShortcut(btn, id) {
 export function keyButton(s, { cover = false, label = true } = {}) {
   const icon = h('span', 'k-icon', s.icon || '•');
   const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
-  if (!label) b.setAttribute('aria-label', s.label || '');
+  // the agent accepts a blank label, so the id keeps the button named when nothing is shown
+  if (!label) b.setAttribute('aria-label', String(s.label || '').trim() || s.id);
   b.style.setProperty('--k', s.color || '#6b7280');
   b.dataset.id = s.id;
   b.addEventListener('click', () => runShortcut(b, s.id));
@@ -521,8 +522,9 @@ export function keyButton(s, { cover = false, label = true } = {}) {
   return b;
 }
 
-// A program's own icon is 32-48 px and turns into a blur when stretched across a key, so only an uploaded picture of
-// at least this size fills it; anything smaller stays the centred icon. An SVG without a size of its own reports 0.
+// A program's own icon is 32-48 px and turns into a blur when stretched across a key, so only a picture whose shorter
+// side is at least this size fills it; anything smaller stays the centred icon. The shorter side, because the picture
+// is cropped to the key's shape and that side is the one stretched. An SVG without a size of its own reports 0.
 const COVER_MIN_PX = 128;
 
 function applyShortcutIcon(b, icon, id, cover) {
