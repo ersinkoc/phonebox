@@ -133,6 +133,79 @@ public sealed class PairingTests
         Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(disabled, "POST", "/api/pair/claim", "", null, null));
     }
 
+    // Both keys with one value (a hand-edited config): every webhook sender would hold the phone key too.
+    [Fact]
+    public void ASharedPhoneAndWebhookKeyIsNotAPhoneKeyAndCannotBeSaved()
+    {
+        var shared = new LanConfig { Enabled = true, Port = 8766, Token = "same-tok", WebhookToken = "same-tok" };
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(shared, "GET", "/api/state", "", "Bearer same-tok", null));
+        Assert.Equal(Lan.LanAccess.Webhook, Lan.AuthorizeRequest(shared, "POST", "/api/push/ci", "", "Bearer same-tok", null));
+
+        // the settings page's save refuses it (other writes, like a Note from the phone, still go through)
+        Assert.True(Program.LanKeysShared("""{"lan":{"enabled":true,"token":"same-tok","webhookToken":"same-tok"}}"""));
+        Assert.True(Program.LanKeysShared("""{"lan":{"token":"a","webhookToken":"b"},"LAN":{"token":"c","webhookToken":"c"}}"""));
+        Assert.False(Program.LanKeysShared("""{"lan":{"enabled":true,"token":"phone-tok","webhookToken":"hook-tok"}}"""));
+        Assert.False(Program.LanKeysShared("""{"lan":{"token":"","webhookToken":""}}""")); // both get new, different keys
+        Assert.False(Program.LanKeysShared("""{"lan":{"token":"c","webhookToken":"c"},"lan":{"token":"a","webhookToken":"b"}}"""));
+
+        var dir = Directory.CreateTempSubdirectory("phonebox-shared-key-").FullName;
+        try { Assert.Null(new ConfigStore(Path.Combine(dir, "config.json")).Save("""{"lan":{"token":"same-tok","webhookToken":"same-tok"}}""")); }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    // A claim waiting for its body when Wi-Fi is turned off must be refused, and must not use up the code.
+    [Fact]
+    public async Task AClaimThatOutlivesWifiBeingTurnedOffIsRefusedAndKeepsTheCode()
+    {
+        var dir = Directory.CreateTempSubdirectory("phonebox-claim-off-").FullName;
+        try
+        {
+            var cfg = new ConfigStore(Path.Combine(dir, "config.json"));
+            Assert.Null(cfg.Save("""{"lan":{"enabled":true}}"""));
+            using var cert = Lan.Certificate(dir);
+            var codes = new PairingCodes();
+            var (code, _, _) = codes.Start(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Method = "POST";
+            ctx.Request.ContentType = "application/json";
+            ctx.Request.Body = new GatedMemoryStream(System.Text.Encoding.UTF8.GetBytes($$"""{"code":"{{code}}"}"""), entered, release.Task);
+
+            var claim = Program.ClaimPairingAsync(ctx.Request, cfg, codes, cert, 8766, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.Null(cfg.Save("""{"lan":{"enabled":false}}"""));
+            }
+            finally { release.TrySetResult(); }
+
+            var result = await claim.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+            Assert.True(codes.Claim(code, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    // ConfigStore.Save keeps the last of repeated members; the port check must look at that one.
+    [Theory]
+    [InlineData("""{"lan":{"enabled":false},"lan":{"enabled":true,"port":8765}}""", true)]
+    [InlineData("""{"lan":{"enabled":true,"port":8765},"LAN":{"enabled":false}}""", false)]
+    [InlineData("""{"lan":{"enabled":true,"port":8765},"lan":null}""", false)]
+    public void TheLastOfRepeatedLanMembersIsTheOneChecked(string json, bool collides)
+    {
+        Assert.Equal(collides, Program.LanPortCollidesWithLocal(json, 8765));
+        var dir = Directory.CreateTempSubdirectory("phonebox-lan-repeat-").FullName;
+        try
+        {
+            var cfg = new ConfigStore(Path.Combine(dir, "config.json"));
+            Assert.Null(cfg.Save(json));
+            Assert.Equal(collides, cfg.Get().Lan.Enabled && cfg.Get().Lan.Port == 8765);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     [Fact]
     public void LanCertificateIsolatesToConfigDirectoryAndCollidingLanPortIsDetected()
     {
@@ -176,15 +249,25 @@ public sealed class PairingTests
             using var gated = new GatedMemoryStream(png, enteredRead, releaseRead.Task);
 
             var uploadTask = Program.UploadShortcutIconAsync("temp-sc", v1, gated, "image/png", cfg, icons);
-            await enteredRead.Task;
+            long savedV2;
+            try
+            {
+                // an upload that returns before reading the body fails here instead of hanging the test
+                var first = await Task.WhenAny(enteredRead.Task, uploadTask).WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.True(first == enteredRead.Task, "the upload finished before it read the body");
 
-            // Advance config timestamp deterministically and delete temp-sc while body read is suspended
-            File.SetLastWriteTimeUtc(cfgPath, new DateTime(cfg.Version, DateTimeKind.Utc).AddSeconds(-2));
-            _ = cfg.Get();
-            Assert.Null(cfg.Save("""{"shortcuts":[{"id":"keep-me","label":"Keep","cmd":"builtin:mute"}]}""", cfg.Version, out var savedV2));
-            icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id));
-
-            releaseRead.SetResult();
+                // Advance config timestamp deterministically and delete temp-sc while body read is suspended
+                File.SetLastWriteTimeUtc(cfgPath, new DateTime(cfg.Version, DateTimeKind.Utc).AddSeconds(-2));
+                _ = cfg.Get();
+                Assert.Null(cfg.Save("""{"shortcuts":[{"id":"keep-me","label":"Keep","cmd":"builtin:mute"}]}""", cfg.Version, out savedV2));
+                icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id));
+            }
+            finally
+            {
+                // released whatever happened above, and the upload observed before the directory goes
+                releaseRead.TrySetResult();
+                try { await uploadTask.WaitAsync(TimeSpan.FromSeconds(10)); } catch { }
+            }
             var result = await uploadTask;
             var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode;
             Assert.Equal(StatusCodes.Status409Conflict, status);

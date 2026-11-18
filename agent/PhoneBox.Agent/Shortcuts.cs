@@ -110,7 +110,8 @@ public static class Shortcuts
                     else Unix("xset", "dpms", "force", "off");
                     break;
                 case "builtin:mute":
-                    (audio ?? new AudioControl()).ToggleMute();
+                    // false: the output cannot be muted (macOS) or wpctl / pactl failed; a caller must not count it as done
+                    if (!(audio ?? new AudioControl()).ToggleMute()) throw new InvalidOperationException("could not toggle mute on the current output");
                     break;
 #endif
                 default:

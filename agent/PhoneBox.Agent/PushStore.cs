@@ -97,8 +97,9 @@ public sealed partial class PushStore : IDisposable
         {
             if (!_items.ContainsKey(key) && _items.Count >= MaxItems) return $"too many keys (max {MaxItems}); delete some first";
             _items[key] = item;
-            Changed();
         }
+        // outside _setLock: Changed can wait for a save in progress, and other writers must not wait behind it
+        Changed();
         return null;
     }
 
@@ -196,11 +197,16 @@ public sealed partial class PushStore : IDisposable
         }
         catch (Exception ex)
         {
-            _log.LogWarning("could not save pushed data: {Msg}", ex.Message);
-            if (_disposed) return;
-            Interlocked.Exchange(ref _savePending, 1);
-            _saveTimer.Change(_saveRetryMs, Timeout.Infinite);
-            _saveRetryMs = Math.Min(2 * _saveRetryMs, MaxSaveRetryMs);
+            // re-armed before the warning: this runs on the timer thread, where an exception from a logger (its own
+            // disk may be the full one) would end the process and the retry would never be scheduled
+            if (!_disposed)
+            {
+                Interlocked.Exchange(ref _savePending, 1);
+                _saveTimer.Change(_saveRetryMs, Timeout.Infinite);
+                _saveRetryMs = Math.Min(2 * _saveRetryMs, MaxSaveRetryMs);
+            }
+            try { _log.LogWarning("could not save pushed data: {Msg}", ex.Message); }
+            catch { /* the warning is best effort */ }
         }
     }
 

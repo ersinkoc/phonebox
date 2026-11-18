@@ -268,24 +268,8 @@ app.MapPost("/api/pair/start", (ConfigStore cfg, PairingCodes codes) =>
 });
 app.MapPost("/api/pair/cancel", (long attempt, PairingCodes codes) => { codes.Cancel(attempt); return Results.Ok(); });
 app.MapGet("/api/pair/status", (PairingCodes codes) => Results.Json(new { claims = codes.Claims }));
-app.MapPost("/api/pair/claim", async (HttpRequest req, ConfigStore cfg, PairingCodes codes) =>
-{
-    if (!cfg.Get().Lan.Enabled || lanCert is null || req.ContentLength is > 1024) return Results.StatusCode(StatusCodes.Status403Forbidden);
-    var code = await PairingCodes.ReadClaimCodeAsync(req);
-    if (code is null || !codes.Claim(code, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
-        return Results.StatusCode(StatusCodes.Status403Forbidden);
-    var lan = cfg.Get().Lan;
-    app.Logger.LogInformation("phone paired over Wi-Fi ({Model})", req.Headers["X-PhoneBox-Model"].ToString());
-    return Results.Json(new
-    {
-        enabled = true,
-        pc = Environment.MachineName,
-        port = lanCfg.Port,
-        token = lan.Token,
-        fingerprint = Lan.Fingerprint(lanCert),
-        hosts = Lan.Addresses(),
-    });
-});
+app.MapPost("/api/pair/claim", (HttpRequest req, ConfigStore cfg, PairingCodes codes) =>
+    ClaimPairingAsync(req, cfg, codes, lanCert, lanCfg.Port, app.Logger));
 
 app.MapGet("/api/lan", (ConfigStore cfg) => Results.Json(new
 {
@@ -352,7 +336,11 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
     var body = await r.ReadToEndAsync();
     if (LanPortCollidesWithLocal(body, Port))
         return Results.BadRequest(new { error = $"Wi-Fi port cannot be the same as the local port ({Port})" });
-    var err = cfg.Save(body, expected, out var savedVersion);
+    if (LanKeysShared(body))
+        return Results.BadRequest(new { error = "The Wi-Fi key and the webhook key must be different: make a new key for one of them" });
+    string? err;
+    long savedVersion;
+    lock (IconCommit) err = cfg.Save(body, expected, out savedVersion);
     if (err == ConfigStore.Conflict) return Results.Json(new { error = err }, statusCode: StatusCodes.Status409Conflict);
     if (err is not null) return Results.BadRequest(new { error = err });
     deck.StopDisabledControls();
@@ -380,12 +368,13 @@ app.MapPost("/api/widget/{pageId}/{widgetId}/note", (string pageId, string widge
     };
 });
 
-app.MapPost("/api/shortcuts/test", async (HttpRequest req, ConfigStore cfg, ILogger<Program> log) =>
+app.MapPost("/api/shortcuts/test", async (HttpRequest req, ConfigStore cfg, PushStore push, AudioControl audio, ILogger<Program> log) =>
 {
     if (req.ContentType?.StartsWith("application/json") != true) return Results.StatusCode(415);
     var sc = await req.ReadFromJsonAsync<PhoneBox.Agent.Shortcut>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
     if (sc is null || string.IsNullOrWhiteSpace(sc.Cmd)) return Results.BadRequest(new { error = "command is empty" });
-    var err = Shortcuts.Execute(sc, log, cfg.Get());
+    // the same pushed values and audio state as a phone run, so a macro's nested toggles pick the same command
+    var err = Shortcuts.Execute(sc, log, cfg.Get(), push: push, audio: audio);
     return err is null ? Results.Ok() : Results.BadRequest(new { error = err });
 });
 
@@ -805,10 +794,7 @@ app.MapPost("/api/procs/kill", (string? name, int? pid, ProcessMonitor procs, Co
 });
 
 app.MapPost("/api/run/{id}", (string id, ConfigStore cfg, PushStore push, AudioControl audio, ILogger<Program> log) =>
-{
-    var result = Shortcuts.Run(cfg.Get(), id, log, push, audio);
-    return result is null ? Results.Ok() : Results.Problem(result);
-});
+    RunShortcutForPhone(cfg.Get(), id, log, push, audio));
 
 // Real icon for a shortcut: an image the user uploaded (settings page) takes priority; otherwise its program's own
 // icon, when its command is an actual file on disk. 404 when neither exists (shell addresses, protocol handlers,
@@ -833,11 +819,14 @@ app.MapPost("/api/settings/shortcut-icon", (string id, HttpRequest req, ConfigSt
 // Removes a shortcut's uploaded icon; it falls back to its auto-detected program icon, or the emoji.
 app.MapDelete("/api/settings/shortcut-icon", (string id, HttpRequest req, ConfigStore cfg, ShortcutIconUploads icons) =>
 {
-    if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound();
-    if (cfg.VersionConflict(req.Headers["X-Config-Version"])) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
-    icons.Remove(id);
-    cfg.Touch();
-    return Results.Ok(new { version = cfg.VersionText });
+    lock (IconCommit)
+    {
+        if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound();
+        if (cfg.VersionConflict(req.Headers["X-Config-Version"])) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
+        icons.Remove(id);
+        cfg.Touch();
+        return Results.Ok(new { version = cfg.VersionText });
+    }
 });
 
 app.Lifetime.ApplicationStarted.Register(() =>
@@ -871,9 +860,14 @@ public partial class Program
         {
             using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
             if (doc.RootElement.ValueKind != JsonValueKind.Object) return false;
+            // ConfigStore.Save deserializes a repeated member (in any letter case) last-wins, so the last "lan" is the
+            // one that gets saved; a last one that is not an object leaves Wi-Fi off
+            var collides = false;
             foreach (var prop in doc.RootElement.EnumerateObject())
             {
-                if (!prop.Name.Equals("lan", StringComparison.OrdinalIgnoreCase) || prop.Value.ValueKind != JsonValueKind.Object) continue;
+                if (!prop.Name.Equals("lan", StringComparison.OrdinalIgnoreCase)) continue;
+                collides = false;
+                if (prop.Value.ValueKind != JsonValueKind.Object) continue;
                 var enabled = false;
                 var port = 8766;
                 foreach (var lp in prop.Value.EnumerateObject())
@@ -883,8 +877,40 @@ public partial class Program
                     else if (lp.Name.Equals("port", StringComparison.OrdinalIgnoreCase) && lp.Value.ValueKind == JsonValueKind.Number && lp.Value.TryGetInt32(out var p))
                         port = Math.Clamp(p, 1024, 65535);
                 }
-                return enabled && port == localPort;
+                collides = enabled && port == localPort;
             }
+            return collides;
+        }
+        catch (JsonException) { }
+        return false;
+    }
+
+    /// <summary>
+    /// True when settings JSON gives the phone key and the webhook key the same value: every webhook sender would then
+    /// hold the phone's key (Lan.AuthorizeRequest no longer trusts it as one). Checked on the settings page's save
+    /// only, so other writes (a Note from the phone) still go through on a config that was edited by hand.
+    /// </summary>
+    internal static bool LanKeysShared(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return false;
+            string? token = null, webhook = null;
+            // last-wins for repeated members, like ConfigStore.Save; blank keys are replaced by new ones there
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (!prop.Name.Equals("lan", StringComparison.OrdinalIgnoreCase)) continue;
+                token = webhook = null;
+                if (prop.Value.ValueKind != JsonValueKind.Object) continue;
+                foreach (var lp in prop.Value.EnumerateObject())
+                {
+                    var text = lp.Value.ValueKind == JsonValueKind.String ? lp.Value.GetString() : null;
+                    if (lp.Name.Equals("token", StringComparison.OrdinalIgnoreCase)) token = text;
+                    else if (lp.Name.Equals("webhookToken", StringComparison.OrdinalIgnoreCase)) webhook = text;
+                }
+            }
+            return !string.IsNullOrWhiteSpace(token) && string.Equals(token, webhook, StringComparison.Ordinal);
         }
         catch (JsonException) { }
         return false;
@@ -896,19 +922,63 @@ public partial class Program
         if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
         if (cfg.VersionConflict(configVersion)) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
         var bytes = await ShortcutIconUploads.ReadBounded(body);
-        if (cfg.VersionConflict(configVersion)) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
-        if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
-        var err = icons.Save(id, contentType, bytes);
-        if (err is not null) return Results.BadRequest(new { error = err });
-        if (!cfg.Get().Shortcuts.Any(s => s.Id == id))
+        // The body is read outside the lock; the checks, the write and the version bump are one step, so of two
+        // uploads that started from the same version the second gets 409 instead of replacing the first one's icon.
+        lock (IconCommit)
         {
-            icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id));
-            return cfg.VersionConflict(configVersion)
-                ? Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict)
-                : Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
+            if (cfg.VersionConflict(configVersion)) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
+            if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
+            var err = icons.Save(id, contentType, bytes);
+            if (err is not null) return Results.BadRequest(new { error = err });
+            if (!cfg.Get().Shortcuts.Any(s => s.Id == id))
+            {
+                icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id));
+                return cfg.VersionConflict(configVersion)
+                    ? Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict)
+                    : Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
+            }
+            cfg.Touch();
+            return Results.Ok(new { version = cfg.VersionText });
         }
-        cfg.Touch();
-        return Results.Ok(new { version = cfg.VersionText });
     }
+
+    /// <summary>
+    /// Serializes the writes that move <see cref="ConfigStore.Version"/> for shortcut icons (upload, removal) with the
+    /// settings save. Taken before the icon store's own lock, never inside it (its cleanup reads the settings).
+    /// </summary>
+    internal static readonly Lock IconCommit = new();
+
+    /// <summary>
+    /// POST /api/pair/claim. Wi-Fi is checked again once the body has arrived, with the settings that answer the claim:
+    /// a claim still waiting for its body when Wi-Fi is turned off is refused and does not use up the code.
+    /// </summary>
+    internal static async Task<IResult> ClaimPairingAsync(HttpRequest req, ConfigStore cfg, PairingCodes codes,
+        System.Security.Cryptography.X509Certificates.X509Certificate2? lanCert, int lanPort, ILogger log)
+    {
+        if (!cfg.Get().Lan.Enabled || lanCert is null || req.ContentLength is > 1024) return Results.StatusCode(StatusCodes.Status403Forbidden);
+        var code = await PairingCodes.ReadClaimCodeAsync(req);
+        var lan = cfg.Get().Lan;
+        if (!lan.Enabled || code is null || !codes.Claim(code, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+        log.LogInformation("phone paired over Wi-Fi ({Model})", req.Headers["X-PhoneBox-Model"].ToString());
+        return Results.Json(new
+        {
+            enabled = true,
+            pc = Environment.MachineName,
+            port = lanPort,
+            token = lan.Token,
+            fingerprint = Lan.Fingerprint(lanCert),
+            hosts = Lan.Addresses(),
+        });
+    }
+
+    /// <summary>
+    /// POST /api/run/{id}. Why a shortcut failed stays in the agent log: an exception text can carry the configured
+    /// command, its arguments, a key sequence or a working folder (Process.Start names the program and the folder).
+    /// </summary>
+    internal static IResult RunShortcutForPhone(AgentConfig cfg, string id, ILogger log, PushStore push, AudioControl audio) =>
+        Shortcuts.Run(cfg, id, log, push, audio) is null
+            ? Results.Ok()
+            : Results.Problem("The shortcut failed. The agent log on the computer has the details.");
 }
 

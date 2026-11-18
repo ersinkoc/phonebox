@@ -111,7 +111,10 @@ public static class Lan
     internal static LanAccess AuthorizeRequest(LanConfig lan, string method, PathString path, string origin, string? authorization, string? queryToken)
     {
         if (!lan.Enabled || origin != "" || !AllowedOverLan(path)) return LanAccess.Denied;
-        if (!string.IsNullOrEmpty(lan.Token) && Matches(authorization, lan.Token)) return LanAccess.Phone;
+        // A hand-edited config can give both keys the same value. Every webhook sender then holds the phone key too,
+        // and the agent cannot tell them apart, so that value is not trusted as a phone key until one of them changes.
+        var sharedKey = string.Equals(lan.Token, lan.WebhookToken, StringComparison.Ordinal);
+        if (!sharedKey && !string.IsNullOrEmpty(lan.Token) && Matches(authorization, lan.Token)) return LanAccess.Phone;
         if (IsWebhook(path) && !string.IsNullOrEmpty(lan.WebhookToken)
             && (Matches(authorization, lan.WebhookToken) || MatchesQuery(queryToken, lan.WebhookToken)))
             return LanAccess.Webhook;

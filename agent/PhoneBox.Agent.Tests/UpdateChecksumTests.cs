@@ -191,12 +191,15 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
             File.WriteAllText(modePath, "fail");
             if (OperatingSystem.IsWindows())
             {
+                // mode.txt is found next to the script, not through a temp path written into it (TMPDIR may hold
+                // characters the shell would expand). "fail" fails every phone; a serial fails only that phone.
                 fakeAdb = Path.Combine(dir, "adb.cmd");
-                File.WriteAllText(fakeAdb, $"""
+                File.WriteAllText(fakeAdb, """
                     @echo off
-                    set /p MODE=<"{modePath}"
+                    set /p MODE=<"%~dp0mode.txt"
                     if "%3"=="install" (
                       if "%MODE%"=="fail" ( echo Failure [LOCKED] & exit /b 1 )
+                      if "%MODE%"=="%2" ( echo Failure [LOCKED] & exit /b 1 )
                       echo Success
                       exit /b 0
                     )
@@ -206,7 +209,7 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
             else
             {
                 fakeAdb = Path.Combine(dir, "adb");
-                File.WriteAllText(fakeAdb, $"#!/bin/sh\nMODE=$(cat \"{modePath}\")\nif [ \"$3\" = \"install\" ]; then\n  if [ \"$MODE\" = \"fail\" ]; then echo 'Failure [LOCKED]'; exit 1; fi\n  echo 'Success'; exit 0\nfi\necho ok\n");
+                File.WriteAllText(fakeAdb, "#!/bin/sh\nMODE=$(cat \"$(dirname \"$0\")/mode.txt\")\nif [ \"$3\" = \"install\" ]; then\n  if [ \"$MODE\" = \"fail\" ] || [ \"$MODE\" = \"$2\" ]; then echo 'Failure [LOCKED]'; exit 1; fi\n  echo 'Success'; exit 0\nfi\necho ok\n");
                 File.SetUnixFileMode(fakeAdb, (UnixFileMode)0b111_101_101);
             }
 
@@ -255,6 +258,23 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
             await svc2.ApplyAsync();
             Assert.Equal("0.0.1", UpdateService.AppVersion);
             Assert.True(svc2.Status().AppUpdate);
+
+            // A fails, B installs; B then reports the new app while A is unplugged. The next apply has nothing to
+            // install, and A's update is still pending: the reason it failed must stay next to it.
+            var svc3 = new UpdateService(cfg, adb, new NoopLifetime(), NullLogger<UpdateService>.Instance) { DownloadsDir = Path.Combine(dir, "dl3") };
+            httpField.SetValue(svc3, new HttpClient(new FakeReleaseHandler(relJson, apkBytes, sums)));
+            File.WriteAllText(modePath, "SERA");
+            UpdateService.AppVersion = "0.0.1";
+            devicesField.SetValue(adb, new[] { "SERA", "SERB" });
+            await svc3.CheckAsync();
+            await svc3.ApplyAsync();
+            var reason = svc3.Status().Error;
+            Assert.Contains("SERA", reason);
+            UpdateService.AppVersion = ver;                 // SERB, updated, reports the new app
+            devicesField.SetValue(adb, new[] { "SERB" });   // SERA unplugged
+            await svc3.ApplyAsync();
+            Assert.True(svc3.Status().AppUpdate);
+            Assert.Equal(reason, svc3.Status().Error);
         }
         finally
         {

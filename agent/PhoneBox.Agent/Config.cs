@@ -528,7 +528,11 @@ public sealed partial class ConfigStore(string path)
         c.Night.Brightness = Math.Clamp(c.Night.Brightness, 0.01, 1);
 
         c.Pages = NormalizePages(c.Pages, out var originalPageIds);
-        string PageId(string id) => originalPageIds.GetValueOrDefault(id, id);
+        // an exact match first; a reference with stray spaces around it still finds the page it names
+        string PageId(string id) =>
+            originalPageIds.TryGetValue(id, out var exact) ? exact
+            : originalPageIds.TryGetValue(id.Trim(), out var trimmed) ? trimmed
+            : id.Trim();
         c.Display.HomePage = string.IsNullOrWhiteSpace(c.Display.HomePage) ? null : PageId(c.Display.HomePage).Trim();
 
         var used = new HashSet<string>();

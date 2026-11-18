@@ -102,6 +102,13 @@ public sealed class ShortcutIconUploads(string? iconsDir = null)
                 try { File.Delete(tmp); } catch { }
             }
             RemoveLocked(id, exceptExtension: ext);
+            // Read looks for the formats in a fixed order, so an old file in another format that could not be deleted
+            // (open elsewhere, on Windows) would still be served under the new revision: undo the change instead.
+            if (ExtensionByContentType.Values.Any(other => other != ext && File.Exists(PathFor(id, other))))
+            {
+                try { File.Delete(target); } catch { }
+                return "The previous icon is in use and could not be replaced. Try again in a moment.";
+            }
             _revisionCache[id] = ContentRevision(bytes);
         }
         return null;

@@ -63,10 +63,13 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
     [DllImport("libc")] private static extern IntPtr realpath(string path, IntPtr resolved);
     [DllImport("libc")] private static extern void free(IntPtr pointer);
 
+    /// <summary>A phone whose app update to the latest release failed has not had a successful retry yet.</summary>
+    private bool PhoneRetryPending => _latest?.Version is { } latest && _phoneRetryFor == latest && _phoneRetry.Length > 0;
+
     public UpdateStatus Status()
     {
         var latest = _latest?.Version;
-        var retry = latest is not null && _phoneRetryFor == latest && _phoneRetry.Length > 0;
+        var retry = PhoneRetryPending;
         return new UpdateStatus(AppPaths.Version, AppVersion, latest, _latest?.Url,
             latest is not null && Newer(latest, AppPaths.Version) && _latest!.AgentZip is not null,
             latest is not null && _latest!.Apk is not null && (AppVersion is not null && Newer(latest, AppVersion) || retry),
@@ -156,7 +159,9 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
                 attempted = true;
                 await UpdateAgentAsync(ct);
             }
-            if (attempted && !failed) _error = null;
+            // A phone still waiting for its retry (unplugged during this round, so nothing was installed on it) keeps the
+            // reason its update failed: the update stays pending in Status and needs that explanation next to it.
+            if (attempted && !failed && !PhoneRetryPending) _error = null;
         }
         catch (Exception ex)
         {

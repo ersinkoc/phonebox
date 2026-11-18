@@ -174,9 +174,19 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
     {
         if (r.Then == "goto") push.Emit("back", JsonSerializer.SerializeToElement(new { rule = r.Id }));
         else if (r.Then == "push" && !string.IsNullOrWhiteSpace(r.Key)) push.Remove(r.Key);
-        else if (r.Then == "shortcut" && config.Get().Shortcuts.FirstOrDefault(s => s.Id == r.Shortcut) is { } sc
-                 && (sc.Toggle || sc.Cmd == "builtin:mute") && Shortcuts.State(sc, push, audio) != false)
-            Shortcuts.Run(config.Get(), sc.Id, log, push, audio); // a toggle switches back off
+        else if (r.Then == "shortcut")
+        {
+            // one settings snapshot for the lookup and the run: a save in between must not run another shortcut
+            var cfgNow = config.Get();
+            if (cfgNow.Shortcuts.FirstOrDefault(s => s.Id == r.Shortcut) is not { } sc
+                || !(sc.Toggle || sc.Cmd == "builtin:mute") || Shortcuts.State(sc, push, audio) == false) return;
+            // another "while active" rule still holds the same toggle on (Do skipped it because it was on already):
+            // only the last one to end switches it off
+            if (_states.Values.Any(o => !ReferenceEquals(o.Rule, r) && o.Active && o.Rule.WhileActive
+                    && o.Rule.Then == "shortcut" && o.Rule.Shortcut == r.Shortcut)) return;
+            if (Shortcuts.Run(cfgNow, sc.Id, log, push, audio) is { } error) // a toggle switches back off
+                log.LogWarning("rule {Id}: could not switch {Shortcut} back off: {Error}", r.Id, sc.Id, error);
+        }
     }
 
     private (bool Holds, string Detail) Check(RuleConfig r)
