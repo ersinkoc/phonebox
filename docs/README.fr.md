@@ -31,14 +31,14 @@ Windows, Linux et macOS. Sans root, sans compte PhoneBox et sans service cloud.<
   <a href="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml"><img src="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml/badge.svg" alt="Statut du build"></a>
   <a href="https://github.com/ersinkoc/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Dernière version"></a>
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-.NET%2010-512bd4" alt="Windows, Linux, macOS; .NET 10">
-  <img src="https://img.shields.io/badge/Android-7%2B-3ddc84" alt="Android 7+">
+  <img src="https://img.shields.io/badge/Android-5%2B-3ddc84" alt="Android 5+">
   <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="Licence MIT"></a>
 </p>
 
 <p align="center"><img src="hero-0.6.png" width="900" alt="PhoneBox sur trois téléphones"><br>
 <sub>Exemples de mises en page avec données de démonstration.</sub></p>
 
-PhoneBox associe une **application Android** plein écran à un léger **agent de bureau**. Concevez votre panneau dans un éditeur visuel web : **122 widgets**, **30 modèles**, plusieurs pages et aperçu en direct.
+PhoneBox associe une **application Android** plein écran à un léger **agent de bureau**. Concevez votre panneau dans un éditeur visuel web : **123 widgets**, **30 modèles**, plusieurs pages et aperçu en direct.
 
 ## Ce que vous pouvez faire
 

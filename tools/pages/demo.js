@@ -506,6 +506,19 @@
     if (path.startsWith('/api/controls/command/') && method === 'POST') return json(await controlCommand(path.split('/').pop(), q));
     if (path === '/api/state') return json(state(q.has('ev') ? +q.get('ev') : null));
     if (path === '/api/config') return json({ version: cfgVersion(), config: publicConfig(await config()) });
+    if (path.startsWith('/api/widget/') && path.endsWith('/note') && method === 'POST') {
+      const parts = path.split('/');
+      const pageId = decodeURIComponent(parts[3]);
+      const widgetId = decodeURIComponent(parts[4]);
+      const c = await config();
+      const pg = (c.pages || []).find((p) => p.id === pageId);
+      const w = pg && (pg.widgets || []).find((x) => x.id === widgetId);
+      if (!w || w.type !== 'note') return json({ error: 'option not allowed' }, 400);
+      w.options = { ...(w.options || {}), text: q.get('text') || '' };
+      store.set('pb-demo-config', c);
+      store.set('pb-demo-version', cfgVersion() + 1);
+      return json({ version: cfgVersion() });
+    }
     if (path === '/api/volume' && method === 'POST') {
       // the agent answers with the new volume state (AudioSnapshot)
       const op = q.get('op'), level = q.has('level') ? +q.get('level') : null;
@@ -590,6 +603,17 @@
       return DEMO_APPS.some((a) => a.id === q.get('id')) ? json({ ok: true }) : json({ error: 'Unknown app' }, 400);
     }
     // Dictation: the demo PC "types" the text if that widget allows it (Dictation.TypeAsync)
+    // Camera: like CameraFeeds, a picture only for a camera widget on an enabled page with a camera chosen; the demo's
+    // "camera" draws a moving sweep with the time instead of a stream
+    if (path === '/api/camera') {
+      const c = await config();
+      const w = panelWidget(c, q.get('widget'), 'camera');
+      if (!w) return json({ state: 'unknown' }, 404);
+      if (!w.options?.camera || !(c.cameras?.sources || []).some((s) => s.id === w.options.camera)) return json({ state: 'pick' }, 404);
+      const d = new Date(), x = (d.getTime() / 25) % 640;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><rect width="640" height="360" fill="#1f2937"/><rect y="250" width="640" height="110" fill="#374151"/><rect x="${x.toFixed(0)}" y="0" width="6" height="360" fill="#22d3ee" opacity=".5"/><text x="16" y="34" fill="#fff" font-family="monospace" font-size="22">CAM 1  ${d.toTimeString().slice(0, 8)}</text></svg>`;
+      return new Response(svg, { status: 200, headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' } });
+    }
     if (path === '/api/dictate' && method === 'POST') {
       if (panelWidget(await config(), q.get('widget'), 'dictate')?.options?.control !== true)
         return json({ error: 'typing is off: turn on "Type the text on the computer" in the dictation widget\'s settings' }, 403);

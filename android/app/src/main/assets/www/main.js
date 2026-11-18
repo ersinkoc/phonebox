@@ -14,6 +14,7 @@ import './widgets/photos.js';
 import './widgets/controls.js';
 import './widgets/console.js';
 import './widgets/dictate.js';
+import './widgets/camera.js';
 import './widgets/spectrum.js';
 
 // PhoneBox desk panel. Pages are 12 × 6 grids of widgets, designed in the agent's settings page.
@@ -508,11 +509,19 @@ export async function runShortcut(btn, id) {
 }
 
 export function keyButton(s) {
-  const b = h('button', 'key' + (s.toggle ? ' toggle' : ''), h('span', 'k-icon', s.icon || '•'), h('span', 'k-label', s.label));
+  const icon = h('span', 'k-icon', s.icon || '•');
+  const b = h('button', 'key' + (s.toggle ? ' toggle' : ''), icon, h('span', 'k-label', s.label));
   b.style.setProperty('--k', s.color || '#6b7280');
   b.dataset.id = s.id;
   b.addEventListener('click', () => runShortcut(b, s.id));
+  if (s.iconRev != null) applyShortcutIcon(icon, s.id);
   return b;
+}
+
+function applyShortcutIcon(icon, id) {
+  const img = new Image();
+  img.onload = () => { icon.replaceChildren(img); icon.classList.add('k-icon-img'); };
+  img.src = `${API}/shortcuts/icon?id=${encodeURIComponent(id)}`;
 }
 
 // ---------------------------------------------------------------- media (shared state, any number of widgets)
@@ -966,7 +975,7 @@ export function handleEvent(e) {
   else if (e.kind === 'reload') location.reload();
 }
 
-export const WIDGET_ICONS = { dictate: '🎙️', spectrum: '📶', 'app-console': '🎛️',discord: '💬', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', media: '🎵', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖',
+export const WIDGET_ICONS = { camera: '📹', dictate: '🎙️', spectrum: '📶', 'app-console': '🎛️',discord: '💬', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', media: '🎵', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖',
   github: '🐙', processes: '⚙️', shortcuts: '🎛️', button: '🔘', worldclock: '🌍', calendar: '📅', pomodoro: '🍅', countdown: '⏳', note: '📝', command: '💻',
   push: '📡', inbox: '📬', label: '🔤', analog: '🕰️', progress: '📆', stopwatch: '⏱️', timer: '⏲️', counter: '🔢', breathe: '🫁', quote: '💬',
   checklist: '✅', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊', sun: '🌅', air: '🍃', hackernews: '📰', feeds: '🗞️', photos: '🖼️', exchange: '💱', crypto: '🪙', image: '🖼️', pcswitch: '🖥️' };

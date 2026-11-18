@@ -520,6 +520,54 @@ test('news feeds list headlines and open one on the PC by its id', async ({ page
   await expect(page.locator('.w-feeds .empty')).toHaveText('No headlines from "nothing like this"');
 });
 
+// #108: the list scrolls (and keeps its place when the ages refresh), an opened article loses its accent bar on
+// this phone, and a headline can take two or three lines.
+test('news feeds scroll, mark opened articles and wrap headlines', async ({ page }) => {
+  await layout(page, [{ ...widget('feeds', { title: 'News', open: true }), h: 2 }]);
+  const list = page.locator('.w-feeds .fd-list');
+  await expect(page.locator('.w-feeds .fd-i')).toHaveCount(6);
+  // more headlines than fit: the list scrolls instead of dropping them
+  expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await list.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  const bottom = await list.evaluate((el) => el.scrollTop);
+  expect(bottom).toBeGreaterThan(0);
+
+  // every headline starts with the accent bar; opening one takes it away, and the list stays where it was scrolled
+  await expect(page.locator('.w-feeds .fd-i.link.read')).toHaveCount(0);
+  await page.locator('.w-feeds .fd-i').last().click();
+  await expect(page.locator('#toast')).toContainText('Opening on the PC');
+  await expect(page.locator('.w-feeds .fd-i').last()).toHaveClass(/\bread\b/);
+  await expect(page.locator('.w-feeds .fd-i.read')).toHaveCount(1);
+  expect(await page.locator('.w-feeds .fd-i').last().evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe('rgba(0, 0, 0, 0)');
+  expect(await list.evaluate((el) => el.scrollTop)).toBe(bottom);
+
+  // it stays read after the panel reloads (kept on the phone)
+  await page.reload();
+  await expect(page.locator('.w-feeds .fd-i').last()).toHaveClass(/\bread\b/);
+
+  // in a Smart Stack, a vertical swipe over a list that scrolls scrolls it rather than changing the card
+  await layout(page, [{ ...widget('stack', { widgets: [{ type: 'feeds', options: { title: 'News' } }, { type: 'clock' }] }), h: 2 }]);
+  await expect(page.locator('.stack-item.active .w-feeds .fd-i')).toHaveCount(6);
+  await page.locator('.stack-item.active .fd-list').evaluate((el) => {
+    const mk = (type, x, y) => {
+      const e = new Event(type, { bubbles: true, cancelable: true });
+      const touch = { clientX: x, clientY: y };
+      e.touches = type === 'touchstart' ? [touch] : [];
+      e.changedTouches = [touch];
+      return e;
+    };
+    el.firstElementChild.dispatchEvent(mk('touchstart', 100, 200));
+    el.firstElementChild.dispatchEvent(mk('touchend', 100, 100));
+  });
+  await expect(page.locator('.stack-item.active .w-feeds')).toHaveCount(1);
+
+  // headlines over two lines
+  await layout(page, [widget('feeds', { title: 'News', lines: '2' })]);
+  const title = page.locator('.w-feeds .fd-t').first();
+  await expect(page.locator('.w-feeds .fd-list.wrap')).toHaveCount(1);
+  expect(await title.evaluate((el) => [getComputedStyle(el).whiteSpace, getComputedStyle(el).webkitLineClamp])).toEqual(['normal', '2']);
+});
+
 // Each News feeds widget follows its own "open" option, and the demo, like the agent, ignores disabled pages.
 test('news feeds open only from a widget whose own option allows it', async ({ page }) => {
   await layout(page, [

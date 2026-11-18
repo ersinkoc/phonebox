@@ -144,11 +144,34 @@ internal sealed partial class WindowsDeckNative
         try { return processes.FirstOrDefault(p => p.SessionId == session && p.MainWindowHandle != 0)?.MainWindowHandle ?? 0; }
         finally { foreach (var p in processes) p.Dispose(); }
     }
+    /// <summary>
+    /// Brings the app's window to the front as it was: a minimized window is restored, a maximized one stays maximized
+    /// (SW_RESTORE on it would shrink it back to its normal size, #213).
+    /// </summary>
     private static bool Focus(string process)
     {
         var handle = Window(process); if (handle == 0) return false;
-        ShowWindow(handle, 9);
-        return SetForegroundWindow(handle);
+        ShowWindow(handle, IsIconic(handle) ? 9 : 5); // SW_RESTORE when minimized, otherwise SW_SHOW
+        if (SetForegroundWindow(handle) && Activated(handle)) return true;
+        // Windows keeps a background process (the agent) from taking the foreground unless it received the last input.
+        // A zero-pixel mouse move makes it so without a key some app could act on. (Attaching to the input queue of the
+        // window in front would also work, but hangs when that app stops responding.)
+        KeySender.NudgeInput();
+        return SetForegroundWindow(handle) && Activated(handle);
+    }
+
+    /// <summary>
+    /// Whether the window became the foreground one. A window on another thread activates a moment after
+    /// SetForegroundWindow returns, so this waits for it, but never longer than half a second.
+    /// </summary>
+    private static bool Activated(nint handle)
+    {
+        for (var i = 0; i < 10; i++)
+        {
+            if (GetForegroundWindow() == handle) return true;
+            Thread.Sleep(50);
+        }
+        return GetForegroundWindow() == handle;
     }
     private static bool Layout(string process, string layout)
     {
@@ -209,6 +232,8 @@ internal sealed partial class WindowsDeckNative
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int ChangeDisplaySettingsEx(string name, ref DisplayMode settings, nint window, uint flags, nint parameter);
     [DllImport("user32.dll")] private static extern bool ShowWindow(nint h, int mode);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(nint h);
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsIconic(nint h);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(nint h, nint after, int x, int y, int width, int height, uint flags);
     [DllImport("powrprof.dll", SetLastError = true)] private static extern bool SetSuspendState(bool hibernate, bool force, bool disableWake);
 }

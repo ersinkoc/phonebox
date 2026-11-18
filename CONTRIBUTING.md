@@ -49,10 +49,12 @@ page lists what reviews keep asking for; following it gets a pull request merged
   `android/app/src/main/assets/www/widgets/`, an icon in `WIDGET_ICONS`, the README count (`tools/check-release.py`
   checks it) and, if it calls the agent, a mock in `tools/pages/demo.js` so the web demo and the UI tests can render
   it. Outside the app (no native bridge) it must show an empty state, not throw.
-- **The Android app** targets Android 7.0 (API 24) and later and runs the panel in the system WebView. On Android 7
-  to 9 that WebView comes from Chrome, so its version doesn't follow the Android version. The panel needs Chrome 105
-  or later (container query units); below that, `index.html` shows an update notice from a plain script that runs even
-  when the panel's modules don't. Changing `minSdk` needs `./gradlew lintDebug` to pass and a note on the devices
+- **The Android app** targets Android 5.0 (API 21) and later and runs the panel in the system WebView, which is
+  updated through the Play Store, so its version doesn't follow the Android version. The panel runs from Chromium 83
+  (`compat.js` fills in the newer DOM APIs) and scales widgets fully from Chrome 105 (container query units); below
+  that, `index.html` shows an update notice from a plain script that runs even when the panel's modules don't. The
+  last WebView for Android 6 is 106, so widgets scale fully on Android 6; for Android 5 it is 95, so widgets there don't
+  scale as well. Calls above API 21 need a version check (`./gradlew lintRelease` reports them as NewApi). Changing `minSdk` needs `./gradlew lintDebug` to pass and a note on the devices
   and WebView versions you tried.
 - **Don't change behaviour users rely on** (removing a choice, renaming a setting, changing a default) without
   migrating existing settings and saying so in the pull request.

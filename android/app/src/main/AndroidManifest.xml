@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -61,13 +62,16 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Quick Settings tile (Edit tiles › PhoneBox): opens the panel. Android 7.0+ only shows tiles. -->
+        <!-- Quick Settings tile (Edit tiles › PhoneBox): opens the panel. Tiles exist from Android 7.0; below that the
+             service is disabled (values/bools.xml vs values-v24). -->
         <service
             android:name=".PanelTile"
+            android:enabled="@bool/quick_settings_tile"
             android:exported="true"
             android:icon="@drawable/ic_tile"
             android:label="PhoneBox"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            tools:targetApi="n">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>

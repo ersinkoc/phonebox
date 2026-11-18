@@ -31,7 +31,7 @@ Windows, Linux and macOS. No root, PhoneBox account or cloud service required.</
   <a href="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml"><img src="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
   <a href="https://github.com/ersinkoc/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-.NET%2010-512bd4" alt="Windows, Linux, macOS; .NET 10">
-  <img src="https://img.shields.io/badge/Android-7%2B-3ddc84" alt="Android 7+">
+  <img src="https://img.shields.io/badge/Android-5%2B-3ddc84" alt="Android 5+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
@@ -39,7 +39,7 @@ Windows, Linux and macOS. No root, PhoneBox account or cloud service required.</
 <sub>Example layouts with demo data.</sub></p>
 
 PhoneBox pairs a full-screen **Android app** with a small **desktop agent**. Build your panel in a browser-based
-visual editor: **122 widgets**, **30 templates**, multiple pages and a live preview. Connect several phones with
+visual editor: **123 widgets**, **30 templates**, multiple pages and a live preview. Connect several phones with
 their own layouts, or switch one phone between paired computers.
 
 ## What you can do
@@ -61,7 +61,7 @@ and a cost overview.
 
 ## Quick start
 
-You need an **Android 7+ phone** and a supported computer. USB uses a data cable and USB debugging; Wi-Fi pairing
+You need an **Android 5+ phone** (Android 6 or later recommended) and a supported computer. USB uses a data cable and USB debugging; Wi-Fi pairing
 works without either. Release agents include .NET, so you do not need to install the runtime.
 
 ### 1. Install the desktop agent
@@ -183,7 +183,7 @@ Read the [security details](docs/GUIDE.md#security--privacy). To report a vulner
 
 The agent uses **.NET 10**; the Android app uses **Kotlin and a WebView** with plain JavaScript widgets.
 For Android builds, install **JDK 17** and **Android SDK Platform 35** (the SDK the app is built with; the app itself
-runs on Android 7.0, API 24, and later).
+runs on Android 5.0, API 21, and later).
 Preview the panel and editor from source with Python 3, using simulated data:
 
 ```sh

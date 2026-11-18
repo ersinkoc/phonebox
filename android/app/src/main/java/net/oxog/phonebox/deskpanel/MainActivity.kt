@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
@@ -53,7 +54,7 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var link: AgentLink
     private lateinit var stream: AgentStream
     @Volatile private var volumeKeysFlipPages = true
-    private val sensors by lazy { getSystemService(SensorManager::class.java) }
+    private val sensors by lazy { getSystemService(Context.SENSOR_SERVICE) as SensorManager? }
     private var lastLux = -1f
     private var lastLuxAt = 0L
     private var near: Boolean? = null
@@ -304,7 +305,7 @@ class MainActivity : Activity(), SensorEventListener {
         @JavascriptInterface
         fun haptic(key: String) {
             if (!ok(key)) return
-            val v = getSystemService(Vibrator::class.java) ?: return
+            val v = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator? ?: return
             if (!v.hasVibrator()) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createOneShot(14, VibrationEffect.DEFAULT_AMPLITUDE))
             else @Suppress("DEPRECATION") v.vibrate(14)
@@ -314,7 +315,7 @@ class MainActivity : Activity(), SensorEventListener {
         @JavascriptInterface
         fun buzz(key: String, pattern: String) {
             if (!ok(key)) return
-            val v = getSystemService(Vibrator::class.java) ?: return
+            val v = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator? ?: return
             val timings = pattern.split(',').mapNotNull { it.trim().toLongOrNull() }.toLongArray()
             if (!v.hasVibrator() || timings.isEmpty()) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createWaveform(timings, -1))
@@ -381,7 +382,9 @@ class MainActivity : Activity(), SensorEventListener {
         fun setPinned(key: String, on: Boolean) {
             if (!ok(key)) return
             runOnUiThread {
-                val pinned = getSystemService(ActivityManager::class.java).lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+                val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                val pinned = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+                    else @Suppress("DEPRECATION") am.isInLockTaskMode
                 try { if (on && !pinned) startLockTask() else if (!on && pinned) stopLockTask() } catch (_: Exception) {}
             }
         }
@@ -450,7 +453,7 @@ class MainActivity : Activity(), SensorEventListener {
         private const val ASSET_HOST = "appassets.androidplatform.net"
         private val NO_STORE = mapOf("Cache-Control" to "no-store")
         private const val PANEL_HEADER = "X-PhoneBox-Panel"
-        private val READ_ONLY_IMAGES = setOf("/agent/api/art", "/agent/api/procs/icon", "/agent/api/controls/radio-logo", "/agent/api/apps/icon", "/agent/api/discord/img")
+        private val READ_ONLY_IMAGES = setOf("/agent/api/art", "/agent/api/procs/icon", "/agent/api/controls/radio-logo", "/agent/api/apps/icon", "/agent/api/discord/img", "/agent/api/shortcuts/icon")
         private fun FORBIDDEN() = WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", NO_STORE, java.io.ByteArrayInputStream(ByteArray(0)))
     }
 }
