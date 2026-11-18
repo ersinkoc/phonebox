@@ -133,17 +133,24 @@ test('i18n.js defines every key once per language', () => {
   const fs = require('fs');
   const path = require('path');
   const lines = fs.readFileSync(path.join(__dirname, '..', '..', 'android', 'app', 'src', 'main', 'assets', 'www', 'i18n.js'), 'utf8').split('\n');
+  // EXTRA is merged into STRINGS with Object.assign, so the two share one key space per language; CATALOG is its own.
+  const TABLE = /^ {2}const ([A-Z_]+) = \{\s*$/;
   const BLOCK = /^ {4}([a-z]{2}(?:-[A-Za-z]+)?|'[^']+'):\s*\{\s*$/;
   const KEY = /^ {6}('(?:[^'\\]|\\.)*'|[A-Za-z_.$][\w.$]*):/;
   const dupes = [];
-  let block = null, seen = new Map();
+  const spaces = new Map();
+  let table = null, block = null;
   lines.forEach((line, i) => {
+    const tb = TABLE.exec(line);
+    if (tb) { table = tb[1] === 'EXTRA' ? 'STRINGS' : tb[1]; block = null; return; }
     const b = BLOCK.exec(line);
-    if (b) { block = b[1]; seen = new Map(); return; }
+    if (b) { block = `${table} ${b[1]}`; if (!spaces.has(block)) spaces.set(block, new Map()); return; }
     const k = block && KEY.exec(line);
     if (!k) return;
+    const seen = spaces.get(block);
     if (seen.has(k[1])) dupes.push(`${block} ${k[1]} (lines ${seen.get(k[1])} and ${i + 1})`);
     else seen.set(k[1], i + 1);
   });
+  expect(spaces.size).toBeGreaterThanOrEqual(13); // the parser still finds the language blocks (12 languages + catalog)
   expect(dupes).toEqual([]);
 });
