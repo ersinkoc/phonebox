@@ -2765,8 +2765,12 @@ async function load() {
   // in English that has display.language = "vi" would otherwise render every editor in English and never rebuild them
   if (window.PhoneBoxI18n) applyLanguageUi(cfg.display?.language || 'auto');
   else localizeCatalog();
+  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderCharge(); bindForm();
+  // the editors fill in the sections and fields they own (feeds, cameras, an action's "enabled", ...), so the
+  // baseline is taken after they ran: otherwise a freshly loaded page already counts as unsaved, and Revert can never
+  // get back to a clean state
   saved = JSON.stringify(cfg);
-  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderCharge(); bindForm(); changed(); loadInfo(); loadPhones();
+  changed(); loadInfo(); loadPhones();
 }
 
 async function save() {
