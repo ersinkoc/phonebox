@@ -3,8 +3,12 @@ const { test, expect } = require('@playwright/test');
 
 const MIN = 60_000;
 
+// Midday, not the real time: the widget counts today's sessions, so a run that started a few minutes before midnight
+// crossed into a new day while the tests fast-forward and lost its tomatoes.
+const NOON = new Date(2026, 0, 15, 12, 0, 0);
+
 async function show(page, options, state = null) {
-  await page.clock.install();
+  await page.clock.install({ time: NOON });
   await page.goto('/panel/');
   await page.evaluate(({ options, state }) => {
     localStorage.clear();

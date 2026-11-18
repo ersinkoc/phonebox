@@ -4,6 +4,8 @@ using System.Text.Json;
 
 namespace PhoneBox.Agent;
 
+public sealed record HaListing(string Id, string Name, bool Switchable);
+
 public sealed record HaEntity(string Id, string State, string Name, string? Unit, string? DeviceClass, string? Icon, long Changed);
 
 /// <summary>
@@ -19,11 +21,40 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     private string? _error;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    private IEnumerable<WidgetConfig> Widgets => config.Get().Widgets().Where(w => w.Type == "ha");
+    // only widgets on enabled pages count, for reading states as for switching: hiding the page or removing the widget turns both off
+    private IEnumerable<WidgetConfig> Widgets => config.Get().Widgets(enabledPagesOnly: true).Where(w => w.Type == "ha");
 
-    public static IEnumerable<string> EntitiesOf(WidgetConfig w) =>
-        (w.Str("entities") ?? "").Split([',', '\n', ' ', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(e => e.Contains('.'));
+    private const int MaxItems = 200;
+
+    /// <summary>
+    /// The entities a widget shows, each with whether the phone may switch it. A widget lists them either in its
+    /// "items" option (one row per entity, with its own "control" flag that falls back to the widget's) or, for
+    /// widgets saved before the entity editor, in the comma-separated "entities" option under the widget's flag.
+    /// A non-empty "items" list wins over "entities".
+    /// </summary>
+    public static IEnumerable<(string Id, bool Control)> ItemsOf(WidgetConfig w)
+    {
+        var widgetControl = w.Bool("control") == true;
+        if (w.Opt("items") is { ValueKind: JsonValueKind.Array } items && items.GetArrayLength() > 0)
+        {
+            // the cap counts usable rows, so a run of unusable ones cannot hide the valid ones after it
+            var seen = new HashSet<string>();
+            foreach (var item in items.EnumerateArray())
+            {
+                if (seen.Count >= MaxItems) yield break;
+                if (item.ValueKind != JsonValueKind.Object || !item.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.String) continue;
+                var id = idEl.GetString()!.Trim();
+                if (!id.Contains('.') || !seen.Add(id)) continue;
+                var control = item.TryGetProperty("control", out var c) && c.ValueKind is JsonValueKind.True or JsonValueKind.False ? c.GetBoolean() : widgetControl;
+                yield return (id, control);
+            }
+            yield break;
+        }
+        foreach (var id in (w.Str("entities") ?? "").Split([',', '\n', ' ', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(e => e.Contains('.')).Take(MaxItems))
+            yield return (id, widgetControl);
+    }
+
+    public static IEnumerable<string> EntitiesOf(WidgetConfig w) => ItemsOf(w).Select(i => i.Id);
 
     /// <summary>States of the requested entities (only those used by a widget), refreshed at most every 3 seconds.</summary>
     public async Task<object> StatesAsync(IEnumerable<string> ids)
@@ -70,10 +101,37 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
         finally { _lock.Release(); }
     }
 
+    /// <summary>Every entity Home Assistant knows (id and name), for the entity picker in Settings. Local only: the phone never gets this.</summary>
+    public async Task<object> ListEntitiesAsync()
+    {
+        var ha = config.Get().HomeAssistant;
+        if (string.IsNullOrWhiteSpace(ha.Url) || string.IsNullOrWhiteSpace(ha.Token))
+            return new { configured = false, error = "Set up Home Assistant in Settings › General", entities = Array.Empty<object>() };
+        try
+        {
+            using var req = Request(HttpMethod.Get, "/api/states");
+            using var res = await Http.SendAsync(req);
+            if (!res.IsSuccessStatusCode) return new { configured = true, error = $"Home Assistant answered {(int)res.StatusCode} {res.ReasonPhrase}", entities = Array.Empty<object>() };
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+            var list = new List<HaListing>();
+            foreach (var e in doc.RootElement.EnumerateArray())
+            {
+                if (e.GetProperty("entity_id").GetString() is not { } id) continue;
+                string? name = e.TryGetProperty("attributes", out var a) && a.ValueKind == JsonValueKind.Object && a.TryGetProperty("friendly_name", out var f) && f.ValueKind == JsonValueKind.String ? f.GetString() : null;
+                list.Add(new HaListing(id, name ?? id, Switchable(id.Split('.')[0])));
+            }
+            return new { configured = true, error = (string?)null, entities = list.OrderBy(x => x.Id, StringComparer.Ordinal).ToList() };
+        }
+        catch (Exception ex) { return new { configured = true, error = ex is TaskCanceledException ? "Home Assistant did not answer" : ex.Message, entities = Array.Empty<object>() }; }
+    }
+
+    private static bool Switchable(string domain) => domain is "light" or "switch" or "fan" or "input_boolean" or "automation" or "siren" or "humidifier"
+        or "group" or "cover" or "media_player" or "scene" or "script" or "button" or "input_button" or "lock" or "vacuum";
+
     /// <summary>Switches an entity (toggle, press, run…) if a widget lists it with "Allow switching" on.</summary>
     public async Task<string?> ToggleAsync(string id)
     {
-        if (!Widgets.Any(w => w.Bool("control") == true && EntitiesOf(w).Contains(id))) return "switching this entity is not allowed in the widget's settings";
+        if (!Widgets.Any(w => ItemsOf(w).Any(i => i.Control && i.Id == id))) return "switching this entity is not allowed in the widget's settings";
         var domain = id.Split('.')[0];
         var state = _states.TryGetValue(id, out var s) ? s.State : "";
         var (svcDomain, service) = domain switch

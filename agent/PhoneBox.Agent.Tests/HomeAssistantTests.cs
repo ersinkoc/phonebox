@@ -53,17 +53,18 @@ public sealed class HomeAssistantTests : IDisposable
         }
     }
 
-    private HomeAssistant Client(bool control)
+    private HomeAssistant Client(bool control, object? items = null, bool pageEnabled = true)
     {
         var cfg = new
         {
             homeAssistant = new { url = _url, token = "secret" },
             pages = new[]
             {
-                new { id = "home", title = "Home", widgets = new object[]
+                new { id = "home", title = "Home", enabled = pageEnabled, widgets = new object[]
                 {
-                    new { id = "ha", type = "ha", x = 0, y = 0, w = 6, h = 3, options = new { entities = "light.desk, sensor.temp, lock.door", control } },
+                    new { id = "ha", type = "ha", x = 0, y = 0, w = 6, h = 3, options = items is null ? (object)new { entities = "light.desk, sensor.temp, lock.door", control } : new { entities = "switch.secret", control, items } },
                 } },
+                new { id = "other", title = "Other", enabled = true, widgets = Array.Empty<object>() }, // keeps the config valid when "home" is hidden
             },
         };
         File.WriteAllText(_configPath, JsonSerializer.Serialize(cfg));
@@ -104,6 +105,106 @@ public sealed class HomeAssistantTests : IDisposable
         Assert.NotNull(await ha.ToggleAsync("sensor.temp"));    // sensors cannot be switched
         Assert.NotNull(await ha.ToggleAsync("switch.secret"));  // not in a widget
         Assert.Equal(["/api/services/homeassistant/toggle {\"entity_id\":\"light.desk\"}", "/api/services/lock/unlock {\"entity_id\":\"lock.door\"}"], _calls);
+    }
+
+    [Fact]
+    public async Task ItemsReplaceTheLegacyEntityList()
+    {
+        var ha = Client(control: true, items: new object[] { new { id = "light.desk" }, new { id = "light.desk" }, new { id = "nodot" }, new { name = "no id" }, "junk" });
+        var r = Json(await ha.StatesAsync(["light.desk", "switch.secret"]));
+        Assert.Equal(["light.desk"], r.GetProperty("entities").EnumerateArray().Select(e => e.GetProperty("id").GetString()).ToList()); // switch.secret is only in the ignored legacy string
+    }
+
+    [Fact]
+    public async Task ANonEmptyItemsListIsFinalEvenWhenNoRowIsUsable()
+    {
+        var ha = Client(control: true, items: new object[] { new { id = "nodot" }, new { name = "no id" } });
+        var r = Json(await ha.StatesAsync(["switch.secret"])); // listed only in the legacy string
+        Assert.Empty(r.GetProperty("entities").EnumerateArray());
+        Assert.NotNull(await ha.ToggleAsync("switch.secret"));
+        Assert.Empty(_calls);
+    }
+
+    [Fact]
+    public async Task TheCapCountsUsableRowsNotAllRows()
+    {
+        // 300 unusable rows in front must not hide the valid one after them
+        var junk = Enumerable.Range(0, 300).Select(i => (object)new { id = $"nodot{i}" });
+        var ha = Client(control: true, items: junk.Append(new { id = "light.desk" }).ToArray());
+        var r = Json(await ha.StatesAsync(["light.desk"]));
+        Assert.Equal(["light.desk"], r.GetProperty("entities").EnumerateArray().Select(e => e.GetProperty("id").GetString()).ToList());
+    }
+
+    [Fact]
+    public void AtMostTwoHundredUsableRowsAreRead()
+    {
+        var items = Enumerable.Range(0, 250).Select(i => new { id = $"sensor.s{i}" }).ToArray();
+        var w = new WidgetConfig { Type = "ha", Options = new() { ["items"] = JsonSerializer.SerializeToElement(items) } };
+        Assert.Equal(200, HomeAssistant.ItemsOf(w).Count());
+    }
+
+    [Fact]
+    public async Task StatesOfAHiddenPagesWidgetAreNotRead()
+    {
+        var ha = Client(control: true, items: new object[] { new { id = "light.desk" } }, pageEnabled: false);
+        var r = Json(await ha.StatesAsync(["light.desk"]));
+        Assert.Empty(r.GetProperty("entities").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AnEmptyItemsListFallsBackToTheLegacyEntityString()
+    {
+        var ha = Client(control: true, items: Array.Empty<object>());
+        var r = Json(await ha.StatesAsync(["switch.secret", "light.desk"]));
+        Assert.Equal(["switch.secret"], r.GetProperty("entities").EnumerateArray().Select(e => e.GetProperty("id").GetString()).ToList());
+    }
+
+    [Fact]
+    public async Task EachItemHasItsOwnSwitchingPermission()
+    {
+        // light.desk inherits the widget's flag (on), lock.door opts out, sensor.temp is listed but is not switchable
+        var ha = Client(control: true, items: new object[] { new { id = "light.desk" }, new { id = "lock.door", control = false }, new { id = "scene.movie", control = true } });
+        await ha.StatesAsync(["lock.door"]);
+        Assert.Null(await ha.ToggleAsync("light.desk"));
+        Assert.NotNull(await ha.ToggleAsync("lock.door"));
+        Assert.Equal(["/api/services/homeassistant/toggle {\"entity_id\":\"light.desk\"}"], _calls);
+    }
+
+    [Fact]
+    public async Task AnItemCanAllowSwitchingWhenTheWidgetDoesNot()
+    {
+        var ha = Client(control: false, items: new object[] { new { id = "light.desk", control = true }, new { id = "lock.door" } });
+        await ha.StatesAsync(["lock.door"]);
+        Assert.Null(await ha.ToggleAsync("light.desk"));
+        Assert.NotNull(await ha.ToggleAsync("lock.door")); // no flag of its own: the widget's (off) applies
+    }
+
+    [Fact]
+    public async Task SwitchingStopsWhenThePageIsHidden()
+    {
+        var ha = Client(control: true, items: new object[] { new { id = "light.desk", control = true } }, pageEnabled: false);
+        Assert.NotNull(await ha.ToggleAsync("light.desk"));
+        Assert.Empty(_calls);
+    }
+
+    [Fact]
+    public async Task TheEntityPickerListsEverythingHomeAssistantKnows()
+    {
+        var ha = Client(control: false);
+        var r = Json(await ha.ListEntitiesAsync());
+        var all = r.GetProperty("entities").EnumerateArray().ToList();
+        Assert.Equal(["light.desk", "lock.door", "sensor.temp", "switch.secret"], all.Select(e => e.GetProperty("id").GetString()).ToList());
+        Assert.True(all[0].GetProperty("switchable").GetBoolean());
+        Assert.False(all[2].GetProperty("switchable").GetBoolean());
+        Assert.Equal("Desk lamp", all[0].GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task TheEntityPickerNeedsAConfiguredHomeAssistant()
+    {
+        File.WriteAllText(_configPath, "{}");
+        var ha = new HomeAssistant(new ConfigStore(_configPath), NullLogger<HomeAssistant>.Instance);
+        Assert.False(Json(await ha.ListEntitiesAsync()).GetProperty("configured").GetBoolean());
     }
 
     [Fact]

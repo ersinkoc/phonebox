@@ -232,6 +232,8 @@ export const HA_CLASS_ICONS = {
 };
 export const HA_SWITCHABLE = new Set(['light', 'switch', 'fan', 'input_boolean', 'automation', 'siren', 'humidifier', 'group', 'cover', 'media_player',
   'scene', 'script', 'button', 'input_button', 'lock', 'vacuum']);
+const HA_MAX_ITEMS = 200; // keep in step with HomeAssistant.MaxItems in the agent
+const HA_BATCH_CHARS = 6000; // encoded ids per /ha/states request, well under the agent's 16 KB request line
 export const HA_ACTIVE = new Set(['on', 'open', 'opening', 'unlocked', 'playing', 'home', 'cleaning', 'heat', 'cool', 'heat_cool', 'auto', 'detected']);
 
 export function haState(e) {
@@ -252,12 +254,39 @@ export function haState(e) {
 W.ha = {
   needs: ['tick'],
   create(box, { o }) {
-    const ids = String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.'));
+    // "items" (the entity editor) wins over the older comma-separated "entities"; an item without its own
+    // "control" follows the widget's. The agent checks the same rule before it switches anything.
+    const items = [];
+    const seenIds = new Set();
+    const listed = Array.isArray(o.items) ? o.items : [];
+    for (const it of listed) {
+      const id = it && typeof it.id === 'string' ? it.id.trim() : '';
+      if (!id.includes('.') || seenIds.has(id)) continue;
+      if (seenIds.size >= HA_MAX_ITEMS) break; // the cap counts usable rows, like the agent's
+      seenIds.add(id);
+      items.push({ id, name: String(it.name || '').trim(), icon: String(it.icon || '').trim(), showName: it.showName !== false, showIcon: it.showIcon !== false,
+        control: typeof it.control === 'boolean' ? it.control : o.control === true });
+    }
+    // like the agent: a non-empty "items" list is final, even when none of its rows is usable
+    if (!listed.length) for (const id of String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.')).slice(0, HA_MAX_ITEMS)) items.push({ id, name: '', icon: '', showName: true, showIcon: true, control: o.control === true });
+    const ids = items.map((i) => i.id);
     let data = null, lastKey = '', busy = null;
     const grid = h('div', 'ha-grid');
     if (o.title) box.append(h('div', 'w-title', o.title));
     box.append(grid);
-    const load = async () => { try { data = await api('/ha/states?ids=' + encodeURIComponent(ids.join(','))); } catch (_) {} };
+    // 200 long ids would outgrow the agent's request line, so ask in batches and merge the answers
+    const batches = [];
+    for (let cur = [], len = 0, i = 0; i <= ids.length; i++) {
+      const n = i < ids.length ? encodeURIComponent(ids[i]).length + 3 : 0;
+      if (cur.length && (i === ids.length || len + n > HA_BATCH_CHARS)) { batches.push(cur); cur = []; len = 0; }
+      if (i < ids.length) { cur.push(ids[i]); len += n; }
+    }
+    const load = async () => {
+      try {
+        const parts = await Promise.all(batches.map((b) => api('/ha/states?ids=' + encodeURIComponent(b.join(',')))));
+        if (parts.length) data = { ...parts[0], entities: parts.flatMap((p) => p.entities || []) };
+      } catch (_) {}
+    };
     const toggle = async (e) => {
       haptic();
       busy = e.id; render(true);
@@ -271,16 +300,18 @@ W.ha = {
       const key = JSON.stringify([data, busy]);
       if (!force && key === lastKey) return;
       lastKey = key;
-      if (!ids.length) { grid.replaceChildren(h('div', 'empty', 'List entity ids in the widget settings, e.g. light.desk')); return; }
+      if (!ids.length) { grid.replaceChildren(h('div', 'empty', t('w.ha.empty'))); return; }
       if (!data) { grid.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
       if (!data.configured) { grid.replaceChildren(h('div', 'empty', data.error)); return; }
-      grid.replaceChildren(...data.entities.map((e) => {
+      const byId = new Map(data.entities.map((e) => [e.id, e]));
+      grid.replaceChildren(...items.map((it) => {
+        const e = byId.get(it.id) || { id: it.id, state: 'unknown', name: it.id };
         const dom = e.id.split('.')[0];
         const active = HA_ACTIVE.has(e.state);
-        const icon = dom === 'lock' ? (e.state === 'unlocked' ? '🔓' : '🔒') : HA_CLASS_ICONS[e.deviceClass] || HA_ICONS[dom] || '◻️';
-        const can = o.control === true && HA_SWITCHABLE.has(dom) && e.state !== 'unavailable';
+        const icon = it.icon || (dom === 'lock' ? (e.state === 'unlocked' ? '🔓' : '🔒') : HA_CLASS_ICONS[e.deviceClass] || HA_ICONS[dom] || '◻️');
+        const can = it.control && HA_SWITCHABLE.has(dom) && e.state !== 'unavailable';
         const tile = h('div', 'ha-tile' + (active ? ' on' : '') + (can ? ' can' : '') + (busy === e.id ? ' busy' : '') + (e.state === 'unavailable' ? ' gone' : ''),
-          h('span', 'ha-ico', icon), h('span', 'ha-name', e.name), h('b', 'ha-state', haState(e)));
+          ...(it.showIcon ? [h('span', 'ha-ico', icon)] : []), ...(it.showName ? [h('span', 'ha-name', it.name || e.name)] : []), h('b', 'ha-state', haState(e)));
         if (can) tile.addEventListener('click', () => toggle(e));
         return tile;
       }), ...(data.error ? [h('div', 'ha-err', '⚠ ' + data.error)] : []));

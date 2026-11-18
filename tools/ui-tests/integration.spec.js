@@ -285,6 +285,26 @@ test('settings Display Time format select saves false, true and auto', async ({ 
   await expect(sel).toHaveValue('auto');
 });
 
+// The feeds, cameras, console, Discord and ping editors (and each control action's "enabled") fill in their defaults
+// while they render. The unsaved-changes baseline used to be taken before that, so a page that had just loaded already
+// offered Save, and Revert could never get back to a clean state.
+test('a freshly loaded settings page has nothing to save, and Revert gets back to that', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await page.goto('/settings/#general');
+  // the Advanced JSON box is empty in the markup and filled by the changed() at the end of load(): from here on the
+  // config is rendered, the form handlers are bound and the baseline is taken (both buttons start disabled anyway)
+  await expect(page.locator('#json')).toHaveValue(/"pages"/);
+  await expect(page.locator('#save')).toBeDisabled();
+  await expect(page.locator('#revert')).toBeDisabled();
+
+  await page.locator('input[data-bind="night.brightness"]').fill('0.1');
+  await expect(page.locator('#save')).toBeEnabled();
+  await page.locator('#revert').click();
+  await expect(page.locator('#save')).toBeDisabled();
+  await expect(page.locator('#revert')).toBeDisabled();
+  await expect(page.locator('#nbv')).toHaveText('2%');
+});
+
 test('multi option preserves saved unlisted quota provider IDs when toggling choices', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 });
   await layout(page, [widget('quotas', { providers: ['claude', 'alibaba'] })]);

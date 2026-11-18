@@ -12,6 +12,9 @@
 - Saving after uploading or removing a shortcut's custom icon no longer fails with "The settings were changed in
   another tab or window". The agent sent the settings version as a number too large for the page to keep exactly, so
   the page sent back a slightly different one; it is sent as text now.
+- A freshly opened settings page no longer offers Save and Revert before anything was changed, and Revert gets back
+  to a clean page again. The feeds, cameras, console, Discord and ping editors filled in their defaults after the page
+  had noted what was saved (#229).
 
 ## 0.9.19 — 2026-11-17
 
