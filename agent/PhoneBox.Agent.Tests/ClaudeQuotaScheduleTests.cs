@@ -106,6 +106,17 @@ public sealed class ClaudeQuotaScheduleTests : IDisposable
     }
 
     [Fact]
+    public async Task APlanWithoutATokenSaysClaudeDesktopDoesNotShareItsSignIn()
+    {
+        // what the Claude Desktop app leaves: the plan, no access token (#247)
+        File.WriteAllText(Creds, """{"claudeAiOauth":{"subscriptionType":"max","rateLimitTier":"default_claude_max_5x"}}""");
+        var agent = Agent();
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal(0, _api.Calls);
+        Assert.Equal(QuotaMonitor.NoCliSignIn, Claude(agent).Error);
+    }
+
+    [Fact]
     public async Task ATokenThatExpiresWithinAMinuteIsNotSent()
     {
         SignIn("almost", _t0 + 20_000);

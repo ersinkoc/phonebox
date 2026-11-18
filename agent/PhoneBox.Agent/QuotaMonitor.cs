@@ -327,6 +327,8 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
 
     private enum ClaudeResult { Ok, Limited, Refused, Offline, Unrecognized, Failed }
 
+    internal const string NoCliSignIn = "No Claude Code sign-in here; Claude Desktop doesn't share its own. Run claude to sign in";
+
     /// <summary>One pass of the usage loop for Claude, at wall-clock time <paramref name="nowMs"/>.</summary>
     internal async Task ClaudeTickAsync(long nowMs, CancellationToken ct)
     {
@@ -381,7 +383,9 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         }
 
         var print = token.Length == 0 ? "" : Fingerprint(token);
-        var wait = token.Length == 0 ? "Not signed in to Claude Code"
+        // A plan without a token is what the Claude Desktop app leaves in the file: it keeps its own sign-in to itself,
+        // so only a Claude Code command-line sign-in can be used here (#247)
+        var wait = token.Length == 0 ? NoCliSignIn
             : expires > 0 && expires - nowMs < ClaudeTokenMarginMs ? "Token expired; it will refresh when Claude Code runs"
             : print == _claudeRefused && nowMs - _claudeRefusedAt is >= 0 and < ClaudeRefusedRetryMs ? RefusedMessage : null;
         _claudeAwaitingToken = wait is not null;

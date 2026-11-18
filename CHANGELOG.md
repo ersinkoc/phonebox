@@ -35,6 +35,11 @@ with a test that failed before it, kept as a regression test (#234, #235, #236, 
   clicked without leaving the field, and the two language selectors stay in step.
 
 **Agent**
+- Claude quota widget: with only the Claude Desktop app signed in, it says that the desktop app doesn't share its
+  sign-in and that the `claude` command-line tool is needed, instead of "Not signed in to Claude Code" (#247,
+  [hassanxs](https://github.com/hassanxs)).
+- Linux: the default Calculator, Settings and System Monitor shortcuts start the desktop's own apps on KDE, Xfce,
+  MATE and others when GNOME's are missing (#238, #246, [sateesh2020](https://github.com/sateesh2020)).
 - Home Assistant locks and vacuums read their state again before a toggle and do nothing when it is unknown.
 - Panic mute wins over push-to-talk: a microphone it closed (or failed to close) can't be reopened by a hold.
 - OBS, Docker, Spotify and Discord handle disconnects, account changes and malformed messages without stale data.

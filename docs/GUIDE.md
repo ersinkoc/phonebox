@@ -108,6 +108,10 @@ provide defaults; a widget's own options override them, including an empty provi
 Install a compatible CLI from [CodexBar](https://github.com/steipete/CodexBar) if available for your system.
 PhoneBox uses native local sources when no compatible CLI is installed.
 
+**Claude quotas** need the sign-in of the Claude Code command-line tool (run `claude` and sign in). The Claude Desktop
+app keeps its own sign-in to itself, so with only the desktop app the widget shows the plan and says so; its sessions
+still show up in the Sessions widget.
+
 **Native Antigravity quotas** use a running app/hub's advertised HTTP port and CSRF token, the HTTPS port of newer
 IDE servers (2.32 picks it at start-up, so the agent tries the loopback ports that server process listens
 on and accepts its self-signed certificate only for loopback addresses), or a signed-in
