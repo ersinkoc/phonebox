@@ -108,13 +108,15 @@ provide defaults; a widget's own options override them, including an empty provi
 Install a compatible CLI from [CodexBar](https://github.com/steipete/CodexBar) if available for your system.
 PhoneBox uses native local sources when no compatible CLI is installed.
 
-**Native Antigravity quotas** use a running app/hub's advertised HTTP port and CSRF token, or a signed-in
+**Native Antigravity quotas** use a running app/hub's advertised HTTP port and CSRF token, the HTTPS port of newer
+IDE servers (2.32 picks it at start-up, so the agent tries the loopback ports that server process listens
+on and accepts its self-signed certificate only for loopback addresses), or a signed-in
 `agy` CLI (1.1.11 or later). The CLI fallback runs `agy -p /usage --output-format json`, without a model prompt,
 and also finds the standard Windows installation in `%LOCALAPPDATA%\agy\bin`. Run `agy` in your terminal to sign
 in if needed. The agent reads measured session and weekly buckets, plus the plan when the local server provides it;
 CLI reports without plan metadata keep the neutral Antigravity title. Older IDE servers can supply model quotas
 through `GetUserStatus`; unavailable measurements are skipped, and weekly limits are never invented. Refresh
-failures retain the last measurements with an error. HTTPS-only endpoints without a compatible CLI can use CodexBar.
+failures retain the last measurements with an error.
 
 Tap an AI session to see its model, timing and token details. Token counters describe the local session rather than
 the account allowance. Prompt/response text and tool arguments are not included in this panel data.

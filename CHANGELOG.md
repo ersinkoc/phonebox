@@ -23,6 +23,9 @@
   part-way, which a translation helper shadowed by a variable had caused (#219, [sonvivu](https://github.com/sonvivu)).
 
 **Agent**
+- Antigravity quotas show up with newer Antigravity IDE versions (reported with 2.32), whose language server answers
+  over HTTPS on a port it picks at start-up: the agent tries the loopback ports that process listens on, and accepts
+  its self-signed certificate only for this computer (#227, [goutam-prusty](https://github.com/goutam-prusty)).
 - Linux: Intel GPUs (`i915` and `xe`, such as the Arc 130V) show their load, not just the clock. Like nvtop, the agent
   adds it up from the GPU usage counters of the running programs; without root, other users' programs aren't counted
   (#224, [comptechguy2009](https://github.com/comptechguy2009)).

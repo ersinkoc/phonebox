@@ -1,5 +1,12 @@
 using System.Text.Json;
 using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using PhoneBox.Agent;
 using Xunit;
 
@@ -109,8 +116,186 @@ public sealed class AntigravityTests
             ["language_server"] = ["language_server --app_data_dir=windsurf --port=18768 --csrf_token=other-editor"],
             ["agy"] = ["agy --hub --hub-port=18769 --csrf_token=hub"]
         };
-        var endpoints = QuotaMonitor.FindAntigravityEndpoints(name => commands.GetValueOrDefault(name) ?? []).ToArray();
+        var endpoints = QuotaMonitor.FindAntigravityEndpoints(
+            name => (commands.GetValueOrDefault(name) ?? []).Select(cmd => (1000, cmd)),
+            _ => throw new InvalidOperationException("No command line asked for a run-time port")).ToArray();
         Assert.Equal(new[] { 18765, 18766, 18767, 18769 }, endpoints.Select(ep => ep.Port).Order().ToArray());
+        Assert.All(endpoints, ep => Assert.Equal("http", ep.Scheme));
+    }
+
+    [Theory]
+    [InlineData("language_server --csrf_token abc --https_server_port 0", 0, "abc")]
+    [InlineData("language_server --csrf_token=abc --https_server_port=62173", 62173, "abc")]
+    [InlineData("language_server --extension_server_port 1 --extension_server_csrf_token ext --csrf_token main --https_server_port 0", 0, "main")]
+    [InlineData("language_server --extension_server_csrf_token ext --https_server_port 0", 0, "ext")]
+    public void HttpsServerPortIsReadWithTheServersOwnToken(string cmd, int port, string token)
+    {
+        var https = QuotaMonitor.ParseHttpsServerFromCommandLine(cmd);
+        Assert.NotNull(https);
+        Assert.Equal(port, https.Value.Port);
+        Assert.Equal(token, https.Value.CsrfToken);
+    }
+
+    [Theory]
+    [InlineData("language_server --csrf_token abc")]
+    [InlineData("language_server --https_server_port 0")]
+    [InlineData("language_server --csrf_token abc --https_server_port -1")]
+    [InlineData("language_server --csrf_token abc --https_server_port 65536")]
+    [InlineData("language_server --csrf_token abc --https_server_port 0x10")]
+    public void MissingOrInvalidHttpsServerFlagsAreNotCandidates(string cmd) =>
+        Assert.Null(QuotaMonitor.ParseHttpsServerFromCommandLine(cmd));
+
+    [Fact]
+    public void RunTimeHttpsPortsComeFromTheSameProcessAfterEveryNamedPort()
+    {
+        // Issue #227: Antigravity 2.32 passes --https_server_port 0 and serves the RPC over HTTPS on a port it picks.
+        var commands = new Dictionary<string, (int, string)[]>
+        {
+            ["language_server"] =
+            [
+                (41, "C:\\Antigravity\\language_server.exe --csrf_token=dyn --https_server_port 0 --extension_server_port 58324"),
+                (42, "/opt/antigravity/language_server --csrf_token=other --https_server_port 0"),
+            ],
+            ["language_server_windows_x64"] = [(43, "antigravity\\language_server_windows_x64 --csrf_token=fixed --https_server_port=50001")],
+            ["agy"] = [(44, "agy --hub --hub-port=18769 --csrf_token=hub")],
+        };
+        var asked = new List<int>();
+        var endpoints = QuotaMonitor.FindAntigravityEndpoints(
+            name => commands.GetValueOrDefault(name) ?? [],
+            pid =>
+            {
+                asked.Add(pid);
+                return pid switch
+                {
+                    41 => [V4(58324), V4(62173), V6(62174), V6(58324)],
+                    42 => [V4(50001), V4(7000)],
+                    _ => [V4(9999)],
+                };
+            }).ToArray();
+
+        Assert.Equal(new[] { 41, 42 }, asked);
+        Assert.Equal(new QuotaMonitor.AntigravityEndpoint[]
+        {
+            new(18769, "hub"),
+            new(58324, "dyn"),                  // the explicit HTTP extension port of process 41
+            new(50001, "fixed", "https"),       // a concrete HTTPS port
+            new(62173, "dyn", "https"),         // process 41's own listeners, minus the port already named
+            new(62174, "dyn", "https", "[::1]"), // an IPv6-only listener is asked on ::1
+            new(58324, "dyn", "https", "[::1]"), // [::1]:58324 is not the named 127.0.0.1:58324
+            new(7000, "other", "https"),        // 50001 is already a named candidate
+        }, endpoints);
+    }
+
+    private static ListeningPorts.Listener V4(int port) => new(System.Net.IPAddress.Loopback, port);
+    private static ListeningPorts.Listener V6(int port) => new(System.Net.IPAddress.IPv6Loopback, port);
+
+    [Fact]
+    public void EndpointTextNeverContainsTheToken()
+    {
+        var ep = new QuotaMonitor.AntigravityEndpoint(62173, "secret-csrf-token", "https");
+        Assert.Equal("https://127.0.0.1:62173", ep.ToString());
+        Assert.Equal("https://[::1]:62174", (ep with { Port = 62174, Host = "[::1]" }).ToString());
+        Assert.DoesNotContain("secret-csrf-token", $"{ep}");
+    }
+
+    [Theory]
+    [InlineData("https://127.0.0.1:62173/x", true)]
+    [InlineData("https://[::1]:62173/x", true)]
+    [InlineData("https://localhost:62173/x", true)]
+    [InlineData("https://LOCALHOST:62173/x", true)]
+    [InlineData("https://127.0.0.2:62173/x", true)]  // all of 127/8 is loopback
+    [InlineData("https://192.168.1.10:62173/x", false)]
+    [InlineData("https://example.com/x", false)]
+    [InlineData("https://localhost.example.com/x", false)]
+    [InlineData("https://127.0.0.1.nip.io/x", false)]
+    [InlineData("http://127.0.0.1:62173/x", false)]
+    public void InvalidCertificatesPassOnlyForLoopbackHttps(string url, bool accepted)
+    {
+        Assert.Equal(accepted, QuotaMonitor.AcceptLoopbackCertificate(new Uri(url), SslPolicyErrors.RemoteCertificateChainErrors));
+        Assert.Equal(accepted, QuotaMonitor.AcceptLoopbackCertificate(new Uri(url),
+            SslPolicyErrors.RemoteCertificateChainErrors | SslPolicyErrors.RemoteCertificateNameMismatch));
+        Assert.True(QuotaMonitor.AcceptLoopbackCertificate(new Uri(url), SslPolicyErrors.None));
+        Assert.False(QuotaMonitor.AcceptLoopbackCertificate(null, SslPolicyErrors.RemoteCertificateChainErrors));
+    }
+
+    [Fact]
+    public async Task HttpsCandidatesUseTheLoopbackTlsClientAndHttpTheSharedOne()
+    {
+        var shared = new List<string>();
+        var tls = new List<string>();
+        using var http = new HttpClient(new Handler((request, _) =>
+        {
+            shared.Add(request.RequestUri!.GetLeftPart(UriPartial.Authority));
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }));
+        using var https = new HttpClient(new Handler((request, _) =>
+        {
+            tls.Add(request.RequestUri!.GetLeftPart(UriPartial.Authority));
+            Assert.Equal("dyn", Assert.Single(request.Headers.GetValues("X-Codeium-Csrf-Token")));
+            return Task.FromResult(JsonResponse("""{"groups":[{"buckets":[{"window":"5h","remaining":{"remainingFraction":0.5}}]}]}"""));
+        }));
+        var provider = await QuotaMonitor.ReadAntigravityAsync(http,
+            [new(58324, "dyn"), new(62173, "dyn", "https")], CancellationToken.None, https);
+        Assert.NotNull(provider);
+        Assert.Equal(50, Assert.Single(provider.Limits).Percent);
+        Assert.Equal(new[] { "http://127.0.0.1:58324", "http://127.0.0.1:58324" }, shared);
+        Assert.Equal(new[] { "https://127.0.0.1:62173", "https://127.0.0.1:62173" }, tls);
+    }
+
+    [Fact]
+    public async Task ReadsQuotasFromASelfSignedLoopbackHttpsServer()
+    {
+        using var cert = SelfSignedLoopbackCertificate();
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.Logging.ClearProviders();
+        builder.WebHost.UseKestrelHttpsConfiguration();
+        builder.WebHost.ConfigureKestrel(k => k.Listen(IPAddress.Loopback, 0, l => l.UseHttps(cert)));
+        await using var app = builder.Build();
+        app.MapPost("/exa.language_server_pb.LanguageServerService/{method}", (string method, HttpRequest request) =>
+            request.Headers["X-Codeium-Csrf-Token"] != "loopback-token" ? Results.StatusCode(403)
+            : method == "RetrieveUserQuotaSummary"
+                ? Results.Text("""{"groups":[{"buckets":[{"window":"5h","remaining":{"remainingFraction":0.25}}]}]}""", "application/json")
+                : Results.NotFound());
+        await app.StartAsync();
+        var port = new Uri(app.Urls.Single()).Port;
+
+        // The certificate really is untrusted: a client with default validation gets nothing.
+        using var strict = new HttpClient();
+        Assert.Null(await QuotaMonitor.ReadAntigravityAsync(strict, [new(port, "loopback-token", "https")], CancellationToken.None));
+
+        using var http = new HttpClient(new Handler((_, _) => throw new InvalidOperationException("HTTPS went to the shared client")));
+        using var https = new HttpClient(QuotaMonitor.NewLoopbackTlsHandler());
+        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [new(port, "loopback-token", "https")], CancellationToken.None, https);
+        Assert.NotNull(provider);
+        Assert.Equal(75, Assert.Single(provider.Limits).Percent);
+
+        await app.StopAsync();
+    }
+
+    [Fact]
+    public void LoopbackTlsHandlerChecksTheRequestHost()
+    {
+        using var handler = QuotaMonitor.NewLoopbackTlsHandler();
+        var check = handler.ServerCertificateCustomValidationCallback!;
+        using var local = new HttpRequestMessage(HttpMethod.Post, "https://127.0.0.1:62173/");
+        using var remote = new HttpRequestMessage(HttpMethod.Post, "https://example.com/");
+        Assert.True(check(local, null, null, SslPolicyErrors.RemoteCertificateChainErrors));
+        Assert.False(check(remote, null, null, SslPolicyErrors.RemoteCertificateChainErrors));
+        Assert.False(handler.UseProxy);
+        Assert.False(handler.AllowAutoRedirect);
+    }
+
+    private static X509Certificate2 SelfSignedLoopbackCertificate()
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest("CN=localhost", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        var san = new SubjectAlternativeNameBuilder();
+        san.AddIpAddress(IPAddress.Loopback);
+        request.CertificateExtensions.Add(san.Build());
+        request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1")], false));
+        using var ephemeral = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddHours(1));
+        // Windows' TLS stack can't use an ephemeral key, so the certificate goes through a PFX round trip.
+        return X509CertificateLoader.LoadPkcs12(ephemeral.Export(X509ContentType.Pfx), null);
     }
 
     [Theory]
@@ -154,7 +339,7 @@ public sealed class AntigravityTests
                 {"label":"Unknown","quotaInfo":{"resetTime":"2026-11-15T07:30:12Z"}}]}}}
                 """));
         }));
-        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [(18765, "test-token"), (18766, "test-token")], CancellationToken.None);
+        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [new(18765, "test-token"), new(18766, "test-token")], CancellationToken.None);
         Assert.NotNull(provider);
         Assert.Equal("Ultra", provider.Plan);
         Assert.Equal(75, Assert.Single(provider.Limits).Percent);
@@ -174,7 +359,7 @@ public sealed class AntigravityTests
                     "cascadeModelConfigData":{"clientModelConfigs":[{"label":"Gemini",
                     "quotaInfo":{"remainingFraction":0.25}}]}}}
                     """))));
-        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [(18765, "test-token")], CancellationToken.None);
+        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [new(18765, "test-token")], CancellationToken.None);
         Assert.NotNull(provider);
         Assert.Equal("Ultra", provider.Plan);
         Assert.Equal(75, Assert.Single(provider.Limits).Percent);
@@ -187,7 +372,7 @@ public sealed class AntigravityTests
             Task.FromResult(request.RequestUri!.Segments.Last() == "GetUserStatus"
                 ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
                 : JsonResponse("""{"groups":[{"buckets":[{"window":"5h","remaining":{"remainingFraction":0.25}}]}]}"""))));
-        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [(18765, "test-token")], CancellationToken.None);
+        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [new(18765, "test-token")], CancellationToken.None);
         Assert.NotNull(provider);
         Assert.Equal("Antigravity", provider.Plan);
         Assert.Equal(75, Assert.Single(provider.Limits).Percent);
@@ -204,14 +389,14 @@ public sealed class AntigravityTests
             throw new InvalidOperationException("Cancellation was not forwarded");
         }));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            QuotaMonitor.ReadAntigravityAsync(http, [(18765, "test-token")], cts.Token));
+            QuotaMonitor.ReadAntigravityAsync(http, [new(18765, "test-token")], cts.Token));
     }
 
     [Fact]
     public async Task MissingMeasurementsDoNotProduceAHealthyProvider()
     {
         using var http = new HttpClient(new Handler((_, _) => Task.FromResult(JsonResponse("""{"groups":[{"buckets":[{}]}]}"""))));
-        Assert.Null(await QuotaMonitor.ReadAntigravityAsync(http, [(18765, "test-token")], CancellationToken.None));
+        Assert.Null(await QuotaMonitor.ReadAntigravityAsync(http, [new(18765, "test-token")], CancellationToken.None));
     }
 
     private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK) { Content = new StringContent(json) };

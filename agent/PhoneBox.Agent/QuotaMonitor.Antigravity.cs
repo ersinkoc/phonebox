@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Net;
+using System.Net.Security;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -16,6 +18,44 @@ public sealed partial class QuotaMonitor
     ];
 
     /// <summary>
+    /// One loopback RPC candidate. Older servers answer plain HTTP on the port from their command line; newer ones serve
+    /// HTTPS with a self-signed certificate, on a port that may be chosen at run time.
+    /// </summary>
+    /// <param name="Host">The loopback address in URL form: 127.0.0.1, or [::1] for a server that listens on IPv6 only.</param>
+    internal readonly record struct AntigravityEndpoint(int Port, string CsrfToken, string Scheme = "http", string Host = "127.0.0.1")
+    {
+        /// <summary>Never includes the CSRF token, so a candidate can't leak it into a log line.</summary>
+        public override string ToString() => $"{Scheme}://{Host}:{Port}";
+    }
+
+    private HttpClient? _loopbackTlsClient;
+
+    /// <summary>Only for the Antigravity server's HTTPS port; the shared client keeps full certificate validation.</summary>
+    private HttpClient LoopbackTlsHttp => _loopbackTlsClient ??= NewHttpClient(NewLoopbackTlsHandler());
+
+    /// <summary>
+    /// A handler that accepts a certificate which fails validation only for requests to this computer, where the
+    /// Antigravity server's certificate is self-signed. Redirects are off, so a response can't move the request elsewhere.
+    /// </summary>
+    internal static HttpClientHandler NewLoopbackTlsHandler() => new()
+    {
+        UseProxy = false,
+        UseCookies = false,
+        AllowAutoRedirect = false,
+        ServerCertificateCustomValidationCallback = (request, _, _, errors) => AcceptLoopbackCertificate(request.RequestUri, errors),
+    };
+
+    /// <summary>A valid certificate always passes; an invalid one only for HTTPS to a loopback address or localhost.</summary>
+    internal static bool AcceptLoopbackCertificate(Uri? uri, SslPolicyErrors errors)
+    {
+        if (errors == SslPolicyErrors.None) return true;
+        if (uri is not { IsAbsoluteUri: true } || uri.Scheme != Uri.UriSchemeHttps) return false;
+        var host = uri.Host.Trim('[', ']');
+        return host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || IPAddress.TryParse(host, out var ip) && IPAddress.IsLoopback(ip);
+    }
+
+    /// <summary>
     /// Refreshes Antigravity quota and plan data by discovering the local language server process and querying its RPC endpoints.
     /// </summary>
     /// <param name="ct">Cancellation token for async operations.</param>
@@ -23,7 +63,7 @@ public sealed partial class QuotaMonitor
     private async Task<bool> RefreshAntigravity(CancellationToken ct)
     {
         var endpoints = FindAntigravityEndpoints().Distinct().Take(8).ToArray();
-        var provider = endpoints.Length > 0 ? await ReadAntigravityAsync(Http, endpoints, ct) : null;
+        var provider = endpoints.Length > 0 ? await ReadAntigravityAsync(Http, endpoints, ct, LoopbackTlsHttp) : null;
         var cli = FindAntigravityCli();
         if (provider is null && cli is not null)
         {
@@ -87,9 +127,13 @@ public sealed partial class QuotaMonitor
             null, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
     }
 
-    /// <summary>Tries bounded loopback candidates; an unavailable server must not hide a healthy one.</summary>
+    /// <summary>
+    /// Tries bounded loopback candidates in order; an unavailable server must not hide a healthy one.
+    /// HTTPS candidates go through <paramref name="https"/> (the loopback-only certificate check), the rest through
+    /// <paramref name="http"/>; without <paramref name="https"/> both use <paramref name="http"/>.
+    /// </summary>
     internal static async Task<QuotaProvider?> ReadAntigravityAsync(HttpClient http,
-        IEnumerable<(int Port, string CsrfToken)> endpoints, CancellationToken ct)
+        IEnumerable<AntigravityEndpoint> endpoints, CancellationToken ct, HttpClient? https = null)
     {
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
         budget.CancelAfter(TimeSpan.FromSeconds(10));
@@ -97,6 +141,8 @@ public sealed partial class QuotaMonitor
         {
             ct.ThrowIfCancellationRequested();
             if (budget.IsCancellationRequested) break;
+            if (ep.Scheme is not ("http" or "https")) continue;
+            var client = ep.Scheme == "https" ? https ?? http : http;
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(budget.Token);
             deadline.CancelAfter(TimeSpan.FromSeconds(3));
             using var summary = await Post("RetrieveUserQuotaSummary");
@@ -116,11 +162,11 @@ public sealed partial class QuotaMonitor
                 try
                 {
                     using var req = new HttpRequestMessage(HttpMethod.Post,
-                        $"http://127.0.0.1:{ep.Port}/exa.language_server_pb.LanguageServerService/{method}");
+                        $"{ep}/exa.language_server_pb.LanguageServerService/{method}");
                     req.Headers.Add("X-Codeium-Csrf-Token", ep.CsrfToken);
                     req.Headers.Add("Connect-Protocol-Version", "1");
                     req.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-                    using var response = await http.SendAsync(req, deadline.Token);
+                    using var response = await client.SendAsync(req, deadline.Token);
                     if (!response.IsSuccessStatusCode) return null;
                     return JsonDocument.Parse(await response.Content.ReadAsStringAsync(deadline.Token));
                 }
@@ -248,43 +294,89 @@ public sealed partial class QuotaMonitor
     internal static (int Port, string CsrfToken)? ParseEndpointFromCommandLine(string cmd)
     {
         if (string.IsNullOrWhiteSpace(cmd)) return null;
-        string? Flag(params string[] names)
-        {
-            foreach (var name in names)
-            {
-                var match = AntigravityFlagRegex().Matches(cmd).Cast<Match>()
-                    .LastOrDefault(m => string.Equals(m.Groups["name"].Value, name, StringComparison.OrdinalIgnoreCase));
-                if (match is not null)
-                    return match.Groups["double"].Success ? match.Groups["double"].Value
-                        : match.Groups["single"].Success ? match.Groups["single"].Value : match.Groups["bare"].Value;
-            }
-            return null;
-        }
-        var hubPort = Flag("hub-port", "hub_port", "port");
+        var hubPort = AntigravityFlag(cmd, "hub-port", "hub_port", "port");
         var csrf = hubPort is null
-            ? Flag("extension_server_csrf_token", "csrf_token", "csrfToken") : Flag("csrf_token", "csrfToken");
-        var portValue = hubPort ?? Flag("extension_server_port");
+            ? AntigravityFlag(cmd, "extension_server_csrf_token", "csrf_token", "csrfToken")
+            : AntigravityFlag(cmd, "csrf_token", "csrfToken");
+        var portValue = hubPort ?? AntigravityFlag(cmd, "extension_server_port");
         if (int.TryParse(portValue, out var port) && port is > 0 and <= 65535 && !string.IsNullOrWhiteSpace(csrf))
             return (port, csrf);
+        return null;
+    }
+
+    /// <summary>
+    /// Extracts the language server's own HTTPS port and its CSRF token. Port 0 means the server picked a free port at
+    /// start-up, which then has to be found among the ports the process listens on.
+    /// </summary>
+    /// <param name="cmd">The command line string.</param>
+    /// <returns>The HTTPS port (0 when chosen at run time) and token, or <c>null</c> without a usable flag pair.</returns>
+    internal static (int Port, string CsrfToken)? ParseHttpsServerFromCommandLine(string cmd)
+    {
+        if (string.IsNullOrWhiteSpace(cmd)) return null;
+        // The server's own RPC checks --csrf_token; the extension token belongs to the IDE's extension server.
+        var csrf = AntigravityFlag(cmd, "csrf_token", "csrfToken", "extension_server_csrf_token");
+        if (int.TryParse(AntigravityFlag(cmd, "https_server_port", "https-server-port"), out var port)
+            && port is >= 0 and <= 65535 && !string.IsNullOrWhiteSpace(csrf))
+            return (port, csrf);
+        return null;
+    }
+
+    /// <summary>The value of the last occurrence of the first flag name present, or <c>null</c>.</summary>
+    private static string? AntigravityFlag(string cmd, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            var match = AntigravityFlagRegex().Matches(cmd).Cast<Match>()
+                .LastOrDefault(m => string.Equals(m.Groups["name"].Value, name, StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+                return match.Groups["double"].Success ? match.Groups["double"].Value
+                    : match.Groups["single"].Success ? match.Groups["single"].Value : match.Groups["bare"].Value;
+        }
         return null;
     }
 
     private static JsonElement AntigravityProp(JsonElement element, string key) =>
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(key, out var value) ? value : default;
 
-    /// <summary>Enumerates only Antigravity-marked candidates, including legacy server names.</summary>
-    internal static IEnumerable<(int Port, string CsrfToken)> FindAntigravityEndpoints(
-        Func<string, IEnumerable<string>>? readCommands = null)
+    /// <summary>
+    /// Enumerates only Antigravity-marked candidates, including legacy server names. Ports named on a command line come
+    /// first, from every process, so the bounded reader tries them before guessing among a process's listening ports;
+    /// those are tried over HTTPS with the token of the same process.
+    /// </summary>
+    /// <param name="readCommands">For tests: the process id and command line of each process with the given name.</param>
+    /// <param name="listeningPorts">For tests: the loopback TCP listeners of a process id.</param>
+    internal static IEnumerable<AntigravityEndpoint> FindAntigravityEndpoints(
+        Func<string, IEnumerable<(int Pid, string CommandLine)>>? readCommands = null,
+        Func<int, IReadOnlyList<ListeningPorts.Listener>>? listeningPorts = null)
     {
+        var named = new HashSet<(string Host, int Port)>(); // 127.0.0.1:62173 and [::1]:62173 are different sockets
+        var dynamic = new List<(int Pid, string CsrfToken)>();
         foreach (var name in AntigravityProcessNames)
-        foreach (var cmd in (readCommands ?? ReadAntigravityCommands)(name))
+        foreach (var (pid, cmd) in (readCommands ?? ReadAntigravityCommands)(name))
         {
             if (name != "agy" && !cmd.Contains("antigravity", StringComparison.OrdinalIgnoreCase)) continue;
-            if (ParseEndpointFromCommandLine(cmd) is { } ep) yield return ep;
+            if (ParseEndpointFromCommandLine(cmd) is { } ep)
+            {
+                named.Add(("127.0.0.1", ep.Port));
+                yield return new AntigravityEndpoint(ep.Port, ep.CsrfToken);
+            }
+            if (ParseHttpsServerFromCommandLine(cmd) is not { } https) continue;
+            if (https.Port > 0)
+            {
+                named.Add(("127.0.0.1", https.Port));
+                yield return new AntigravityEndpoint(https.Port, https.CsrfToken, "https");
+            }
+            else if (pid > 0) dynamic.Add((pid, https.CsrfToken));
+        }
+        foreach (var (pid, csrf) in dynamic)
+        foreach (var listener in (listeningPorts ?? (id => ListeningPorts.ForProcess(id)))(pid))
+        {
+            var host = ListeningPorts.UrlHost(listener.Address);
+            if (!named.Contains((host, listener.Port))) yield return new AntigravityEndpoint(listener.Port, csrf, "https", host);
         }
     }
 
-    private static IEnumerable<string> ReadAntigravityCommands(string name)
+    private static IEnumerable<(int Pid, string CommandLine)> ReadAntigravityCommands(string name)
     {
         Process[] procs;
         try { procs = Process.GetProcessesByName(name); }
@@ -295,7 +387,7 @@ public sealed partial class QuotaMonitor
             {
                 string? cmd = null;
                 try { cmd = GetCommandLine(p.Id); } catch { }
-                if (!string.IsNullOrEmpty(cmd)) yield return cmd;
+                if (!string.IsNullOrEmpty(cmd)) yield return (p.Id, cmd);
             }
         }
         finally { foreach (var p in procs) p.Dispose(); }
