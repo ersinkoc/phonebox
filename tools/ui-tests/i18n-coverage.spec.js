@@ -24,6 +24,13 @@ const DEMO_NAMES = [
   'UMIDIGI BISON · connected now over USB · WebView 134',
   'samsung SM-X200 · seen 2 min ago over Wi-Fi · WebView 134',
   '0.9.16 (up to date)',
+  // deck controls, radio slots and shortcut sample data the demo config carries
+  'AI quotas', 'Deep work', 'Audio deck', 'Streaming deck', 'Meeting deck', 'Development deck',
+  'Music deck', 'Computer controls', 'Hacker News', 'Smart Stack', 'Workflow GitHub',
+  'Radio internet', 'Mixer OBS', 'Screen Off', 'Run tests', 'Web dev server', 'API dev server',
+  'Mute in meeting', 'Raise hand',
+  // placeholder paths shown as example values inside inputs
+  'C:\\Users\\you\\Pictures\\Frame', 'C:\\ffmpeg\\bin\\ffmpeg.exe',
 ];
 
 // Any run of two English words with no Vietnamese diacritics. Ids, codes, units, urls and single words (product names
@@ -38,7 +45,9 @@ function englishLeftovers(texts, allowed) {
     if (allow.has(t.replace(/^[·•]\s*/, ''))) return false;
     if (/[\u00c0-\u1ef9]/i.test(t)) return false;               // Vietnamese diacritics
     if (!/[A-Za-z]{3,}/.test(t)) return false;
-    if (/^[\w.\-+#/%: ]{1,50}$/.test(t)) return false;           // ids, codes, units, "22.9 / 64 GB"
+    // Exempt only real identifier, code and numeric/unit forms. The earlier pattern allowed letters and spaces, so an
+    // ordinary label like "Save all settings" counted as an identifier and slipped through.
+    if (/^(?:[\w.\-+#/%:]+|[-\d.,\s]+(?:%|GB|MB|KB|ms|s|°C|W|V|Hz|%\/s)?|[\w.\-]+\/(?:s|min|h))$/.test(t)) return false;
     return /[A-Za-z]{2,}[^A-Za-z]{1,3}[A-Za-z]{2,}/.test(t);     // at least two words
   };
   return [...new Set(texts.map(norm))].filter(isEnglish);
@@ -63,17 +72,25 @@ test('the settings page shows no English left in Vietnamese, with every section 
   await page.waitForTimeout(800);
 
   const leftovers = await page.evaluate(() => {
-    const skip = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'TEXTAREA', 'INPUT']);
+    // Input values are user data, not interface text; their placeholder and aria-label still are.
+    const skip = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'TEXTAREA']);
     const out = [];
     const walk = (el) => {
       if (skip.has(el.tagName)) return;
-      if (!el.children.length) {
-        const t = el.textContent || '';
-        if (t.trim()) out.push(t);
-        if (el.title) out.push(el.title);
-        if (el.placeholder) out.push(el.placeholder);
-        if (el.getAttribute && el.getAttribute('aria-label')) out.push(el.getAttribute('aria-label'));
+      // Read an element's own text nodes, not just its subtree: a <label> that wraps an <input> has children, so a
+      // leaf-only rule dropped its text (and the input's placeholder with it).
+      for (const node of el.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const t = node.nodeValue || '';
+          if (t.trim()) out.push(t);
+        }
       }
+      if (el.title) out.push(el.title);
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        if (el.placeholder) out.push(el.placeholder);
+        if (el.tagName === 'INPUT' && el.type !== 'text' && el.value && el.type === 'button') out.push(el.value);
+      }
+      if (el.getAttribute && el.getAttribute('aria-label')) out.push(el.getAttribute('aria-label'));
       for (const c of el.children) walk(c);
     };
     walk(document.body);
@@ -89,6 +106,13 @@ test('the settings page shows no English left in Vietnamese, with every section 
     'SoundVolumeView', 'xdotool', 'wtype', 'soffice', 'POWERPNT', 'VS Code', 'Strip[0].Gain',
     // Wi-Fi and Tailscale are product names, so the section title stays the same in every language
     'Wi-Fi & Tailscale',
+    // an OBS/Home Assistant UI label the user looks for inside those programs, not our own interface text
+    'Long-lived access tokens', 'Spotify Client ID', 'Client ID', 'Client secret',
+    'Enable WebSocket server', 'Show Connect Info', 'Secret address in iCal format',
+    // names the machine reports, so they are data and not interface text
+    'UMIDIGI BISON', 'samsung SM-X200',
+    // literal values the API accepts, shown inside <code>: translating them would break the examples
+    '(ok / warn / error)', '(ok / warn / error),',
   ].concat(
     // English names of the other languages in the picker
     ['English', 'Deutsch', 'Français', 'Español', 'Italiano', 'Nederlands', 'Polski', 'Русский', '中文', 'Türkçe', 'Português'],
@@ -120,9 +144,11 @@ test('every string in widgets.json and templates.json has a Vietnamese catalog e
     for (const t of templates) {
       for (const f of ['title', 'desc']) if (t[f]) wanted.add(t[f]);
     }
+    // A choice whose label is a plain number ("1", "2", "3" for the feeds line count) is the value itself, not text.
+    const isValue = (s) => /^[\d.,%\-/+ ]+$/.test(s);
     // TRY is the Turkish lira code, used as a currency label: translating it would turn the code into a word.
     const NOT_TRANSLATED = new Set(['TRY']);
-    const missing = [...wanted].filter((s) => !(s in vi) && !NOT_TRANSLATED.has(s));
+    const missing = [...wanted].filter((s) => !(s in vi) && !NOT_TRANSLATED.has(s) && !isValue(s));
     return { widgets: widgets.length, templates: templates.length, wanted: wanted.size, missing };
   });
 

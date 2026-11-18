@@ -330,7 +330,7 @@ dd { margin: 0; word-break: break-all; }
   <div class="spacer"></div>
   <select id="langSel" data-i18n-title="lang.label" title="Language" style="padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:12.5px;max-width:160px"></select>
   <span class="dirty-dot" data-i18n-title="s.unsavedChanges" title="Unsaved changes"></span>
-  <button class="btn primary" id="restartBtn" hidden title="Wi-Fi settings change after a restart" data-i18n="s.restartApply">Restart to apply</button>
+  <button class="btn primary" id="restartBtn" hidden title="Wi-Fi settings change after a restart" data-i18n="s.restartApply" data-i18n-title="s.restartApplyTitle">Restart to apply</button>
   <button class="btn" id="openPhone" data-i18n="s.openOnPhone">Open on phone</button>
   <button class="btn" id="revert" disabled data-i18n="s.revert">Revert</button>
   <button class="btn primary" id="save" disabled data-i18n="s.save">Save</button>
@@ -425,7 +425,7 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.calendars.title">Calendars</h3>
-        <p class="hint" style="margin:0 0 12px">For the <b>Agenda</b> widget and calendar rules. Paste an iCalendar (ICS) address:
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.cal.hint">For the <b>Agenda</b> widget and calendar rules. Paste an iCalendar (ICS) address:
           Google Calendar › Settings › your calendar › <i>Secret address in iCal format</i>; Outlook › Settings › Calendar › Shared calendars ›
           <i>Publish a calendar</i> (ICS link); iCloud › share as a public calendar (<code>webcal://</code> works). The addresses stay on this computer.</p>
         <div id="calList"></div>
@@ -465,7 +465,7 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.ha.title">Home Assistant</h3>
-        <p class="hint" style="margin:0 0 12px">For the <b>Home Assistant</b> widget. Create a token in Home Assistant › your profile › Security ›
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.ha.hint">For the <b>Home Assistant</b> widget. Create a token in Home Assistant › your profile › Security ›
           <i>Long-lived access tokens</i>. The token stays on this computer; the phone only sees the entities its widgets list.
           (Home Assistant can also push values and notifications to the panel, see Webhooks.)</p>
         <div class="grid2">
@@ -487,8 +487,8 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.obs.title">OBS Studio</h3>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="obs.enabled"><span></span></label> Connect to OBS (for the <b>OBS</b> widget, the On air widget and rules)</div>
-        <p class="hint" style="margin:0 0 12px">In OBS: Tools › WebSocket Server Settings › <i>Enable WebSocket server</i>; copy the password from <i>Show Connect Info</i>.</p>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="obs.enabled"><span></span></label> <span data-i18n-html="s.obs.enable">Connect to OBS (for the <b>OBS</b> widget, the On air widget and rules)</span></div>
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.obs.hint">In OBS: Tools › WebSocket Server Settings › <i>Enable WebSocket server</i>; copy the password from <i>Show Connect Info</i>.</p>
         <div class="grid2">
           <div class="field"><label data-i18n="s.ha.address">Address</label><input type="text" data-bind="obs.url" placeholder="ws://127.0.0.1:4455" spellcheck="false"></div>
           <div class="field"><label data-i18n="s.obs.password">Password</label><input type="password" data-bind="obs.password" autocomplete="off"></div>
@@ -559,19 +559,19 @@ dd { margin: 0; word-break: break-all; }
       <div class="card">
         <h3 data-i18n="s.kiosk.title">Kiosk</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.kiosk.lead">Keep the phone on the panel. Neither needs root.</p>
-        <label class="check"><input type="checkbox" data-bind="display.pin"> Pin the panel: Home and Recents stay on it (Android asks once; hold Back and Overview together to unpin)</label>
-        <label class="check"><input type="checkbox" data-bind="display.homeScreen"> Use the panel as the phone's home screen: it starts after a reboot and Home returns to it (turn off to get your launcher back)</label>
-        <label class="check"><input type="checkbox" data-bind="display.keepAwake"> Keep the phone awake: turn off Android's screen saver (it starts on the charger) and keep the screen on while plugged in (set over USB)</label>
-        <label class="check" id="followComputerLockOption" style="display:none"><input type="checkbox" data-bind="display.followComputerLock"> Follow the computer lock: turn the phone screen off when macOS locks; wake it and open PhoneBox when macOS unlocks (ADB required; unlock phones secured by a PIN or password manually)</label>
+        <label class="check"><input type="checkbox" data-bind="display.pin"> <span data-i18n="s.kiosk.pin">Pin the panel: Home and Recents stay on it (Android asks once; hold Back and Overview together to unpin)</span></label>
+        <label class="check"><input type="checkbox" data-bind="display.homeScreen"> <span data-i18n="s.kiosk.homeScreen">Use the panel as the phone's home screen: it starts after a reboot and Home returns to it (turn off to get your launcher back)</span></label>
+        <label class="check"><input type="checkbox" data-bind="display.keepAwake"> <span data-i18n="s.kiosk.keepAwake">Keep the phone awake: turn off Android's screen saver (it starts on the charger) and keep the screen on while plugged in (set over USB)</span></label>
+        <label class="check" id="followComputerLockOption" style="display:none"><input type="checkbox" data-bind="display.followComputerLock"> <span data-i18n="s.kiosk.followLock">Follow the computer lock: turn the phone screen off when macOS locks; wake it and open PhoneBox when macOS unlocks (ADB required; unlock phones secured by a PIN or password manually)</span></label>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.battery.title">Battery care</h3>
-        <p class="hint" style="margin:0 0 12px">A phone that is plugged in all the time wears its battery out. PhoneBox can keep it between two
-          levels by switching the phone's power on and off. Phones cannot stop charging by themselves without root, so the power is switched
-          where it comes from: a <b>smart plug in Home Assistant</b> (the phone on its own charger), or two <b>shortcuts</b>, for example
-          <code>uhubctl</code> for a USB hub with switchable ports. Without USB power the panel keeps running over Wi-Fi.</p>
-        <div class="row" style="margin-bottom:12px"><label class="switch"><input type="checkbox" data-bind="charge.enabled"><span></span></label> Keep the battery between
+        <p class="hint" style="margin:0 0 12px"><span data-i18n="s.battery.leadHead">A phone that is plugged in all the time wears its battery out. PhoneBox can keep it between two</span>
+          <span data-i18n="s.battery.leadMid">levels by switching the phone's power on and off. Phones cannot stop charging by themselves without root, so the power is switched</span>
+          <span data-i18n-html="s.battery.leadTail">where it comes from: a <b>smart plug in Home Assistant</b> (the phone on its own charger), or two <b>shortcuts</b>, for example
+          <code>uhubctl</code> for a USB hub with switchable ports. Without USB power the panel keeps running over Wi-Fi.</span></p>
+        <div class="row" style="margin-bottom:12px"><label class="switch"><input type="checkbox" data-bind="charge.enabled"><span></span></label> <span data-i18n="s.battery.keepBetween">Keep the battery between</span>
           <input type="number" min="5" max="95" data-bind="charge.min" data-type="int" style="width:70px"> % and
           <input type="number" min="10" max="100" data-bind="charge.max" data-type="int" style="width:70px"> %</div>
         <div class="grid2">
@@ -586,12 +586,12 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.claude.title">Claude Code permission prompts</h3>
-        <p class="hint" style="margin:0 0 12px">When Claude Code asks for permission (run a command, edit a file…), the phone shows the request with
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.claude.hint">When Claude Code asks for permission (run a command, edit a file…), the phone shows the request with
           <b>Allow</b> and <b>Deny</b>. If the phone is not connected or nobody answers in time, Claude Code asks in the terminal as usual.
           This needs a small hook in <code>~/.claude/settings.json</code>; PhoneBox adds it for you (a backup is kept next to the file).</p>
         <div class="row" style="margin-bottom:12px"><button class="btn" id="hookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="hookState"></span></div>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="claude.phoneApprovals"><span></span></label> <span data-i18n="s.claude.askOnPhone">Ask on the phone</span></div>
-        <label class="check"><input type="checkbox" data-bind="claude.onlyWhenAway"> Only when I am away from the PC (no keyboard or mouse for a minute)</label>
+        <label class="check"><input type="checkbox" data-bind="claude.onlyWhenAway"> <span data-i18n="s.claude.onlyWhenAway">Only when I am away from the PC (no keyboard or mouse for a minute)</span></label>
         <div class="field" style="max-width:260px;margin-top:12px"><label data-i18n="s.claude.timeout">Seconds to answer before the terminal takes over</label><input type="number" min="10" max="3600" data-bind="claude.timeoutSec" data-type="int"></div>
       </div>
 
@@ -632,22 +632,21 @@ dd { margin: 0; word-break: break-all; }
       <div class="card">
         <h3 data-i18n="s.wifi.title">Wi-Fi &amp; Tailscale</h3>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="lan.enabled"><span></span></label> <span data-i18n="s.wifi.enable">Let the phone connect without the USB cable</span></div>
-        <p class="hint" style="margin:0 0 12px">Pair a phone by plugging it in once over USB after turning this on (and restarting), or without a cable:
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.wifi.lead">Pair a phone by plugging it in once over USB after turning this on (and restarting), or without a cable:
           <b>Pair a phone over Wi-Fi</b> shows a QR code to scan with the phone's camera.
           The phone then talks HTTPS to this PC, trusts only this PC's certificate and has to present a secret key.
           The phone and this PC must be on the same network &mdash; or both on <a href="https://tailscale.com" target="_blank" rel="noopener">Tailscale</a>, which also works from another place or across separate Wi-Fi networks.
           Windows Firewall asks once &mdash; allow it (tick the network type Tailscale uses, too).</p>
         <div class="grid2">
           <div class="field"><label data-i18n="s.wifi.port">Port</label><input type="number" min="1024" max="65535" data-bind="lan.port" data-type="int"></div>
-          <div class="field"><label>Addresses offered to the phone</label><div id="lanHosts" class="hint">—</div></div>
+          <div class="field"><label data-i18n="s.wifi.addresses">Addresses offered to the phone</label><div id="lanHosts" class="hint">—</div></div>
         </div>
         <div class="row"><button class="btn primary" id="lanPair" data-i18n="s.wifi.pair">Pair a phone over Wi-Fi</button><button class="btn" id="lanRegen" data-i18n="s.wifi.newKey">New key (unpair phones)</button><span class="hint" id="lanStatus"></span></div>
       </div>
       <div class="card">
         <h3 data-i18n="s.updates.title">Updates</h3>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="updates.auto"><span></span></label> <span data-i18n="s.updates.auto">Install new releases automatically</span></div>
-        <p class="hint" style="margin:0 0 12px">Checks <span id="updRepo"></span> on GitHub every 6 hours. The phone app is installed over USB without a prompt
-          on the phone; the agent replaces its own files and restarts.</p>
+        <p class="hint" style="margin:0 0 12px"><span data-i18n="s.upd.checksBefore">Checks</span> <span id="updRepo"></span> <span data-i18n="s.upd.checksAfter">on GitHub every 6 hours. The phone app is installed over USB without a prompt on the phone; the agent replaces its own files and restarts.</span></p>
         <dl id="updInfo"></dl>
         <div class="row" style="margin-top:12px"><button class="btn" id="updCheck" data-i18n="s.updates.check">Check now</button><button class="btn primary" id="updApply" hidden data-i18n="s.updates.apply">Update now</button><span class="hint" id="updState"></span></div>
       </div>
@@ -669,7 +668,7 @@ dd { margin: 0; word-break: break-all; }
       <div class="card">
         <h3 data-i18n="s.webhooks.examples">Examples</h3>
         <div id="whExamples"></div>
-        <p class="hint">JSON payloads may carry <code>value</code>, <code>title</code>, <code>sub</code>, <code>unit</code>, <code>icon</code>, <code>color</code>,
+        <p class="hint" data-i18n-html="s.wh.payloadHintFull">JSON payloads may carry <code>value</code>, <code>title</code>, <code>sub</code>, <code>unit</code>, <code>icon</code>, <code>color</code>,
           <code>level</code> (ok / warn / error), <code>progress</code> (0&ndash;1 or 0&ndash;100), <code>items</code> (a list) and <code>ttl</code> (seconds).
           Plain text or a number works too. Notifications take <code>title</code>, <code>text</code>, <code>level</code>, <code>vibrate</code>,
           <code>seconds</code>, <code>wake</code> (light up the night screen) and <code>page</code> (switch to it).</p>
@@ -954,8 +953,8 @@ function renderPages() {
     return row;
   }), h('button', { class: 'btn', style: { width: '100%', marginTop: '8px' }, onclick: () => openTemplates(null) }, t('s.js.newPage')),
     h('div', { class: 'row', style: { gap: '6px', marginTop: '8px' } },
-      h('button', { class: 'btn sm', style: { flex: '1' }, title: 'Save all pages to a file', onclick: () => exportPages(cfg.pages, 'phonebox-pages') }, icon('download', 'm'), t('s.js.export')),
-      h('button', { class: 'btn sm', style: { flex: '1' }, title: 'Load pages from a file', onclick: importPages }, icon('upload', 'm'), t('s.js.import'))));
+      h('button', { class: 'btn sm', style: { flex: '1' }, title: t('s.js.saveAllPages'), onclick: () => exportPages(cfg.pages, 'phonebox-pages') }, icon('download', 'm'), t('s.js.export')),
+      h('button', { class: 'btn sm', style: { flex: '1' }, title: t('s.js.loadPages'), onclick: importPages }, icon('upload', 'm'), t('s.js.import'))));
   renderPageEditor();
 }
 
@@ -980,20 +979,20 @@ function renderPageEditor() {
       h('div', { class: 'row', style: { gap: '10px' } },
         h('input', { type: 'text', class: 'icon-input', value: p.icon || '', maxlength: 8, title: 'Icon', oninput: (e) => { p.icon = e.target.value; changed(); renderTabsOnly(); } }),
         h('input', { type: 'text', value: p.title || '', placeholder: t('s.js.pageName'), style: { flex: '1', fontSize: '16px', fontWeight: '600' }, oninput: (e) => { p.title = e.target.value; changed(); renderTabsOnly(); } }),
-        h('label', { class: 'check', title: 'Show this page on the phone' }, h('label', { class: 'switch' },
+        h('label', { class: 'check', title: t('s.js.showOnPhone') }, h('label', { class: 'switch' },
           h('input', { type: 'checkbox', checked: p.enabled !== false, onchange: (e) => {
             if (!e.target.checked && cfg.pages.filter((x) => x.enabled !== false).length === 1) { e.target.checked = true; toast(t('s.js.keepOnePage'), true); return; }
             p.enabled = e.target.checked; changed(); renderTabsOnly();
           } }), h('span')), t('s.js.shown')),
-        h('button', { class: 'icon-btn', title: 'Move earlier', disabled: selPage === 0, onclick: () => move(-1) }, icon('chevron-up')),
-        h('button', { class: 'icon-btn', title: 'Move later', disabled: selPage === cfg.pages.length - 1, onclick: () => move(1) }, icon('chevron-down'))),
+        h('button', { class: 'icon-btn', title: t('s.js.moveEarlier'), disabled: selPage === 0, onclick: () => move(-1) }, icon('chevron-up')),
+        h('button', { class: 'icon-btn', title: t('s.js.moveLater'), disabled: selPage === cfg.pages.length - 1, onclick: () => move(1) }, icon('chevron-down'))),
       h('div', { class: 'row', style: { gap: '6px', marginTop: '10px' } },
         h('button', { class: 'btn sm', onclick: () => openTemplates(selPage) }, t('s.js.replaceTpl')),
         h('button', { class: 'btn sm', onclick: () => { const c = JSON.parse(JSON.stringify(p)); c.id = ''; c.title += t('s.js.dupPageSuffix'); cfg.pages.splice(selPage + 1, 0, c); selPage++; renderPages(); changed(); } }, t('s.js.dupPage')),
         h('button', { class: 'btn sm', title: t('s.js.exportPageHint'), onclick: () => exportPages([p], 'phonebox-page-' + (p.id || 'page')) }, t('s.js.exportPage')),
         h('button', { class: 'btn sm', onclick: () => { p.widgets = []; selWidget = -1; renderPageEditor(); changed(); } }, t('s.js.clear')),
         h('span', { class: 'spacer' }),
-        h('button', { class: 'btn sm' + (isHome(p) ? ' on' : ''), title: 'The page the panel comes back to (idle return, Back key)',
+        h('button', { class: 'btn sm' + (isHome(p) ? ' on' : ''), title: t('s.js.homePageHint'),
           onclick: () => { if (!p.id) { toast(t('s.js.saveFirstForId'), true); return; } cfg.display.homePage = p.id; renderPageEditor(); changed(); } },
           icon('home', 'm'), isHome(p) ? t('s.js.homePage') : t('s.js.makeHome')),
         h('label', { class: 'hint', title: t('s.js.backHomeAfterHint') }, t('s.js.backHomeAfter'),
@@ -1003,7 +1002,7 @@ function renderPageEditor() {
         h('button', { class: 'btn sm danger', disabled: cfg.pages.length === 1, onclick: () => {
           if (!confirm(t('s.js.deletePageConfirm', { title: p.title }))) return;
           cfg.pages.splice(selPage, 1); selWidget = -1; renderPages(); changed();
-        } }, 'Delete page'))));
+        } }, t('s.js.deletePage')))));
   $('peHead').append(appearanceEditor(p, () => [cfg.display?.appearance], t('s.js.pageAppearance')));
   $('peRest').replaceChildren(
     h('p', { class: 'hint layout-hint', style: { margin: '6px 0 14px' } }, t('s.js.layoutHint')),
@@ -1609,7 +1608,7 @@ function renderPhones() {
       ph.webviewProblem ? h('p', { class: 'hint', style: { margin: '6px 0 0', color: 'var(--warn)' } }, icon('warn', 'm'), ph.webviewProblem) : null,
       h('label', { class: 'check', style: { marginTop: '8px' } },
         h('input', { type: 'checkbox', checked: all, onchange: (e) => { entry(ph.id).pages = e.target.checked ? null : cfg.pages.map((p) => p.id).filter(Boolean); changed(); renderPhones(); } }),
-        'Shows all pages'),
+        t('s.js.showsAllPages')),
       all ? null : h('div', { class: 'phone-pages' }, ...cfg.pages.filter((p) => p.id).map((p) => h('label', { class: 'check' },
         h('input', { type: 'checkbox', checked: chosen.includes(p.id), onchange: (e) => {
           const e2 = entry(ph.id);
@@ -1871,7 +1870,8 @@ function ruleCard(r, i) {
   const text = (key, placeholder, cls = '') => h('input', { type: 'text', class: cls, value: r[key] ?? '', placeholder, oninput: (e) => set(key, e.target.value || null) });
 
   const cond = [];
-  if (trig.match) cond.push(text('match', trig.match, 'grow'));
+  // the trigger table keeps English as its key, so the example value inside the box is translated too
+  if (trig.match) cond.push(text('match', tl(trig.match), 'grow'));
   if (r.when === 'push') cond.push(sel(r.op || 'on', { on: 'is on', '>': 'is above', '<': 'is below', '=': 'equals', '!=': 'is not' }, (v) => set('op', v === 'on' ? null : v, true)),
     r.op ? text('arg', 'value', '') : null);
   if (trig.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? trig.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, trig.value));
@@ -1988,16 +1988,17 @@ function renderWebhooks(lan) {
   const host = lan?.active && lan.hosts?.length ? `https://${lan.hosts[0]}:${lan.port}` : null;
   const token = cfg.lan?.webhookToken || '';
   const ex = [
-    ['A number', `curl -X POST ${local}/api/push/temperature -d 21.5`],
-    ['A status with a subtitle', `curl -X POST ${local}/api/push/build -H "Content-Type: application/json" -d "{\\"value\\":\\"passed\\",\\"sub\\":\\"main · 3m 12s\\"}"`],
-    ['A list (style: list)', `curl -X POST ${local}/api/push/todo -H "Content-Type: application/json" -d "[\\"Ship 0.6.2\\",\\"Buy milk\\"]"`],
-    ['Expires after 10 minutes', `curl -X POST "${local}/api/push/door?ttl=600" -d open`],
-    ['Notification on the phone', `curl -X POST ${local}/api/notify -H "Content-Type: application/json" -d "{\\"title\\":\\"Deploy\\",\\"text\\":\\"Production is live\\",\\"level\\":\\"ok\\"}"`],
-    ['Switch the phone to a page', `curl -X POST ${local}/api/goto/music`],
-    ['Refresh everything now', `curl -X POST ${local}/api/refresh`],
+    [t('s.wh.exNumber'), `curl -X POST ${local}/api/push/temperature -d 21.5`],
+    [t('s.wh.exStatus'), `curl -X POST ${local}/api/push/build -H "Content-Type: application/json" -d "{\\"value\\":\\"passed\\",\\"sub\\":\\"main · 3m 12s\\"}"`],
+    [t('s.wh.exList'), `curl -X POST ${local}/api/push/todo -H "Content-Type: application/json" -d "[\\"Ship 0.6.2\\",\\"Buy milk\\"]"`],
+    [t('s.wh.exTtl'), `curl -X POST "${local}/api/push/door?ttl=600" -d open`],
+    [t('s.wh.exNotify'), `curl -X POST ${local}/api/notify -H "Content-Type: application/json" -d "{\\"title\\":\\"Deploy\\",\\"text\\":\\"Production is live\\",\\"level\\":\\"ok\\"}"`],
+    [t('s.wh.exGoto'), `curl -X POST ${local}/api/goto/music`],
+    [t('s.wh.exRefresh'), `curl -X POST ${local}/api/refresh`],
     ['PowerShell', `Invoke-RestMethod -Method Post ${local}/api/push/cpu-fan -Body 1450`],
   ];
-  $('whExamples').replaceChildren(...ex.map(([t, c]) => h('div', { class: 'ex' }, h('span', {}, t), h('code', { class: 'cmdline', title: t('s.wh.clickToCopy'), onclick: () => { navigator.clipboard?.writeText(c); toast(t('s.wh.copied')); } }, c))));
+  // the label is not called `t`: that name is the translation helper, and shadowing it made these examples throw
+  $('whExamples').replaceChildren(...ex.map(([label, c]) => h('div', { class: 'ex' }, h('span', {}, label), h('code', { class: 'cmdline', title: t('s.wh.clickToCopy'), onclick: () => { navigator.clipboard?.writeText(c); toast(t('s.wh.copied')); } }, c))));
   $('whLan').replaceChildren(host
     ? h('div', {}, h('p', { class: 'hint', style: { marginTop: 0 } }, t('s.wh.lanHint')),
       h('div', { class: 'row', style: { gap: '8px', margin: '0 0 8px' } }, h('code', {}, token ? token.slice(0, 6) + '…' : '(generated on save)'),
@@ -2084,7 +2085,7 @@ function renderEditor() {
     onclick: () => { colorIn.value = c; upd('color', c); markSwatch(); } })));
   const markSwatch = () => sw.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === s.color));
   markSwatch();
-  const cmdIn = h('input', { type: 'text', value: s.cmd || '', placeholder: 'e.g. wt.exe, https://…, builtin:lock', oninput: (e) => upd('cmd', e.target.value, false) });
+  const cmdIn = h('input', { type: 'text', value: s.cmd || '', placeholder: t('s.k.cmdPlaceholder'), oninput: (e) => upd('cmd', e.target.value, false) });
   const preset = h('select', { onchange: (e) => { if (e.target.value) { cmdIn.value = e.target.value; upd('cmd', e.target.value, false); cmdIn.focus(); } e.target.value = ''; } },
     ...presets().map(([v, l]) => h('option', { value: v }, tl(l))));
 
@@ -2110,8 +2111,8 @@ function renderEditor() {
 // A custom icon image (PNG, WEBP or SVG) overrides both the emoji and the auto-detected program icon on the phone.
 // Needs a saved shortcut id, so a brand new one must be saved once before it can be uploaded.
 function customIconField(s) {
-  if (!s.id) return h('div', { class: 'field' }, h('label', {}, 'Custom icon image'),
-    h('span', { class: 'hint' }, 'Save once to upload a custom icon image here.'));
+  if (!s.id) return h('div', { class: 'field' }, h('label', {}, t('s.k.customIcon')),
+    h('span', { class: 'hint' }, t('s.k.customIconSaveFirst')));
 
   const preview = h('img', { class: 'custom-icon-preview', alt: '', onerror: () => (preview.style.visibility = 'hidden'), onload: () => (preview.style.visibility = 'visible') });
   // fetch(), not <img src>: an <img> whose request 404s (most shortcuts have no icon at all) logs a console error;
@@ -2144,29 +2145,29 @@ function customIconField(s) {
         if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
         const res = await fetch(`/api/settings/shortcut-icon?id=${encodeURIComponent(s.id)}`, { method: 'POST', headers, body: f });
         const j = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(j.error || 'Upload failed');
+        if (!res.ok) throw new Error(j.error || t('s.k.uploadFailed'));
         if (j.version) cfgVersion = j.version;
-        toast('Icon uploaded.');
+        toast(t('s.k.iconUploaded'));
       } catch (err) { toast(err.message, true); }
       refresh();
     } });
-  return h('div', { class: 'field' }, h('label', {}, 'Custom icon image'),
+  return h('div', { class: 'field' }, h('label', {}, t('s.k.customIcon')),
     h('div', { class: 'row', style: { alignItems: 'center', gap: '8px' } },
       preview, file,
-      h('button', { class: 'btn sm', type: 'button', onclick: () => file.click() }, 'Upload…'),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => file.click() }, t('s.k.upload') + '…'),
       h('button', { class: 'btn sm', type: 'button', onclick: async () => {
         try {
           const headers = {};
           if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
           const res = await fetch(`/api/settings/shortcut-icon?id=${encodeURIComponent(s.id)}`, { method: 'DELETE', headers });
           const j = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(j.error || 'Remove failed');
+          if (!res.ok) throw new Error(j.error || t('s.k.removeFailed'));
           if (j.version) cfgVersion = j.version;
-          toast('Custom icon removed.');
+          toast(t('s.k.iconRemoved'));
         } catch (err) { toast(err.message, true); }
         refresh();
-      } }, 'Remove')),
-    h('span', { class: 'hint' }, 'PNG, WEBP or SVG, 512 KB max. Overrides the emoji (and the app’s own icon) on the phone.'));
+      } }, t('s.k.remove'))),
+    h('span', { class: 'hint' }, t('s.k.customIconHint')));
 }
 
 // What a key does: run a program, press keys, type text or run a macro; plus the on / off (toggle) options.
@@ -2187,7 +2188,7 @@ function actionFields(s, upd, text, cmdIn, preset) {
     fields.push(
       h('div', { class: 'field' }, h('label', {}, t('s.k.command')), cmdIn, preset,
         h('span', { class: 'hint' }, osName === 'windows' ? t('s.js.commandHintWindows') : t('s.js.commandHint'))),
-      text('args', t('s.k.arguments'), osName === 'windows' ? 'e.g. -d D:\\Projects claude' : 'e.g. --new-window ~/Projects'),
+      text('args', t('s.k.arguments'), osName === 'windows' ? t('s.k.argsPlaceholderWindows') : t('s.k.argsPlaceholderUnix')),
       text('cwd', t('s.k.workingFolder'), t('s.k.optional')));
   } else if (kind === 'keys') {
     fields.push(text('args', t('s.k.keys'), 'e.g. ctrl+shift+m', 'Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, playpause, next, prev, mute, volumeup, volumedown.'));
@@ -2204,7 +2205,7 @@ function actionFields(s, upd, text, cmdIn, preset) {
   const isMute = s.cmd === 'builtin:mute';
   fields.push(h('label', { class: 'check', style: { marginTop: '4px' } },
     h('input', { type: 'checkbox', checked: !!s.toggle || isMute, disabled: isMute, onchange: (e) => { s.toggle = e.target.checked; changed(); renderEditor(); } }),
-    isMute ? 'On / off key (shows whether the sound is muted)' : 'On / off key: the phone shows its state'));
+    isMute ? t('s.k.toggleLabelMute') : t('s.k.toggleLabel')));
   if (s.toggle && !isMute) {
     fields.push(text('stateKey', t('s.k.stateKey'), 'e.g. teams-muted',
       'A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.'));
@@ -2385,7 +2386,7 @@ function renderControlSettings() {
 
   const radioDir = h('details', {}, h('summary', {}, t('s.cd.radioImportTitle')));
   const countrySelect = h('select', { 'aria-label': t('s.cd.country'), style: { minWidth: '200px' } }, h('option', { value: '' }, t('s.cd.loadCountriesFirst')));
-  const limitInput = h('input', { type: 'number', min: 1, max: 100, value: 30, style: { width: '90px' }, 'aria-label': 'Station count' });
+  const limitInput = h('input', { type: 'number', min: 1, max: 100, value: 30, style: { width: '90px' }, 'aria-label': t('s.cd.stationCount') });
   const dirStatus = h('p', { class: 'hint', style: { margin: '6px 0' } }, t('s.cd.radioImportHint'));
   const checkReport = h('pre', { style: { maxHeight: '200px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
   radioDir.append(
@@ -2509,7 +2510,7 @@ function appearanceEditor(owner, parents, label, widget = false) {
       if (e.target.value) owner.appearance = { style: e.target.value }; else delete owner.appearance;
       update(); render();
     } }, ...[['', 'Inherit / current look'], ['default', 'Original appearance'], ['cards', 'Rounded cards'], ['flat', 'Flat surfaces'], ['borderless', 'Content only'], ['seamless', 'Seamless panel']]
-      .map(([value, text]) => h('option', { value, selected: (owner.appearance?.style || '') === value }, text)));
+      .map(([value, text]) => h('option', { value, selected: (owner.appearance?.style || '') === value }, tl(text))));
     const fields = [h('div', { class: 'field' }, h('label', {}, t('s.ap.surface')), style)];
     const fontLabels = { default: 'Original font', sans: 'Sans-serif', rounded: 'Rounded', condensed: 'Condensed', serif: 'Serif', mono: 'Monospace' };
     const inheritedFont = (() => {
@@ -2518,8 +2519,8 @@ function appearanceEditor(owner, parents, label, widget = false) {
     })();
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.ap.font')),
       h('select', { 'aria-label': 'Font', onchange: e => { set('font', e.target.value || null); render(); } },
-        h('option', { value: '', selected: owner.appearance?.font == null }, !inheritedFont || inheritedFont === 'default' ? 'Original widget font' : 'Inherit (' + fontLabels[inheritedFont] + ')'),
-        ...Object.entries(fontLabels).map(([value, text]) => h('option', { value, selected: owner.appearance?.font === value }, text)))));
+        h('option', { value: '', selected: owner.appearance?.font == null }, !inheritedFont || inheritedFont === 'default' ? t('s.appearance.originalWidgetFont') : t('s.ap.inheritFont', { font: tl(fontLabels[inheritedFont]) })),
+        ...Object.entries(fontLabels).map(([value, text]) => h('option', { value, selected: owner.appearance?.font === value }, tl(text))))));
     const numeric = (key, title, max, fallback, min = 0, step = 1, unit = ' px') => {
       const value = current[key];
       const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? 'Automatic' : value + unit);
@@ -2539,7 +2540,7 @@ function appearanceEditor(owner, parents, label, widget = false) {
       const fallback = PhoneBoxAppearance.resolve(...parents(), inherited)[key];
       fields.push(h('div', { class: 'field' }, h('label', {}, title),
         h('select', { 'aria-label': title, onchange: e => set(key, e.target.value === '' ? null : e.target.value === 'true') },
-          h('option', { value: '', selected: value == null }, fallback == null ? 'Original widget default' : 'Inherit (' + (fallback ? 'on' : 'off') + ')'),
+          h('option', { value: '', selected: value == null }, fallback == null ? t('s.appearance.originalWidgetDefault') : 'Inherit (' + (fallback ? 'on' : 'off') + ')'),
           h('option', { value: 'true', selected: value === true }, 'On'), h('option', { value: 'false', selected: value === false }, 'Off'))));
     }
     root.replaceChildren(h('summary', {}, label), h('p', { class: 'hint' }, widget
@@ -2557,7 +2558,7 @@ function renderAppearanceSettings() {
   const editor = appearanceEditor(cfg.display, () => [], t('s.appearance.global'));
   editor.open = true;
   const preview = h('div', { class: 'preview', hidden: true });
-  const selector = h('select', { id: 'appearancePreviewPage', 'aria-label': 'Appearance preview page', onchange: queuePreview },
+  const selector = h('select', { id: 'appearancePreviewPage', 'aria-label': t('s.appearance.previewPage'), onchange: queuePreview },
     ...(cfg.pages || []).map((p, index) => p.enabled !== false ? h('option', { value: index }, p.title) : null));
   const toggle = h('button', { type: 'button', class: 'btn', onclick: () => {
     preview.hidden = !preview.hidden;
@@ -2707,7 +2708,7 @@ async function loadInfo() {
     $('ver').textContent = 'v' + i.version;
     const pill = $('phone');
     pill.className = 'pill' + (i.connected ? ' on' : '');
-    pill.querySelector('span').textContent = i.connected ? 'Phone connected' + (i.via ? ' · ' + i.via : '') : 'No phone connected';
+    pill.querySelector('span').textContent = i.connected ? t('s.conn.connected') + (i.via ? ' · ' + i.via : '') : t('s.conn.notConnected');
     osName = i.os || 'windows';
     $('followComputerLockOption').style.display = osName === 'macos' ? '' : 'none';
     $('adbFound').textContent = i.adb ? t('s.conn.adbFound', { path: i.adb }) : t('s.conn.adbNotFound') + ' — ' + ({ linux: 'sudo apt install adb', macos: 'brew install android-platform-tools' }[osName] || 'winget install Google.PlatformTools');
@@ -2719,7 +2720,7 @@ async function loadInfo() {
     if (i.appMissing?.length) $('appMissingText').textContent = `${i.appMissing.join(', ')} has no PhoneBox app yet`;
     const sel = $('serial');
     const cur = cfg.deviceSerial || '';
-    const opts = [['', 'All connected devices'], ...i.devices.map((d) => [d, d])];
+    const opts = [['', t('s.conn.allDevices')], ...i.devices.map((d) => [d, d])];
     if (cur && !i.devices.includes(cur)) opts.push([cur, cur + ' (not connected)']);
     sel.replaceChildren(...opts.map(([v, l]) => h('option', { value: v, selected: v === cur }, l)));
     sel.onchange = () => { cfg.deviceSerial = sel.value || null; changed(); };
@@ -2732,14 +2733,14 @@ async function loadInfo() {
     renderUpdate(await (await fetch('/api/update')).json());
     renderWebhooks(lan);
     const hk = await (await fetch('/api/claude/hook')).json();
-    $('hookState').textContent = hk.installed ? 'Installed in ' + hk.path : 'Not installed';
+    $('hookState').textContent = hk.installed ? t('s.claude.installedIn', { path: hk.path }) : t('s.claude.notInstalled');
     $('hookBtn').dataset.i18n = hk.installed ? 's.claude.removeHook' : 's.claude.installHook';
     $('hookBtn').textContent = t($('hookBtn').dataset.i18n);
     $('hookBtn').dataset.installed = hk.installed ? '1' : '';
     $('info').replaceChildren(
       h('dt', {}, 'Version'), h('dd', {}, i.version),
       h('dt', {}, t('s.adv.settingsFile')), h('dd', {}, h('code', {}, i.configPath)),
-      h('dt', {}, 'Log'), h('dd', {}, h('code', {}, i.logPath)),
+      h('dt', {}, t('s.adv.log')), h('dd', {}, h('code', {}, i.logPath)),
       h('dt', {}, 'adb'), h('dd', {}, i.adb || '—'));
   } catch (_) {}
 }
@@ -2808,10 +2809,10 @@ function renderUpdate(u) {
   $('updRepo').textContent = cfg.updates?.repo || 'ersinkoc/phonebox';
   const line = (k, v) => [h('dt', {}, k), h('dd', {}, v)];
   $('updInfo').replaceChildren(
-    ...line('Agent', s.agentVersion + (s.agentUpdate ? ` → ${s.latest}` : ' (up to date)') + (u.installed ? '' : ' · not the installed copy, updates itself only from %LOCALAPPDATA%\\PhoneBox\\app')),
-    ...line('Phone app', s.appVersion ? s.appVersion + (s.appUpdate ? ` → ${s.latest} (needs USB)` : ' (up to date)') : 'not seen yet'),
-    ...line('Latest release', s.latest ? s.latest : '—'),
-    ...line('Last check', s.lastCheck ? new Date(s.lastCheck).toLocaleString() : 'not yet'));
+    ...line(t('s.adv.agent'), s.agentVersion + (s.agentUpdate ? ` → ${s.latest}` : ' ' + t('s.adv.upToDate')) + (u.installed ? '' : ' · ' + t('s.adv.notInstalledCopy'))),
+    ...line(t('s.adv.phoneApp'), s.appVersion ? s.appVersion + (s.appUpdate ? ` → ${s.latest} ` + t('s.adv.needsUsb') : ' ' + t('s.adv.upToDate')) : t('s.adv.notSeenYet')),
+    ...line(t('s.adv.latestRelease'), s.latest ? s.latest : '—'),
+    ...line(t('s.adv.lastCheck'), s.lastCheck ? new Date(s.lastCheck).toLocaleString() : t('s.adv.notYet')));
   $('updApply').hidden = !(s.agentUpdate || s.appUpdate);
   $('updState').textContent = s.error ? s.error : s.state !== 'idle' ? s.state + '…' : '';
 }
