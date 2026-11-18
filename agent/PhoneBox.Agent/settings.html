@@ -1942,6 +1942,9 @@ function renderRules() {
   list.replaceChildren(...cfg.rules.map((r, i) => ruleCard(r, i)));
 }
 
+// per rule being edited: the comparison value and the stale seconds that are not shown right now (see the operator select)
+const RULE_ARGS = new WeakMap();
+
 function ruleCard(r, i) {
   const set = (k, v, rerender = false) => { r[k] = v; changed(); if (rerender) renderRules(); };
   const trig = TRIGGERS[r.when] || TRIGGERS['session-waiting'];
@@ -1953,7 +1956,17 @@ function ruleCard(r, i) {
   // the trigger table keeps English as its key, so the example value inside the box is translated too
   if (trig.match) cond.push(text('match', tl(trig.match), 'grow'));
   if (r.when === 'push') cond.push(sel(r.op || 'on', { on: 'is on', '>': 'is above', '>=': 'is at least', '<': 'is below', '<=': 'is at most', '=': 'equals', '!=': 'is not', stale: 'has no update for' },
-    (v) => { if (v === 'stale' && !(+r.arg > 0)) r.arg = '60'; set('op', v === 'on' ? null : v, true); }),
+    (v) => {
+      // the seconds of "has no update for" and the value of a comparison are kept apart, so trying one operator and
+      // going back does not overwrite the other (only the selected operator's value is saved)
+      if ((r.op === 'stale') !== (v === 'stale')) {
+        const kept = RULE_ARGS.get(r) || {};
+        if (r.op === 'stale') kept.stale = r.arg; else kept.compare = r.arg;
+        r.arg = v === 'stale' ? (+kept.stale > 0 ? kept.stale : '60') : (kept.compare ?? null);
+        RULE_ARGS.set(r, kept);
+      }
+      set('op', v === 'on' ? null : v, true);
+    }),
     r.op === 'stale' ? h('input', { type: 'number', min: 1, max: 86400, style: 'width:90px', value: r.arg ?? '60', oninput: (e) => set('arg', e.target.value || null) }) : r.op ? text('arg', 'value', '') : null,
     r.op === 'stale' ? h('span', { class: 'hint' }, tl('seconds')) : null);
   if (trig.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? trig.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, trig.value));

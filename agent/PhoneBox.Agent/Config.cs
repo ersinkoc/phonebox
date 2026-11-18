@@ -666,9 +666,9 @@ public sealed partial class ConfigStore(string path)
             r.Days = RuleEngine.NormalizeDays(r.Days);
             r.During = string.IsNullOrWhiteSpace(r.During) ? null : r.During.Trim();
             r.Op = r.Op is ">" or ">=" or "<" or "<=" or "=" or "!=" or "stale" ? r.Op : null;
-            // seconds without an update: 1 s to a day, a minute when the box was left empty or holds text
+            // seconds without an update: 1 s to a day, a minute when the box was left empty or holds text ("Infinity" too)
             if (r.Op == "stale")
-                r.Arg = (double.TryParse(r.Arg, NumberStyles.Float, CultureInfo.InvariantCulture, out var staleSec) && staleSec > 0
+                r.Arg = (double.TryParse(r.Arg, NumberStyles.Float, CultureInfo.InvariantCulture, out var staleSec) && double.IsFinite(staleSec) && staleSec > 0
                     ? Math.Clamp(Math.Round(staleSec), 1, 86400) : 60).ToString(CultureInfo.InvariantCulture);
             r.Shortcut = string.IsNullOrWhiteSpace(r.Shortcut) ? null : r.Shortcut.Trim();
             if (r.Page is { } page) r.Page = PageId(page);

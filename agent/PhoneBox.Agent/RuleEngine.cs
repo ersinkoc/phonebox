@@ -330,7 +330,11 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
     /// </summary>
     internal static (bool Holds, string Detail) Stale(string key, PushItem? item, string? arg, long nowMs, long startedAtMs)
     {
-        if (!double.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var sec) || sec <= 0)
+        // a Match that cannot be a push key (a typo, a pasted URL with a token) never holds, so it never reaches the
+        // log or the notification text through {detail}
+        if (!PushStore.ValidKey(key)) return (false, "");
+        if (!double.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var sec)
+            || !double.IsFinite(sec) || sec <= 0)
             return (false, "");
         var since = Math.Max(item?.At ?? 0, startedAtMs);
         if (nowMs - since < sec * 1000) return (false, "");

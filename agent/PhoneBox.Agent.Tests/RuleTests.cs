@@ -83,14 +83,23 @@ public class RuleTests
     [InlineData("soon")]
     [InlineData("0")]
     [InlineData("-5")]
+    [InlineData("Infinity")]
+    [InlineData("NaN")]
     public void StaleWithoutAValidTimeNeverHolds(string? arg) =>
         Assert.False(RuleEngine.Stale("temp", null, arg, Start + 86_400_000, Start).Holds);
+
+    [Theory]
+    [InlineData("https://calendar.example/feed.ics?token=secret")]
+    [InlineData("two words")]
+    public void StaleIgnoresAMatchThatCannotBeAPushKey(string key) =>
+        Assert.Equal((false, ""), RuleEngine.Stale(key, null, "60", Start + 86_400_000, Start));
 
     [Theory]
     [InlineData("\"90\"", "90")]
     [InlineData("\"2.4\"", "2")]
     [InlineData("\"999999\"", "86400")]
     [InlineData("\"soon\"", "60")]
+    [InlineData("\"Infinity\"", "60")]
     [InlineData("null", "60")]
     public void StaleTimesAreCleaned(string arg, string expected)
     {
@@ -129,6 +138,7 @@ public class RuleTests
             Thread.Sleep(1200);
             Assert.Null(push.Get("a3-vibration"));
 
+            engine.StartedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();   // the grace counts from here, not from before the sleep
             engine.Evaluate();   // just started: the sender still has time
             Assert.Empty(engine.Active());
 
