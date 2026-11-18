@@ -291,7 +291,9 @@ test('settings Display Time format select saves false, true and auto', async ({ 
 test('a freshly loaded settings page has nothing to save, and Revert gets back to that', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 });
   await page.goto('/settings/#general');
-  await expect(page.locator('[data-bind="display.theme"]')).toBeVisible();
+  // the Advanced JSON box is empty in the markup and filled by the changed() at the end of load(): from here on the
+  // config is rendered, the form handlers are bound and the baseline is taken (both buttons start disabled anyway)
+  await expect(page.locator('#json')).toHaveValue(/"pages"/);
   await expect(page.locator('#save')).toBeDisabled();
   await expect(page.locator('#revert')).toBeDisabled();
 
