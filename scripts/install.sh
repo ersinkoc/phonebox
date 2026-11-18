@@ -17,7 +17,14 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --autostart) autostart=1 ;;
     --apk) apk=1 ;;
-    --serial) serial="$2"; shift ;;
+    --serial)
+      if [[ $# -lt 2 || -z $2 || $2 == -* ]]; then
+        echo "--serial needs a value" >&2
+        exit 2
+      fi
+      serial="$2"
+      shift
+      ;;
     -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac

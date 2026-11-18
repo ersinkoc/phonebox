@@ -446,11 +446,11 @@ main() {
     case "$1" in
       --yes|-y) yes=1 ;;
       --no-phone) phone=0 ;;
-      --serial) [ $# -ge 2 ] || die "--serial needs a value"; serial="$2"; shift ;;
+      --serial) [[ $# -ge 2 && -n $2 && $2 != -* ]] || die "--serial needs a value"; serial="$2"; shift ;;
       --no-autostart) autostart=0 ;;
       --no-start) start=0 ;;
       --no-extras) extras=0 ;;
-      --version) [ $# -ge 2 ] || die "--version needs a value"; version="$2"; shift ;;
+      --version) [[ $# -ge 2 && -n $2 && $2 != -* ]] || die "--version needs a value"; version="$2"; shift ;;
       --dry-run) dry=1 ;;
       -h|--help) sed -n '2,19p' "$0" 2>/dev/null || echo "See https://github.com/$repo#quick-start"; exit 0 ;;
       *) die "unknown option: $1 (see --help)" ;;

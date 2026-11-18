@@ -63,6 +63,12 @@ if ($Autostart) {
     $lnk.Save()
 }
 
+Write-Host '==> Starting agent'
+Start-Process $exe -WorkingDirectory $app
+Start-Sleep 2
+try { Invoke-RestMethod http://127.0.0.1:8765/api/info | Out-Null; Write-Host 'PhoneBox is running. Settings: http://127.0.0.1:8765  (or the tray icon)' }
+catch { Write-Warning "The agent did not respond; see $env:LOCALAPPDATA\PhoneBox\agent.log" }
+
 if ($Apk) {
     $adb = (Get-Command adb -ErrorAction SilentlyContinue).Source
     if (-not $adb) {
@@ -99,9 +105,3 @@ if ($Apk) {
     $out | Select-Object -Last 1
     & $adb @target shell am start -n net.oxog.phonebox.deskpanel/.MainActivity | Out-Null
 }
-
-Write-Host '==> Starting agent'
-Start-Process $exe -WorkingDirectory $app
-Start-Sleep 2
-try { Invoke-RestMethod http://127.0.0.1:8765/api/info | Out-Null; Write-Host 'PhoneBox is running. Settings: http://127.0.0.1:8765  (or the tray icon)' }
-catch { Write-Warning "The agent did not respond; see $env:LOCALAPPDATA\PhoneBox\agent.log" }

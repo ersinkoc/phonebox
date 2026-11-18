@@ -14,9 +14,35 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--bash', default='/bin/bash')
 args = parser.parse_args()
 INSTALLER = pathlib.Path(__file__).resolve().parents[1] / 'scripts/install.sh'
+SETUP = INSTALLER.parents[1] / 'setup.sh'
+
+
+class SetupOptionTests(unittest.TestCase):
+    def test_an_option_cannot_be_used_as_a_missing_serial_or_version(self):
+        for option in ('--serial', '--version'):
+            with self.subTest(option=option):
+                result = subprocess.run([args.bash, str(SETUP), option, '--dry-run', '--help'],
+                                        capture_output=True, text=True, timeout=5)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f'{option} needs a value', result.stderr + result.stdout)
+
+    def test_valid_serial_and_version_are_accepted(self):
+        result = subprocess.run([args.bash, str(SETUP), '--serial', 'fixture-device', '--version', '0.9.10', '--help'],
+                                capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Options:', result.stdout)
 
 
 class InstallerTests(unittest.TestCase):
+    def test_missing_source_installer_serial_preserves_following_options(self):
+        for flags in (('--serial', '--apk', '--help'), ('--serial', '', '--help'), ('--serial',)):
+            with self.subTest(flags=flags):
+                result = subprocess.run([args.bash, str(INSTALLER), *flags],
+                                        capture_output=True, text=True, timeout=5)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertEqual(result.stderr.strip(), '--serial needs a value')
+                self.assertEqual(result.stdout, '')
+
     def run_installer(self, serial=None, fail=False, newer_sources=False):
         with tempfile.TemporaryDirectory(prefix='phonebox installer ') as directory:
             root = pathlib.Path(directory)
