@@ -29,11 +29,15 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
     private static HaTarget RecoveryTarget(HaTarget owner, HaTarget current) =>
         owner.Url == current.Url && current.Token is { } token ? owner with { Token = token } : owner;
 
-    private HaTarget Target(ChargeConfig c)
-    {
-        var connection = config.Get().HomeAssistant;
-        return new(c.Entity, connection.Url, connection.Token);
-    }
+    // The entity and the connection come from one settings snapshot, so a save in between cannot pair an old entity
+    // with a new server.
+    private static HaTarget Target(AgentConfig cfg) => new(cfg.Charge.Entity, cfg.HomeAssistant.Url, cfg.HomeAssistant.Token);
+
+    /// <summary>Whether the supply a test asked for (its settings and server) is still the configured one.</summary>
+    private static bool SameSupplySettings(ChargeConfig requested, string? requestedUrl, AgentConfig current) =>
+        requested.Method == current.Charge.Method && requested.Entity == current.Charge.Entity
+        && requested.OnShortcut == current.Charge.OnShortcut && requested.OffShortcut == current.Charge.OffShortcut
+        && (requested.Method == "shortcuts" || requestedUrl == current.HomeAssistant.Url);
 
     /// <summary>Called by the phone (POST /api/phone/battery).</summary>
     public static void Report(int level, bool plugged, double? temp, string? source = null, string? usb = null) =>
@@ -77,8 +81,9 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
         await _switchGate.WaitAsync();
         try
         {
-            var c = config.Get().Charge;
-            var target = Target(c);
+            var cfg = config.Get();
+            var c = cfg.Charge;
+            var target = Target(cfg);
             if (_offHa is { } owner && (!c.Enabled || c.Method == "shortcuts" || !SameSupply(owner, target)
                 || (owner.Token is not null && target.Token is null)))
             {
@@ -90,17 +95,25 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
             }
             if (!c.Enabled) { if (_last == "off") await SwitchCore(c, "on", target); return; }
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if (Decide(c, _report, now, _last, _lastAt) is { } action) await SwitchCore(c, action, target);
+            // A test "on" for another supply can leave _last at "on" while this one is still tracked off; the tracked
+            // supply decides, so a phone that stops reporting still gets its power back.
+            var last = SameSupply(_offHa, target) ? "off" : _last;
+            if (Decide(c, _report, now, last, _lastAt) is { } action) await SwitchCore(c, action, target);
         }
         finally { _switchGate.Release(); }
     }
 
     public async Task<string?> Switch(ChargeConfig c, string action)
     {
-        var target = Target(c);
+        var requestedUrl = config.Get().HomeAssistant.Url;
         await _switchGate.WaitAsync();
         try
         {
+            // A test that waited behind another switch must not reach a supply the settings replaced meanwhile.
+            var cfg = config.Get();
+            if (!SameSupplySettings(c, requestedUrl, cfg)) return "the power settings changed; test the new supply again";
+            c = cfg.Charge;
+            var target = Target(cfg);
             if (action == "off" && _offHa is { } owner && (c.Method == "shortcuts" || !SameSupply(owner, target)))
                 if (await SwitchCore(new ChargeConfig { Method = "ha" }, "on", RecoveryTarget(owner, target)) is { } error) return error;
             return await SwitchCore(c, action, target);
