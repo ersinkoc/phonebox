@@ -29,124 +29,152 @@ internal sealed class DrmUsage(Func<double>? clock = null, double discoverySecon
 
     private readonly Lock _lock = new();
     private readonly Func<double> _clock = clock ?? (() => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency);
-    private List<DrmClient>? _prev;
-    private double _prevAt;
-    private string? _prevRoot;
-    // the fdinfo files of the GPU clients the last discovery pass found, and when it ran
-    private List<string>? _known;
+    private readonly Meter _meter = new();
+    private string? _root;
+    // the fdinfo files of the GPU clients the last discovery pass found, with the client each one showed, and when it ran
+    private List<(string Path, (string Pdev, string ClientId) Client)>? _known;
     private double _discoveredAt;
-    // cards a client with busy counters was seen on: an older kernel (i915 before 5.19, early xe) has none, and its card
-    // stays without a value instead of showing 0
-    private readonly HashSet<string> _counting = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Full discovery passes so far (for tests).</summary>
     internal int Discoveries { get; private set; }
 
     /// <summary>
-    /// Reads the GPU clients under <paramref name="procRoot"/> and returns the load in % of each of <paramref name="pdevs"/>
-    /// since the previous call. The first call only takes the baseline, and a card whose clients never showed busy counters
-    /// has no value either: such a card is missing from the answer (no value, not 0).
+    /// Reads the GPU clients under <paramref name="procRoot"/> and returns the load in % of those of <paramref name="pdevs"/>
+    /// that have one. A card has a value once one of its clients is measured against a baseline from an earlier sample, so the
+    /// first call (and the first sample after a card's clients start showing busy counters) only takes baselines; a card whose
+    /// clients never show busy counters has no value at all (missing from the answer: no value, not 0).
     /// </summary>
     public Dictionary<string, double> Sample(string procRoot, IReadOnlyCollection<string> pdevs)
     {
         lock (_lock)
         {
             var now = _clock();
-            if (_prevRoot != procRoot) { _counting.Clear(); _known = null; }
+            if (_root != procRoot) { _meter.Reset(); _known = null; _root = procRoot; }
             List<DrmClient> cur;
+            HashSet<(string, string)>? unread = null;
             if (_known is null || !(now - _discoveredAt < discoverySeconds))
             {
                 var found = Discover(procRoot);
                 cur = found.Select(f => f.Client).ToList();
-                _known = found.Select(f => f.Path).ToList();
+                _known = found.Select(f => (f.Path, Meter.KeyOf(f.Client))).ToList();
                 _discoveredAt = now;
                 Discoveries++;
             }
-            else cur = Reread(_known);
-            foreach (var c in cur)
-                if (c.Pdev is { } p && c.Busy.Count > 0) _counting.Add(p);
-            var load = _prev is not null && _prevRoot == procRoot
-                ? Utilization(_prev, cur, now - _prevAt, pdevs.Where(_counting.Contains).ToList())
-                : [];
-            (_prev, _prevAt, _prevRoot) = (cur, now, procRoot);
-            return load;
+            else cur = Reread(_known, out unread);
+            return _meter.Update(cur, now, pdevs, unread);
         }
     }
 
     /// <summary>
-    /// The clients behind fdinfo files a discovery pass found. A file that is gone (the fd was closed, the process exited),
-    /// can't be read any more or no longer is an i915 / xe client is dropped from <paramref name="known"/>.
+    /// The clients behind the fdinfo files a discovery pass found. A file that is gone (the fd was closed, the process exited)
+    /// or no longer is an i915 / xe client is dropped from <paramref name="known"/>; one that can't be read this time stays,
+    /// and its client goes to <paramref name="unread"/> so that it keeps its baseline instead of looking idle.
     /// </summary>
-    private static List<DrmClient> Reread(List<string> known)
+    private static List<DrmClient> Reread(List<(string Path, (string, string) Client)> known, out HashSet<(string, string)> unread)
     {
         var list = new List<DrmClient>(known.Count);
-        known.RemoveAll(path =>
+        var keep = new List<(string, (string, string))>(known.Count);
+        unread = [];
+        foreach (var (path, client) in known)
         {
-            if (ReadClient(path) is not { } c) return true;
-            list.Add(c);
-            return false;
-        });
+            var (c, gone) = ReadClient(path);
+            if (c is not null) { list.Add(c); keep.Add((path, Meter.KeyOf(c))); }
+            else if (!gone) { unread.Add(client); keep.Add((path, client)); }
+        }
+        known.Clear();
+        known.AddRange(keep);
         return list;
     }
 
-    private static DrmClient? ReadClient(string path)
+    /// <summary>The i915 / xe client in one fdinfo file; <c>Gone</c> when the file no longer exists or holds no such client.</summary>
+    private static (DrmClient? Client, bool Gone) ReadClient(string path)
     {
         try
         {
             var text = File.ReadAllText(path);
-            if (!text.Contains("drm-driver:", StringComparison.Ordinal)) return null;
-            return ParseFdinfo(text) is { Driver: "i915" or "xe", Pdev: not null } c ? c : null;
+            return text.Contains("drm-driver:", StringComparison.Ordinal) && ParseFdinfo(text) is { Driver: "i915" or "xe", Pdev: not null } c
+                ? (c, false)
+                : (null, true);
         }
-        catch (IOException) { return null; }
-        catch (UnauthorizedAccessException) { return null; }
+        catch (FileNotFoundException) { return (null, true); }
+        catch (DirectoryNotFoundException) { return (null, true); }
+        catch (IOException) { return (null, false); }
+        catch (UnauthorizedAccessException) { return (null, false); }
     }
 
     /// <summary>
-    /// The load in % per card: per engine class the busy share summed over the clients and divided by the class's engine
-    /// count, and the card's load is its busiest class (what nvtop and intel_gpu_top show). A client counts only when it is in
-    /// both samples; a counter that went backwards (the fd was reused) is skipped for this interval.
+    /// The load arithmetic, without any I/O; <see cref="DrmUsage"/> calls it under its lock. Per client and engine class it
+    /// keeps the highest busy counter accepted so far with its reference (the read time for i915, the total cycles for xe), and
+    /// measures the next reading against it. A counter that reads lower is ignored until it catches up again, as
+    /// drm-usage-stats asks of userspace. Per engine class the busy shares are summed over the clients and divided by the
+    /// class's engine count, and a card's load is its busiest class (what nvtop and intel_gpu_top show).
     /// </summary>
-    internal static Dictionary<string, double> Utilization(IEnumerable<DrmClient> prev, IEnumerable<DrmClient> cur, double seconds, IEnumerable<string> pdevs)
+    internal sealed class Meter
     {
-        var load = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        if (!(seconds > 0)) return load;
-        var before = Index(prev);
-        var now = Index(cur);
-        foreach (var pdev in pdevs)
+        private readonly Dictionary<(string Pdev, string ClientId, string Class), (ulong Busy, ulong Total, double At)> _base = [];
+        // cards with a client measured against a baseline: they have a value from then on (0 once their last client is gone);
+        // a card whose clients never show busy counters (i915 before 5.19, early xe) stays without one
+        private readonly HashSet<string> _measured = [];
+
+        /// <summary>A client is one open file description: several fds can share it and show the same counters.</summary>
+        internal static (string Pdev, string ClientId) KeyOf(DrmClient c) => ((c.Pdev ?? "").ToLowerInvariant(), c.ClientId);
+
+        public void Reset()
         {
-            var classes = new Dictionary<string, double>(StringComparer.Ordinal);
-            foreach (var ((p, _), c) in now)
+            _base.Clear();
+            _measured.Clear();
+        }
+
+        /// <summary>
+        /// Takes the clients read at <paramref name="now"/> (seconds) and returns the load in % of those of
+        /// <paramref name="pdevs"/> that have a value. Clients in <paramref name="unread"/> couldn't be read this time and keep
+        /// their baselines; any other client that is missing has gone, and its baselines with it.
+        /// </summary>
+        public Dictionary<string, double> Update(IEnumerable<DrmClient> clients, double now, IEnumerable<string> pdevs,
+            IReadOnlySet<(string, string)>? unread = null)
+        {
+            var shares = new Dictionary<(string Pdev, string Class), double>();
+            var seen = new HashSet<(string, string)>();
+            var measuredNow = new HashSet<string>();
+            foreach (var c in clients)
             {
-                if (!string.Equals(p, pdev, StringComparison.OrdinalIgnoreCase)) continue;
-                if (!before.TryGetValue((p, c.ClientId), out var b)) continue;
+                if (c.Pdev is null || !seen.Add(KeyOf(c))) continue;
+                var (pdev, id) = KeyOf(c);
                 foreach (var (cls, busy) in c.Busy)
                 {
-                    if (!b.Busy.TryGetValue(cls, out var busy0) || busy < busy0) continue;
-                    double share;
-                    if (c.TotalCycles.TryGetValue(cls, out var total))
+                    var xe = c.TotalCycles.TryGetValue(cls, out var total);
+                    if (!_base.TryGetValue((pdev, id, cls), out var b))
                     {
-                        // xe: busy cycles over the GPU cycles that passed for this client, independent of the wall clock
-                        if (!b.TotalCycles.TryGetValue(cls, out var total0) || total <= total0) continue;
-                        share = (busy - busy0) / (double)(total - total0);
+                        _base[(pdev, id, cls)] = (busy, total, now); // first sight: a baseline, nothing to measure yet
+                        continue;
                     }
-                    else share = (busy - busy0) / (seconds * 1e9);
+                    _measured.Add(pdev);
+                    measuredNow.Add(pdev);
+                    if (busy < b.Busy) continue; // keep the higher value until the counter catches up
+                    double share;
+                    // xe: busy cycles over the GPU cycles that passed for this client, independent of the wall clock
+                    if (xe) { if (total <= b.Total) continue; share = (busy - b.Busy) / (double)(total - b.Total); }
+                    else { if (!(now > b.At)) continue; share = (busy - b.Busy) / ((now - b.At) * 1e9); }
+                    _base[(pdev, id, cls)] = (busy, total, now);
                     var engines = c.Capacity.TryGetValue(cls, out var n) && n > 1 ? n : 1;
-                    classes[cls] = classes.GetValueOrDefault(cls) + share / engines;
+                    shares[(pdev, cls)] = shares.GetValueOrDefault((pdev, cls)) + share / engines;
                 }
             }
-            var max = classes.Count > 0 ? classes.Values.Max() : 0;
-            load[pdev] = Math.Round(Math.Clamp(max * 100, 0, 100), 1);
-        }
-        return load;
-    }
+            foreach (var key in _base.Keys.Where(k => !seen.Contains((k.Pdev, k.ClientId)) && unread?.Contains((k.Pdev, k.ClientId)) != true).ToList())
+                _base.Remove(key);
 
-    /// <summary>One entry per client: several fds can share one open file description and show the same counters.</summary>
-    private static Dictionary<(string Pdev, string ClientId), DrmClient> Index(IEnumerable<DrmClient> clients)
-    {
-        var map = new Dictionary<(string, string), DrmClient>();
-        foreach (var c in clients)
-            if (c.Pdev is { } p) map.TryAdd((p.ToLowerInvariant(), c.ClientId), c);
-        return map;
+            var load = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var card in pdevs)
+            {
+                var pdev = card.ToLowerInvariant();
+                if (!_measured.Contains(pdev)) continue;
+                // its only clients couldn't be read this time: their load is unknown, not 0
+                if (!measuredNow.Contains(pdev) && unread?.Any(k => k.Item1 == pdev) == true) continue;
+                var max = shares.Where(s => s.Key.Pdev == pdev).Select(s => s.Value).DefaultIfEmpty(0).Max();
+                load[card] = Math.Round(Math.Clamp(max * 100, 0, 100), 1);
+            }
+            return load;
+        }
     }
 
     /// <summary>
@@ -246,7 +274,7 @@ internal sealed class DrmUsage(Func<double>? clock = null, double discoverySecon
                 if (++fds > MaxFds || reads >= MaxFdinfoReads) return list;
                 if (!MaybeGpu(Path.Combine(proc, "fd", Path.GetFileName(file)))) continue;
                 reads++;
-                if (ReadClient(file) is { } c) list.Add((file, c));
+                if (ReadClient(file).Client is { } c) list.Add((file, c));
             }
         }
         return list;

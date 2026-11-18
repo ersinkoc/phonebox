@@ -267,7 +267,7 @@ cable, or a port straight on the computer instead of a hub or a front-panel port
 
 <details><summary><b>Some widgets show "—" or "No data".</b></summary>
 
-GPU values come from Windows itself (the temperature, as in Task Manager, needs Windows 10 2004 or later and a WDDM 2.4 driver), `nvidia-smi` for NVIDIA cards, `amdgpu` sysfs on Linux, an Intel card's DRM usage counters on Linux (the load shows from the second reading; programs of other users are counted only when the agent runs as root), or IORegistry on Apple silicon. The GPU hot spot and an AMD or Intel card's watts, fan and clocks need LibreHardwareMonitor. CPU temperature needs LibreHardwareMonitor's web server on port 8085,
+GPU values come from Windows itself (the temperature, as in Task Manager, needs Windows 10 2004 or later and a WDDM 2.4 driver), `nvidia-smi` for NVIDIA cards, `amdgpu` sysfs on Linux, an Intel card's DRM usage counters on Linux, or IORegistry on Apple Silicon. An Intel card's load on Linux needs a kernel whose driver exposes busy counters in fdinfo (`i915` from kernel 5.19, `xe`); a card whose programs never report them shows no load. A program that starts using the GPU is picked up within about 30 seconds and counts from the reading after that, and programs of other users are counted only when Linux lets the agent read them (normally as root or with `CAP_SYS_PTRACE`). The GPU hot spot and an AMD or Intel card's watts, fan and clocks need LibreHardwareMonitor. CPU temperature needs LibreHardwareMonitor's web server on port 8085,
 GitHub needs `gh auth login`, quotas and sessions need Claude Code / Codex to have been used on this PC.
 </details>
 

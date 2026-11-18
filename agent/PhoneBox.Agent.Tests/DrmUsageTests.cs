@@ -63,8 +63,15 @@ public sealed class DrmUsageTests
 
     private static DrmClient P(string text) => DrmUsage.ParseFdinfo(text) ?? throw new InvalidOperationException("not a DRM client");
 
-    private static double? Load(IEnumerable<DrmClient> prev, IEnumerable<DrmClient> cur, double seconds = 1, string pdev = Igpu) =>
-        DrmUsage.Utilization(prev, cur, seconds, [pdev]).TryGetValue(pdev, out var v) ? v : null;
+    /// <summary>The load after two samples, <paramref name="seconds"/> apart.</summary>
+    private static double? Load(IEnumerable<DrmClient> prev, IEnumerable<DrmClient> cur, double seconds = 1, string pdev = Igpu)
+    {
+        var meter = new DrmUsage.Meter();
+        meter.Update(prev, 0, [pdev]);
+        return Value(meter.Update(cur, seconds, [pdev]), pdev);
+    }
+
+    private static double? Value(Dictionary<string, double> load, string pdev = Igpu) => load.TryGetValue(pdev, out var v) ? v : null;
 
     [Fact]
     public void AnI915FdinfoIsParsedWithoutItsMemoryLines()
@@ -153,11 +160,41 @@ public sealed class DrmUsageTests
     }
 
     [Fact]
-    public void AnIdleCardIsZeroAndTheLoadStaysWithinAHundred()
+    public void ADipIsIgnoredUntilTheCounterCatchesUp()
     {
-        Assert.Equal(0, Load([], []));
+        // i915, a second apart: 1000 → 800 → 1000 → 1200 (in 1e6 ns); the way back up from 800 is not load
+        var meter = new DrmUsage.Meter();
+        Assert.Null(Value(meter.Update([P(I915("1", 1_000_000_000))], 0, [Igpu])));
+        Assert.Equal(0, Value(meter.Update([P(I915("1", 800_000_000))], 1, [Igpu])));
+        Assert.Equal(0, Value(meter.Update([P(I915("1", 1_000_000_000))], 2, [Igpu])));
+        Assert.Equal(20, Value(meter.Update([P(I915("1", 1_200_000_000))], 3, [Igpu])));
+
+        // xe: the same, measured against the total cycles of the highest reading
+        meter = new DrmUsage.Meter();
+        meter.Update([P(Xe("1", 1000, 10_000))], 0, [Igpu]);
+        Assert.Equal(0, Value(meter.Update([P(Xe("1", 800, 11_000))], 1, [Igpu])));
+        Assert.Equal(0, Value(meter.Update([P(Xe("1", 1000, 12_000))], 2, [Igpu])));
+        Assert.Equal(20, Value(meter.Update([P(Xe("1", 1200, 13_000))], 3, [Igpu])));
+    }
+
+    [Fact]
+    public void ACardHasAValueOnlyOnceAClientWasMeasuredAndStaysAtZeroWhenItsClientsExit()
+    {
+        var meter = new DrmUsage.Meter();
+        Assert.Null(Value(meter.Update([], 0, [Igpu]))); // nothing on the card yet
+        Assert.Null(Value(meter.Update([P(Xe("1", 5000, 10_000))], 2, [Igpu]))); // a busy client appears: its baseline only
+        Assert.Equal(25, Value(meter.Update([P(Xe("1", 5300, 11_200))], 4, [Igpu])));
+        Assert.Equal(0, Value(meter.Update([], 6, [Igpu]))); // its last client exited
+    }
+
+    [Fact]
+    public void TheLoadStaysWithinAHundredAndASecondReadAtTheSameTimeKeepsTheBaseline()
+    {
         Assert.Equal(100, Load([P(I915("1", 0))], [P(I915("1", 3_000_000_000))]));
-        Assert.Empty(DrmUsage.Utilization([], [], 0, [Igpu])); // no interval, no value
+        var meter = new DrmUsage.Meter();
+        meter.Update([P(I915("1", 0))], 0, [Igpu]);
+        meter.Update([P(I915("1", 250_000_000))], 0, [Igpu]); // no time passed: nothing measured, the baseline stays
+        Assert.Equal(50, Value(meter.Update([P(I915("1", 500_000_000))], 1, [Igpu])));
     }
 
     // ---------------------------------------------------------------- the whole path, on a fake /proc and /sys/class/drm
@@ -180,9 +217,44 @@ public sealed class DrmUsageTests
             W(Path.Combine(proc, "300", "fdinfo", "5"), I915("1", 4_000_000_000));
             Assert.Empty(usage.Sample(proc, [Igpu])); // first sample: a baseline, no value
             now = 12;
+            W(Path.Combine(proc, "300", "fdinfo", "5"), I915("1", 4_100_000_000));
+            Assert.Equal(5, usage.Sample(proc, [Igpu])[Igpu]);
+            now = 14;
             Directory.Delete(Path.Combine(proc, "300"), true); // the only client exited
             Assert.Equal(0, usage.Sample(proc, [Igpu])[Igpu]);
             Assert.Empty(new DrmUsage().Sample(Path.Combine(proc, "missing"), [Igpu]));
+        }
+        finally { root.Delete(true); }
+    }
+
+    [Fact]
+    public void AClientThatCantBeReadForAMomentKeepsItsBaseline()
+    {
+        var root = Directory.CreateTempSubdirectory("pb-proc-");
+        try
+        {
+            var proc = root.FullName;
+            var fdinfo = Path.Combine(proc, "300", "fdinfo", "5");
+            var now = 0.0;
+            var usage = new DrmUsage(() => now, discoverySeconds: 30);
+            W(fdinfo, I915("1", 0));
+            usage.Sample(proc, [Igpu]);
+            now = 2;
+            W(fdinfo, I915("1", 200_000_000));
+            Assert.Equal(10, usage.Sample(proc, [Igpu])[Igpu]);
+
+            // the file can't be read for one sample (a directory in its place: access denied, not "not found")
+            File.Delete(fdinfo);
+            Directory.CreateDirectory(fdinfo);
+            now = 4;
+            Assert.Empty(usage.Sample(proc, [Igpu])); // its load is unknown this time, not 0
+
+            // readable again: still known without a new pass, and measured against the baseline from 2 s, not as new
+            Directory.Delete(fdinfo);
+            W(fdinfo, I915("1", 1_400_000_000));
+            now = 6;
+            Assert.Equal(30, usage.Sample(proc, [Igpu])[Igpu]); // 1.2 s busy in 4 s
+            Assert.Equal(1, usage.Discoveries);
         }
         finally { root.Delete(true); }
     }
@@ -369,9 +441,9 @@ public sealed class DrmUsageTests
                 File.CreateSymbolicLink(Path.Combine(pid, "fd", "3"), "/dev/dri/renderD128");
                 File.CreateSymbolicLink(Path.Combine(pid, "fd", "4"), "/run/user/1000/socket");
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+            catch (Exception e) when (OperatingSystem.IsWindows() && e is IOException or UnauthorizedAccessException)
             {
-                return; // creating symlinks needs privileges on Windows; Linux CI runs this
+                return; // creating symlinks needs Developer Mode or admin rights on Windows; elsewhere a failure here fails the test
             }
             Assert.Equal("1", Assert.Single(DrmUsage.Scan(root.FullName)).ClientId);
         }
