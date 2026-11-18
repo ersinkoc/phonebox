@@ -1518,7 +1518,8 @@ let haPicker = null; // the entity list for the autocomplete, fetched once per p
 function haLoadPicker(list) {
   const fill = (d) => list.replaceChildren(...(d.entities || []).map((e) => h('option', { value: e.id }, e.name)));
   if (haPicker) { fill(haPicker); return; }
-  fetch('/api/ha/entities').then((r) => r.json()).then((d) => { haPicker = d; if (!d.error) fill(d); }).catch(() => {});
+  // only a successful answer is kept, so reopening the editor retries after Home Assistant comes back
+  fetch('/api/ha/entities').then((r) => r.json()).then((d) => { if (d.error) return; haPicker = d; fill(d); }).catch(() => {});
 }
 function haItemsEditor(w, o, set) {
   const HA_MAX = 200, MAX_ID = 120, MAX_NAME = 80, MAX_ICON = 16; // the agent and the phone read at most 200 usable rows
@@ -1533,11 +1534,13 @@ function haItemsEditor(w, o, set) {
   // The editor owns the list from the first edit on: the old text must not come back when every row is removed, and every
   // row is saved with the switching state it shows, so a later change of the widget's flag cannot switch it silently.
   const save = () => {
-    const out = [];
+    const out = [], seen = new Set();
     for (const r of rows) {
       const id = String(r.id ?? '').trim().slice(0, MAX_ID);
-      if (!id) continue;
-      if (out.length >= HA_MAX) break;
+      // the same rule as the agent: an id needs a dot and counts once; only usable rows count towards the cap
+      if (!id.includes('.') || seen.has(id)) continue;
+      if (seen.size >= HA_MAX) break;
+      seen.add(id);
       const item = { id };
       const name = String(r.name ?? '').trim().slice(0, MAX_NAME), icon = String(r.icon ?? '').trim().slice(0, MAX_ICON);
       if (name) item.name = name;

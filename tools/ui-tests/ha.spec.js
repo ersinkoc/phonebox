@@ -147,3 +147,50 @@ test('the editor and the empty panel are translated', async ({ page }) => {
   await open(page, '/panel/', { control: true, items: [] }, { display: { language: 'de' } });
   await expect(page.locator('.empty')).toContainText('Entitäten in den Widget-Einstellungen hinzufügen');
 });
+
+// Wraps window.fetch before the demo installs its own, so a test can see (or fail) the /api/ha/* calls the page makes.
+const spyOnFetch = (page, failEntitiesOnce = false) => page.addInitScript((fail) => {
+  const native = window.fetch.bind(window);
+  let inner = native, failed = !fail, depth = 0;
+  window.__calls = [];
+  Object.defineProperty(window, 'fetch', { configurable: true, set(f) { inner = f; }, get() {
+    return (...a) => {
+      if (depth) return native(...a); // the demo's own fetch calls the one it replaced, which is this wrapper
+      const url = String(a[0]); window.__calls.push(url);
+      if (!failed && url.includes('/api/ha/entities')) { failed = true; return Promise.resolve(new Response(JSON.stringify({ configured: false, error: 'Home Assistant is not reachable', entities: [] }), { headers: { 'content-type': 'application/json' } })); }
+      depth++;
+      try { return inner(...a); } finally { depth--; }
+    };
+  } });
+}, failEntitiesOnce);
+
+test('a failed entity discovery is retried when the editor opens again', async ({ page }) => {
+  await spyOnFetch(page, true);
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await open(page, '/settings/#pages', { control: true, items: [{ id: 'light.desk' }] });
+  await page.locator('#canvas .wb').first().click();
+  await expect(page.locator('datalist option')).toHaveCount(0); // the first answer was an error
+  await page.getByLabel(/default for entities/).uncheck(); // the inspector draws the editor again
+  await expect(page.locator('datalist option')).not.toHaveCount(0); // asked again, and this time it answered
+});
+
+test('unusable rows in front of the 200th place do not push usable entities out when saving', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  const junk = Array.from({ length: 200 }, (_, i) => ({ id: 'nodot' + i }));
+  await open(page, '/settings/#pages', { control: true, items: [...junk, { id: 'light.desk' }, { id: 'light.desk' }] });
+  await page.locator('#canvas .wb').first().click();
+  await page.locator('.ha-row').nth(200).locator('input[placeholder="Display name (empty = from Home Assistant)"]').fill('Lamp');
+  await page.locator('#save').click();
+  const items = await page.evaluate(() => JSON.parse(localStorage.getItem('pb-demo-config')).pages[0].widgets[0].options.items);
+  expect(items).toEqual([{ id: 'light.desk', control: true, name: 'Lamp' }]);
+});
+
+test('many long entity ids are asked for in several smaller requests', async ({ page }) => {
+  await spyOnFetch(page);
+  const items = Array.from({ length: 200 }, (_, i) => ({ id: 'sensor.' + 'x'.repeat(90) + i }));
+  await open(page, '/panel/', { control: false, items });
+  await expect(page.locator('.ha-tile')).toHaveCount(200);
+  const calls = await page.evaluate(() => window.__calls.filter((u) => u.includes('/api/ha/states')));
+  expect(calls.length).toBeGreaterThan(1);
+  for (const u of calls) expect(u.length).toBeLessThan(8000);
+});

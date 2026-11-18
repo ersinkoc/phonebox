@@ -233,6 +233,7 @@ export const HA_CLASS_ICONS = {
 export const HA_SWITCHABLE = new Set(['light', 'switch', 'fan', 'input_boolean', 'automation', 'siren', 'humidifier', 'group', 'cover', 'media_player',
   'scene', 'script', 'button', 'input_button', 'lock', 'vacuum']);
 const HA_MAX_ITEMS = 200; // keep in step with HomeAssistant.MaxItems in the agent
+const HA_BATCH_CHARS = 6000; // encoded ids per /ha/states request, well under the agent's 16 KB request line
 export const HA_ACTIVE = new Set(['on', 'open', 'opening', 'unlocked', 'playing', 'home', 'cleaning', 'heat', 'cool', 'heat_cool', 'auto', 'detected']);
 
 export function haState(e) {
@@ -273,7 +274,19 @@ W.ha = {
     const grid = h('div', 'ha-grid');
     if (o.title) box.append(h('div', 'w-title', o.title));
     box.append(grid);
-    const load = async () => { try { data = await api('/ha/states?ids=' + encodeURIComponent(ids.join(','))); } catch (_) {} };
+    // 200 long ids would outgrow the agent's request line, so ask in batches and merge the answers
+    const batches = [];
+    for (let cur = [], len = 0, i = 0; i <= ids.length; i++) {
+      const n = i < ids.length ? encodeURIComponent(ids[i]).length + 3 : 0;
+      if (cur.length && (i === ids.length || len + n > HA_BATCH_CHARS)) { batches.push(cur); cur = []; len = 0; }
+      if (i < ids.length) { cur.push(ids[i]); len += n; }
+    }
+    const load = async () => {
+      try {
+        const parts = await Promise.all(batches.map((b) => api('/ha/states?ids=' + encodeURIComponent(b.join(',')))));
+        if (parts.length) data = { ...parts[0], entities: parts.flatMap((p) => p.entities || []) };
+      } catch (_) {}
+    };
     const toggle = async (e) => {
       haptic();
       busy = e.id; render(true);
