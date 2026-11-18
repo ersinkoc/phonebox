@@ -64,10 +64,14 @@ if ($Autostart) {
 }
 
 Write-Host '==> Starting agent'
-Start-Process $exe -WorkingDirectory $app
-Start-Sleep 2
-try { Invoke-RestMethod http://127.0.0.1:8765/api/info -TimeoutSec 5 | Out-Null; Write-Host 'PhoneBox is running. Settings: http://127.0.0.1:8765  (or the tray icon)' }
-catch { Write-Warning "The agent did not respond; see $env:LOCALAPPDATA\PhoneBox\agent.log" }
+# a failed start must not skip the phone app below: report it and go on
+try {
+    Start-Process $exe -WorkingDirectory $app
+    Start-Sleep 2
+    Invoke-RestMethod http://127.0.0.1:8765/api/info -TimeoutSec 5 | Out-Null
+    Write-Host 'PhoneBox is running. Settings: http://127.0.0.1:8765  (or the tray icon)'
+}
+catch { Write-Warning "The agent did not start or respond ($($_.Exception.Message)); see $env:LOCALAPPDATA\PhoneBox\agent.log" }
 
 if ($Apk) {
     $adb = (Get-Command adb -ErrorAction SilentlyContinue).Source

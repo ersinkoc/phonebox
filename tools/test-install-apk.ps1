@@ -58,7 +58,7 @@ try {
         function global:Invoke-RestMethod { param($Uri, $TimeoutSec) return @{} }
         function global:Write-Host { param($Object) }
         try { & $installer -Apk } catch {
-            if ("$_" -notlike '*adb not found: winget install Google.PlatformTools*') { throw }
+            if ($_.Exception.Message -cne 'adb not found: winget install Google.PlatformTools') { throw }
             $apkThrew = $true
         }
     } finally {
