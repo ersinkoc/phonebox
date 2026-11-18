@@ -156,7 +156,8 @@ internal sealed class DrmUsage(Func<double>? clock = null, double discoverySecon
             var present = new HashSet<string>(); // cards with a client this time
             var measuredNow = new HashSet<string>();
             var seen = new HashSet<(string, string)>();
-            foreach (var c in clients)
+            // two descriptors of one client count once; the one with counters wins (xe can print a descriptor without them)
+            foreach (var c in clients.OrderBy(c => c.Busy.Count == 0))
             {
                 if (c.Pdev is null || !seen.Add(KeyOf(c))) continue;
                 var (pdev, id) = KeyOf(c);

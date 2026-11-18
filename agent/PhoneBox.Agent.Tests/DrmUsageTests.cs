@@ -220,6 +220,11 @@ public sealed class DrmUsageTests
         meter = new DrmUsage.Meter();
         meter.Update([P(Xe("1", 0, 1000)), P(Xe("2", 0, 1000))], 0, [Igpu]);
         Assert.Equal(10, Value(meter.Update([P(noCounters), P(Xe("2", 100, 2000))], 2, [Igpu])));
+
+        // two descriptors of one client, the first without counters: the one with counters is used, once
+        meter = new DrmUsage.Meter();
+        meter.Update([P(noCounters), P(Xe("1", 0, 1000))], 0, [Igpu]);
+        Assert.Equal(25, Value(meter.Update([P(noCounters), P(Xe("1", 300, 2200)), P(Xe("1", 300, 2200))], 2, [Igpu])));
     }
 
     [Fact]
