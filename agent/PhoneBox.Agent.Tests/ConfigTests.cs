@@ -14,6 +14,18 @@ public class ConfigTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData("{}", "avibroner/phonebox")]
+    [InlineData("{\"updates\":{}}", "avibroner/phonebox")]
+    [InlineData("{\"updates\":{\"repo\":null}}", "avibroner/phonebox")]
+    [InlineData("{\"updates\":{\"repo\":\" \"}}", "avibroner/phonebox")]
+    [InlineData("{\"updates\":{\"repo\":\"ersinkoc/phonebox\"}}", "ersinkoc/phonebox")]
+    [InlineData("{\"updates\":{\"repo\":\"custom/phonebox\"}}", "custom/phonebox")]
+    public void UpdateSourceDefaultsToThisForkAndPreservesExplicitConfiguration(string json, string expected)
+    {
+        Assert.Equal(expected, Load(json).Updates.Repo);
+    }
+
     [Fact]
     public void EmptyConfigGetsTheDefaultPagesAndFreshTokens()
     {
