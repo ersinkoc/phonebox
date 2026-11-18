@@ -20,6 +20,8 @@ with a test that failed before it, kept as a regression test (#234, #235, #236, 
 **Panel**
 - Big button: a new option fills the key with the shortcut's uploaded picture, and another hides its label (#233,
   [dhiya13](https://github.com/dhiya13)).
+- With the panel in Turkish, built-in English widget titles are uppercased with English rules: NOTIFICATIONS, not
+  NOTİFİCATİONS (#240, [menes97](https://github.com/menes97)).
 - Typing in the Note editor no longer triggers panel shortcuts, and Escape (or Back on Android) closes the editor.
 - A late answer from the agent no longer overwrites a newer one, so settings, sessions and pushed values don't jump
   back. A note saved from the phone isn't undone by a reload that was already under way.
