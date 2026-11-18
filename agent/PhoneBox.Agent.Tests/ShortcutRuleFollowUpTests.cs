@@ -44,6 +44,16 @@ public sealed class ShortcutRuleFollowUpTests : IDisposable
         Assert.DoesNotContain("secret_off_key", failed.ProblemDetails.Title ?? "");
     }
 
+    [Fact]
+    public void ThePhoneStillGetsTheAgentsOwnAccessibilityHint()
+    {
+        // a shortcut whose error is exactly the agent's fixed hint: the phone sees the hint, not the generic text
+        var hinted = Program.HintOrGeneric(KeySender.AccessibilityHint);
+        var generic = Program.HintOrGeneric("keys failed: secret_off_key");
+        Assert.Equal(KeySender.AccessibilityHint, hinted);
+        Assert.DoesNotContain("secret_off_key", generic);
+    }
+
     private RuleEngine Engine(ConfigStore cfg, ILogger<RuleEngine>? log = null) => new(cfg, _push,
         new SessionMonitor(NullLogger<SessionMonitor>.Instance),
         new MediaMonitor(NullLogger<MediaMonitor>.Instance),

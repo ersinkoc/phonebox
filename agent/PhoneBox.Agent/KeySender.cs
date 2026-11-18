@@ -11,6 +11,10 @@ namespace PhoneBox.Agent;
 /// </summary>
 public static class KeySender
 {
+    /// <summary>What to do when macOS refuses to send keys. Fixed text, so the phone may show it as it is.</summary>
+    internal const string AccessibilityHint =
+        "macOS refused: allow PhoneBoxAgent in System Settings › Privacy & Security › Accessibility";
+
     private static readonly string[] Modifiers = ["ctrl", "shift", "alt", "win"];
 
     /// <summary>Splits "Ctrl+Shift+M, Win+D" into combos of normalized key names; throws on unknown keys.</summary>
@@ -205,7 +209,7 @@ public static class KeySender
         if (OperatingSystem.IsMacOS())
         {
             if (!Run("osascript", "-e", $"tell application \"System Events\" to keystroke \"{text.Replace("\\", "\\\\").Replace("\"", "\\\"")}\""))
-                throw new InvalidOperationException("macOS refused: allow PhoneBoxAgent in System Settings › Privacy & Security › Accessibility");
+                throw new InvalidOperationException(AccessibilityHint);
             return true;
         }
         if (Sh.Which("xdotool") is not null && Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is null) return Run("xdotool", "type", "--delay", "8", "--", text);
@@ -242,7 +246,7 @@ public static class KeySender
     private static void Osa(string script)
     {
         if (Sh.RunWithTimeout(5000, "osascript", "-e", script) is null)
-            throw new InvalidOperationException("macOS refused: allow PhoneBoxAgent in System Settings › Privacy & Security › Accessibility");
+            throw new InvalidOperationException(AccessibilityHint);
     }
 #endif
 }

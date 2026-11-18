@@ -977,8 +977,15 @@ public partial class Program
     /// command, its arguments, a key sequence or a working folder (Process.Start names the program and the folder).
     /// </summary>
     internal static IResult RunShortcutForPhone(AgentConfig cfg, string id, ILogger log, PushStore push, AudioControl audio) =>
-        Shortcuts.Run(cfg, id, log, push, audio) is null
-            ? Results.Ok()
-            : Results.Problem("The shortcut failed. The agent log on the computer has the details.");
+        Shortcuts.Run(cfg, id, log, push, audio) is { } error ? Results.Problem(HintOrGeneric(error)) : Results.Ok();
+
+    /// <summary>
+    /// What the phone may see of a failed shortcut: an error can carry configured command text, so only the agent's own
+    /// fixed hint (it tells the user what to do) goes through as it is; anything else becomes a generic message.
+    /// </summary>
+    internal static string HintOrGeneric(string error) =>
+        error.Contains(KeySender.AccessibilityHint, StringComparison.Ordinal)
+            ? KeySender.AccessibilityHint
+            : "The shortcut failed. The agent log on the computer has the details.";
 }
 
