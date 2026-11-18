@@ -21,10 +21,11 @@ public sealed partial class QuotaMonitor
     /// One loopback RPC candidate. Older servers answer plain HTTP on the port from their command line; newer ones serve
     /// HTTPS with a self-signed certificate, on a port that may be chosen at run time.
     /// </summary>
-    internal readonly record struct AntigravityEndpoint(int Port, string CsrfToken, string Scheme = "http")
+    /// <param name="Host">The loopback address in URL form: 127.0.0.1, or [::1] for a server that listens on IPv6 only.</param>
+    internal readonly record struct AntigravityEndpoint(int Port, string CsrfToken, string Scheme = "http", string Host = "127.0.0.1")
     {
         /// <summary>Never includes the CSRF token, so a candidate can't leak it into a log line.</summary>
-        public override string ToString() => $"{Scheme}://127.0.0.1:{Port}";
+        public override string ToString() => $"{Scheme}://{Host}:{Port}";
     }
 
     private HttpClient? _loopbackTlsClient;
@@ -161,7 +162,7 @@ public sealed partial class QuotaMonitor
                 try
                 {
                     using var req = new HttpRequestMessage(HttpMethod.Post,
-                        $"{ep.Scheme}://127.0.0.1:{ep.Port}/exa.language_server_pb.LanguageServerService/{method}");
+                        $"{ep}/exa.language_server_pb.LanguageServerService/{method}");
                     req.Headers.Add("X-Codeium-Csrf-Token", ep.CsrfToken);
                     req.Headers.Add("Connect-Protocol-Version", "1");
                     req.Content = new StringContent("{}", Encoding.UTF8, "application/json");
@@ -343,10 +344,10 @@ public sealed partial class QuotaMonitor
     /// those are tried over HTTPS with the token of the same process.
     /// </summary>
     /// <param name="readCommands">For tests: the process id and command line of each process with the given name.</param>
-    /// <param name="listeningPorts">For tests: the loopback TCP ports a process id listens on.</param>
+    /// <param name="listeningPorts">For tests: the loopback TCP listeners of a process id.</param>
     internal static IEnumerable<AntigravityEndpoint> FindAntigravityEndpoints(
         Func<string, IEnumerable<(int Pid, string CommandLine)>>? readCommands = null,
-        Func<int, IReadOnlyList<int>>? listeningPorts = null)
+        Func<int, IReadOnlyList<ListeningPorts.Listener>>? listeningPorts = null)
     {
         var named = new HashSet<int>();
         var dynamic = new List<(int Pid, string CsrfToken)>();
@@ -368,8 +369,10 @@ public sealed partial class QuotaMonitor
             else if (pid > 0) dynamic.Add((pid, https.CsrfToken));
         }
         foreach (var (pid, csrf) in dynamic)
-        foreach (var port in (listeningPorts ?? (id => ListeningPorts.ForProcess(id)))(pid))
-            if (!named.Contains(port)) yield return new AntigravityEndpoint(port, csrf, "https");
+        foreach (var listener in (listeningPorts ?? (id => ListeningPorts.ForProcess(id)))(pid))
+            if (!named.Contains(listener.Port))
+                yield return new AntigravityEndpoint(listener.Port, csrf, "https",
+                    listener.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? "[::1]" : "127.0.0.1");
     }
 
     private static IEnumerable<(int Pid, string CommandLine)> ReadAntigravityCommands(string name)

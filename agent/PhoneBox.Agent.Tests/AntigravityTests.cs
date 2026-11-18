@@ -165,7 +165,12 @@ public sealed class AntigravityTests
             pid =>
             {
                 asked.Add(pid);
-                return pid switch { 41 => [58324, 62173, 62174], 42 => [50001, 7000], _ => [9999] };
+                return pid switch
+                {
+                    41 => [V4(58324), V4(62173), V6(62174)],
+                    42 => [V4(50001), V4(7000)],
+                    _ => [V4(9999)],
+                };
             }).ToArray();
 
         Assert.Equal(new[] { 41, 42 }, asked);
@@ -175,16 +180,20 @@ public sealed class AntigravityTests
             new(58324, "dyn"),                  // the explicit HTTP extension port of process 41
             new(50001, "fixed", "https"),       // a concrete HTTPS port
             new(62173, "dyn", "https"),         // process 41's own listeners, minus the port already named
-            new(62174, "dyn", "https"),
+            new(62174, "dyn", "https", "[::1]"), // an IPv6-only listener is asked on ::1
             new(7000, "other", "https"),        // 50001 is already a named candidate
         }, endpoints);
     }
+
+    private static ListeningPorts.Listener V4(int port) => new(System.Net.IPAddress.Loopback, port);
+    private static ListeningPorts.Listener V6(int port) => new(System.Net.IPAddress.IPv6Loopback, port);
 
     [Fact]
     public void EndpointTextNeverContainsTheToken()
     {
         var ep = new QuotaMonitor.AntigravityEndpoint(62173, "secret-csrf-token", "https");
         Assert.Equal("https://127.0.0.1:62173", ep.ToString());
+        Assert.Equal("https://[::1]:62174", (ep with { Port = 62174, Host = "[::1]" }).ToString());
         Assert.DoesNotContain("secret-csrf-token", $"{ep}");
     }
 

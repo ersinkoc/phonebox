@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
 namespace PhoneBox.Agent;
@@ -14,17 +15,27 @@ internal static class ListeningPorts
     /// <summary>Default number of ports returned, so a busy process can't use up a caller's time budget.</summary>
     internal const int DefaultMax = 8;
 
-    /// <summary>Lists the loopback (or all-interfaces) TCP listening ports of <paramref name="pid"/>, lowest first.</summary>
-    public static IReadOnlyList<int> ForProcess(int pid, int max = DefaultMax)
+    /// <summary>
+    /// A listening port and the loopback address to reach it on: 127.0.0.1 for an IPv4 listener, ::1 for an IPv6 one.
+    /// An IPv6 socket may refuse IPv4 (on Windows it does by default), so the family the process chose is kept.
+    /// </summary>
+    internal readonly record struct Listener(IPAddress Address, int Port);
+
+    /// <summary>
+    /// Lists the loopback (or all-interfaces) TCP listening ports of <paramref name="pid"/>, lowest first; a port open on
+    /// both families is listed once, with IPv4.
+    /// </summary>
+    public static IReadOnlyList<Listener> ForProcess(int pid, int max = DefaultMax)
     {
         if (pid <= 0 || max <= 0) return [];
         try
         {
-            IEnumerable<int> ports = OperatingSystem.IsWindows() ? Windows(pid)
+            IEnumerable<Listener> found = OperatingSystem.IsWindows() ? Windows(pid)
                 : OperatingSystem.IsLinux() ? Linux(pid)
                 : OperatingSystem.IsMacOS() ? MacOs(pid)
                 : [];
-            return ports.Distinct().Order().Take(max).ToArray();
+            return found.OrderBy(l => l.Port).ThenBy(l => l.Address.AddressFamily == AddressFamily.InterNetworkV6)
+                .DistinctBy(l => l.Port).Take(max).ToArray();
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -35,6 +46,10 @@ internal static class ListeningPorts
     /// <summary>Whether a listener on this local address answers connections to the loopback address of its family.</summary>
     internal static bool ReachableOnLoopback(IPAddress address) =>
         IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any);
+
+    /// <summary>The loopback address of the listener's own family.</summary>
+    internal static IPAddress LoopbackFor(IPAddress listener) =>
+        listener.AddressFamily == AddressFamily.InterNetworkV6 ? IPAddress.IPv6Loopback : IPAddress.Loopback;
 
     // ---- Windows: GetExtendedTcpTable, never netstat (its state column is localized) ----
 
@@ -48,7 +63,7 @@ internal static class ListeningPorts
     private static extern uint GetExtendedTcpTable(nint table, ref int size, bool order, int addressFamily,
         int tableClass, uint reserved);
 
-    private static IEnumerable<int> Windows(int pid) =>
+    private static IEnumerable<Listener> Windows(int pid) =>
         ParseOwnerPidTable(ReadTcpTable(AfInet), ipv6: false, pid)
             .Concat(ParseOwnerPidTable(ReadTcpTable(AfInet6), ipv6: true, pid));
 
@@ -81,9 +96,9 @@ internal static class ListeningPorts
     /// Decodes a <c>MIB_TCPTABLE_OWNER_PID</c> or <c>MIB_TCP6TABLE_OWNER_PID</c>: a 4-byte row count, then fixed-size rows.
     /// Ports are in network byte order in the low 16 bits of their DWORD.
     /// </summary>
-    internal static List<int> ParseOwnerPidTable(ReadOnlySpan<byte> table, bool ipv6, int pid)
+    internal static List<Listener> ParseOwnerPidTable(ReadOnlySpan<byte> table, bool ipv6, int pid)
     {
-        var ports = new List<int>();
+        var ports = new List<Listener>();
         if (table.Length < 4) return ports;
         var count = BitConverter.ToUInt32(table[..4]);
         var rowSize = ipv6 ? Ipv6RowSize : Ipv4RowSize;
@@ -96,16 +111,17 @@ internal static class ListeningPorts
             var row = table.Slice((int)start, rowSize);
             if (BitConverter.ToInt32(row[pidAt..]) != pid) continue;
             if (BitConverter.ToInt32(row[stateAt..]) != MibTcpStateListen) continue;
-            if (!ReachableOnLoopback(new IPAddress(row.Slice(addrAt, addrLength)))) continue;
+            var address = new IPAddress(row.Slice(addrAt, addrLength));
+            if (!ReachableOnLoopback(address)) continue;
             var port = (row[portAt] << 8) | row[portAt + 1];
-            if (port is > 0 and <= 65535) ports.Add(port);
+            if (port is > 0 and <= 65535) ports.Add(new Listener(LoopbackFor(address), port));
         }
         return ports;
     }
 
     // ---- Linux: the process's socket inodes, matched against the kernel's LISTEN rows ----
 
-    private static IEnumerable<int> Linux(int pid)
+    private static IEnumerable<Listener> Linux(int pid)
     {
         var inodes = new HashSet<string>(StringComparer.Ordinal);
         foreach (var fd in Directory.EnumerateFileSystemEntries($"/proc/{pid}/fd"))
@@ -117,7 +133,7 @@ internal static class ListeningPorts
                 inodes.Add(target["socket:[".Length..^1]);
         }
         if (inodes.Count == 0) return [];
-        var ports = new List<int>();
+        var ports = new List<Listener>();
         foreach (var file in new[] { "/proc/net/tcp", "/proc/net/tcp6" })
         {
             string text;
@@ -132,9 +148,9 @@ internal static class ListeningPorts
     /// Reads <c>/proc/net/tcp</c> or <c>tcp6</c> text: listening rows (state <c>0A</c>) owned by one of the socket inodes,
     /// on a loopback or all-interfaces address. Addresses are hex 32-bit words in host (little-endian) order.
     /// </summary>
-    internal static List<int> ParseProcNetTcp(string text, IReadOnlySet<string> inodes)
+    internal static List<Listener> ParseProcNetTcp(string text, IReadOnlySet<string> inodes)
     {
-        var ports = new List<int>();
+        var ports = new List<Listener>();
         foreach (var line in text.Split('\n'))
         {
             var cols = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -144,7 +160,7 @@ internal static class ListeningPorts
             if (local.Length != 2 || ProcAddress(local[0]) is not { } address || !ReachableOnLoopback(address)) continue;
             if (int.TryParse(local[1], NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var port)
                 && port is > 0 and <= 65535)
-                ports.Add(port);
+                ports.Add(new Listener(LoopbackFor(address), port));
         }
         return ports;
     }
@@ -166,7 +182,7 @@ internal static class ListeningPorts
 
     // ---- macOS: lsof, started without a shell ----
 
-    private static IEnumerable<int> MacOs(int pid)
+    private static IEnumerable<Listener> MacOs(int pid)
     {
         // A launchd PATH often lacks /usr/sbin, where macOS keeps lsof.
         var lsof = ToolProcess.Find("lsof") ?? (File.Exists("/usr/sbin/lsof") ? "/usr/sbin/lsof" : null);
@@ -183,9 +199,9 @@ internal static class ListeningPorts
     /// Reads <c>lsof -Fn</c> output: <c>n</c> lines carry <c>host:port</c>, with IPv6 hosts in brackets and <c>*</c>
     /// for all interfaces. Other field lines (<c>p</c>, <c>f</c>) are skipped.
     /// </summary>
-    internal static List<int> ParseLsofNames(string output)
+    internal static List<Listener> ParseLsofNames(string output)
     {
-        var ports = new List<int>();
+        var ports = new List<Listener>();
         foreach (var raw in output.Split('\n'))
         {
             var line = raw.TrimEnd('\r');
@@ -194,11 +210,12 @@ internal static class ListeningPorts
             var colon = name.LastIndexOf(':');
             if (colon <= 0 || name.Contains("->", StringComparison.Ordinal)) continue;
             var host = name[..colon].Trim('[', ']');
-            var reachable = host == "*" || host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-                || IPAddress.TryParse(host, out var address) && ReachableOnLoopback(address);
-            if (reachable && int.TryParse(name[(colon + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out var port)
+            // "*" is a wildcard of either family; macOS IPv6 sockets accept IPv4 unless told not to, so 127.0.0.1 reaches both
+            IPAddress? address = host == "*" || host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ? IPAddress.Loopback
+                : IPAddress.TryParse(host, out var parsed) && ReachableOnLoopback(parsed) ? LoopbackFor(parsed) : null;
+            if (address is not null && int.TryParse(name[(colon + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out var port)
                 && port is > 0 and <= 65535)
-                ports.Add(port);
+                ports.Add(new Listener(address, port));
         }
         return ports;
     }

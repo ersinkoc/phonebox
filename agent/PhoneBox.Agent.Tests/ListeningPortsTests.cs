@@ -16,7 +16,7 @@ public sealed class ListeningPortsTests
         {
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
             // Other tests run fixtures in this process too, so the default cap could hide this port.
-            Assert.Contains(port, ListeningPorts.ForProcess(Environment.ProcessId, int.MaxValue));
+            Assert.Contains(new ListeningPorts.Listener(IPAddress.Loopback, port), ListeningPorts.ForProcess(Environment.ProcessId, int.MaxValue));
         }
         finally { listener.Stop(); }
     }
@@ -33,8 +33,8 @@ public sealed class ListeningPortsTests
         foreach (var l in listeners) l.Start();
         try
         {
-            var ports = ListeningPorts.ForProcess(Environment.ProcessId, 2);
-            Assert.Equal(2, ports.Count);
+            var ports = ListeningPorts.ForProcess(Environment.ProcessId, 2).Select(l => l.Port).ToArray();
+            Assert.Equal(2, ports.Length);
             Assert.Equal(ports.Order().Distinct(), ports);
         }
         finally { foreach (var l in listeners) l.Stop(); }
@@ -54,7 +54,7 @@ public sealed class ListeningPortsTests
                6: 0100007F
             """;
         var ours = new HashSet<string> { "111", "112", "113", "114" };
-        Assert.Equal(new[] { 62173, 8080 }, ListeningPorts.ParseProcNetTcp(tcp, ours));
+        Assert.Equal([V4(62173), V4(8080)], ListeningPorts.ParseProcNetTcp(tcp, ours));
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public sealed class ListeningPortsTests
                1: 00000000000000000000000000000000:1F92 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 212 1 0000000000000000 100 0 0 10 0
                2: 000080FE00000000FF005450B6AD1DFE:0016 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 213 1 0000000000000000 100 0 0 10 0
             """;
-        Assert.Equal(new[] { 62174, 8082 }, ListeningPorts.ParseProcNetTcp(tcp6, new HashSet<string> { "211", "212", "213" }));
+        Assert.Equal([V6(62174), V6(8082)], ListeningPorts.ParseProcNetTcp(tcp6, new HashSet<string> { "211", "212", "213" }));
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public sealed class ListeningPortsTests
     {
         const string output = "p4242\nf12\nn127.0.0.1:62173\nf13\nn[::1]:62174\r\nf14\nn*:8080\nf15\nn192.168.1.5:9000\n"
             + "f16\nn127.0.0.1:5000->127.0.0.1:6000\nf17\nnlocalhost:7000\nf18\nn127.0.0.1:99999\nf19\nn[::]:8081\n";
-        Assert.Equal(new[] { 62173, 62174, 8080, 7000, 8081 }, ListeningPorts.ParseLsofNames(output));
+        Assert.Equal([V4(62173), V6(62174), V4(8080), V4(7000), V6(8081)], ListeningPorts.ParseLsofNames(output));
         Assert.Empty(ListeningPorts.ParseLsofNames(""));
     }
 
@@ -87,20 +87,34 @@ public sealed class ListeningPortsTests
             Row4(state: 2, [127, 0, 0, 1], 8081, pid: 78),
             Row4(state: 2, [192, 168, 1, 5], 9000, pid: 77),
             Row4(state: 5, [127, 0, 0, 1], 9001, pid: 77));
-        Assert.Equal(new[] { 62173, 8080 }, ListeningPorts.ParseOwnerPidTable(v4, ipv6: false, pid: 77));
+        Assert.Equal([V4(62173), V4(8080)], ListeningPorts.ParseOwnerPidTable(v4, ipv6: false, pid: 77));
 
         var v6 = Table(ListeningPorts.Ipv6RowSize,
             Row6(IPAddress.IPv6Loopback, 62174, pid: 77),
             Row6(IPAddress.IPv6Any, 8082, pid: 77),
             Row6(IPAddress.Parse("fe80::1"), 9002, pid: 77),
             Row6(IPAddress.IPv6Loopback, 9003, pid: 78));
-        Assert.Equal(new[] { 62174, 8082 }, ListeningPorts.ParseOwnerPidTable(v6, ipv6: true, pid: 77));
+        // an IPv6 socket may refuse IPv4 (on Windows it does by default), so it is reached on ::1
+        Assert.Equal([V6(62174), V6(8082)], ListeningPorts.ParseOwnerPidTable(v6, ipv6: true, pid: 77));
 
         // A row count larger than the buffer stops at the last whole row instead of reading past it.
         var torn = v4[..(4 + ListeningPorts.Ipv4RowSize + 10)];
-        Assert.Equal(new[] { 62173 }, ListeningPorts.ParseOwnerPidTable(torn, ipv6: false, pid: 77));
+        Assert.Equal([V4(62173)], ListeningPorts.ParseOwnerPidTable(torn, ipv6: false, pid: 77));
         Assert.Empty(ListeningPorts.ParseOwnerPidTable([1, 0], ipv6: false, pid: 77));
     }
+
+    [Fact]
+    public void AnIpv6OnlyListenerIsReachedOnIpv6Loopback()
+    {
+        using var socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp) { DualMode = false };
+        socket.Bind(new IPEndPoint(IPAddress.IPv6Loopback, 0));
+        socket.Listen();
+        var port = ((IPEndPoint)socket.LocalEndPoint!).Port;
+        Assert.Contains(V6(port), ListeningPorts.ForProcess(Environment.ProcessId, int.MaxValue));
+    }
+
+    private static ListeningPorts.Listener V4(int port) => new(IPAddress.Loopback, port);
+    private static ListeningPorts.Listener V6(int port) => new(IPAddress.IPv6Loopback, port);
 
     private static byte[] Table(int rowSize, params byte[][] rows)
     {
