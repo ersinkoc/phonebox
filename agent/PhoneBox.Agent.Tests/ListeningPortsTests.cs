@@ -1,0 +1,132 @@
+using System.Buffers.Binary;
+using System.Net;
+using System.Net.Sockets;
+using PhoneBox.Agent;
+using Xunit;
+
+/// <summary>Tests for finding the loopback TCP ports a process listens on (used for Antigravity's run-time HTTPS port).</summary>
+public sealed class ListeningPortsTests
+{
+    [Fact]
+    public void FindsAListenerOfThisProcess()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            // Other tests run fixtures in this process too, so the default cap could hide this port.
+            Assert.Contains(port, ListeningPorts.ForProcess(Environment.ProcessId, int.MaxValue));
+        }
+        finally { listener.Stop(); }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void InvalidProcessIdsHaveNoPorts(int pid) => Assert.Empty(ListeningPorts.ForProcess(pid));
+
+    [Fact]
+    public void ResultIsCappedSortedAndDistinct()
+    {
+        var listeners = Enumerable.Range(0, 3).Select(_ => new TcpListener(IPAddress.Loopback, 0)).ToArray();
+        foreach (var l in listeners) l.Start();
+        try
+        {
+            var ports = ListeningPorts.ForProcess(Environment.ProcessId, 2);
+            Assert.Equal(2, ports.Count);
+            Assert.Equal(ports.Order().Distinct(), ports);
+        }
+        finally { foreach (var l in listeners) l.Stop(); }
+    }
+
+    [Fact]
+    public void ProcNetTcpKeepsOnlyOwnLoopbackListeners()
+    {
+        const string tcp = """
+              sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
+               0: 0100007F:F2DD 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 111 1 0000000000000000 100 0 0 10 0
+               1: 00000000:1F90 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 112 1 0000000000000000 100 0 0 10 0
+               2: 0100007F:2328 0100007F:F2DD 01 00000000:00000000 00:00000000 00000000  1000        0 114 1 0000000000000000 20 4 30 10 -1
+               3: 0A00000A:0050 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 113 1 0000000000000000 100 0 0 10 0
+               4: 0100007F:1F91 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 999 1 0000000000000000 100 0 0 10 0
+               5: 0100007F:ZZZZ 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 111 1 0000000000000000 100 0 0 10 0
+               6: 0100007F
+            """;
+        var ours = new HashSet<string> { "111", "112", "113", "114" };
+        Assert.Equal(new[] { 62173, 8080 }, ListeningPorts.ParseProcNetTcp(tcp, ours));
+    }
+
+    [Fact]
+    public void ProcNetTcp6ReadsLoopbackAndAnyAddresses()
+    {
+        const string tcp6 = """
+              sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
+               0: 00000000000000000000000001000000:F2DE 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 211 1 0000000000000000 100 0 0 10 0
+               1: 00000000000000000000000000000000:1F92 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 212 1 0000000000000000 100 0 0 10 0
+               2: 000080FE00000000FF005450B6AD1DFE:0016 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 213 1 0000000000000000 100 0 0 10 0
+            """;
+        Assert.Equal(new[] { 62174, 8082 }, ListeningPorts.ParseProcNetTcp(tcp6, new HashSet<string> { "211", "212", "213" }));
+    }
+
+    [Fact]
+    public void LsofNamesKeepLoopbackAndWildcardListeners()
+    {
+        const string output = "p4242\nf12\nn127.0.0.1:62173\nf13\nn[::1]:62174\r\nf14\nn*:8080\nf15\nn192.168.1.5:9000\n"
+            + "f16\nn127.0.0.1:5000->127.0.0.1:6000\nf17\nnlocalhost:7000\nf18\nn127.0.0.1:99999\nf19\nn[::]:8081\n";
+        Assert.Equal(new[] { 62173, 62174, 8080, 7000, 8081 }, ListeningPorts.ParseLsofNames(output));
+        Assert.Empty(ListeningPorts.ParseLsofNames(""));
+    }
+
+    [Fact]
+    public void WindowsOwnerPidTablesKeepOnlyTheProcessesLoopbackListeners()
+    {
+        var v4 = Table(ListeningPorts.Ipv4RowSize,
+            Row4(state: 2, [127, 0, 0, 1], 62173, pid: 77),
+            Row4(state: 2, [0, 0, 0, 0], 8080, pid: 77),
+            Row4(state: 2, [127, 0, 0, 1], 8081, pid: 78),
+            Row4(state: 2, [192, 168, 1, 5], 9000, pid: 77),
+            Row4(state: 5, [127, 0, 0, 1], 9001, pid: 77));
+        Assert.Equal(new[] { 62173, 8080 }, ListeningPorts.ParseOwnerPidTable(v4, ipv6: false, pid: 77));
+
+        var v6 = Table(ListeningPorts.Ipv6RowSize,
+            Row6(IPAddress.IPv6Loopback, 62174, pid: 77),
+            Row6(IPAddress.IPv6Any, 8082, pid: 77),
+            Row6(IPAddress.Parse("fe80::1"), 9002, pid: 77),
+            Row6(IPAddress.IPv6Loopback, 9003, pid: 78));
+        Assert.Equal(new[] { 62174, 8082 }, ListeningPorts.ParseOwnerPidTable(v6, ipv6: true, pid: 77));
+
+        // A row count larger than the buffer stops at the last whole row instead of reading past it.
+        var torn = v4[..(4 + ListeningPorts.Ipv4RowSize + 10)];
+        Assert.Equal(new[] { 62173 }, ListeningPorts.ParseOwnerPidTable(torn, ipv6: false, pid: 77));
+        Assert.Empty(ListeningPorts.ParseOwnerPidTable([1, 0], ipv6: false, pid: 77));
+    }
+
+    private static byte[] Table(int rowSize, params byte[][] rows)
+    {
+        var table = new byte[4 + rows.Length * rowSize];
+        BinaryPrimitives.WriteUInt32LittleEndian(table, (uint)rows.Length);
+        for (var i = 0; i < rows.Length; i++) rows[i].CopyTo(table, 4 + i * rowSize);
+        return table;
+    }
+
+    private static byte[] Row4(int state, byte[] address, int port, int pid)
+    {
+        var row = new byte[ListeningPorts.Ipv4RowSize];
+        BinaryPrimitives.WriteInt32LittleEndian(row, state);
+        address.CopyTo(row, 4);
+        BinaryPrimitives.WriteUInt16BigEndian(row.AsSpan(8), (ushort)port);
+        BinaryPrimitives.WriteInt32LittleEndian(row.AsSpan(20), pid);
+        return row;
+    }
+
+    private static byte[] Row6(IPAddress address, int port, int pid)
+    {
+        var row = new byte[ListeningPorts.Ipv6RowSize];
+        address.GetAddressBytes().CopyTo(row, 0);
+        BinaryPrimitives.WriteUInt16BigEndian(row.AsSpan(20), (ushort)port);
+        BinaryPrimitives.WriteInt32LittleEndian(row.AsSpan(48), 2);
+        BinaryPrimitives.WriteInt32LittleEndian(row.AsSpan(52), pid);
+        return row;
+    }
+}

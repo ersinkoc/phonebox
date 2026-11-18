@@ -16,6 +16,11 @@
   to a clean page again. The feeds, cameras, console, Discord and ping editors filled in their defaults after the page
   had noted what was saved (#229).
 
+**Agent**
+- Antigravity quotas show up with newer Antigravity IDE versions (reported with 2.32), whose language server answers
+  over HTTPS on a port it picks at start-up: the agent tries the loopback ports that process listens on and accepts its self-signed
+  certificate only for this computer (#227, [goutam-prusty](https://github.com/goutam-prusty)).
+
 ## 0.9.19 — 2026-11-17
 
 A smoother Camera widget, and the app on Android 5.0 and 6.0.

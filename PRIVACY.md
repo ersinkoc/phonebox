@@ -29,7 +29,7 @@ Last updated: 2026-11-15 (PhoneBox 0.9.6).
   per frame to the phone. Audio is never stored or sent; capture stops a few seconds after the widget leaves the
   screen, and removing the widget or turning its page off turns it off.
 - **Local services**: LibreHardwareMonitor's web server (`127.0.0.1:8085`), a running Antigravity language server
-  (loopback), the Docker / Podman socket, OBS WebSocket and the Discord desktop app's local connection (a named pipe
+  (loopback, over HTTP or HTTPS), the Docker / Podman socket, OBS WebSocket and the Discord desktop app's local connection (a named pipe
   or socket on this computer) are local connections.
 
 [`scripts/uninstall.ps1 -Purge`](scripts/uninstall.ps1) and [`scripts/uninstall.sh --purge`](scripts/uninstall.sh)
