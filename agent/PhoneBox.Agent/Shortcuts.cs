@@ -160,8 +160,10 @@ public static class Shortcuts
     }
 
     /// <summary>
-    /// What to start instead when the default Terminal shortcut's program is missing: Windows Terminal (wt.exe) is not
-    /// part of Windows 10, and x-terminal-emulator only exists on Debian-family Linux (#73). Empty for other commands.
+    /// What to start instead when a default shortcut's program is missing: Windows Terminal (wt.exe) is not part of
+    /// Windows 10, x-terminal-emulator only exists on Debian-family Linux (#73), and the default Calculator, Settings and
+    /// System Monitor shortcuts name GNOME's apps, which a KDE, Xfce or MATE desktop usually doesn't have (#238). Without
+    /// this the missing name goes to xdg-open, which opens it as a web address. Empty for other commands.
     /// </summary>
     internal static string[] TerminalStandIns(string cmd, string? terminalEnv = null) => cmd.Trim().ToLowerInvariant() switch
     {
@@ -171,6 +173,9 @@ public static class Shortcuts
             .. string.IsNullOrWhiteSpace(terminalEnv) ? [] : new[] { terminalEnv.Trim() },
             "kgx", "gnome-terminal", "konsole", "xfce4-terminal", "mate-terminal", "lxterminal", "tilix", "alacritty", "kitty", "foot", "wezterm", "xterm",
         ],
+        "gnome-calculator" => ["kcalc", "mate-calc", "galculator", "qalculate-gtk", "xfce4-calculator"],
+        "gnome-control-center" => ["systemsettings", "systemsettings5", "xfce4-settings-manager", "mate-control-center", "cinnamon-settings", "budgie-control-center", "lxqt-config"],
+        "gnome-system-monitor" => ["plasma-systemmonitor", "ksysguard", "xfce4-taskmanager", "mate-system-monitor", "lxtask"],
         _ => [],
     };
 
