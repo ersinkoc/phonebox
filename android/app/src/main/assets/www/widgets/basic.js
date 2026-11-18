@@ -1076,6 +1076,7 @@ W.note = {
               unsure = null;
               // read the agent's config without applying it: a rebuild now would replace this widget under the editor
               const current = await api('/config').catch(() => null);
+              if (!wrap.isConnected) return; // the editor was closed meanwhile: nothing to save
               const now = (current?.config?.pages || []).find((p) => p.id === page.id)?.widgets?.find((x) => x.id === w.id)?.options?.text;
               if (now === earlier && current?.version != null) {
                 opened = current.version;
