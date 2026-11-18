@@ -209,7 +209,7 @@ function Get-Devices([string]$Adb) {
 }
 
 function Show-PhoneHelp {
-    Write-Info 'On the phone (Android 7.0 or later):'
+    Write-Info 'On the phone (Android 5.0 or later):'
     Write-Info '  1. Settings > About phone: tap "Build number" seven times to turn on Developer options.'
     Write-Info '  2. Settings > System > Developer options: turn on "USB debugging".'
     Write-Info '     Xiaomi / Redmi / POCO: also turn on "Install via USB" and "USB debugging (Security settings)".'
@@ -257,8 +257,8 @@ function Select-Phone([string]$Adb) {
 function Install-PhoneApp([string]$Adb, [string]$Apk, [string]$Device) {
     $sdkLevel = 0
     [void][int]::TryParse(("$((Invoke-Native $Adb @('-s', $Device, 'shell', 'getprop', 'ro.build.version.sdk')).Output)").Trim(), [ref]$sdkLevel)
-    if ($sdkLevel -gt 0 -and $sdkLevel -lt 24) {
-        Write-Caution "This phone runs Android API $sdkLevel; PhoneBox needs Android 7.0 (API 24) or later. The app was not installed."
+    if ($sdkLevel -gt 0 -and $sdkLevel -lt 21) {
+        Write-Caution "This phone runs Android API $sdkLevel; PhoneBox needs Android 5.0 (API 21) or later. The app was not installed."
         return $false
     }
     Write-Info "Installing $(Split-Path $Apk -Leaf) on $Device (the phone may ask you to confirm) ..."

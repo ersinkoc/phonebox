@@ -246,7 +246,10 @@ W.stack = {
     wrap.style.touchAction = 'pan-x';
     let startX = 0, startY = 0, startT = 0, swiping = false;
     wrap.addEventListener('touchstart', (e) => {
-      swiping = e.touches.length === 1 && !e.target.closest('button, input, textarea, select, a, [contenteditable], .s-list');
+      // a list that scrolls keeps its vertical swipes (News feeds); one that fits still lets the stack cycle
+      const scroller = e.target.closest('.fd-list');
+      swiping = e.touches.length === 1 && !e.target.closest('button, input, textarea, select, a, [contenteditable], .s-list')
+        && !(scroller && scroller.scrollHeight > scroller.clientHeight + 1);
       if (!swiping) return;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;

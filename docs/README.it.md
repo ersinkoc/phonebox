@@ -13,6 +13,7 @@
   <a href="README.nl.md">Nederlands</a> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
+  <a href="README.vi.md">Tiếng Việt</a> ·
   <a href="README.zh.md">中文 (简体)</a>
 </p>
 
@@ -30,14 +31,14 @@ Windows, Linux e macOS. Nessun root, nessun account PhoneBox e nessun servizio c
   <a href="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml"><img src="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml/badge.svg" alt="Stato build"></a>
   <a href="https://github.com/ersinkoc/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Ultima versione"></a>
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-.NET%2010-512bd4" alt="Windows, Linux, macOS; .NET 10">
-  <img src="https://img.shields.io/badge/Android-7%2B-3ddc84" alt="Android 7+">
+  <img src="https://img.shields.io/badge/Android-5%2B-3ddc84" alt="Android 5+">
   <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="Licenza MIT"></a>
 </p>
 
 <p align="center"><img src="hero-0.6.png" width="900" alt="PhoneBox su tre telefoni"><br>
 <sub>Layout di esempio con dati dimostrativi.</sub></p>
 
-PhoneBox abbina un'**app Android** a schermo intero a un piccolo **agente desktop**. Progetta il tuo pannello nell'editor visivo browser: **120 widget**, **30 modelli**, più pagine e anteprima live.
+PhoneBox abbina un'**app Android** a schermo intero a un piccolo **agente desktop**. Progetta il tuo pannello nell'editor visivo browser: **123 widget**, **30 modelli**, più pagine e anteprima live.
 
 ## Cosa puoi fare
 

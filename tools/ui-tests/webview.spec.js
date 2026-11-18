@@ -8,7 +8,7 @@ test('settings general tab stays quiet for modern WebView and warns when outdate
 
   await page.evaluate(async () => {
     const real = window.fetch;
-    const problem = 'SM-G960F has an outdated WebView (74, com.android.chrome); widget scaling needs Chromium 105+. Update Google Chrome from Google Play (it provides WebView on this device).';
+    const problem = 'SM-G960F has an outdated WebView (74, com.android.chrome); the panel needs Chromium 80+ to run at all. Update Google Chrome from Google Play (it provides WebView on this device).';
     window.fetch = async (input, init) => {
       const r = await real(input, init);
       const url = String(input);
@@ -61,6 +61,33 @@ test('panel shows dismissible notice only when container query units are unsuppo
 
     await oldPage.reload();
     await expect(oldPage.locator('#webviewWarn')).toBeHidden();
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('panel says the WebView is too old to run it, and keeps the notice up', async ({ browser }) => {
+  const ctx = await browser.newContext();
+  try {
+    const oldPage = await ctx.newPage();
+    // a WebView before Chromium 80 can't parse ?. — the inline check compiles a snippet with new Function
+    await oldPage.addInitScript(() => {
+      window.Function = new Proxy(window.Function, {
+        construct(target, args) {
+          if (String(args[args.length - 1]).includes('?.')) throw new SyntaxError('Unexpected token .');
+          return Reflect.construct(target, args);
+        },
+      });
+    });
+    await oldPage.goto('/panel/');
+    const warn = oldPage.locator('#webviewWarn');
+    await expect(warn).toBeVisible();
+    await expect(warn).toContainText('too old to run the panel');
+    await expect(warn).toContainText('version 80 or later');
+    await expect(oldPage.locator('#webviewWarnClose')).toBeHidden();
+    // the boot-failure box would only bury the notice under syntax errors
+    await oldPage.waitForTimeout(500);
+    await expect(oldPage.locator('#jsfail')).toBeHidden();
   } finally {
     await ctx.close();
   }

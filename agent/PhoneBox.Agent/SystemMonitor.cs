@@ -26,7 +26,7 @@ public sealed record PcSnapshot(double? Cpu, double? CpuTemp, string CpuName, do
     IReadOnlyList<GpuInfo>? Gpus = null);
 
 /// <summary>Samples CPU, RAM, network, disk and GPU metrics once a second.</summary>
-public sealed partial class SystemMonitor(ILogger<SystemMonitor> log) : BackgroundService
+public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStore? config = null) : BackgroundService
 {
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMilliseconds(600) };
     private readonly string _cpuName = ReadCpuName();
@@ -45,7 +45,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log) : Backgrou
         _ = Task.Run(() => CpuTempLoop(ct), ct);
 
         var (idle0, total0) = CpuTimes();
-        var net0 = NetBytes();
+        var net0 = NetBytes(Chosen());
         var t0 = Stopwatch.GetTimestamp();
         var tick = 0;
 
@@ -58,7 +58,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log) : Backgrou
             double? cpu = total > 0 ? Math.Clamp(100.0 * (total - (idle1 - idle0)) / total, 0, 100) : null;
             (idle0, total0) = (idle1, total1);
 
-            var net1 = NetBytes();
+            var net1 = NetBytes(Chosen());
             var t1 = Stopwatch.GetTimestamp();
             var secs = Math.Max(0.001, (t1 - t0) / (double)Stopwatch.Frequency);
             var (down, up) = NetworkRates(net0, net1, secs);
@@ -291,20 +291,35 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log) : Backgrou
         return null;
     }
 
-    private static Dictionary<string, (long Rx, long Tx)> NetBytes()
+    private IReadOnlyList<string> Chosen() => config?.Get().Ping.Adapters ?? [];
+
+    /// <summary>Whether the network meters count this adapter: the chosen ones by name, or else the automatic choice.</summary>
+    internal static bool Counted(string name, string description, NetworkInterfaceType type, IReadOnlyList<string> chosen)
+    {
+        if (chosen.Count > 0) return chosen.Contains(name, StringComparer.OrdinalIgnoreCase);
+        if (type is not (NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211 or NetworkInterfaceType.GigabitEthernet)) return false;
+        var d = description + " " + name;
+        if (!OperatingSystem.IsWindows() && (name.StartsWith("docker") || name.StartsWith("veth") || name.StartsWith("br-")
+            || name.StartsWith("virbr") || name.StartsWith("utun") || name.StartsWith("awdl") || name.StartsWith("llw"))) return false;
+        return !(d.Contains("Virtual", StringComparison.OrdinalIgnoreCase) || d.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase)
+            || d.Contains("vEthernet", StringComparison.OrdinalIgnoreCase) || d.Contains("VMware", StringComparison.OrdinalIgnoreCase)
+            || d.Contains("WSL", StringComparison.OrdinalIgnoreCase) || d.Contains("TAP", StringComparison.Ordinal)
+            || d.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Connected adapters for Settings › Ping & network (names and descriptions only; local page).</summary>
+    public static IReadOnlyList<object> Adapters(IReadOnlyList<string> chosen) => NetworkInterface.GetAllNetworkInterfaces()
+        .Where(ni => ni.OperationalStatus == OperationalStatus.Up && ni.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+        .Select(ni => (object)new { name = ni.Name, description = ni.Description, auto = Counted(ni.Name, ni.Description, ni.NetworkInterfaceType, []) })
+        .ToList();
+
+    private static Dictionary<string, (long Rx, long Tx)> NetBytes(IReadOnlyList<string> chosen)
     {
         var counters = new Dictionary<string, (long Rx, long Tx)>();
         foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
         {
             if (ni.OperationalStatus != OperationalStatus.Up) continue;
-            if (ni.NetworkInterfaceType is not (NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211 or NetworkInterfaceType.GigabitEthernet)) continue;
-            var d = ni.Description + " " + ni.Name;
-            if (!OperatingSystem.IsWindows() && (ni.Name.StartsWith("docker") || ni.Name.StartsWith("veth") || ni.Name.StartsWith("br-")
-                || ni.Name.StartsWith("virbr") || ni.Name.StartsWith("utun") || ni.Name.StartsWith("awdl") || ni.Name.StartsWith("llw"))) continue;
-            if (d.Contains("Virtual", StringComparison.OrdinalIgnoreCase) || d.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase)
-                || d.Contains("vEthernet", StringComparison.OrdinalIgnoreCase) || d.Contains("VMware", StringComparison.OrdinalIgnoreCase)
-                || d.Contains("WSL", StringComparison.OrdinalIgnoreCase) || d.Contains("TAP", StringComparison.Ordinal)
-                || d.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!Counted(ni.Name, ni.Description, ni.NetworkInterfaceType, chosen)) continue;
             try
             {
                 var s = ni.GetIPStatistics();

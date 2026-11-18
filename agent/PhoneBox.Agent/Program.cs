@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using PhoneBox.Agent;
@@ -39,6 +40,9 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 builder.WebHost.ConfigureKestrel(k =>
 {
+    // a dictation travels in the query (the phone's transport sends no request bodies): 1000 characters of any script,
+    // percent-encoded, fit in 16 KB
+    k.Limits.MaxRequestLineSize = 16 * 1024;
     k.Listen(IPAddress.Loopback, Port);
     // Wi-Fi / Tailscale: HTTPS with a pinned self-signed certificate, token required (see Lan.cs).
     if (lanCert is not null) k.Listen(IPAddress.Any, lanCfg.Port, l => l.UseHttps(lanCert));
@@ -53,6 +57,7 @@ builder.Services.AddSingleton(configStore);
 builder.Services.AddSingleton(endpoint);
 builder.Services.AddSingleton<AudioControl>();
 builder.Services.AddSingleton<AppCatalog>();
+builder.Services.AddSingleton<ShortcutIconUploads>();
 builder.Services.AddSingleton<PairingCodes>();
 builder.Services.AddSingleton<SpotifyControl>();
 builder.Services.AddSingleton<ControlDeck>();
@@ -62,6 +67,8 @@ builder.Services.AddSingleton<CommandRunner>();
 builder.Services.AddSingleton<ApprovalStore>();
 builder.Services.AddSingleton<HomeAssistant>();
 builder.Services.AddSingleton<AppConsole>();
+builder.Services.AddSingleton<Dictation>();
+builder.Services.AddSingleton<SpectrumAnalyzer>();
 AddMonitor<SystemMonitor>(builder.Services);
 AddMonitor<MediaMonitor>(builder.Services);
 AddMonitor<QuotaMonitor>(builder.Services);
@@ -69,6 +76,7 @@ AddMonitor<ProcessMonitor>(builder.Services);
 AddMonitor<SessionMonitor>(builder.Services);
 AddMonitor<FeedMonitor>(builder.Services);
 builder.Services.AddSingleton<PhotoFrame>();
+builder.Services.AddSingleton<CameraFeeds>();
 AddMonitor<GitHubMonitor>(builder.Services);
 AddMonitor<PingMonitor>(builder.Services);
 AddMonitor<AdbReverse>(builder.Services);
@@ -338,7 +346,7 @@ app.MapGet("/api/settings", (ConfigStore cfg, HttpResponse res) =>
     return Results.Text(json, "application/json; charset=utf-8");
 });
 
-app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck deck, PhotoFrame photos, ILogger<Program> log) =>
+app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck deck, PhotoFrame photos, CameraFeeds cameras, ShortcutIconUploads icons, ILogger<Program> log) =>
 {
     if (req.ContentType?.StartsWith("application/json") != true) return Results.StatusCode(415);
     using var r = new StreamReader(req.Body);
@@ -348,9 +356,27 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
     if (err is not null) return Results.BadRequest(new { error = err });
     deck.StopDisabledControls();
     photos.SettingsSaved();
+    cameras.SettingsSaved();
     deck.ReconcileRadios(waitForGate: true);
+    icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id)); // drop uploads for shortcuts that got deleted
+    ShortcutIcons.ClearHasIconCache();
     log.LogInformation("settings saved");
-    return Results.Ok(new { version = cfg.Version });
+    return Results.Ok(new { version = cfg.VersionText });
+});
+
+// Narrow write path for the phone: only the text of a Note widget may be changed.
+// The text travels in the query string: the Android proxy forwards no request body.
+app.MapPost("/api/widget/{pageId}/{widgetId}/note", (string pageId, string widgetId, string? text, string? version, ConfigStore cfg) =>
+{
+    long? expected = long.TryParse(version, out var v) ? v : null;
+    var r = NoteEdit.Apply(cfg, pageId, widgetId, text, expected);
+    return r.Status switch
+    {
+        200 => Results.Ok(new { version = r.Version }),
+        404 => Results.NotFound(new { error = r.Error }),
+        409 => Results.Json(new { error = r.Error }, statusCode: StatusCodes.Status409Conflict),
+        _ => Results.BadRequest(new { error = r.Error }),
+    };
 });
 
 app.MapPost("/api/shortcuts/test", async (HttpRequest req, ConfigStore cfg, ILogger<Program> log) =>
@@ -432,7 +458,7 @@ object State(IServiceProvider sp, long? ev)
         update = upd.Status() is { } u && (u.AppUpdate || u.AgentUpdate) ? new { latest = u.Latest, app = u.AppUpdate, agent = u.AgentUpdate } : null,
         ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
         host = Environment.MachineName,
-        cfgVersion = sp.GetRequiredService<ConfigStore>().Version,
+        cfgVersion = sp.GetRequiredService<ConfigStore>().Version.ToString(),
         pushVersion = push.Version,
         evSeq = push.Seq,
         events = ev is { } since ? push.Since(since) : [],
@@ -470,6 +496,17 @@ app.MapGet("/api/photos/{id}", async (string id, PhotoFrame photos, HttpResponse
     res.Headers.CacheControl = "private, max-age=86400";
     return Results.File(bytes, type!);
 });
+// Camera widget: the latest picture of the camera a widget shows, as a JPEG. Pulling a camera starts with these requests
+// and stops a few seconds after the last one; without a fresh picture the answer is a state, never an older picture.
+// "fresh" is read as text, not bound as a bool: a value the bool binder can't parse ("1") would answer 400 instead
+app.MapGet("/api/camera", (string? widget, string? fresh, HttpRequest req, HttpResponse res, CameraFeeds cameras) =>
+{
+    var (status, jpeg, state) = cameras.Frame(req.Headers["X-PhoneBox-Device"].ToString(), widget, fresh is "true" or "1");
+    res.Headers.CacheControl = "no-store";
+    res.Headers["X-Content-Type-Options"] = "nosniff";
+    if (status == 204) return Results.NoContent(); // no newer picture than the one this widget has
+    return jpeg is null ? Results.Json(new { state }, statusCode: status) : Results.Bytes(jpeg, "image/jpeg");
+});
 app.MapPost("/api/feeds/open", (string? id, FeedMonitor feeds) =>
     feeds.Open(id) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
 
@@ -484,9 +521,21 @@ app.MapGet("/api/ha/states", async (string? ids, HomeAssistant ha) =>
     Results.Json(await ha.StatesAsync((ids ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))));
 app.MapPost("/api/ha/toggle/{id}", async (string id, HomeAssistant ha) =>
     await ha.ToggleAsync(id) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
+// Settings › General › Ping & network: the connected adapters to pick from (local only, not on the Wi-Fi list)
+app.MapGet("/api/network/adapters", (ConfigStore cfg) => Results.Json(SystemMonitor.Adapters(cfg.Get().Ping.Adapters)));
+
 // Settings › General › Home Assistant › Test (local only)
 app.MapPost("/api/ha/test", async (HomeAssistantConfig body) =>
     Results.Json(new { result = await HomeAssistant.TestAsync(body.Url ?? "", body.Token ?? "") }));
+
+// Dictation (widget): text the phone recognized, typed into the app in front (only if that widget allows it).
+// The text is in the query: the phone's WebView sees no request bodies, so its transport (USB and Wi-Fi) sends POSTs
+// without one, like every other panel request. Kestrel's request line (16 KB) bounds it; request URLs aren't logged.
+app.MapPost("/api/dictate", async (string? widget, string? text, HttpRequest req, Dictation dictation, CancellationToken ct) =>
+{
+    var (status, error) = await dictation.TypeAsync(req.Headers["X-PhoneBox-Device"].ToString(), widget, text, ct);
+    return error is null ? Results.Ok(new { ok = true }) : Results.Json(new { error }, statusCode: status);
+});
 
 // App console (widget): the focused app's profile (labels only) and its keys, by profile id and slot.
 app.MapGet("/api/console", (string? widget, HttpRequest req, AppConsole console) =>
@@ -555,7 +604,7 @@ app.MapGet("/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.R
 
 // Live stream (server-sent events) for the phone: "state" every second, "event" as soon as one happens, "work" when it
 // changes. The Android shell keeps one connection open instead of polling; the panel falls back to polling without it.
-app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, ILogger<Program> log) =>
+app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, SpectrumAnalyzer spectrum, ILogger<Program> log) =>
 {
     var ct = ctx.RequestAborted;
     var isPhone = ctx.Request.Headers.ContainsKey("X-PhoneBox-App");
@@ -577,6 +626,7 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
         var seq = push.Seq;
         var lastWork = "";
         var next = 0L;
+        var lastSpec = 0L;
         var tick = 0;
         while (!ct.IsCancellationRequested)
         {
@@ -594,7 +644,19 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
                 }
                 next = now + 1000;
             }
-            await wake.WaitAsync(TimeSpan.FromMilliseconds(Math.Max(5, next - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())), ct);
+            // spectrum frames for a visualizer on screen (SpectrumAnalyzer runs only while a panel asks for it). While
+            // capture runs, every open stream gets them, also a second phone without a visualizer: the stream is opened
+            // by the app shell and /api/spectrum by the panel, and nothing ties the two together (over USB both phones
+            // are 127.0.0.1). The frames are small (48 numbers) and capture stops ~5 s after the last visible widget.
+            var specActive = spectrum.Active;
+            if (specActive && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastSpec >= 1000 / SpectrumAnalyzer.Fps - 3)
+            {
+                lastSpec = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                if (spectrum.Frame() is { } bands) await Send("spectrum", new { b = bands });
+            }
+            var waitMs = next - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (specActive) waitMs = Math.Min(waitMs, lastSpec + 1000 / SpectrumAnalyzer.Fps - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            await wake.WaitAsync(TimeSpan.FromMilliseconds(Math.Max(5, waitMs)), ct);
         }
     }
     catch (OperationCanceledException) { }
@@ -647,12 +709,22 @@ app.MapDelete("/api/antigravity/hook", (ConfigStore cfg) => AntigravityHook.Conf
 app.MapGet("/api/approvals", (ApprovalStore a) => Results.Json(new { items = a.Snapshot() }));
 app.MapPost("/api/approvals/{id}", (string id, string decision, ApprovalStore a) => a.Decide(id, decision) ? Results.Ok() : Results.NotFound());
 
+// Spectrum bars widget: each call keeps audio capture running for a few seconds and returns the latest bands
+// (the live stream also sends them as "spectrum" events; panels without the stream poll this instead).
+// Only band levels leave the agent, never audio; nothing is captured unless an enabled page has the widget.
+app.MapGet("/api/spectrum", (SpectrumAnalyzer spectrum) =>
+{
+    var shown = spectrum.Want();
+    return Results.Json(new { shown, active = spectrum.Active, fps = SpectrumAnalyzer.Fps, b = shown ? spectrum.Frame() : null });
+});
+
 // Output of a command widget (the command itself stays here).
 app.MapGet("/api/widget/{page}/{widget}", (string page, string widget, bool? force, CommandRunner runner) =>
     runner.Get(page, widget, force == true) is { } r ? Results.Json(r) : Results.NotFound());
 
-app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req) =>
-    Results.Json(new { version = cfg.Version, config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString()) }));
+app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req, ShortcutIconUploads icons) =>
+    Results.Json(new { version = cfg.Version.ToString(), config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString(),
+        s => icons.Revision(s.Id) ?? ShortcutIcons.Revision(s)) }));
 
 // Phones that have talked to this agent, with their settings (Settings › Phones).
 app.MapGet("/api/phones", (ConfigStore cfg) =>
@@ -756,6 +828,44 @@ app.MapPost("/api/run/{id}", (string id, ConfigStore cfg, PushStore push, AudioC
     return result is null ? Results.Ok() : Results.Problem(result);
 });
 
+// Real icon for a shortcut: an image the user uploaded (settings page) takes priority; otherwise its program's own
+// icon, when its command is an actual file on disk. 404 when neither exists (shell addresses, protocol handlers,
+// URLs, builtin: commands, and App Execution Alias stubs with no icon of their own), so the phone shows the emoji.
+app.MapGet("/api/shortcuts/icon", (string id, ConfigStore cfg, ShortcutIconUploads icons, HttpResponse res) =>
+{
+    if (cfg.Get().Shortcuts.FirstOrDefault(s => s.Id == id) is not { } sc) return Results.NotFound();
+    (byte[] Bytes, string ContentType)? icon = icons.Read(id);
+    if (icon is null && ShortcutIcons.Icon(sc) is { } png) icon = (png, "image/png");
+    if (icon is not { } found) return Results.NotFound();
+    res.Headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+    res.Headers["X-Content-Type-Options"] = "nosniff";
+    return Results.File(found.Bytes, found.ContentType);
+});
+
+// Uploads a custom icon for a shortcut (PNG, WEBP or SVG, 512 KB max); replaces any previous upload for it.
+// Under /api/settings, not /api/shortcuts: local-only like the rest of the settings API, since over Wi-Fi the
+// phone only ever needs to read an icon (GET /api/shortcuts/icon, above), never write one.
+app.MapPost("/api/settings/shortcut-icon", async (string id, HttpRequest req, ConfigStore cfg, ShortcutIconUploads icons) =>
+{
+    if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
+    if (cfg.VersionConflict(req.Headers["X-Config-Version"])) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
+    var bytes = await ShortcutIconUploads.ReadBounded(req.Body);
+    var err = icons.Save(id, req.ContentType, bytes);
+    if (err is not null) return Results.BadRequest(new { error = err });
+    cfg.Touch();
+    return Results.Ok(new { version = cfg.VersionText });
+});
+
+// Removes a shortcut's uploaded icon; it falls back to its auto-detected program icon, or the emoji.
+app.MapDelete("/api/settings/shortcut-icon", (string id, HttpRequest req, ConfigStore cfg, ShortcutIconUploads icons) =>
+{
+    if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound();
+    if (cfg.VersionConflict(req.Headers["X-Config-Version"])) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
+    icons.Remove(id);
+    cfg.Touch();
+    return Results.Ok(new { version = cfg.VersionText });
+});
+
 app.Lifetime.ApplicationStarted.Register(() =>
     app.Logger.LogInformation("PhoneBox agent {Version} ready on http://127.0.0.1:{Port} (config: {Path})", AppPaths.Version, Port, configPath));
 
@@ -778,3 +888,4 @@ static void AddMonitor<T>(IServiceCollection s) where T : class, IHostedService
 
 /// <summary>Body of POST /api/pair/claim.</summary>
 internal sealed record PairClaim(string? Code);
+

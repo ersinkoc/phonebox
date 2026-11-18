@@ -357,7 +357,7 @@ start_agent() {
 
 # ---- phone ------------------------------------------------------------------------------------------------------
 phone_help() {
-  info 'On the phone (Android 7.0 or later):'
+  info 'On the phone (Android 5.0 or later):'
   info '  1. Settings > About phone: tap "Build number" seven times to turn on Developer options.'
   info '  2. Settings > System > Developer options: turn on "USB debugging".'
   info '     Xiaomi / Redmi / POCO: also turn on "Install via USB" and "USB debugging (Security settings)".'
@@ -415,8 +415,8 @@ install_phone_app() { # install_phone_app apk serial -> 0 when installed
   local apk="$1" device="$2" level out
   level="$("$adb" -s "$device" shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r[:space:]')"
   case "$level" in ''|*[!0-9]*) level=0 ;; esac
-  if [ "$level" -gt 0 ] && [ "$level" -lt 24 ]; then
-    caution "This phone runs Android API $level; PhoneBox needs Android 7.0 (API 24) or later. The app was not installed."
+  if [ "$level" -gt 0 ] && [ "$level" -lt 21 ]; then
+    caution "This phone runs Android API $level; PhoneBox needs Android 5.0 (API 21) or later. The app was not installed."
     return 1
   fi
   info "Installing $(basename "$apk") on $device (the phone may ask you to confirm) ..."

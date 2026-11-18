@@ -71,11 +71,7 @@ public sealed class AppConsole(ConfigStore config, ILogger<AppConsole> log)
     /// The app console widget the phone names, as "pageId/widgetId" ("pageId/stackId:cardId" in a Smart Stack), if it is
     /// on an enabled page this phone shows. Each widget's own "control" option counts, not another one's.
     /// </summary>
-    public static WidgetConfig? WidgetFor(AgentConfig c, string? deviceId, string? key) => string.IsNullOrEmpty(key) ? null
-        : c.PagesFor(deviceId).Where(p => p.Enabled).SelectMany(p => (p.Widgets ?? []).SelectMany(w =>
-                new[] { (Key: p.Id + "/" + w.Id, W: w) }.Concat(StackWidgets.Children(w).Where(ch => ch.Enabled)
-                    .Select(ch => (Key: p.Id + "/" + w.Id + ":" + ch.Id, W: new WidgetConfig { Id = ch.Id, Type = ch.Type, Options = ch.Options })))))
-            .FirstOrDefault(x => x.W.Type == "app-console" && x.Key == key).W;
+    public static WidgetConfig? WidgetFor(AgentConfig c, string? deviceId, string? key) => PanelWidgets.Find(c, deviceId, key, "app-console");
 
     /// <summary>What the phone may know: the matching profile's id, label and key labels. Never the process name or title.</summary>
     public (int Status, object Body) State(string? deviceId, string? widget)
@@ -174,7 +170,7 @@ public sealed class AppConsole(ConfigStore config, ILogger<AppConsole> log)
 #endif
     }
 
-    private static FocusedApp? FocusedNow()
+    internal static FocusedApp? FocusedNow()
     {
 #if WINDOWS
         var hwnd = GetForegroundWindow();

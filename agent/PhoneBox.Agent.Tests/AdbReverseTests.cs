@@ -49,7 +49,25 @@ public sealed class AdbReverseTests : IDisposable
         return sh;
     }
 
-    private string[] Calls() => File.Exists(CallLog) ? File.ReadAllLines(CallLog).Select(l => l.Trim()).ToArray() : [];
+    /// <summary>
+    /// What the fake adb was called with. The agent runs adb for several phones at once, so a fake adb may still be
+    /// appending while this reads; on Windows cmd.exe holds the file without sharing it, so a read then retries
+    /// instead of failing the test (this was a flake on the Windows runners).
+    /// </summary>
+    private string[] Calls()
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                if (!File.Exists(CallLog)) return [];
+                using var stream = new FileStream(CallLog, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd().Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
+            }
+            catch (IOException) when (attempt < 50) { Thread.Sleep(20); }
+        }
+    }
 
     /// <summary>Runs the loop until <paramref name="done"/> holds or three rounds ("adb devices" calls) went by.</summary>
     private async Task<string[]> RunUntil(string fake, object settings, AgentEndpoint? endpoint, Func<string[], bool> done)

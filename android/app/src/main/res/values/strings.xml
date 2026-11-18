@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The few strings the native Android shell shows outside the WebView panel. -->
+    <string name="pair_title">Pair with a computer?</string>
+    <string name="pair_message">\"%1$s\" at %2$s (port %3$d).\n\nCheck that the computer\'s pairing window shows the code %4$s.\n\nContinue only if you started pairing on that computer.</string>
+    <string name="pair_positive">Pair</string>
+    <string name="pair_negative">Cancel</string>
+    <string name="pair_progress">Pairing with %1$s…</string>
+    <string name="pair_done">Paired with %1$s</string>
+    <string name="pair_failed_title">Pairing did not work</string>
+    <!-- %1$s is the computer's name, %2$s its addresses. -->
+    <string name="pair_failed_unreachable">Could not reach %1$s at %2$s. The phone and the computer must be on the same network (or both on Tailscale), and the computer\'s firewall must allow PhoneBox.</string>
+    <string name="pair_failed_code">%1$s did not accept the code: it works once and for 5 minutes. Start pairing again on the computer.</string>
+    <string name="pair_failed_answer">%1$s answered %2$d.</string>
+    <string name="pair_failed_certificate">The computer has a different certificate than the QR code. Start pairing again.</string>
+    <string name="ok">OK</string>
+</resources>

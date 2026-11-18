@@ -61,6 +61,62 @@ public class ConfigTests
     }
 
     [Fact]
+    public void ANewShortcutNeverReusesAJustDeletedOnesId()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"phonebox-config-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new ConfigStore(path);
+            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "cmd.exe" } ] }"""));
+            Assert.Equal("terminal", store.Get().Shortcuts.Single().Id);
+
+            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "wt.exe" } ] }"""));
+            Assert.Equal("terminal-2", store.Get().Shortcuts.Single().Id);
+        }
+        finally { File.Delete(path); File.Delete(path + ".bak"); }
+    }
+
+    [Fact]
+    public void AStaleIdRejectedForANewShortcutDoesNotStealAKeptShortcutsId()
+    {
+        // A new shortcut's rejected (stale) candidate id must not occupy "used", or processing it before a kept
+        // shortcut that still owns that exact id would bump the kept one to an unrelated id instead.
+        var path = Path.Combine(Path.GetTempPath(), $"phonebox-config-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new ConfigStore(path);
+            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "a.exe" }, { "label": "Terminal", "cmd": "b.exe" } ] }"""));
+            Assert.Equal(["terminal", "terminal-2"], store.Get().Shortcuts.Select(s => s.Id));
+
+            // "terminal" is deleted; a brand-new "Terminal" (no id, listed first) must not end up claiming
+            // "terminal-2" ahead of the shortcut that explicitly keeps it.
+            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "c.exe" }, { "id": "terminal-2", "label": "Terminal", "cmd": "b.exe" } ] }"""));
+            Assert.Equal(["terminal-3", "terminal-2"], store.Get().Shortcuts.Select(s => s.Id));
+        }
+        finally { File.Delete(path); File.Delete(path + ".bak"); }
+    }
+
+    [Fact]
+    public void ABlankIdShortcutListedFirstDoesNotStealAnExplicitIdListedAfterIt()
+    {
+        // Explicit ids are reserved in a first pass before any blank-id shortcut is assigned one, so list order
+        // cannot let a brand-new shortcut take an id another shortcut in the same save explicitly asked to keep.
+        var path = Path.Combine(Path.GetTempPath(), $"phonebox-config-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new ConfigStore(path);
+            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "a.exe" } ] }"""));
+            Assert.Equal("terminal", store.Get().Shortcuts.Single().Id);
+
+            Assert.Null(store.Save("""
+                { "shortcuts": [ { "label": "Terminal", "cmd": "new.exe" }, { "id": "terminal-2", "label": "Other", "cmd": "x.exe" } ] }
+                """));
+            Assert.Equal(["terminal-3", "terminal-2"], store.Get().Shortcuts.Select(s => s.Id));
+        }
+        finally { File.Delete(path); File.Delete(path + ".bak"); }
+    }
+
+    [Fact]
     public void LegacyHomePageKeepsItsTilesAndOptions()
     {
         // 0.6.1: a fixed "home" page with options
@@ -151,6 +207,8 @@ public class LanTests
     [InlineData("/api/pair/status", false)]
     [InlineData("/api/pair/claim/x", false)]
     [InlineData("/api/shortcuts/test", false)]
+    [InlineData("/api/shortcuts/icon", true)]
+    [InlineData("/api/settings/shortcut-icon", false)]
     [InlineData("/api/claude/hook", false)]
     [InlineData("/api/obs-test", false)]
     [InlineData("/api/ha/test", false)]
@@ -250,6 +308,23 @@ public class ConfigConcurrencyTests
     }
 
     [Fact]
+    public void TouchAdvancesVersionSoAnotherTabsConflictCheckNoticesIt()
+    {
+        var (s, path) = NewStore();
+        try
+        {
+            var loaded = s.Version;
+            Assert.False(s.VersionConflict(loaded.ToString()));
+            Assert.False(s.VersionConflict(null)); // no header sent: never a conflict
+            Thread.Sleep(20);
+            s.Touch();
+            Assert.True(s.VersionConflict(loaded.ToString()));
+            Assert.False(s.VersionConflict(s.Version.ToString()));
+        }
+        finally { File.Delete(path); File.Delete(path + ".bak"); }
+    }
+
+    [Fact]
     public void GeneratedKeysPersistForANewConfigWithoutReplacingUnreadableFiles()
     {
         var dir = Directory.CreateTempSubdirectory("phonebox-config-");
@@ -324,6 +399,7 @@ public class ConfigConcurrencyTests
     [Theory]
     [InlineData("\"TR\"", "tr")]       // any case
     [InlineData("\" de \"", "de")]     // stray spaces
+    [InlineData("\"vi\"", "vi")]       // added after the list was first written (#177)
     [InlineData("\"xx\"", "auto")]     // a language PhoneBox does not have
     [InlineData("null", "auto")]
     [InlineData("\"\"", "auto")]
@@ -343,6 +419,18 @@ public class ConfigConcurrencyTests
     {
         using var s = AppPaths.Resource("www/i18n.js");
         Assert.NotNull(s);
+    }
+
+    [Fact]
+    public void EveryLanguageThePanelHasCanBeSaved()
+    {
+        // a language added to i18n.js but not to DisplayConfig.Languages is saved as "auto", so picking it does nothing
+        using var s = AppPaths.Resource("www/i18n.js");
+        Assert.NotNull(s);
+        var js = new StreamReader(s!).ReadToEnd();
+        var codes = System.Text.RegularExpressions.Regex.Matches(js, @"\{\s*code:\s*'([a-z]{2,3})'").Select(m => m.Groups[1].Value).ToHashSet();
+        Assert.Contains("en", codes);
+        Assert.Equal(codes.Order(), DisplayConfig.Languages.Where(l => l != "auto").Order());
     }
 }
 

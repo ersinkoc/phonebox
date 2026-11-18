@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
@@ -49,10 +50,11 @@ import org.json.JSONObject
 class MainActivity : Activity(), SensorEventListener {
 
     private lateinit var web: WebView
+    private val dictation by lazy { Dictation(this) { script -> web.evaluateJavascript(script, null) } }
     private lateinit var link: AgentLink
     private lateinit var stream: AgentStream
     @Volatile private var volumeKeysFlipPages = true
-    private val sensors by lazy { getSystemService(SensorManager::class.java) }
+    private val sensors by lazy { getSystemService(Context.SENSOR_SERVICE) as SensorManager? }
     private var lastLux = -1f
     private var lastLuxAt = 0L
     private var near: Boolean? = null
@@ -131,12 +133,10 @@ class MainActivity : Activity(), SensorEventListener {
         val pairing = AgentLink.PairLink.parse(intent?.data) ?: return
         intent?.data = null // not again after a configuration change
         AlertDialog.Builder(this)
-            .setTitle("Pair with a computer?")
-            .setMessage("\"${pairing.pc}\" at ${pairing.hosts.joinToString()} (port ${pairing.port}).\n\n" +
-                "Check that the computer's pairing window shows the code ${pairing.check}.\n\n" +
-                "Continue only if you started pairing on that computer.")
-            .setPositiveButton("Pair") { _, _ -> pair(pairing) }
-            .setNegativeButton("Cancel", null)
+            .setTitle(getString(R.string.pair_title))
+            .setMessage(getString(R.string.pair_message, pairing.pc, pairing.hosts.joinToString(), pairing.port, pairing.check))
+            .setPositiveButton(getString(R.string.pair_positive)) { _, _ -> pair(pairing) }
+            .setNegativeButton(getString(R.string.pair_negative), null)
             .setOnDismissListener { hideSystemUi() }
             .show()
             .plainButtons()
@@ -148,17 +148,17 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun pair(pairing: AgentLink.PairLink) {
-        Toast.makeText(this, "Pairing with ${pairing.pc}...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.pair_progress, pairing.pc), Toast.LENGTH_SHORT).show()
         Thread {
             val problem = link.claim(pairing)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread // the pairing is stored; there is no window to show it in
                 if (problem == null) {
-                    Toast.makeText(this, "Paired with ${pairing.pc}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, getString(R.string.pair_done, pairing.pc), Toast.LENGTH_LONG).show()
                     stream.stop(); stream.start(); web.reload()
                 } else {
-                    AlertDialog.Builder(this).setTitle("Pairing did not work").setMessage(problem)
-                        .setPositiveButton("OK", null).setOnDismissListener { hideSystemUi() }.show().plainButtons()
+                    AlertDialog.Builder(this).setTitle(getString(R.string.pair_failed_title)).setMessage(problem.message(this))
+                        .setPositiveButton(getString(R.string.ok), null).setOnDismissListener { hideSystemUi() }.show().plainButtons()
                 }
             }
         }.start()
@@ -232,7 +232,14 @@ class MainActivity : Activity(), SensorEventListener {
         sensors?.getDefaultSensor(Sensor.TYPE_PROXIMITY)?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == Dictation.PERMISSION_REQUEST)
+            dictation.onPermission(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
+    }
+
     override fun onPause() {
+        dictation.cancel(0) // the microphone is never left open behind another app or a dark screen
         sensors?.unregisterListener(this)
         stream.stop()
         web.onPause()
@@ -298,7 +305,7 @@ class MainActivity : Activity(), SensorEventListener {
         @JavascriptInterface
         fun haptic(key: String) {
             if (!ok(key)) return
-            val v = getSystemService(Vibrator::class.java) ?: return
+            val v = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator? ?: return
             if (!v.hasVibrator()) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createOneShot(14, VibrationEffect.DEFAULT_AMPLITUDE))
             else @Suppress("DEPRECATION") v.vibrate(14)
@@ -308,7 +315,7 @@ class MainActivity : Activity(), SensorEventListener {
         @JavascriptInterface
         fun buzz(key: String, pattern: String) {
             if (!ok(key)) return
-            val v = getSystemService(Vibrator::class.java) ?: return
+            val v = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator? ?: return
             val timings = pattern.split(',').mapNotNull { it.trim().toLongOrNull() }.toLongArray()
             if (!v.hasVibrator() || timings.isEmpty()) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createWaveform(timings, -1))
@@ -375,7 +382,9 @@ class MainActivity : Activity(), SensorEventListener {
         fun setPinned(key: String, on: Boolean) {
             if (!ok(key)) return
             runOnUiThread {
-                val pinned = getSystemService(ActivityManager::class.java).lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+                val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                val pinned = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+                    else @Suppress("DEPRECATION") am.isInLockTaskMode
                 try { if (on && !pinned) startLockTask() else if (!on && pinned) stopLockTask() } catch (_: Exception) {}
             }
         }
@@ -420,13 +429,31 @@ class MainActivity : Activity(), SensorEventListener {
 
         @JavascriptInterface
         fun version(key: String): String = if (ok(key)) packageManager.getPackageInfo(packageName, 0).versionName ?: "" else ""
+
+        /** Dictation widget: true when the phone has a speech recognizer. */
+        @JavascriptInterface
+        fun canListen(key: String): Boolean = ok(key) && dictation.available()
+
+        /**
+         * Dictation widget: listens once ([lang] a BCP 47 tag or "") and returns the session's id; results arrive
+         * through window.onAndroidSpeech(kind, text, id).
+         */
+        @JavascriptInterface
+        fun listen(key: String, lang: String, offline: Boolean): Int =
+            if (!ok(key)) 0 else dictation.start(lang.take(20).filter { it.isLetterOrDigit() || it == '-' }, offline)
+
+        @JavascriptInterface
+        fun stopListening(key: String, id: Int) { if (ok(key) && id > 0) dictation.stop(id) }
+
+        @JavascriptInterface
+        fun cancelListening(key: String, id: Int) { if (ok(key) && id > 0) dictation.cancel(id) }
     }
 
     companion object {
         private const val ASSET_HOST = "appassets.androidplatform.net"
         private val NO_STORE = mapOf("Cache-Control" to "no-store")
         private const val PANEL_HEADER = "X-PhoneBox-Panel"
-        private val READ_ONLY_IMAGES = setOf("/agent/api/art", "/agent/api/procs/icon", "/agent/api/controls/radio-logo", "/agent/api/apps/icon", "/agent/api/discord/img")
+        private val READ_ONLY_IMAGES = setOf("/agent/api/art", "/agent/api/procs/icon", "/agent/api/controls/radio-logo", "/agent/api/apps/icon", "/agent/api/discord/img", "/agent/api/shortcuts/icon")
         private fun FORBIDDEN() = WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", NO_STORE, java.io.ByteArrayInputStream(ByteArray(0)))
     }
 }

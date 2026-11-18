@@ -56,8 +56,10 @@ public sealed class ToolProcessTests
             var refresh = GitHubMonitor.RunGh(start, cancellation.Token);
             while (pid == 0)
             {
+                // the child may still be writing it (PowerShell holds the file without sharing): try again then
                 if (File.Exists(marker))
-                    int.TryParse((await File.ReadAllTextAsync(marker, cancellation.Token)).Trim(), out pid);
+                    try { int.TryParse((await File.ReadAllTextAsync(marker, cancellation.Token)).Trim(), out pid); }
+                    catch (IOException) { }
                 if (pid == 0) await Task.Delay(20, cancellation.Token);
             }
             cancellation.Cancel();
@@ -71,7 +73,7 @@ public sealed class ToolProcessTests
                 try { using var child = Process.GetProcessById(pid); child.Kill(entireProcessTree: true); }
                 catch (ArgumentException) { }
             }
-            File.Delete(marker);
+            try { File.Delete(marker); } catch (IOException) { }
         }
 
         static bool IsAlive(int id)
