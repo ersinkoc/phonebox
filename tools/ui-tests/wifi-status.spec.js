@@ -11,6 +11,9 @@ test('the Wi-Fi status line follows the switch before it is saved', async ({ pag
 
   await flip();
   await expect(status).toHaveText('Click Save to turn it off');
+  // saved as off: Wi-Fi requests are refused at once, while the port is released only by the restart
+  await page.evaluate(() => { lanInfo = { ...lanInfo, configured: false, restartNeeded: true }; renderLanStatus(); });
+  await expect(status).toHaveText('Off');
 
   // an agent with Wi-Fi off, as on a fresh install
   await page.evaluate(() => { lanInfo = { ...lanInfo, configured: false, active: false }; renderLanStatus(); });
