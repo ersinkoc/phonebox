@@ -105,6 +105,7 @@ public sealed class WeatherConfig
     /// "celsius" or "fahrenheit": how the panel shows temperatures. The forecast is always fetched in °C and converted
     /// on the phone, so a change applies to the cached forecast too and Custom HTML widgets keep Open-Meteo's values.
     /// </summary>
+    [JsonConverter(typeof(WeatherUnitJsonConverter))]
     public string Unit { get; set; } = "celsius";
 }
 
@@ -505,7 +506,7 @@ public sealed partial class ConfigStore(string path)
     private static AgentConfig Normalize(AgentConfig c, IReadOnlySet<string>? staleIds = null)
     {
         c.Weather ??= new();
-        c.Weather.Unit = string.Equals(c.Weather.Unit?.Trim(), "fahrenheit", StringComparison.OrdinalIgnoreCase) ? "fahrenheit" : "celsius";
+        c.Weather.Unit = WeatherUnitJsonConverter.Normalize(c.Weather.Unit);
         c.CodexBar ??= new();
         c.CodexBar.Providers = (c.CodexBar.Providers ?? []).Where(p => p is "claude" or "codex" or "antigravity").Distinct().ToArray();
         c.CodexBar.PageSize = Math.Clamp(c.CodexBar.PageSize, 0, 6);
@@ -857,6 +858,24 @@ public sealed class CodexBarConfig
 }
 
 /// <summary>Reads/writes display.hour12 as boolean false/true or "auto" (follow the phone) so boolean configs stay wire-compatible.</summary>
+/// <summary>
+/// weather.unit: "fahrenheit" in any case or padding, anything else "celsius". A hand-edited number or boolean must not
+/// make the whole settings file unreadable, so a non-string token is skipped instead of thrown on.
+/// </summary>
+internal sealed class WeatherUnitJsonConverter : JsonConverter<string>
+{
+    public static string Normalize(string? value) => string.Equals(value?.Trim(), "fahrenheit", StringComparison.OrdinalIgnoreCase) ? "fahrenheit" : "celsius";
+
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String) return Normalize(reader.GetString());
+        reader.Skip();
+        return "celsius";
+    }
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(Normalize(value));
+}
+
 internal sealed class Hour12JsonConverter : JsonConverter<string>
 {
     public static string Normalize(string? value) => value?.Trim().ToLowerInvariant() switch

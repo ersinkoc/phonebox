@@ -411,14 +411,18 @@ export const wxDeg = (c) => Math.round(cfg.weather?.unit === 'fahrenheit' ? c * 
 
 let weatherRetry = 0;
 let weatherFor = ''; // the location the forecast in D.weather belongs to
+let unitShown = ''; // the unit the widgets last drew: a settings change redraws the cached forecast, no new request
 const weatherKey = () => { const { lat, lon } = cfg.weather || DEFAULT_CFG.weather; return `v3:${lat},${lon}`; };
 export async function loadWeather(force = false) {
-  const { lat, lon } = cfg.weather || DEFAULT_CFG.weather;
+  const { lat, lon, unit } = cfg.weather || DEFAULT_CFG.weather;
   const key = weatherKey();
   const cached = store.get('wx', null);
   // a new place starts from its own cache or from "Loading…", never from the previous place's forecast
   if (D.weather && weatherFor !== key) { D.weather = null; emit('weather'); }
   if (cached && cached.key === key && !D.weather) { D.weather = cached.data; weatherFor = key; emit('weather'); }
+  // buildLayout keeps the widgets when the pages did not change, so a new unit must be drawn from here
+  else if (D.weather && unit !== unitShown) emit('weather');
+  unitShown = unit;
   if (!force && cached && cached.key === key && Date.now() - cached.at < 14 * 60_000) return;
   // only while a page shows the weather (PRIVACY.md): no widget, no request with the location;
   // also wait for the first agent config when no cached config exists, so FALLBACK_PAGES never leaks default coordinates

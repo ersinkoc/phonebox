@@ -420,7 +420,8 @@ test('a new weather location never shows the previous place\'s forecast', async 
 });
 
 // weather.unit converts on the phone: the forecast is cached in °C, so the clock line and both forecast ranges show °F
-// without a new request, and a config that has no unit (saved before the setting existed) stays in °C.
+// without a new request, a unit change from the settings redraws at the next config poll (not at the next forecast
+// refresh, up to 14 minutes later), and a config that has no unit (saved before the setting existed) stays in °C.
 test('the weather shows Fahrenheit when the settings say so', async ({ page }) => {
   const now = new Date();
   const hour = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:00`;
@@ -429,19 +430,32 @@ test('the weather shows Fahrenheit when the settings say so', async ({ page }) =
     daily: { time: [hour.slice(0, 10)], weather_code: [0], temperature_2m_max: [32], temperature_2m_min: [-5], precipitation_probability_max: [0] },
     hourly: { time: [hour], weather_code: [0], temperature_2m: [20], precipitation_probability: [0], is_day: [1] },
   };
-  await page.route('https://api.open-meteo.com/**', (route) => route.fulfill({ json: forecast }));
+  let requests = 0;
+  await page.route('https://api.open-meteo.com/**', (route) => { requests++; route.fulfill({ json: forecast }); });
   const widgets = [{ ...widget('clock', { weather: true }), h: 2 }, { ...widget('forecast', { mode: 'daily' }), y: 2, h: 2 }, { ...widget('forecast', { mode: 'hourly' }), y: 4, h: 2 }];
   await layout(page, widgets, { weather: { city: 'Alpha', lat: 10, lon: 10, unit: 'fahrenheit' } });
   await expect(page.locator('.wx-temp')).toHaveText('88°');
   await expect(page.locator('.wx-range')).toHaveText('↑90° ↓23° · Feels like 85°');
   await expect(page.locator('.fc-v').first()).toHaveText('90° 23°');
   await expect(page.locator('.fc-v').nth(1)).toHaveText('68°');
+  expect(requests).toBe(1);
 
-  await layout(page, widgets, { weather: { city: 'Alpha', lat: 10, lon: 10 } });
+  // the settings page saved Celsius: the next config poll redraws from the cached forecast, with no new request
+  await page.evaluate(async () => {
+    const c = JSON.parse(localStorage.getItem('pb-demo-config'));
+    localStorage.setItem('pb-demo-config', JSON.stringify({ ...c, weather: { ...c.weather, unit: 'celsius' } }));
+    const m = await import('./main.js');
+    await m.loadConfig();
+  });
   await expect(page.locator('.wx-temp')).toHaveText('31°');
   await expect(page.locator('.wx-range')).toHaveText('↑32° ↓-5° · Feels like 30°');
   await expect(page.locator('.fc-v').first()).toHaveText('32° -5°');
   await expect(page.locator('.fc-v').nth(1)).toHaveText('20°');
+  expect(requests).toBe(1);
+
+  await layout(page, widgets, { weather: { city: 'Alpha', lat: 10, lon: 10 } });
+  await expect(page.locator('.wx-temp')).toHaveText('31°');
+  await expect(page.locator('.fc-v').first()).toHaveText('32° -5°');
 });
 
 // PRIVACY.md: the phone sends the weather location to Open-Meteo only while a page has a widget that uses the weather.

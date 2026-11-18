@@ -412,8 +412,8 @@ dd { margin: 0; word-break: break-all; }
             <div class="field" style="flex:1"><label data-i18n="s.weather.lat">Latitude</label><input type="number" step="0.001" data-bind="weather.lat" data-type="num"></div>
             <div class="field" style="flex:1"><label data-i18n="s.weather.lon">Longitude</label><input type="number" step="0.001" data-bind="weather.lon" data-type="num"></div>
           </div>
-          <div class="field"><label data-i18n="s.weather.unit">Temperature unit</label>
-            <select data-bind="weather.unit"><option value="celsius" data-i18n="s.weather.unitC">Celsius (°C)</option><option value="fahrenheit" data-i18n="s.weather.unitF">Fahrenheit (°F)</option></select></div>
+          <div class="field"><label for="weatherUnit" data-i18n="s.weather.unit">Temperature unit</label>
+            <select id="weatherUnit" data-bind="weather.unit"><option value="celsius" data-i18n="s.weather.unitC">Celsius (°C)</option><option value="fahrenheit" data-i18n="s.weather.unitF">Fahrenheit (°F)</option></select></div>
         </div>
         <p class="hint" style="margin:8px 0 0" data-i18n="s.weather.openMeteoHint">The phone asks Open-Meteo for this location only while a page has a widget that uses the weather (weather, forecast, sun &amp; moon, a clock with its weather line, Custom HTML).</p>
       </div>
