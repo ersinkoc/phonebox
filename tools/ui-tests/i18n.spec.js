@@ -126,3 +126,36 @@ test('the widget catalog translates by its English text', async ({ page }) => {
   expect(out.untouched).toBe('not in the catalog');
   expect(out.other).toBe('Clock');
 });
+
+// A JavaScript object literal keeps the last of two equal keys without a warning, so a key defined twice in one
+// language silently replaces the first text (s.ha.hint once showed the token setup paragraph in the entity picker).
+test('i18n.js defines every key once per language', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const lines = fs.readFileSync(path.join(__dirname, '..', '..', 'android', 'app', 'src', 'main', 'assets', 'www', 'i18n.js'), 'utf8').split('\n');
+  // EXTRA is merged into STRINGS with Object.assign, so the two share one key space per language; CATALOG is its own.
+  const TABLE = /^ {2}const ([A-Z_]+) = \{\s*$/;
+  // A property name as source text: 'single', "double" or bare. name() turns it into the name JavaScript uses, so
+  // Time, 'Time' and "Time" (or vi and 'vi') count as the same key.
+  const NAME = String.raw`'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|[A-Za-z_$][\w$]*`;
+  const BLOCK = new RegExp(String.raw`^ {4}(${NAME}):\s*\{\s*$`);
+  const KEY = new RegExp(String.raw`^ {6}(${NAME}):`);
+  const name = (token) => (/^['"]/.test(token) ? Function(`"use strict"; return (${token});`)() : token);
+  const dupes = [];
+  const spaces = new Map();
+  let table = null, block = null;
+  lines.forEach((line, i) => {
+    const tb = TABLE.exec(line);
+    if (tb) { table = tb[1] === 'EXTRA' ? 'STRINGS' : tb[1]; block = null; return; }
+    const b = BLOCK.exec(line);
+    if (b) { block = `${table} ${name(b[1])}`; if (!spaces.has(block)) spaces.set(block, new Map()); return; }
+    const k = block && KEY.exec(line);
+    if (!k) return;
+    const key = name(k[1]);
+    const seen = spaces.get(block);
+    if (seen.has(key)) dupes.push(`${block} ${k[1]} (lines ${seen.get(key)} and ${i + 1})`);
+    else seen.set(key, i + 1);
+  });
+  expect(spaces.size).toBeGreaterThanOrEqual(13); // the parser still finds the language blocks (12 languages + catalog)
+  expect(dupes).toEqual([]);
+});

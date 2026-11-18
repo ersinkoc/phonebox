@@ -7,6 +7,9 @@
 - News feeds widget: the list scrolls, so every headline is reachable, not just the ones that fit; an article opened
   from the phone loses its accent bar; and a new option shows each headline over 2 or 3 lines (#108,
   [Vampie](https://github.com/Vampie)).
+- Home Assistant widget: an entity editor in Settings. Each entity gets its own row with an optional name and icon,
+  and its own choice of whether the phone may switch it; entity ids autocomplete from Home Assistant. Widgets that list
+  their entities as text keep working (#109, #178, [sateesh2020](https://github.com/sateesh2020)).
 
 **Settings**
 - Saving after uploading or removing a shortcut's custom icon no longer fails with "The settings were changed in
@@ -15,6 +18,9 @@
 - A freshly opened settings page no longer offers Save and Revert before anything was changed, and Revert gets back
   to a clean page again. The feeds, cameras, console, Discord and ping editors filled in their defaults after the page
   had noted what was saved (#229).
+- The settings page is translated: section text, the pages editor, rule conditions, appearance options, the connection
+  and update cards and the webhook examples, complete in Vietnamese. The webhooks section no longer stops rendering
+  part-way, which a translation helper shadowed by a variable had caused (#219, [sonvivu](https://github.com/sonvivu)).
 
 **Agent**
 - Antigravity quotas show up with newer Antigravity IDE versions (reported with 2.32), whose language server answers

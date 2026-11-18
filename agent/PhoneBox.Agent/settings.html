@@ -332,7 +332,7 @@ dd { margin: 0; word-break: break-all; }
   <div class="spacer"></div>
   <select id="langSel" data-i18n-title="lang.label" title="Language" style="padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:12.5px;max-width:160px"></select>
   <span class="dirty-dot" data-i18n-title="s.unsavedChanges" title="Unsaved changes"></span>
-  <button class="btn primary" id="restartBtn" hidden title="Wi-Fi settings change after a restart" data-i18n="s.restartApply">Restart to apply</button>
+  <button class="btn primary" id="restartBtn" hidden title="Wi-Fi settings change after a restart" data-i18n="s.restartApply" data-i18n-title="s.restartApplyTitle">Restart to apply</button>
   <button class="btn" id="openPhone" data-i18n="s.openOnPhone">Open on phone</button>
   <button class="btn" id="revert" disabled data-i18n="s.revert">Revert</button>
   <button class="btn primary" id="save" disabled data-i18n="s.save">Save</button>
@@ -387,7 +387,7 @@ dd { margin: 0; word-break: break-all; }
         <div class="presets" id="rulePresets"></div>
       </div>
       <div class="card row" style="gap:10px;align-items:center">
-        <span id="rulesPausedState" class="hint" style="flex:1">Page switches count down on the phone and wait while you use it (General › Page switching).</span>
+        <span id="rulesPausedState" class="hint" style="flex:1" data-i18n="s.rules.countdown">Page switches count down on the phone and wait while you use it (General › Page switching).</span>
         <button class="btn sm" id="rulesPauseBtn" data-i18n="s.rules.pause1h">Pause all rules for 1 hour</button>
       </div>
       <div id="ruleList"></div>
@@ -413,7 +413,7 @@ dd { margin: 0; word-break: break-all; }
             <div class="field" style="flex:1"><label data-i18n="s.weather.lon">Longitude</label><input type="number" step="0.001" data-bind="weather.lon" data-type="num"></div>
           </div>
         </div>
-        <p class="hint" style="margin:8px 0 0">The phone asks Open-Meteo for this location only while a page has a widget that uses the weather (weather, forecast, sun &amp; moon, a clock with its weather line, Custom HTML).</p>
+        <p class="hint" style="margin:8px 0 0" data-i18n="s.weather.openMeteoHint">The phone asks Open-Meteo for this location only while a page has a widget that uses the weather (weather, forecast, sun &amp; moon, a clock with its weather line, Custom HTML).</p>
       </div>
 
       <div class="card">
@@ -427,7 +427,7 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.calendars.title">Calendars</h3>
-        <p class="hint" style="margin:0 0 12px">For the <b>Agenda</b> widget and calendar rules. Paste an iCalendar (ICS) address:
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.cal.hint">For the <b>Agenda</b> widget and calendar rules. Paste an iCalendar (ICS) address:
           Google Calendar › Settings › your calendar › <i>Secret address in iCal format</i>; Outlook › Settings › Calendar › Shared calendars ›
           <i>Publish a calendar</i> (ICS link); iCloud › share as a public calendar (<code>webcal://</code> works). The addresses stay on this computer.</p>
         <div id="calList"></div>
@@ -467,7 +467,7 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.ha.title">Home Assistant</h3>
-        <p class="hint" style="margin:0 0 12px">For the <b>Home Assistant</b> widget. Create a token in Home Assistant › your profile › Security ›
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.ha.tokenHint">For the <b>Home Assistant</b> widget. Create a token in Home Assistant › your profile › Security ›
           <i>Long-lived access tokens</i>. The token stays on this computer; the phone only sees the entities its widgets list.
           (Home Assistant can also push values and notifications to the panel, see Webhooks.)</p>
         <div class="grid2">
@@ -489,8 +489,8 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.obs.title">OBS Studio</h3>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="obs.enabled"><span></span></label> Connect to OBS (for the <b>OBS</b> widget, the On air widget and rules)</div>
-        <p class="hint" style="margin:0 0 12px">In OBS: Tools › WebSocket Server Settings › <i>Enable WebSocket server</i>; copy the password from <i>Show Connect Info</i>.</p>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="obs.enabled"><span></span></label> <span data-i18n-html="s.obs.enable">Connect to OBS (for the <b>OBS</b> widget, the On air widget and rules)</span></div>
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.obs.hint">In OBS: Tools › WebSocket Server Settings › <i>Enable WebSocket server</i>; copy the password from <i>Show Connect Info</i>.</p>
         <div class="grid2">
           <div class="field"><label data-i18n="s.ha.address">Address</label><input type="text" data-bind="obs.url" placeholder="ws://127.0.0.1:4455" spellcheck="false"></div>
           <div class="field"><label data-i18n="s.obs.password">Password</label><input type="password" data-bind="obs.password" autocomplete="off"></div>
@@ -522,7 +522,7 @@ dd { margin: 0; word-break: break-all; }
         </div>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.orientation">Orientation</label>
           <select data-bind="display.orientation"><option value="landscape" data-i18n="s.display.orientation.landscape">Landscape</option><option value="portrait" data-i18n="s.display.orientation.portrait">Portrait</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select>
-          <span class="hint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
+          <span class="hint" data-i18n="s.display.orientationHint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.timeFormat">Time format</label>
           <select data-bind="display.hour12" data-type="hour12"><option value="false" data-i18n="s.display.h24">24-hour (14:05)</option><option value="true" data-i18n="s.display.h12">12-hour (2:05 PM)</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select></div>
         <label class="check"><input type="checkbox" data-bind="display.showSeconds"> <span data-i18n="s.display.showSeconds">Show seconds on the clock</span></label>
@@ -536,73 +536,71 @@ dd { margin: 0; word-break: break-all; }
 
       <div class="card">
         <h3 data-i18n="s.oled.title">OLED burn-in protection</h3>
-        <p class="hint" style="margin:0 0 12px">For OLED screens that show the same page for hours. The AMOLED black theme and the night screen help too.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.oled.lead">For OLED screens that show the same page for hours. The AMOLED black theme and the night screen help too.</p>
         <label class="check"><input type="checkbox" data-bind="display.pixelShift"> <span data-i18n="s.oled.pixelShift">Move the panel by a few pixels every 2 minutes, and the night clock around the screen</span></label>
         <div class="field" style="max-width:420px;margin-top:8px"><label data-i18n="s.oled.idleDim">Dim the panel after (minutes without a touch, 0 = never)</label><input type="number" min="0" max="1440" data-bind="display.idleDimMin" data-type="int">
-          <span class="hint">A touch brightens it again without pressing anything; so do a page switch, a notification and a permission prompt.</span></div>
+          <span class="hint" data-i18n="s.oled.idleDimHint">A touch brightens it again without pressing anything; so do a page switch, a notification and a permission prompt.</span></div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.pageSwitch.title">Page switching</h3>
-        <p class="hint" style="margin:0 0 12px">How rules, webhooks and the idle return change the page. Instead of jumping, the phone shows
-          <i>“Claude needs me — switching to AI in 3…”</i> with <b>Stay</b> and <b>Go now</b>, then fades over. It never pulls a page away while
-          you are using the panel, and rules that fire one after another wait their turn instead of bouncing the screen back and forth.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.pageSwitch.lead">How rules, webhooks and the idle return change the page. Instead of jumping, the phone shows “Claude needs me — switching to AI in 3…” with Stay and Go now, then fades over. It never pulls a page away while you are using the panel, and rules that fire one after another wait their turn instead of bouncing the screen back and forth.</p>
         <div class="grid2">
           <div class="field"><label data-i18n="s.pageSwitch.homePage">Home page</label><select id="homePageSel" onchange="cfg.display.homePage = this.value || null; changed(); renderPageEditor()"></select>
-            <span class="hint">Where the idle return and the Back key go.</span></div>
-          <div class="field"><label>Back home after (seconds without a touch, 0 = never)</label><input type="number" min="0" max="3600" data-bind="display.idleReturnSec" data-type="int">
-            <span class="hint">Each page can override this (page editor › Back home after).</span></div>
-          <div class="field"><label>Countdown before switching (seconds, 0 = at once)</label><input type="number" min="0" max="30" data-bind="display.switchCountdownSec" data-type="int"></div>
-          <div class="field"><label>Don't interrupt for (seconds after I touch the panel)</label><input type="number" min="0" max="600" data-bind="display.touchGraceSec" data-type="int"></div>
-          <div class="field"><label>At least (seconds between two automatic switches)</label><input type="number" min="0" max="600" data-bind="display.minDwellSec" data-type="int"></div>
-          <div class="field"><label>A rule keeps its page at most (minutes, 0 = while it lasts)</label><input type="number" min="0" max="1440" data-bind="display.holdMaxMin" data-type="int">
-            <span class="hint">After that the panel goes home when nobody touches it.</span></div>
+            <span class="hint" data-i18n="s.pageSwitch.homePageHint">Where the idle return and the Back key go.</span></div>
+          <div class="field"><label data-i18n="s.pageSwitch.backHome">Back home after (seconds without a touch, 0 = never)</label><input type="number" min="0" max="3600" data-bind="display.idleReturnSec" data-type="int">
+            <span class="hint" data-i18n="s.pageSwitch.backHomePerPage">Each page can override this (page editor › Back home after).</span></div>
+          <div class="field"><label data-i18n="s.pageSwitch.countdown">Countdown before switching (seconds, 0 = at once)</label><input type="number" min="0" max="30" data-bind="display.switchCountdownSec" data-type="int"></div>
+          <div class="field"><label data-i18n="s.pageSwitch.grace">Don't interrupt for (seconds after I touch the panel)</label><input type="number" min="0" max="600" data-bind="display.touchGraceSec" data-type="int"></div>
+          <div class="field"><label data-i18n="s.pageSwitch.minDwell">At least (seconds between two automatic switches)</label><input type="number" min="0" max="600" data-bind="display.minDwellSec" data-type="int"></div>
+          <div class="field"><label data-i18n="s.pageSwitch.holdMax">A rule keeps its page at most (minutes, 0 = while it lasts)</label><input type="number" min="0" max="1440" data-bind="display.holdMaxMin" data-type="int">
+            <span class="hint" data-i18n="s.pageSwitch.holdMaxHint">After that the panel goes home when nobody touches it.</span></div>
         </div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.kiosk.title">Kiosk</h3>
-        <p class="hint" style="margin:0 0 12px">Keep the phone on the panel. Neither needs root.</p>
-        <label class="check"><input type="checkbox" data-bind="display.pin"> Pin the panel: Home and Recents stay on it (Android asks once; hold Back and Overview together to unpin)</label>
-        <label class="check"><input type="checkbox" data-bind="display.homeScreen"> Use the panel as the phone's home screen: it starts after a reboot and Home returns to it (turn off to get your launcher back)</label>
-        <label class="check"><input type="checkbox" data-bind="display.keepAwake"> Keep the phone awake: turn off Android's screen saver (it starts on the charger) and keep the screen on while plugged in (set over USB)</label>
-        <label class="check" id="followComputerLockOption" style="display:none"><input type="checkbox" data-bind="display.followComputerLock"> Follow the computer lock: turn the phone screen off when macOS locks; wake it and open PhoneBox when macOS unlocks (ADB required; unlock phones secured by a PIN or password manually)</label>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.kiosk.lead">Keep the phone on the panel. Neither needs root.</p>
+        <label class="check"><input type="checkbox" data-bind="display.pin"> <span data-i18n="s.kiosk.pin">Pin the panel: Home and Recents stay on it (Android asks once; hold Back and Overview together to unpin)</span></label>
+        <label class="check"><input type="checkbox" data-bind="display.homeScreen"> <span data-i18n="s.kiosk.homeScreen">Use the panel as the phone's home screen: it starts after a reboot and Home returns to it (turn off to get your launcher back)</span></label>
+        <label class="check"><input type="checkbox" data-bind="display.keepAwake"> <span data-i18n="s.kiosk.keepAwake">Keep the phone awake: turn off Android's screen saver (it starts on the charger) and keep the screen on while plugged in (set over USB)</span></label>
+        <label class="check" id="followComputerLockOption" style="display:none"><input type="checkbox" data-bind="display.followComputerLock"> <span data-i18n="s.kiosk.followLock">Follow the computer lock: turn the phone screen off when macOS locks; wake it and open PhoneBox when macOS unlocks (ADB required; unlock phones secured by a PIN or password manually)</span></label>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.battery.title">Battery care</h3>
-        <p class="hint" style="margin:0 0 12px">A phone that is plugged in all the time wears its battery out. PhoneBox can keep it between two
-          levels by switching the phone's power on and off. Phones cannot stop charging by themselves without root, so the power is switched
-          where it comes from: a <b>smart plug in Home Assistant</b> (the phone on its own charger), or two <b>shortcuts</b>, for example
-          <code>uhubctl</code> for a USB hub with switchable ports. Without USB power the panel keeps running over Wi-Fi.</p>
-        <div class="row" style="margin-bottom:12px"><label class="switch"><input type="checkbox" data-bind="charge.enabled"><span></span></label> Keep the battery between
+        <p class="hint" style="margin:0 0 12px"><span data-i18n="s.battery.leadHead">A phone that is plugged in all the time wears its battery out. PhoneBox can keep it between two</span>
+          <span data-i18n="s.battery.leadMid">levels by switching the phone's power on and off. Phones cannot stop charging by themselves without root, so the power is switched</span>
+          <span data-i18n-html="s.battery.leadTail">where it comes from: a <b>smart plug in Home Assistant</b> (the phone on its own charger), or two <b>shortcuts</b>, for example
+          <code>uhubctl</code> for a USB hub with switchable ports. Without USB power the panel keeps running over Wi-Fi.</span></p>
+        <div class="row" style="margin-bottom:12px"><label class="switch"><input type="checkbox" data-bind="charge.enabled"><span></span></label> <span data-i18n="s.battery.keepBetween">Keep the battery between</span>
           <input type="number" min="5" max="95" data-bind="charge.min" data-type="int" style="width:70px"> % and
           <input type="number" min="10" max="100" data-bind="charge.max" data-type="int" style="width:70px"> %</div>
         <div class="grid2">
-          <div class="field"><label>Switch the power with</label><select data-bind="charge.method"><option value="ha">a Home Assistant switch (smart plug)</option><option value="shortcuts">two shortcuts (power on / power off)</option></select></div>
-          <div class="field" id="chargeHa"><label>Switch entity</label><input type="text" data-bind="charge.entity" placeholder="switch.phone_charger" spellcheck="false"></div>
-          <div class="field" id="chargeOn" hidden><label>Shortcut: power on</label><select id="chargeOnSel" onchange="cfg.charge.onShortcut = this.value || null; changed()"></select></div>
-          <div class="field" id="chargeOff" hidden><label>Shortcut: power off</label><select id="chargeOffSel" onchange="cfg.charge.offShortcut = this.value || null; changed()"></select></div>
+          <div class="field"><label data-i18n="s.battery.method">Switch the power with</label><select data-bind="charge.method"><option value="ha" data-i18n="s.battery.methodHa">a Home Assistant switch (smart plug)</option><option value="shortcuts" data-i18n="s.battery.methodShortcuts">two shortcuts (power on / power off)</option></select></div>
+          <div class="field" id="chargeHa"><label data-i18n="s.battery.entity">Switch entity</label><input type="text" data-bind="charge.entity" placeholder="switch.phone_charger" spellcheck="false"></div>
+          <div class="field" id="chargeOn" hidden><label data-i18n="s.battery.onShortcut">Shortcut: power on</label><select id="chargeOnSel" onchange="cfg.charge.onShortcut = this.value || null; changed()"></select></div>
+          <div class="field" id="chargeOff" hidden><label data-i18n="s.battery.offShortcut">Shortcut: power off</label><select id="chargeOffSel" onchange="cfg.charge.offShortcut = this.value || null; changed()"></select></div>
         </div>
-        <div class="row" style="gap:8px"><button class="btn sm" onclick="chargeTest('off')">Test: power off</button><button class="btn sm" onclick="chargeTest('on')">Test: power on</button>
+        <div class="row" style="gap:8px"><button class="btn sm" onclick="chargeTest('off')" data-i18n="s.battery.testOff">Test: power off</button><button class="btn sm" onclick="chargeTest('on')" data-i18n="s.battery.testOn">Test: power on</button>
           <span class="hint" id="chargeState"></span></div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.claude.title">Claude Code permission prompts</h3>
-        <p class="hint" style="margin:0 0 12px">When Claude Code asks for permission (run a command, edit a file…), the phone shows the request with
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.claude.hint">When Claude Code asks for permission (run a command, edit a file…), the phone shows the request with
           <b>Allow</b> and <b>Deny</b>. If the phone is not connected or nobody answers in time, Claude Code asks in the terminal as usual.
           This needs a small hook in <code>~/.claude/settings.json</code>; PhoneBox adds it for you (a backup is kept next to the file).</p>
         <div class="row" style="margin-bottom:12px"><button class="btn" id="hookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="hookState"></span></div>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="claude.phoneApprovals"><span></span></label> <span data-i18n="s.claude.askOnPhone">Ask on the phone</span></div>
-        <label class="check"><input type="checkbox" data-bind="claude.onlyWhenAway"> Only when I am away from the PC (no keyboard or mouse for a minute)</label>
-        <div class="field" style="max-width:260px;margin-top:12px"><label>Seconds to answer before the terminal takes over</label><input type="number" min="10" max="3600" data-bind="claude.timeoutSec" data-type="int"></div>
+        <label class="check"><input type="checkbox" data-bind="claude.onlyWhenAway"> <span data-i18n="s.claude.onlyWhenAway">Only when I am away from the PC (no keyboard or mouse for a minute)</span></label>
+        <div class="field" style="max-width:260px;margin-top:12px"><label data-i18n="s.claude.timeout">Seconds to answer before the terminal takes over</label><input type="number" min="10" max="3600" data-bind="claude.timeoutSec" data-type="int"></div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.quotas.title">AI quotas &amp; CodexBar</h3>
-        <p class="hint" style="margin:0 0 12px">Choose which AI coding services to track and show on the panel, and configure rotation.</p>
-        <div class="field"><label>Tracked AI services</label>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.quotas.lead">Choose which AI coding services to track and show on the panel, and configure rotation.</p>
+        <div class="field"><label data-i18n="s.quotas.tracked">Tracked AI services</label>
           <div class="opts">
             <label class="check"><input type="checkbox" id="cb_claude"> Claude</label>
             <label class="check"><input type="checkbox" id="cb_codex"> Codex</label>
@@ -610,49 +608,47 @@ dd { margin: 0; word-break: break-all; }
           </div>
         </div>
         <div class="field" style="margin-top:10px">
-          <label class="check"><input type="checkbox" data-bind="codexBar.rotate"> Rotate providers automatically</label>
+          <label class="check"><input type="checkbox" data-bind="codexBar.rotate"> <span data-i18n="s.quotas.rotate">Rotate providers automatically</span></label>
         </div>
         <div class="row" style="gap:12px;margin-top:10px">
-          <div class="field" style="max-width:180px"><label>Cards at a time</label><input type="number" min="0" max="6" data-bind="codexBar.pageSize" data-type="int"><span class="hint">0 = show all</span></div>
-          <div class="field" style="max-width:240px"><label>Rotate every (seconds)</label><input type="number" min="2" max="300" data-bind="codexBar.rotateInterval" data-type="int"><span class="hint">e.g. 5, 8, 15 seconds</span></div>
+          <div class="field" style="max-width:180px"><label data-i18n="s.quotas.pageSize">Cards at a time</label><input type="number" min="0" max="6" data-bind="codexBar.pageSize" data-type="int"><span class="hint" data-i18n="s.quotas.pageSizeHint">0 = show all</span></div>
+          <div class="field" style="max-width:240px"><label data-i18n="s.quotas.rotateInterval">Rotate every (seconds)</label><input type="number" min="2" max="300" data-bind="codexBar.rotateInterval" data-type="int"><span class="hint" data-i18n="s.quotas.rotateIntervalHint">e.g. 5, 8, 15 seconds</span></div>
         </div>
       </div>
 
       <div class="card">
         <h3 data-i18n="s.conn.title">Phone connection</h3>
         <div class="grid2">
-          <div class="field"><label data-i18n="s.conn.phoneToUse">Phone to use</label><select id="serial"></select><span class="hint">If several Android devices are connected, choose which one runs the panel.</span>
+          <div class="field"><label data-i18n="s.conn.phoneToUse">Phone to use</label><select id="serial"></select><span class="hint" data-i18n="s.conn.phoneToUseHint">If several Android devices are connected, choose which one runs the panel.</span>
             <div class="row" id="appMissing" hidden style="margin-top:8px"><button class="btn primary sm" id="installApp" data-i18n="s.conn.installApp">Install the phone app</button><span class="hint" id="appMissingText"></span></div></div>
-          <div class="field"><label>Path to adb.exe (empty = auto-detect)</label><input type="text" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
+          <div class="field"><label data-i18n="s.conn.adbPath">Path to adb.exe (empty = auto-detect)</label><input type="text" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
         </div>
         <p id="usbProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
         <p id="webviewProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
       </div>
       <div class="card">
         <h3 data-i18n="s.phones.title">Phones</h3>
-        <p class="hint" style="margin:0 0 12px">Several phones (or a phone and a tablet) can use this computer at once, over USB or Wi-Fi. Give each one a
-          name and choose the pages it shows; a phone shows all pages until you choose.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.phones.lead">Several phones (or a phone and a tablet) can use this computer at once, over USB or Wi-Fi. Give each one a name and choose the pages it shows; a phone shows all pages until you choose.</p>
         <div id="phoneList"><p class="hint" data-i18n="s.phones.empty">No phone has connected yet.</p></div>
       </div>
       <div class="card">
         <h3 data-i18n="s.wifi.title">Wi-Fi &amp; Tailscale</h3>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="lan.enabled"><span></span></label> <span data-i18n="s.wifi.enable">Let the phone connect without the USB cable</span></div>
-        <p class="hint" style="margin:0 0 12px">Pair a phone by plugging it in once over USB after turning this on (and restarting), or without a cable:
+        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.wifi.lead">Pair a phone by plugging it in once over USB after turning this on (and restarting), or without a cable:
           <b>Pair a phone over Wi-Fi</b> shows a QR code to scan with the phone's camera.
           The phone then talks HTTPS to this PC, trusts only this PC's certificate and has to present a secret key.
           The phone and this PC must be on the same network &mdash; or both on <a href="https://tailscale.com" target="_blank" rel="noopener">Tailscale</a>, which also works from another place or across separate Wi-Fi networks.
           Windows Firewall asks once &mdash; allow it (tick the network type Tailscale uses, too).</p>
         <div class="grid2">
           <div class="field"><label data-i18n="s.wifi.port">Port</label><input type="number" min="1024" max="65535" data-bind="lan.port" data-type="int"></div>
-          <div class="field"><label>Addresses offered to the phone</label><div id="lanHosts" class="hint">—</div></div>
+          <div class="field"><label data-i18n="s.wifi.addresses">Addresses offered to the phone</label><div id="lanHosts" class="hint">—</div></div>
         </div>
         <div class="row"><button class="btn primary" id="lanPair" data-i18n="s.wifi.pair">Pair a phone over Wi-Fi</button><button class="btn" id="lanRegen" data-i18n="s.wifi.newKey">New key (unpair phones)</button><span class="hint" id="lanStatus"></span></div>
       </div>
       <div class="card">
         <h3 data-i18n="s.updates.title">Updates</h3>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="updates.auto"><span></span></label> <span data-i18n="s.updates.auto">Install new releases automatically</span></div>
-        <p class="hint" style="margin:0 0 12px">Checks <span id="updRepo"></span> on GitHub every 6 hours. The phone app is installed over USB without a prompt
-          on the phone; the agent replaces its own files and restarts.</p>
+        <p class="hint" style="margin:0 0 12px"><span data-i18n="s.upd.checksBefore">Checks</span> <span id="updRepo"></span> <span data-i18n="s.upd.checksAfter">on GitHub every 6 hours. The phone app is installed over USB without a prompt on the phone; the agent replaces its own files and restarts.</span></p>
         <dl id="updInfo"></dl>
         <div class="row" style="margin-top:12px"><button class="btn" id="updCheck" data-i18n="s.updates.check">Check now</button><button class="btn primary" id="updApply" hidden data-i18n="s.updates.apply">Update now</button><span class="hint" id="updState"></span></div>
       </div>
@@ -674,7 +670,7 @@ dd { margin: 0; word-break: break-all; }
       <div class="card">
         <h3 data-i18n="s.webhooks.examples">Examples</h3>
         <div id="whExamples"></div>
-        <p class="hint">JSON payloads may carry <code>value</code>, <code>title</code>, <code>sub</code>, <code>unit</code>, <code>icon</code>, <code>color</code>,
+        <p class="hint" data-i18n-html="s.wh.payloadHintFull">JSON payloads may carry <code>value</code>, <code>title</code>, <code>sub</code>, <code>unit</code>, <code>icon</code>, <code>color</code>,
           <code>level</code> (ok / warn / error), <code>progress</code> (0&ndash;1 or 0&ndash;100), <code>items</code> (a list) and <code>ttl</code> (seconds).
           Plain text or a number works too. Notifications take <code>title</code>, <code>text</code>, <code>level</code>, <code>vibrate</code>,
           <code>seconds</code>, <code>wake</code> (light up the night screen) and <code>page</code> (switch to it).</p>
@@ -697,7 +693,7 @@ dd { margin: 0; word-break: break-all; }
         <div class="row" style="margin-top:10px"><button class="btn" id="applyJson" data-i18n="s.adv.applyJson">Apply JSON</button>
           <button class="btn" id="downloadJson" data-i18n="s.adv.download">Download settings</button><button class="btn" id="uploadJson" data-i18n="s.adv.upload">Load a settings file…</button>
           <span class="hint" id="jsonErr" style="color:var(--danger)"></span></div>
-        <p class="hint">The settings file includes your shortcut commands, tokens and keys: keep it private.</p>
+        <p class="hint" data-i18n="s.adv.privacy">The settings file includes your shortcut commands, tokens and keys: keep it private.</p>
       </div>
     </section>
   </main>
@@ -959,8 +955,8 @@ function renderPages() {
     return row;
   }), h('button', { class: 'btn', style: { width: '100%', marginTop: '8px' }, onclick: () => openTemplates(null) }, t('s.js.newPage')),
     h('div', { class: 'row', style: { gap: '6px', marginTop: '8px' } },
-      h('button', { class: 'btn sm', style: { flex: '1' }, title: 'Save all pages to a file', onclick: () => exportPages(cfg.pages, 'phonebox-pages') }, icon('download', 'm'), t('s.js.export')),
-      h('button', { class: 'btn sm', style: { flex: '1' }, title: 'Load pages from a file', onclick: importPages }, icon('upload', 'm'), t('s.js.import'))));
+      h('button', { class: 'btn sm', style: { flex: '1' }, title: t('s.js.saveAllPages'), onclick: () => exportPages(cfg.pages, 'phonebox-pages') }, icon('download', 'm'), t('s.js.export')),
+      h('button', { class: 'btn sm', style: { flex: '1' }, title: t('s.js.loadPages'), onclick: importPages }, icon('upload', 'm'), t('s.js.import'))));
   renderPageEditor();
 }
 
@@ -985,20 +981,20 @@ function renderPageEditor() {
       h('div', { class: 'row', style: { gap: '10px' } },
         h('input', { type: 'text', class: 'icon-input', value: p.icon || '', maxlength: 8, title: 'Icon', oninput: (e) => { p.icon = e.target.value; changed(); renderTabsOnly(); } }),
         h('input', { type: 'text', value: p.title || '', placeholder: t('s.js.pageName'), style: { flex: '1', fontSize: '16px', fontWeight: '600' }, oninput: (e) => { p.title = e.target.value; changed(); renderTabsOnly(); } }),
-        h('label', { class: 'check', title: 'Show this page on the phone' }, h('label', { class: 'switch' },
+        h('label', { class: 'check', title: t('s.js.showOnPhone') }, h('label', { class: 'switch' },
           h('input', { type: 'checkbox', checked: p.enabled !== false, onchange: (e) => {
             if (!e.target.checked && cfg.pages.filter((x) => x.enabled !== false).length === 1) { e.target.checked = true; toast(t('s.js.keepOnePage'), true); return; }
             p.enabled = e.target.checked; changed(); renderTabsOnly();
           } }), h('span')), t('s.js.shown')),
-        h('button', { class: 'icon-btn', title: 'Move earlier', disabled: selPage === 0, onclick: () => move(-1) }, icon('chevron-up')),
-        h('button', { class: 'icon-btn', title: 'Move later', disabled: selPage === cfg.pages.length - 1, onclick: () => move(1) }, icon('chevron-down'))),
+        h('button', { class: 'icon-btn', title: t('s.js.moveEarlier'), disabled: selPage === 0, onclick: () => move(-1) }, icon('chevron-up')),
+        h('button', { class: 'icon-btn', title: t('s.js.moveLater'), disabled: selPage === cfg.pages.length - 1, onclick: () => move(1) }, icon('chevron-down'))),
       h('div', { class: 'row', style: { gap: '6px', marginTop: '10px' } },
         h('button', { class: 'btn sm', onclick: () => openTemplates(selPage) }, t('s.js.replaceTpl')),
         h('button', { class: 'btn sm', onclick: () => { const c = JSON.parse(JSON.stringify(p)); c.id = ''; c.title += t('s.js.dupPageSuffix'); cfg.pages.splice(selPage + 1, 0, c); selPage++; renderPages(); changed(); } }, t('s.js.dupPage')),
-        h('button', { class: 'btn sm', title: 'Save this page to a file to share it or use it on another computer', onclick: () => exportPages([p], 'phonebox-page-' + (p.id || 'page')) }, t('s.js.exportPage')),
+        h('button', { class: 'btn sm', title: t('s.js.exportPageHint'), onclick: () => exportPages([p], 'phonebox-page-' + (p.id || 'page')) }, t('s.js.exportPage')),
         h('button', { class: 'btn sm', onclick: () => { p.widgets = []; selWidget = -1; renderPageEditor(); changed(); } }, t('s.js.clear')),
         h('span', { class: 'spacer' }),
-        h('button', { class: 'btn sm' + (isHome(p) ? ' on' : ''), title: 'The page the panel comes back to (idle return, Back key)',
+        h('button', { class: 'btn sm' + (isHome(p) ? ' on' : ''), title: t('s.js.homePageHint'),
           onclick: () => { if (!p.id) { toast(t('s.js.saveFirstForId'), true); return; } cfg.display.homePage = p.id; renderPageEditor(); changed(); } },
           icon('home', 'm'), isHome(p) ? t('s.js.homePage') : t('s.js.makeHome')),
         h('label', { class: 'hint', title: t('s.js.backHomeAfterHint') }, t('s.js.backHomeAfter'),
@@ -1008,7 +1004,7 @@ function renderPageEditor() {
         h('button', { class: 'btn sm danger', disabled: cfg.pages.length === 1, onclick: () => {
           if (!confirm(t('s.js.deletePageConfirm', { title: p.title }))) return;
           cfg.pages.splice(selPage, 1); selWidget = -1; renderPages(); changed();
-        } }, 'Delete page'))));
+        } }, t('s.js.deletePage')))));
   $('peHead').append(appearanceEditor(p, () => [cfg.display?.appearance], t('s.js.pageAppearance')));
   $('peRest').replaceChildren(
     h('p', { class: 'hint layout-hint', style: { margin: '6px 0 14px' } }, t('s.js.layoutHint')),
@@ -1463,7 +1459,7 @@ function optionField(w, o, onValChange) {
     }
     case 'control-target': {
       let selected = v;
-      const select = h('select', { onchange: e => { selected=e.target.value; set(o.key, selected); } }, h('option', { value: '' }, '(automatic / all)'));
+      const select = h('select', { onchange: e => { selected=e.target.value; set(o.key, selected); } }, h('option', { value: '' }, t('s.js.automaticAll')));
       const load = async () => {
         try {
           const response = await fetch('/api/controls/state');
@@ -1472,9 +1468,9 @@ function optionField(w, o, onValChange) {
           let items = o.group === 'application' ? [...new Set((data.audio?.sessions || []).map(s => s.name))].map(name => ({ id: name, name }))
             : o.group === 'media' ? data.media || [] : o.group === 'monitor' ? data.monitors || []
             : (data.audio?.devices || []).filter(d => !o.group || d.direction === o.group);
-          select.replaceChildren(h('option', { value: '' }, '(automatic / all)'),
+          select.replaceChildren(h('option', { value: '' }, t('s.js.automaticAll')),
             ...items.map(item => h('option', { value: item.id, selected: item.id === selected }, item.name)));
-          if (selected && !items.some(item => item.id === selected)) select.append(h('option', { value: selected, selected: true }, 'Unavailable: ' + selected));
+          if (selected && !items.some(item => item.id === selected)) select.append(h('option', { value: selected, selected: true }, t('s.js.unavailable') + ' ' + selected));
         } catch (_) { }
       };
       load();
@@ -1484,8 +1480,8 @@ function optionField(w, o, onValChange) {
       return field(h('input', { type: 'number', min: o.min, max: o.max, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
     case 'textarea':
       return field(h('textarea', { rows: /^command/.test(o.key) ? 3 : 4, style: /^command/.test(o.key) ? { fontFamily: 'Consolas, monospace', fontSize: '12.5px' } : {}, oninput: (e) => set(o.key, e.target.value) }, v ?? ''),
-        o.key === 'command' ? h('span', { class: 'hint' }, 'Runs with PowerShell on Windows. The phone never sees the command, only its output. Tap the widget on the phone to run it now.')
-          : o.key === 'commandUnix' ? h('span', { class: 'hint' }, 'On Linux (bash) and macOS (zsh) this one runs instead; empty = the command above.') : null);
+        o.key === 'command' ? h('span', { class: 'hint' }, t('s.js.runHint'))
+          : o.key === 'commandUnix' ? h('span', { class: 'hint' }, t('s.js.commandUnixHint')) : null);
     case 'lines':
       return field(h('textarea', { rows: 5, oninput: (e) => set(o.key, e.target.value.split('\n').map((x) => x.trim()).filter(Boolean)) }, (Array.isArray(v) ? v : []).join('\n')));
     case 'color':
@@ -1495,9 +1491,9 @@ function optionField(w, o, onValChange) {
       return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, t('s.camera.pick')),
         ...(cfg.cameras?.sources || []).map((c) => h('option', { value: c.id, selected: c.id === v }, c.name || (c.url || '').replace(/\/\/[^/@]*@/, '//')))));
     case 'shortcut':
-      return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, '(first shortcut)'),
+      return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, t('s.js.firstShortcut')),
         ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, `${s.icon} ${s.label}`))),
-        h('span', { class: 'hint' }, 'New shortcuts get their id when you save.'));
+        h('span', { class: 'hint' }, t('s.js.newShortcutsId')));
     case 'ha-items': return haItemsEditor(w, o, set);
     case 'shortcuts': {
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
@@ -1507,7 +1503,7 @@ function optionField(w, o, onValChange) {
     }
     default:
       return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
-        w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, 'Send data with POST /api/push/<key> — see the Webhooks section.') : null);
+        w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, t('s.js.pushHint')) : null);
   }
 }
 
@@ -1607,7 +1603,7 @@ function openTemplates(index) {
   $('modalBody').replaceChildren(
     h('h3', {}, index == null ? 'New page' : `Replace the widgets of "${cfg.pages[index].title}"`),
     h('div', { class: 'tpl-grid' },
-      h('button', { class: 'tpl', onclick: () => pick(null) }, h('div', { class: 'mini empty-mini' }, icon('plus')), h('b', {}, 'Blank page'), h('small', {}, 'Start from an empty grid.')),
+      h('button', { class: 'tpl', onclick: () => pick(null) }, h('div', { class: 'mini empty-mini' }, icon('plus')), h('b', {}, t('s.js.blankPage')), h('small', {}, t('s.js.blankPageHint'))),
       ...catalog.templates.map((t) => h('button', { class: 'tpl', onclick: () => pick(t) }, miniMap(t.widgets), h('b', {}, `${t.icon} ${t.title}`), h('small', {}, t.desc)))));
   $('modal').hidden = false;
 }
@@ -1633,17 +1629,17 @@ async function pairOverWifi() {
   const svg = (markup) => 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markup)));
   const left = h('b', {}, '');
   const pairBox = h('div', { class: 'pair-qr' },
-    h('b', {}, '2. Scan this with the phone’s camera'),
+    h('b', {}, t('s.wifi.step2')),
     h('img', { src: svg(r.qr), alt: 'Pairing QR code' }),
-    h('small', { class: 'hint' }, 'Open the link it shows and choose PhoneBox. The phone asks you to confirm the code ', h('b', {}, r.check), '. ', left));
+    h('small', { class: 'hint' }, t('s.wifi.step2Hint'), h('b', {}, r.check), '. ', left));
   $('modalBody').replaceChildren(
     h('h3', {}, `Pair a phone with ${r.pc}`),
-    h('p', { class: 'hint', style: 'margin:0' }, 'No USB cable, developer options or adb needed. The phone and this computer must be on the same network (or both on Tailscale).'),
+    h('p', { class: 'hint', style: 'margin:0' }, t('s.wifi.noCableHint')),
     h('div', { class: 'pair-qrs' },
       h('div', { class: 'pair-qr' },
-        h('b', {}, '1. Install the app (skip if it is installed)'),
+        h('b', {}, t('s.wifi.step1')),
         h('img', { src: svg(r.appQr), alt: 'QR code of the app download' }),
-        h('small', { class: 'hint' }, 'Downloads the PhoneBox app. Android asks once to allow installing apps from the browser.')),
+        h('small', { class: 'hint' }, t('s.wifi.step1Hint'))),
       pairBox),
     h('p', { class: 'hint', style: 'margin:0' }, r.hosts.length
       ? `The phone will connect to ${r.hosts.join(', ')} on port ${r.port}. The code works once, for 5 minutes; the key itself is not in the QR code.`
@@ -1691,7 +1687,7 @@ function renderPhones() {
       ph.webviewProblem ? h('p', { class: 'hint', style: { margin: '6px 0 0', color: 'var(--warn)' } }, icon('warn', 'm'), ph.webviewProblem) : null,
       h('label', { class: 'check', style: { marginTop: '8px' } },
         h('input', { type: 'checkbox', checked: all, onchange: (e) => { entry(ph.id).pages = e.target.checked ? null : cfg.pages.map((p) => p.id).filter(Boolean); changed(); renderPhones(); } }),
-        'Shows all pages'),
+        t('s.js.showsAllPages')),
       all ? null : h('div', { class: 'phone-pages' }, ...cfg.pages.filter((p) => p.id).map((p) => h('label', { class: 'check' },
         h('input', { type: 'checkbox', checked: chosen.includes(p.id), onchange: (e) => {
           const e2 = entry(ph.id);
@@ -1885,6 +1881,9 @@ $('calAdd').onclick = () => {
 };
 
 // ---------------------------------------------------------------- rules
+// The trigger, action, priority and preset tables below are English text that the phone's dictionary cannot key by
+// name: they are translated by their English text through the same catalog lookup the widget catalog uses.
+const tl = (s) => (window.PhoneBoxI18n?.tc ? window.PhoneBoxI18n.tc(s) : s);
 const TRIGGERS = {
   'session-waiting': { label: 'an AI session needs me', match: 'any project (or: api|docs, codex)' },
   'session-busy': { label: 'an AI session is working', match: 'any project (or: api|docs, codex)' },
@@ -1936,7 +1935,7 @@ function renderRules() {
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
-  } }, label)));
+  } }, tl(label))));
   const list = $('ruleList');
   if (!cfg.rules.length) { list.replaceChildren(h('p', { class: 'hint' }, t('s.r.noRules'))); return; }
   list.replaceChildren(...cfg.rules.map((r, i) => ruleCard(r, i)));
@@ -1946,11 +1945,12 @@ function ruleCard(r, i) {
   const set = (k, v, rerender = false) => { r[k] = v; changed(); if (rerender) renderRules(); };
   const trig = TRIGGERS[r.when] || TRIGGERS['session-waiting'];
   const sel = (value, options, onchange) => h('select', { onchange: (e) => onchange(e.target.value) },
-    ...Object.entries(options).map(([k, v]) => h('option', { value: k, selected: k === value }, typeof v === 'string' ? v : v.label)));
+    ...Object.entries(options).map(([k, v]) => h('option', { value: k, selected: k === value }, tl(typeof v === 'string' ? v : v.label))));
   const text = (key, placeholder, cls = '') => h('input', { type: 'text', class: cls, value: r[key] ?? '', placeholder, oninput: (e) => set(key, e.target.value || null) });
 
   const cond = [];
-  if (trig.match) cond.push(text('match', trig.match, 'grow'));
+  // the trigger table keeps English as its key, so the example value inside the box is translated too
+  if (trig.match) cond.push(text('match', tl(trig.match), 'grow'));
   if (r.when === 'push') cond.push(sel(r.op || 'on', { on: 'is on', '>': 'is above', '<': 'is below', '=': 'equals', '!=': 'is not' }, (v) => set('op', v === 'on' ? null : v, true)),
     r.op ? text('arg', 'value', '') : null);
   if (trig.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? trig.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, trig.value));
@@ -1977,23 +1977,23 @@ function ruleCard(r, i) {
   const opts = h('details', { class: 'ropts', open: !!(r.days || r.during || r.forSec || r.cooldownMin || (r.priority ?? 5) !== 5 || r.countdownSec != null) },
     h('summary', {}, t('s.r.options'), h('span', { class: 'hint' }, ' ' + ruleSummary(r))),
     h('div', { class: 'line' }, h('b', {}, t('s.r.only')), dayBtns, h('span', { class: 'hint' }, t('s.r.between')), text('during', t('s.r.allDay'))),
-    h('div', { class: 'line' }, h('b', {}, t('s.r.wait')), h('span', { class: 'hint' }, t('s.r.actWhenLasts')), num('forSec', 0, 3600), h('span', { class: 'hint' }, 's · then rest'), num('cooldownMin', 0, 1440),
+    h('div', { class: 'line' }, h('b', {}, t('s.r.wait')), h('span', { class: 'hint' }, t('s.r.actWhenLasts')), num('forSec', 0, 3600), h('span', { class: 'hint' }, t('s.r.thenRest')), num('cooldownMin', 0, 1440),
       h('span', { class: 'hint' }, t('s.r.minBeforeAgain'))),
     r.then === 'goto' ? h('div', { class: 'line' }, h('b', {}, t('s.r.page')), h('span', { class: 'hint' }, t('s.r.priority')),
       sel(String(r.priority ?? 5), PRIORITIES[r.priority ?? 5] ? PRIORITIES : { ...PRIORITIES, [r.priority]: String(r.priority) }, (v) => set('priority', +v)),
-      h('span', { class: 'hint' }, '· ' + t('s.r.countdown')), num('countdownSec', 0, 30, 56), h('span', { class: 'hint' }, `s (empty = ${cfg.display.switchCountdownSec ?? 3} s, as in General)`)) : null);
+      h('span', { class: 'hint' }, '· ' + t('s.r.countdown')), num('countdownSec', 0, 30, 56), h('span', { class: 'hint' }, t('s.r.countdownEmpty', { n: cfg.display.switchCountdownSec ?? 3 }))) : null);
 
   const live = activeRules.includes(r.id);
   return h('div', { class: 'card rule' + (r.enabled === false ? ' off' : '') },
     h('div', { class: 'line' },
-      h('label', { class: 'switch', title: 'Enabled' }, h('input', { type: 'checkbox', checked: r.enabled !== false, onchange: (e) => set('enabled', e.target.checked, true) }), h('span')),
+      h('label', { class: 'switch', title: t('s.r.enabled') }, h('input', { type: 'checkbox', checked: r.enabled !== false, onchange: (e) => set('enabled', e.target.checked, true) }), h('span')),
       h('input', { type: 'text', class: 'grow', value: r.name || '', placeholder: t('s.r.namePlaceholder'), oninput: (e) => set('name', e.target.value) }),
-      live ? h('span', { class: 'live' }, '● active now') : null,
+      live ? h('span', { class: 'live' }, '● ' + t('s.r.activeNow')) : null,
       h('button', { class: 'btn sm', title: t('s.r.runOnce'), onclick: async () => {
         const res = await fetch('/api/rules/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r) });
         toast(res.ok ? t('s.r.done') : t('s.js.couldNotRun'), !res.ok);
-      } }, 'Test'),
-      h('button', { class: 'btn sm danger', onclick: () => { cfg.rules.splice(i, 1); renderRules(); changed(); } }, 'Delete')),
+      } }, t('s.r.test')),
+      h('button', { class: 'btn sm danger', onclick: () => { cfg.rules.splice(i, 1); renderRules(); changed(); } }, t('s.r.del'))),
     h('div', { class: 'line' }, h('b', {}, t('s.r.when')), sel(r.when, TRIGGERS, (v) => { r.match = null; r.value = null; set('when', v, true); }), ...cond),
     h('div', { class: 'line' }, h('b', {}, t('s.r.then')), sel(r.then, ACTIONS, (v) => { if (v === 'goto' && !cfg.pages.some((p) => p.id === r.page)) r.page = cfg.pages[0]?.id || null; set('then', v, true); }), ...act),
     r.then !== 'notify' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: r.whileActive !== false, onchange: (e) => set('whileActive', e.target.checked) }),
@@ -2005,11 +2005,11 @@ function ruleSummary(r) {
   const parts = [];
   if (r.days) parts.push(r.days.split(',').map((d) => d[0].toUpperCase() + d.slice(1, 2)).join(' '));
   if (r.during) parts.push(r.during);
-  if (r.forSec) parts.push(`after ${r.forSec} s`);
-  if (r.cooldownMin) parts.push(`rest ${r.cooldownMin} min`);
-  if (r.then === 'goto' && (r.priority ?? 5) !== 5) parts.push(`${PRIORITIES[r.priority] || r.priority} priority`);
-  if (r.then === 'goto' && r.countdownSec != null) parts.push(r.countdownSec ? `${r.countdownSec} s countdown` : 'no countdown');
-  return parts.length ? '· ' + parts.join(' · ') : '· every day, at once';
+  if (r.forSec) parts.push(t('s.r.afterSec', { n: r.forSec }));
+  if (r.cooldownMin) parts.push(t('s.r.restMin', { n: r.cooldownMin }));
+  if (r.then === 'goto' && (r.priority ?? 5) !== 5) parts.push(t('s.r.priorityPart', { level: tl(PRIORITIES[r.priority] || r.priority) }));
+  if (r.then === 'goto' && r.countdownSec != null) parts.push(r.countdownSec ? t('s.r.countdownSec', { n: r.countdownSec }) : t('s.r.noCountdown'));
+  return parts.length ? '· ' + parts.join(' · ') : '· ' + t('s.r.everyDayAtOnce');
 }
 
 // shows which rules hold right now while the Rules section is open
@@ -2020,8 +2020,8 @@ async function pollRules() {
     const next = s.rules || [];
     rulesPausedUntil = s.rulesPaused || null;
     $('rulesPauseBtn').textContent = rulesPausedUntil ? t('s.r.resumeRules') : t('s.rules.pause1h');
-    $('rulesPausedState').textContent = rulesPausedUntil ? `⏸ Rules are paused until ${new Date(rulesPausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
-      : 'Page switches count down on the phone and wait while you use it (General › Page switching).';
+    $('rulesPausedState').textContent = rulesPausedUntil ? t('s.rules.pausedUntil', { time: new Date(rulesPausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
+      : t('s.rules.countdown');
     if (next.join() !== activeRules.join()) { activeRules = next; if (!document.activeElement?.closest?.('#ruleList')) renderRules(); }
   } catch (_) {}
 }
@@ -2067,19 +2067,19 @@ function renderWebhooks(lan) {
   const host = lan?.active && lan.hosts?.length ? `https://${lan.hosts[0]}:${lan.port}` : null;
   const token = cfg.lan?.webhookToken || '';
   const ex = [
-    ['A number', `curl -X POST ${local}/api/push/temperature -d 21.5`],
-    ['A status with a subtitle', `curl -X POST ${local}/api/push/build -H "Content-Type: application/json" -d "{\\"value\\":\\"passed\\",\\"sub\\":\\"main · 3m 12s\\"}"`],
-    ['A list (style: list)', `curl -X POST ${local}/api/push/todo -H "Content-Type: application/json" -d "[\\"Ship 0.6.2\\",\\"Buy milk\\"]"`],
-    ['Expires after 10 minutes', `curl -X POST "${local}/api/push/door?ttl=600" -d open`],
-    ['Notification on the phone', `curl -X POST ${local}/api/notify -H "Content-Type: application/json" -d "{\\"title\\":\\"Deploy\\",\\"text\\":\\"Production is live\\",\\"level\\":\\"ok\\"}"`],
-    ['Switch the phone to a page', `curl -X POST ${local}/api/goto/music`],
-    ['Refresh everything now', `curl -X POST ${local}/api/refresh`],
+    [t('s.wh.exNumber'), `curl -X POST ${local}/api/push/temperature -d 21.5`],
+    [t('s.wh.exStatus'), `curl -X POST ${local}/api/push/build -H "Content-Type: application/json" -d "{\\"value\\":\\"passed\\",\\"sub\\":\\"main · 3m 12s\\"}"`],
+    [t('s.wh.exList'), `curl -X POST ${local}/api/push/todo -H "Content-Type: application/json" -d "[\\"Ship 0.6.2\\",\\"Buy milk\\"]"`],
+    [t('s.wh.exTtl'), `curl -X POST "${local}/api/push/door?ttl=600" -d open`],
+    [t('s.wh.exNotify'), `curl -X POST ${local}/api/notify -H "Content-Type: application/json" -d "{\\"title\\":\\"Deploy\\",\\"text\\":\\"Production is live\\",\\"level\\":\\"ok\\"}"`],
+    [t('s.wh.exGoto'), `curl -X POST ${local}/api/goto/music`],
+    [t('s.wh.exRefresh'), `curl -X POST ${local}/api/refresh`],
     ['PowerShell', `Invoke-RestMethod -Method Post ${local}/api/push/cpu-fan -Body 1450`],
   ];
-  $('whExamples').replaceChildren(...ex.map(([t, c]) => h('div', { class: 'ex' }, h('span', {}, t), h('code', { class: 'cmdline', title: 'Click to copy', onclick: () => { navigator.clipboard?.writeText(c); toast('Copied'); } }, c))));
+  // the label is not called `t`: that name is the translation helper, and shadowing it made these examples throw
+  $('whExamples').replaceChildren(...ex.map(([label, c]) => h('div', { class: 'ex' }, h('span', {}, label), h('code', { class: 'cmdline', title: t('s.wh.clickToCopy'), onclick: () => { navigator.clipboard?.writeText(c); toast(t('s.wh.copied')); } }, c))));
   $('whLan').replaceChildren(host
-    ? h('div', {}, h('p', { class: 'hint', style: { marginTop: 0 } }, 'From other machines on your network or Tailscale, with the webhook key (HTTPS with this PC\'s self-signed certificate, so curl needs -k). ' +
-        'The key can also go in ?token= for senders that cannot set headers. It only opens the webhook endpoints, never the phone API; replace it if it leaks.'),
+    ? h('div', {}, h('p', { class: 'hint', style: { marginTop: 0 } }, t('s.wh.lanHint')),
       h('div', { class: 'row', style: { gap: '8px', margin: '0 0 8px' } }, h('code', {}, token ? token.slice(0, 6) + '…' : '(generated on save)'),
         h('button', { class: 'btn sm', disabled: !token, onclick: () => { navigator.clipboard?.writeText(token); toast(t('s.js.webhookKeyCopied')); } }, t('s.wh.copyKey')),
         h('button', { class: 'btn sm', onclick: () => { cfg.lan = { ...(cfg.lan || {}), webhookToken: '' }; changed(); toast(t('s.js.webhookKeyOnSave')); } }, t('s.k.newKey'))),
@@ -2096,7 +2096,7 @@ async function loadPushed() {
     $('whItems').replaceChildren(...(items.length ? items.map(([k, v]) => h('tr', {},
       h('td', {}, h('code', {}, k)), h('td', { class: 'val' }, JSON.stringify(v.data)), h('td', { class: 'hint' }, new Date(v.at).toLocaleString()),
       h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, 'Delete'))))
-      : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, 'Nothing pushed yet.'))]));
+      : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, t('s.wh.nothingPushed')))]));
   } catch (_) {}
 }
 
@@ -2135,12 +2135,12 @@ function renderDeck() {
     dragSort(k, cfg.shortcuts, (from, to) => { selKey = to; renderDeck(); changed(); });
     deck.append(k);
   });
-  deck.append(h('div', { class: 'key add', onclick: addShortcut }, h('span', { class: 'ki' }, icon('plus')), h('span', { class: 'kl' }, 'New shortcut')));
+  deck.append(h('div', { class: 'key add', onclick: addShortcut }, h('span', { class: 'ki' }, icon('plus')), h('span', { class: 'kl' }, t('s.k.newShortcut'))));
   renderEditor();
 }
 
 function addShortcut() {
-  cfg.shortcuts.push({ id: '', label: 'New shortcut', icon: '⭐', color: '#0ea5e9', cmd: '' });
+  cfg.shortcuts.push({ id: '', label: t('s.k.newShortcut'), icon: '⭐', color: '#0ea5e9', cmd: '' });
   selKey = cfg.shortcuts.length - 1;
   renderDeck();
   changed();
@@ -2151,7 +2151,7 @@ function renderEditor() {
   const ed = $('editor');
   ed.textContent = '';
   const s = cfg.shortcuts[selKey];
-  if (!s) { ed.append(h('p', { class: 'lead', style: { margin: 0 } }, 'No shortcuts yet. Add one with "New shortcut".')); return; }
+  if (!s) { ed.append(h('p', { class: 'lead', style: { margin: 0 } }, t('s.k.noShortcuts'))); return; }
 
   const upd = (key, val, rerender = true) => { s[key] = val; if (rerender) renderDeckKeysOnly(); changed(); };
   const text = (key, label, ph = '', hint = '') => h('div', { class: 'field' }, h('label', {}, label),
@@ -2164,9 +2164,9 @@ function renderEditor() {
     onclick: () => { colorIn.value = c; upd('color', c); markSwatch(); } })));
   const markSwatch = () => sw.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === s.color));
   markSwatch();
-  const cmdIn = h('input', { type: 'text', value: s.cmd || '', placeholder: 'e.g. wt.exe, https://…, builtin:lock', oninput: (e) => upd('cmd', e.target.value, false) });
+  const cmdIn = h('input', { type: 'text', value: s.cmd || '', placeholder: t('s.k.cmdPlaceholder'), oninput: (e) => upd('cmd', e.target.value, false) });
   const preset = h('select', { onchange: (e) => { if (e.target.value) { cmdIn.value = e.target.value; upd('cmd', e.target.value, false); cmdIn.focus(); } e.target.value = ''; } },
-    ...presets().map(([v, l]) => h('option', { value: v }, l)));
+    ...presets().map(([v, l]) => h('option', { value: v }, tl(l))));
 
   ed.append(
     h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '12px' } },
@@ -2190,8 +2190,8 @@ function renderEditor() {
 // A custom icon image (PNG, WEBP or SVG) overrides both the emoji and the auto-detected program icon on the phone.
 // Needs a saved shortcut id, so a brand new one must be saved once before it can be uploaded.
 function customIconField(s) {
-  if (!s.id) return h('div', { class: 'field' }, h('label', {}, 'Custom icon image'),
-    h('span', { class: 'hint' }, 'Save once to upload a custom icon image here.'));
+  if (!s.id) return h('div', { class: 'field' }, h('label', {}, t('s.k.customIcon')),
+    h('span', { class: 'hint' }, t('s.k.customIconSaveFirst')));
 
   const preview = h('img', { class: 'custom-icon-preview', alt: '', onerror: () => (preview.style.visibility = 'hidden'), onload: () => (preview.style.visibility = 'visible') });
   // fetch(), not <img src>: an <img> whose request 404s (most shortcuts have no icon at all) logs a console error;
@@ -2224,29 +2224,29 @@ function customIconField(s) {
         if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
         const res = await fetch(`/api/settings/shortcut-icon?id=${encodeURIComponent(s.id)}`, { method: 'POST', headers, body: f });
         const j = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(j.error || 'Upload failed');
+        if (!res.ok) throw new Error(j.error || t('s.k.uploadFailed'));
         if (j.version) cfgVersion = j.version;
-        toast('Icon uploaded.');
+        toast(t('s.k.iconUploaded'));
       } catch (err) { toast(err.message, true); }
       refresh();
     } });
-  return h('div', { class: 'field' }, h('label', {}, 'Custom icon image'),
+  return h('div', { class: 'field' }, h('label', {}, t('s.k.customIcon')),
     h('div', { class: 'row', style: { alignItems: 'center', gap: '8px' } },
       preview, file,
-      h('button', { class: 'btn sm', type: 'button', onclick: () => file.click() }, 'Upload…'),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => file.click() }, t('s.k.upload') + '…'),
       h('button', { class: 'btn sm', type: 'button', onclick: async () => {
         try {
           const headers = {};
           if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
           const res = await fetch(`/api/settings/shortcut-icon?id=${encodeURIComponent(s.id)}`, { method: 'DELETE', headers });
           const j = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(j.error || 'Remove failed');
+          if (!res.ok) throw new Error(j.error || t('s.k.removeFailed'));
           if (j.version) cfgVersion = j.version;
-          toast('Custom icon removed.');
+          toast(t('s.k.iconRemoved'));
         } catch (err) { toast(err.message, true); }
         refresh();
-      } }, 'Remove')),
-    h('span', { class: 'hint' }, 'PNG, WEBP or SVG, 512 KB max. Overrides the emoji (and the app’s own icon) on the phone.'));
+      } }, t('s.k.remove'))),
+    h('span', { class: 'hint' }, t('s.k.customIconHint')));
 }
 
 // What a key does: run a program, press keys, type text or run a macro; plus the on / off (toggle) options.
@@ -2266,8 +2266,8 @@ function actionFields(s, upd, text, cmdIn, preset) {
   if (kind === 'run') {
     fields.push(
       h('div', { class: 'field' }, h('label', {}, t('s.k.command')), cmdIn, preset,
-        h('span', { class: 'hint' }, osName === 'windows' ? 'Program, address or built-in command. Anything the Windows Run dialog accepts works.' : 'Program, address or built-in command.')),
-      text('args', t('s.k.arguments'), osName === 'windows' ? 'e.g. -d D:\\Projects claude' : 'e.g. --new-window ~/Projects'),
+        h('span', { class: 'hint' }, osName === 'windows' ? t('s.js.commandHintWindows') : t('s.js.commandHint'))),
+      text('args', t('s.k.arguments'), osName === 'windows' ? t('s.k.argsPlaceholderWindows') : t('s.k.argsPlaceholderUnix')),
       text('cwd', t('s.k.workingFolder'), t('s.k.optional')));
   } else if (kind === 'keys') {
     fields.push(text('args', t('s.k.keys'), 'e.g. ctrl+shift+m', 'Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, playpause, next, prev, mute, volumeup, volumedown.'));
@@ -2276,19 +2276,19 @@ function actionFields(s, upd, text, cmdIn, preset) {
   } else {
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.steps')),
       area((s.steps || []).join('\n'), 'keys:ctrl+c\nwait:200\ntext:Hello\nshortcut:terminal', 6, (e) => upd('steps', e.target.value.split('\n').map((x) => x.trim()).filter(Boolean), false)),
-      h('span', { class: 'hint' }, 'keys:… presses keys, text:… types, wait:300 waits (milliseconds), shortcut:id runs another shortcut.')));
+      h('span', { class: 'hint' }, t('s.k.macroHint'))));
   }
-  if (osName === 'macos' && kind !== 'run') fields.push(h('p', { class: 'hint' }, 'macOS asks once to allow PhoneBoxAgent in System Settings › Privacy & Security › Accessibility.'));
-  if (osName === 'linux' && kind !== 'run') fields.push(h('p', { class: 'hint' }, 'Needs xdotool (X11) or wtype (Wayland).'));
+  if (osName === 'macos' && kind !== 'run') fields.push(h('p', { class: 'hint' }, t('s.k.macosPermission')));
+  if (osName === 'linux' && kind !== 'run') fields.push(h('p', { class: 'hint' }, t('s.k.linuxNeedsXdotool')));
 
   const isMute = s.cmd === 'builtin:mute';
   fields.push(h('label', { class: 'check', style: { marginTop: '4px' } },
     h('input', { type: 'checkbox', checked: !!s.toggle || isMute, disabled: isMute, onchange: (e) => { s.toggle = e.target.checked; changed(); renderEditor(); } }),
-    isMute ? 'On / off key (shows whether the sound is muted)' : 'On / off key: the phone shows its state'));
+    isMute ? t('s.k.toggleLabelMute') : t('s.k.toggleLabel')));
   if (s.toggle && !isMute) {
-    fields.push(text('stateKey', 'State from a pushed value (optional)', 'e.g. teams-muted',
+    fields.push(text('stateKey', t('s.k.stateKey'), 'e.g. teams-muted',
       'A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.'));
-    if (kind === 'run') fields.push(text('offCmd', 'Command to switch off (optional)', 'empty = the same command'), text('offArgs', 'Arguments to switch off', ''));
+    if (kind === 'run') fields.push(text('offCmd', t('s.cd.offCmdPlaceholder'), t('s.cd.offCmdHint')), text('offArgs', t('s.k.offArgs'), ''));
   }
   return fields;
 }
@@ -2342,16 +2342,17 @@ function renderControlSettings() {
   root.replaceChildren(h('h3',{},'Control Deck'),h('p',{class:'hint'},t('s.cd.lead')));
   root.append(field(t('s.cd.audio'),c,'allowListening','checkbox'),field(t('s.cd.power'),c,'allowPower','checkbox'),field(t('s.cd.radioLogos'),c,'allowOnlineRadioLogos','checkbox'));
   const spotify=h('details',{},h('summary',{},t('s.cd.spotifyConn')));
-  const auth=h('p',{class:'hint'},'Register the redirect address in your Spotify Developer app. A Client ID is sufficient; no client secret is used.');
+  const auth=h('p',{class:'hint'},t('s.cd.spotifyAuthHint'));
   spotify.append(field(t('s.cd.clientId'),c,'spotifyClientId'),field(t('s.cd.deviceId'),c,'spotifyDevice'),auth,
     btn(t('s.cd.connect'),async()=>{
       if(!await save())return; const j=await request('spotify/connect','GET');
-      const live=$('controlSettings');const result=h('p',{},'Register redirect address: '+j.redirectUri,h('br'),h('a',{href:j.url,target:'_blank',rel:'noopener'},'Continue to Spotify sign-in'));live.prepend(result);
+      const live=$('controlSettings');const result=h('p',{},t('s.cd.registerRedirect')+j.redirectUri,h('br'),h('a',{href:j.url,target:'_blank',rel:'noopener'},t('s.cd.continueSpotify')));live.prepend(result);
     }),btn(t('s.cd.checkConn'),async()=>{const j=await request('spotify/state','GET');auth.textContent=j.connected?t('s.cd.connected'):j.error || t('s.cd.notConnected');}),
     btn(t('s.cd.disconnect'),async()=>{await request('spotify/disconnect');auth.textContent=t('s.cd.disconnected');}));
   root.append(spotify);
   const integration=h('details',{},h('summary',{},t('s.cd.audioInt')),field(t('s.cd.mixerExe'),c,'mixerExecutable'),field(t('s.cd.mixerDll'),c,'mixerLibrary'));root.append(integration);
-  const hints={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream or Windows-only HLS (.m3u8) URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
+  const hintsRaw={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream or Windows-only HLS (.m3u8) URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
+  const hints = Object.fromEntries(Object.entries(hintsRaw).map(([k, v]) => [k, tl(v)]));
   const stationFilter = h('input', { type: 'search', placeholder: t('s.cd.filterStations'), style: { marginBottom: '6px' } });
   const stationList = h('div', { class: 'stack-list' });
   const radioDetails = h('details', {}, h('summary', {}, t('s.cd.stations')),
@@ -2460,22 +2461,22 @@ function renderControlSettings() {
     renderStations();
   };
   renderActions();
-  root.append(btn('Add control', () => { c.actions.push({ id: 'control-' + crypto.randomUUID().slice(0, 8), label: 'New control', kind: 'shortcut', target: '', value: 75, enabled: true }); changed(); renderActions(); actions.lastChild.open = true; }));
+  root.append(btn(t('s.cd.addControl'), () => { c.actions.push({ id: 'control-' + crypto.randomUUID().slice(0, 8), label: t('s.cd.newControl'), kind: 'shortcut', target: '', value: 75, enabled: true }); changed(); renderActions(); actions.lastChild.open = true; }));
 
-  const radioDir = h('details', {}, h('summary', {}, 'Import & verify radio stations (radio-browser.info)'));
-  const countrySelect = h('select', { 'aria-label': 'Country', style: { minWidth: '200px' } }, h('option', { value: '' }, 'Load countries first…'));
-  const limitInput = h('input', { type: 'number', min: 1, max: 100, value: 30, style: { width: '90px' }, 'aria-label': 'Station count' });
-  const dirStatus = h('p', { class: 'hint', style: { margin: '6px 0' } }, 'Import popular stations by country from the public radio-browser.info directory (CC0), or check configured radio stream URLs.');
+  const radioDir = h('details', {}, h('summary', {}, t('s.cd.radioImportTitle')));
+  const countrySelect = h('select', { 'aria-label': t('s.cd.country'), style: { minWidth: '200px' } }, h('option', { value: '' }, t('s.cd.loadCountriesFirst')));
+  const limitInput = h('input', { type: 'number', min: 1, max: 100, value: 30, style: { width: '90px' }, 'aria-label': t('s.cd.stationCount') });
+  const dirStatus = h('p', { class: 'hint', style: { margin: '6px 0' } }, t('s.cd.radioImportHint'));
   const checkReport = h('pre', { style: { maxHeight: '200px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
   radioDir.append(
     dirStatus,
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', marginBottom: '8px' } },
-      btn('Load countries', async () => {
+      btn(t('s.cd.loadCountries'), async () => {
         try {
           const res = await request('radio-directory/countries', 'GET');
           const list = res.countries || [];
           countrySelect.replaceChildren(
-            h('option', { value: '' }, '— Select country —'),
+            h('option', { value: '' }, t('s.cd.selectCountry')),
             ...list.map((cty) => h('option', { value: cty.code }, `${cty.name} (${cty.stationCount})`))
           );
           dirStatus.textContent = `Loaded ${list.length} countries.`;
@@ -2486,7 +2487,7 @@ function renderControlSettings() {
       }),
       countrySelect,
       limitInput,
-      btn('Import stations', async () => {
+      btn(t('s.cd.importStations'), async () => {
         const cc = countrySelect.value;
         if (!cc) { toast(t('s.js.pickCountry'), true); return; }
         const MAX_ACTIONS = 512;
@@ -2527,7 +2528,7 @@ function renderControlSettings() {
           throw e;
         }
       }),
-      btn('Check configured streams', async () => {
+      btn(t('s.cd.checkStreams'), async () => {
         const radios = c.actions.filter((a) => a.kind === 'radio');
         if (!radios.length) { toast(t('s.js.noRadio'), true); return; }
         dirStatus.textContent = `Checking ${radios.length} stream(s)…`;
@@ -2551,22 +2552,22 @@ function renderControlSettings() {
     checkReport
   );
   root.append(radioDir);
-  root.append(h('details',{},h('summary',{},'Available shortcut IDs'),h('p',{class:'hint'},'Create executable, text and macro shortcuts in Deck first.'),...cfg.shortcuts.map(s=>h('div',{},s.id+' — '+s.label))));
-  const profiles=h('div');root.append(h('h4',{},'Audio and routine profiles'),profiles);
+  root.append(h('details',{},h('summary',{},t('s.cd.availableShortcutIds')),h('p',{class:'hint'},t('s.cd.createShortcutsFirst')),...cfg.shortcuts.map(s=>h('div',{},s.id+' — '+s.label))));
+  const profiles=h('div');root.append(h('h4',{},t('s.cd.profilesTitle')),profiles);
   const renderProfiles=()=>profiles.replaceChildren(...c.profiles.map(p=>{
     const box=h('details',{},h('summary',{},p.label || p.id));
-    box.append(field('Profile ID',p,'id'),field('Profile label',p,'label'),field('Override output device ID',p,'output'),field('Override microphone device ID',p,'input'));
-    const levels=h('details',{},h('summary',{},'Captured audio levels'));
+    box.append(field(t('s.cd.profileId'),p,'id'),field(t('s.cd.profileLabel'),p,'label'),field(t('s.cd.overrideOutput'),p,'output'),field(t('s.cd.overrideInput'),p,'input'));
+    const levels=h('details',{},h('summary',{},t('s.cd.capturedLevelsTitle')));
     for(const level of p.levels || []) levels.append(h('p',{class:'hint'},level.kind+': '+level.id),field('Volume',level,'volume','number'),field('Muted',level,'muted','checkbox'));
     box.append(levels);
     const list=h('textarea',{'aria-label':'Profile action IDs',rows:3},(p.actions || []).join('\n'));
     list.onchange=()=>{p.actions=list.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);changed();};
-    box.append(h('label',{},'Control IDs to run in order'),list,h('p',{class:'hint'},(p.levels?.length || 0)+' captured levels. Explicit input/output overrides take precedence over captured audio roles.'),btn('Remove profile',()=>{c.profiles=c.profiles.filter(x=>x!==p);changed();renderProfiles();}));return box;
+    box.append(h('label',{},t('s.cd.controlIds')),list,h('p',{class:'hint'},t('s.cd.capturedLevels',{ n: (p.levels?.length || 0) })),btn(t('s.cd.removeProfile'),()=>{c.profiles=c.profiles.filter(x=>x!==p);changed();renderProfiles();}));return box;
   }));renderProfiles();
-  root.append(btn('Capture current audio profile',async()=>{c.profiles.push(await request('capture'));changed();renderProfiles();profiles.lastChild.open=true;}),btn('Add routine profile',()=>{c.profiles.push({id:'profile-'+crypto.randomUUID().slice(0,8),label:'New routine',levels:[],defaults:{},actions:[]});changed();renderProfiles();profiles.lastChild.open=true;}));
+  root.append(btn(t('s.cd.captureProfile'),async()=>{c.profiles.push(await request('capture'));changed();renderProfiles();profiles.lastChild.open=true;}),btn(t('s.cd.addProfile'),()=>{c.profiles.push({id:'profile-'+crypto.randomUUID().slice(0,8),label:t('s.cd.newRoutine'),levels:[],defaults:{},actions:[]});changed();renderProfiles();profiles.lastChild.open=true;}));
   const hardware=h('pre',{style:{maxHeight:'240px',overflow:'auto',whiteSpace:'pre-wrap'}});
-  root.append(btn('List device, monitor and MIDI IDs',async()=>{
-    const d=await request('state','GET');hardware.textContent=[...(d.audio?.devices || []).map(i=>i.direction+': '+i.name+'\n'+i.id),...(d.monitors || []).map(i=>'Monitor: '+i.name+'\n'+i.id),...(d.midi || []).map(i=>'MIDI: '+i.name+'\n'+i.id)].join('\n\n');if(d.hardwareLoading)hardware.textContent+='\nHardware discovery is running; refresh shortly.';
+  root.append(btn(t('s.cd.listDeviceIds'),async()=>{
+    const d=await request('state','GET');hardware.textContent=[...(d.audio?.devices || []).map(i=>i.direction+': '+i.name+'\n'+i.id),...(d.monitors || []).map(i=>'Monitor: '+i.name+'\n'+i.id),...(d.midi || []).map(i=>'MIDI: '+i.name+'\n'+i.id)].join('\n\n');if(d.hardwareLoading)hardware.textContent+='\n'+t('s.cd.discoveryRunning');
   }),hardware);
 }
 
@@ -2588,7 +2589,7 @@ function appearanceEditor(owner, parents, label, widget = false) {
       if (e.target.value) owner.appearance = { style: e.target.value }; else delete owner.appearance;
       update(); render();
     } }, ...[['', 'Inherit / current look'], ['default', 'Original appearance'], ['cards', 'Rounded cards'], ['flat', 'Flat surfaces'], ['borderless', 'Content only'], ['seamless', 'Seamless panel']]
-      .map(([value, text]) => h('option', { value, selected: (owner.appearance?.style || '') === value }, text)));
+      .map(([value, text]) => h('option', { value, selected: (owner.appearance?.style || '') === value }, tl(text))));
     const fields = [h('div', { class: 'field' }, h('label', {}, t('s.ap.surface')), style)];
     const fontLabels = { default: 'Original font', sans: 'Sans-serif', rounded: 'Rounded', condensed: 'Condensed', serif: 'Serif', mono: 'Monospace' };
     const inheritedFont = (() => {
@@ -2597,8 +2598,8 @@ function appearanceEditor(owner, parents, label, widget = false) {
     })();
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.ap.font')),
       h('select', { 'aria-label': 'Font', onchange: e => { set('font', e.target.value || null); render(); } },
-        h('option', { value: '', selected: owner.appearance?.font == null }, !inheritedFont || inheritedFont === 'default' ? 'Original widget font' : 'Inherit (' + fontLabels[inheritedFont] + ')'),
-        ...Object.entries(fontLabels).map(([value, text]) => h('option', { value, selected: owner.appearance?.font === value }, text)))));
+        h('option', { value: '', selected: owner.appearance?.font == null }, !inheritedFont || inheritedFont === 'default' ? t('s.appearance.originalWidgetFont') : t('s.ap.inheritFont', { font: tl(fontLabels[inheritedFont]) })),
+        ...Object.entries(fontLabels).map(([value, text]) => h('option', { value, selected: owner.appearance?.font === value }, tl(text))))));
     const numeric = (key, title, max, fallback, min = 0, step = 1, unit = ' px') => {
       const value = current[key];
       const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? 'Automatic' : value + unit);
@@ -2618,12 +2619,12 @@ function appearanceEditor(owner, parents, label, widget = false) {
       const fallback = PhoneBoxAppearance.resolve(...parents(), inherited)[key];
       fields.push(h('div', { class: 'field' }, h('label', {}, title),
         h('select', { 'aria-label': title, onchange: e => set(key, e.target.value === '' ? null : e.target.value === 'true') },
-          h('option', { value: '', selected: value == null }, fallback == null ? 'Original widget default' : 'Inherit (' + (fallback ? 'on' : 'off') + ')'),
+          h('option', { value: '', selected: value == null }, fallback == null ? t('s.appearance.originalWidgetDefault') : 'Inherit (' + (fallback ? 'on' : 'off') + ')'),
           h('option', { value: 'true', selected: value === true }, 'On'), h('option', { value: 'false', selected: value === false }, 'Off'))));
     }
     root.replaceChildren(h('summary', {}, label), h('p', { class: 'hint' }, widget
       ? 'Overrides the page and global appearance. Inherit restores the preset or parent value.'
-      : 'Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.'), ...fields,
+      : tl('Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.')), ...fields,
       h('button', { type: 'button', class: 'btn sm', onclick: () => { delete owner.appearance; update(); render(); } }, t('s.appearance.reset')));
   };
   render(); return root;
@@ -2636,7 +2637,7 @@ function renderAppearanceSettings() {
   const editor = appearanceEditor(cfg.display, () => [], t('s.appearance.global'));
   editor.open = true;
   const preview = h('div', { class: 'preview', hidden: true });
-  const selector = h('select', { id: 'appearancePreviewPage', 'aria-label': 'Appearance preview page', onchange: queuePreview },
+  const selector = h('select', { id: 'appearancePreviewPage', 'aria-label': t('s.appearance.previewPage'), onchange: queuePreview },
     ...(cfg.pages || []).map((p, index) => p.enabled !== false ? h('option', { value: index }, p.title) : null));
   const toggle = h('button', { type: 'button', class: 'btn', onclick: () => {
     preview.hidden = !preview.hidden;
@@ -2786,10 +2787,10 @@ async function loadInfo() {
     $('ver').textContent = 'v' + i.version;
     const pill = $('phone');
     pill.className = 'pill' + (i.connected ? ' on' : '');
-    pill.querySelector('span').textContent = i.connected ? 'Phone connected' + (i.via ? ' · ' + i.via : '') : 'No phone connected';
+    pill.querySelector('span').textContent = i.connected ? t('s.conn.connected') + (i.via ? ' · ' + i.via : '') : t('s.conn.notConnected');
     osName = i.os || 'windows';
     $('followComputerLockOption').style.display = osName === 'macos' ? '' : 'none';
-    $('adbFound').textContent = i.adb ? 'Found: ' + i.adb : 'adb not found — ' + ({ linux: 'sudo apt install adb', macos: 'brew install android-platform-tools' }[osName] || 'winget install Google.PlatformTools');
+    $('adbFound').textContent = i.adb ? t('s.conn.adbFound', { path: i.adb }) : t('s.conn.adbNotFound') + ' — ' + ({ linux: 'sudo apt install adb', macos: 'brew install android-platform-tools' }[osName] || 'winget install Google.PlatformTools');
     $('appMissing').hidden = !(i.appMissing && i.appMissing.length);
     $('usbProblem').hidden = !i.usbProblem;
     $('usbProblem').replaceChildren(...(i.usbProblem ? [icon('warn', 'm'), i.usbProblem] : []));
@@ -2798,7 +2799,7 @@ async function loadInfo() {
     if (i.appMissing?.length) $('appMissingText').textContent = `${i.appMissing.join(', ')} has no PhoneBox app yet`;
     const sel = $('serial');
     const cur = cfg.deviceSerial || '';
-    const opts = [['', 'All connected devices'], ...i.devices.map((d) => [d, d])];
+    const opts = [['', t('s.conn.allDevices')], ...i.devices.map((d) => [d, d])];
     if (cur && !i.devices.includes(cur)) opts.push([cur, cur + ' (not connected)']);
     sel.replaceChildren(...opts.map(([v, l]) => h('option', { value: v, selected: v === cur }, l)));
     sel.onchange = () => { cfg.deviceSerial = sel.value || null; changed(); };
@@ -2806,19 +2807,19 @@ async function loadInfo() {
     $('lanHosts').textContent = lan.hosts.length
       ? lan.hosts.map((a) => a.startsWith('100.') ? a + ' (Tailscale)' : a).join(', ')
       : 'No LAN or Tailscale address found';
-    $('lanStatus').textContent = lan.active ? `Listening on port ${lan.port} (HTTPS)` : lan.configured ? 'Restart to start listening' : 'Off';
+    $('lanStatus').textContent = lan.active ? t('s.wifi.listening', { port: lan.port }) : lan.configured ? t('s.wifi.restartToListen') : t('s.wifi.off');
     $('restartBtn').hidden = !lan.restartNeeded;
     renderUpdate(await (await fetch('/api/update')).json());
     renderWebhooks(lan);
     const hk = await (await fetch('/api/claude/hook')).json();
-    $('hookState').textContent = hk.installed ? 'Installed in ' + hk.path : 'Not installed';
+    $('hookState').textContent = hk.installed ? t('s.claude.installedIn', { path: hk.path }) : t('s.claude.notInstalled');
     $('hookBtn').dataset.i18n = hk.installed ? 's.claude.removeHook' : 's.claude.installHook';
     $('hookBtn').textContent = t($('hookBtn').dataset.i18n);
     $('hookBtn').dataset.installed = hk.installed ? '1' : '';
     $('info').replaceChildren(
       h('dt', {}, 'Version'), h('dd', {}, i.version),
-      h('dt', {}, 'Settings file'), h('dd', {}, h('code', {}, i.configPath)),
-      h('dt', {}, 'Log'), h('dd', {}, h('code', {}, i.logPath)),
+      h('dt', {}, t('s.adv.settingsFile')), h('dd', {}, h('code', {}, i.configPath)),
+      h('dt', {}, t('s.adv.log')), h('dd', {}, h('code', {}, i.logPath)),
       h('dt', {}, 'adb'), h('dd', {}, i.adb || '—'));
   } catch (_) {}
 }
@@ -2891,10 +2892,10 @@ function renderUpdate(u) {
   $('updRepo').textContent = cfg.updates?.repo || 'ersinkoc/phonebox';
   const line = (k, v) => [h('dt', {}, k), h('dd', {}, v)];
   $('updInfo').replaceChildren(
-    ...line('Agent', s.agentVersion + (s.agentUpdate ? ` → ${s.latest}` : ' (up to date)') + (u.installed ? '' : ' · not the installed copy, updates itself only from %LOCALAPPDATA%\\PhoneBox\\app')),
-    ...line('Phone app', s.appVersion ? s.appVersion + (s.appUpdate ? ` → ${s.latest} (needs USB)` : ' (up to date)') : 'not seen yet'),
-    ...line('Latest release', s.latest ? s.latest : '—'),
-    ...line('Last check', s.lastCheck ? new Date(s.lastCheck).toLocaleString() : 'not yet'));
+    ...line(t('s.adv.agent'), s.agentVersion + (s.agentUpdate ? ` → ${s.latest}` : ' ' + t('s.adv.upToDate')) + (u.installed ? '' : ' · ' + t('s.adv.notInstalledCopy'))),
+    ...line(t('s.adv.phoneApp'), s.appVersion ? s.appVersion + (s.appUpdate ? ` → ${s.latest} ` + t('s.adv.needsUsb') : ' ' + t('s.adv.upToDate')) : t('s.adv.notSeenYet')),
+    ...line(t('s.adv.latestRelease'), s.latest ? s.latest : '—'),
+    ...line(t('s.adv.lastCheck'), s.lastCheck ? new Date(s.lastCheck).toLocaleString() : t('s.adv.notYet')));
   $('updApply').hidden = !(s.agentUpdate || s.appUpdate);
   $('updState').textContent = s.error ? s.error : s.state !== 'idle' ? s.state + '…' : '';
 }
