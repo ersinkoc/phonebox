@@ -8,12 +8,16 @@ export function cached(key, url, maxAgeMs) {
   if (c && Date.now() - c.at < maxAgeMs) return Promise.resolve(c.data);
   if (inflight[key]) return inflight[key];
   const ctl = new AbortController();
-  setTimeout(() => ctl.abort(), 10000);
-  inflight[key] = safeFetch(url, { signal: ctl.signal })
-    .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => { ctl.abort(); reject(new Error('timeout')); }, 10_000);
+  });
+  const request = safeFetch(url, { signal: ctl.signal })
+    .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  inflight[key] = Promise.race([request, deadline])
     .then((data) => { store.set('nc:' + key, { at: Date.now(), data }); return data; })
     .catch((e) => { if (c) return c.data; throw e; })
-    .finally(() => delete inflight[key]);
+    .finally(() => { clearTimeout(timer); delete inflight[key]; });
   return inflight[key];
 }
 

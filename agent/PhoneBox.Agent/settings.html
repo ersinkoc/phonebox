@@ -1104,7 +1104,8 @@ function renderCanvas() {
         const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
         if (type && !['stack', 'command'].includes(type) && !type.startsWith('stack:') && catalog.widgets.some((cw) => cw.type === type)) {
           const list = getStackItems(w, { key: 'widgets', default: d.options?.find((x) => x.key === 'widgets')?.default });
-          list.push({ type, enabled: true, options: {} });
+          if (list.length >= 12) { toast(t('s.js.stackFull'), true); return; }
+          list.push({ id: `card-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, type, enabled: true, options: defaultOptions(type) });
           setWOpt(w, 'widgets', list);
           selWidget = i;
           renderCanvas();
@@ -2329,7 +2330,8 @@ function renderControlSettings() {
   const field = (label, obj, key, type = 'text') => {
     const input = h('input', {type, value:obj[key] ?? '', 'aria-label':label});
     if (type === 'checkbox') input.checked = !!obj[key];
-    input.onchange = () => { obj[key] = type === 'checkbox' ? input.checked : type === 'number' ? Number(input.value) : input.value; changed(); };
+    const sync = () => { obj[key] = type === 'checkbox' ? input.checked : type === 'number' ? Number(input.value) : input.value; changed(); };
+    input.oninput = input.onchange = sync;
     return h('div', {class:'field'},h('label',{},label),input);
   };
   const request = async (path, method='POST') => {
@@ -2501,11 +2503,19 @@ function renderControlSettings() {
         try {
           const res = await request(`radio-directory/stations?country=${encodeURIComponent(cc)}&limit=${limit}`, 'GET');
           const stations = res.stations || [];
-          const existingTargets = new Set(c.actions.filter((a) => a.kind === 'radio').map((a) => (a.target || '').trim().toLowerCase()));
+          const streamKey = (target) => {
+            const value = (target || '').trim();
+            try {
+              const url = new URL(value);
+              url.hash = '';
+              return url.href;
+            } catch { return value; }
+          };
+          const existingTargets = new Set(c.actions.filter((a) => a.kind === 'radio').map((a) => streamKey(a.target)));
           const existingIds = new Set(c.actions.map((a) => a.id));
           let added = 0, skipped = 0, capped = 0;
           for (const st of stations) {
-            const normUrl = (st.streamUrl || '').trim().toLowerCase();
+            const normUrl = streamKey(st.streamUrl);
             if (!normUrl || existingTargets.has(normUrl)) { skipped++; continue; }
             if (c.actions.length >= MAX_ACTIONS) { capped++; continue; }
             let id = st.id || ('radio-' + crypto.randomUUID().slice(0, 8));
@@ -2561,7 +2571,8 @@ function renderControlSettings() {
     for(const level of p.levels || []) levels.append(h('p',{class:'hint'},level.kind+': '+level.id),field('Volume',level,'volume','number'),field('Muted',level,'muted','checkbox'));
     box.append(levels);
     const list=h('textarea',{'aria-label':'Profile action IDs',rows:3},(p.actions || []).join('\n'));
-    list.onchange=()=>{p.actions=list.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);changed();};
+    const syncActions=()=>{p.actions=list.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);changed();};
+    list.oninput=list.onchange=syncActions;
     box.append(h('label',{},t('s.cd.controlIds')),list,h('p',{class:'hint'},t('s.cd.capturedLevels',{ n: (p.levels?.length || 0) })),btn(t('s.cd.removeProfile'),()=>{c.profiles=c.profiles.filter(x=>x!==p);changed();renderProfiles();}));return box;
   }));renderProfiles();
   root.append(btn(t('s.cd.captureProfile'),async()=>{c.profiles.push(await request('capture'));changed();renderProfiles();profiles.lastChild.open=true;}),btn(t('s.cd.addProfile'),()=>{c.profiles.push({id:'profile-'+crypto.randomUUID().slice(0,8),label:t('s.cd.newRoutine'),levels:[],defaults:{},actions:[]});changed();renderProfiles();profiles.lastChild.open=true;}));
@@ -2856,7 +2867,13 @@ async function load() {
 async function save() {
   const headers = { 'Content-Type': 'application/json' };
   if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
-  const r = await fetch('/api/settings', { method: 'PUT', headers, body: JSON.stringify(cfg) });
+  let r;
+  try {
+    r = await fetch('/api/settings', { method: 'PUT', headers, body: JSON.stringify(cfg) });
+  } catch (_) {
+    toast(t('s.couldNotSave'), true);
+    return false;
+  }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { toast(j.error || t('s.couldNotSave'), true); return false; }
   await load();

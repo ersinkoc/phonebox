@@ -1,13 +1,13 @@
 const { test, expect } = require('@playwright/test');
 
 async function show(page, type, options = {}) {
-  await page.goto('/panel/');
+  await page.goto('/panel/style.css');
   await page.evaluate(({ type, options }) => {
     localStorage.clear();
     localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, shortcuts: [],
       pages: [{ id: 'controls', title: 'Controls', widgets: [{ id: 'control', type, x: 0, y: 0, w: 12, h: 6, options }] }] }));
   }, { type, options });
-  await page.reload();
+  await page.goto('/panel/');
   await expect(page.locator('body')).not.toHaveClass(/night/);
 }
 
@@ -262,4 +262,139 @@ test('deckCommand discards an in-flight deckState request so stale data is not r
   expect(result.stateCalls).toBe(2);
   expect(result.freshVolume).toBe(42);
   expect(result.cachedVolume).toBe(42);
+});
+
+test('meeting-status renders live on-air state and out-of-order work/push polls or cancelled volume drags do not regress', async ({ page }) => {
+  await page.goto('/panel/style.css');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config', JSON.stringify({
+      night: { enabled: false }, rules: [], shortcuts: [],
+      display: { language: 'en', idleReturnSec: 0 },
+      pages: [{
+        id: 'one', title: 'One', enabled: true, widgets: [
+          { id: 'ms1', type: 'meeting-status', x: 0, y: 0, w: 6, h: 3, options: { title: 'IN CALL' } },
+          { id: 'vol1', type: 'volume', x: 6, y: 0, w: 6, h: 3, options: {} },
+        ],
+      }],
+    }));
+  });
+  await page.goto('/panel/');
+  await page.addStyleTag({ content: '* { transition: none !important; animation: none !important; }' });
+  await expect(page.locator('.w-meeting-status .oa-sign')).toHaveText('IN CALL');
+
+  const out = await page.evaluate(async () => {
+    const m = await import('/panel/main.js');
+    const origFetch = window.fetch;
+
+    m.applyState({ ts: Date.now(), privacy: { mic: true, camera: false, micApps: ['Zoom'] }, audio: { volume: 30, muted: false, canControl: true } });
+    const meetingBg = getComputedStyle(document.querySelector('.w-meeting-status .oa-sign')).backgroundColor;
+
+    // Gated out-of-order loadWork() vs SSE 'work'
+    let releaseStaleWork;
+    const workGate = new Promise((r) => { releaseStaleWork = r; });
+    let gateWork = true;
+    window.fetch = (input, init) => {
+      const u = String(typeof input === 'string' ? input : input.url);
+      if (gateWork && u.endsWith('/api/work')) {
+        gateWork = false;
+        return workGate.then(() => Response.json({ sessions: [{ id: 's1', name: 'Claude', status: 'busy' }], prs: null }));
+      }
+      return origFetch(input, init);
+    };
+    m.applyWork({ sessions: [{ id: 's1', name: 'Claude', status: 'busy' }], prs: null });
+    const staleWork = m.loadWork();
+    window.onAgentStream('open', '{}');
+    window.onAgentStream('work', JSON.stringify({ sessions: [{ id: 's1', name: 'Claude', status: 'waiting' }], prs: null }));
+    releaseStaleWork();
+    await staleWork;
+    window.onAgentStream('close', '{}');
+
+    // Gated out-of-order loadPush()
+    const pushGates = [];
+    window.fetch = (input, init) => {
+      const u = String(typeof input === 'string' ? input : input.url);
+      if (u.endsWith('/api/push')) return new Promise((r) => pushGates.push(r));
+      return origFetch(input, init);
+    };
+    const p1 = m.loadPush();
+    const p2 = m.loadPush();
+    pushGates[1](Response.json({ version: 5, items: { k: { data: 'fresh' } } }));
+    await p2;
+    pushGates[0](Response.json({ version: 4, items: { k: { data: 'stale' } } }));
+    await p1;
+    window.fetch = origFetch;
+
+    // Volume pointercancel releases dragging
+    const bar = document.querySelector('.w-volume .vb');
+    const rect = bar.getBoundingClientRect();
+    bar.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: rect.left + 10, clientY: rect.top + 5, bubbles: true }));
+    bar.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
+    m.applyState({ ts: Date.now() + 500, privacy: { mic: true, camera: false }, audio: { volume: 82, muted: false, canControl: true } });
+
+    return {
+      meetingBg,
+      workStatus: m.D.work.sessions[0].status,
+      pushVal: m.D.push.k.data,
+      volText: document.querySelector('.w-volume .vb-v').textContent,
+    };
+  });
+
+  expect(out).toEqual({
+    meetingBg: 'rgb(220, 38, 38)',
+    workStatus: 'waiting',
+    pushVal: 'fresh',
+    volText: '82%',
+  });
+});
+
+test('Control Deck settings update on input without blur and Smart Stack canvas drop enforces defaults and 12-item cap', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await page.goto('/settings/#general');
+  await expect(page.locator('[data-bind="ping.host"]')).toBeVisible();
+
+  await page.evaluate(() => {
+    const cfgObj = JSON.parse(localStorage.getItem('pb-demo-config'));
+    const eleven = Array.from({ length: 11 }, (_, i) => ({ id: `card-seed-${i}`, type: 'clock', enabled: true, options: {} }));
+    cfgObj.pages = [{
+      id: 'stack-page', title: 'Stack Page', enabled: true,
+      widgets: [{ id: 'st1', type: 'stack', x: 0, y: 0, w: 6, h: 4, options: { widgets: eleven, interval: 10, showDots: true } }],
+    }];
+    localStorage.setItem('pb-demo-config', JSON.stringify(cfgObj));
+  });
+  await page.reload();
+  await expect(page.locator('#save')).toBeDisabled();
+
+  await page.locator('#controlSettings summary').filter({ hasText: 'Spotify connection' }).click();
+  await page.getByLabel('Spotify Client ID').focus();
+  await page.keyboard.type('cid-live');
+  await expect(page.locator('#save')).toBeEnabled();
+
+  await page.locator('#controlSettings summary').filter({ hasText: /^Meeting$/ }).click();
+  await page.getByLabel('Profile action IDs').first().focus();
+  await page.keyboard.type('build\ntests');
+  await page.keyboard.press('Control+s');
+  await expect(page.locator('#save')).toBeDisabled();
+
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pb-demo-config')));
+  expect(saved.controls.spotifyClientId).toBe('cid-live');
+  expect(saved.controls.profiles[0].actions).toEqual(['build', 'tests']);
+
+  await page.goto('/settings/#pages');
+  await expect(page.locator('#canvas .wb').first()).toBeVisible();
+  const dropRes = await page.evaluate(() => {
+    const stackEl = document.querySelector('#canvas .wb');
+    const drop = (type) => {
+      const dt = new DataTransfer();
+      dt.setData('application/phonebox-widget-type', type);
+      stackEl.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    };
+    drop('pomodoro');
+    drop('onair');
+    const items = cfg.pages[0].widgets[0].options.widgets;
+    return { count: items.length, id: items[11]?.id, focus: items[11]?.options?.focus };
+  });
+  expect(dropRes.count).toBe(12);
+  expect(dropRes.id).toMatch(/^card-/);
+  expect(dropRes.focus).toBe(25);
 });

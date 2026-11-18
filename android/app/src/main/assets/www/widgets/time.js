@@ -41,12 +41,13 @@ W.progress = {
       return { pct, bar, row };
     });
     box.append(h('div', 'w-title', 'Time'), h('div', 'pr-list', rows.map((r) => r.row)));
-    let shown = -1;
+    let shown;
     return {
       update() {
         const now = new Date();
-        if (now.getMinutes() === shown) return;
-        shown = now.getMinutes();
+        const minute = Math.floor(now.getTime() / 60_000);
+        if (minute === shown) return;
+        shown = minute;
         const day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const day1 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
         const wk0 = new Date(day0); wk0.setDate(day0.getDate() - ((day0.getDay() + 6) % 7));
@@ -85,7 +86,8 @@ W.timer = {
   always: true, // the alarm goes off on whatever page is showing
   create(box, { o, page, w }) {
     const key = `tm:${page.id}/${w.id}`;
-    const presets = lines(o.presets, ['1', '3', '5', '10', '15', '25']).map(Number).filter((n) => n > 0).slice(0, 8);
+    const presets = lines(o.presets, ['1', '3', '5', '10', '15', '25']).map(Number)
+      .filter((n) => n > 0 && Number.isFinite(n * 60_000)).slice(0, 8);
     let st = store.get(key, null) || { endsAt: null, left: 0, total: 0 };
     const save = () => store.set(key, st);
     const dial = dialEl(), btns = h('div', 'tm-btns');
@@ -97,7 +99,17 @@ W.timer = {
         btns.replaceChildren(...presets.map((m) => { const b = h('button', 'chip-btn', m + 'm'); b.addEventListener('click', () => { haptic(); st = { endsAt: Date.now() + m * 60000, left: m * 60000, total: m * 60000 }; save(); renderBtns(); render(); }); return b; }));
       } else {
         const p = h('button', 'pb main', st.endsAt ? '⏸' : '▶'), x = h('button', 'pb', '✕');
-        p.addEventListener('click', () => { haptic(); if (st.endsAt) { st.left = remaining(); st.endsAt = null; } else st.endsAt = Date.now() + st.left; save(); renderBtns(); });
+        p.addEventListener('click', () => {
+          haptic();
+          if (st.endsAt) {
+            const left = remaining();
+            if (left <= 0) { render(); return; }
+            st.left = left;
+            st.endsAt = null;
+          } else st.endsAt = Date.now() + st.left;
+          save();
+          renderBtns();
+        });
         x.addEventListener('click', () => { haptic(); st = { endsAt: null, left: 0, total: 0 }; save(); renderBtns(); render(); });
         btns.replaceChildren(x, p);
       }
@@ -236,7 +248,8 @@ W.checklist = {
         const row = h('button', 'cl-i' + (done ? ' done' : ''), h('span', 'cl-box', done ? '✓' : ''), h('span', 'cl-t', it));
         row.addEventListener('click', () => {
           haptic();
-          st.done = done ? st.done.filter((x) => x !== it) : [...st.done, it];
+          fresh();
+          st.done = st.done.includes(it) ? st.done.filter((x) => x !== it) : [...st.done, it];
           st.day = day();
           store.set(key, st);
           render();
@@ -270,17 +283,21 @@ W.wordclock = {
   create(box) {
     const lead = h('div', 'wc-lead'), main = h('div', 'wc-main'), date = h('div', 'wc-date');
     box.append(lead, main, date);
-    let shown = '';
+    let shown = '', shownDay = '';
     return {
       update() {
         const now = new Date();
+        const day = now.toDateString();
+        if (day !== shownDay) {
+          shownDay = day;
+          date.textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+        }
         const t = timeInWords(now);
         const k = t.lead + t.main.join(' ');
         if (k === shown) return;
         shown = k;
         lead.textContent = t.lead;
         main.replaceChildren(...t.main.map((w, i) => h('span', i === t.main.length - 1 || t.main.length === 1 ? 'hr' : null, w + ' ')));
-        date.textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
       },
     };
   },

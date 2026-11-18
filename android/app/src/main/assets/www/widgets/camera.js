@@ -61,7 +61,12 @@ W.camera = {
           const url = URL.createObjectURL(await Promise.race([r.blob(), deadline]));
           const back = 1 - front, next = layers[back];
           next.src = url;
-          try { await Promise.race([decoded(next), deadline]); } catch (_) { next.removeAttribute('src'); URL.revokeObjectURL(url); return every(); }
+          try { await Promise.race([decoded(next), deadline]); } catch (_) {
+            URL.revokeObjectURL(url);
+            clear();
+            say(t('w.camera.noPicture'));
+            return every();
+          }
           // out of sight while it loaded: drop it rather than change a hidden picture
           if (!visible()) { next.removeAttribute('src'); URL.revokeObjectURL(url); return 0; }
           if (urls[back]) URL.revokeObjectURL(urls[back]);

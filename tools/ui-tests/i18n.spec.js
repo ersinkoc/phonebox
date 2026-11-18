@@ -159,3 +159,36 @@ test('i18n.js defines every key once per language', () => {
   expect(spaces.size).toBeGreaterThanOrEqual(13); // the parser still finds the language blocks (12 languages + catalog)
   expect(dupes).toEqual([]);
 });
+
+test('translations preserve literal dollar tokens in session names', async ({ page }) => {
+  await page.goto('/panel/i18n.js');
+  await page.addScriptTag({ url: '/panel/i18n.js' });
+  const result = await page.evaluate(() => {
+    const i = window.PhoneBoxI18n;
+    i.setLang('en');
+    return ['Build', 'Budget $&', '$$', '$`', "$'", '', 0, null].map(name => i.t('panel.sessionFinished', { name }));
+  });
+  expect(result).toEqual(['Build finished', 'Budget $& finished', '$$ finished', '$` finished', "$' finished", ' finished', '0 finished', ' finished']);
+});
+
+test('both settings language selectors stay in sync and Revert restores the saved language', async ({ page }) => {
+  await page.goto('/panel/');
+  await page.evaluate(async () => {
+    localStorage.clear();
+    const config = await (await fetch('/api/settings')).json();
+    config.display.language = 'en';
+    config.controls.actions = [];
+    config.controls.profiles = [];
+    localStorage.setItem('pb-demo-config', JSON.stringify(config));
+  });
+  await page.goto('/settings/#general');
+  await expect(page.locator('#langSel')).toHaveValue('en');
+  await page.locator('#displayLangSel').selectOption('tr');
+  await expect(page.locator('#langSel')).toHaveValue('tr');
+  await expect(page.locator('#save')).toBeEnabled();
+  await expect(page.locator('[data-bind="display.theme"]')).toBeVisible();
+  await page.locator('#revert').click();
+  await expect(page.locator('#langSel')).toHaveValue('en');
+  await expect(page.locator('#displayLangSel')).toHaveValue('en');
+  await expect(page.locator('#save')).toBeDisabled();
+});

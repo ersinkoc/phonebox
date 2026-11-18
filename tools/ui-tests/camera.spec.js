@@ -21,13 +21,13 @@ async function show(page, { widget = { camera: CAM.id }, cameras = [CAM], pages 
     };
     setInterval(wrap, 10);
   });
-  await page.goto('/panel/');
+  await page.goto('/panel/style.css');
   await page.evaluate(({ widget, cameras, pages }) => {
     localStorage.clear();
     localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, rules: [], shortcuts: [], cameras: { ffmpeg: '', sources: cameras },
       pages: pages || [{ id: 'cams', title: 'Cams', enabled: true, widgets: [{ id: 'cam', type: 'camera', x: 0, y: 0, w: 6, h: 4, options: widget }] }] }));
   }, { widget, cameras, pages });
-  await page.reload();
+  await page.goto('/panel/');
 }
 
 test('the camera widget shows the latest picture and keeps it coming', async ({ page }) => {
@@ -64,6 +64,33 @@ test('without a chosen camera the widget says so and shows no picture', async ({
   await show(page, { widget: {} });
   await expect(page.locator('.cam-note')).toHaveText('Choose a camera in this widget’s settings');
   await expect(page.locator('.cam-img.on')).toHaveCount(0);
+});
+
+test('a corrupt camera response clears the old image and makes the next request fresh', async ({ page }) => {
+  await show(page);
+  const live = page.locator('.cam-img.on');
+  await expect(live).toBeVisible();
+  await page.evaluate(() => {
+    const original = window.fetch;
+    const fixture = window.cameraDecodeFixture = { corrupt: true, urls: [] };
+    window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (!url.includes('/api/camera') || !fixture.corrupt) return original(input, init);
+      fixture.urls.push(url);
+      return Promise.resolve(new Response(new Uint8Array([1, 2, 3]), { headers: { 'Content-Type': 'image/jpeg' } }));
+    };
+  });
+  await page.waitForFunction(() => window.cameraDecodeFixture.urls.length >= 2);
+  const result = await page.evaluate(() => ({
+    live: document.querySelectorAll('.cam-img.on').length,
+    fresh: window.cameraDecodeFixture.urls[1].includes('fresh=true'),
+  }));
+  expect(result, `EXPECTED: no visible image and fresh retry | ACTUAL: ${JSON.stringify(result)}`)
+    .toEqual({ live: 0, fresh: true });
+  await expect(page.locator('.cam-note')).toBeVisible();
+  await page.evaluate(() => { window.cameraDecodeFixture.corrupt = false; });
+  await expect(live).toBeVisible();
+  await expect(page.locator('.cam-note')).toBeHidden();
 });
 
 test('a removed camera is treated like no camera', async ({ page }) => {

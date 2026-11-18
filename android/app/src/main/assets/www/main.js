@@ -68,6 +68,9 @@ export const store = {
 
 export let cfg = PREVIEW ? { ...DEFAULT_CFG, pages: [] } : { ...DEFAULT_CFG, ...store.get('cfg', {}) };
 export let cfgVersion = null;
+export function setCfgVersion(v) { if (v != null) cfgVersion = v; }
+let configRequest = 0;
+let appliedConfigRequest = 0;
 export let online = null;
 export let lastTouch = Date.now();
 export let lastUserTouch = 0;     // last real touch or key (rules wait a while after it)
@@ -130,7 +133,7 @@ export async function api(path, method = 'GET', timeout = 2500) {
   try {
     const work = (async () => {
       const r = await fetch(API + path, { method, signal: ctl.signal, cache: 'no-store', headers: PANEL_HEADERS });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { status: r.status });
       const ct = r.headers.get('content-type') || '';
       // Awaited on purpose: the timer is cleared in finally, so returning the promise unawaited let a response that
       // sent its headers and then stalled hold the caller for good, past its own deadline.
@@ -403,8 +406,9 @@ export async function loadWeather(force = false) {
   if (D.weather && weatherFor !== key) { D.weather = null; emit('weather'); }
   if (cached && cached.key === key && !D.weather) { D.weather = cached.data; weatherFor = key; emit('weather'); }
   if (!force && cached && cached.key === key && Date.now() - cached.at < 14 * 60_000) return;
-  // only while a page shows the weather (PRIVACY.md): no widget, no request with the location
-  if (!anyNeeds('weather')) return;
+  // only while a page shows the weather (PRIVACY.md): no widget, no request with the location;
+  // also wait for the first agent config when no cached config exists, so FALLBACK_PAGES never leaks default coordinates
+  if (!anyNeeds('weather') || (!PREVIEW && cfgVersion === null && !store.get('cfg', null))) return;
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       '&current=temperature_2m,apparent_temperature,weather_code,is_day' +
@@ -1431,7 +1435,7 @@ export async function toggleRulesPause() {
   try {
     const r = await api(`/rules/pause?minutes=${paused ? 0 : 60}`, 'POST', 4000);
     rulesPaused = r.pausedUntil || null;
-    if (!rulesPaused) navQueue = navQueue.filter((x) => x.kind === 'home');
+    if (rulesPaused) navQueue = navQueue.filter((x) => x.kind !== 'goto' || !x.rule);
     toast(rulesPaused ? t('panel.rulesPausedToast') : t('panel.rulesResumedToast'), 'ok');
   } catch (_) { toast(t('panel.pcNoAnswer'), 'warn'); }
   renderRulesBtn();
@@ -1612,12 +1616,24 @@ window.onAndroidKey = (k) => {
   else if (k === 'prev') goPage(curPage - 1 < 0 ? pages.length - 1 : curPage - 1, true);
 };
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const noteEdit = document.querySelector('.note-edit');
+    if (noteEdit) { e.preventDefault(); noteEdit.remove(); return; }
+    if (closeSessionDetails()) { e.preventDefault(); return; }
+    if (sheet) { e.preventDefault(); closeSheet(); return; }
+    $('overview').hidden ? openOverview() : closeOverview();
+    return;
+  }
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.target?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]') || document.querySelector('.note-edit')) return;
   if (e.key === 'ArrowRight') window.onAndroidKey('next');
   else if (e.key === 'ArrowLeft') window.onAndroidKey('prev');
-  else if (e.key === 'Escape' || e.key === 'o') ($('overview').hidden ? openOverview() : closeOverview());
+  else if (e.key === 'o') ($('overview').hidden ? openOverview() : closeOverview());
 });
 window.onAndroidBack = () => {
   if (!$('approval').hidden) return; // answer it (or let it time out); Back must not dismiss a permission prompt
+  const noteEdit = document.querySelector('.note-edit');
+  if (noteEdit) { noteEdit.remove(); return; }
   if (closeSessionDetails()) return;
   if (!$('overview').hidden) closeOverview();
   else if (sheet) closeSheet();
@@ -1791,15 +1807,21 @@ export function applyDisplay() {
 
 export async function loadConfig() {
   if (PREVIEW) return;
+  const request = ++configRequest;
   try {
     const r = await api('/config');
+    if (request < appliedConfigRequest) return;
     const before = JSON.stringify(cfg);
+    const first = cfgVersion === null;
     cfg = { ...DEFAULT_CFG, ...r.config };
     cfgVersion = r.version;
-    if (JSON.stringify(cfg) !== before) {
+    appliedConfigRequest = request;
+    if (first || JSON.stringify(cfg) !== before) {
       store.set('cfg', cfg);
-      buildLayout();
-      applyDisplay();
+      if (JSON.stringify(cfg) !== before) {
+        buildLayout();
+        applyDisplay();
+      }
       loadWeather();
     }
   } catch (_) {}
@@ -1821,23 +1843,36 @@ export async function loadQuotas() {
   try { D.quotas = await api('/quotas'); emit('quotas'); } catch (_) {}
 }
 
+let workEpoch = 0;
 export function applyWork(w) {
+  workEpoch++;
   D.work = w;
   notifyTransitions(w.sessions || []);
   emit('work');
 }
 
 export async function loadWork() {
-  try { applyWork(await api('/work')); } catch (_) {}
+  const stamp = ++workEpoch;
+  try {
+    const w = await api('/work');
+    if (stamp !== workEpoch) return;
+    D.work = w;
+    notifyTransitions(w.sessions || []);
+    emit('work');
+  } catch (_) {}
 }
 
 export async function loadProcs() {
   try { D.procs = await api('/procs?top=150'); emit('procs'); } catch (_) {}
 }
 
+let pushRequest = 0, appliedPushRequest = 0;
 export async function loadPush() {
+  const req = ++pushRequest;
   try {
     const r = await api('/push');
+    if (req < appliedPushRequest) return;
+    appliedPushRequest = req;
     D.push = r.items || {};
     pushVersion = r.version;
     emit('push');
@@ -1854,17 +1889,18 @@ export function setOnline(on) {
 
 export function applyState(s, replayGen = null) {
   lastStateAt = Date.now();
-  D.state = s;
-  media = s.media ? { ...s.media, at: performance.now() } : null;
-  setOnline(true);
-  if (s.cfgVersion !== undefined && cfgVersion !== null && s.cfgVersion !== cfgVersion) loadConfig();
-  if (s.pushVersion !== undefined && s.pushVersion !== pushVersion) loadPush();
   // compares the agent's wall clock across responses: if the PC's clock steps back (NTP), polled events are
   // ignored until it catches up — the stream still delivers them meanwhile
   const fresh = s.ts == null || s.ts >= stateTs;
   // the answer to a ?ev=0 replay can be overtaken by streamed states on the way; its events are still the backlog.
   // they go through evOffer like live ones: while a replay is armed the queue merges them before dispatch
   if (fresh || replayGen === evGen) for (const e of s.events || []) evOffer(e);
+  if (!fresh) return replayGen === evGen;
+  D.state = s;
+  media = s.media ? { ...s.media, at: performance.now() } : null;
+  setOnline(true);
+  if (s.cfgVersion !== undefined && cfgVersion !== null && s.cfgVersion !== cfgVersion) loadConfig();
+  if (s.pushVersion !== undefined && s.pushVersion !== pushVersion) loadPush();
   if (fresh) {
     stateTs = s.ts ?? stateTs;
     // the agent restarted: it counts events from 0 again — forget what was handled and replay its backlog once

@@ -1,7 +1,7 @@
 const {test,expect}=require('@playwright/test');
 
 async function show(page, config={}) {
-  await page.goto('/panel/');
+  await page.goto('/panel/style.css');
   await page.evaluate(config=>{
     localStorage.clear();
     localStorage.setItem('pb-demo-config',JSON.stringify({night:{enabled:false},shortcuts:[],display:{idleReturnSec:0},
@@ -10,10 +10,15 @@ async function show(page, config={}) {
         {id:'audio',type:'audio-mixer',x:6,y:0,w:6,h:6,options:{}}
       ]}],...config}));
   },config);
-  await page.reload();
+  await page.goto('/panel/');
   await expect(page.locator('.w-note').first()).toBeVisible();
 }
 const css=(locator,key)=>locator.evaluate((node,key)=>getComputedStyle(node)[key],key);
+
+test('appearance fixture configuration survives delayed default initialization', async ({ page }) => {
+  const { gatedLayout } = require('./layout-ordering');
+  expect(await gatedLayout(page, p => show(p))).toEqual(['appearance']);
+});
 
 test('original pages retain the original card and grid appearance',async({page})=>{
   await show(page);

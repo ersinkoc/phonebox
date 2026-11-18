@@ -1,6 +1,12 @@
 // UI tests of the panel and the settings page, against the web demo. They only use what a person sees and does
 // (DOM, keys, clicks) plus the demo's PhoneBoxDemo helper, never the panel's internals.
 const { test, expect } = require('@playwright/test');
+const { staleState } = require('./state-ordering');
+
+test('a late poll preserves the newer state and metric history', async ({ page }) => {
+  const actual = await staleState(page, { edges: true });
+  expect(actual).toEqual({ host: 'newest', cpu: 22, hist: 22, equal: 'equal', withoutTimestamp: 'without timestamp' });
+});
 
 /** Fails the test on any console error or uncaught exception (outside services being down does not count). */
 function watchErrors(page) {

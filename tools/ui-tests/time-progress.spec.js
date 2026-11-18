@@ -1,24 +1,20 @@
 const { test, expect } = require('@playwright/test');
+const { progressAt } = require('./time-progress');
 
 test.use({ timezoneId: 'America/New_York' });
 
-test('time progress uses the actual length of a day and week at the fall clock change', async ({ page }) => {
-  // 23:30 local on the 25-hour day, still half an hour before Monday starts.
-  await page.clock.setFixedTime(new Date('2026-11-02T04:30:00Z'));
-  await page.addInitScript(() => {
-    const config = JSON.stringify({
-      night: { enabled: false }, rules: [], shortcuts: [],
-      pages: [{ id: 'duration-test', title: 'Progress', widgets: [{ id: 'progress', type: 'progress', x: 0, y: 0, w: 12, h: 6 }] }],
-    });
-    localStorage.setItem('cfg', config);
-    localStorage.setItem('pb-demo-config', config);
+for (const [name, instant, hours, dayHours, weekHours] of [
+  ['ordinary day', '2026-10-31T16:00:00Z', 12, 24, 168],
+  ['fall clock change', '2026-11-02T04:30:00Z', 24.5, 25, 169],
+  ['spring clock change', '2026-03-09T03:30:00Z', 22.5, 23, 167],
+]) {
+  test(`time progress uses calendar boundaries on ${name}`, async ({ page }) => {
+    const rows = await progressAt(page, instant);
+    expect(rows[0].width).toBeCloseTo(hours / dayHours * 100, 2);
+    if (dayHours !== 24) expect(rows[1].width).toBeCloseTo((weekHours - 0.5) / weekHours * 100, 2);
+    for (const row of rows) {
+      expect(row.width).toBeGreaterThanOrEqual(0);
+      expect(row.width).toBeLessThanOrEqual(100);
+    }
   });
-  await page.goto('/panel/');
-
-  const rows = page.locator('[data-id="duration-test"] .pr-row');
-  await expect(rows.first()).toContainText('98%');
-  const day = await rows.nth(0).locator('.track i').evaluate(el => parseFloat(el.style.width));
-  const week = await rows.nth(1).locator('.track i').evaluate(el => parseFloat(el.style.width));
-  expect(day).toBeCloseTo(98);
-  expect(week).toBeCloseTo(100 * 168.5 / 169);
-});
+}

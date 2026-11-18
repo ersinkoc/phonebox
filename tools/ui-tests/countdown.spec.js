@@ -1,5 +1,27 @@
 const { test, expect } = require('@playwright/test');
 
+test('countdown uses the supplied seconds and rejects an invalid seconds field', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 0, 1, 12, 0, 0) });
+  await page.addInitScript(() => {
+    const targets = ['2026-01-01 12:00:42', '2026-01-01 12:01', '2026-01-01 12:00:69'];
+    const config = JSON.stringify({
+      night: { enabled: false }, rules: [], shortcuts: [],
+      pages: [{ id: 'countdowns', title: 'Countdowns', widgets: targets.map((target, i) => ({
+        id: 'cd' + i, type: 'countdown', x: i * 4, y: 0, w: 4, h: 6, options: { target },
+      })) }],
+    });
+    localStorage.setItem('cfg', config);
+    localStorage.setItem('pb-demo-config', config);
+  });
+  await page.goto('/panel/');
+  const values = page.locator('[data-id="countdowns"] .w-countdown .cd-v');
+  await expect(values).toHaveCount(3);
+  const actual = await values.evaluateAll(nodes => nodes.map(node => node.textContent));
+  expect(actual[1]).not.toBe('—');
+  expect(actual[0], 'EXPECTED: at least 30 seconds in the future | ACTUAL: ' + actual[0]).toMatch(/^0:[34]\d$/);
+  expect(actual[2]).toBe('—');
+});
+
 test('countdown rejects nonexistent calendar dates and trailing text', async ({ page }) => {
   await page.addInitScript(() => {
     const targets = ['2026-02-31 10:00', '2026-12-20 10:00 typo', '2026-12-20 10:00'];

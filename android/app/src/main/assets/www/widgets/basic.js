@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, haptic, hasProcessesPage, hist, hour12, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buzz, cfg, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, haptic, hasProcessesPage, hist, hour12, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, setCfgVersion, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
 import { W } from '../registry.js';
 import { invalidateDeckState } from './controls.js';
 
@@ -965,6 +965,10 @@ W.pomodoro = {
     };
     play.addEventListener('click', () => {
       haptic();
+      if (st.endsAt && remaining() <= 0) {
+        render();
+        if (!st.endsAt) return;
+      }
       if (st.endsAt) { st.left = remaining(); st.endsAt = null; } else st.endsAt = Date.now() + st.left;
       save(); render();
     });
@@ -982,15 +986,15 @@ W.pomodoro = {
 W.countdown = {
   needs: ['tick'],
   create(box, { o }) {
-    const m = String(o.target || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2})?)?$/);
+    const m = String(o.target || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
     let target = NaN;
     if (m) {
-      const [, year, month, day, hour = '0', minute = '0'] = m;
+      const [, year, month, day, hour = '0', minute = '0', second = '0'] = m;
       const date = new Date(0);
       date.setFullYear(+year, +month - 1, +day);
-      date.setHours(+hour, +minute, 0, 0);
+      date.setHours(+hour, +minute, +second, 0);
       if (date.getFullYear() === +year && date.getMonth() === +month - 1 &&
-          date.getDate() === +day && +hour < 24 && +minute < 60) {
+          date.getDate() === +day && +hour < 24 && +minute < 60 && +second < 60) {
         // the time is checked as numbers: one the clocks skip (spring forward) still counts, moved on like before
         target = date.getTime();
       }
@@ -1017,7 +1021,6 @@ const NOTE_MAX = 500;
 W.note = {
   bare: true, needs: [],
   create(box, { o, page, w }) {
-    let savedVersion = null;
     const paint = () => {
       const text = String(o.text ?? '');
       box.style.setProperty('--n', o.color || '#fbbf24');
@@ -1035,7 +1038,7 @@ W.note = {
       const ta = document.createElement('textarea');
       ta.className = 'note-ta';
       ta.value = String(o.text ?? '');
-      const opened = savedVersion ?? cfgVersion;
+      const opened = cfgVersion;
       ta.maxLength = NOTE_MAX;
       ta.rows = 6;
       const row = h('div', 'note-actions');
@@ -1047,22 +1050,19 @@ W.note = {
         save.disabled = true;
         ta.disabled = true;
         try {
-          const res = await fetch(API + '/widget/' + encodeURIComponent(page.id) + '/' + encodeURIComponent(w.id) + '/note?text=' + encodeURIComponent(submitted) + '&version=' + encodeURIComponent(opened ?? ''), {
-            method: 'POST',
-            cache: 'no-store',
-            headers: PANEL_HEADERS,
-          });
-          if (res.status === 409) {
+          const path = '/widget/' + encodeURIComponent(page.id) + '/' + encodeURIComponent(w.id)
+            + '/note?text=' + encodeURIComponent(submitted) + '&version=' + encodeURIComponent(opened ?? '');
+          const result = await api(path, 'POST', 8000);
+          setCfgVersion(result?.version);
+          o.text = submitted;
+          paint();
+          wrap.remove();
+        } catch (error) {
+          if (error?.status === 409) {
             wrap.remove();
             toast(t('w.note.changed'));
             return;
           }
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          savedVersion = (await res.json().catch(() => ({}))).version ?? null;
-          o.text = submitted;
-          paint();
-          wrap.remove();
-        } catch (_) {
           save.disabled = false;
           ta.disabled = false;
           toast(t('w.note.failed'));

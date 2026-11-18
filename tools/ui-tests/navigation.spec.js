@@ -8,7 +8,7 @@ const PAGES = ['one', 'two', 'three', 'four', 'five'].map((id) => ({ id, title: 
 
 async function show(page, display = {}) {
   await page.clock.install();
-  await page.goto('/panel/');
+  await page.goto('/panel/style.css');
   await page.evaluate(({ pages, display }) => {
     localStorage.clear();
     localStorage.setItem('pb-demo-config', JSON.stringify({
@@ -16,10 +16,15 @@ async function show(page, display = {}) {
       display: { idleReturnSec: 0, minDwellSec: 0, touchGraceSec: 20, switchCountdownSec: 3, ...display },
     }));
   }, { pages: PAGES, display });
-  await page.reload();
+  await page.goto('/panel/');
   await expect(page.locator('#dots i')).toHaveCount(PAGES.length);
   await expect(page.locator('body')).not.toHaveClass(/night/);
 }
+
+test('navigation fixture configuration survives delayed default initialization', async ({ page }) => {
+  const { gatedLayout } = require('./layout-ordering');
+  expect(await gatedLayout(page, p => show(p))).toEqual(['one', 'two', 'three', 'four', 'five']);
+});
 
 const activeDot = (page) => page.locator('#dots i').evaluateAll((d) => d.findIndex((x) => x.classList.contains('on')));
 // fastForward fires each due timer at most once per call, so the panel's 250 ms and 1 s timers are stepped through

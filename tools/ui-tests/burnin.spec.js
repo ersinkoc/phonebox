@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 
 async function show(page, display) {
   await page.clock.install();
-  await page.goto('/panel/');
+  await page.goto('/panel/style.css');
   await page.evaluate((display) => {
     localStorage.clear();
     localStorage.setItem('pb-demo-config', JSON.stringify({
@@ -14,12 +14,17 @@ async function show(page, display) {
       ],
     }));
   }, display);
-  await page.reload();
+  await page.goto('/panel/');
   await expect(page.locator('.w-note').first()).toBeVisible();
   // Until the stored config arrives the panel runs on its defaults, whose night screen covers 00:30-07:30. Between
   // those hours (on the CI's UTC clock too) a tap would only wake that screen; the next tick clears it.
   await expect(page.locator('body')).not.toHaveClass(/night/);
 }
+
+test('burn-in fixture configuration survives delayed default initialization', async ({ page }) => {
+  const { gatedLayout } = require('./layout-ordering');
+  expect(await gatedLayout(page, p => show(p, {}))).toEqual(['one', 'two']);
+});
 
 const shift = (page) => page.evaluate(() => {
   const s = getComputedStyle(document.documentElement);

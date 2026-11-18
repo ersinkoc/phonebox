@@ -1,17 +1,23 @@
 const { test, expect } = require('@playwright/test');
 
 async function layout(page, widgets, extra = {}) {
-  await page.goto('/panel/');
+  await page.goto('/panel/style.css');
   await page.evaluate(({ widgets, extra }) => {
     localStorage.clear();
     // Widget interaction tests must not depend on the host's wall-clock night schedule.
     localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, ...extra, pages: [{ id: 'test', title: 'Test', enabled: true, widgets }], shortcuts: [] }));
   }, { widgets, extra });
-  await page.reload();
+  await page.goto('/panel/');
   await expect(page.locator('.w').first()).toBeVisible();
   await expect(page.locator('body')).not.toHaveClass(/night/);
 }
 const widget = (type, options = {}) => ({ id: 'test', type, x: 0, y: 0, w: 12, h: 6, options });
+
+test('fixture initialization preserves its layout when default bootstrap completion is delayed', async ({ page }) => {
+  const { gatedLayout } = require('./layout-ordering');
+  expect(await gatedLayout(page, layout)).toEqual(['test']);
+  await expect(page.locator('.w-note')).toHaveText('owned-layout');
+});
 
 for (const viewport of [{ width: 780, height: 360 }, { width: 360, height: 780 }]) {
   test(`stack renders children, changes cards and follows live data at ${viewport.width}px`, async ({ page }) => {

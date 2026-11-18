@@ -548,7 +548,8 @@ W.agenda = {
 W.onair = {
   needs: ['state', 'push'],
   create(box, { o }) {
-    const sign = h('div', 'oa-sign', o.text || 'ON AIR'), sub = h('div', 'oa-sub');
+    box.classList.add('w-onair');
+    const sign = h('div', 'oa-sign', o.text || o.title || 'ON AIR'), sub = h('div', 'oa-sub');
     box.append(sign, sub);
     const src = o.source || 'both';
     return {
@@ -572,6 +573,7 @@ W.onair = {
     };
   },
 };
+W['meeting-status'] = W.onair;
 
 W.battery = {
   needs: ['tick'],
@@ -697,7 +699,7 @@ W.volume = {
     const fill = h('i'), bar = h('div', 'vb', fill), pct = h('div', 'vb-v', '--');
     const mute = h('button', 'pb', '🔇'), down = h('button', 'pb', '−'), up = h('button', 'pb', '+');
     box.append(h('div', 'w-title', 'Volume'), h('div', 'vb-row', bar, pct), h('div', 'pomo-btns', mute, down, up));
-    let dragging = false, timer = 0, level = 0;
+    let dragging = false, timer = 0, dragEndTimer = 0, level = 0;
     const vertical = () => box.clientHeight > box.clientWidth * 1.15;
     const paint = (v, muted) => {
       level = v;
@@ -716,9 +718,12 @@ W.volume = {
       clearTimeout(timer);
       timer = setTimeout(() => api('/volume?level=' + v, 'POST').catch(() => {}), 80);
     };
-    bar.addEventListener('pointerdown', (e) => { dragging = true; bar.setPointerCapture(e.pointerId); fromPointer(e); });
+    bar.addEventListener('pointerdown', (e) => { clearTimeout(dragEndTimer); dragEndTimer = 0; dragging = true; try { bar.setPointerCapture(e.pointerId); } catch (_) {} fromPointer(e); });
     bar.addEventListener('pointermove', (e) => { if (dragging) fromPointer(e); });
-    bar.addEventListener('pointerup', () => setTimeout(() => (dragging = false), 400));
+    bar.addEventListener('pointerup', () => { clearTimeout(dragEndTimer); dragEndTimer = setTimeout(() => { dragEndTimer = 0; dragging = false; }, 400); });
+    const cancelDrag = () => { clearTimeout(dragEndTimer); dragEndTimer = 0; clearTimeout(timer); dragging = false; };
+    bar.addEventListener('pointercancel', cancelDrag);
+    bar.addEventListener('lostpointercapture', () => { if (dragging && !dragEndTimer) dragging = false; });
     const op = (q) => async () => { haptic(); try { const a = await api('/volume?' + q, 'POST'); paint(a.volume, a.muted); } catch (_) {} };
     mute.addEventListener('click', op('op=mute'));
     down.addEventListener('click', op('op=down'));
