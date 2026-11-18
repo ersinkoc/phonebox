@@ -702,7 +702,7 @@ app.MapGet("/api/widget/{page}/{widget}", (string page, string widget, bool? for
 
 app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req, ShortcutIconUploads icons) =>
     Results.Json(new { version = cfg.Version.ToString(), config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString(),
-        s => icons.Revision(s.Id) ?? ShortcutIcons.Revision(s), s => icons.Revision(s.Id) is not null) }));
+        s => icons.Revision(s.Id) is { } up ? (up, true) : (ShortcutIcons.Revision(s), false)) }));
 
 // Phones that have talked to this agent, with their settings (Settings › Phones).
 app.MapGet("/api/phones", (ConfigStore cfg) =>
@@ -809,12 +809,11 @@ app.MapPost("/api/run/{id}", (string id, ConfigStore cfg, PushStore push, AudioC
 // Real icon for a shortcut: an image the user uploaded (settings page) takes priority; otherwise its program's own
 // icon, when its command is an actual file on disk. 404 when neither exists (shell addresses, protocol handlers,
 // URLs, builtin: commands, and App Execution Alias stubs with no icon of their own), so the phone shows the emoji.
-app.MapGet("/api/shortcuts/icon", (string id, ConfigStore cfg, ShortcutIconUploads icons, HttpResponse res) =>
+// upload=1: the upload only (see ShortcutIcons.Picture).
+app.MapGet("/api/shortcuts/icon", (string id, bool? upload, ConfigStore cfg, ShortcutIconUploads icons, HttpResponse res) =>
 {
     if (cfg.Get().Shortcuts.FirstOrDefault(s => s.Id == id) is not { } sc) return Results.NotFound();
-    (byte[] Bytes, string ContentType)? icon = icons.Read(id);
-    if (icon is null && ShortcutIcons.Icon(sc) is { } png) icon = (png, "image/png");
-    if (icon is not { } found) return Results.NotFound();
+    if (ShortcutIcons.Picture(sc, icons, upload == true) is not { } found) return Results.NotFound();
     res.Headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
     res.Headers["X-Content-Type-Options"] = "nosniff";
     return Results.File(found.Bytes, found.ContentType);

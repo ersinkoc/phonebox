@@ -49,6 +49,12 @@ internal static class ShortcutIcons
 
     public static void ClearHasIconCache() => ResolvedPathCache.Clear();
 
+    /// <summary>The picture /api/shortcuts/icon serves: an upload first, else the program's own icon. With
+    /// <paramref name="uploadOnly"/> (a Big button filling itself with the picture) only the upload, so an upload removed
+    /// after the phone read its config is never replaced by a program icon stretched across the key.</summary>
+    public static (byte[] Bytes, string ContentType)? Picture(Shortcut sc, ShortcutIconUploads uploads, bool uploadOnly) =>
+        uploads.Read(sc.Id) ?? (!uploadOnly && Icon(sc) is { } png ? (png, "image/png") : null);
+
     public static byte[]? Icon(Shortcut sc)
     {
         var path = ResolvePath(sc.Cmd);

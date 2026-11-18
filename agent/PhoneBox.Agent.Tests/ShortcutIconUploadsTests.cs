@@ -41,6 +41,24 @@ public sealed class ShortcutIconUploadsTests : IDisposable
         Assert.Null(_uploads.Revision("terminal"));
     }
 
+    [Fact]
+    public void AnUploadOnlyRequestNeverFallsBackToTheProgramIcon()
+    {
+        // a real file as the command, so the program's own icon exists wherever the platform can read one
+        var sc = new Shortcut { Id = "terminal", Cmd = Environment.ProcessPath! };
+        Assert.Null(ShortcutIcons.Picture(sc, _uploads, uploadOnly: true));
+        if (ShortcutIcons.Icon(sc) is not null)
+            Assert.Equal("image/png", ShortcutIcons.Picture(sc, _uploads, uploadOnly: false)!.Value.ContentType);
+
+        Assert.Null(_uploads.Save("terminal", "image/svg+xml", Svg));
+        Assert.Equal("image/svg+xml", ShortcutIcons.Picture(sc, _uploads, uploadOnly: true)!.Value.ContentType);
+        Assert.Equal("image/svg+xml", ShortcutIcons.Picture(sc, _uploads, uploadOnly: false)!.Value.ContentType);
+
+        // removed after the phone read its config: the upload-only request finds nothing, not the program icon
+        _uploads.Remove("terminal");
+        Assert.Null(ShortcutIcons.Picture(sc, _uploads, uploadOnly: true));
+    }
+
     [Theory]
     [InlineData("image/png")]
     [InlineData("image/webp")]

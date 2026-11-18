@@ -12,6 +12,8 @@ const SHORTCUTS = [
   { id: 'blank', label: '', icon: '🎨', color: '#6b7280', iconRev: 1, iconUpload: true },
   { id: 'iconset', label: 'Icon set', icon: '🎨', color: '#6b7280', iconRev: 1, iconUpload: true },
   { id: 'lamp', label: 'Lamp', icon: '💡', color: '#6b7280', iconRev: 1, iconUpload: true, toggle: true },
+  // the config says uploaded, but the upload was removed before the picture was fetched
+  { id: 'gone', label: 'Gone', icon: '🗑️', color: '#6b7280', iconRev: 1, iconUpload: true },
 ];
 // "app" is large on purpose: on Linux a program's own icon can be a 256 px theme logo, and it still must not fill.
 // "iconset" is a typical icon-set SVG, 24 px by its own attributes, which scales cleanly and so may fill.
@@ -20,8 +22,10 @@ const SIZES = { iconset: 24 };
 /** Opens the panel on one page of Big buttons. Only the demo agent's settings are seeded, so the panel gets iconRev
  *  and iconUpload through the demo's config projection, as it does from the real agent. */
 async function open(page, widgets) {
+  // like the agent: upload=1 asks for an upload only; "app" has none, and "gone" no longer has one
   await page.route((url) => url.pathname.endsWith('/agent/api/shortcuts/icon'), (route) => {
-    const id = new URL(route.request().url()).searchParams.get('id');
+    const q = new URL(route.request().url()).searchParams, id = q.get('id');
+    if (q.get('upload') === '1' && (id === 'app' || id === 'gone')) return route.fulfill({ status: 404, body: '' });
     route.fulfill({ contentType: 'image/svg+xml', body: svg(SIZES[id] || 256) });
   });
   await page.addInitScript((config) => localStorage.setItem('pb-demo-config', config), JSON.stringify({
@@ -69,6 +73,25 @@ test("a program's own icon is not stretched across the key, however large", asyn
   await expect(key.locator('.k-icon.k-icon-img img')).toBeVisible();
   await expect(key).not.toHaveClass(/k-cover/);
   await expect(key.locator('img.k-bg')).toHaveCount(0);
+});
+
+test('an upload removed after the config was read leaves the centred icon, not a stretched program icon', async ({ page }) => {
+  const key = (await open(page, [{ x: 0, y: 0, w: 4, h: 6, options: { id: 'gone', cover: true } }]))(0);
+  await expect(key.locator('.k-icon.k-icon-img img')).toBeVisible();
+  await expect(key).not.toHaveClass(/k-cover/);
+  await expect(key.locator('img.k-bg')).toHaveCount(0);
+});
+
+test('a filled key with a blank label is named by its id', async ({ page }) => {
+  const key = await open(page, [
+    { x: 0, y: 0, w: 4, h: 6, options: { id: 'blank', cover: true } },
+    { x: 4, y: 0, w: 4, h: 6, options: { id: 'art', cover: true } },
+  ]);
+  await expect(key(0)).toHaveClass(/k-cover/);
+  await expect(key(0)).toHaveAttribute('aria-label', 'blank');
+  // a visible label names the key itself, with no aria-label over it
+  await expect(key(1)).toHaveClass(/k-cover/);
+  await expect(key(1)).not.toHaveAttribute('aria-label', /.*/);
 });
 
 test('without the options the picture stays the centred icon, with its label', async ({ page }) => {

@@ -181,7 +181,7 @@ public class ConfigTests
     {
         // only an uploaded picture may fill a Big button; a program's own icon (also with an iconRev) may not
         var c = Load("""{ "shortcuts": [ { "id": "up", "label": "Up", "cmd": "a.exe" }, { "id": "own", "label": "Own", "cmd": "b.exe" } ] }""");
-        var pub = JsonSerializer.SerializeToElement(c.ToPublic(null, _ => 7, s => s.Id == "up"));
+        var pub = JsonSerializer.SerializeToElement(c.ToPublic(null, s => (7, s.Id == "up")));
         var byId = pub.GetProperty("shortcuts").EnumerateArray().ToDictionary(s => s.GetProperty("Id").GetString()!);
         Assert.True(byId["up"].GetProperty("iconUpload").GetBoolean());
         Assert.False(byId["own"].GetProperty("iconUpload").GetBoolean());

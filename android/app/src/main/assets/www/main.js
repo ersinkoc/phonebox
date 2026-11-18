@@ -513,8 +513,10 @@ export async function runShortcut(btn, id) {
 export function keyButton(s, { cover = false, label = true } = {}) {
   const icon = h('span', 'k-icon', s.icon || '•');
   const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
-  // the agent accepts a blank label, so the id keeps the button named when nothing is shown
-  if (!label) b.setAttribute('aria-label', String(s.label || '').trim() || s.id);
+  // The agent accepts a blank label, and a filled key hides its icon, so the id keeps the button named when no text
+  // is shown; visible text names it otherwise.
+  const name = String(s.label || '').trim();
+  if (!label || !name) b.setAttribute('aria-label', name || s.id);
   b.style.setProperty('--k', s.color || '#6b7280');
   b.dataset.id = s.id;
   b.addEventListener('click', () => runShortcut(b, s.id));
@@ -526,18 +528,23 @@ export function keyButton(s, { cover = false, label = true } = {}) {
 }
 
 function applyShortcutIcon(b, icon, id, cover) {
+  const url = `${API}/shortcuts/icon?id=${encodeURIComponent(id)}`;
   const img = new Image();
-  img.onload = () => {
-    if (cover) {
+  if (cover) {
+    // the upload only: if it was removed since the config was read, the key falls back to the centred icon (the
+    // program's own, or the emoji) instead of the agent's next choice stretched across it
+    img.onload = () => {
       img.className = 'k-bg';
       img.alt = '';
       b.prepend(img, h('span', 'k-shade'));
       b.classList.add('k-cover');
-      return;
-    }
-    icon.replaceChildren(img); icon.classList.add('k-icon-img');
-  };
-  img.src = `${API}/shortcuts/icon?id=${encodeURIComponent(id)}`;
+    };
+    img.onerror = () => applyShortcutIcon(b, icon, id, false);
+    img.src = url + '&upload=1';
+    return;
+  }
+  img.onload = () => { icon.replaceChildren(img); icon.classList.add('k-icon-img'); };
+  img.src = url;
 }
 
 // ---------------------------------------------------------------- media (shared state, any number of widgets)
