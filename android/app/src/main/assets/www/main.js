@@ -157,6 +157,16 @@ export function h(tag, cls, ...kids) {
   return e;
 }
 
+/** Built-in English text (a default widget title) marked lang="en": the panel's <html lang> follows the chosen
+ *  language, and text-transform: uppercase would otherwise apply that language's case rules to English words
+ *  (in Turkish "Notifications" becomes "NOTİFİCATİONS"). Titles the user typed are left as they are. */
+export function en(text) {
+  const e = document.createElement('span');
+  e.lang = 'en';
+  e.textContent = text;
+  return e;
+}
+
 /* Interface icons: Lucide (https://lucide.dev), ISC license — a small inline set keeps the
    panel's chrome consistent across platforms and works fully offline. Icons are decorative
    (aria-hidden); the controls they sit in carry the accessible names.

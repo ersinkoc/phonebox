@@ -1,4 +1,4 @@
-import { API, PANEL_HEADERS, api, applyState, D, evSeq, h, haptic, toast, store, t } from '../main.js';
+import { API, PANEL_HEADERS, api, applyState, D, evSeq, h, en, haptic, toast, store, t } from '../main.js';
 import { W } from '../registry.js';
 
 let cached = null, at = 0, epoch = 0, pending = null;
@@ -715,7 +715,7 @@ integrationWidget('media-favorites', 'Spotify favorites', 'spotify/state', (root
 });
 W['meeting-timer'] = {needs:['tick'],create(box,{o}){
   const key='meeting-timer:'+ (o.timerId || 'default');
-  const clock=h('div','deck-track');box.classList.add('control-deck');box.append(h('div','w-title',o.title || 'Meeting timer'),clock);
+  const clock=h('div','deck-track');box.classList.add('control-deck');box.append(h('div','w-title',o.title || en('Meeting timer')),clock);
   let state=store.get(key,{elapsed:0,started:0});
   const persist=()=>store.set(key,state);
   const start=button(state.started?'Pause':'Start',()=>{state=store.get(key,state);if(state.started){state.elapsed+=Date.now()-state.started;state.started=0;}else state.started=Date.now();persist();render();});

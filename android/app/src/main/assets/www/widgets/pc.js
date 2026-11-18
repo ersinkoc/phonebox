@@ -1,4 +1,4 @@
-import { $, API, D, PANEL_HEADERS, LOCALE, Q_STYLE, api, bridge, cfg, color, cssVar, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtHM, fmtMem, gotoPageRef, gpuMem, gpusOf, h, haptic, openSheet, paceInfo, pad, pairedPcs, quotaProviders, r1, shortGpu, store, switchPc, t, tick, toast, transport } from '../main.js';
+import { $, API, D, PANEL_HEADERS, LOCALE, Q_STYLE, api, bridge, cfg, color, cssVar, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtHM, fmtMem, gotoPageRef, gpuMem, gpusOf, h, en, haptic, openSheet, paceInfo, pad, pairedPcs, quotaProviders, r1, shortGpu, store, switchPc, t, tick, toast, transport } from '../main.js';
 import { W } from '../registry.js';
 import { canKillAnywhere, dialEl, every } from './helpers.js';
 
@@ -47,7 +47,7 @@ W.batteries = {
     const low = +o.low || 20;
     let data = null, lastKey = '';
     const list = h('div', 'bt-list');
-    box.append(h('div', 'w-title', o.title || 'Batteries'), list);
+    box.append(h('div', 'w-title', o.title || en('Batteries')), list);
     const load = async () => { try { data = await api('/batteries'); } catch (_) {} };
     const render = () => {
       const devices = [...(data?.devices || [])];
@@ -99,8 +99,8 @@ W.obs = {
       if (!force && key === lastKey) return;
       lastKey = key;
       if (!data) { box.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
-      if (!data.enabled) { box.replaceChildren(h('div', 'w-title', 'OBS'), h('div', 'empty', 'Turn on OBS in Settings › General')); return; }
-      if (!s.connected) { box.replaceChildren(h('div', 'w-title', 'OBS'), h('div', 'empty', s.error || t('panel.connecting'))); return; }
+      if (!data.enabled) { box.replaceChildren(h('div', 'w-title', en('OBS')), h('div', 'empty', 'Turn on OBS in Settings › General')); return; }
+      if (!s.connected) { box.replaceChildren(h('div', 'w-title', en('OBS')), h('div', 'empty', s.error || t('panel.connecting'))); return; }
       const ctl = data.control;
       const pill = (on, label, cls, time, action) => {
         const el = h('div', 'obs-pill ' + cls + (on ? ' on' : '') + (ctl ? ' can' : '') + (busy === action ? ' busy' : ''), h('span', 'obs-led'), h('b', null, label), h('span', 'obs-time', on ? dur(time + since) : 'off'));
@@ -160,9 +160,9 @@ W.discord = {
       if (!force && key === lastKey) return;
       lastKey = key;
       if (!data) { box.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
-      if (!data.enabled) { box.replaceChildren(h('div', 'w-title', 'Discord'), h('div', 'empty', t('w.discord.turnOn'))); return; }
+      if (!data.enabled) { box.replaceChildren(h('div', 'w-title', en('Discord')), h('div', 'empty', t('w.discord.turnOn'))); return; }
       const s = data.snapshot;
-      if (!s.connected) { box.replaceChildren(h('div', 'w-title', 'Discord'), h('div', 'empty', s.error || t('panel.connecting'))); return; }
+      if (!s.connected) { box.replaceChildren(h('div', 'w-title', en('Discord')), h('div', 'empty', s.error || t('panel.connecting'))); return; }
       const ctl = data.control;
       const btn = (cls, label, on, action) => {
         const b = h('button', 'dc-btn ' + cls + (on ? ' on' : '') + (busy === action ? ' busy' : ''), label);
@@ -327,7 +327,7 @@ W.docker = {
   create(box, { o }) {
     const filter = String(o.filter || '').toLowerCase();
     let data = null, open = null, busy = null, lastKey = '';
-    const list = h('div', 'dk-list'), head = h('div', 'w-title', o.title || 'Docker', h('span', 'dk-count'));
+    const list = h('div', 'dk-list'), head = h('div', 'w-title', o.title || en('Docker'), h('span', 'dk-count'));
     box.append(head, list);
     const act = async (c, action) => {
       haptic();
@@ -394,7 +394,7 @@ W.apps = {
     const confirm = o.confirm !== false; // first tap selects, a second tap within a few seconds opens
     let data = null, q = '', busy = null, armed = null, armTimer = 0, lastKey = '';
     const disarm = () => { clearTimeout(armTimer); if (armed) { armed = null; render(true); } };
-    const head = h('div', 'w-title', o.title || 'Apps', h('span', 'ap-count'));
+    const head = h('div', 'w-title', o.title || en('Apps'), h('span', 'ap-count'));
     const search = h('input', 'ap-search');
     search.type = 'search';
     search.placeholder = 'Search apps';
@@ -502,7 +502,7 @@ W.agenda = {
       lastKey = key;
       box.classList.toggle('small', small);
       if (!cal) { box.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
-      if (!cal.updated && !list.length) { box.replaceChildren(h('div', 'w-title', o.title || 'Agenda'), h('div', 'empty', 'Add a calendar in Settings › General')); return; }
+      if (!cal.updated && !list.length) { box.replaceChildren(h('div', 'w-title', o.title || en('Agenda')), h('div', 'empty', 'Add a calendar in Settings › General')); return; }
       const timed = list.filter((e) => !e.allDay);
       const cur = timed.find((e) => e.start <= now);
       const next = timed.find((e) => e.start > now);
@@ -533,7 +533,7 @@ W.agenda = {
         rows.push(row);
       }
       const body = h('div', 'ag-list', ...(rows.length ? rows : [h('div', 'empty', `Nothing in the next ${days} days`)]));
-      box.replaceChildren(h('div', 'w-title', o.title || 'Agenda', cal.errors?.length ? h('span', 'ag-err', ' ⚠') : null), body);
+      box.replaceChildren(h('div', 'w-title', o.title || en('Agenda'), cal.errors?.length ? h('span', 'ag-err', ' ⚠') : null), body);
       // drop rows that do not fit, keeping the day headers tidy
       while (body.scrollHeight > body.clientHeight + 2 && body.childElementCount > 1) {
         body.lastElementChild.remove();
@@ -599,7 +599,7 @@ W.pcswitch = {
   needs: ['state'],
   create(box, { o }) {
     const row = h('div', 'pcs-row'), sub = h('div', 'pcs-sub');
-    box.append(o.title === '' ? '' : h('div', 'w-title', o.title || 'Computers'), row, sub);
+    box.append(o.title === '' ? '' : h('div', 'w-title', o.title || en('Computers')), row, sub);
     let shown = '';
     const render = () => {
       const pcs = pairedPcs(), usb = transport() === 'usb';
@@ -631,7 +631,7 @@ W.topprocs = {
     const byMem = o.sort === 'mem';
     const list = h('div', 'tp-list');
     box.style.setProperty('--c', '#f472b6');
-    const title = h('div', 'w-title', byMem ? 'Top memory' : 'Top CPU');
+    const title = h('div', 'w-title', en(byMem ? 'Top memory' : 'Top CPU'));
     box.append(title, list);
     const rowMap = new Map();
     return {
@@ -639,9 +639,9 @@ W.topprocs = {
         const pc = D.state?.pc;
         if (byMem && pc?.ramTotalGb) {
           const pct = Math.round((pc.ramUsedGb / pc.ramTotalGb) * 100);
-          title.textContent = `Top memory (${pct}% · ${Math.round(pc.ramUsedGb)}/${Math.round(pc.ramTotalGb)} GB)`;
+          title.replaceChildren(en(`Top memory (${pct}% · ${Math.round(pc.ramUsedGb)}/${Math.round(pc.ramTotalGb)} GB)`));
         } else if (!byMem && pc?.cpu != null) {
-          title.textContent = `Top CPU (${Math.round(pc.cpu)}%)`;
+          title.replaceChildren(en(`Top CPU (${Math.round(pc.cpu)}%)`));
         }
         const data = D.procs;
         if (!data?.groups?.length) { rowMap.clear(); list.replaceChildren(h('div', 'empty', t('w.measuring'))); return; }
@@ -698,7 +698,7 @@ W.volume = {
   create(box) {
     const fill = h('i'), bar = h('div', 'vb', fill), pct = h('div', 'vb-v', '--');
     const mute = h('button', 'pb', '🔇'), down = h('button', 'pb', '−'), up = h('button', 'pb', '+');
-    box.append(h('div', 'w-title', 'Volume'), h('div', 'vb-row', bar, pct), h('div', 'pomo-btns', mute, down, up));
+    box.append(h('div', 'w-title', en('Volume')), h('div', 'vb-row', bar, pct), h('div', 'pomo-btns', mute, down, up));
     let dragging = false, timer = 0, dragEndTimer = 0, level = 0;
     const vertical = () => box.clientHeight > box.clientWidth * 1.15;
     const paint = (v, muted) => {
@@ -808,7 +808,7 @@ W.nextup = {
   create(box, { o }) {
     const only = String(o.calendars || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
     const when = h('div', 'nu-when'), title = h('div', 'nu-title'), meta = h('div', 'nu-meta'), bar = h('i'), track = h('div', 'track nu-track', bar);
-    box.append(h('div', 'w-title', o.title || 'Next up'), when, title, meta, track);
+    box.append(h('div', 'w-title', o.title || en('Next up')), when, title, meta, track);
     let key = '';
     const hm = (ms) => fmtHM(new Date(ms));
     return {

@@ -1,4 +1,4 @@
-import { $, LOCALE, buzz, fmtTime, h, haptic, pad, r1, store, t, tick, toast } from '../main.js';
+import { $, LOCALE, buzz, fmtTime, h, en, haptic, pad, r1, store, t, tick, toast } from '../main.js';
 import { W } from '../registry.js';
 import { dialEl, lines } from './helpers.js';
 
@@ -40,7 +40,7 @@ W.progress = {
       const row = h('div', 'pr-row', h('div', 'm-row', h('span', null, n), pct), h('div', 'track', bar));
       return { pct, bar, row };
     });
-    box.append(h('div', 'w-title', 'Time'), h('div', 'pr-list', rows.map((r) => r.row)));
+    box.append(h('div', 'w-title', en('Time')), h('div', 'pr-list', rows.map((r) => r.row)));
     let shown;
     return {
       update() {
@@ -69,7 +69,7 @@ W.stopwatch = {
     const save = () => store.set(key, st);
     const t = h('div', 'sw-t'), laps = h('div', 'sw-laps');
     const a = h('button', 'pb main', '▶'), b = h('button', 'pb', '↺');
-    box.append(h('div', 'w-title', 'Stopwatch'), t, h('div', 'pomo-btns', b, a), laps);
+    box.append(h('div', 'w-title', en('Stopwatch')), t, h('div', 'pomo-btns', b, a), laps);
     const elapsed = () => st.acc + (st.start ? Date.now() - st.start : 0);
     const fmtSw = (ms) => { const s = Math.floor(ms / 1000); const hh = Math.floor(s / 3600); return (hh ? hh + ':' + pad(Math.floor((s % 3600) / 60)) : Math.floor(s / 60)) + ':' + pad(s % 60) + '.' + Math.floor((ms % 1000) / 100); };
     const renderLaps = () => laps.replaceChildren(...st.laps.slice(-6).reverse().map((l, i, arr) => h('div', 'sw-lap', h('span', null, '#' + (st.laps.length - i)), h('span', null, fmtSw(l)))));
@@ -91,7 +91,7 @@ W.timer = {
     let st = store.get(key, null) || { endsAt: null, left: 0, total: 0 };
     const save = () => store.set(key, st);
     const dial = dialEl(), btns = h('div', 'tm-btns');
-    box.append(h('div', 'w-title', o.label || 'Timer'), dial, btns);
+    box.append(h('div', 'w-title', o.label || en('Timer')), dial, btns);
     box.style.setProperty('--q', o.color || '#38bdf8');
     const remaining = () => (st.endsAt ? Math.max(0, st.endsAt - Date.now()) : st.left);
     const renderBtns = () => {
@@ -137,7 +137,7 @@ W.counter = {
     const step = Number(o.step) || 1;
     const num = h('div', 'ct-n'), minus = h('button', 'pb', '−'), plus = h('button', 'pb main', '+'), reset = h('button', 'mini-btn', 'Reset');
     box.style.setProperty('--q', o.color || '#a78bfa');
-    box.append(h('div', 'w-title', o.label || 'Counter', reset), num, h('div', 'pomo-btns', minus, plus));
+    box.append(h('div', 'w-title', o.label || en('Counter'), reset), num, h('div', 'pomo-btns', minus, plus));
     // "Start from zero every day" also when the panel stays open over midnight (it is never rebuilt then)
     const fresh = () => { const today = new Date().toDateString(); if (o.daily !== false && st.day !== today) { st = { n: 0, day: today }; num.textContent = st.n; } };
     const set = (n) => { st.n = n; st.day = new Date().toDateString(); store.set(key, st); num.textContent = st.n; };

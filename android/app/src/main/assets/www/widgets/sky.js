@@ -1,4 +1,4 @@
-import { $, D, DEFAULT_CFG, LOCALE, cfg, fmtDur, fmtHM, h, t, tick } from '../main.js';
+import { $, D, DEFAULT_CFG, LOCALE, cfg, fmtDur, fmtHM, h, en, t, tick } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every } from './helpers.js';
 
@@ -66,7 +66,7 @@ W.air = {
   create(box) {
     const city = h('span', 'w-sub');
     const v = h('div', 'aq-v', '—'), cat = h('div', 'aq-c', t('w.loading')), chips = h('div', 'aq-chips');
-    box.append(h('div', 'w-title', 'Air quality', city), h('div', 'aq-main', v, cat), chips);
+    box.append(h('div', 'w-title', en('Air quality'), city), h('div', 'aq-main', v, cat), chips);
     let coordinates, load;
     const clearIndex = (message) => {
       box.style.removeProperty('--c');

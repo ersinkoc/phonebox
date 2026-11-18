@@ -192,3 +192,29 @@ test('both settings language selectors stay in sync and Revert restores the save
   await expect(page.locator('#displayLangSel')).toHaveValue('en');
   await expect(page.locator('#save')).toBeDisabled();
 });
+
+test('built-in English widget titles keep English capitals in a Turkish panel', async ({ page }) => {
+  // The panel's <html lang> follows the chosen language and widget titles are uppercased in CSS, so English text
+  // without lang="en" was uppercased with Turkish rules ("Notifications" -> "NOTİFİCATİONS").
+  await page.goto('/panel/');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config', JSON.stringify({
+      night: { enabled: false }, rules: [], shortcuts: [],
+      display: { language: 'tr' },
+      pages: [{ id: 'one', title: 'One', widgets: [
+        { id: 'inbox', type: 'inbox', x: 0, y: 0, w: 6, h: 4 },
+        { id: 'sw', type: 'stopwatch', x: 6, y: 0, w: 3, h: 3 },
+        { id: 'tm', type: 'timer', x: 9, y: 0, w: 3, h: 3, options: { label: 'içecek' } },
+      ] }],
+    }));
+  });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
+  // innerText is the rendered text, so it shows what text-transform made of it; the widgets are laid out in order
+  const title = (i) => page.locator('.w-title').nth(i).evaluate((e) => e.innerText.split('\n')[0].trim());
+  await expect.poll(() => title(0)).toBe('NOTIFICATIONS');
+  expect(await title(1)).toBe('STOPWATCH');
+  // a title the user typed stays in the panel language
+  expect(await title(2)).toBe('İÇECEK');
+});

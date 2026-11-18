@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, haptic, hasProcessesPage, hist, hour12, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxIcon } from '../main.js';
 import { W } from '../registry.js';
 import { invalidateDeckState } from './controls.js';
 
@@ -59,7 +59,7 @@ W.forecast = {
   create(box, { o }) {
     const daily = o.mode === 'daily';
     const row = h('div', 'fc');
-    box.append(h('div', 'w-title', daily ? '7-day forecast' : 'Next hours', h('span', 'w-sub', '')), row);
+    box.append(h('div', 'w-title', en(daily ? '7-day forecast' : 'Next hours'), h('span', 'w-sub', '')), row);
     return {
       update() {
         const w = D.weather;
@@ -1116,7 +1116,7 @@ W.command = {
   needs: ['tick'],
   create(box, { o, page, w }) {
     const out = h('div', 'cmd-o', '…'), foot = h('div', 'cmd-f', '');
-    box.append(h('div', 'w-title', o.title || 'Command'), out, foot);
+    box.append(h('div', 'w-title', o.title || en('Command')), out, foot);
     let last = 0, busy = false, res = null;
     const load = async (force) => {
       if (busy) return;
@@ -1208,7 +1208,7 @@ W.inbox = {
     const list = h('div', 'inbox');
     const clear = h('button', 'mini-btn', 'Clear');
     clear.addEventListener('click', () => { haptic(); D.notes = []; store.set('notes', []); emit('notes'); });
-    box.append(h('div', 'w-title', 'Notifications', clear), list);
+    box.append(h('div', 'w-title', en('Notifications'), clear), list);
     let shown = '';
     return {
       update(kind) {
