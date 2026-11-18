@@ -40,14 +40,14 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
         return _snap;
     }
 
-    private async Task RefreshColdCacheAsync()
+    private async Task RefreshColdCacheAsync(bool withStats = true)
     {
         if (!await _gate.WaitAsync(TimeSpan.FromSeconds(2))) return;
         try
         {
             if (_snap.Updated == 0)
             {
-                try { await RefreshCore(CancellationToken.None); }
+                try { await RefreshCore(CancellationToken.None, withStats); }
                 catch (Exception ex) { _snap = _snap with { Error = ex.Message }; }
             }
         }
@@ -78,7 +78,7 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
         finally { _gate.Release(); }
     }
 
-    private async Task RefreshCore(CancellationToken ct)
+    private async Task RefreshCore(CancellationToken ct, bool withStats = true)
     {
         var clis = Clis.Value;
         var cli = _activeCli ?? clis.FirstOrDefault();
@@ -116,7 +116,7 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
         var list = ParseContainers(output, _stats);
         _snap = new(true, null, list, Now());
 
-        if (DateTime.UtcNow - _statsAt > TimeSpan.FromSeconds(15))
+        if (withStats && DateTime.UtcNow - _statsAt > TimeSpan.FromSeconds(15))
         {
             // Stamp before the call so a stats timeout does not make every later poll wait for it again.
             _statsAt = DateTime.UtcNow;
@@ -203,10 +203,14 @@ public sealed class DockerMonitor(ConfigStore config, ILogger<DockerMonitor> log
     {
         if (!ControlAllowed()) return "starting and stopping containers is turned off in the widget's settings";
         if (action is not ("start" or "stop" or "restart")) return "unknown action";
-        if (_snap.Updated == 0) await RefreshColdCacheAsync();
+        // A cold action needs the container list only; metrics come with the next poll, so a slow stats call
+        // cannot hold the action back.
+        if (_snap.Updated == 0) await RefreshColdCacheAsync(withStats: false);
         if (!_snap.Containers.Any(c => c.Id == id)) return "unknown container";
         var cli = _activeCli ?? Clis.Value.FirstOrDefault();
         if (cli is null) return "no docker or podman command found";
+        // the cold refresh awaited docker: the widget may have been hidden or its control turned off meanwhile
+        if (!ControlAllowed()) return "starting and stopping containers is turned off in the widget's settings";
         var (code, _, error) = await Exec(cli, CancellationToken.None, action, id);
         log.LogInformation("docker {Action} {Id}: {Result}", action, id, code == 0 ? "ok" : error);
         _statsAt = DateTime.MinValue;

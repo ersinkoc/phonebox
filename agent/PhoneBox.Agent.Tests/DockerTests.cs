@@ -164,7 +164,7 @@ public class DockerTests
             Assert.Null(mon.Snapshot().Error);
             Assert.Equal("unknown container", await mon.ActAsync("missing00000", "stop"));
 
-            var isoStarted = DateTimeOffset.UtcNow.AddHours(-3).ToString("O");
+            var isoStarted = DateTimeOffset.UtcNow.AddHours(-3).AddMinutes(-30).ToString("O"); // half an hour from the boundary of "Up 3 hours"
             var parsed = DockerMonitor.ParseContainers($$"""
                 {"ID":"b2c3d4e5f6a1","Image":"nginx:alpine","Labels":"role=edge, com.docker.compose.project= , io.podman.compose.project=edge-stack","Names":"edge-1","State":"running","Status":"","StartedAt":"{{isoStarted}}","CreatedAt":"2026-01-01T00:00:00Z"}
                 """);
