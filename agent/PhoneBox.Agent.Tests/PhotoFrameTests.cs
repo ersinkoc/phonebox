@@ -259,8 +259,10 @@ public sealed class PhotoFrameTests : IDisposable
         Assert.Equal([PhotoFrame.IdOf(other, "only.png")], racing.List().Ids);
     }
 
+    // a cleared slot means that scan has already finished
     private static Task ScanTask(PhotoFrame frame) =>
-        (Task)typeof(PhotoFrame).GetField("_scan", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(frame)!;
+        (Task?)typeof(PhotoFrame).GetField("_scan", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(frame)
+        ?? Task.CompletedTask;
 
     private static PhotoFrame.Library? Published(PhotoFrame frame) =>
         (PhotoFrame.Library?)typeof(PhotoFrame).GetField("_library", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(frame);
