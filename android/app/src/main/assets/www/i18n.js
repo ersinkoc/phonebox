@@ -5845,6 +5845,7 @@
       'Show stopped containers': 'Hiện container đã dừng',
       'Show the dial': 'Hiện nút xoay',
       'Show the feed\'s name': 'Hiện tên nguồn tin',
+      'Show the label': 'Hiện nhãn',
       'Show the location': 'Hiện vị trí',
       'Show the scene buttons': 'Hiện các nút cảnh',
       'Show the search box': 'Hiện ô tìm kiếm',

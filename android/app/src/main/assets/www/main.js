@@ -508,11 +508,12 @@ export async function runShortcut(btn, id) {
   setTimeout(() => btn.classList.remove('ok', 'err'), 900);
 }
 
-/** A shortcut key. With `cover` (the Big button's option), a picture large enough to fill the key becomes its
- *  background instead of the centred icon. */
-export function keyButton(s, { cover = false } = {}) {
+/** A shortcut key. The Big button's options: with `cover`, a picture large enough to fill the key becomes its
+ *  background instead of the centred icon; without `label`, the key shows no name (screen readers still get it). */
+export function keyButton(s, { cover = false, label = true } = {}) {
   const icon = h('span', 'k-icon', s.icon || '•');
-  const b = h('button', 'key' + (s.toggle ? ' toggle' : ''), icon, h('span', 'k-label', s.label));
+  const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
+  if (!label) b.setAttribute('aria-label', s.label || '');
   b.style.setProperty('--k', s.color || '#6b7280');
   b.dataset.id = s.id;
   b.addEventListener('click', () => runShortcut(b, s.id));

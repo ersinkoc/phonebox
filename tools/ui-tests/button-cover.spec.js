@@ -20,7 +20,9 @@ test.beforeEach(async ({ page }) => {
       pages: [{ id: 'cover-test', title: 'Buttons', widgets: [
         { id: 'b1', type: 'button', x: 0, y: 0, w: 4, h: 6, options: { id: 'art', cover: true } },
         { id: 'b2', type: 'button', x: 4, y: 0, w: 4, h: 6, options: { id: 'app', cover: true } },
-        { id: 'b3', type: 'button', x: 8, y: 0, w: 4, h: 6, options: { id: 'art' } },
+        { id: 'b3', type: 'button', x: 8, y: 0, w: 4, h: 3, options: { id: 'art' } },
+        { id: 'b4', type: 'button', x: 8, y: 3, w: 2, h: 3, options: { id: 'art', cover: true, showLabel: false } },
+        { id: 'b5', type: 'button', x: 10, y: 3, w: 2, h: 3, options: { id: 'app', showLabel: false } },
       ] }],
     });
     localStorage.setItem('cfg', config);
@@ -54,4 +56,19 @@ test('without the option the picture stays the centred icon', async ({ page }) =
   const key = page.locator('[data-id="cover-test"] .w-button').nth(2).locator('.key');
   await expect(key.locator('.k-icon.k-icon-img img')).toBeVisible();
   await expect(key).not.toHaveClass(/k-cover/);
+  await expect(key.locator('.k-label')).toBeVisible();
+});
+
+test('a hidden label leaves only the picture, and screen readers still get the name', async ({ page }) => {
+  const filled = page.locator('[data-id="cover-test"] .w-button').nth(3).locator('.key');
+  await expect(filled).toHaveClass(/k-cover/);
+  await expect(filled.locator('img.k-bg')).toBeVisible();
+  await expect(filled.locator('.k-label')).toBeHidden();
+  await expect(filled.locator('.k-shade')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Artwork', exact: true })).toHaveCount(3);
+
+  const icon = page.locator('[data-id="cover-test"] .w-button').nth(4).locator('.key');
+  await expect(icon.locator('.k-icon.k-icon-img img')).toBeVisible();
+  await expect(icon.locator('.k-label')).toBeHidden();
+  await expect(icon).toHaveAttribute('aria-label', 'Program');
 });

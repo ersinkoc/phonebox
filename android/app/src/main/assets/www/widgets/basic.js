@@ -770,7 +770,7 @@ W.button = {
   bare: true, needs: ['state'],
   create(box, { o }) {
     const s = (cfg.shortcuts || []).find((x) => x.id === o.id) || (cfg.shortcuts || [])[0];
-    box.append(s ? keyButton(s, { cover: o.cover === true }) : h('div', 'empty', t('w.pickShortcut')));
+    box.append(s ? keyButton(s, { cover: o.cover === true, label: o.showLabel !== false }) : h('div', 'empty', t('w.pickShortcut')));
     return { update: () => applyToggles(box) };
   },
 };
