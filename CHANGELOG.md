@@ -28,6 +28,9 @@ with a test that failed before it, kept as a regression test (#234, #235, #236, 
 - The panel waits for the agent's settings before asking for the weather, so the default location is never sent.
 
 **Settings**
+- Turning on Wi-Fi now says right away that it needs Save and **Restart to apply**; the line used to keep saying
+  "Off" until then. The README and the setup guide list the Wi-Fi steps one by one (#239,
+  [alkeshkhajindar27-max](https://github.com/alkeshkhajindar27-max)).
 - A save that can't reach the agent says so and keeps the draft. Control Deck fields keep an edit even when Save is
   clicked without leaving the field, and the two language selectors stay in step.
 

@@ -214,8 +214,15 @@ and may differ slightly in older ones.
 
 ## Wi-Fi & Tailscale
 
-Turn on **Settings › General › Wi-Fi & Tailscale** and restart the agent when asked. Then pair the phone in one
-of two ways:
+Wi-Fi is off by default. To turn it on:
+
+1. Open the settings page on the PC: click the tray icon, or go to `http://127.0.0.1:8765` in a browser.
+2. In **General**, scroll down to **Wi-Fi & Tailscale** and turn on **Let the phone connect without the USB cable**.
+3. Click **Save**, then **Restart to apply** at the top of the page (or restart the agent from the tray icon). The
+   line next to **Pair a phone over Wi-Fi** says "Listening on port 8766" once it works.
+4. Allow PhoneBox through the firewall when Windows asks.
+
+Then pair the phone in one of two ways:
 
 - **Without a cable:** click **Pair a phone over Wi-Fi**. The window shows a QR code that downloads the app and one
   that pairs. Scan the second with the phone's camera, open the link and tap **Open in PhoneBox**; the phone asks you

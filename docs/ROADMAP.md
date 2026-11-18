@@ -20,6 +20,14 @@ people who proposed or prototyped something are credited in the [changelog](../C
   ([#225](https://github.com/ersinkoc/phonebox/issues/225), pull request
   [#228](https://github.com/ersinkoc/phonebox/pull/228)).
 - **Discord widget: show who is speaking** ([#226](https://github.com/ersinkoc/phonebox/issues/226)).
+- **Linux default shortcuts on KDE and other desktops**: start the desktop's own calculator, settings and system
+  monitor when the GNOME ones are missing ([#238](https://github.com/ersinkoc/phonebox/issues/238)).
+- **Feeding PhoneBox from MQTT**: a bridge script and a guide example for pushed values and notifications
+  ([#241](https://github.com/ersinkoc/phonebox/issues/241)).
+- **Rules for pushed values**: a "not updated for N seconds" condition, `>=` / `<=`, and a separate release threshold
+  ([#242](https://github.com/ersinkoc/phonebox/issues/242)).
+- **Panel: built-in English widget titles keep English capitals in a Turkish panel**
+  (pull request [#240](https://github.com/ersinkoc/phonebox/pull/240)).
 
 ## Waiting on someone else
 
