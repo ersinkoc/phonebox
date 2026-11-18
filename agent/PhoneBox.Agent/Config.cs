@@ -857,7 +857,6 @@ public sealed class CodexBarConfig
     public int RotateInterval { get; set; } = 8;
 }
 
-/// <summary>Reads/writes display.hour12 as boolean false/true or "auto" (follow the phone) so boolean configs stay wire-compatible.</summary>
 /// <summary>
 /// weather.unit: "fahrenheit" in any case or padding, anything else "celsius". A hand-edited number or boolean must not
 /// make the whole settings file unreadable, so a non-string token is skipped instead of thrown on.
@@ -876,6 +875,7 @@ internal sealed class WeatherUnitJsonConverter : JsonConverter<string>
     public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(Normalize(value));
 }
 
+/// <summary>Reads/writes display.hour12 as boolean false/true or "auto" (follow the phone) so boolean configs stay wire-compatible.</summary>
 internal sealed class Hour12JsonConverter : JsonConverter<string>
 {
     public static string Normalize(string? value) => value?.Trim().ToLowerInvariant() switch
