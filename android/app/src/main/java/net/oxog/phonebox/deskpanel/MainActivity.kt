@@ -53,6 +53,7 @@ class MainActivity : Activity(), SensorEventListener {
     private val dictation by lazy { Dictation(this) { script -> web.evaluateJavascript(script, null) } }
     private lateinit var link: AgentLink
     private lateinit var stream: AgentStream
+    @Volatile private var resumed = false
     @Volatile private var volumeKeysFlipPages = true
     private val sensors by lazy { getSystemService(Context.SENSOR_SERVICE) as SensorManager? }
     private var lastLux = -1f
@@ -155,7 +156,7 @@ class MainActivity : Activity(), SensorEventListener {
                 if (isFinishing || isDestroyed) return@runOnUiThread // the pairing is stored; there is no window to show it in
                 if (problem == null) {
                     Toast.makeText(this, getString(R.string.pair_done, pairing.pc), Toast.LENGTH_LONG).show()
-                    stream.stop(); stream.start(); web.reload()
+                    stream.stop(); if (resumed) stream.start(); web.reload()
                 } else {
                     AlertDialog.Builder(this).setTitle(getString(R.string.pair_failed_title)).setMessage(problem.message(this))
                         .setPositiveButton(getString(R.string.ok), null).setOnDismissListener { hideSystemUi() }.show().plainButtons()
@@ -181,7 +182,8 @@ class MainActivity : Activity(), SensorEventListener {
         val ct = r.contentType ?: "application/octet-stream"
         val mime = ct.substringBefore(';').trim()
         val charset = if (ct.contains("charset=")) ct.substringAfter("charset=").trim() else null
-        return WebResourceResponse(mime, charset, r.code, if (r.code < 400) "OK" else "Error", NO_STORE, r.body)
+        val status = if (r.code in 100..599 && r.code !in 300..399) r.code else 502
+        return WebResourceResponse(mime, charset, status, if (status < 400) "OK" else "Error", NO_STORE, r.body)
     }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
@@ -225,6 +227,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
         web.onResume()
         stream.start()
         hideSystemUi()
@@ -239,11 +242,22 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     override fun onPause() {
+        resumed = false
         dictation.cancel(0) // the microphone is never left open behind another app or a dark screen
         sensors?.unregisterListener(this)
         stream.stop()
         web.onPause()
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        resumed = false
+        dictation.cancel(0)
+        sensors?.unregisterListener(this)
+        stream.stop()
+        link.close()
+        web.destroy()
+        super.onDestroy()
     }
 
     /**
@@ -397,7 +411,10 @@ class MainActivity : Activity(), SensorEventListener {
         @JavascriptInterface
         fun selectPc(key: String, id: String) {
             if (!ok(key) || !link.select(id)) return
-            runOnUiThread { stream.stop(); stream.start(); web.reload() }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                stream.stop(); if (resumed) stream.start(); web.reload()
+            }
         }
 
         @JavascriptInterface

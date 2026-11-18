@@ -9,25 +9,39 @@ import java.io.Closeable
  */
 class AgentStream(private val link: AgentLink, private val deliver: (event: String, data: String) -> Unit) {
 
+    private val gate = Any()
     @Volatile private var running = false
-    // each start() gets a new generation; a thread from an earlier one (still connecting after a quick pause/resume)
-    // sees the change and ends, so there is never more than one stream
+    // each start() / stop() advances generation; a thread from an earlier one (still connecting or closing)
+    // sees the change and ends without touching replacement state or firing post-stop callbacks
     @Volatile private var generation = 0
     @Volatile private var current: Closeable? = null
     private var thread: Thread? = null
 
     fun start() {
-        if (running) return
-        running = true
-        val gen = ++generation
-        thread = Thread({ loop(gen) }, "agent-stream").apply { isDaemon = true; start() }
+        val worker: Thread
+        synchronized(gate) {
+            if (running) return
+            running = true
+            val gen = ++generation
+            worker = Thread({ loop(gen) }, "agent-stream").apply { isDaemon = true }
+            thread = worker
+        }
+        worker.start()
     }
 
     fun stop() {
-        running = false
-        try { current?.close() } catch (_: Exception) {}
-        thread?.interrupt()
-        thread = null
+        val active: Closeable?
+        val worker: Thread?
+        synchronized(gate) {
+            running = false
+            ++generation
+            active = current
+            current = null
+            worker = thread
+            thread = null
+        }
+        try { active?.close() } catch (_: Exception) {}
+        worker?.interrupt()
     }
 
     private fun loop(gen: Int) {
@@ -38,20 +52,28 @@ class AgentStream(private val link: AgentLink, private val deliver: (event: Stri
             try {
                 val (route, reply) = link.stream("/api/stream") ?: throw java.io.IOException("offline")
                 if (reply.code != 200) { reply.body.close(); throw java.io.IOException("HTTP ${reply.code}") }
-                if (!alive()) { reply.body.close(); break }
-                body = reply.body
-                current = body
-                opened = true
-                deliver("open", "{\"route\":\"${route.name.lowercase()}\"}")
-                val since = System.currentTimeMillis()
+                val attached = synchronized(gate) {
+                    if (!alive()) false
+                    else {
+                        body = reply.body
+                        current = body
+                        opened = true
+                        true
+                    }
+                }
+                if (!attached) { reply.body.close(); break }
                 reply.body.bufferedReader(Charsets.UTF_8).use { r ->
+                    if (!alive()) return@use
+                    deliver("open", "{\"route\":\"${route.name.lowercase()}\"}")
+                    val since = System.currentTimeMillis()
                     var event = "message"
                     val data = StringBuilder()
                     while (alive()) {
                         val line = r.readLine() ?: break
+                        if (!alive()) break
                         when {
                             line.isEmpty() -> {
-                                if (data.isNotEmpty()) deliver(event, data.toString())
+                                if (data.isNotEmpty() && alive()) deliver(event, data.toString())
                                 event = "message"
                                 data.setLength(0)
                                 if (route == AgentLink.Route.WIFI && System.currentTimeMillis() - since > 60_000) break
@@ -63,9 +85,9 @@ class AgentStream(private val link: AgentLink, private val deliver: (event: Stri
                 }
             } catch (_: Exception) {
             } finally {
-                if (current === body) current = null // a newer thread may own it already
+                synchronized(gate) { if (current === body) current = null } // a newer thread may own it already
             }
-            if (opened) deliver("close", "{}")
+            if (opened && alive()) deliver("close", "{}")
             if (alive()) try { Thread.sleep(if (opened) 300 else 2000) } catch (_: InterruptedException) {}
         }
     }

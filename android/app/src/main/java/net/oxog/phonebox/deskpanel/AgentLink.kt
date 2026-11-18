@@ -182,6 +182,7 @@ class AgentLink(private val context: Context) {
     private fun send(c: HttpURLConnection, method: String, readTimeout: Int = 4000): Reply {
         // every POST acts on the computer (a container restart, a Home Assistant switch, a macro): none may run twice
         val controlPost = method == "POST"
+        c.instanceFollowRedirects = false
         c.requestMethod = method
         c.setRequestProperty("X-PhoneBox-App", appVersion) // lets the agent offer updates
         c.setRequestProperty("X-PhoneBox-Device", deviceId)
@@ -201,6 +202,11 @@ class AgentLink(private val context: Context) {
             c.disconnect()
             return Reply(504, "application/json", ByteArrayInputStream("""{"ok":false,"error":"The command result is unknown; check the computer before retrying"}""".toByteArray()))
         }
+        if (code !in 100..599 || code in 300..399) {
+            try { (if (code >= 400) c.errorStream else c.inputStream)?.close() } catch (_: Exception) {}
+            c.disconnect()
+            return Reply(502, "application/json", ByteArrayInputStream("""{"error":"unexpected response"}""".toByteArray()))
+        }
         val body = (if (code >= 400) c.errorStream else c.inputStream) ?: ByteArrayInputStream(ByteArray(0))
         return Reply(code, c.contentType, body)
     }
@@ -210,28 +216,36 @@ class AgentLink(private val context: Context) {
         val now = System.currentTimeMillis()
         if (now - lastPair < 60_000) return
         lastPair = now
-        background.execute {
-            try {
-                val c = URL("$USB_BASE/api/pair").openConnection() as HttpURLConnection
-                c.connectTimeout = 800
-                c.readTimeout = 3000
-                val j = JSONObject(c.inputStream.bufferedReader().readText())
-                val name = j.optString("pc")
-                if (j.optBoolean("enabled")) {
-                    // add or refresh this computer and make it the active one
-                    val hosts = j.getJSONArray("hosts")
-                    val pc = Pc(j.getString("fingerprint"), name, (0 until hosts.length()).map { hosts.getString(it) }, j.getInt("port"), j.getString("token"))
-                    synchronized(pcsLock) { savePcs(pcs.filter { it.id != pc.id && !(name.isNotEmpty() && it.name == name) } + pc, pc.id) }
-                } else if (name.isNotEmpty()) {
-                    // Wi-Fi was turned off on this computer: forget its pairing, keep the others
-                    synchronized(pcsLock) {
-                        val rest = pcs.filter { it.name != name }
-                        if (rest.size != pcs.size) savePcs(rest, rest.firstOrNull { it.id == activeId }?.id ?: rest.firstOrNull()?.id)
+        try {
+            background.execute {
+                try {
+                    val c = URL("$USB_BASE/api/pair").openConnection() as HttpURLConnection
+                    c.instanceFollowRedirects = false
+                    c.connectTimeout = 800
+                    c.readTimeout = 3000
+                    val j = JSONObject(c.inputStream.bufferedReader().readText())
+                    val name = j.optString("pc")
+                    if (j.optBoolean("enabled")) {
+                        // add or refresh this computer and make it the active one
+                        val hosts = j.getJSONArray("hosts")
+                        val pc = Pc(j.getString("fingerprint"), name, (0 until hosts.length()).map { hosts.getString(it) }, j.getInt("port"), j.getString("token"))
+                        synchronized(pcsLock) { savePcs(pcs.filter { it.id != pc.id && !(name.isNotEmpty() && it.name == name) } + pc, pc.id) }
+                    } else if (name.isNotEmpty()) {
+                        // Wi-Fi was turned off on this computer: forget its pairing, keep the others
+                        synchronized(pcsLock) {
+                            val rest = pcs.filter { it.name != name }
+                            if (rest.size != pcs.size) savePcs(rest, rest.firstOrNull { it.id == activeId }?.id ?: rest.firstOrNull()?.id)
+                        }
                     }
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) {
             }
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
         }
+    }
+
+    fun close() {
+        background.shutdownNow()
     }
 
     fun pairedPc(): String? = activePc()?.name
@@ -324,6 +338,7 @@ class AgentLink(private val context: Context) {
         for (host in link.hosts) {
             try {
                 val c = URL("https://$host:${link.port}/api/pair/claim").openConnection() as HttpsURLConnection
+                c.instanceFollowRedirects = false
                 c.sslSocketFactory = pinned
                 c.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true } // identity is the pinned certificate
                 c.connectTimeout = 3000
