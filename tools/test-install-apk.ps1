@@ -22,55 +22,68 @@ try {
     $env:PHONEBOX_INSTALL_TEST_MODE = 'success'
     Install-PhoneBoxApk -Adb $fakeAdb -ApkPath 'test.apk' -Serial 'test-phone' | Out-Null
 
-    # Regression check: scripts/install.ps1 must start the newly installed agent BEFORE optional -Apk errors can abort
+    # Regression check: scripts/install.ps1 starts the newly installed agent before the optional -Apk step, a failed
+    # -Apk step can't leave it stopped, and a failed start doesn't skip the phone step but still fails the install.
     $installer = Join-Path $PSScriptRoot '../scripts/install.ps1'
-    $prevLocal = $env:LOCALAPPDATA
-    $prevPath = $env:PATH
-    $appBox = Join-Path $fixture 'appbox'
-    New-Item -ItemType Directory -Path $appBox | Out-Null
-    $state = @{ Order = [System.Collections.Generic.List[string]]::new() }
-    $apkThrew = $false
-    try {
-        $env:LOCALAPPDATA = $appBox
-        $env:PATH = $appBox
-        function global:Get-Command {
-            param([string]$Name, $ErrorAction)
-            if ($Name -eq 'dotnet') { return [pscustomobject]@{ Name = 'dotnet'; Source = 'dotnet' } }
-            if ($Name -eq 'adb') { return $null }
-            Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    $adbMissing = 'adb not found: winget install Google.PlatformTools'
+    $scenarios = @(
+        @{ Name = 'start ok, -Apk'; LaunchFails = $false; Apk = $true; Expect = $adbMissing },
+        @{ Name = 'start fails, -Apk'; LaunchFails = $true; Apk = $true; Expect = $adbMissing },
+        @{ Name = 'start fails'; LaunchFails = $true; Apk = $false; Expect = 'blocked by policy' }
+    )
+    foreach ($case in $scenarios) {
+        $prevLocal = $env:LOCALAPPDATA
+        $prevPath = $env:PATH
+        $appBox = Join-Path $fixture 'appbox'
+        New-Item -ItemType Directory -Path $appBox | Out-Null
+        $state = @{ Order = [System.Collections.Generic.List[string]]::new(); LaunchFails = $case.LaunchFails }
+        $thrown = $null
+        try {
+            $env:LOCALAPPDATA = $appBox
+            $env:PATH = $appBox
+            function global:Get-Command {
+                param([string]$Name, $ErrorAction)
+                if ($Name -eq 'dotnet') { return [pscustomobject]@{ Name = 'dotnet'; Source = 'dotnet' } }
+                if ($Name -eq 'adb') { $state.Order.Add('apk'); return $null }
+                Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+            }
+            function global:dotnet {
+                $outIdx = [Array]::IndexOf($args, '-o')
+                $stageDir = $args[$outIdx + 1]
+                New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $stageDir 'PhoneBoxAgent.exe') -Value 'staged' -Encoding ascii
+                $global:LASTEXITCODE = 0
+            }
+            function global:Get-Process { param([string[]]$Name, $ErrorAction) $state.Order.Add('stop'); return @() }
+            function global:Start-Sleep { param($Seconds, $Milliseconds) }
+            function global:Remove-Item {
+                param($Path, $LiteralPath, [switch]$Recurse, [switch]$Force, $ErrorAction)
+                $t = if ($LiteralPath) { $LiteralPath } else { $Path }
+                if ($t -and "$t" -like '*DeskAgent.lnk') { return }
+                Microsoft.PowerShell.Management\Remove-Item @PSBoundParameters
+            }
+            function global:Start-Process {
+                param($FilePath, $WorkingDirectory)
+                $state.Order.Add('start')
+                if ($state.LaunchFails) { throw 'blocked by policy' }
+            }
+            function global:Invoke-RestMethod { param($Uri, $TimeoutSec) return @{} }
+            function global:Write-Host { param($Object) }
+            function global:Write-Warning { param($Message) }
+            try { if ($case.Apk) { & $installer -Apk } else { & $installer } } catch { $thrown = $_.Exception.Message }
+        } finally {
+            $env:LOCALAPPDATA = $prevLocal
+            $env:PATH = $prevPath
+            foreach ($fn in 'Get-Command','dotnet','Get-Process','Start-Sleep','Remove-Item','Start-Process','Invoke-RestMethod','Write-Host','Write-Warning') {
+                Microsoft.PowerShell.Management\Remove-Item "Function:\global:$fn" -ErrorAction SilentlyContinue
+            }
+            Microsoft.PowerShell.Management\Remove-Item -LiteralPath $appBox -Recurse -Force -ErrorAction SilentlyContinue
         }
-        function global:dotnet {
-            $outIdx = [Array]::IndexOf($args, '-o')
-            $stageDir = $args[$outIdx + 1]
-            New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
-            Set-Content -LiteralPath (Join-Path $stageDir 'PhoneBoxAgent.exe') -Value 'staged' -Encoding ascii
-            $global:LASTEXITCODE = 0
+        $order = $state.Order -join '->'
+        $expectedOrder = if ($case.Apk) { 'stop->start->apk' } else { 'stop->start' }
+        if ($order -ne $expectedOrder -or $thrown -cne $case.Expect) {
+            throw "install.ps1 ($($case.Name)): EXPECTED $expectedOrder, error '$($case.Expect)' | ACTUAL $order, error '$thrown'"
         }
-        function global:Get-Process { param([string[]]$Name, $ErrorAction) $state.Order.Add('stop'); return @() }
-        function global:Start-Sleep { param($Seconds, $Milliseconds) }
-        function global:Remove-Item {
-            param($Path, $LiteralPath, [switch]$Recurse, [switch]$Force, $ErrorAction)
-            $t = if ($LiteralPath) { $LiteralPath } else { $Path }
-            if ($t -and "$t" -like '*DeskAgent.lnk') { return }
-            Microsoft.PowerShell.Management\Remove-Item @PSBoundParameters
-        }
-        function global:Start-Process { param($FilePath, $WorkingDirectory) $state.Order.Add('start') }
-        function global:Invoke-RestMethod { param($Uri, $TimeoutSec) return @{} }
-        function global:Write-Host { param($Object) }
-        try { & $installer -Apk } catch {
-            if ($_.Exception.Message -cne 'adb not found: winget install Google.PlatformTools') { throw }
-            $apkThrew = $true
-        }
-    } finally {
-        $env:LOCALAPPDATA = $prevLocal
-        $env:PATH = $prevPath
-        foreach ($fn in 'Get-Command','dotnet','Get-Process','Start-Sleep','Remove-Item','Start-Process','Invoke-RestMethod','Write-Host') {
-            Microsoft.PowerShell.Management\Remove-Item "Function:\global:$fn" -ErrorAction SilentlyContinue
-        }
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $appBox -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    if (($state.Order -join '->') -ne 'stop->start' -or -not $apkThrew) {
-        throw "install.ps1 -Apk failure left the installed agent stopped ($($state.Order -join '->'), threw=$apkThrew)"
     }
 
     Write-Output 'PASS: signature mismatch and other failures preserve the installed app; successful updates work'
