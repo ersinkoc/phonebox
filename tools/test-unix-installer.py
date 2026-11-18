@@ -24,7 +24,7 @@ class SetupOptionTests(unittest.TestCase):
                 result = subprocess.run([args.bash, str(SETUP), option, '--dry-run', '--help'],
                                         capture_output=True, text=True, timeout=5)
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(f'{option} needs a value', result.stderr + result.stdout)
+                self.assertIn(f'{option} needs a value', result.stderr)
 
     def test_valid_serial_and_version_are_accepted(self):
         result = subprocess.run([args.bash, str(SETUP), '--serial', 'fixture-device', '--version', '0.9.10', '--help'],

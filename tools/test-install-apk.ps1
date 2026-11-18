@@ -55,9 +55,12 @@ try {
             Microsoft.PowerShell.Management\Remove-Item @PSBoundParameters
         }
         function global:Start-Process { param($FilePath, $WorkingDirectory) $state.Order.Add('start') }
-        function global:Invoke-RestMethod { return @{} }
+        function global:Invoke-RestMethod { param($Uri, $TimeoutSec) return @{} }
         function global:Write-Host { param($Object) }
-        try { & $installer -Apk } catch { $apkThrew = $true }
+        try { & $installer -Apk } catch {
+            if ("$_" -notlike '*adb not found: winget install Google.PlatformTools*') { throw }
+            $apkThrew = $true
+        }
     } finally {
         $env:LOCALAPPDATA = $prevLocal
         $env:PATH = $prevPath
