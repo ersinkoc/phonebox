@@ -54,7 +54,7 @@ export const FALLBACK_PAGES = [{
 }];
 
 export const DEFAULT_CFG = {
-  weather: { city: 'Tallinn', lat: 59.437, lon: 24.745 },
+  weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius' },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
   display: { showSeconds: true, idleReturnSec: 90, vibrate: true, volumeKeys: true },
   pages: FALLBACK_PAGES,
@@ -406,6 +406,8 @@ export const WX = {
 export const wxIcon = (code, day = 1) => { const x = WX[code] || [null, '🌡️']; return day === 0 && x[2] ? x[2] : x[1]; };
 /** The condition in the panel's language, or an em dash for a code Open-Meteo does not list. */
 export const wxText = (code) => { const x = WX[code]; return x ? t(x[0]) : '—'; };
+/** A temperature from Open-Meteo (always °C) rounded in the configured unit; the raw forecast stays in °C. */
+export const wxDeg = (c) => Math.round(cfg.weather?.unit === 'fahrenheit' ? c * 9 / 5 + 32 : c);
 
 let weatherRetry = 0;
 let weatherFor = ''; // the location the forecast in D.weather belongs to
@@ -451,13 +453,13 @@ export function wxLines() {
   if (!w || !w.current) return null;
   const c = w.current, d = w.daily || {};
   const desc = wxText(c.weather_code);
-  const hi = d.temperature_2m_max ? Math.round(d.temperature_2m_max[0]) : null;
-  const lo = d.temperature_2m_min ? Math.round(d.temperature_2m_min[0]) : null;
+  const hi = d.temperature_2m_max ? wxDeg(d.temperature_2m_max[0]) : null;
+  const lo = d.temperature_2m_min ? wxDeg(d.temperature_2m_min[0]) : null;
   return {
     icon: wxIcon(c.weather_code, c.is_day),
-    temp: Math.round(c.temperature_2m) + '°',
+    temp: wxDeg(c.temperature_2m) + '°',
     desc: `${desc} · ${cfg.weather?.city || ''}`,
-    range: (hi != null ? `↑${hi}° ↓${lo}° · ` : '') + t('wx.feelsLike', { deg: Math.round(c.apparent_temperature) }),
+    range: (hi != null ? `↑${hi}° ↓${lo}° · ` : '') + t('wx.feelsLike', { deg: wxDeg(c.apparent_temperature) }),
   };
 }
 

@@ -101,6 +101,11 @@ public sealed class WeatherConfig
     public string City { get; set; } = "Tallinn";
     public double Lat { get; set; } = 59.437;
     public double Lon { get; set; } = 24.745;
+    /// <summary>
+    /// "celsius" or "fahrenheit": how the panel shows temperatures. The forecast is always fetched in °C and converted
+    /// on the phone, so a change applies to the cached forecast too and Custom HTML widgets keep Open-Meteo's values.
+    /// </summary>
+    public string Unit { get; set; } = "celsius";
 }
 
 public sealed class PingConfig
@@ -500,6 +505,7 @@ public sealed partial class ConfigStore(string path)
     private static AgentConfig Normalize(AgentConfig c, IReadOnlySet<string>? staleIds = null)
     {
         c.Weather ??= new();
+        c.Weather.Unit = string.Equals(c.Weather.Unit?.Trim(), "fahrenheit", StringComparison.OrdinalIgnoreCase) ? "fahrenheit" : "celsius";
         c.CodexBar ??= new();
         c.CodexBar.Providers = (c.CodexBar.Providers ?? []).Where(p => p is "claude" or "codex" or "antigravity").Distinct().ToArray();
         c.CodexBar.PageSize = Math.Clamp(c.CodexBar.PageSize, 0, 6);

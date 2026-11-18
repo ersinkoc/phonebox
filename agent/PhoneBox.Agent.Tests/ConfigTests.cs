@@ -25,6 +25,21 @@ public class ConfigTests
         Assert.NotEqual(c.Lan.Token, c.Lan.WebhookToken);
     }
 
+    // The panel converts the forecast itself, so the only values the agent hands it are the two it knows how to show.
+    [Theory]
+    [InlineData("""{"weather":{"city":"Tallinn","lat":59.437,"lon":24.745}}""", "celsius")]
+    [InlineData("""{"weather":{"unit":"fahrenheit"}}""", "fahrenheit")]
+    [InlineData("""{"weather":{"unit":" Fahrenheit "}}""", "fahrenheit")]
+    [InlineData("""{"weather":{"unit":"kelvin"}}""", "celsius")]
+    [InlineData("""{"weather":{"unit":null}}""", "celsius")]
+    public void WeatherUnitDefaultsToCelsiusAndReachesThePhone(string json, string expected)
+    {
+        var c = Load(json);
+        Assert.Equal(expected, c.Weather.Unit);
+        var weather = JsonSerializer.SerializeToElement(c.ToPublic(), ConfigStore.WriteOpts).GetProperty("weather");
+        Assert.Equal(expected, weather.GetProperty("unit").GetString());
+    }
+
     [Fact]
     public void BurnInProtectionIsOffByDefaultAndTheDimTimeIsClamped()
     {

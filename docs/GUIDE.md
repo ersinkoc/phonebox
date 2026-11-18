@@ -139,7 +139,7 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   combination (`ctrl+shift+m`), types text or runs a macro (keys, text, waits, other shortcuts); on / off keys show
   their state on the phone (mute does by itself, others from a pushed value).
 - **Webhooks**: the webhook key, copy-paste examples, test buttons and the values pushed so far.
-- **General**: weather location search; calendars (ICS links from Google, Outlook or iCloud), Home Assistant and OBS
+- **General**: weather location search and the temperature unit (°C or °F); calendars (ICS links from Google, Outlook or iCloud), Home Assistant and OBS
   connections; night mode; theme and accent colour, orientation (landscape, portrait or follow the phone), clock seconds,
   vibration, volume-key paging and the phone's sensors (brightness that follows the room, the night screen when the
   room goes dark, wave to wake it); [OLED burn-in protection](#appearance); [page switching](#rules) (home page, countdown, back home after);
