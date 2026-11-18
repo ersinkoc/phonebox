@@ -70,7 +70,7 @@ public sealed class ObsTests : IDisposable
                 var d = m["d"]!;
                 var type = d["requestType"]!.GetValue<string>();
                 if (type == "GetInputList") _inputsEntered?.TrySetResult();
-                if (type == "GetInputList" && _inputsReady is { } ready) await ready.Task;
+                if (type == "GetInputList" && _inputsReady is { } ready) await ready.Task.WaitAsync(TimeSpan.FromSeconds(15));
                 lock (_requests) _requests.Add(type + (d["requestData"]?["sceneName"] is { } sn ? ":" + sn.GetValue<string>() : ""));
                 object data = type switch
                 {
@@ -219,16 +219,21 @@ public sealed class ObsTests : IDisposable
         {
             await Until(() => obs.Snapshot().Connected);
             var discovery = obs.DeckSnapshot(default);
-            await _inputsEntered.Task;
+            await _inputsEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var refresh = (Task<JsonObject>)typeof(ObsMonitor).GetField("_deckRefresh", fields)!.GetValue(obs)!;
 
             try { await _activeSocket!.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "bye", default); } catch { }
             _activeSocket?.Abort();
             _inputsReady.TrySetResult();
 
-            var snap = await discovery;
+            var snap = await discovery.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.False(snap["connected"]!.GetValue<bool>());
-            var cached = typeof(ObsMonitor).GetField("_deck", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(obs);
-            Assert.Null(cached);
+            // DeckSnapshot may answer "loading" before discovery ends: the shared discovery itself must finish
+            // disconnected and leave no deck behind
+            var discovered = await refresh.WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.False(discovered["connected"]!.GetValue<bool>());
+            Assert.Null(typeof(ObsMonitor).GetField("_deck", fields)!.GetValue(obs));
         }
         finally
         {

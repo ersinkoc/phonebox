@@ -17,7 +17,9 @@ public sealed record ObsSnapshot(bool Connected, string? Error, bool Streaming, 
 public sealed partial class ObsMonitor(ConfigStore config, ILogger<ObsMonitor> log) : BackgroundService
 {
     private volatile ObsSnapshot _snap = new(false, null, false, 0, false, false, 0, null, [], null, null);
-    private ClientWebSocket? _ws;
+    private volatile ClientWebSocket? _ws;
+    // Retiring a session and publishing a deck built on it are ordered by this lock (never held across an await).
+    private readonly Lock _sessionGate = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource<JsonNode?>> _pending = new();
     private readonly SemaphoreSlim _send = new(1, 1);
 
@@ -92,9 +94,12 @@ public sealed partial class ObsMonitor(ConfigStore config, ILogger<ObsMonitor> l
         }
         finally
         {
-            _ws = null;
-            _snap = _snap with { Connected = false };
-            InvalidateDeck();
+            lock (_sessionGate)
+            {
+                _ws = null;
+                _snap = _snap with { Connected = false };
+                InvalidateDeck();
+            }
             stop.Cancel();
             try { await reader; } catch { }
             foreach (var p in _pending.Values) p.TrySetException(new IOException("OBS disconnected"));
@@ -128,10 +133,15 @@ public sealed partial class ObsMonitor(ConfigStore config, ILogger<ObsMonitor> l
         if (data is not null) d["requestData"] = data;
         try
         {
+            // Disconnect cleanup retires _ws before it fails the pending requests: one registered after that point
+            // would never be failed, so it stops here.
+            if (!ReferenceEquals(_ws, ws)) throw new Exception("OBS is not connected");
             await SendRaw(ws, new JsonObject { ["op"] = 6, ["d"] = d }, ct);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(5));
-            await using var _ = timeout.Token.Register(() => { if (_pending.TryRemove(id, out var t)) t.TrySetException(new TimeoutException("OBS did not answer")); });
+            // The deadline completes this request itself, even when cleanup already dropped it from _pending; an
+            // answer that arrived first keeps its result.
+            await using var _ = timeout.Token.Register(() => tcs.TrySetException(new TimeoutException("OBS did not answer")));
             return await tcs.Task;
         }
         finally
