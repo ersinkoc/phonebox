@@ -17,11 +17,17 @@ public sealed class SpotifyControl : IDisposable
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _tokenGate = new(1, 1), _readGate = new(1, 1);
     private readonly Lock _gate = new();
+    /// <summary>A published snapshot with the settings and credential generation it was read with.</summary>
+    private sealed record SnapshotEntry(JsonObject Value, (string ClientId, string ManualToken) Auth, long Generation, long ReadAt);
     private Pending? _pending;
     private Token? _token;
-    private JsonObject? _snapshot;
-    private (string ClientId, string ManualToken) _snapshotAuth;
-    private long _readAt, _retryAt;
+    private bool _tokenIsManual; // _token came from the manual token in settings, not from the credential file
+    private volatile SnapshotEntry? _snapshot;
+    // Advanced (under _gate) when the account changes on this computer: connect or disconnect. Answers to requests
+    // sent with an older generation must not be published or restore a rate limit. Settings changes (client id,
+    // manual token) are caught by comparing CurrentAuth() instead.
+    private long _generation;
+    private long _retryAt;
     private (string ClientId, string ManualToken) CurrentAuth() { var c = _config.Get().Controls; return (c.SpotifyClientId ?? "", c.SpotifyToken ?? ""); }
     private string CredentialPath => _config.Path + ".spotify.json";
     public string RedirectUri => $"http://127.0.0.1:{_endpoint.Port}/api/controls/spotify/callback";
@@ -60,9 +66,15 @@ public sealed class SpotifyControl : IDisposable
         {
             var token = await TokenRequest(new() { ["client_id"] = pending.ClientId, ["grant_type"] = "authorization_code",
                 ["code"] = code, ["redirect_uri"] = RedirectUri, ["code_verifier"] = pending.Verifier }, pending.ClientId, "", ct);
-            Save(token); _snapshot = null; _readAt = 0; _retryAt = 0; return true;
+            Save(token); NewGeneration(); return true;
         }
         finally { _tokenGate.Release(); }
+    }
+
+    /// <summary>The account changed: drop the snapshot and the rate limit that belong to the previous one.</summary>
+    private void NewGeneration()
+    {
+        lock (_gate) { Interlocked.Increment(ref _generation); _snapshot = null; Interlocked.Exchange(ref _retryAt, 0); }
     }
     private async Task<Token> TokenRequest(Dictionary<string, string> fields, string client, string oldRefresh, CancellationToken ct)
     {
@@ -86,14 +98,14 @@ public sealed class SpotifyControl : IDisposable
         try
         {
             using (var file = new FileStream(temporary, options)) { JsonSerializer.Serialize(file, token); file.Flush(flushToDisk: true); }
-            File.Move(temporary, CredentialPath, overwrite: true); _token = token;
+            File.Move(temporary, CredentialPath, overwrite: true); _token = token; _tokenIsManual = false;
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
     public async Task Disconnect(CancellationToken ct)
     {
         await _tokenGate.WaitAsync(ct);
-        try { lock (_gate) _pending = null; Save(new(_config.Get().Controls.SpotifyClientId ?? "", "", "", 0)); _snapshot = null; _readAt = 0; _retryAt = 0; }
+        try { lock (_gate) _pending = null; Save(new(_config.Get().Controls.SpotifyClientId ?? "", "", "", 0)); NewGeneration(); }
         finally { _tokenGate.Release(); }
     }
     private async Task<string?> Access(bool force, CancellationToken ct)
@@ -101,13 +113,20 @@ public sealed class SpotifyControl : IDisposable
         await _tokenGate.WaitAsync(ct);
         try
         {
-            var client = _config.Get().Controls.SpotifyClientId ?? "";
+            var controls = _config.Get().Controls;
+            var client = controls.SpotifyClientId ?? "";
+            var manual = controls.SpotifyToken ?? "";
             if (_token is null && File.Exists(CredentialPath))
-                try { _token = JsonSerializer.Deserialize<Token>(File.ReadAllText(CredentialPath)); } catch (JsonException) { }
-            if (_token is { } wrong && wrong.ClientId != client) _token = null;
-            if (_token is { Expires: 0 } cur && !File.Exists(CredentialPath) && cur.Access != (_config.Get().Controls.SpotifyToken ?? "")) _token = null;
-            if (_token is null && _config.Get().Controls.SpotifyToken is { Length: > 0 } manual)
-                _token = new(client, manual, _config.Get().Controls.SpotifyRefreshToken ?? "", 0);
+                try { _token = JsonSerializer.Deserialize<Token>(File.ReadAllText(CredentialPath)); _tokenIsManual = false; } catch (JsonException) { }
+            if (_token is { } wrong && wrong.ClientId != client) DropToken();
+            // A token taken from the manual setting follows it, whether or not a credential file exists (a file
+            // for another client is set aside above but not deleted). A persisted disconnect is not a manual token.
+            if (_tokenIsManual && _token is { } cur && cur.Access != manual) DropToken();
+            if (_token is null && manual.Length > 0)
+            {
+                _token = new(client, manual, controls.SpotifyRefreshToken ?? "", 0);
+                _tokenIsManual = true;
+            }
             if (_token is null) return null;
             if (string.IsNullOrEmpty(_token.Access) && string.IsNullOrEmpty(_token.Refresh)) return null;
             if (!force && (_token.Expires == 0 || _token.Expires - Now > 60_000)) return _token.Access;
@@ -118,19 +137,30 @@ public sealed class SpotifyControl : IDisposable
         }
         finally { _tokenGate.Release(); }
     }
+    /// <summary>
+    /// Forgets the token in memory (called with the token gate held). Only a settings change gets here, and a
+    /// snapshot compares the settings it was read with, so the generation stays.
+    /// </summary>
+    private void DropToken() { _token = null; _tokenIsManual = false; }
     private async Task<JsonNode?> Request(HttpMethod method, string path, JsonNode? body, CancellationToken ct)
     {
-        if (_retryAt > Now) throw new IOException("Spotify is rate limited; try again later");
+        if (Interlocked.Read(ref _retryAt) > Now) throw new IOException("Spotify is rate limited; try again later");
         for (var attempt = 0; attempt < 2; attempt++)
         {
             var access = await Access(attempt > 0, ct) ?? throw new IOException("Connect Spotify in desktop settings");
+            var generation = Interlocked.Read(ref _generation);
             using var request = new HttpRequestMessage(method, "https://api.spotify.com/v1/" + path);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
             if (body is not null) request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
             using var response = await _http.SendAsync(request, ct);
             if (response.StatusCode == HttpStatusCode.Unauthorized && attempt == 0) continue;
             if ((int)response.StatusCode == 429)
-            { _retryAt = Now + (long)Math.Clamp(response.Headers.RetryAfter?.Delta?.TotalMilliseconds ?? 30000, 1000, 300000); throw new IOException("Spotify is rate limited; try again later"); }
+            {
+                // a limit on the previous account must not block the one connected since this request was sent
+                var until = Now + (long)Math.Clamp(response.Headers.RetryAfter?.Delta?.TotalMilliseconds ?? 30000, 1000, 300000);
+                lock (_gate) if (Interlocked.Read(ref _generation) == generation) Interlocked.Exchange(ref _retryAt, until);
+                throw new IOException("Spotify is rate limited; try again later");
+            }
             if (!response.IsSuccessStatusCode) throw new IOException($"Spotify returned HTTP {(int)response.StatusCode}; check account permissions and the active player");
             if (response.StatusCode == HttpStatusCode.NoContent) return null;
             var text = await response.Content.ReadAsStringAsync(ct);
@@ -138,28 +168,50 @@ public sealed class SpotifyControl : IDisposable
         }
         throw new IOException("Reconnect Spotify in desktop settings");
     }
+    /// <summary>The published snapshot if it is fresh and was read with these settings and the current account.</summary>
+    private JsonObject? Cached((string ClientId, string ManualToken) auth)
+    {
+        // one reference for the check and the value, so a concurrent publish cannot pair one account's data with another's key
+        var entry = _snapshot;
+        return entry is not null && entry.Auth == auth && entry.Generation == Interlocked.Read(ref _generation) && Now - entry.ReadAt < 5000
+            ? entry.Value : null;
+    }
     public async Task<JsonObject> Snapshot(CancellationToken ct)
     {
-        var auth = CurrentAuth();
-        if (_snapshot is not null && _snapshotAuth == auth && Now - _readAt < 5000) return _snapshot;
+        if (Cached(CurrentAuth()) is { } fast) return fast;
         await _readGate.WaitAsync(ct);
         try
         {
-            auth = CurrentAuth();
-            if (_snapshot is not null && _snapshotAuth == auth && Now - _readAt < 5000) return _snapshot;
-            try
+            // Both requests must describe one account. A connect, disconnect or settings change while they run
+            // discards the result; read once more, then report the change instead of mixing the two.
+            for (var attempt = 0; ; attempt++)
             {
-                // episodes too: without additional_types an episode that is playing comes back empty
-                var playing = await Request(HttpMethod.Get, "me/player/currently-playing?additional_types=track,episode", null, ct);
-                var queue = await Request(HttpMethod.Get, "me/player/queue?additional_types=track,episode", null, ct);
-                _snapshot = new() { ["connected"] = true, ["current"] = TrackOf(playing?["item"]), ["playing"] = playing?["is_playing"]?.DeepClone(),
-                    ["queue"] = new JsonArray((queue?["queue"] as JsonArray ?? []).Take(30).Select(TrackOf).ToArray()) };
+                var auth = CurrentAuth();
+                if (Cached(auth) is { } cached) return cached;
+                var generation = Interlocked.Read(ref _generation);
+                JsonObject value;
+                try
+                {
+                    // episodes too: without additional_types an episode that is playing comes back empty
+                    var playing = await Request(HttpMethod.Get, "me/player/currently-playing?additional_types=track,episode", null, ct);
+                    var queue = await Request(HttpMethod.Get, "me/player/queue?additional_types=track,episode", null, ct);
+                    value = new() { ["connected"] = true, ["current"] = TrackOf(playing?["item"]), ["playing"] = playing?["is_playing"]?.DeepClone(),
+                        ["queue"] = new JsonArray((queue?["queue"] as JsonArray ?? []).Take(30).Select(TrackOf).ToArray()) };
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch (Exception ex) when (ex is IOException or HttpRequestException or JsonException or OperationCanceledException)
+                { value = new() { ["connected"] = false, ["error"] = ex is IOException ? ex.Message : "Spotify is unavailable" }; }
+                var unchanged = CurrentAuth() == auth;
+                lock (_gate)
+                {
+                    if (unchanged && Interlocked.Read(ref _generation) == generation)
+                    {
+                        _snapshot = new(value, auth, generation, Now);
+                        return value;
+                    }
+                }
+                if (attempt > 0) return new() { ["connected"] = false, ["error"] = "The Spotify account changed; try again" };
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch (Exception ex) when (ex is IOException or HttpRequestException or JsonException or OperationCanceledException)
-            { _snapshot = new() { ["connected"] = false, ["error"] = ex is IOException ? ex.Message : "Spotify is unavailable" }; }
-            _snapshotAuth = auth;
-            _readAt = Now; return _snapshot;
         }
         finally { _readGate.Release(); }
     }
@@ -215,7 +267,7 @@ public sealed class SpotifyControl : IDisposable
                 await Request(HttpMethod.Put, "me/player/play" + DeviceQuery(), body, ct);
             }
             else return new(false, "Unknown Spotify control");
-            _readAt = 0; return new(true);
+            _snapshot = null; return new(true);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is IOException or HttpRequestException or JsonException or OperationCanceledException)
