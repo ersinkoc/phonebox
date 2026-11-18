@@ -27,7 +27,12 @@ public sealed class ApprovalStore(PushStore events, ILogger<ApprovalStore> log)
 
     public static bool PhoneConnected => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - Interlocked.Read(ref PhoneLastSeen) < 5000;
 
-    public IReadOnlyList<Approval> Snapshot() => _pending.Values.Select(p => p.Approval).OrderBy(a => a.CreatedAt).ToList();
+    /// <summary>The requests the phone can still answer; one past its expiry is left out even before it is cleaned up.</summary>
+    public IReadOnlyList<Approval> Snapshot()
+    {
+        var now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
+        return _pending.Values.Select(p => p.Approval).Where(a => a.ExpiresAt > now).OrderBy(a => a.CreatedAt).ToList();
+    }
 
     /// <summary>Shows the request on the phone and waits for "allow" / "deny"; null = no answer (fall back to the terminal).</summary>
     public async Task<string?> AskAsync(Approval a, CancellationToken aborted)
@@ -39,12 +44,16 @@ public sealed class ApprovalStore(PushStore events, ILogger<ApprovalStore> log)
         log.LogInformation("approval {Id}: {Tool} in {Project} sent to the phone", a.Id, a.Tool, a.Project);
         try
         {
-            var timeout = TimeSpan.FromMilliseconds(Math.Max(1000, a.ExpiresAt - _clock.GetUtcNow().ToUnixTimeMilliseconds()));
+            // exactly the time left: Decide refuses an answer from the expiry on, so waiting longer only delays the terminal
+            var timeout = TimeSpan.FromMilliseconds(Math.Max(0, a.ExpiresAt - _clock.GetUtcNow().ToUnixTimeMilliseconds()));
             // The hook process goes away when the user answers in the terminal; that cancels the request here.
-            var done = await Task.WhenAny(pending.Decision.Task, Task.Delay(timeout, aborted));
-            return done == pending.Decision.Task ? await pending.Decision.Task : null;
+            await Task.WhenAny(pending.Decision.Task, Task.Delay(timeout, aborted));
+            // The decision task is the one outcome: a timeout or cancel closes it with null, so a Decide that loses
+            // the race reports false; a Decide that won before this line is returned even though the wait ended.
+            pending.Decision.TrySetResult(null);
+            return await pending.Decision.Task;
         }
-        catch (OperationCanceledException) { return null; }
+        catch (OperationCanceledException) { pending.Decision.TrySetResult(null); return null; }
         finally
         {
             _pending.TryRemove(a.Id, out _);
@@ -56,8 +65,10 @@ public sealed class ApprovalStore(PushStore events, ILogger<ApprovalStore> log)
     {
         if (decision is not ("allow" or "deny" or "skip") || !_pending.TryGetValue(id, out var p)) return false;
         if (p.Approval.ExpiresAt <= _clock.GetUtcNow().ToUnixTimeMilliseconds()) return false;
+        // accepted only if it wins against the timeout and the cancel (see AskAsync), and only then logged as such
+        if (!p.Decision.TrySetResult(decision)) return false;
         log.LogInformation("approval {Id}: {Decision} from the phone", id, decision);
-        return p.Decision.TrySetResult(decision);
+        return true;
     }
 
     public static string NewId() => Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();

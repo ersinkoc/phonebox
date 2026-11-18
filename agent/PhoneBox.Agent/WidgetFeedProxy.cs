@@ -41,20 +41,22 @@ public static class WidgetFeedProxy
                 Exception? last = null;
                 foreach (var publicIp in publicIps)
                 {
-                    var socket = new Socket(publicIp.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+                    // created inside the try: a host without IPv4 (or IPv6) sockets moves on to the next address
+                    Socket? socket = null;
                     try
                     {
+                        socket = new Socket(publicIp.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
                         await socket.ConnectAsync(new IPEndPoint(publicIp, ctx.DnsEndPoint.Port), token);
                         return new NetworkStream(socket, ownsSocket: true);
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
                     {
-                        socket.Dispose();
+                        socket?.Dispose();
                         throw;
                     }
                     catch (Exception ex)
                     {
-                        socket.Dispose();
+                        socket?.Dispose();
                         last = ex;
                     }
                 }
@@ -109,6 +111,7 @@ public static class WidgetFeedProxy
                 if (b[2] == 0x00 && b[3] == 0x02 && b[4] == 0x00 && b[5] == 0x00) return false; // 2001:0002::/48 benchmarking
                 if (b[2] == 0x0D && b[3] == 0xB8) return false; // 2001:0db8::/32 documentation
             }
+            if (b[0] == 0x3F && b[1] == 0xFF && (b[2] & 0xF0) == 0) return false; // 3fff::/20 documentation (RFC 9637)
             if (b[0] == 0x20 && b[1] == 0x02)
                 return IsPublicAddress(new IPAddress(b.AsSpan(2, 4))); // 2002::/16 6to4 must wrap a public IPv4
             return true;

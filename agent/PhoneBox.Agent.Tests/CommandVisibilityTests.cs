@@ -24,6 +24,25 @@ public sealed class CommandVisibilityTests
         Assert.Null(f.Runner.Get("commands", "probe"));
     }
 
+    // A run queued while its page was visible must not start after the page was hidden.
+    [Fact]
+    public async Task ARunQueuedBeforeThePageWasHiddenDoesNotStart()
+    {
+        using var f = new CommandVisibilityFixture();
+        Func<Task>? queued = null;
+        var runner = new CommandRunner(f.Store, NullLogger<CommandRunner>.Instance)
+        {
+            StartWorker = work => { queued = work; return Task.CompletedTask; },
+        };
+        f.Configure(enabled: true);
+        Assert.NotNull(runner.Get("commands", "probe"));
+        Assert.NotNull(queued);
+
+        f.Configure(enabled: false);
+        await queued!().WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.False(f.Ran);
+    }
+
     [Fact]
     public async Task RetiredInFlightCommandDoesNotPublishClockRollbackRefreshesAndSurrogatesStayIntact()
     {
@@ -75,6 +94,7 @@ public sealed class CommandVisibilityTests
             File.WriteAllText(releaseFile, "go");
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
                 while (!running.IsEmpty && !cts.IsCancellationRequested) await Task.Yield();
+            Assert.Empty(running); // the worker finished: an empty result list below means it was discarded, not still due
             Assert.Empty(results);
 
             // Clock rollback (`At` in the future) marks cached result stale and starts a run
@@ -82,10 +102,13 @@ public sealed class CommandVisibilityTests
             var resolved = OperatingSystem.IsWindows() ? "Write-Output 'ok'" : "printf 'ok\\n'";
             var key = $"cmds/w1:{resolved.GetHashCode()}";
             results[key] = new CommandResult("before-rollback", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 3_600_000L, true, false, 1);
-            var rb = runner.Get("cmds", "w1", force: false)!;
-            Assert.True(rb.Running || rb.Output == "ok");
+            _ = runner.Get("cmds", "w1", force: false)!;
+            // the rerun publishes a fresh result; waited for, since it may finish before or after Get returns
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
-                while (!running.IsEmpty && !cts.IsCancellationRequested) await Task.Yield();
+                while ((!running.IsEmpty || results.GetValueOrDefault(key)?.Output != "ok") && !cts.IsCancellationRequested) await Task.Delay(10);
+            var rerun = results.GetValueOrDefault(key);
+            Assert.Equal("ok", rerun?.Output);
+            Assert.True(rerun!.Ok);
 
             // Surrogate pair at MaxOutput boundary is never split into a lone high surrogate
             var truncated = CommandRunner.TruncateOutput(new string('a', 3999) + "🚀tail", 4000);
@@ -107,6 +130,9 @@ public sealed class CommandVisibilityFixture : IDisposable
     private readonly ConfigStore _store;
     private readonly string _marker;
     public CommandRunner Runner { get; }
+    public ConfigStore Store => _store;
+    /// <summary>The command wrote its marker (it ran).</summary>
+    public bool Ran => File.Exists(_marker) || File.Exists(_marker + ".tmp");
 
     public CommandVisibilityFixture()
     {

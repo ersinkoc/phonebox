@@ -205,7 +205,19 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
 
     private sealed record Tokens(string ClientId, string Access, string Refresh, long Expires);
 
-    internal string TokenPath => Path.Combine(Path.GetDirectoryName(Path.GetFullPath(config.Path)) ?? AppPaths.ConfigDir, "discord-token.json");
+    /// <summary>
+    /// discord-token.json next to the settings file; a settings file that is itself named so (--config) gets a sidecar
+    /// named after it instead, so saving a login can never replace the settings.
+    /// </summary>
+    internal string TokenPath
+    {
+        get
+        {
+            var settings = Path.GetFullPath(config.Path);
+            var path = Path.Combine(Path.GetDirectoryName(settings) ?? AppPaths.ConfigDir, "discord-token.json");
+            return string.Equals(path, settings, StringComparison.OrdinalIgnoreCase) ? settings + ".discord-token.json" : path;
+        }
+    }
 
     private Tokens? LoadTokens(string clientId)
     {
@@ -245,7 +257,8 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
     // Discord itself); the agent fetches each image once and keeps it in memory, up to a total size.
     private const long ImageCacheLimit = 8 * 1024 * 1024;
     private readonly ConcurrentDictionary<string, (byte[] Data, string Type)> _images = new();
-    private long _imageBytes;
+    private long _imageBytes; // guarded by _imageLock
+    private readonly Lock _imageLock = new();
     private static readonly HttpClient ImageHttp = new() { Timeout = TimeSpan.FromSeconds(10) };
 
     /// <summary>Only icons and avatars the agent itself reported (a server's icon, a member of your current call) are served.</summary>
@@ -275,14 +288,15 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
             if (!res.IsSuccessStatusCode) return null;
             var data = await res.Content.ReadAsByteArrayAsync(ct);
             if (data.Length is 0 or > 512 * 1024 || PhotoFrame.MimeOf(data) is not { } mime) return null;
-            var entry = (data, mime);
-            if (_images.TryAdd(key, entry) && Interlocked.Add(ref _imageBytes, data.Length) > ImageCacheLimit)
+            // the download stays outside the lock; lookup, eviction, insertion and the byte count change together
+            lock (_imageLock)
             {
-                _images.Clear();
-                Interlocked.Exchange(ref _imageBytes, data.Length);
-                _images[key] = entry;
+                if (_images.TryGetValue(key, out var raced)) return raced;
+                if (_imageBytes + data.Length > ImageCacheLimit) { _images.Clear(); _imageBytes = 0; }
+                _images[key] = (data, mime);
+                _imageBytes += data.Length;
+                return (data, mime);
             }
-            return _images.GetOrAdd(key, entry);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { return null; }
     }
@@ -328,6 +342,7 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
 
     internal async Task ReadLoop(Stream io, CancellationToken ct)
     {
+        lock (_lock) _closed = false;
         try
         {
             while (!ct.IsCancellationRequested)
@@ -362,6 +377,7 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
             _notesWanted = false;
             lock (_lock)
             {
+                _closed = true; // a poll still finishing for this connection must not bring "connected" back
                 _notes.Clear();
                 if (_snap.Connected) _snap = Empty(config.Get().Discord.Enabled ? "Discord is not running" : null);
             }
@@ -396,12 +412,14 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
     // One button press at a time, so two quick toggles each start from the state the previous one produced.
     private readonly SemaphoreSlim _act = new(1, 1);
     private int _voiceRev; // bumped each time a button press publishes new mute/deafen state
+    private bool _closed;  // guarded by _lock: the current connection's ReadLoop has ended
 
     /// <summary>Publishes a poll. A button press that finished since the poll read <paramref name="rev"/> is newer than what the poll saw, so it keeps its mute/deafen state.</summary>
     internal void PublishPoll(int rev, bool muted, bool deafened, DiscordSnapshot snapshot)
     {
         lock (_lock)
         {
+            if (_closed) return; // the connection this poll came from has ended (ReadLoop)
             var stale = rev != _voiceRev;
             _snap = snapshot with { Muted = stale ? _snap.Muted : muted, Deafened = stale ? _snap.Deafened : deafened };
         }

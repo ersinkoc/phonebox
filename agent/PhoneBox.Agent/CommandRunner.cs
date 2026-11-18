@@ -27,20 +27,26 @@ public sealed class CommandRunner(ConfigStore cfg, ILogger<CommandRunner> log)
         var interval = Math.Clamp(w.Int("interval") ?? 30, 5, 86400);
         var prefix = $"{pageId}/{widgetId}:";
         var key = $"{prefix}{command.GetHashCode()}";
+        // Drop the results of commands this widget no longer has. Against the settings as they are now, not the ones
+        // this request read: a request that read an older command must not evict the result of the current one.
+        var liveKey = FindWidget(pageId, widgetId) is { } current ? $"{prefix}{ResolveCommand(current).GetHashCode()}" : null;
         foreach (var k in _results.Keys)
-            if (k.StartsWith(prefix, StringComparison.Ordinal) && k != key)
+            if (k.StartsWith(prefix, StringComparison.Ordinal) && k != key && k != liveKey)
                 _results.TryRemove(k, out _);
 
         var cached = _results.GetValueOrDefault(key);
         var now = Now();
         var stale = cached is null || now - cached.At < 0 || now - cached.At >= interval * 1000L;
         if ((stale || force) && command.Trim() != "" && _running.TryAdd(key, 0))
-            _ = Task.Run(async () =>
+            _ = StartWorker(async () =>
             {
                 try
                 {
+                    // Checked again when the worker starts: the page may have been hidden, or the command changed,
+                    // while this run waited to be scheduled. Checked once more for its result (below).
+                    if (!StillCurrent(pageId, widgetId, command)) return;
                     var res = await RunAsync(command);
-                    if (FindWidget(pageId, widgetId) is { } live && ResolveCommand(live) == command)
+                    if (StillCurrent(pageId, widgetId, command))
                         _results[key] = res;
                 }
                 finally { _running.TryRemove(key, out _); }
@@ -50,6 +56,12 @@ public sealed class CommandRunner(ConfigStore cfg, ILogger<CommandRunner> log)
             ? new CommandResult(command.Trim() == "" ? "(no command)" : "", 0, true, running, 0)
             : cached with { Running = running };
     }
+
+    /// <summary>Starts a command run in the background; tests replace it to hold a run between its request and its start.</summary>
+    internal Func<Func<Task>, Task> StartWorker { get; init; } = work => Task.Run(work);
+
+    private bool StillCurrent(string pageId, string widgetId, string command) =>
+        FindWidget(pageId, widgetId) is { } live && ResolveCommand(live) == command;
 
     private WidgetConfig? FindWidget(string pageId, string widgetId) =>
         cfg.Get().Pages.FirstOrDefault(p => p.Enabled && p.Id == pageId)?.Widgets?.FirstOrDefault(x => x.Id == widgetId && x.Type == "command");

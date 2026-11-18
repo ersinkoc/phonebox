@@ -468,6 +468,9 @@ public sealed partial class ConfigStore(string path)
                 return $"Camera '{(cam.Name.Length > 0 ? cam.Name : "(no name)")}': the address must start with rtsp:// or rtsps://";
         if (cfg.Weather.Lat is < -90 or > 90 || cfg.Weather.Lon is < -180 or > 180) return "Invalid weather location";
         if (!HhMm().IsMatch(cfg.Night.Start ?? "") || !HhMm().IsMatch(cfg.Night.End ?? "")) return "Night mode times must be in HH:MM format";
+        // a webhook sender holding the phone's key could do everything the phone can (see Lan.AuthorizeRequest)
+        if (string.Equals(cfg.Lan.Token, cfg.Lan.WebhookToken, StringComparison.Ordinal))
+            return "The Wi-Fi key and the webhook key must be different: make a new key for one of them";
 
         lock (_lock)
         {
@@ -528,7 +531,11 @@ public sealed partial class ConfigStore(string path)
         c.Night.Brightness = Math.Clamp(c.Night.Brightness, 0.01, 1);
 
         c.Pages = NormalizePages(c.Pages, out var originalPageIds);
-        string PageId(string id) => originalPageIds.GetValueOrDefault(id, id);
+        // an exact match first; a reference with stray spaces around it still finds the page it names
+        string PageId(string id) =>
+            originalPageIds.TryGetValue(id, out var exact) ? exact
+            : originalPageIds.TryGetValue(id.Trim(), out var trimmed) ? trimmed
+            : id.Trim();
         c.Display.HomePage = string.IsNullOrWhiteSpace(c.Display.HomePage) ? null : PageId(c.Display.HomePage).Trim();
 
         var used = new HashSet<string>();

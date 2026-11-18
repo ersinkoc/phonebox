@@ -163,12 +163,18 @@ public static class ClaudeHook
                 {
                     root = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }) as JsonObject
                            ?? throw new InvalidDataException("settings.json is not a JSON object");
-                    File.WriteAllText(path + ".phonebox.bak", text);
+                    // owner-only like the replacement below: the file can hold API keys (its "env" section)
+                    AppPaths.WriteAllTextPrivate(path + ".phonebox.bak", text);
                 }
             }
             else root = new JsonObject();
 
+            // a value of another shape is the user's to fix: replacing or dropping it would lose what they wrote
+            if (root["hooks"] is { } hooksNode && hooksNode is not JsonObject)
+                throw new InvalidDataException("\"hooks\" in settings.json is not a JSON object");
             var hooks = root["hooks"] as JsonObject ?? new JsonObject();
+            if (hooks["PermissionRequest"] is { } groupsNode && groupsNode is not JsonArray)
+                throw new InvalidDataException("\"hooks.PermissionRequest\" in settings.json is not a list");
             var groups = hooks["PermissionRequest"] as JsonArray ?? new JsonArray();
             // drop our old entries (and groups that become empty)
             foreach (var g in groups.ToList())
@@ -201,7 +207,8 @@ public static class ClaudeHook
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var tmp = path + ".tmp";
-            File.WriteAllText(tmp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
+            // created owner-only: moving a 0644 file over the original would widen a private settings file
+            AppPaths.WriteAllTextPrivate(tmp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
             File.Move(tmp, path, overwrite: true);
             return null;
         }
