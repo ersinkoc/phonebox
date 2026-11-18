@@ -322,6 +322,21 @@ dd { margin: 0; word-break: break-all; }
   .grid2 { grid-template-columns: 1fr; }
   .deck { --cols: 3 !important; }
 }
+
+/* Hebrew UI: preserve the saved x/y grid and pointer arithmetic while mirroring the chrome. */
+html[dir="rtl"] .canvas, html[dir="rtl"] .mini { direction: ltr; }
+html[dir="rtl"] .wb-in { direction: rtl; }
+html[dir="rtl"] .pal, html[dir="rtl"] .tpl, html[dir="rtl"] th { text-align: start; }
+html[dir="rtl"] .ico.m { margin-right: 0; margin-left: .35em; }
+html[dir="rtl"] .check { margin-right: 0; margin-left: 14px; }
+html[dir="rtl"] .pal-cat { letter-spacing: normal; }
+html[dir="rtl"] code { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+html[dir="rtl"] .cmdline, html[dir="rtl"] pre, html[dir="rtl"] textarea.json,
+html[dir="rtl"] .cal-url, html[dir="rtl"] input[spellcheck="false"],
+html[dir="rtl"] input[type="url"], html[dir="rtl"] input[type="number"],
+html[dir="rtl"] input[type="time"], html[dir="rtl"] input[type="range"],
+html[dir="rtl"] input[type="password"], html[dir="rtl"] [dir="ltr"] { direction: ltr; text-align: left; }
+html[dir="rtl"] header { flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -419,7 +434,7 @@ dd { margin: 0; word-break: break-all; }
       <div class="card">
         <h3 data-i18n="s.ping.title">Ping</h3>
         <div class="field"><label data-i18n="s.ping.label">Host pinged every 5 seconds for the ping metric and the "ping high" rule (empty = off)</label>
-          <input type="text" data-bind="ping.host" placeholder="off" spellcheck="false" autocomplete="off"></div>
+          <input type="text" dir="ltr" data-bind="ping.host" placeholder="off" spellcheck="false" autocomplete="off"></div>
         <div class="field" style="margin-top:10px"><label data-i18n="s.net.adapters">Network adapters counted by the network meters</label>
           <div id="netAdapters" class="hint"></div>
           <span class="hint" data-i18n="s.net.hint">None ticked = automatic (the connected Ethernet and Wi-Fi adapters). With a VPN that carries the same traffic, or a reading that looks too high, tick only the adapter you use.</span></div>
@@ -438,7 +453,7 @@ dd { margin: 0; word-break: break-all; }
         <h3 data-i18n="s.photos.title">Photo frame</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.photos.hint">For the Photo frame widget: a folder of photos on this computer. A synced OneDrive, Dropbox or iCloud folder works too; photos that are only in the cloud are skipped. Large photos are scaled down here before they go to the phone, and the path stays on this computer.</p>
         <div class="field"><label data-i18n="s.photos.folder">Photo folder (full path)</label>
-          <input type="text" data-bind="photos.folder" placeholder="C:\Users\you\Pictures\Frame" spellcheck="false" autocomplete="off"></div>
+          <input type="text" dir="ltr" data-bind="photos.folder" placeholder="C:\Users\you\Pictures\Frame" spellcheck="false" autocomplete="off"></div>
         <label class="check"><input type="checkbox" data-bind="photos.subfolders"> <span data-i18n="s.photos.subfolders">Include subfolders</span></label>
       </div>
 
@@ -453,7 +468,7 @@ dd { margin: 0; word-break: break-all; }
         <h3 data-i18n="s.camera.title">Cameras</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.camera.hint">IP cameras for the Camera widget: a name and the camera’s RTSP address (rtsp://user:password@address:554/…, from its manual or app). This computer pulls a camera with ffmpeg only while a Camera widget shows it, and sends the phone a few pictures a second (set next to each camera). The addresses stay on this computer, but while a camera runs they are visible in its process list.</p>
         <div class="field"><label data-i18n="s.camera.ffmpeg">ffmpeg (full path; empty = find it in PATH)</label>
-          <input type="text" data-bind="cameras.ffmpeg" placeholder="C:\ffmpeg\bin\ffmpeg.exe" spellcheck="false" autocomplete="off"></div>
+          <input type="text" dir="ltr" data-bind="cameras.ffmpeg" placeholder="C:\ffmpeg\bin\ffmpeg.exe" spellcheck="false" autocomplete="off"></div>
         <div id="cameraList"></div>
         <button class="btn sm" id="cameraAdd" data-i18n="s.camera.add">＋ Add a camera</button>
       </div>
@@ -471,8 +486,8 @@ dd { margin: 0; word-break: break-all; }
           <i>Long-lived access tokens</i>. The token stays on this computer; the phone only sees the entities its widgets list.
           (Home Assistant can also push values and notifications to the panel, see Webhooks.)</p>
         <div class="grid2">
-          <div class="field"><label data-i18n="s.ha.address">Address</label><input type="text" data-bind="homeAssistant.url" placeholder="http://homeassistant.local:8123" spellcheck="false"></div>
-          <div class="field"><label data-i18n="s.ha.token">Long-lived access token</label><input type="password" data-bind="homeAssistant.token" autocomplete="off"></div>
+          <div class="field"><label data-i18n="s.ha.address">Address</label><input type="text" dir="ltr" data-bind="homeAssistant.url" placeholder="http://homeassistant.local:8123" spellcheck="false"></div>
+          <div class="field"><label data-i18n="s.ha.token">Long-lived access token</label><input type="password" dir="ltr" data-bind="homeAssistant.token" autocomplete="off"></div>
         </div>
         <div class="row"><button class="btn sm" id="haTest" data-i18n="s.test">Test</button><span class="hint" id="haState"></span></div>
       </div>
@@ -482,8 +497,8 @@ dd { margin: 0; word-break: break-all; }
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="discord.enabled"><span></span></label> <span data-i18n="s.discord.enable">Connect to the Discord app on this PC (for the Discord widget)</span></div>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.discord.hint">Create an application at discord.com/developers/applications, add the redirect http://127.0.0.1 under OAuth2, and copy its client ID and secret here. Discord asks you to approve PhoneBox once. If it refuses the login, add your account under the application's App Testers. Step by step: docs/DISCORD.md.</p>
         <div class="grid2">
-          <div class="field"><label data-i18n="s.discord.clientId">Client ID</label><input type="text" data-bind="discord.clientId" autocomplete="off" spellcheck="false"></div>
-          <div class="field"><label data-i18n="s.discord.clientSecret">Client secret</label><input type="password" data-bind="discord.clientSecret" autocomplete="off"></div>
+          <div class="field"><label data-i18n="s.discord.clientId">Client ID</label><input type="text" dir="ltr" data-bind="discord.clientId" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label data-i18n="s.discord.clientSecret">Client secret</label><input type="password" dir="ltr" data-bind="discord.clientSecret" autocomplete="off"></div>
         </div>
       </div>
 
@@ -492,8 +507,8 @@ dd { margin: 0; word-break: break-all; }
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="obs.enabled"><span></span></label> <span data-i18n-html="s.obs.enable">Connect to OBS (for the <b>OBS</b> widget, the On air widget and rules)</span></div>
         <p class="hint" style="margin:0 0 12px" data-i18n-html="s.obs.hint">In OBS: Tools › WebSocket Server Settings › <i>Enable WebSocket server</i>; copy the password from <i>Show Connect Info</i>.</p>
         <div class="grid2">
-          <div class="field"><label data-i18n="s.ha.address">Address</label><input type="text" data-bind="obs.url" placeholder="ws://127.0.0.1:4455" spellcheck="false"></div>
-          <div class="field"><label data-i18n="s.obs.password">Password</label><input type="password" data-bind="obs.password" autocomplete="off"></div>
+          <div class="field"><label data-i18n="s.ha.address">Address</label><input type="text" dir="ltr" data-bind="obs.url" placeholder="ws://127.0.0.1:4455" spellcheck="false"></div>
+          <div class="field"><label data-i18n="s.obs.password">Password</label><input type="password" dir="ltr" data-bind="obs.password" autocomplete="off"></div>
         </div>
         <div class="row"><button class="btn sm" id="obsTest" data-i18n="s.test">Test</button><span class="hint" id="obsState"></span></div>
       </div>
@@ -621,7 +636,7 @@ dd { margin: 0; word-break: break-all; }
         <div class="grid2">
           <div class="field"><label data-i18n="s.conn.phoneToUse">Phone to use</label><select id="serial"></select><span class="hint" data-i18n="s.conn.phoneToUseHint">If several Android devices are connected, choose which one runs the panel.</span>
             <div class="row" id="appMissing" hidden style="margin-top:8px"><button class="btn primary sm" id="installApp" data-i18n="s.conn.installApp">Install the phone app</button><span class="hint" id="appMissingText"></span></div></div>
-          <div class="field"><label data-i18n="s.conn.adbPath">Path to adb.exe (empty = auto-detect)</label><input type="text" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
+          <div class="field"><label data-i18n="s.conn.adbPath">Path to adb.exe (empty = auto-detect)</label><input type="text" dir="ltr" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
         </div>
         <p id="usbProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
         <p id="webviewProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
@@ -949,7 +964,7 @@ function renderPages() {
   list.replaceChildren(...cfg.pages.map((p, i) => {
     const row = h('div', { class: 'ptab' + (i === selPage ? ' on' : '') + (p.enabled === false ? ' off' : ''), draggable: 'true', 'data-i': i,
       onclick: () => { selPage = i; selWidget = -1; renderPages(); } },
-      h('span', { class: 'pt-num' }, String(i + 1)), h('span', { class: 'pt-ico' }, p.icon || '▫️'), h('span', { class: 'pt-name' }, p.title || '(untitled)'),
+      h('span', { class: 'pt-num' }, String(i + 1)), h('span', { class: 'pt-ico' }, p.icon || '▫️'), h('span', { class: 'pt-name' }, p.title || tl("(untitled)")),
       h('span', { class: 'pt-n' }, String((p.widgets || []).length)));
     dragSort(row, cfg.pages, (from, to) => { selPage = to; renderPages(); changed(); });
     return row;
@@ -1071,7 +1086,7 @@ function renderTabsOnly() {
     const t = tabs[i];
     if (!t) return;
     t.querySelector('.pt-ico').textContent = p.icon || '▫️';
-    t.querySelector('.pt-name').textContent = p.title || '(untitled)';
+    t.querySelector('.pt-name').textContent = p.title || tl("(untitled)");
     t.classList.toggle('off', p.enabled === false);
   });
 }
@@ -1480,7 +1495,7 @@ function optionField(w, o, onValChange) {
     case 'number':
       return field(h('input', { type: 'number', min: o.min, max: o.max, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
     case 'textarea':
-      return field(h('textarea', { rows: /^command/.test(o.key) ? 3 : 4, style: /^command/.test(o.key) ? { fontFamily: 'Consolas, monospace', fontSize: '12.5px' } : {}, oninput: (e) => set(o.key, e.target.value) }, v ?? ''),
+      return field(h('textarea', { dir: /^(command|commandUnix|html)$/.test(o.key) ? 'ltr' : 'auto', rows: /^command/.test(o.key) ? 3 : 4, style: /^command/.test(o.key) ? { fontFamily: 'Consolas, monospace', fontSize: '12.5px' } : {}, oninput: (e) => set(o.key, e.target.value) }, v ?? ''),
         o.key === 'command' ? h('span', { class: 'hint' }, t('s.js.runHint'))
           : o.key === 'commandUnix' ? h('span', { class: 'hint' }, t('s.js.commandUnixHint')) : null);
     case 'lines':
@@ -1503,7 +1518,7 @@ function optionField(w, o, onValChange) {
       } }), `${s.icon} ${s.label}`))));
     }
     default:
-      return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
+      return field(h('input', { type: 'text', dir: /^(url|key|zone|timerId|command|entity|filter)$/.test(o.key) ? 'ltr' : 'auto', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
         w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, t('s.js.pushHint')) : null);
   }
 }
@@ -1763,7 +1778,7 @@ const CAL_COLORS = ['#60a5fa', '#f472b6', '#34d399', '#fbbf24', '#a78bfa', '#f87
 function renderCalendars() {
   cfg.calendars ??= [];
   $('calList').replaceChildren(...cfg.calendars.map((c, i) => h('div', { class: 'cal-row' },
-    h('input', { type: 'text', value: c.name || '', placeholder: 'Name, e.g. Work', oninput: (e) => { c.name = e.target.value; changed(); } }),
+    h('input', { type: 'text', value: c.name || '', placeholder: tl("Name, e.g. Work"), oninput: (e) => { c.name = e.target.value; changed(); } }),
     h('input', { type: 'text', class: 'cal-url', value: c.url || '', placeholder: 'https://calendar.google.com/calendar/ical/…/basic.ics', spellcheck: 'false',
       oninput: (e) => { c.url = e.target.value.trim(); changed(); } }),
     h('input', { type: 'color', value: c.color || CAL_COLORS[i % CAL_COLORS.length], title: 'Colour', oninput: (e) => { c.color = e.target.value; changed(); } }),
@@ -1808,7 +1823,7 @@ function renderConsole() {
   const field = (p, key, placeholder) => h('input', { type: 'text', value: p[key] || '', placeholder, spellcheck: 'false',
     oninput: (e) => { p[key] = e.target.value.trim() || null; changed(); } });
   $('consoleList').replaceChildren(...cfg.console.profiles.map((p, i) => h('div', { class: 'console-row' },
-    h('input', { type: 'text', value: p.label || '', maxlength: '40', placeholder: 'Name, e.g. Photoshop', oninput: (e) => { p.label = e.target.value; changed(); } }),
+    h('input', { type: 'text', value: p.label || '', maxlength: '40', placeholder: tl("Name, e.g. Photoshop"), oninput: (e) => { p.label = e.target.value; changed(); } }),
     h('input', { type: 'text', value: p.apps || '', placeholder: 'Apps, e.g. photoshop, gimp-2.10', spellcheck: 'false', oninput: (e) => { p.apps = e.target.value; changed(); } }),
     h('textarea', { rows: '4', spellcheck: 'false', placeholder: 'Undo = ctrl+z\nRedo = ctrl+shift+z\nBrush = b',
       oninput: (e) => { p.keys = consoleKeysParse(e.target.value); changed(); } }, consoleKeysText(p)),
@@ -1843,7 +1858,7 @@ async function renderNetAdapters() {
 function renderFeeds() {
   cfg.feeds ??= [];
   $('feedList').replaceChildren(...cfg.feeds.map((f, i) => h('div', { class: 'cal-row feed-row' },
-    h('input', { type: 'text', value: f.name || '', maxlength: '60', placeholder: 'Name, e.g. News', oninput: (e) => { f.name = e.target.value; changed(); } }),
+    h('input', { type: 'text', value: f.name || '', maxlength: '60', placeholder: tl("Name, e.g. News"), oninput: (e) => { f.name = e.target.value; changed(); } }),
     h('input', { type: 'text', class: 'cal-url', value: f.url || '', placeholder: 'https://example.com/feed.xml', spellcheck: 'false',
       oninput: (e) => { f.url = e.target.value.trim(); changed(); } }),
     h('button', { class: 'btn sm danger', onclick: () => { cfg.feeds.splice(i, 1); renderFeeds(); changed(); } }, t('s.js.remove')))));
@@ -2096,7 +2111,7 @@ async function loadPushed() {
     const items = Object.entries(r.items || {}).sort((a, b) => b[1].at - a[1].at);
     $('whItems').replaceChildren(...(items.length ? items.map(([k, v]) => h('tr', {},
       h('td', {}, h('code', {}, k)), h('td', { class: 'val' }, JSON.stringify(v.data)), h('td', { class: 'hint' }, new Date(v.at).toLocaleString()),
-      h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, 'Delete'))))
+      h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, t('s.js.remove')))))
       : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, t('s.wh.nothingPushed')))]));
   } catch (_) {}
 }
@@ -2131,7 +2146,7 @@ function renderDeck() {
   cfg.shortcuts.forEach((s, i) => {
     const k = h('div', { class: 'key' + (i === selKey ? ' sel' : ''), draggable: 'true', 'data-i': i, style: { '--k': s.color || '#6b7280' },
       onclick: () => { selKey = i; renderDeck(); } },
-      h('span', { class: 'ki' }, s.icon || '•'), h('span', { class: 'kl' }, s.label || '(untitled)'));
+      h('span', { class: 'ki' }, s.icon || '•'), h('span', { class: 'kl' }, s.label || tl("(untitled)")));
     k.style.setProperty('--k', s.color || '#6b7280');
     dragSort(k, cfg.shortcuts, (from, to) => { selKey = to; renderDeck(); changed(); });
     deck.append(k);
@@ -2156,7 +2171,7 @@ function renderEditor() {
 
   const upd = (key, val, rerender = true) => { s[key] = val; if (rerender) renderDeckKeysOnly(); changed(); };
   const text = (key, label, ph = '', hint = '') => h('div', { class: 'field' }, h('label', {}, label),
-    h('input', { type: 'text', value: s[key] ?? '', placeholder: ph, oninput: (e) => upd(key, e.target.value) }),
+    h('input', { type: 'text', dir: ['args', 'cwd', 'offCmd', 'offArgs', 'stateKey'].includes(key) ? 'ltr' : 'auto', value: s[key] ?? '', placeholder: ph, oninput: (e) => upd(key, e.target.value) }),
     hint ? h('span', { class: 'hint' }, hint) : null);
 
   const iconIn = h('input', { type: 'text', class: 'icon-input', value: s.icon || '', maxlength: 8, oninput: (e) => upd('icon', e.target.value) });
@@ -2165,7 +2180,7 @@ function renderEditor() {
     onclick: () => { colorIn.value = c; upd('color', c); markSwatch(); } })));
   const markSwatch = () => sw.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === s.color));
   markSwatch();
-  const cmdIn = h('input', { type: 'text', value: s.cmd || '', placeholder: t('s.k.cmdPlaceholder'), oninput: (e) => upd('cmd', e.target.value, false) });
+  const cmdIn = h('input', { type: 'text', dir: 'ltr', value: s.cmd || '', placeholder: t('s.k.cmdPlaceholder'), oninput: (e) => upd('cmd', e.target.value, false) });
   const preset = h('select', { onchange: (e) => { if (e.target.value) { cmdIn.value = e.target.value; upd('cmd', e.target.value, false); cmdIn.focus(); } e.target.value = ''; } },
     ...presets().map(([v, l]) => h('option', { value: v }, tl(l))));
 
@@ -2175,8 +2190,8 @@ function renderEditor() {
       h('div', { class: 'row', style: { gap: '6px' } },
         h('button', { class: 'btn sm', onclick: () => moveKey(-1), disabled: selKey === 0 }, t('s.js.earlier')),
         h('button', { class: 'btn sm', onclick: () => moveKey(1), disabled: selKey === cfg.shortcuts.length - 1 }, t('s.js.later')),
-        h('button', { class: 'btn sm', onclick: testKey }, icon('play', 'm'), 'Test'),
-        h('button', { class: 'btn sm danger', onclick: delKey }, 'Delete'))),
+        h('button', { class: 'btn sm', onclick: testKey }, icon('play', 'm'), t('s.test')),
+        h('button', { class: 'btn sm danger', onclick: delKey }, t('s.js.remove')))),
     h('div', { class: 'grid2' },
       h('div', {},
         text('label', t('s.k.label'), t('s.k.labelHint')),
@@ -2255,7 +2270,7 @@ const KINDS = () => ({ run: t('s.k.runProgram'), keys: t('s.k.pressKeys'), text:
 const kindOf = (s) => (s.cmd === 'builtin:keys' ? 'keys' : s.cmd === 'builtin:text' ? 'text' : s.cmd === 'builtin:macro' ? 'macro' : 'run');
 function actionFields(s, upd, text, cmdIn, preset) {
   const kind = kindOf(s);
-  const area = (value, ph, rows, oninput) => h('textarea', { rows, placeholder: ph, spellcheck: 'false', oninput }, value);
+  const area = (value, ph, rows, oninput) => h('textarea', { rows, dir: kind === 'text' ? 'auto' : 'ltr', placeholder: ph, spellcheck: 'false', oninput }, value);
   const fields = [h('div', { class: 'field' }, h('label', {}, t('s.k.whatItDoes')),
     h('select', { onchange: (e) => {
       const k = e.target.value;
@@ -2271,9 +2286,9 @@ function actionFields(s, upd, text, cmdIn, preset) {
       text('args', t('s.k.arguments'), osName === 'windows' ? t('s.k.argsPlaceholderWindows') : t('s.k.argsPlaceholderUnix')),
       text('cwd', t('s.k.workingFolder'), t('s.k.optional')));
   } else if (kind === 'keys') {
-    fields.push(text('args', t('s.k.keys'), 'e.g. ctrl+shift+m', 'Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, playpause, next, prev, mute, volumeup, volumedown.'));
+    fields.push(text('args', t('s.k.keys'), tl("e.g. ctrl+shift+m"), tl("Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1\u2013F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, playpause, next, prev, mute, volumeup, volumedown.")));
   } else if (kind === 'text') {
-    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.textToType')), area(s.args || '', 'Typed into whatever window has the focus', 3, (e) => upd('args', e.target.value, false))));
+    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.textToType')), area(s.args || '', tl("Typed into whatever window has the focus"), 3, (e) => upd('args', e.target.value, false))));
   } else {
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.steps')),
       area((s.steps || []).join('\n'), 'keys:ctrl+c\nwait:200\ntext:Hello\nshortcut:terminal', 6, (e) => upd('steps', e.target.value.split('\n').map((x) => x.trim()).filter(Boolean), false)),
@@ -2287,8 +2302,8 @@ function actionFields(s, upd, text, cmdIn, preset) {
     h('input', { type: 'checkbox', checked: !!s.toggle || isMute, disabled: isMute, onchange: (e) => { s.toggle = e.target.checked; changed(); renderEditor(); } }),
     isMute ? t('s.k.toggleLabelMute') : t('s.k.toggleLabel')));
   if (s.toggle && !isMute) {
-    fields.push(text('stateKey', t('s.k.stateKey'), 'e.g. teams-muted',
-      'A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.'));
+    fields.push(text('stateKey', t('s.k.stateKey'), tl("e.g. teams-muted"),
+      tl("A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.")));
     if (kind === 'run') fields.push(text('offCmd', t('s.cd.offCmdPlaceholder'), t('s.cd.offCmdHint')), text('offArgs', t('s.k.offArgs'), ''));
   }
   return fields;
@@ -2301,7 +2316,7 @@ function renderDeckKeysOnly() {
     if (!k) return;
     k.style.setProperty('--k', s.color || '#6b7280');
     k.querySelector('.ki').textContent = s.icon || '•';
-    k.querySelector('.kl').textContent = s.label || '(untitled)';
+    k.querySelector('.kl').textContent = s.label || tl("(untitled)");
   });
 }
 function moveKey(d) {
@@ -2311,7 +2326,7 @@ function moveKey(d) {
 }
 function delKey() {
   const s = cfg.shortcuts[selKey];
-  if (!confirm(`Delete "${s.label}"?`)) return;
+  if (!confirm(`${tl("Delete")} "${s.label}"?`)) return;
   cfg.shortcuts.splice(selKey, 1);
   selKey = Math.max(0, selKey - 1);
   renderDeck(); changed();
@@ -2320,7 +2335,7 @@ async function testKey() {
   const s = cfg.shortcuts[selKey];
   const r = await fetch('/api/shortcuts/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) });
   const j = await r.json().catch(() => ({}));
-  r.ok ? toast(`Ran "${s.label}"`) : toast(j.error || t('s.js.couldNotRun'), true);
+  r.ok ? toast(`${tl("Ran")} "${s.label}"`) : toast(j.error || t('s.js.couldNotRun'), true);
 }
 
 // ---------------------------------------------------------------- general
@@ -2700,6 +2715,7 @@ function applyLanguageUi(langPref) {
   if ($('langSel')) $('langSel').value = I18n.getPref();
   if ($('displayLangSel')) $('displayLangSel').value = I18n.getPref();
   I18n.applyDom();
+  document.title = I18n.getLang() === 'he' ? 'הגדרות PhoneBox' : 'PhoneBox Settings';
 }
 
 function bindLanguage() {

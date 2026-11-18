@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android uses the legacy iw qualifier for Hebrew. Native dialogs follow the device language. -->
+    <string name="pair_title">לצמד למחשב?</string>
+    <string name="pair_message">המחשב %1$s בכתובת %2$s (פורט %3$d).\n\nודאו שבחלון הצימוד במחשב מופיע הקוד %4$s.\n\nהמשיכו רק אם התחלתם את הצימוד במחשב הזה.</string>
+    <string name="pair_positive">צימוד</string>
+    <string name="pair_negative">ביטול</string>
+    <string name="pair_progress">מצמד אל %1$s…</string>
+    <string name="pair_done">הצימוד אל %1$s הושלם</string>
+    <string name="pair_failed_title">הצימוד נכשל</string>
+    <string name="pair_failed_unreachable">לא ניתן להגיע אל %1$s בכתובת %2$s. הטלפון והמחשב חייבים להיות באותה רשת או שניהם ב־Tailscale, וחומת האש במחשב צריכה לאפשר את PhoneBox.</string>
+    <string name="pair_failed_code">המחשב %1$s לא קיבל את הקוד: הוא תקף לשימוש אחד ולמשך 5 דקות. התחילו צימוד חדש במחשב.</string>
+    <string name="pair_failed_answer">המחשב %1$s החזיר תשובה %2$d.</string>
+    <string name="pair_failed_certificate">התעודה של המחשב שונה מזו שבקוד ה־QR. התחילו צימוד חדש.</string>
+    <string name="ok">אישור</string>
+</resources>
