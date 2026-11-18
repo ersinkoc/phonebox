@@ -228,6 +228,11 @@ class AgentLink(private val context: Context) {
     }
 
     private fun refreshPairing(c: HttpURLConnection) {
+        // released on every way out, a header read that throws included
+        try { readPairing(c) } finally { c.disconnect() }
+    }
+
+    private fun readPairing(c: HttpURLConnection) {
         c.instanceFollowRedirects = false
         c.connectTimeout = 800
         c.readTimeout = 3000
@@ -235,7 +240,6 @@ class AgentLink(private val context: Context) {
         if (code != 200) {
             // a redirect or error body is not the agent's pairing answer: it must not add or forget a computer
             try { (if (code >= 400) c.errorStream else c.inputStream)?.close() } catch (_: Exception) {}
-            c.disconnect()
             return
         }
         val j = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
