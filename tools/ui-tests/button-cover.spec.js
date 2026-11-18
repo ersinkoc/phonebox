@@ -22,10 +22,15 @@ const SIZES = { iconset: 24 };
 /** Opens the panel on one page of Big buttons. Only the demo agent's settings are seeded, so the panel gets iconRev
  *  and iconUpload through the demo's config projection, as it does from the real agent. */
 async function open(page, widgets) {
-  // like the agent: upload=1 asks for an upload only; "app" has none, and "gone" no longer has one
+  // Like the agent: "upload" binds as a bool, so anything but true/false is a 400 before the handler runs, and
+  // upload=true asks for an upload only ("app" has none, and "gone" no longer has one). Every request is recorded.
+  const requests = [];
   await page.route((url) => url.pathname.endsWith('/agent/api/shortcuts/icon'), (route) => {
-    const q = new URL(route.request().url()).searchParams, id = q.get('id');
-    if (q.get('upload') === '1' && (id === 'app' || id === 'gone')) return route.fulfill({ status: 404, body: '' });
+    const q = new URL(route.request().url()).searchParams, id = q.get('id'), upload = q.get('upload');
+    const status = upload !== null && !/^(true|false)$/i.test(upload) ? 400
+      : /^true$/i.test(upload || '') && (id === 'app' || id === 'gone') ? 404 : 200;
+    requests.push({ id, upload, status });
+    if (status !== 200) return route.fulfill({ status, body: '' });
     route.fulfill({ contentType: 'image/svg+xml', body: svg(SIZES[id] || 256) });
   });
   await page.addInitScript((config) => localStorage.setItem('pb-demo-config', config), JSON.stringify({
@@ -33,12 +38,19 @@ async function open(page, widgets) {
     pages: [{ id: 'cover-test', title: 'Buttons', widgets: widgets.map((w, i) => ({ id: 'b' + i, type: 'button', ...w })) }],
   }));
   await page.goto('/panel/');
-  return (i) => page.locator('[data-id="cover-test"] .w-button').nth(i).locator('.key');
+  const key = (i) => page.locator('[data-id="cover-test"] .w-button').nth(i).locator('.key');
+  key.requests = requests;
+  return key;
 }
 
 test('an uploaded picture fills the Big button, with the label still shown', async ({ page }) => {
-  const key = (await open(page, [{ x: 0, y: 0, w: 4, h: 6, options: { id: 'art', cover: true } }]))(0);
+  const keys = await open(page, [{ x: 0, y: 0, w: 4, h: 6, options: { id: 'art', cover: true } }]), key = keys(0);
   await expect(key).toHaveClass(/k-cover/);
+  // filled straight from the upload-only request, in a form the agent's bool binding accepts
+  // (one request per build of the key: the panel may build it again when the config arrives)
+  const art = keys.requests.filter((r) => r.id === 'art');
+  expect(art.length).toBeGreaterThan(0);
+  for (const r of art) expect(r).toEqual({ id: 'art', upload: 'true', status: 200 });
   const bg = key.locator('img.k-bg');
   await expect(bg).toBeVisible();
   await expect(key.locator('.k-icon')).toBeHidden();
@@ -76,10 +88,13 @@ test("a program's own icon is not stretched across the key, however large", asyn
 });
 
 test('an upload removed after the config was read leaves the centred icon, not a stretched program icon', async ({ page }) => {
-  const key = (await open(page, [{ x: 0, y: 0, w: 4, h: 6, options: { id: 'gone', cover: true } }]))(0);
+  const keys = await open(page, [{ x: 0, y: 0, w: 4, h: 6, options: { id: 'gone', cover: true } }]), key = keys(0);
   await expect(key.locator('.k-icon.k-icon-img img')).toBeVisible();
   await expect(key).not.toHaveClass(/k-cover/);
   await expect(key.locator('img.k-bg')).toHaveCount(0);
+  // the recovery path ran: the upload-only request found nothing, then the ordinary request gave the centred icon
+  const gone = keys.requests.filter((r) => r.id === 'gone');
+  expect(gone.slice(0, 2)).toEqual([{ id: 'gone', upload: 'true', status: 404 }, { id: 'gone', upload: null, status: 200 }]);
 });
 
 test('a filled key with a blank label is named by its id', async ({ page }) => {

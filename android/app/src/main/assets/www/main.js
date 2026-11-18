@@ -540,7 +540,7 @@ function applyShortcutIcon(b, icon, id, cover) {
       b.classList.add('k-cover');
     };
     img.onerror = () => applyShortcutIcon(b, icon, id, false);
-    img.src = url + '&upload=1';
+    img.src = url + '&upload=true'; // "true", not "1": the agent binds it as a bool and answers 400 to "1"
     return;
   }
   img.onload = () => { icon.replaceChildren(img); icon.classList.add('k-icon-img'); };

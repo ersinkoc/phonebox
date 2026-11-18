@@ -809,7 +809,7 @@ app.MapPost("/api/run/{id}", (string id, ConfigStore cfg, PushStore push, AudioC
 // Real icon for a shortcut: an image the user uploaded (settings page) takes priority; otherwise its program's own
 // icon, when its command is an actual file on disk. 404 when neither exists (shell addresses, protocol handlers,
 // URLs, builtin: commands, and App Execution Alias stubs with no icon of their own), so the phone shows the emoji.
-// upload=1: the upload only (see ShortcutIcons.Picture).
+// upload=true: the upload only (see ShortcutIcons.Picture).
 app.MapGet("/api/shortcuts/icon", (string id, bool? upload, ConfigStore cfg, ShortcutIconUploads icons, HttpResponse res) =>
 {
     if (cfg.Get().Shortcuts.FirstOrDefault(s => s.Id == id) is not { } sc) return Results.NotFound();
