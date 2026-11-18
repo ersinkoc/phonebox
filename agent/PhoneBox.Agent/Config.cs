@@ -194,9 +194,10 @@ public sealed class LanConfig
 
 public sealed class UpdateConfig
 {
+    public const string DefaultRepo = "avibroner/phonebox";
     /// <summary>Install new GitHub releases automatically (phone app over USB, agent in place).</summary>
     public bool Auto { get; set; } = true;
-    public string Repo { get; set; } = "ersinkoc/phonebox";
+    public string Repo { get; set; } = DefaultRepo;
 }
 
 public sealed class ClaudeConfig
@@ -528,7 +529,7 @@ public sealed partial class ConfigStore(string path)
         if (c.Ping.Host.Length > 253 || c.Ping.Host.Any(ch => ch <= ' ' || ch > '~')) c.Ping.Host = PingMonitor.DefaultHost;
         c.Claude ??= new();
         c.Claude.TimeoutSec = Math.Clamp(c.Claude.TimeoutSec, 10, 3600);
-        if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = "ersinkoc/phonebox";
+        if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = UpdateConfig.DefaultRepo;
         c.Lan.Port = Math.Clamp(c.Lan.Port, 1024, 65535);
         if (string.IsNullOrWhiteSpace(c.Lan.Token)) c.Lan.Token = NewToken();
         if (string.IsNullOrWhiteSpace(c.Lan.WebhookToken)) c.Lan.WebhookToken = NewToken();
