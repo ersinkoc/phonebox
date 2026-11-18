@@ -45,14 +45,14 @@ public sealed partial class QuotaMonitor
         ServerCertificateCustomValidationCallback = (request, _, _, errors) => AcceptLoopbackCertificate(request.RequestUri, errors),
     };
 
-    /// <summary>A valid certificate always passes; an invalid one only for HTTPS to 127.0.0.1, ::1 or localhost.</summary>
+    /// <summary>A valid certificate always passes; an invalid one only for HTTPS to a loopback address or localhost.</summary>
     internal static bool AcceptLoopbackCertificate(Uri? uri, SslPolicyErrors errors)
     {
         if (errors == SslPolicyErrors.None) return true;
         if (uri is not { IsAbsoluteUri: true } || uri.Scheme != Uri.UriSchemeHttps) return false;
         var host = uri.Host.Trim('[', ']');
         return host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-            || IPAddress.TryParse(host, out var ip) && (ip.Equals(IPAddress.Loopback) || ip.Equals(IPAddress.IPv6Loopback));
+            || IPAddress.TryParse(host, out var ip) && IPAddress.IsLoopback(ip);
     }
 
     /// <summary>
@@ -349,7 +349,7 @@ public sealed partial class QuotaMonitor
         Func<string, IEnumerable<(int Pid, string CommandLine)>>? readCommands = null,
         Func<int, IReadOnlyList<ListeningPorts.Listener>>? listeningPorts = null)
     {
-        var named = new HashSet<int>();
+        var named = new HashSet<(string Host, int Port)>(); // 127.0.0.1:62173 and [::1]:62173 are different sockets
         var dynamic = new List<(int Pid, string CsrfToken)>();
         foreach (var name in AntigravityProcessNames)
         foreach (var (pid, cmd) in (readCommands ?? ReadAntigravityCommands)(name))
@@ -357,22 +357,23 @@ public sealed partial class QuotaMonitor
             if (name != "agy" && !cmd.Contains("antigravity", StringComparison.OrdinalIgnoreCase)) continue;
             if (ParseEndpointFromCommandLine(cmd) is { } ep)
             {
-                named.Add(ep.Port);
+                named.Add(("127.0.0.1", ep.Port));
                 yield return new AntigravityEndpoint(ep.Port, ep.CsrfToken);
             }
             if (ParseHttpsServerFromCommandLine(cmd) is not { } https) continue;
             if (https.Port > 0)
             {
-                named.Add(https.Port);
+                named.Add(("127.0.0.1", https.Port));
                 yield return new AntigravityEndpoint(https.Port, https.CsrfToken, "https");
             }
             else if (pid > 0) dynamic.Add((pid, https.CsrfToken));
         }
         foreach (var (pid, csrf) in dynamic)
         foreach (var listener in (listeningPorts ?? (id => ListeningPorts.ForProcess(id)))(pid))
-            if (!named.Contains(listener.Port))
-                yield return new AntigravityEndpoint(listener.Port, csrf, "https",
-                    listener.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? "[::1]" : "127.0.0.1");
+        {
+            var host = ListeningPorts.UrlHost(listener.Address);
+            if (!named.Contains((host, listener.Port))) yield return new AntigravityEndpoint(listener.Port, csrf, "https", host);
+        }
     }
 
     private static IEnumerable<(int Pid, string CommandLine)> ReadAntigravityCommands(string name)

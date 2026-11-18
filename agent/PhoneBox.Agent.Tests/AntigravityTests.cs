@@ -167,7 +167,7 @@ public sealed class AntigravityTests
                 asked.Add(pid);
                 return pid switch
                 {
-                    41 => [V4(58324), V4(62173), V6(62174)],
+                    41 => [V4(58324), V4(62173), V6(62174), V6(58324)],
                     42 => [V4(50001), V4(7000)],
                     _ => [V4(9999)],
                 };
@@ -181,6 +181,7 @@ public sealed class AntigravityTests
             new(50001, "fixed", "https"),       // a concrete HTTPS port
             new(62173, "dyn", "https"),         // process 41's own listeners, minus the port already named
             new(62174, "dyn", "https", "[::1]"), // an IPv6-only listener is asked on ::1
+            new(58324, "dyn", "https", "[::1]"), // [::1]:58324 is not the named 127.0.0.1:58324
             new(7000, "other", "https"),        // 50001 is already a named candidate
         }, endpoints);
     }
@@ -202,7 +203,7 @@ public sealed class AntigravityTests
     [InlineData("https://[::1]:62173/x", true)]
     [InlineData("https://localhost:62173/x", true)]
     [InlineData("https://LOCALHOST:62173/x", true)]
-    [InlineData("https://127.0.0.2:62173/x", false)]
+    [InlineData("https://127.0.0.2:62173/x", true)]  // all of 127/8 is loopback
     [InlineData("https://192.168.1.10:62173/x", false)]
     [InlineData("https://example.com/x", false)]
     [InlineData("https://localhost.example.com/x", false)]

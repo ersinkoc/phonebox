@@ -47,9 +47,17 @@ internal static class ListeningPorts
     internal static bool ReachableOnLoopback(IPAddress address) =>
         IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any);
 
-    /// <summary>The loopback address of the listener's own family.</summary>
+    /// <summary>
+    /// Where to reach a listener: its own address when it is bound to a loopback address (127.0.0.2 is one too), the
+    /// loopback address of its family when it is bound to every interface.
+    /// </summary>
     internal static IPAddress LoopbackFor(IPAddress listener) =>
-        listener.AddressFamily == AddressFamily.InterNetworkV6 ? IPAddress.IPv6Loopback : IPAddress.Loopback;
+        IPAddress.IsLoopback(listener) ? listener
+            : listener.AddressFamily == AddressFamily.InterNetworkV6 ? IPAddress.IPv6Loopback : IPAddress.Loopback;
+
+    /// <summary>The address as a URL host: IPv6 in brackets.</summary>
+    internal static string UrlHost(IPAddress address) =>
+        address.AddressFamily == AddressFamily.InterNetworkV6 ? $"[{address}]" : address.ToString();
 
     // ---- Windows: GetExtendedTcpTable, never netstat (its state column is localized) ----
 
@@ -188,7 +196,7 @@ internal static class ListeningPorts
         var lsof = ToolProcess.Find("lsof") ?? (File.Exists("/usr/sbin/lsof") ? "/usr/sbin/lsof" : null);
         if (lsof is null) return [];
         var start = new ProcessStartInfo(lsof);
-        foreach (var arg in new[] { "-nP", "-a", "-p", pid.ToString(CultureInfo.InvariantCulture), "-iTCP", "-sTCP:LISTEN", "-Fn" })
+        foreach (var arg in new[] { "-nP", "-a", "-p", pid.ToString(CultureInfo.InvariantCulture), "-iTCP", "-sTCP:LISTEN", "-Ftn" })
             start.ArgumentList.Add(arg);
         // lsof exits with 1 when nothing matches; the output decides, not the exit code.
         var result = ToolProcess.RunAsync(start, TimeSpan.FromSeconds(2), CancellationToken.None).GetAwaiter().GetResult();
@@ -196,22 +204,26 @@ internal static class ListeningPorts
     }
 
     /// <summary>
-    /// Reads <c>lsof -Fn</c> output: <c>n</c> lines carry <c>host:port</c>, with IPv6 hosts in brackets and <c>*</c>
-    /// for all interfaces. Other field lines (<c>p</c>, <c>f</c>) are skipped.
+    /// Reads <c>lsof -Ftn</c> output: per file (<c>f</c>), a <c>t</c> line with the socket type (IPv4 / IPv6) and an
+    /// <c>n</c> line with <c>host:port</c>, IPv6 hosts in brackets and <c>*</c> for every interface of either family,
+    /// which is why the type is read too. Other field lines are skipped.
     /// </summary>
     internal static List<Listener> ParseLsofNames(string output)
     {
         var ports = new List<Listener>();
+        string? type = null;
         foreach (var raw in output.Split('\n'))
         {
             var line = raw.TrimEnd('\r');
+            if (line.Length > 0 && line[0] is 'p' or 'f') { type = null; continue; }
+            if (line.Length > 1 && line[0] == 't') { type = line[1..]; continue; }
             if (line.Length < 2 || line[0] != 'n') continue;
             var name = line[1..];
             var colon = name.LastIndexOf(':');
             if (colon <= 0 || name.Contains("->", StringComparison.Ordinal)) continue;
             var host = name[..colon].Trim('[', ']');
-            // "*" is a wildcard of either family; macOS IPv6 sockets accept IPv4 unless told not to, so 127.0.0.1 reaches both
-            IPAddress? address = host == "*" || host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ? IPAddress.Loopback
+            IPAddress? address = host == "*" ? (type == "IPv6" ? IPAddress.IPv6Loopback : IPAddress.Loopback)
+                : host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ? IPAddress.Loopback
                 : IPAddress.TryParse(host, out var parsed) && ReachableOnLoopback(parsed) ? LoopbackFor(parsed) : null;
             if (address is not null && int.TryParse(name[(colon + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out var port)
                 && port is > 0 and <= 65535)

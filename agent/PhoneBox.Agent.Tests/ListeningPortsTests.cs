@@ -72,9 +72,13 @@ public sealed class ListeningPortsTests
     [Fact]
     public void LsofNamesKeepLoopbackAndWildcardListeners()
     {
-        const string output = "p4242\nf12\nn127.0.0.1:62173\nf13\nn[::1]:62174\r\nf14\nn*:8080\nf15\nn192.168.1.5:9000\n"
-            + "f16\nn127.0.0.1:5000->127.0.0.1:6000\nf17\nnlocalhost:7000\nf18\nn127.0.0.1:99999\nf19\nn[::]:8081\n";
-        Assert.Equal([V4(62173), V6(62174), V4(8080), V4(7000), V6(8081)], ListeningPorts.ParseLsofNames(output));
+        const string output = "p4242\nf12\ntIPv4\nn127.0.0.1:62173\nf13\ntIPv6\nn[::1]:62174\r\nf14\ntIPv4\nn*:8080\n"
+            + "f15\ntIPv4\nn192.168.1.5:9000\nf16\ntIPv4\nn127.0.0.1:5000->127.0.0.1:6000\nf17\ntIPv4\nnlocalhost:7000\n"
+            + "f18\ntIPv4\nn127.0.0.1:99999\nf19\ntIPv6\nn[::]:8081\nf20\ntIPv4\nn127.0.0.2:8083\n";
+        Assert.Equal([V4(62173), V6(62174), V4(8080), V4(7000), V6(8081), new(IPAddress.Parse("127.0.0.2"), 8083)],
+            ListeningPorts.ParseLsofNames(output));
+        // macOS lsof prints "*" for an IPv6 wildcard too; the t line of the same file tells the family
+        Assert.Equal([V6(8084), V4(8085)], ListeningPorts.ParseLsofNames("p1\nf3\ntIPv6\nn*:8084\nf4\ntIPv4\nn*:8085\n"));
         Assert.Empty(ListeningPorts.ParseLsofNames(""));
     }
 
@@ -86,8 +90,11 @@ public sealed class ListeningPortsTests
             Row4(state: 2, [0, 0, 0, 0], 8080, pid: 77),
             Row4(state: 2, [127, 0, 0, 1], 8081, pid: 78),
             Row4(state: 2, [192, 168, 1, 5], 9000, pid: 77),
-            Row4(state: 5, [127, 0, 0, 1], 9001, pid: 77));
-        Assert.Equal([V4(62173), V4(8080)], ListeningPorts.ParseOwnerPidTable(v4, ipv6: false, pid: 77));
+            Row4(state: 5, [127, 0, 0, 1], 9001, pid: 77),
+            Row4(state: 2, [127, 0, 0, 2], 9004, pid: 77));
+        // a wildcard listener is reached on 127.0.0.1, a concrete loopback one (127.0.0.2) on its own address
+        Assert.Equal([V4(62173), V4(8080), new(IPAddress.Parse("127.0.0.2"), 9004)],
+            ListeningPorts.ParseOwnerPidTable(v4, ipv6: false, pid: 77));
 
         var v6 = Table(ListeningPorts.Ipv6RowSize,
             Row6(IPAddress.IPv6Loopback, 62174, pid: 77),
@@ -106,6 +113,7 @@ public sealed class ListeningPortsTests
     [Fact]
     public void AnIpv6OnlyListenerIsReachedOnIpv6Loopback()
     {
+        if (!Socket.OSSupportsIPv6) return; // nothing to find on a host without IPv6
         using var socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp) { DualMode = false };
         socket.Bind(new IPEndPoint(IPAddress.IPv6Loopback, 0));
         socket.Listen();
