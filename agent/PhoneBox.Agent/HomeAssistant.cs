@@ -19,11 +19,14 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     private Dictionary<string, HaEntity> _states = [];
     private DateTime _statesAt = DateTime.MinValue;
     private string _cacheKey = "";
+    private string _statesServer = ""; // the server and token _states was read with
     private string? _error;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     // only widgets on enabled pages count, for reading states as for switching: hiding the page or removing the widget turns both off
-    private IEnumerable<WidgetConfig> Widgets => config.Get().Widgets(enabledPagesOnly: true).Where(w => w.Type == "ha");
+    private static IEnumerable<WidgetConfig> Widgets(AgentConfig cfg) => cfg.Widgets(enabledPagesOnly: true).Where(w => w.Type == "ha");
+
+    private static bool ControlAllowed(AgentConfig cfg, string id) => Widgets(cfg).Any(w => ItemsOf(w).Any(i => i.Control && i.Id == id));
 
     private const int MaxItems = 200;
 
@@ -60,11 +63,28 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     /// <summary>States of the requested entities (only those used by a widget), refreshed at most every 3 seconds.</summary>
     public async Task<object> StatesAsync(IEnumerable<string> ids)
     {
-        var ha = config.Get().HomeAssistant;
+        // credentials and the visible entities come from one settings snapshot, so a save in between cannot expose
+        // the old server's entity under the new widget list
+        var cfg = config.Get();
+        var ha = cfg.HomeAssistant;
         if (string.IsNullOrWhiteSpace(ha.Url) || string.IsNullOrWhiteSpace(ha.Token))
             return new { configured = false, error = "Set up Home Assistant in Settings › General", entities = Array.Empty<HaEntity>() };
-        var allowed = Widgets.SelectMany(EntitiesOf).ToHashSet();
-        var key = $"{ha.Url.TrimEnd('/')}\n{ha.Token}\n{string.Join(',', allowed.OrderBy(x => x, StringComparer.Ordinal))}";
+        var (error, states) = await ReadStatesAsync(cfg, ids);
+        var list = states.Select(s => s.Entity ?? new HaEntity(s.Id, "unknown", s.Id, null, null, null, 0)).ToList();
+        return new { configured = true, error, entities = list };
+    }
+
+    /// <summary>
+    /// The requested entities that a widget in <paramref name="cfg"/> lists, each with its state from Home Assistant
+    /// (null when the latest successful read for these settings did not include it), and the read error if any.
+    /// The connection must be set in <paramref name="cfg"/>.
+    /// </summary>
+    private async Task<(string? Error, List<(string Id, HaEntity? Entity)> States)> ReadStatesAsync(AgentConfig cfg, IEnumerable<string> ids)
+    {
+        var ha = cfg.HomeAssistant;
+        var allowed = Widgets(cfg).SelectMany(EntitiesOf).ToHashSet();
+        var server = $"{ha.Url!.TrimEnd('/')}\n{ha.Token}";
+        var key = $"{server}\n{string.Join(',', allowed.OrderBy(x => x, StringComparer.Ordinal))}";
         await _lock.WaitAsync();
         try
         {
@@ -88,6 +108,7 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
                             A("device_class"), A("icon"), changed);
                     }
                     _states = map;
+                    _statesServer = server;
                     _error = null;
                     _cacheKey = key;
                     _statesAt = DateTime.UtcNow;
@@ -95,14 +116,24 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
                 catch (Exception ex)
                 {
                     _error = ex is TaskCanceledException ? "Home Assistant did not answer" : ex.Message;
+                    // states read from another server or token must not answer for these settings
+                    if (_statesServer != server) { _states = []; _statesServer = server; }
                     _statesAt = DateTime.UtcNow;
                     _cacheKey = key;
                     log.LogDebug("home assistant: {Msg}", _error);
                 }
             }
-            var list = ids.Where(allowed.Contains).Select(id => _states.TryGetValue(id, out var s) ? s : new HaEntity(id, "unknown", id, null, null, null, 0)).ToList();
-            return new { configured = true, error = _error, entities = list };
+            var list = ids.Where(allowed.Contains).Select(id => (id, _states.TryGetValue(id, out var s) ? s : null)).ToList();
+            return (_error, list);
         }
+        finally { _lock.Release(); }
+    }
+
+    /// <summary>Makes the next read go to Home Assistant, after a service call that may have changed a state.</summary>
+    private async Task InvalidateStatesAsync()
+    {
+        await _lock.WaitAsync();
+        try { _statesAt = DateTime.MinValue; }
         finally { _lock.Release(); }
     }
 
@@ -136,8 +167,11 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
     /// <summary>Switches an entity (toggle, press, run…) if a widget lists it with "Allow switching" on.</summary>
     public async Task<string?> ToggleAsync(string id)
     {
-        if (!Widgets.Any(w => ItemsOf(w).Any(i => i.Control && i.Id == id))) return "switching this entity is not allowed in the widget's settings";
-        var ha = config.Get().HomeAssistant;
+        // the permission and the connection come from one settings snapshot
+        var cfg = config.Get();
+        const string notAllowed = "switching this entity is not allowed in the widget's settings";
+        if (!ControlAllowed(cfg, id)) return notAllowed;
+        var ha = cfg.HomeAssistant;
         if (string.IsNullOrWhiteSpace(ha.Url) || string.IsNullOrWhiteSpace(ha.Token)
             || !Uri.TryCreate(ha.Url, UriKind.Absolute, out var address) || address.Scheme is not ("http" or "https"))
             return "Set up Home Assistant in Settings › General";
@@ -145,14 +179,16 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
         var state = "";
         if (domain is "lock" or "vacuum")
         {
-            bool needRefresh;
-            await _lock.WaitAsync();
-            try { needRefresh = DateTime.UtcNow - _statesAt > TimeSpan.FromSeconds(3) || !_states.ContainsKey(id); }
-            finally { _lock.Release(); }
-            if (needRefresh) await StatesAsync([id]);
-            await _lock.WaitAsync();
-            try { if (_states.TryGetValue(id, out var s)) state = s.State; }
-            finally { _lock.Release(); }
+            // The service depends on the current state, so it must come from a successful read with the settings the
+            // call goes to: a failed read or another server's cached state could unlock a door or start a vacuum.
+            var (error, states) = await ReadStatesAsync(cfg, [id]);
+            if (error is not null) return error;
+            if (states.FirstOrDefault().Entity is not { State: not "unavailable" } entity) return "Home Assistant does not report this entity's state";
+            state = entity.State;
+            // the read awaited Home Assistant: the widget may have been hidden or the connection replaced meanwhile
+            var now = config.Get();
+            if (!ControlAllowed(now, id)) return notAllowed;
+            if (now.HomeAssistant.Url != ha.Url || now.HomeAssistant.Token != ha.Token) return "Home Assistant settings changed; try again";
         }
         var (svcDomain, service) = domain switch
         {
@@ -168,18 +204,22 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
             _ => ("", ""),
         };
         if (service == "") return $"{domain} entities cannot be switched";
+        var submitted = false;
         try
         {
             using var req = Request(HttpMethod.Post, $"/api/services/{svcDomain}/{service}", ha);
             req.Content = new StringContent(JsonSerializer.Serialize(new { entity_id = id }), Encoding.UTF8, "application/json");
+            submitted = true;
             using var res = await Http.SendAsync(req);
             log.LogInformation("home assistant: {Service} {Id} -> {Code}", $"{svcDomain}.{service}", id, (int)res.StatusCode);
-            await _lock.WaitAsync();
-            try { _statesAt = DateTime.MinValue; }
-            finally { _lock.Release(); }
             return res.IsSuccessStatusCode ? null : $"Home Assistant answered {(int)res.StatusCode}";
         }
         catch (Exception ex) { return ex is TaskCanceledException ? "Home Assistant did not answer" : ex.Message; }
+        finally
+        {
+            // a call whose answer was lost may still have switched the entity: the cached state is no longer reliable
+            if (submitted) await InvalidateStatesAsync();
+        }
     }
 
     /// <summary>Turns an entity on or off (the charge guard's smart plug; set in the local-only settings).</summary>
