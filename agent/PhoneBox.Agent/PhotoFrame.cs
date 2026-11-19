@@ -6,20 +6,35 @@ using System.Text;
 
 namespace PhoneBox.Agent;
 
-/// <summary>Settings › General › Photo frame. The folder stays on this computer (a local path names the user).</summary>
+/// <summary>The settings page's request to list the albums of an Immich server (never logged).</summary>
+public sealed record ImmichAlbumsRequest(string? Url, string? Key);
+
+/// <summary>
+/// Settings › General › Photo frame. The folder stays on this computer (a local path names the user); so do the Immich
+/// address and API key, which are only used by the agent and never go to the phone.
+/// </summary>
 public sealed class PhotoFrameConfig
 {
+    public const string SourceFolder = "folder", SourceImmich = "immich";
+
+    /// <summary>"folder" (default) or "immich".</summary>
+    public string Source { get; set; } = SourceFolder;
     public string Folder { get; set; } = "";
     public bool Subfolders { get; set; } = true;
+    public string ImmichUrl { get; set; } = "";
+    public string ImmichKey { get; set; } = "";
+    /// <summary>The album's id and its name (the name is only for the settings page).</summary>
+    public string ImmichAlbum { get; set; } = "";
+    public string ImmichAlbumName { get; set; } = "";
 }
 
 /// <summary>
 /// Photos for the Photo frame widget from one folder on this computer (a synced OneDrive, Dropbox or iCloud folder
-/// works too). The phone gets ids and asks for one photo at a time; large photos are scaled down here first, so an old
+/// works too) or from one Immich album. The phone gets ids and asks for one photo at a time; large photos are scaled down here first, so an old
 /// phone never decodes a camera original. Nothing is scanned or served while no enabled page shows the widget, and
 /// files that are only in the cloud are skipped, so a slideshow never downloads a whole synced library.
 /// </summary>
-public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
+public sealed partial class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
 {
     internal const string WidgetType = "photos";
     internal const int MaxFiles = 5000, MaxEntries = 50_000, LongEdge = 1600;
@@ -77,8 +92,13 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     }
 
     /// <summary>The source chosen in the settings; null while none is set up.</summary>
-    private IPhotoSource? Source(PhotoFrameConfig cfg) =>
-        string.IsNullOrWhiteSpace(cfg.Folder) ? null : new FolderSource(this, log, cfg.Folder.Trim(), cfg.Subfolders);
+    private IPhotoSource? Source(PhotoFrameConfig cfg)
+    {
+        if (cfg.Source == PhotoFrameConfig.SourceImmich)
+            return ImmichClient.ParseServer(cfg.ImmichUrl) is { } server && cfg.ImmichKey.Length > 0 && cfg.ImmichAlbum.Length > 0
+                ? new ImmichSource(this, server, cfg.ImmichKey, cfg.ImmichAlbum) : null;
+        return string.IsNullOrWhiteSpace(cfg.Folder) ? null : new FolderSource(this, log, cfg.Folder.Trim(), cfg.Subfolders);
+    }
 
     public bool Shown() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == WidgetType);
 
