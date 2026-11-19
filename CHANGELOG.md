@@ -53,6 +53,9 @@
   system's reduce-motion setting (#264, [Vasilispapg](https://github.com/Vasilispapg)).
 
 **Agent**
+- Claude quotas on macOS: a `~/.claude/.credentials.json` left behind by another tool or an older Claude Code no
+  longer hides the sign-in Claude Code renews in the Keychain. Once the file's token is missing or expired, the agent
+  reads the Keychain too and uses the sign-in that expires later, instead of showing "Token expired" for good.
 - macOS: when a shortcut cannot press keys, the message on the phone says what helps after an update (remove
   PhoneBoxAgent under Accessibility and add it again), and the setup script says it when it updates the agent. macOS
   ties the permission to the exact build of the ad hoc signed agent (#269,
