@@ -1,4 +1,4 @@
-import { $, API, PANEL_HEADERS, ago, api, h, haptic, safeFetch, store, t, tick, toast } from '../main.js';
+import { $, API, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, store, t, tick, toast } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every, fmtNum, lines, pctSpan, sparkLine } from './helpers.js';
 
@@ -80,7 +80,7 @@ W.feeds = {
       if (key === lastKey) return;
       lastKey = key;
       const err = (data?.errors || []).filter((e) => !only || e.toLowerCase().startsWith(only + ':'));
-      sub.textContent = err.length ? '⚠' : '';
+      sub.replaceChildren(...(err.length ? [icon('warn')] : []));
       sub.title = err.join('\n');
       if (!data) return;
       if (!items.length) {

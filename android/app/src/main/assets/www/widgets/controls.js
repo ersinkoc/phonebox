@@ -1,4 +1,4 @@
-import { API, PANEL_HEADERS, api, applyState, bridge, D, evSeq, h, en, haptic, toast, store, t } from '../main.js';
+import { API, PANEL_HEADERS, api, applyState, bridge, D, evSeq, h, en, haptic, icon, toast, store, t } from '../main.js';
 import { W } from '../registry.js';
 
 let cached = null, at = 0, epoch = 0, pending = null;
@@ -186,7 +186,7 @@ function mediaView(box, options, mode) {
     shuffle = button('Shuffle', () => call('shuffle', current.shuffle ? 0 : 1));
     repeat = button('Repeat', () => call('repeat', current.repeat === 'None' ? 1 : current.repeat === 'Track' ? 2 : 0));
     controls.append(shuffle, repeat);
-  } else controls.append(button('⏮', () => call('prev'), 'Previous track'), button('⏯', () => call('playpause'), 'Play or pause'), button('⏭', () => call('next'), 'Next track'));
+  } else controls.append(button(icon('skip-back'), () => call('prev'), 'Previous track'), button(icon('play'), () => call('playpause'), 'Play or pause'), button(icon('skip-forward'), () => call('next'), 'Next track'));
   return data => {
     current = selectedPlayer(data, options);
     title.textContent = current?.title || t('w.noMediaSelected'); source.textContent = current?.name || 'Choose a source in Media sources';
@@ -738,7 +738,7 @@ W.trackpad = {
     const scrollBarWidth = Math.max(16, Number(o.scrollBarWidth) || 36);
 
     const surface = h('div', 'deck-trackpad-surface',
-      h('div', 'deck-trackpad-icon', controlEnabled ? '🖱️' : '🔒'),
+      h('div', 'deck-trackpad-icon', icon(controlEnabled ? 'mouse' : 'lock')),
       h('div', 'deck-trackpad-hint', !controlEnabled
         ? 'Enable mouse control in widget settings'
         : (scrollBar !== 'none'

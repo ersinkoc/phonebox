@@ -24,7 +24,7 @@ for (const type of ['timer', 'pomodoro']) {
     await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 2000)));
     await start.evaluate(button => button.click());
     const pause = widget.locator('.pb.main');
-    await expect(pause).toHaveText('⏸');
+    await expect(pause.locator('[data-icon="pause"]')).toHaveCount(1);
     await page.clock.setSystemTime(new Date(await page.evaluate(() => Date.now() + 61_000)));
     await pause.evaluate(button => button.click());
     const actual = await page.evaluate(type => {

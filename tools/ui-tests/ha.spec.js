@@ -55,7 +55,7 @@ test('the settings editor lists, edits, reorders and removes entities', async ({
   await expect(rows).toHaveCount(2); // started from the entity text
   await expect(page.locator('datalist option')).not.toHaveCount(0);
   await rows.nth(0).getByRole('button', { name: 'Pick icon' }).click();
-  await page.locator('.ha-row .emojis button', { hasText: '💡' }).click();
+  await page.locator('.ha-row .emojis button[data-emoji="💡"]').click();
   await expect(rows.nth(0).locator('input[placeholder="Icon"]')).toHaveValue('💡');
   await rows.nth(1).locator('input[placeholder="Icon"]').fill('🌡️');
   await expect(page.locator('#inspector')).not.toContainText('null');

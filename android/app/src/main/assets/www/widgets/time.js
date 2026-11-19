@@ -1,4 +1,4 @@
-import { $, LOCALE, buzz, fmtTime, h, en, haptic, pad, r1, store, t, tick, toast } from '../main.js';
+import { $, LOCALE, buzz, fmtTime, h, en, haptic, icon, pad, r1, rich, store, t, tick, toast } from '../main.js';
 import { W } from '../registry.js';
 import { dialEl, lines } from './helpers.js';
 
@@ -68,12 +68,12 @@ W.stopwatch = {
     let st = store.get(key, null) || { start: null, acc: 0, laps: [] };
     const save = () => store.set(key, st);
     const t = h('div', 'sw-t'), laps = h('div', 'sw-laps');
-    const a = h('button', 'pb main', '▶'), b = h('button', 'pb', '↺');
+    const a = h('button', 'pb main', icon('play')), b = h('button', 'pb', icon('rotate-ccw'));
     box.append(h('div', 'w-title', en('Stopwatch')), t, h('div', 'pomo-btns', b, a), laps);
     const elapsed = () => st.acc + (st.start ? Date.now() - st.start : 0);
     const fmtSw = (ms) => { const s = Math.floor(ms / 1000); const hh = Math.floor(s / 3600); return (hh ? hh + ':' + pad(Math.floor((s % 3600) / 60)) : Math.floor(s / 60)) + ':' + pad(s % 60) + '.' + Math.floor((ms % 1000) / 100); };
     const renderLaps = () => laps.replaceChildren(...st.laps.slice(-6).reverse().map((l, i, arr) => h('div', 'sw-lap', h('span', null, '#' + (st.laps.length - i)), h('span', null, fmtSw(l)))));
-    const paint = () => { a.textContent = st.start ? '⏸' : '▶'; b.textContent = st.start ? '⚑' : '↺'; box.classList.toggle('run', !!st.start); };
+    const paint = () => { a.replaceChildren(icon(st.start ? 'pause' : 'play')); b.replaceChildren(icon(st.start ? 'flag' : 'rotate-ccw')); box.classList.toggle('run', !!st.start); };
     a.addEventListener('click', () => { haptic(); if (st.start) { st.acc = elapsed(); st.start = null; } else st.start = Date.now(); save(); paint(); });
     b.addEventListener('click', () => { haptic(); if (st.start) st.laps.push(elapsed()); else st = { start: null, acc: 0, laps: [] }; save(); paint(); renderLaps(); });
     paint(); renderLaps();
@@ -98,7 +98,7 @@ W.timer = {
       if (!st.total) {
         btns.replaceChildren(...presets.map((m) => { const b = h('button', 'chip-btn', m + 'm'); b.addEventListener('click', () => { haptic(); st = { endsAt: Date.now() + m * 60000, left: m * 60000, total: m * 60000 }; save(); renderBtns(); render(); }); return b; }));
       } else {
-        const p = h('button', 'pb main', st.endsAt ? '⏸' : '▶'), x = h('button', 'pb', '✕');
+        const p = h('button', 'pb main', icon(st.endsAt ? 'pause' : 'play')), x = h('button', 'pb', icon('x'));
         p.addEventListener('click', () => {
           haptic();
           if (st.endsAt) {
@@ -245,7 +245,7 @@ W.checklist = {
       box.classList.toggle('all', n === items.length && n > 0);
       list.replaceChildren(...items.map((it) => {
         const done = st.done.includes(it);
-        const row = h('button', 'cl-i' + (done ? ' done' : ''), h('span', 'cl-box', done ? '✓' : ''), h('span', 'cl-t', it));
+        const row = h('button', 'cl-i' + (done ? ' done' : ''), h('span', 'cl-box', done ? icon('check') : ''), h('span', 'cl-t', it));
         row.addEventListener('click', () => {
           haptic();
           fresh();

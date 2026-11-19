@@ -186,13 +186,164 @@ const ICONS = {
   pause: 'M6 4h4v16H6zM14 4h4v16h-4z',
   play: 'M6 3l14 9-14 9V3z',
   mic: 'M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8',
+  'alarm-clock': 'M4 13a8 8 0 1 0 16 0a8 8 0 1 0 -16 0|M12 9v4l2 2|M5 3 2 6|m22 6-3-3|M6.38 18.7 4 21|M17.64 18.67 20 21',
+  'app-window': 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z|M10 4v4|M2 8h20|M6 4v4',
+  'arrow-left-right': 'M8 3 4 7l4 4|M4 7h16|m16 21 4-4-4-4|M20 17H4',
+  'arrow-up': 'm5 12 7-7 7 7|M12 19V5',
+  'asterisk': 'M12 6v12|M17.196 9 6.804 15|m6.804 9 10.392 6',
+  'battery': 'M4 7h12a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2z|M22 11L22 13',
+  'bed': 'M2 4v16|M2 8h18a2 2 0 0 1 2 2v10|M2 17h20|M6 8v9',
+  'bell': 'M10.268 21a2 2 0 0 0 3.464 0|M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326',
+  'bell-off': 'M10.268 21a2 2 0 0 0 3.464 0|M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742|m2 2 20 20|M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05',
+  'bot': 'M12 8V4H8|M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2z|M2 14h2|M20 14h2|M15 13v2|M9 13v2',
+  'brush': 'm9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08|M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z',
+  'calculator': 'M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2z|M8 6L16 6|M16 14L16 18|M16 10h.01|M12 10h.01|M8 10h.01|M12 14h.01|M8 14h.01|M12 18h.01|M8 18h.01',
+  'calendar': 'M8 2v4|M16 2v4|M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z|M3 10h18',
+  'calendar-days': 'M8 2v4|M16 2v4|M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z|M3 10h18|M8 14h.01|M12 14h.01|M16 14h.01|M8 18h.01|M12 18h.01|M16 18h.01',
+  'camera': 'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z|M9 13a3 3 0 1 0 6 0a3 3 0 1 0 -6 0',
+  'car': 'M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2|M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0|M9 17h6|M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0',
+  'cat': 'M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z|M8 14v.5|M16 14v.5|M11.25 16.25h1.5L12 17l-.75-.75Z',
+  'chart-column': 'M3 3v16a2 2 0 0 0 2 2h16|M18 17V9|M13 17V5|M8 17v-3',
+  'circle-check': 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0|m9 12 2 2 4-4',
+  'circle-dot': 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0|M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0',
+  'circle-x': 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0|m15 9-6 6|m9 9 6 6',
+  'clapperboard': 'M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z|m6.2 5.3 3.1 3.9|m12.4 3.4 3.1 4|M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z',
+  'clock': 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0|M12 6L12 12L16 14',
+  'clock-10': 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0|M12 6L12 12L8 10',
+  'cloud-fog': 'M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242|M16 17H7|M17 21H9',
+  'cloud-lightning': 'M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973|m13 12-3 5h4l-3 5',
+  'cloud-rain': 'M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242|M16 14v6|M8 14v6|M12 16v6',
+  'cloud-snow': 'M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242|M8 15h.01|M8 19h.01|M12 17h.01|M12 21h.01|M16 15h.01|M16 19h.01',
+  'cloud-sun': 'M12 2v2|m4.93 4.93 1.41 1.41|M20 12h2|m19.07 4.93-1.41 1.41|M15.947 12.65a4 4 0 0 0-5.925-4.128|M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z',
+  'cloud-sun-rain': 'M12 2v2|m4.93 4.93 1.41 1.41|M20 12h2|m19.07 4.93-1.41 1.41|M15.947 12.65a4 4 0 0 0-5.925-4.128|M3 20a5 5 0 1 1 8.9-4H13a3 3 0 0 1 2 5.24|M11 20v2|M7 19v2',
+  'cloudy': 'M17.5 21H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z|M22 10a3 3 0 0 0-3-3h-2.207a5.502 5.502 0 0 0-10.702.5',
+  'coffee': 'M10 2v2|M14 2v2|M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1|M6 2v2',
+  'coins': 'M2 8a6 6 0 1 0 12 0a6 6 0 1 0 -12 0|M18.09 10.37A6 6 0 1 1 10.34 18|M7 6h1v4|m16.71 13.88.7.71-2.82 2.82',
+  'container': 'M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z|M10 21.9V14L2.1 9.1|m10 14 11.9-6.9|M14 19.8v-8.1|M18 17.5V9.4',
+  'door-open': 'M13 4h3a2 2 0 0 1 2 2v14|M2 20h3|M13 20h9|M10 12v.01|M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z',
+  'droplet': 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z',
+  'egg-fried': 'M8 12.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0|M3 8c0-3.5 2.5-6 6.5-6 5 0 4.83 3 7.5 5s5 2 5 6c0 4.5-2.5 6.5-7 6.5-2.5 0-2.5 2.5-6 2.5s-7-2-7-5.5c0-3 1.5-3 1.5-5C3.5 10 3 9 3 8Z',
+  'eye': 'M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0|M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0',
+  'fan': 'M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z|M12 12v.01',
+  'flame': 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z',
+  'flask-conical': 'M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2|M6.453 15h11.094|M8.5 2h7',
+  'flower-2': 'M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1|M10 8a2 2 0 1 0 4 0a2 2 0 1 0 -4 0|M12 10v12|M12 22c4.2 0 7-1.667 7-5-4.2 0-7 1.667-7 5Z|M12 22c-4.2 0-7-1.667-7-5 4.2 0 7 1.667 7 5Z',
+  'folder': 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z',
+  'footprints': 'M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z|M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z|M16 17h4|M4 13h4',
+  'gamepad-2': 'M6 11L10 11|M8 9L8 13|M15 12L15.01 12|M18 10L18.01 10|M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z',
+  'github': 'M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4|M9 18c-4.51 2-5-2-7-2',
+  'globe': 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0|M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20|M2 12h20',
+  'hand': 'M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2|M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2|M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8|M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15',
+  'hard-drive': 'M22 12L2 12|M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z|M6 16L6.01 16|M10 16L10.01 16',
+  'hash': 'M4 9L20 9|M4 15L20 15|M10 3L8 21|M16 3L14 21',
+  'headphones': 'M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3',
+  'house': 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8|M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  'image': 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z|M7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0|m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21',
+  'keyboard': 'M10 8h.01|M12 12h.01|M14 8h.01|M16 12h.01|M18 8h.01|M6 8h.01|M7 16h10|M8 12h.01|M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z',
+  'laptop': 'M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16',
+  'leaf': 'M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z|M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12',
+  'lightbulb': 'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5|M9 18h6|M10 22h4',
+  'lock': 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z|M7 11V7a5 5 0 0 1 10 0v4',
+  'lock-open': 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z|M7 11V7a5 5 0 0 1 9.9-1',
+  'mail': 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z|m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7',
+  'mailbox': 'M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5C2 7 4 5 6.5 5H18c2.2 0 4 1.8 4 4v8Z|M15 9L18 9L18 11|M6.5 5C9 5 11 7 11 9.5V17a2 2 0 0 1-2 2|M6 10L7 10',
+  'message-square': 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  'moon': 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z',
+  'mouse': 'M12 2h0a7 7 0 0 1 7 7v6a7 7 0 0 1 -7 7h-0a7 7 0 0 1 -7 -7v-6a7 7 0 0 1 7 -7z|M12 6v4',
+  'music': 'M9 18V5l12-2v13|M3 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0|M15 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0',
+  'newspaper': 'M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2|M18 14h-8|M15 18h-5|M10 6h8v4h-8V6Z',
+  'notebook-pen': 'M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4|M2 6h4|M2 10h4|M2 14h4|M2 18h4|M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z',
+  'package': 'M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z|M12 22V12|m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7|m7.5 4.27 9 5.15',
+  'pen': 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z',
+  'person-standing': 'M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0|m9 20 3-6 3 6|m6 8 6 2 6-2|M12 10v4',
+  'phone': 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z',
+  'plug': 'M12 22v-5|M9 8V2|M15 8V2|M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z',
+  'plus': 'M5 12h14|M12 5v14',
+  'printer': 'M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2|M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6|M7 14h10a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1z',
+  'radio': 'M4.9 19.1C1 15.2 1 8.8 4.9 4.9|M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5|M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0|M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5|M19.1 4.9C23 8.8 23 15.1 19.1 19',
+  'radio-tower': 'M4.9 16.1C1 12.2 1 5.8 4.9 1.9|M7.8 4.7a6.14 6.14 0 0 0-.8 7.5|M10 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0|M16.2 4.8c2 2 2.26 5.11.8 7.47|M19.1 1.9a9.96 9.96 0 0 1 0 14.1|M9.5 18h5|m8 22 4-11 4 11',
+  'rocket': 'M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z|m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z|M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0|M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5',
+  'scissors': 'M3 6a3 3 0 1 0 6 0a3 3 0 1 0 -6 0|M8.12 8.12 12 12|M20 4 8.12 15.88|M3 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0|M14.8 14.8 20 20',
+  'scroll-text': 'M15 12h-5|M15 8h-5|M19 17V5a2 2 0 0 0-2-2H4|M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3',
+  'settings': 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z|M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0',
+  'shower-head': 'm4 4 2.5 2.5|M13.5 6.5a4.95 4.95 0 0 0-7 7|M15 5 5 15|M14 17v.01|M10 16v.01|M13 13v.01|M16 10v.01|M11 20v.01|M17 14v.01|M20 11v.01',
+  'signal': 'M2 20h.01|M7 20v-4|M12 20v-8|M17 20V8|M22 4v16',
+  'skip-back': 'M19 20L9 12L19 4L19 20z|M5 19L5 5',
+  'skip-forward': 'M5 4L15 12L5 20L5 4z|M19 5L19 19',
+  'sliders-horizontal': 'M21 4L14 4|M10 4L3 4|M21 12L12 12|M8 12L3 12|M21 20L16 20|M12 20L3 20|M14 2L14 6|M8 10L8 14|M16 18L16 22',
+  'smartphone': 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2z|M12 18h.01',
+  'snowflake': 'M2 12L22 12|M12 2L12 22|m20 16-4-4 4-4|m4 8 4 4-4 4|m16 4-4 4-4-4|m8 20 4-4 4 4',
+  'sofa': 'M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3|M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z|M4 18v2|M20 18v2|M12 4v9',
+  'sprout': 'M7 20h10|M10 20c5.5-2.5.8-6.4 3-10|M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z|M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z',
+  'square': 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z',
+  'star': 'M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z',
+  'sun': 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0|M12 2v2|M12 20v2|m4.93 4.93 1.41 1.41|m17.66 17.66 1.41 1.41|M2 12h2|M20 12h2|m6.34 17.66-1.41 1.41|m19.07 4.93-1.41 1.41',
+  'sunrise': 'M12 2v8|m4.93 10.93 1.41 1.41|M2 18h2|M20 18h2|m19.07 10.93-1.41 1.41|M22 22H2|m8 6 4-4 4 4|M16 18a4 4 0 0 0-8 0',
+  'target': 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0|M6 12a6 6 0 1 0 12 0a6 6 0 1 0 -12 0|M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0',
+  'thermometer': 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z',
+  'timer': 'M10 2L14 2|M12 14L15 11|M4 14a8 8 0 1 0 16 0a8 8 0 1 0 -16 0',
+  'trending-up': 'M22 7L13.5 15.5L8.5 10.5L2 17|M16 7L22 7L22 13',
+  'tv': 'M4 7h16a2 2 0 0 1 2 2v11a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2z|M17 2L12 7L7 2',
+  'type': 'M4 7L4 4L20 4L20 7|M9 20L15 20|M12 4L12 20',
+  'user': 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2|M8 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0',
+  'vibrate': 'm2 8 2 2-2 2 2 2-2 2|m22 8-2 2 2 2-2 2 2 2|M9 5h6a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1v-12a1 1 0 0 1 1 -1z',
+  'video': 'm16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5|M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2z',
+  'volume-2': 'M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z|M16 9a5 5 0 0 1 0 6|M19.364 18.364a9 9 0 0 0 0-12.728',
+  'volume-x': 'M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z|M22 9L16 15|M16 9L22 15',
+  'washing-machine': 'M3 6h3|M17 6h.01|M5 2h14a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2z|M7 13a5 5 0 1 0 10 0a5 5 0 1 0 -10 0|M12 18a2.5 2.5 0 0 0 0-5 2.5 2.5 0 0 1 0-5',
+  'wind': 'M12.8 19.6A2 2 0 1 0 14 16H2|M17.5 8a2.5 2.5 0 1 1 2 4H2|M9.8 4.4A2 2 0 1 1 11 8H2',
+  'wrench': 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+  'zap': 'M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z',
+  'flag': 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z|M4 22L4 15',
+  'rotate-ccw': 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8|M3 3v5h5',
+  'calendar-range': 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z|M16 2v4|M3 10h18|M8 2v4|M17 14h-6|M13 18H7|M7 14h.01|M17 18h.01',
+  'compass': 'm16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z|M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0',
+  'fast-forward': 'M13 19L22 12L13 5L13 19z|M2 19L11 12L2 5L2 19z',
+  'folder-open': 'm6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2',
+  'folders': 'M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z|M2 8v11a2 2 0 0 0 2 2h14',
+  'music-2': 'M4 18a4 4 0 1 0 8 0a4 4 0 1 0 -8 0|M12 18V2l7 4',
+  'palette': 'M13 6.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0|M17 10.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0|M8 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0|M6 12.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0|M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z',
+  'piano': 'M18.5 8c-1.4 0-2.6-.8-3.2-2A6.87 6.87 0 0 0 2 9v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8.5C22 9.6 20.4 8 18.5 8|M2 14h20|M6 14v4|M10 14v4|M14 14v4|M18 14v4',
+  'projector': 'M5 7 3 5|M9 6V3|m13 7 2-2|M6 13a3 3 0 1 0 6 0a3 3 0 1 0 -6 0|M11.83 12H20a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h2.17|M16 16h2',
+  'puzzle': 'M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z',
+  'shuffle': 'm18 14 4 4-4 4|m18 2 4 4-4 4|M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22|M2 6h1.972a4 4 0 0 1 3.6 2.2|M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45',
+  'sliders-vertical': 'M4 21L4 14|M4 10L4 3|M12 21L12 12|M12 8L12 3|M20 21L20 16|M20 12L20 3|M2 14L6 14|M10 8L14 8|M18 16L22 16',
+  'trash-2': 'M3 6h18|M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6|M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2|M10 11L10 17|M14 11L14 17',
+  'umbrella': 'M22 12a10.06 10.06 1 0 0-20 0Z|M12 12v8a2 2 0 0 0 4 0|M12 2v1',
+  'volume-1': 'M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z|M16 9a5 5 0 0 1 0 6',
 };
+
+// Lucide shapes with several elements are stored as one path per element, joined with '|'.
 export function icon(name, cls = '') {
   const t = document.createElement('template');
-  t.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[name] || ''}"/></svg>`;
+  const paths = (ICONS[name] || '').split('|').map((d) => `<path d="${d}"/>`).join('');
+  t.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
   const s = t.content.firstElementChild;
   s.setAttribute('class', 'ico' + (cls ? ' ' + cls : ''));
+  s.dataset.icon = name;
   return s;
+}
+
+/* Emoji → Lucide icon. Saved configs (shortcut icons, Home Assistant icons, widget catalog) and
+   translations still hold emoji as plain text; every place that shows one goes through emo()/rich(),
+   so the panel draws the same line icons everywhere and unknown characters (a custom emoji or text) stay as typed. */
+const EMOJI_ICON = { '🏠': 'house', '☀': 'sun', '🌙': 'moon', '🌤': 'cloud-sun', '⛅': 'cloud-sun', '☁': 'cloudy', '🌫': 'cloud-fog', '🌦': 'cloud-sun-rain', '🌧': 'cloud-rain', '🌨': 'cloud-snow', '❄': 'snowflake', '⛈': 'cloud-lightning', '🌡': 'thermometer', '📱': 'smartphone', '⚡': 'zap', '📹': 'video', '🎙': 'mic', '📶': 'signal', '🎛': 'sliders-horizontal', '💬': 'message-square', '🔋': 'battery', '⏭': 'skip-forward', '⏮': 'skip-back', '⏯': 'play', '🔤': 'type', '🕒': 'clock', '🎵': 'music', '📈': 'trending-up', '⏲': 'timer', '⏱': 'timer', '📊': 'chart-column', '💾': 'hard-drive', '🎮': 'gamepad-2', '✳': 'asterisk', '🤖': 'bot', '🐙': 'github', '⚙': 'settings', '🔘': 'circle-dot', '🌍': 'globe', '🌐': 'globe', '📅': 'calendar', '🍅': 'timer', '⏳': 'hourglass', '📝': 'notebook-pen', '💻': 'laptop', '📡': 'radio-tower', '📬': 'mailbox', '🕰': 'alarm-clock', '📆': 'calendar-days', '🔢': 'hash', '🫁': 'wind', '✅': 'circle-check', '🔥': 'flame', '🎯': 'target', '🔊': 'volume-2', '🌅': 'sunrise', '🍃': 'leaf', '📰': 'newspaper', '🗞': 'newspaper', '🖼': 'image', '💱': 'arrow-left-right', '🪙': 'coins', '🖥': 'monitor', '🎧': 'headphones', '🖱': 'mouse', '⌨': 'keyboard', '🖊': 'pen', '🔇': 'volume-x', '🔕': 'bell-off', '📞': 'phone', '💡': 'lightbulb', '🔌': 'plug', '🌀': 'fan', '🪟': 'app-window', '📜': 'scroll-text', '🎬': 'clapperboard', '🧑': 'user', '🧹': 'brush', '📷': 'camera', '💧': 'droplet', '🚪': 'door-open', '🏃': 'footprints', '🧍': 'person-standing', '🫧': 'cloudy', '🔒': 'lock', '📳': 'vibrate', '🔓': 'lock-open', '⚠': 'warn', '🔴': 'radio', '🕙': 'clock-10', '👀': 'eye', '❌': 'circle-x', '⏸': 'pause', '🔔': 'bell', '📧': 'mail', '🧮': 'calculator', '✂': 'scissors', '🚀': 'rocket', '🐳': 'container', '🧪': 'flask-conical', '🛠': 'wrench', '📦': 'package', '⭐': 'star', '🦊': 'cat', '📁': 'folder', '📺': 'tv', '🚿': 'shower-head', '🛋': 'sofa', '🛏': 'bed', '🍳': 'egg-fried', '☕': 'coffee', '🌱': 'sprout', '🪴': 'flower-2', '🚗': 'car', '🧺': 'washing-machine', '🖨': 'printer', '📻': 'radio', '➕': 'plus', '⬆': 'arrow-up', '◻': 'square', '👋': 'hand', '🧭': 'compass', '🗓': 'calendar-range', '🏖': 'umbrella', '🧩': 'puzzle', '🗂': 'folders', '🎚': 'sliders-vertical', '🔉': 'volume-1', '⏩': 'fast-forward', '🔀': 'shuffle', '📂': 'folder-open', '📽': 'projector', '🎶': 'music-2', '🎹': 'piano', '🎨': 'palette', '🗑': 'trash-2' };
+const EMOJI_RE = new RegExp('(' + Object.keys(EMOJI_ICON).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\uFE0F?', 'gu');
+export const emojiIcon = (e) => EMOJI_ICON[String(e == null ? '' : e).replace(/\uFE0F/g, '').trim()];
+/** A node for one emoji: its icon when we have one, otherwise the text as typed. */
+export function emo(e, cls = '') { const n = emojiIcon(e); return n ? icon(n, cls) : document.createTextNode(e == null ? '' : String(e)); }
+/** A text with every known emoji swapped for its inline icon (a DocumentFragment, ready for append/replaceChildren). */
+export function rich(text) {
+  const frag = document.createDocumentFragment(), s = String(text == null ? '' : text);
+  let last = 0, m;
+  EMOJI_RE.lastIndex = 0;
+  while ((m = EMOJI_RE.exec(s))) {
+    if (m.index > last) frag.append(s.slice(last, m.index));
+    frag.append(icon(EMOJI_ICON[m[1]], 'm'));
+    last = m.index + m[0].length;
+  }
+  if (last < s.length) frag.append(s.slice(last));
+  return frag;
 }
 
 export const pad = (n) => String(n).padStart(2, '0');
@@ -243,7 +394,7 @@ export function toast(msg, kind = '', title = '', seconds = 2.6) {
   const t = $('toast');
   const ic = { ok: 'check', err: 'err', warn: 'warn' }[kind] || 'info';
   const msgSpan = h('span', null, icon(ic, 'm'), msg);
-  t.replaceChildren(...(title ? [h('b', null, title), msgSpan] : [msgSpan]));
+  t.replaceChildren(...(title ? [h('b', null, rich(title)), msgSpan] : [msgSpan]));
   t.className = 'toast on ' + kind;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (t.className = 'toast ' + kind), Math.max(1, seconds) * 1000);
@@ -480,7 +631,7 @@ export function wxBlock() {
       e.querySelector('.wx-desc').textContent = D.weather === null ? t('w.loading') : t('w.weatherUnavailable');
       return;
     }
-    e.querySelector('.wx-icon').textContent = l.icon;
+    e.querySelector('.wx-icon').replaceChildren(emo(l.icon));
     e.querySelector('.wx-temp').textContent = l.temp;
     e.querySelector('.wx-desc').textContent = l.desc;
     e.querySelector('.wx-range').textContent = l.range;
@@ -491,7 +642,7 @@ export function wxBlock() {
 // ---------------------------------------------------------------- status line (clock widget)
 export function phoneBattery() {
   if (!bridge) return '';
-  try { const b = JSON.parse(bridge.battery()); return `📱 ${b.level}%${b.plugged ? ' ⚡' : ''}`; } catch (_) { return ''; }
+  try { const b = JSON.parse(bridge.battery()); return rich(`📱 ${b.level}%${b.plugged ? ' ⚡' : ''}`); } catch (_) { return ''; }
 }
 
 export function quotaProviders() { return D.quotas?.providers || []; }
@@ -513,7 +664,7 @@ export function renderStatus(el, o = {}) {
   const waiting = (D.work?.sessions || []).filter((s) => s.status === 'waiting').length;
   if (waiting) kids.push(h('span', 'sep', '·'), h('span', 'smini', t('status.waitingCount', { n: waiting })));
   const u = D.state?.update;
-  if (u) kids.push(h('span', 'sep', '·'), h('span', 'upd', u.app && via !== 'usb' ? t('status.updateUsb', { version: u.latest }) : t('status.updateAvailable', { version: u.latest })));
+  if (u) kids.push(h('span', 'sep', '·'), h('span', 'upd', rich(u.app && via !== 'usb' ? t('status.updateUsb', { version: u.latest }) : t('status.updateAvailable', { version: u.latest }))));
   el.replaceChildren(...kids);
   // Too long for the widget: drop the quota summaries, the most dispensable part.
   while (el.scrollWidth > el.clientWidth + 1 && el.querySelector('.qm')) [...el.querySelectorAll('.qm')].pop().remove();
@@ -534,7 +685,7 @@ export async function runShortcut(btn, id) {
 /** A shortcut key. The Big button's options: with `cover`, a picture the user uploaded becomes the key's background
  *  instead of the centred icon; without `label`, the key shows no name (screen readers still get it). */
 export function keyButton(s, { cover = false, label = true } = {}) {
-  const icon = h('span', 'k-icon', s.icon || '•');
+  const icon = h('span', 'k-icon', s.icon ? rich(s.icon) : '•');
   const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
   // The agent accepts a blank label, and a filled key hides its icon, so the id keeps the button named when no text
   // is shown; visible text names it otherwise.
@@ -1295,7 +1446,7 @@ let navTimer = 0;
 let lastAutoSwitch = 0;
 let lastNav = 0;              // last automatic switch (for the idle timer)
 const dsp = () => cfg.display || {};
-const pageLabel = (i) => { const p = pages[i]; return p ? `${p.icon || ''} ${p.title}`.trim() : ''; };
+const pageLabel = (i) => { const p = pages[i]; return p ? rich(`${p.icon || ''} ${p.title}`.trim()) : ''; };
 
 export function requestPage(d) {
   if (PREVIEW) return;
@@ -1447,7 +1598,7 @@ function renderNav(req = null, why = '') {
     card.classList.remove('on');
     chip.classList.add('on');
     navShown = null;
-    $('ncText').textContent = `${name} → ${target}${more}`;
+    $('ncText').replaceChildren(`${name} → `, target, more);
     $('ncWhy').textContent = why;
     $('ncGo').onclick = () => { haptic(); perform(req); };
     $('ncX').onclick = () => dismiss(req);
@@ -1496,7 +1647,7 @@ export function flashTitle() {
   const p = pages[curPage];
   if (!p || pages.length < 2) return;
   const t = $('ptitle');
-  t.textContent = `${p.icon || ''} ${p.title}`.trim();
+  t.replaceChildren(rich(`${p.icon || ''} ${p.title}`.trim()));
   t.classList.add('on');
   clearTimeout(titleTimer);
   titleTimer = setTimeout(() => t.classList.remove('on'), 900);
@@ -1521,11 +1672,11 @@ export function openOverview() {
   const ov = $('overview');
   const tile = (p, i) => {
     const map = h('div', 'ov-map', p.widgets.map((w) => {
-      const b = h('span', null, WIDGET_ICONS[w.type] || '▫️');
+      const b = h('span', null, emo(WIDGET_ICONS[w.type] || '◻'));
       b.style.gridArea = `${w.y + 1} / ${w.x + 1} / span ${w.h} / span ${w.w}`;
       return b;
     }));
-    const t = h('button', 'ov-tile' + (i === curPage ? ' on' : ''), map, h('div', 'ov-name', h('b', null, `${i + 1}`), ` ${p.icon || ''} ${p.title}`));
+    const t = h('button', 'ov-tile' + (i === curPage ? ' on' : ''), map, h('div', 'ov-name', h('b', null, `${i + 1}`), rich(` ${p.icon || ''} ${p.title}`)));
     t.addEventListener('click', (e) => { e.stopPropagation(); haptic(); closeOverview(); goPage(i, true); });
     return t;
   };

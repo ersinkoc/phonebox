@@ -191,7 +191,7 @@ table.items td.val { font-family: Consolas, monospace; font-size: 12px; max-widt
 .swatches button { width: 22px; height: 22px; border-radius: 6px; border: 2px solid transparent; cursor: pointer; }
 .swatches button.on { border-color: var(--text); }
 .emojis { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 4px; }
-.emojis button { border: 0; background: none; font-size: 18px; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; }
+.emojis button { border: 0; background: none; font-size: 18px; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: inherit; display: inline-grid; place-items: center; }
 .emojis button:hover { background: var(--panel-2); }
 input[type=color] { width: 42px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 2px; }
 .icon-input { width: 70px; text-align: center; font-size: 20px; }
@@ -879,13 +879,158 @@ const ICONS = {
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  'alarm-clock': '<path d="M4 13a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
+  'app-window': '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>',
+  'arrow-left-right': '<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+  'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  'asterisk': '<path d="M12 6v12"/><path d="M17.196 9 6.804 15"/><path d="m6.804 9 10.392 6"/>',
+  'battery': '<path d="M4 7h12a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2z"/><path d="M22 11L22 13"/>',
+  'bed': '<path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/>',
+  'bell': '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+  'bell-off': '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/><path d="m2 2 20 20"/><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/>',
+  'bot': '<path d="M12 8V4H8"/><path d="M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2z"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+  'brush': '<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>',
+  'calculator': '<path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2z"/><path d="M8 6L16 6"/><path d="M16 14L16 18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/>',
+  'calendar': '<path d="M8 2v4"/><path d="M16 2v4"/><path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z"/><path d="M3 10h18"/>',
+  'calendar-days': '<path d="M8 2v4"/><path d="M16 2v4"/><path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+  'camera': '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><path d="M9 13a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>',
+  'car': '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M9 17h6"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>',
+  'cat': '<path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/>',
+  'chart-column': '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  'circle-check': '<path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/><path d="m9 12 2 2 4-4"/>',
+  'circle-dot': '<path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>',
+  'circle-x': '<path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  'clapperboard': '<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+  'clock': '<path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/><path d="M12 6L12 12L16 14"/>',
+  'clock-10': '<path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/><path d="M12 6L12 12L8 10"/>',
+  'cloud-fog': '<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 17H7"/><path d="M17 21H9"/>',
+  'cloud-lightning': '<path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"/><path d="m13 12-3 5h4l-3 5"/>',
+  'cloud-rain': '<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>',
+  'cloud-snow': '<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M8 15h.01"/><path d="M8 19h.01"/><path d="M12 17h.01"/><path d="M12 21h.01"/><path d="M16 15h.01"/><path d="M16 19h.01"/>',
+  'cloud-sun': '<path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/>',
+  'cloud-sun-rain': '<path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M3 20a5 5 0 1 1 8.9-4H13a3 3 0 0 1 2 5.24"/><path d="M11 20v2"/><path d="M7 19v2"/>',
+  'cloudy': '<path d="M17.5 21H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M22 10a3 3 0 0 0-3-3h-2.207a5.502 5.502 0 0 0-10.702.5"/>',
+  'coffee': '<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/>',
+  'coins': '<path d="M2 8a6 6 0 1 0 12 0a6 6 0 1 0 -12 0"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
+  'container': '<path d="M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z"/><path d="M10 21.9V14L2.1 9.1"/><path d="m10 14 11.9-6.9"/><path d="M14 19.8v-8.1"/><path d="M18 17.5V9.4"/>',
+  'door-open': '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>',
+  'droplet': '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+  'egg-fried': '<path d="M8 12.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0"/><path d="M3 8c0-3.5 2.5-6 6.5-6 5 0 4.83 3 7.5 5s5 2 5 6c0 4.5-2.5 6.5-7 6.5-2.5 0-2.5 2.5-6 2.5s-7-2-7-5.5c0-3 1.5-3 1.5-5C3.5 10 3 9 3 8Z"/>',
+  'eye': '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>',
+  'fan': '<path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"/><path d="M12 12v.01"/>',
+  'flag': '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22L4 15"/>',
+  'flame': '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  'flask-conical': '<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>',
+  'flower-2': '<path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1"/><path d="M10 8a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M12 10v12"/><path d="M12 22c4.2 0 7-1.667 7-5-4.2 0-7 1.667-7 5Z"/><path d="M12 22c-4.2 0-7-1.667-7-5 4.2 0 7 1.667 7 5Z"/>',
+  'folder': '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  'footprints': '<path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/>',
+  'gamepad-2': '<path d="M6 11L10 11"/><path d="M8 9L8 13"/><path d="M15 12L15.01 12"/><path d="M18 10L18.01 10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>',
+  'github': '<path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/>',
+  'globe': '<path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  'hand': '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+  'hard-drive': '<path d="M22 12L2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16L6.01 16"/><path d="M10 16L10.01 16"/>',
+  'hash': '<path d="M4 9L20 9"/><path d="M4 15L20 15"/><path d="M10 3L8 21"/><path d="M16 3L14 21"/>',
+  'headphones': '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>',
+  'house': '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  'image': '<path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z"/><path d="M7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  'keyboard': '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z"/>',
+  'laptop': '<path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/>',
+  'leaf': '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
+  'lightbulb': '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+  'lock': '<path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  'lock-open': '<path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+  'mail': '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  'mailbox': '<path d="M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5C2 7 4 5 6.5 5H18c2.2 0 4 1.8 4 4v8Z"/><path d="M15 9L18 9L18 11"/><path d="M6.5 5C9 5 11 7 11 9.5V17a2 2 0 0 1-2 2"/><path d="M6 10L7 10"/>',
+  'message-square': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  'moon': '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  'mouse': '<path d="M12 2h0a7 7 0 0 1 7 7v6a7 7 0 0 1 -7 7h-0a7 7 0 0 1 -7 -7v-6a7 7 0 0 1 7 -7z"/><path d="M12 6v4"/>',
+  'music': '<path d="M9 18V5l12-2v13"/><path d="M3 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M15 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>',
+  'newspaper': '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>',
+  'notebook-pen': '<path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/>',
+  'package': '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/>',
+  'pen': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+  'person-standing': '<path d="M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/>',
+  'phone': '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  'plug': '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
+  'printer': '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><path d="M7 14h10a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1z"/>',
+  'radio': '<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>',
+  'radio-tower': '<path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><path d="M10 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/>',
+  'rocket': '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
+  'rotate-ccw': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  'scissors': '<path d="M3 6a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><path d="M3 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M14.8 14.8 20 20"/>',
+  'scroll-text': '<path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
+  'shower-head': '<path d="m4 4 2.5 2.5"/><path d="M13.5 6.5a4.95 4.95 0 0 0-7 7"/><path d="M15 5 5 15"/><path d="M14 17v.01"/><path d="M10 16v.01"/><path d="M13 13v.01"/><path d="M16 10v.01"/><path d="M11 20v.01"/><path d="M17 14v.01"/><path d="M20 11v.01"/>',
+  'signal': '<path d="M2 20h.01"/><path d="M7 20v-4"/><path d="M12 20v-8"/><path d="M17 20V8"/><path d="M22 4v16"/>',
+  'skip-back': '<path d="M19 20L9 12L19 4L19 20z"/><path d="M5 19L5 5"/>',
+  'skip-forward': '<path d="M5 4L15 12L5 20L5 4z"/><path d="M19 5L19 19"/>',
+  'sliders-horizontal': '<path d="M21 4L14 4"/><path d="M10 4L3 4"/><path d="M21 12L12 12"/><path d="M8 12L3 12"/><path d="M21 20L16 20"/><path d="M12 20L3 20"/><path d="M14 2L14 6"/><path d="M8 10L8 14"/><path d="M16 18L16 22"/>',
+  'smartphone': '<path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2z"/><path d="M12 18h.01"/>',
+  'snowflake': '<path d="M2 12L22 12"/><path d="M12 2L12 22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/>',
+  'sofa': '<path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3"/><path d="M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/><path d="M4 18v2"/><path d="M20 18v2"/><path d="M12 4v9"/>',
+  'sprout': '<path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/>',
+  'square': '<path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z"/>',
+  'star': '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  'sun': '<path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  'sunrise': '<path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/>',
+  'target': '<path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/><path d="M6 12a6 6 0 1 0 12 0a6 6 0 1 0 -12 0"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>',
+  'thermometer': '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
+  'timer': '<path d="M10 2L14 2"/><path d="M12 14L15 11"/><path d="M4 14a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"/>',
+  'trending-up': '<path d="M22 7L13.5 15.5L8.5 10.5L2 17"/><path d="M16 7L22 7L22 13"/>',
+  'tv': '<path d="M4 7h16a2 2 0 0 1 2 2v11a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2z"/><path d="M17 2L12 7L7 2"/>',
+  'type': '<path d="M4 7L4 4L20 4L20 7"/><path d="M9 20L15 20"/><path d="M12 4L12 20"/>',
+  'user': '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/>',
+  'vibrate': '<path d="m2 8 2 2-2 2 2 2-2 2"/><path d="m22 8-2 2 2 2-2 2 2 2"/><path d="M9 5h6a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1v-12a1 1 0 0 1 1 -1z"/>',
+  'video': '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><path d="M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2z"/>',
+  'volume-2': '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
+  'volume-x': '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M22 9L16 15"/><path d="M16 9L22 15"/>',
+  'washing-machine': '<path d="M3 6h3"/><path d="M17 6h.01"/><path d="M5 2h14a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2z"/><path d="M7 13a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"/><path d="M12 18a2.5 2.5 0 0 0 0-5 2.5 2.5 0 0 1 0-5"/>',
+  'wind': '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+  'wrench': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  'calendar-range': '<path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/>',
+  'compass': '<path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/>',
+  'fast-forward': '<path d="M13 19L22 12L13 5L13 19z"/><path d="M2 19L11 12L2 5L2 19z"/>',
+  'folder-open': '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+  'folders': '<path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/><path d="M2 8v11a2 2 0 0 0 2 2h14"/>',
+  'music-2': '<path d="M4 18a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M12 18V2l7 4"/>',
+  'palette': '<path d="M13 6.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"/><path d="M17 10.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"/><path d="M8 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"/><path d="M6 12.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>',
+  'piano': '<path d="M18.5 8c-1.4 0-2.6-.8-3.2-2A6.87 6.87 0 0 0 2 9v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8.5C22 9.6 20.4 8 18.5 8"/><path d="M2 14h20"/><path d="M6 14v4"/><path d="M10 14v4"/><path d="M14 14v4"/><path d="M18 14v4"/>',
+  'projector': '<path d="M5 7 3 5"/><path d="M9 6V3"/><path d="m13 7 2-2"/><path d="M6 13a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M11.83 12H20a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h2.17"/><path d="M16 16h2"/>',
+  'puzzle': '<path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/>',
+  'shuffle': '<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/>',
+  'sliders-vertical': '<path d="M4 21L4 14"/><path d="M4 10L4 3"/><path d="M12 21L12 12"/><path d="M12 8L12 3"/><path d="M20 21L20 16"/><path d="M20 12L20 3"/><path d="M2 14L6 14"/><path d="M10 8L14 8"/><path d="M18 16L22 16"/>',
+  'trash-2': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11L10 17"/><path d="M14 11L14 17"/>',
+  'umbrella': '<path d="M22 12a10.06 10.06 1 0 0-20 0Z"/><path d="M12 12v8a2 2 0 0 0 4 0"/><path d="M12 2v1"/>',
+  'volume-1': '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/>',
 };
 // icon('download') → an inline <svg> in currentColor, sized in em so it follows text and theme.
 const icon = (name, cls = '') => {
   const t = document.createElement('template');
   t.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico${cls ? ' ' + cls : ''}" aria-hidden="true">${ICONS[name]}</svg>`;
-  return t.content.firstElementChild;
+  const s = t.content.firstElementChild;
+  s.dataset.icon = name;
+  return s;
 };
+
+/* Emoji → Lucide icon, as in the phone panel: stored emoji (shortcut and page icons, widget catalog, rule and preset
+   labels) stay plain text in the config, and every place that shows one draws the matching icon instead. */
+const EMOJI_ICON = { '🏠': 'house', '☀': 'sun', '🌙': 'moon', '🌤': 'cloud-sun', '⛅': 'cloud-sun', '☁': 'cloudy', '🌫': 'cloud-fog', '🌦': 'cloud-sun-rain', '🌧': 'cloud-rain', '🌨': 'cloud-snow', '❄': 'snowflake', '⛈': 'cloud-lightning', '🌡': 'thermometer', '📱': 'smartphone', '⚡': 'zap', '📹': 'video', '🎙': 'mic', '📶': 'signal', '🎛': 'sliders-horizontal', '💬': 'message-square', '🔋': 'battery', '⏭': 'skip-forward', '⏮': 'skip-back', '⏯': 'play', '🔤': 'type', '🕒': 'clock', '🎵': 'music', '📈': 'trending-up', '⏲': 'timer', '⏱': 'timer', '📊': 'chart-column', '💾': 'hard-drive', '🎮': 'gamepad-2', '✳': 'asterisk', '🤖': 'bot', '🐙': 'github', '⚙': 'settings', '🔘': 'circle-dot', '🌍': 'globe', '🌐': 'globe', '📅': 'calendar', '🍅': 'timer', '⏳': 'hourglass', '📝': 'notebook-pen', '💻': 'laptop', '📡': 'radio-tower', '📬': 'mailbox', '🕰': 'alarm-clock', '📆': 'calendar-days', '🔢': 'hash', '🫁': 'wind', '✅': 'circle-check', '🔥': 'flame', '🎯': 'target', '🔊': 'volume-2', '🌅': 'sunrise', '🍃': 'leaf', '📰': 'newspaper', '🗞': 'newspaper', '🖼': 'image', '💱': 'arrow-left-right', '🪙': 'coins', '🖥': 'monitor', '🎧': 'headphones', '🖱': 'mouse', '⌨': 'keyboard', '🖊': 'pen', '🔇': 'volume-x', '🔕': 'bell-off', '📞': 'phone', '💡': 'lightbulb', '🔌': 'plug', '🌀': 'fan', '🪟': 'app-window', '📜': 'scroll-text', '🎬': 'clapperboard', '🧑': 'user', '🧹': 'brush', '📷': 'camera', '💧': 'droplet', '🚪': 'door-open', '🏃': 'footprints', '🧍': 'person-standing', '🫧': 'cloudy', '🔒': 'lock', '📳': 'vibrate', '🔓': 'lock-open', '⚠': 'warn', '🔴': 'radio', '🕙': 'clock-10', '👀': 'eye', '❌': 'circle-x', '⏸': 'pause', '🔔': 'bell', '📧': 'mail', '🧮': 'calculator', '✂': 'scissors', '🚀': 'rocket', '🐳': 'container', '🧪': 'flask-conical', '🛠': 'wrench', '📦': 'package', '⭐': 'star', '🦊': 'cat', '📁': 'folder', '📺': 'tv', '🚿': 'shower-head', '🛋': 'sofa', '🛏': 'bed', '🍳': 'egg-fried', '☕': 'coffee', '🌱': 'sprout', '🪴': 'flower-2', '🚗': 'car', '🧺': 'washing-machine', '🖨': 'printer', '📻': 'radio', '➕': 'plus', '⬆': 'arrow-up', '◻': 'square', '👋': 'hand', '🧭': 'compass', '🗓': 'calendar-range', '🏖': 'umbrella', '🧩': 'puzzle', '🗂': 'folders', '🎚': 'sliders-vertical', '🔉': 'volume-1', '⏩': 'fast-forward', '🔀': 'shuffle', '📂': 'folder-open', '📽': 'projector', '🎶': 'music-2', '🎹': 'piano', '🎨': 'palette', '🗑': 'trash-2' };
+const EMOJI_RE = new RegExp('(' + Object.keys(EMOJI_ICON).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\uFE0F?', 'gu');
+const emo = (e, cls = '') => { const n = EMOJI_ICON[String(e == null ? '' : e).replace(/\uFE0F/g, '').trim()]; return n ? icon(n, cls) : document.createTextNode(e == null ? '' : String(e)); };
+// A text with its known emoji swapped for inline icons (a DocumentFragment).
+const rich = (text) => {
+  const frag = document.createDocumentFragment(), s = String(text == null ? '' : text);
+  let last = 0, m;
+  EMOJI_RE.lastIndex = 0;
+  while ((m = EMOJI_RE.exec(s))) {
+    if (m.index > last) frag.append(s.slice(last, m.index));
+    frag.append(icon(EMOJI_ICON[m[1]], 'm'));
+    last = m.index + m[0].length;
+  }
+  if (last < s.length) frag.append(s.slice(last));
+  return frag;
+};
+// The same text without those emoji, for places that cannot hold an icon (<option>, title tooltips).
+const plain = (text) => String(text == null ? '' : text).replace(EMOJI_RE, '').replace(/\s+/g, ' ').trim();
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#e5b84b', '#84cc16', '#22c55e', '#14b8a6', '#0ea5e9', '#2f80ed', '#6366f1', '#a855f7', '#ec4899', '#d97757', '#64748b', '#9ca3af'];
 const EMOJIS = ['⌨️', '💻', '📁', '📝', '🌐', '🎧', '🎵', '💬', '📧', '📅', '🧮', '⚙️', '✂️', '📊', '🔇', '🔊', '🌙', '🔒', '🚀', '🐙', '🐳', '🧪', '🛠️', '📦', '🎮', '📷', '🎙️', '⭐', '✳️', '🦊'];
@@ -962,7 +1107,7 @@ let catalog = { cols: 12, rows: 6, widgets: [], templates: [] };
 let selPage = 0;
 let selWidget = -1;
 let activeStackSubIdx = -1;
-const widgetDef = (type) => catalog.widgets.find((w) => w.type === type) || { type, name: type, icon: '▫️', options: [], minW: 1, minH: 1, w: 2, h: 2 };
+const widgetDef = (type) => catalog.widgets.find((w) => w.type === type) || { type, name: type, icon: '◻', options: [], minW: 1, minH: 1, w: 2, h: 2 };
 const curPage = () => cfg.pages[selPage];
 
 function deckCols() {
@@ -1090,7 +1235,7 @@ function renderPages() {
   list.replaceChildren(...cfg.pages.map((p, i) => {
     const row = h('div', { class: 'ptab' + (i === selPage ? ' on' : '') + (p.enabled === false ? ' off' : ''), draggable: 'true', 'data-i': i,
       onclick: () => { selPage = i; selWidget = -1; renderPages(); } },
-      h('span', { class: 'pt-num' }, String(i + 1)), h('span', { class: 'pt-ico' }, p.icon || '▫️'), h('span', { class: 'pt-name' }, p.title || '(untitled)'),
+      h('span', { class: 'pt-num' }, String(i + 1)), h('span', { class: 'pt-ico' }, rich(p.icon || '◻')), h('span', { class: 'pt-name' }, p.title || '(untitled)'),
       h('span', { class: 'pt-n' }, String((p.widgets || []).length)));
     dragSort(row, cfg.pages, (from, to) => { selPage = to; renderPages(); changed(); });
     return row;
@@ -1106,7 +1251,7 @@ const isHome = (p) => (cfg.display.homePage ? cfg.display.homePage === p.id : cf
 function fillHomeSelect() {
   const sel = $('homePageSel');
   if (!sel) return;
-  sel.replaceChildren(h('option', { value: '' }, t('s.js.firstPage')), ...cfg.pages.filter((p) => p.id).map((p) => h('option', { value: p.id, selected: p.id === cfg.display.homePage }, `${p.icon || ''} ${p.title}`.trim())));
+  sel.replaceChildren(h('option', { value: '' }, t('s.js.firstPage')), ...cfg.pages.filter((p) => p.id).map((p) => h('option', { value: p.id, selected: p.id === cfg.display.homePage }, plain(`${p.icon || ''} ${p.title}`))));
   sel.value = cfg.display.homePage || '';
 }
 
@@ -1211,7 +1356,7 @@ function renderTabsOnly() {
   cfg.pages.forEach((p, i) => {
     const t = tabs[i];
     if (!t) return;
-    t.querySelector('.pt-ico').textContent = p.icon || '▫️';
+    t.querySelector('.pt-ico').replaceChildren(rich(p.icon || '◻'));
     t.querySelector('.pt-name').textContent = p.title || '(untitled)';
     t.classList.toggle('off', p.enabled === false);
   });
@@ -1225,7 +1370,7 @@ function renderCanvas() {
   p.widgets.forEach((w, i) => {
     const d = widgetDef(w.type);
     const el = h('div', { class: 'wb' + (i === selWidget ? ' sel' : ''), title: d.name },
-      h('div', { class: 'wb-in' }, h('span', { class: 'wb-ico' }, d.icon), h('b', {}, d.name), h('small', {}, widgetSummary(w))),
+      h('div', { class: 'wb-in' }, h('span', { class: 'wb-ico' }, rich(d.icon)), h('b', {}, d.name), h('small', {}, widgetSummary(w))),
       h('span', { class: 'rz', title: 'Resize' }));
     el.style.gridArea = `${w.y + 1} / ${w.x + 1} / span ${w.h} / span ${w.w}`;
     el.addEventListener('pointerdown', (e) => startDrag(e, w, i, e.target.classList.contains('rz') ? 'resize' : 'move'));
@@ -1307,7 +1452,7 @@ function renderPalette() {
       },
       onclick: () => addWidget(d)
     },
-      h('span', { class: 'pal-ico' }, d.icon), h('span', {}, h('b', {}, d.name), h('small', {}, d.desc))))]) : [h('p', { class: 'hint' }, t('s.js.noWidgetMatch'))]));
+      h('span', { class: 'pal-ico' }, rich(d.icon)), h('span', {}, h('b', {}, d.name), h('small', {}, d.desc))))]) : [h('p', { class: 'hint' }, t('s.js.noWidgetMatch'))]));
 }
 
 function addWidget(d) {
@@ -1335,7 +1480,7 @@ function renderInspector() {
     } }));
   box.replaceChildren(
     h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '8px' } },
-      h('h3', { style: { margin: 0 } }, `${d.icon} ${d.name}`),
+      h('h3', { style: { margin: 0 } }, rich(`${d.icon} ${d.name}`)),
       h('div', { class: 'row', style: { gap: '6px' } },
         h('button', { class: 'btn sm', onclick: () => {
           const spot = freeSpot(p, w.w, w.h, d.minW, d.minH);
@@ -1449,7 +1594,7 @@ function renderStackWidgetsOption(w, o) {
         checked: item.enabled,
         onchange: (e) => { e.stopPropagation(); item.enabled = e.target.checked; save(); }
       }),
-      h('span', { class: 'stack-row-ico' }, d.icon),
+      h('span', { class: 'stack-row-ico' }, rich(d.icon)),
       h('span', { class: 'stack-row-name', title: 'Click to edit settings' }, d.name),
       h('span', { class: 'stack-row-chevron', title: isOpen ? 'Close settings' : 'Open settings' }, icon(isOpen ? 'chevron-down' : 'chevron-right')),
       h('div', { class: 'stack-row-actions' },
@@ -1465,7 +1610,7 @@ function renderStackWidgetsOption(w, o) {
       const subOptions = (d.options || []).filter((opt) => opt.key !== 'widgets');
       const configBox = h('div', { class: 'stack-sub-config' },
         h('div', { class: 'stack-sub-header' },
-          h('span', { style: { fontWeight: '600', fontSize: '12px', color: 'var(--accent)' } }, icon('settings', 'm'), `${d.icon} ${d.name} settings`),
+          h('span', { style: { fontWeight: '600', fontSize: '12px', color: 'var(--accent)' } }, icon('settings', 'm'), rich(`${d.icon} ${d.name} settings`)),
           h('button', { type: 'button', class: 'stack-btn-sm', title: t('panel.close'), onclick: (e) => { e.stopPropagation(); activeStackSubIdx = -1; renderInspector(); } }, icon('x'))
         ),
         ...(subOptions.length > 0
@@ -1510,7 +1655,7 @@ function renderStackWidgetsOption(w, o) {
 
   const quickSelect = h('div', { class: 'row', style: { gap: '6px', marginTop: '8px' } },
     h('select', { id: 'stackQuickAdd', style: { flex: '1' } },
-      ...catalog.widgets.filter((cw) => !['stack', 'command'].includes(cw.type)).map((cw) => h('option', { value: cw.type }, `${cw.icon} ${cw.name}`))
+      ...catalog.widgets.filter((cw) => !['stack', 'command'].includes(cw.type)).map((cw) => h('option', { value: cw.type }, plain(`${cw.icon} ${cw.name}`)))
     ),
     h('button', { type: 'button', class: 'btn sm', onclick: () => {
       const sel = $('stackQuickAdd');
@@ -1658,14 +1803,14 @@ function optionField(w, o, onValChange) {
         ...(cfg.cameras?.sources || []).map((c) => h('option', { value: c.id, selected: c.id === v }, c.name || (c.url || '').replace(/\/\/[^/@]*@/, '//')))));
     case 'shortcut':
       return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, t('s.js.firstShortcut')),
-        ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, `${s.icon} ${s.label}`))),
+        ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, plain(`${s.icon} ${s.label}`)))),
         h('span', { class: 'hint' }, t('s.js.newShortcutsId')));
     case 'ha-items': return haItemsEditor(w, o, set);
     case 'shortcuts': {
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
       return field(h('div', { class: 'opts' }, ...cfg.shortcuts.map((s) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(s.id), onchange: (e) => {
         set(o.key, cfg.shortcuts.map((x) => x.id).filter((id) => (id === s.id ? e.target.checked : cur().includes(id))));
-      } }), `${s.icon} ${s.label}`))));
+      } }), rich(`${s.icon} ${s.label}`)))));
     }
     default:
       return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
@@ -1732,7 +1877,7 @@ function haItemsEditor(w, o, set) {
           h('button', { class: 'btn sm', title: t('s.ha.down'), disabled: i === rows.length - 1, onclick: () => { [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; save(); render(); } }, '▼'),
           h('button', { class: 'btn sm', title: t('s.ha.remove'), onclick: () => { rows.splice(i, 1); picking = -1; save(); render(); } }, '✕')),
         picking === i ? h('div', { class: 'emojis' }, h('button', { title: t('s.ha.defaultIconTitle'), style: { width: 'auto', padding: '0 8px', fontSize: '12px' }, onclick: () => pick('') }, t('s.ha.defaultIcon')),
-          ...HA_EMOJIS.map((em) => h('button', { onclick: () => pick(em) }, em))) : null,
+          ...HA_EMOJIS.map((em) => h('button', { 'data-emoji': em, onclick: () => pick(em) }, rich(em)))) : null,
         h('div', { class: 'row', style: { gap: '4px', marginTop: '4px' } }, check('showIcon', t('s.ha.showIcon'), r.showIcon !== false), check('showName', t('s.ha.showName'), r.showName !== false),
           check('control', t('s.ha.allowSwitch'), typeof r.control === 'boolean' ? r.control : widgetOn())));
     }), ...(rows.length ? [] : [h('div', { class: 'hint' }, t('s.ha.none'))]));
@@ -1746,7 +1891,7 @@ function haItemsEditor(w, o, set) {
 // ---- template picker: new page (index null) or replace the widgets of page <index>
 function miniMap(widgets) {
   return h('div', { class: 'mini' }, ...widgets.map((w) => {
-    const b = h('span', {}, widgetDef(w.type).icon);
+    const b = h('span', {}, rich(widgetDef(w.type).icon));
     b.style.gridArea = `${w.y + 1} / ${w.x + 1} / span ${w.h} / span ${w.w}`;
     return b;
   }));
@@ -1758,7 +1903,7 @@ function openTemplates(index) {
     // a template lists only what differs from the defaults; the rest is written out like for a widget added by hand
     for (const w of widgets) w.options = { ...defaultOptions(w.type), ...(w.options || {}) };
     if (index == null) {
-      cfg.pages.push({ id: '', title: t ? t.title : 'New page', icon: t ? t.icon : '▫️', enabled: true, widgets });
+      cfg.pages.push({ id: '', title: t ? t.title : 'New page', icon: t ? t.icon : '◻', enabled: true, widgets });
       selPage = cfg.pages.length - 1;
     } else {
       cfg.pages[index].widgets = widgets;
@@ -1770,7 +1915,7 @@ function openTemplates(index) {
     h('h3', {}, index == null ? 'New page' : `Replace the widgets of "${cfg.pages[index].title}"`),
     h('div', { class: 'tpl-grid' },
       h('button', { class: 'tpl', onclick: () => pick(null) }, h('div', { class: 'mini empty-mini' }, icon('plus')), h('b', {}, t('s.js.blankPage')), h('small', {}, t('s.js.blankPageHint'))),
-      ...catalog.templates.map((t) => h('button', { class: 'tpl', onclick: () => pick(t) }, miniMap(t.widgets), h('b', {}, `${t.icon} ${t.title}`), h('small', {}, t.desc)))));
+      ...catalog.templates.map((t) => h('button', { class: 'tpl', onclick: () => pick(t) }, miniMap(t.widgets), h('b', {}, rich(`${t.icon} ${t.title}`)), h('small', {}, t.desc)))));
   $('modal').hidden = false;
 }
 let onModalClose = null; // a dialog that has to clean up (the pairing code) sets this
@@ -1861,7 +2006,7 @@ function renderPhones() {
           if (e.target.checked) set.add(p.id); else set.delete(p.id);
           e2.pages = cfg.pages.map((x) => x.id).filter((id) => set.has(id));
           changed();
-        } }), `${p.icon || ''} ${p.title}`.trim()))));
+        } }), rich(`${p.icon || ''} ${p.title}`.trim())))));
   }));
 }
 
@@ -2101,7 +2246,7 @@ function renderRules() {
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
-  } }, tl(label))));
+  } }, rich(tl(label)))));
   const list = $('ruleList');
   if (!cfg.rules.length) { list.replaceChildren(h('p', { class: 'hint' }, t('s.r.noRules'))); return; }
   list.replaceChildren(...cfg.rules.map((r, i) => ruleCard(r, i)));
@@ -2139,12 +2284,12 @@ function ruleCard(r, i) {
   const act = [];
   if (r.then === 'goto') act.push(h('select', { onchange: (e) => set('page', e.target.value) },
     ...(cfg.pages.some((p) => p.id === r.page) ? [] : [h('option', { value: r.page || '', selected: true }, t('s.r.pickPage'))]),
-    ...cfg.pages.map((p) => h('option', { value: p.id, selected: p.id === r.page }, `${p.icon || ''} ${p.title}`.trim()))));
+    ...cfg.pages.map((p) => h('option', { value: p.id, selected: p.id === r.page }, plain(`${p.icon || ''} ${p.title}`)))));
   if (r.then === 'notify') act.push(text('text', t('s.r.textPlaceholder'), 'grow'),
     sel(r.level || 'info', { info: 'info', ok: 'ok', warn: 'warning', error: 'error' }, (v) => set('level', v)));
   if (r.then === 'push') act.push(text('key', t('s.r.keyPlaceholder')), text('pushValue', t('s.r.valuePlaceholder'), 'grow'));
   if (r.then === 'shortcut') act.push(h('select', { onchange: (e) => set('shortcut', e.target.value || null) }, h('option', { value: '' }, t('s.r.pickShortcut')),
-    ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === r.shortcut }, `${s.icon || ''} ${s.label}`.trim()))));
+    ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === r.shortcut }, plain(`${s.icon || ''} ${s.label}`)))));
 
   const num = (key, min, max, width = 64) => h('input', { type: 'number', min, max, style: `width:${width}px`, value: r[key] ?? '', placeholder: '0',
     oninput: (e) => set(key, e.target.value === '' ? (key === 'countdownSec' ? null : 0) : +e.target.value) });
@@ -2219,7 +2364,7 @@ function renderCharge() {
   const sc = cfg.charge.method === 'shortcuts';
   $('chargeHa').hidden = sc; $('chargeOn').hidden = $('chargeOff').hidden = !sc;
   for (const [id, key] of [['chargeOnSel', 'onShortcut'], ['chargeOffSel', 'offShortcut']])
-    $(id).replaceChildren(h('option', { value: '' }, t('s.r.pickShortcut')), ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === cfg.charge[key] }, `${s.icon || ''} ${s.label}`.trim())));
+    $(id).replaceChildren(h('option', { value: '' }, t('s.r.pickShortcut')), ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === cfg.charge[key] }, plain(`${s.icon || ''} ${s.label}`))));
 }
 async function chargeTest(action) {
   if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveThenTest'), true); return; }
@@ -2311,7 +2456,7 @@ function renderDeck() {
   cfg.shortcuts.forEach((s, i) => {
     const k = h('div', { class: 'key' + (i === selKey ? ' sel' : ''), draggable: 'true', 'data-i': i, style: { '--k': s.color || '#6b7280' },
       onclick: () => { selKey = i; renderDeck(); } },
-      h('span', { class: 'ki' }, s.icon || '•'), h('span', { class: 'kl' }, s.label || '(untitled)'));
+      h('span', { class: 'ki' }, rich(s.icon || '•')), h('span', { class: 'kl' }, s.label || '(untitled)'));
     k.style.setProperty('--k', s.color || '#6b7280');
     dragSort(k, cfg.shortcuts, (from, to) => { selKey = to; renderDeck(); changed(); });
     deck.append(k);
@@ -2361,7 +2506,7 @@ function renderEditor() {
       h('div', {},
         text('label', t('s.k.label'), t('s.k.labelHint')),
         h('div', { class: 'field' }, h('label', {}, t('s.z.iconEmoji')), h('div', { class: 'row' }, iconIn),
-          h('div', { class: 'emojis' }, ...EMOJIS.map((em) => h('button', { onclick: () => { iconIn.value = em; upd('icon', em); } }, em)))),
+          h('div', { class: 'emojis' }, ...EMOJIS.map((em) => h('button', { 'data-emoji': em, onclick: () => { iconIn.value = em; upd('icon', em); } }, rich(em))))),
         customIconField(s),
         h('div', { class: 'field' }, h('label', {}, t('s.z.colour')), h('div', { class: 'row' }, colorIn), sw)),
       h('div', {}, ...actionFields(s, upd, text, cmdIn, preset),
@@ -2480,7 +2625,7 @@ function renderDeckKeysOnly() {
     const k = keys[i];
     if (!k) return;
     k.style.setProperty('--k', s.color || '#6b7280');
-    k.querySelector('.ki').textContent = s.icon || '•';
+    k.querySelector('.ki').replaceChildren(rich(s.icon || '•'));
     k.querySelector('.kl').textContent = s.label || '(untitled)';
   });
 }
@@ -2610,7 +2755,7 @@ function renderControlSettings() {
             renderActions();
           }
         }),
-        h('span', { class: 'stack-row-ico' }, '📻'),
+        h('span', { class: 'stack-row-ico' }, emo('📻')),
         h('span', { class: 'stack-row-name', title: station.target || '' }, station.label || station.id),
         h('div', { class: 'stack-row-actions' },
           h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move up', disabled: !!q || idx === 0, onclick: (e) => { e.stopPropagation(); moveRadio(idx, idx - 1); } }, '▲'),
@@ -3163,7 +3308,7 @@ $('modalClose').onclick = closeModal;
 $('lanPair').onclick = pairOverWifi;
 $('modal').onclick = (e) => { if (e.target.id === 'modal') closeModal(); };
 const whTry = (fn, ok) => async () => { try { await fn(); toast(ok); loadPushed(); } catch (e) { toast(e.message, true); } };
-$('whNotify').onclick = whTry(() => postJson('/api/notify', { title: 'PhoneBox', text: 'Hello from the settings page 👋', level: 'ok' }), 'Sent — look at the phone');
+$('whNotify').onclick = whTry(() => postJson('/api/notify', { title: 'PhoneBox', text: 'Hello from the settings page', level: 'ok' }), 'Sent — look at the phone');
 $('whPush').onclick = whTry(() => postJson('/api/push/demo', { value: Math.round(Math.random() * 100), unit: '%', sub: 'sent ' + new Date().toLocaleTimeString() }), 'Pushed "demo"');
 $('whRefresh').onclick = whTry(() => postJson('/api/refresh'), 'The panel refreshes');
 $('whReload').onclick = whTry(() => postJson('/api/refresh?reload=1'), 'The panel reloads');

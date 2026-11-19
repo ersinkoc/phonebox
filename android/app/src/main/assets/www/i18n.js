@@ -91,8 +91,8 @@
       'panel.rulesPausedToast': 'Rules paused for an hour',
       'panel.rulesResumedToast': 'Rules are back on',
       'panel.pcNoAnswer': 'The PC did not answer',
-      'panel.rulesPausedUntil': '⏸ Rules paused until {time} · resume',
-      'panel.pauseRules1h': '⏸ Pause rules 1 h',
+      'panel.rulesPausedUntil': 'Rules paused until {time} · resume',
+      'panel.pauseRules1h': 'Pause rules 1 h',
       'panel.needsInput': 'needs input',
       'panel.sessionFinished': '{name} finished',
 
@@ -318,7 +318,7 @@
       's.weather.openMeteoHint': 'The phone asks Open-Meteo for this location only while a page has a widget that uses the weather (weather, forecast, sun & moon, a clock with its weather line, Custom HTML).',
       's.display.orientationHint': 'You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.',
       's.rules.countdown': 'Page switches count down on the phone and wait while you use it (General › Page switching).',
-      's.rules.pausedUntil': '⏸ Rules are paused until {time}.',
+      's.rules.pausedUntil': 'Rules are paused until {time}.',
       's.pageSwitch.title': 'Page switching',
       's.pageSwitch.lead': 'How rules, webhooks and the idle return change the page. Instead of jumping, the phone shows “Claude needs me — switching to AI in 3…” with Stay and Go now, then fades over. It never pulls a page away while you are using the panel, and rules that fire one after another wait their turn instead of bouncing the screen back and forth.',
       's.pageSwitch.homePage': 'Home page',
@@ -817,8 +817,8 @@
       'panel.rulesPausedToast': 'Kurallar 1 saat duraklatıldı',
       'panel.rulesResumedToast': 'Kurallar tekrar aktif',
       'panel.pcNoAnswer': 'PC yanıt vermedi',
-      'panel.rulesPausedUntil': '⏸ Kurallar {time} saatine kadar duraklatıldı · devam et',
-      'panel.pauseRules1h': '⏸ Kuralları 1 sa duraklat',
+      'panel.rulesPausedUntil': 'Kurallar {time} saatine kadar duraklatıldı · devam et',
+      'panel.pauseRules1h': 'Kuralları 1 sa duraklat',
       'panel.needsInput': 'girdi bekliyor',
       'panel.sessionFinished': '{name} tamamlandı',
 
@@ -1182,8 +1182,8 @@
       'panel.rulesPausedToast': 'Regeln für 1 Stunde pausiert',
       'panel.rulesResumedToast': 'Regeln sind wieder aktiv',
       'panel.pcNoAnswer': 'PC hat nicht geantwortet',
-      'panel.rulesPausedUntil': '⏸ Regeln pausiert bis {time} · fortsetzen',
-      'panel.pauseRules1h': '⏸ Regeln 1 Std. pausieren',
+      'panel.rulesPausedUntil': 'Regeln pausiert bis {time} · fortsetzen',
+      'panel.pauseRules1h': 'Regeln 1 Std. pausieren',
       'panel.needsInput': 'benötigt Eingabe',
       'panel.sessionFinished': '{name} fertig',
 
@@ -1547,8 +1547,8 @@
       'panel.rulesPausedToast': 'Règles en pause pendant 1 heure',
       'panel.rulesResumedToast': 'Les règles sont réactivées',
       'panel.pcNoAnswer': 'Le PC n\'a pas répondu',
-      'panel.rulesPausedUntil': '⏸ Règles en pause jusqu\'à {time} · reprendre',
-      'panel.pauseRules1h': '⏸ Pause règles 1 h',
+      'panel.rulesPausedUntil': 'Règles en pause jusqu\'à {time} · reprendre',
+      'panel.pauseRules1h': 'Pause règles 1 h',
       'panel.needsInput': 'attend une réponse',
       'panel.sessionFinished': '{name} terminé',
 
@@ -1912,8 +1912,8 @@
       'panel.rulesPausedToast': 'Reglas pausadas durante 1 hora',
       'panel.rulesResumedToast': 'Reglas activadas de nuevo',
       'panel.pcNoAnswer': 'El PC no respondió',
-      'panel.rulesPausedUntil': '⏸ Reglas en pausa hasta las {time} · reanudar',
-      'panel.pauseRules1h': '⏸ Pausar reglas 1 h',
+      'panel.rulesPausedUntil': 'Reglas en pausa hasta las {time} · reanudar',
+      'panel.pauseRules1h': 'Pausar reglas 1 h',
       'panel.needsInput': 'necesita respuesta',
       'panel.sessionFinished': '{name} terminó',
 
@@ -2277,8 +2277,8 @@
       'panel.rulesPausedToast': 'Regole in pausa per 1 ora',
       'panel.rulesResumedToast': 'Regole riattivate',
       'panel.pcNoAnswer': 'Il PC non ha risposto',
-      'panel.rulesPausedUntil': '⏸ Regole in pausa fino alle {time} · riprendi',
-      'panel.pauseRules1h': '⏸ Pausa regole 1 h',
+      'panel.rulesPausedUntil': 'Regole in pausa fino alle {time} · riprendi',
+      'panel.pauseRules1h': 'Pausa regole 1 h',
       'panel.needsInput': 'richiede input',
       'panel.sessionFinished': '{name} completato',
 
@@ -2642,8 +2642,8 @@
       'panel.rulesPausedToast': 'Regras em pausa por 1 hora',
       'panel.rulesResumedToast': 'Regras reativadas',
       'panel.pcNoAnswer': 'O PC não respondeu',
-      'panel.rulesPausedUntil': '⏸ Regras em pausa até {time} · retomar',
-      'panel.pauseRules1h': '⏸ Pausar regras 1 h',
+      'panel.rulesPausedUntil': 'Regras em pausa até {time} · retomar',
+      'panel.pauseRules1h': 'Pausar regras 1 h',
       'panel.needsInput': 'precisa de resposta',
       'panel.sessionFinished': '{name} terminou',
 
@@ -3007,8 +3007,8 @@
       'panel.rulesPausedToast': 'Regels 1 uur gepauzeerd',
       'panel.rulesResumedToast': 'Regels zijn weer actief',
       'panel.pcNoAnswer': 'PC antwoordde niet',
-      'panel.rulesPausedUntil': '⏸ Regels gepauzeerd tot {time} · hervatten',
-      'panel.pauseRules1h': '⏸ Regels 1 u pauzeren',
+      'panel.rulesPausedUntil': 'Regels gepauzeerd tot {time} · hervatten',
+      'panel.pauseRules1h': 'Regels 1 u pauzeren',
       'panel.needsInput': 'heeft invoer nodig',
       'panel.sessionFinished': '{name} voltooid',
 
@@ -3372,8 +3372,8 @@
       'panel.rulesPausedToast': 'Reguły wstrzymane na 1 godzinę',
       'panel.rulesResumedToast': 'Reguły znów działają',
       'panel.pcNoAnswer': 'PC nie odpowiedział',
-      'panel.rulesPausedUntil': '⏸ Reguły wstrzymane do {time} · wznów',
-      'panel.pauseRules1h': '⏸ Wstrzymaj reguły na 1 godz.',
+      'panel.rulesPausedUntil': 'Reguły wstrzymane do {time} · wznów',
+      'panel.pauseRules1h': 'Wstrzymaj reguły na 1 godz.',
       'panel.needsInput': 'wymaga odpowiedzi',
       'panel.sessionFinished': '{name} zakończono',
 
@@ -3737,8 +3737,8 @@
       'panel.rulesPausedToast': 'Правила приостановлены на 1 час',
       'panel.rulesResumedToast': 'Правила снова активны',
       'panel.pcNoAnswer': 'ПК не ответил',
-      'panel.rulesPausedUntil': '⏸ Правила на паузе до {time} · возобновить',
-      'panel.pauseRules1h': '⏸ Пауза правил 1 ч',
+      'panel.rulesPausedUntil': 'Правила на паузе до {time} · возобновить',
+      'panel.pauseRules1h': 'Пауза правил 1 ч',
       'panel.needsInput': 'ждёт ввода',
       'panel.sessionFinished': '{name} завершено',
 
@@ -4848,8 +4848,8 @@
       'panel.rulesPausedToast': 'Đã tạm dừng các quy tắc trong một giờ',
       'panel.rulesResumedToast': 'Các quy tắc đã bật lại',
       'panel.pcNoAnswer': 'PC không trả lời',
-      'panel.rulesPausedUntil': '⏸ Các quy tắc tạm dừng đến {time} · tiếp tục',
-      'panel.pauseRules1h': '⏸ Tạm dừng quy tắc 1 giờ',
+      'panel.rulesPausedUntil': 'Các quy tắc tạm dừng đến {time} · tiếp tục',
+      'panel.pauseRules1h': 'Tạm dừng quy tắc 1 giờ',
       'panel.needsInput': 'cần nhập liệu',
       'panel.sessionFinished': '{name} đã kết thúc',
 
@@ -5072,7 +5072,7 @@
       's.weather.openMeteoHint': 'Điện thoại chỉ hỏi Open-Meteo về vị trí này khi có một trang chứa widget dùng thời tiết (thời tiết, dự báo, mặt trời & mặt trăng, đồng hồ có dòng thời tiết, HTML tùy chỉnh).',
       's.display.orientationHint': 'Bạn thiết kế trang ở chế độ ngang; ở chế độ dọc, bảng điều khiển tự sắp xếp widget từ trên xuống. Máy tính bảng dùng cùng các trang, chỉ lớn hơn.',
       's.rules.countdown': 'Việc chuyển trang sẽ đếm ngược trên điện thoại và chờ trong khi bạn đang dùng (Chung › Chuyển trang).',
-      's.rules.pausedUntil': '⏸ Quy tắc đang tạm dừng đến {time}.',
+      's.rules.pausedUntil': 'Quy tắc đang tạm dừng đến {time}.',
       's.pageSwitch.title': 'Chuyển trang',
       's.pageSwitch.lead': 'Cách quy tắc, webhook và chế độ nhàn rỗi đổi trang. Thay vì nhảy ngay, điện thoại hiện “Claude đang cần bạn — chuyển sang AI sau 3…” kèm Ở lại và Đi ngay, rồi mờ dần. Nó không bao giờ kéo trang đi khi bạn đang dùng bảng điều khiển, và các quy tắc kích hoạt liên tiếp sẽ chờ lượt thay vì đẩy màn hình qua lại.',
       's.pageSwitch.homePage': 'Trang chủ',
@@ -5570,8 +5570,8 @@
       'panel.rulesPausedToast': '规则已暂停 1 小时',
       'panel.rulesResumedToast': '规则已恢复',
       'panel.pcNoAnswer': '电脑无响应',
-      'panel.rulesPausedUntil': '⏸ 规则已暂停至 {time} · 恢复',
-      'panel.pauseRules1h': '⏸ 暂停规则 1 小时',
+      'panel.rulesPausedUntil': '规则已暂停至 {time} · 恢复',
+      'panel.pauseRules1h': '暂停规则 1 小时',
       'panel.needsInput': '需要输入',
       'panel.sessionFinished': '{name} 已完成',
 
@@ -7718,7 +7718,7 @@
     if (includeAuto) {
       const opt = document.createElement('option');
       opt.value = 'auto';
-      opt.textContent = `🌐 ${t('lang.auto')}`;
+      opt.textContent = t('lang.auto');
       sel.appendChild(opt);
     }
     for (const lang of LANGUAGES) {

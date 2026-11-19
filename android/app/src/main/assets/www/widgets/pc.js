@@ -1,4 +1,4 @@
-import { $, API, D, PANEL_HEADERS, LOCALE, Q_STYLE, api, bridge, cfg, color, cssVar, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtHM, fmtMem, gotoPageRef, gpuMem, gpusOf, h, en, haptic, icon, openSheet, paceInfo, pad, pairedPcs, quotaProviders, r1, shortGpu, store, switchPc, t, tick, toast, transport } from '../main.js';
+import { $, API, D, PANEL_HEADERS, LOCALE, Q_STYLE, api, bridge, cfg, color, cssVar, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtHM, fmtMem, gotoPageRef, gpuMem, gpusOf, h, en, haptic, icon, openSheet, paceInfo, pad, pairedPcs, quotaProviders, r1, shortGpu, store, switchPc, t, tick, toast, transport, emo, rich } from '../main.js';
 import { W } from '../registry.js';
 import { canKillAnywhere, dialEl, every } from './helpers.js';
 
@@ -62,10 +62,10 @@ W.batteries = {
       list.replaceChildren(...devices.map((d) => {
         const col = d.level <= low ? '#ef4444' : d.level <= low * 2 ? '#f59e0b' : '#22c55e';
         const row = h('div', 'bt-row' + (d.level <= low ? ' low' : ''),
-          h('span', 'bt-ico', BAT_ICONS[d.kind] || '🔋'),
+          h('span', 'bt-ico', emo(BAT_ICONS[d.kind] || '🔋')),
           h('span', 'bt-name', d.name),
           h('span', 'bt-bar', h('i')),
-          h('b', 'bt-pct', (d.charging ? '⚡' : '') + d.level + '%'));
+          h('b', 'bt-pct', d.charging ? emo('⚡') : '', d.level + '%'));
         row.style.setProperty('--c', col);
         row.style.setProperty('--v', d.level / 100);
         return row;
@@ -111,7 +111,7 @@ W.obs = {
       const kids = [
         h('div', 'obs-top', pill(s.streaming, 'LIVE', 'live', s.streamMs, 'stream'), pill(s.recording, recLabel, 'rec', s.recordPaused ? s.recordMs - since : s.recordMs, 'record')),
         h('div', 'obs-scene', h('span', null, 'Scene'), h('b', null, s.scene || '—'),
-          s.micMuted != null ? h('span', 'obs-mic' + (s.micMuted ? ' muted' : ''), s.micMuted ? '🔇' : '🎙️') : null),
+          s.micMuted != null ? h('span', 'obs-mic' + (s.micMuted ? ' muted' : ''), emo(s.micMuted ? '🔇' : '🎙️')) : null),
       ];
       if (o.scenes !== false && s.scenes.length) {
         kids.push(h('div', 'obs-scenes', ...s.scenes.map((name) => {
@@ -172,10 +172,10 @@ W.discord = {
       const kids = [h('div', 'dc-top',
         h('span', 'dc-where', s.channelName ? `${s.channelName}` : t('w.discord.notInChannel')),
         s.channelKind ? h('span', 'dc-kind', s.channelKind) : null,
-        btn('mute', s.muted ? '🔇' : '🎙️', s.muted, 'mute'), btn('deaf', s.deafened ? '🔕' : '🎧', s.deafened, 'deafen'),
-        s.channelId ? btn('leave', '📞', false, 'leave') : null)];
+        btn('mute', emo(s.muted ? '🔇' : '🎙️'), s.muted, 'mute'), btn('deaf', emo(s.deafened ? '🔕' : '🎧'), s.deafened, 'deafen'),
+        s.channelId ? btn('leave', emo('📞'), false, 'leave') : null)];
       if (s.channelId && s.members.length) {
-        kids.push(h('div', 'dc-members', ...s.members.map((m) => h('span', 'dc-member' + (m.deafened ? ' deaf' : m.muted ? ' muted' : ''), ico(m.avatar && img('user', m.id, m.avatar), m.name), (m.deafened ? '🔕 ' : m.muted ? '🔇 ' : '') + m.name))));
+        kids.push(h('div', 'dc-members', ...s.members.map((m) => h('span', 'dc-member' + (m.deafened ? ' deaf' : m.muted ? ' muted' : ''), ico(m.avatar && img('user', m.id, m.avatar), m.name), rich((m.deafened ? '🔕 ' : m.muted ? '🔇 ' : '') + m.name)))));
       }
       if (o.channels !== false && s.channels.length) {
         // one block per server; tap it to unfold its voice channels (the server you are in starts unfolded)
@@ -201,7 +201,7 @@ W.discord = {
           const block = h('div', 'dc-block' + (isOpen ? ' open' : ''), head);
           if (isOpen) {
             block.append(h('div', 'dc-chans', ...chans.map((c) => {
-              const b = h('button', 'dc-chan' + (c.id === s.channelId ? ' cur' : '') + (busy === 'join' + c.id ? ' busy' : ''), '🔊 ' + c.name);
+              const b = h('button', 'dc-chan' + (c.id === s.channelId ? ' cur' : '') + (busy === 'join' + c.id ? ' busy' : ''), rich('🔊 ' + c.name));
               if (ctl && !busy && c.id !== s.channelId) b.addEventListener('click', () => act('join', c.id));
               return b;
             })));
@@ -311,10 +311,10 @@ W.ha = {
         const icon = it.icon || (dom === 'lock' ? (e.state === 'unlocked' ? '🔓' : '🔒') : HA_CLASS_ICONS[e.deviceClass] || HA_ICONS[dom] || '◻️');
         const can = it.control && HA_SWITCHABLE.has(dom) && e.state !== 'unavailable';
         const tile = h('div', 'ha-tile' + (active ? ' on' : '') + (can ? ' can' : '') + (busy === e.id ? ' busy' : '') + (e.state === 'unavailable' ? ' gone' : ''),
-          ...(it.showIcon ? [h('span', 'ha-ico', icon)] : []), ...(it.showName ? [h('span', 'ha-name', it.name || e.name)] : []), h('b', 'ha-state', haState(e)));
+          ...(it.showIcon ? [h('span', 'ha-ico', rich(icon))] : []), ...(it.showName ? [h('span', 'ha-name', it.name || e.name)] : []), h('b', 'ha-state', haState(e)));
         if (can) tile.addEventListener('click', () => toggle(e));
         return tile;
-      }), ...(data.error ? [h('div', 'ha-err', '⚠ ' + data.error)] : []));
+      }), ...(data.error ? [h('div', 'ha-err', icon('warn', 'm'), data.error)] : []));
     };
     const tick = every(4000, async () => { await load(); render(); });
     return { update: () => { tick(); render(); } };
@@ -533,7 +533,7 @@ W.agenda = {
         rows.push(row);
       }
       const body = h('div', 'ag-list', ...(rows.length ? rows : [h('div', 'empty', `Nothing in the next ${days} days`)]));
-      box.replaceChildren(h('div', 'w-title', o.title || en('Agenda'), cal.errors?.length ? h('span', 'ag-err', ' ⚠') : null), body);
+      box.replaceChildren(h('div', 'w-title', o.title || en('Agenda'), cal.errors?.length ? h('span', 'ag-err', ' ', icon('warn')) : null), body);
       // drop rows that do not fit, keeping the day headers tidy
       while (body.scrollHeight > body.clientHeight + 2 && body.childElementCount > 1) {
         body.lastElementChild.remove();
@@ -566,9 +566,9 @@ W.onair = {
         const on = mic || cam || obsLive || pushed;
         box.classList.toggle('on', on);
         const apps = [...new Set([...(mic ? p.micApps || [] : []), ...(cam ? p.cameraApps || [] : [])])];
-        sub.textContent = on
+        sub.replaceChildren(rich(on
           ? [mic ? '🎙️' : '', cam ? '📷' : '', obsLive ? (obs.streaming ? 'OBS live' : 'OBS recording') : '', apps.join(', ') || (pushed && typeof pv === 'string' ? pv : '')].filter(Boolean).join(' ')
-          : (src === 'mic' || src === 'camera') && p && p.mic == null ? 'Not detectable on this computer' : 'Off air';
+          : (src === 'mic' || src === 'camera') && p && p.mic == null ? 'Not detectable on this computer' : 'Off air'));
       },
     };
   },
@@ -586,7 +586,7 @@ W.battery = {
         const b = JSON.parse(bridge.battery());
         box.style.setProperty('--q', b.plugged ? '#22c55e' : b.level <= 20 ? '#ef4444' : b.level <= 40 ? '#f59e0b' : '#84cc16');
         dial.set(b.level, b.level, '%');
-        sub.textContent = (b.plugged ? '⚡ Charging' : 'On battery') + (b.temp ? ` · ${b.temp.toFixed(0)}°C` : '');
+        sub.replaceChildren(rich((b.plugged ? '⚡ Charging' : 'On battery') + (b.temp ? ` · ${b.temp.toFixed(0)}°C` : '')));
       } catch (_) {}
     });
     return { update: load };
@@ -697,7 +697,7 @@ W.volume = {
   needs: ['state'],
   create(box) {
     const fill = h('i'), bar = h('div', 'vb', fill), pct = h('div', 'vb-v', '--');
-    const mute = h('button', 'pb', '🔇'), down = h('button', 'pb', '−'), up = h('button', 'pb', '+');
+    const mute = h('button', 'pb', icon('volume-x')), down = h('button', 'pb', '−'), up = h('button', 'pb', '+');
     box.append(h('div', 'w-title', en('Volume')), h('div', 'vb-row', bar, pct), h('div', 'pomo-btns', mute, down, up));
     let dragging = false, timer = 0, dragEndTimer = 0, level = 0;
     const vertical = () => box.clientHeight > box.clientWidth * 1.15;
@@ -757,14 +757,14 @@ W.rules = {
         const k = JSON.stringify([rules, active, paused]);
         if (k === key) return;
         key = k;
-        btn.textContent = paused ? '▶ Resume' : '⏸ Pause';
+        btn.replaceChildren(icon(paused ? 'play' : 'pause', 'm'), paused ? 'Resume' : 'Pause');
         btn.hidden = !D.state;
         box.classList.toggle('paused', !!paused);
         if (!rules.length) { list.replaceChildren(h('div', 'empty', 'Add rules in Settings › Rules')); return; }
         const sorted = [...rules].sort((a, b) => active.includes(b.id) - active.includes(a.id));
         list.replaceChildren(...(paused ? [h('div', 'ru-note', `Paused until ${fmtHM(new Date(rulesPaused))}`)] : []),
           ...sorted.map((r) => h('div', 'ru-row' + (active.includes(r.id) && !paused ? ' on' : ''),
-            h('span', 'ru-ico', RULE_WHEN[r.when] || '⚡'), h('span', 'ru-name', r.name || r.when), h('i', 'ru-dot'))));
+            h('span', 'ru-ico', emo(RULE_WHEN[r.when] || '⚡')), h('span', 'ru-name', r.name || r.when), h('i', 'ru-dot'))));
       },
     };
   },
@@ -792,7 +792,7 @@ W.chargecare = {
       if (!(b.level >= 0)) return;
       q('.cc-fg').style.strokeDasharray = `${(C * b.level) / 100} ${C}`;
       q('.cc-pct').textContent = b.level + '%';
-      q('.cc-state').textContent = b.plugged ? '⚡' : '🔋';
+      q('.cc-state').replaceChildren(emo(b.plugged ? '⚡' : '🔋'));
       const col = b.level <= 20 ? '#ef4444' : ch.enabled && b.level > max ? '#f59e0b' : b.plugged ? '#22c55e' : 'rgb(var(--ambient))';
       box.style.setProperty('--cc', col);
       q('.cc-text').textContent = !ch.enabled ? `Battery care is off${b.temp ? ` · ${b.temp.toFixed(0)} °C` : ''}`

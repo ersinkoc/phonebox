@@ -42,7 +42,7 @@ test('without new options it alternates focus and break as before', async ({ pag
   await p.play();
   await page.clock.fastForward(MIN + 1500);
   await expect(p.label).toHaveText('Break');
-  await expect(p.sub).toHaveText('🍅');
+  await expect(p.sub.locator('.ico')).toHaveCount(1);
   await page.clock.fastForward(MIN + 1500);
   await expect(p.label).toHaveText('Focus');
   await expect(p.w).toHaveClass(/run/);
@@ -71,14 +71,16 @@ test('an own sequence runs its rounds and then stops', async ({ page }) => {
   await page.clock.fastForward(MIN + 1500);
   await expect(p.label).toHaveText('Long break');
   await page.clock.fastForward(MIN + 1500);
-  await expect(p.sub).toHaveText('Round 2/2 · 🍅');
+  await expect(p.sub).toHaveText('Round 2/2 ·');
+  await expect(p.sub.locator('.ico')).toHaveCount(1);
   await page.clock.fastForward(MIN + 1500);
   await expect(p.label).toHaveText('Long break');
   await page.clock.fastForward(MIN + 1500);
   await expect(page.locator('#toast')).toContainText('Sequence finished');
   await expect(p.label).toHaveText('Focus');
   await expect(p.w).not.toHaveClass(/run/);
-  await expect(p.sub).toHaveText('Round 1/2 · 🍅🍅');
+  await expect(p.sub).toHaveText('Round 1/2 ·');
+  await expect(p.sub.locator('.ico')).toHaveCount(2);
 });
 
 test('reset restarts the step, and pressed again the whole sequence', async ({ page }) => {
@@ -105,7 +107,7 @@ test('a timer running before the update keeps running', async ({ page }) => {
   const p = await show(page, { focus: 1, break: 1 }, { phase: 'break', endsAt: 30_000, left: MIN, count: 2 });
   await expect(p.label).toHaveText('Break');
   await expect(p.w).toHaveClass(/run/);
-  await expect(p.sub).toHaveText('🍅🍅');
+  await expect(p.sub.locator('.ico')).toHaveCount(2);
   await page.clock.fastForward(31_000);
   await expect(p.label).toHaveText('Focus');
 });

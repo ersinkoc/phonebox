@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich } from '../main.js';
 import { W } from '../registry.js';
 import { invalidateDeckState } from './controls.js';
 
@@ -75,9 +75,9 @@ W.forecast = {
           for (let i = 0; i < Math.min(n, d.time.length); i++) {
             const day = i === 0 ? t('time.today') : new Date(d.time[i] + 'T12:00').toLocaleDateString(LOCALE, { weekday: 'short' });
             const rain = d.precipitation_probability_max?.[i];
-            cells.push(h('div', 'fc-i', h('span', 'fc-t', day), h('span', 'fc-ic', wxIcon(d.weather_code[i])),
+            cells.push(h('div', 'fc-i', h('span', 'fc-t', day), h('span', 'fc-ic', emo(wxIcon(d.weather_code[i]))),
               h('span', 'fc-v', wxDeg(d.temperature_2m_max[i]) + '°', h('small', null, ' ' + wxDeg(d.temperature_2m_min[i]) + '°')),
-              h('span', 'fc-r', rain >= 20 ? `💧${rain}%` : '')));
+              h('span', 'fc-r', rain >= 20 ? rich(`💧${rain}%`) : '')));
           }
         } else {
           const hr = w.hourly;
@@ -88,8 +88,8 @@ W.forecast = {
             const i = start + k * step;
             if (i >= hr.time.length) break;
             const rain = hr.precipitation_probability?.[i];
-            cells.push(h('div', 'fc-i', h('span', 'fc-t', k === 0 ? 'Now' : hr.time[i].slice(11, 13)), h('span', 'fc-ic', wxIcon(hr.weather_code[i], hr.is_day?.[i])),
-              h('span', 'fc-v', wxDeg(hr.temperature_2m[i]) + '°'), h('span', 'fc-r', rain >= 20 ? `💧${rain}%` : '')));
+            cells.push(h('div', 'fc-i', h('span', 'fc-t', k === 0 ? 'Now' : hr.time[i].slice(11, 13)), h('span', 'fc-ic', emo(wxIcon(hr.weather_code[i], hr.is_day?.[i]))),
+              h('span', 'fc-v', wxDeg(hr.temperature_2m[i]) + '°'), h('span', 'fc-r', rain >= 20 ? rich(`💧${rain}%`) : '')));
           }
         }
         row.replaceChildren(...cells);
@@ -416,7 +416,7 @@ W.quotas = {
       const age = ov.updatedAt ? Math.max(0, Date.now() - ov.updatedAt) : null;
       const updStr = age != null ? `checked ${age < 60_000 ? 'just now' : fmtDur(age) + ' ago'}` : '';
       card.appendChild(h('div', 'q-head',
-        h('span', 'q-logo', '📊'),
+        h('span', 'q-logo', emo('📊')),
         h('span', 'q-name', 'Overview'),
         h('span', 'q-plan', `${days}-day spend`),
         updStr ? h('span', 'q-upd', updStr) : null
@@ -665,7 +665,7 @@ W.github = {
         if (!g) return;
         const rows = Math.max(1, Math.floor((box.clientHeight - 90) / 25));
         user.textContent = g.user ? '@' + g.user : '';
-        bell.textContent = `🔔 ${g.notifications >= 50 ? '50+' : g.notifications}`;
+        bell.replaceChildren(rich(`🔔 ${g.notifications >= 50 ? '50+' : g.notifications}`));
         rc.textContent = g.reviewRequests.length;
         mc.textContent = g.myPrs.length;
         const nRev = Math.min(g.reviewRequests.length || 1, Math.max(1, Math.floor(rows / 2)));
@@ -727,7 +727,7 @@ W.processes = {
         e._g = g;
         e.querySelector('.p-t').textContent = g.title;
         e.querySelector('.p-count').textContent = g.count > 1 ? '×' + g.count : '';
-        e.querySelector('.p-lock').textContent = g.locked ? '🔒' : '';
+        e.querySelector('.p-lock').replaceChildren(...(g.locked ? [emo('🔒')] : []));
         e.querySelector('.p-bar i').style.width = ((sort === 'cpu' ? g.cpu : g.memMb) / max) * 100 + '%';
         e.querySelector('.p-nums b').textContent = sort === 'cpu' ? g.cpu.toFixed(1) + '%' : fmtMem(g.memMb);
         e.querySelector('.p-nums small').textContent = sort === 'cpu' ? fmtMem(g.memMb) : g.cpu.toFixed(1) + '%';
@@ -917,7 +917,7 @@ W.pomodoro = {
     const save = () => { st.phase = plan[st.step].kind; store.set(key, st); };
     save();
     const dial = h('div', 'g-dial'), time = h('div', 'g-val'), phase = h('div', 'g-label'), count = h('div', 'g-sub');
-    const play = h('button', 'pb main', '▶'), reset = h('button', 'pb', '↺'), skip = h('button', 'pb', '⏭');
+    const play = h('button', 'pb main', icon('play')), reset = h('button', 'pb', icon('rotate-ccw')), skip = h('button', 'pb', icon('skip-forward'));
     dial.append(time);
     box.append(dial, phase, count, h('div', 'pomo-btns', reset, play, skip));
     let svg = null;
@@ -966,9 +966,9 @@ W.pomodoro = {
       time.textContent = fmtTime(left + 999);
       phase.textContent = label();
       const tomatoes = st.count ? '🍅'.repeat(Math.min(st.count, 6)) + (st.count > 6 ? ` ×${st.count}` : '') : t('w.noSessionsToday');
-      count.textContent = custom.bad ? `Sequence not understood: "${custom.bad}"`
-        : rounds > 1 ? `Round ${(st.round || 0) + 1}/${rounds} · ${tomatoes}` : tomatoes;
-      play.textContent = st.endsAt ? '⏸' : '▶';
+      count.replaceChildren(rich(custom.bad ? `Sequence not understood: "${custom.bad}"`
+        : rounds > 1 ? `Round ${(st.round || 0) + 1}/${rounds} · ${tomatoes}` : tomatoes));
+      play.replaceChildren(icon(st.endsAt ? 'pause' : 'play'));
     };
     play.addEventListener('click', () => {
       haptic();
@@ -1173,7 +1173,7 @@ W.push = {
       if (c) box.style.setProperty('--c', c); else box.style.removeProperty('--c');
       const unit = v.unit ?? o.unit ?? '';
       const style = o.style && o.style !== 'auto' ? o.style : v.items ? 'list' : 'big';
-      const title = h('div', 'w-title', (v.icon ? v.icon + ' ' : '') + (o.title || v.title || key), h('span', 'push-age w-sub', ago(item.at)));
+      const title = h('div', 'w-title', v.icon ? rich(v.icon + ' ') : '', o.title || v.title || key, h('span', 'push-age w-sub', ago(item.at)));
       let body;
       if (style === 'list') {
         const items = v.items || (v.value != null ? [v.value] : []);
