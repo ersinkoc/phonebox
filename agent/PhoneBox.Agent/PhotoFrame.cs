@@ -68,7 +68,13 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     internal Func<string, bool, Library> Scanner { get; init; } = Scan;
 
     /// <summary>Test seam: scans now and waits for it.</summary>
-    internal void ScanNow() { lock (_gate) _library = null; Current(Source(config.Get().Photos)!, wait: true); }
+    internal void ScanNow()
+    {
+        lock (_gate) _library = null;
+        // nothing is set up: nothing to scan, the same as List() (which clears the cache and shows nothing)
+        if (Source(config.Get().Photos) is not { } source) { ForgetCache(); return; }
+        Current(source, wait: true);
+    }
 
     /// <summary>The source chosen in the settings; null while none is set up.</summary>
     private IPhotoSource? Source(PhotoFrameConfig cfg) =>

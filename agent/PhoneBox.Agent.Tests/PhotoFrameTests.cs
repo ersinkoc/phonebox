@@ -357,4 +357,19 @@ public sealed class PhotoFrameTests : IDisposable
         }
         finally { lock (scans) foreach (var s in scans) s.Release.TrySetResult(); }
     }
+
+    [Fact]
+    public async Task AnUnsetFolderShowsNothingAndNothingThrows()
+    {
+        var path = Path.Combine(_dir, "config-unset.json");
+        File.WriteAllText(path, """{"photos":{"folder":""},"pages":[{"id":"p","title":"P","widgets":[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]}]}""");
+        var frame = new PhotoFrame(new ConfigStore(path), NullLogger<PhotoFrame>.Instance) { CacheDir = Path.Combine(_dir, "cache-unset") };
+        Assert.Null(Record.Exception(frame.ScanNow)); // no source to scan: nothing to wait for
+        var (ids, error, scanning) = frame.List();
+        Assert.Empty(ids);
+        Assert.Null(error);
+        Assert.False(scanning);
+        Assert.Equal("Unknown photo", (await frame.Get("0123456789abcdef", CancellationToken.None)).Error);
+        Assert.Null(Published(frame));
+    }
 }
