@@ -151,6 +151,9 @@ latest_version() {
   printf '%s' "$v"
 }
 
+designated() { # designated binary -> its designated requirement (what macOS ties permissions to), or nothing
+  codesign -d -r- "$1" 2>&1 | sed -n 's/^designated => //p'
+}
 unzip_to() { # unzip_to zip dir
   mkdir -p "$2"
   if have unzip; then unzip -q -o "$1" -d "$2"
@@ -511,7 +514,8 @@ main() {
   chmod +x "$tmp/agent/PhoneBoxAgent"
   if [ "$os" = osx ]; then
     xattr -dr com.apple.quarantine "$tmp/agent" 2>/dev/null || true
-    # release binaries are signed ad hoc; Apple silicon refuses to run a binary without any signature
+    # release binaries are signed (with PhoneBox's own certificate since 0.9.22, ad hoc before); Apple silicon refuses
+    # to run a binary without any signature
     codesign --verify "$tmp/agent/PhoneBoxAgent" >/dev/null 2>&1 || codesign --force --sign - "$tmp/agent/PhoneBoxAgent" >/dev/null 2>&1 || true
   fi
   local out
@@ -528,12 +532,14 @@ main() {
     info "Found an existing install in $app: it is replaced; settings stay."
   fi
   if [ "$os" = osx ]; then
-    info 'The agent is signed ad hoc, not with an Apple Developer ID, so macOS may ask about it the first time:'
-    info 'allow it to control Music or Spotify (Now Playing) and, once Wi-Fi is on, to accept incoming connections.'
-    if [ -n "$installed" ]; then
-      # an ad hoc signature changes with every build, and macOS ties the Accessibility grant to it (#269)
-      info 'If you allowed it under Accessibility (shortcuts that press keys), macOS forgets that with every update:'
-      info 'in System Settings › Privacy & Security › Accessibility, remove PhoneBoxAgent with − and add it again.'
+    info 'The agent is signed with its own certificate, not an Apple Developer ID, so macOS may ask about it the first'
+    info 'time: allow it to control Music or Spotify (Now Playing) and, once Wi-Fi is on, to accept incoming connections.'
+    # macOS ties the Accessibility permission to the signature's designated requirement: the same from release to
+    # release since 0.9.22, but different from an older (ad hoc) build's, which changed with every build (#269)
+    if [ -n "$installed" ] && [ "$(designated "$app/PhoneBoxAgent")" != "$(designated "$tmp/agent/PhoneBoxAgent")" ]; then
+      info 'If you allowed it under Accessibility (shortcuts that press keys), allow it once more: macOS does not apply'
+      info 'that to this build. In System Settings › Privacy & Security › Accessibility, remove PhoneBoxAgent with −'
+      info 'and add it again. Later updates keep the permission.'
     fi
   fi
 

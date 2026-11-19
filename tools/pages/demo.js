@@ -57,7 +57,7 @@
         { id: 'music', label: 'Music', levels: [], actions: [], output: null, input: null, defaults: {} }],
         spotifyToken: null, spotifyDevice: null, mixerExecutable: null, mixerLibrary: null, spotifyClientId: null, spotifyRefreshToken: null },
       deviceSerial: null, adbPath: null,
-      weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius' },
+      weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
       night: { enabled: false, start: '00:30', end: '07:30', brightness: 0.02 },
       display: { appearance: null, showSeconds: true, hour12: false, idleReturnSec: 0, vibrate: true, volumeKeys: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf',
         pixelShift: false, idleDimMin: 0,

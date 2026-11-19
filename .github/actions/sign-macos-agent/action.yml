@@ -1,0 +1,57 @@
+name: Sign the macOS agent
+description: >
+  Signs PhoneBoxAgent with PhoneBox's own certificate (tools/make-macos-signing-cert.sh), so every release has the same
+  designated requirement and macOS keeps the Accessibility permission across updates (#269). An ad hoc signature
+  changes with every build. Never change the identifier or the certificate: both are part of that requirement. No
+  hardened runtime: it would turn on library validation, which refuses the native libraries next to the agent.
+
+inputs:
+  binary:
+    description: Path of PhoneBoxAgent; it is signed in place.
+    required: true
+  p12-base64:
+    description: The certificate and key as a base64 PKCS#12 (secret MACOS_SIGNING_P12_BASE64).
+    required: true
+  p12-password:
+    description: Its password (secret MACOS_SIGNING_P12_PASSWORD).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Sign with the PhoneBox certificate
+      shell: bash
+      env:
+        BINARY: ${{ inputs.binary }}
+        P12_BASE64: ${{ inputs.p12-base64 }}
+        P12_PASSWORD: ${{ inputs.p12-password }}
+      run: |
+        set -euo pipefail
+        if [ -z "$P12_BASE64" ] || [ -z "$P12_PASSWORD" ]; then
+          echo "::error::The macOS signing certificate is missing (secrets MACOS_SIGNING_P12_BASE64 and MACOS_SIGNING_P12_PASSWORD, made with tools/make-macos-signing-cert.sh). An ad hoc signature would make every Mac lose the Accessibility permission again."
+          exit 1
+        fi
+        echo "::add-mask::$P12_PASSWORD"
+        kc="$RUNNER_TEMP/phonebox-signing.keychain-db"
+        kcpass="$(openssl rand -hex 24)"
+        echo "::add-mask::$kcpass"
+        p12="$RUNNER_TEMP/phonebox-signing.p12"
+        trap 'security delete-keychain "$kc" 2>/dev/null || true; rm -f "$p12"' EXIT
+        printf '%s' "$P12_BASE64" | base64 --decode > "$p12"
+        security create-keychain -p "$kcpass" "$kc"
+        security set-keychain-settings -lut 900 "$kc"
+        security unlock-keychain -p "$kcpass" "$kc"
+        security import "$p12" -k "$kc" -P "$P12_PASSWORD" -T /usr/bin/codesign >/dev/null
+        rm -f "$p12"
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$kcpass" "$kc" >/dev/null
+        # codesign finds the key through the search list
+        security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+        identity="$(security find-certificate -a -Z "$kc" | awk '/SHA-1 hash:/ { print $3; exit }')"
+        [ -n "$identity" ] || { echo "::error::no certificate in the imported PKCS#12"; exit 1; }
+        codesign --force --sign "$identity" --keychain "$kc" --identifier net.oxog.phonebox.agent --timestamp=none "$BINARY"
+        requirement="$(codesign -d -r- "$BINARY" 2>&1 | sed -n 's/^designated => //p')"
+        echo "Designated requirement: $requirement"
+        case "$requirement" in
+          *'identifier "net.oxog.phonebox.agent"'*'certificate leaf = H"'* | *'identifier "net.oxog.phonebox.agent"'*'certificate root = H"'*) ;;
+          *) echo "::error::unexpected designated requirement: $requirement"; exit 1 ;;
+        esac

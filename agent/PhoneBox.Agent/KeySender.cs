@@ -12,13 +12,13 @@ namespace PhoneBox.Agent;
 public static class KeySender
 {
     /// <summary>
-    /// What to do when macOS refuses to send keys. Fixed text, so the phone may show it as it is. The agent is signed ad
-    /// hoc, so macOS ties the permission to one exact build: after an update the old entry stays in the list (even
-    /// switched on) but no longer applies, and only removing it and adding the agent again helps (#269).
+    /// What to do when macOS refuses to send keys. Fixed text, so the phone may show it as it is. An entry granted to an
+    /// older, differently signed build (ad hoc before 0.9.22) stays in the list, even switched on, but no longer applies:
+    /// only removing it and adding the agent again helps (#269).
     /// </summary>
     internal const string AccessibilityHint =
         "macOS refused: allow PhoneBoxAgent in System Settings › Privacy & Security › Accessibility. " +
-        "After an update, remove it there with − and add it again";
+        "If it is already listed, remove it there with − and add it again";
 
     internal record struct MouseCall(string Action, int Dx, int Dy, int Delta);
     internal static Action<MouseCall>? TestMouseSink;
@@ -41,7 +41,7 @@ public static class KeySender
         return combos;
     }
 
-    private static string Normalize(string k) => k.ToLowerInvariant() switch
+    private static string Normalize(string k) => Numpad(k.ToLowerInvariant()) ?? k.ToLowerInvariant() switch
     {
         "control" or "ctl" => "ctrl",
         "cmd" or "command" or "super" or "meta" or "windows" or "⌘" => "win",
@@ -63,6 +63,29 @@ public static class KeySender
         var x => x,
     };
 
+    // The keypad, under the names other tools use: numpad3, num3, kp3, KP_3 (xdotool), numpad_3; numpadadd, kpplus,
+    // KP_Add... "numpad+" cannot be written, as + joins the keys of a combo (#270).
+    private static readonly string[] NumpadPrefixes = ["numpad_", "numpad", "num_", "num", "kp_", "kp"];
+
+    private static string? Numpad(string k)
+    {
+        var prefix = NumpadPrefixes.FirstOrDefault(k.StartsWith);
+        if (prefix is null) return null;
+        var rest = k[prefix.Length..];
+        var name = rest switch
+        {
+            [var d] when char.IsAsciiDigit(d) => rest,
+            "enter" or "return" => "enter",
+            "add" or "plus" => "add",
+            "subtract" or "sub" or "minus" => "subtract",
+            "multiply" or "mul" or "times" or "*" => "multiply",
+            "divide" or "div" or "slash" or "/" => "divide",
+            "decimal" or "dec" or "period" or "dot" or "." or "comma" or "separator" => "decimal",
+            _ => null,
+        };
+        return name is null ? null : "numpad" + name;
+    }
+
     private static bool IsKnown(string k) =>
         (k.Length == 1 && char.IsAsciiLetterOrDigit(k[0])) || Special.ContainsKey(k) || (k.Length is 2 or 3 && k[0] == 'f' && int.TryParse(k[1..], out var n) && n is >= 1 and <= 24);
 
@@ -78,7 +101,21 @@ public static class KeySender
         ["bracketleft"] = (0xDB, "bracketleft", 33), ["bracketright"] = (0xDD, "bracketright", 30),
         ["playpause"] = (0xB3, "XF86AudioPlay", -1), ["nexttrack"] = (0xB0, "XF86AudioNext", -1), ["prevtrack"] = (0xB1, "XF86AudioPrev", -1),
         ["mute"] = (0xAD, "XF86AudioMute", -1), ["volumeup"] = (0xAF, "XF86AudioRaiseVolume", -1), ["volumedown"] = (0xAE, "XF86AudioLowerVolume", -1),
+        // the keypad (#270): its own keys, not the number row, so a shortcut bound to Numpad3 (Discord, games) is matched
+        ["numpad0"] = (0x60, "KP_0", 82), ["numpad1"] = (0x61, "KP_1", 83), ["numpad2"] = (0x62, "KP_2", 84), ["numpad3"] = (0x63, "KP_3", 85),
+        ["numpad4"] = (0x64, "KP_4", 86), ["numpad5"] = (0x65, "KP_5", 87), ["numpad6"] = (0x66, "KP_6", 88), ["numpad7"] = (0x67, "KP_7", 89),
+        ["numpad8"] = (0x68, "KP_8", 91), ["numpad9"] = (0x69, "KP_9", 92),
+        ["numpadmultiply"] = (0x6A, "KP_Multiply", 67), ["numpadadd"] = (0x6B, "KP_Add", 69), ["numpadsubtract"] = (0x6D, "KP_Subtract", 78),
+        ["numpaddecimal"] = (0x6E, "KP_Decimal", 65), ["numpaddivide"] = (0x6F, "KP_Divide", 75),
+        // Windows has no key code of its own for the keypad's Enter: it is VK_RETURN with the extended flag (WinExtended)
+        ["numpadenter"] = (0x0D, "KP_Enter", 76),
     };
+
+    /// <summary>
+    /// Keys that Windows tells apart from another key only by the "extended" flag: the keypad's Enter (VK_RETURN, like the
+    /// main Enter) and its / (whose scan code is the main / key's).
+    /// </summary>
+    internal static bool WinExtended(string k) => k is "numpadenter" or "numpaddivide";
 
     public static void SendKeys(string spec)
     {
@@ -115,10 +152,10 @@ public static class KeySender
     /// <summary>Presses one parsed combo; false when Windows took none or only part of the input.</summary>
     public static bool SendCombo(List<string> combo)
     {
-        var vks = combo.Select(WinVk).ToList();
+        var keys = combo.Select(k => (Vk: WinVk(k), Extended: WinExtended(k))).ToList();
         var inputs = new List<INPUT>();
-        foreach (var vk in vks) inputs.Add(Key(vk, false));
-        foreach (var vk in Enumerable.Reverse(vks)) inputs.Add(Key(vk, true));
+        foreach (var (vk, ext) in keys) inputs.Add(Key(vk, false, ext));
+        foreach (var (vk, ext) in Enumerable.Reverse(keys)) inputs.Add(Key(vk, true, ext));
         return SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>()) == inputs.Count;
     }
 
@@ -140,13 +177,13 @@ public static class KeySender
     // arrows, Home/End, Insert/Delete, PageUp/PageDown and the right-hand keys need the "extended" flag
     private static bool Extended(byte vk) => vk is >= 0x21 and <= 0x2E or 0x5B;
 
-    private static INPUT Key(byte vk, bool up)
+    private static INPUT Key(byte vk, bool up, bool forceExtended = false)
     {
         // the scan code too: raw-input apps tell keys apart (and left from right) by it, and 0 is no key at all.
         // MAPVK_VK_TO_VSC_EX marks the media keys with E0; the arrows and the Home/End block share their codes with
         // the keypad, so they still come from the list above.
         var sc = MapVirtualKeyW(vk, 4);
-        var extended = Extended(vk) || (sc >> 8) is 0xE0 or 0xE1;
+        var extended = forceExtended || Extended(vk) || (sc >> 8) is 0xE0 or 0xE1;
         return new()
         {
             type = 1,

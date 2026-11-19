@@ -255,12 +255,12 @@ body.night #navCard, body.night #navChip { display: none; }
 @supports (font-size: 1cqh) {
   .clock { font-size: min(calc(var(--tf, .6) * 100cqh), 30cqw); }
 }
-.clock .colon { opacity: .55; margin: 0 .01em; animation: blink 2s steps(1) infinite; }
+.clock .colon { opacity: .55; margin: 0 .01em; }
+.clock .colon.dim { opacity: .2; }
 .clock .sec { font-size: .2em; font-weight: 400; color: var(--muted); letter-spacing: 0; margin: .5em 0 0 .45em; }
 .clock .sec:empty { display: none; }
 .clock .ap { font-size: .2em; font-weight: 400; color: var(--muted); letter-spacing: 0; align-self: flex-end; margin: 0 0 .35em .3em; }
 .clock .ap:empty { display: none; }
-@keyframes blink { 50% { opacity: .2; } }
 .date { font-size: 15px; font-size: clamp(11px, 7.5cqh, 19px); color: #c9d1db; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wx { display: flex; align-items: center; gap: 8px; margin-top: 6px; margin-top: clamp(2px, 4cqh, 14px); min-width: 0; }
 .wx-icon { font-size: 26px; font-size: clamp(18px, 13cqh, 34px); line-height: 1; }
@@ -306,10 +306,22 @@ body.night #navCard, body.night #navChip { display: none; }
 .m-source-icon svg { width: 1.25em; height: 1.25em; display: block; }
 .m-title { font-size: clamp(13px, 9cqh, 30px); font-weight: 600; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .m-artist { font-size: clamp(11px, 6cqh, 19px); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bar { position: relative; height: 18px; display: flex; align-items: center; }
+.bar { position: relative; height: 18px; display: flex; align-items: center; touch-action: none; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; }
 .bar::before { content: ""; position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); }
+.bar::after { content: ""; position: absolute; left: -6px; right: -6px; top: -12px; bottom: -12px; } /* a finger-sized target around the thin bar */
 .fill { position: relative; height: 4px; border-radius: 2px; background: var(--text); width: 0; }
-.fill::after { content: ""; position: absolute; right: -5px; top: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--text); }
+.fill::after { content: ""; position: absolute; right: -5px; top: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--text); transition: transform .12s; }
+.bar.scrubbing .fill::after { transform: scale(1.8); box-shadow: 0 0 0 4px rgba(255, 255, 255, .18); }
+.bar:focus-visible .fill::after { transform: scale(1.8); box-shadow: 0 0 0 4px rgba(255, 255, 255, .18); } /* its own rule: Chromium < 86 drops a rule it cannot parse */
+/* the bubble with the time the song will continue from, over the thumb while the bar is held or focused */
+.scrub-tip {
+  position: absolute; bottom: 100%; left: clamp(24px, var(--tip, 0%), calc(100% - 24px)); transform: translate(-50%, -8px);
+  padding: 3px 9px; border-radius: 9px; background: rgba(8, 10, 13, .88); border: 1px solid rgba(255, 255, 255, .14); color: var(--text);
+  font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 2;
+}
+.bar.scrubbing .scrub-tip { opacity: 1; }
+.bar:focus-visible .scrub-tip { opacity: 1; }
+.bar.scrubbing + .times .m-pos { color: var(--text); font-weight: 600; }
 .times { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: -1px; }
 .m-controls { display: flex; align-items: center; gap: 4px; }
 .ic { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; transition: transform .12s, background .2s; }
@@ -435,12 +447,16 @@ body.offline .offline-msg { display: flex; }
 .sess { display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 10px; background: rgba(255, 255, 255, .035); border: 1px solid transparent; min-width: 0; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .sess:focus-visible { outline: 2px solid var(--accent); }
 .sess .st { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; background: var(--dim); }
-.sess.busy .st { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
-.sess.shell .st { background: #60a5fa; box-shadow: 0 0 6px #60a5fa; animation: pulse 1.6s ease-in-out infinite; }
+.sess.busy .st { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+.sess.shell .st { background: #60a5fa; box-shadow: 0 0 6px #60a5fa; }
 .sess.waiting { border-color: rgba(239, 68, 68, .45); background: rgba(239, 68, 68, .1); }
-.sess.waiting .st { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation: pulse .8s ease-in-out infinite; }
+.sess.waiting .st { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
 .sess.idle { opacity: .62; }
-@keyframes pulse { 50% { opacity: .35; } }
+/* The pulses are not CSS animations: a running animation makes the browser draw a frame on every display refresh (120 a
+   second on a 120 Hz phone) for as long as it is on screen. main.js flips beat-2 .. beat-4 on <html> instead, from its 250 ms tick
+   and only while something that pulses is shown, so the panel draws a frame only when a pulse changes. The beat has two
+   steps, a little less smooth than a fade and far cheaper. */
+html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiting .st { opacity: .35; }
 .sess .tl { font-size: 12px; width: 14px; text-align: center; flex: 0 0 14px; }
 .sess .tl.claude { color: #d97757; }
 .sess .tl.codex { color: #e5e7eb; }
@@ -763,7 +779,8 @@ body.offline .offline-msg { display: flex; }
 .obs-pill.on b, .obs-pill.on .obs-time { color: #fff; }
 .obs-pill.live.on { background: rgba(239, 68, 68, .2); border-color: rgba(239, 68, 68, .5); }
 .obs-pill.rec.on { background: rgba(244, 63, 94, .16); border-color: rgba(244, 63, 94, .45); }
-.obs-pill.on .obs-led { background: #ef4444; box-shadow: 0 0 8px #ef4444; animation: oa-glow 2s infinite; }
+.obs-pill.on .obs-led { background: #ef4444; box-shadow: 0 0 14px rgba(239, 68, 68, .45); }
+html.beat-4 .obs-pill.on .obs-led { box-shadow: 0 0 34px rgba(239, 68, 68, .9); }
 .obs-pill.can:active, .obs-sc:active { transform: scale(.97); }
 .obs-pill.busy, .obs-sc.busy { opacity: .55; }
 .obs-scene { display: flex; align-items: baseline; gap: 8px; font-size: 13px; color: var(--muted); }
@@ -885,12 +902,12 @@ body.offline .offline-msg { display: flex; }
 .w-onair { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(2px, 6cqh, 12px); padding: 8px; }
 .oa-sign {
   font-weight: 800; letter-spacing: .14em; font-size: min(26cqh, 13cqw); line-height: 1; color: #3f4651;
-  border: max(2px, 1.6cqh) solid currentColor; border-radius: 12px; padding: .2em .55em .2em .69em; transition: color .3s, background .3s, box-shadow .3s;
+  border: max(2px, 1.6cqh) solid currentColor; border-radius: 12px; padding: .2em .55em .2em .69em; transition: color .3s, background .3s; /* no box-shadow here: the glow is stepped by the beat, and a transition would run a frame per refresh */
 }
-.w-onair.on .oa-sign { color: #fff; background: #dc2626; border-color: #fca5a5; animation: oa-glow 2.2s ease-in-out infinite; }
+.w-onair.on .oa-sign { color: #fff; background: #dc2626; border-color: #fca5a5; box-shadow: 0 0 14px rgba(239, 68, 68, .45); }
+html.beat-4 .w-onair.on .oa-sign { box-shadow: 0 0 34px rgba(239, 68, 68, .9); }
 .oa-sub { font-size: clamp(10px, 9cqh, 14px); color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .w-onair.on .oa-sub { color: #fecaca; }
-@keyframes oa-glow { 0%, 100% { box-shadow: 0 0 14px rgba(239, 68, 68, .45); } 50% { box-shadow: 0 0 34px rgba(239, 68, 68, .9); } }
 .w-battery, .w-quotaring { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; gap: 1px; }
 .g-sub.hot { color: #f87171; }
 
@@ -1235,8 +1252,8 @@ body.waking::after { opacity: 0; pointer-events: auto; transition: opacity .2s e
 .w.dc { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10px; }
 .dc-mic { width: 84px; height: 84px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .07); color: var(--text); display: flex; align-items: center; justify-content: center; flex: none; }
 .dc-mic .ico { width: 38px; height: 38px; }
-.dc-mic.on { background: var(--err, #ef4444); border-color: transparent; color: #fff; animation: dc-pulse 1.4s ease-in-out infinite; }
-@keyframes dc-pulse { 50% { opacity: .7; } }
+.dc-mic.on { background: var(--err, #ef4444); border-color: transparent; color: #fff; }
+html.beat-3 .dc-mic.on { opacity: .7; }
 .dc-text { margin-top: 10px; font-size: 16px; max-width: 100%; max-height: 4.2em; overflow-y: auto; touch-action: pan-y; word-break: break-word; }
 .dc-text:empty { display: none; }
 .dc-note { margin-top: 6px; font-size: 13px; color: var(--muted); }

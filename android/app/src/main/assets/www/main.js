@@ -54,9 +54,9 @@ export const FALLBACK_PAGES = [{
 }];
 
 export const DEFAULT_CFG = {
-  weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius' },
+  weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
-  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, volumeKeys: true },
+  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, volumeKeys: true },
   pages: FALLBACK_PAGES,
   shortcuts: [],
 };
@@ -566,7 +566,10 @@ export const wxDeg = (c) => Math.round(cfg.weather?.unit === 'fahrenheit' ? c * 
 let weatherRetry = 0;
 let weatherFor = ''; // the location the forecast in D.weather belongs to
 let unitShown = ''; // the unit the widgets last drew: a settings change redraws the cached forecast, no new request
-const weatherKey = () => { const { lat, lon } = cfg.weather || DEFAULT_CFG.weather; return `v3:${lat},${lon}`; };
+// the model is part of the key: another model is another forecast, fetched now rather than in up to 14 minutes
+const weatherKey = () => { const { lat, lon } = cfg.weather || DEFAULT_CFG.weather; const model = wxModel(); return `v3:${lat},${lon}${model ? ':' + model : ''}`; };
+// the agent passes only known model names; this guard keeps a hand-edited cached config out of the URL as well
+const wxModel = () => (/^[a-z0-9_]{1,40}$/.test(cfg.weather?.model || '') ? cfg.weather.model : '');
 export async function loadWeather(force = false) {
   const { lat, lon, unit } = cfg.weather || DEFAULT_CFG.weather;
   const key = weatherKey();
@@ -586,7 +589,7 @@ export async function loadWeather(force = false) {
       '&current=temperature_2m,apparent_temperature,weather_code,is_day' +
       '&hourly=temperature_2m,weather_code,precipitation_probability,is_day' +
       '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,daylight_duration,uv_index_max' +
-      '&timezone=auto&forecast_days=7';
+      '&timezone=auto&forecast_days=7' + (wxModel() ? '&models=' + wxModel() : '');
     const ctl = new AbortController();
     setTimeout(() => ctl.abort(), 8000);
     const r = await safeFetch(url, { signal: ctl.signal });
@@ -731,9 +734,33 @@ export function setVolDragging(control, dragging) {
   if (dragging) volDragging = control;
   else if (volDragging === control) volDragging = null;
 }
+// the agent says how old the position was when it sent it (it was read up to a second before the 1 s tick sent it);
+// counting from "that long before it arrived" keeps the bar from running behind. Capped: a bogus age must not jump it.
+const mediaSampleAt = (m) => performance.now() - Math.min(Math.max(Number(m?.ageMs) || 0, 0), 5000);
+// The next sample of the same track is not trusted blindly: the bar is counted on the phone between samples, and each
+// sample is a second old and read at a slightly different moment, so taking it as is makes the time stutter. A bar
+// within 0.3 s of the sample stays as it is, up to 1.5 s off it moves 30 % of the way, and anything bigger (a seek, a
+// pause, a new track, a different source) snaps.
+export function mediaFrom(prev, m) {
+  if (!m) return null;
+  const next = { ...m, at: mediaSampleAt(m) };
+  const now = performance.now();
+  // just after the user moved the position bar the agent's samples still hold the old position for a moment: keep the
+  // chosen one until a sample agrees with it (or the hold runs out)
+  if (prev?.hold > now && prev.title === m.title && prev.app === m.app) {
+    const target = prev.posMs + (prev.playing ? now - prev.at : 0);
+    if (Math.abs(next.posMs + (m.playing ? now - next.at : 0) - target) >= 1500) return { ...next, posMs: prev.posMs, at: prev.at, hold: prev.hold };
+  }
+  if (!prev || !prev.playing || !m.playing || prev.title !== m.title || prev.app !== m.app || prev.durMs !== m.durMs) return next;
+  const shown = prev.posMs + (now - prev.at);
+  const off = next.posMs + (now - next.at) - shown;
+  if (Math.abs(off) < 300) return { ...next, posMs: prev.posMs, at: prev.at };
+  if (Math.abs(off) < 1500) return { ...next, posMs: shown + off * 0.3, at: now };
+  return next;
+}
 export const setMediaState = (m) => {
   if (D.state) D.state.media = m || null;
-  media = m ? { ...m, at: performance.now() } : null;
+  media = mediaFrom(media, m);
   emit('state');
 };
 // The background glow: the accent colour (Settings › Display), or the album art's colour while music plays.
@@ -770,7 +797,7 @@ export const mediaHtml = () => `
     <div class="art-wrap"><img class="art" alt=""><div class="art-ph">♪</div></div>
     <div class="m-text"><div class="m-app"><span class="m-source-icon" aria-hidden="true"></span><span class="m-app-name">Media</span></div><div class="m-title">${t('w.nothingPlaying')}</div><div class="m-artist">${t('w.startOnPc')}</div></div>
   </div>
-  <div class="m-progress"><div class="bar"><div class="fill"></div></div><div class="times"><span class="m-pos">0:00</span><span class="m-dur">0:00</span></div></div>
+  <div class="m-progress"><div class="bar" role="slider" tabindex="0" aria-label="Position" aria-valuemin="0"><div class="fill"></div><div class="scrub-tip" aria-hidden="true">0:00</div></div><div class="times"><span class="m-pos">0:00</span><span class="m-dur">0:00</span></div></div>
   <div class="m-controls">
     <button class="ic" data-media="prev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9.5 12z"/></svg></button>
     <button class="ic play" data-media="playpause" aria-label="Play/Pause">
@@ -822,7 +849,7 @@ export const S_ORDER = { waiting: 0, busy: 1, shell: 2, idle: 3 };
 export const prevStatus = new Map();
 export let workLoaded = false;
 
-/** Vibrates and shows a toast when a session finishes or starts waiting for input. */
+/** Vibrates and shows a toast when a session finishes or starts waiting for input; the finish toast can be turned off. */
 export function notifyTransitions(sessions) {
   for (const s of sessions) {
     const before = prevStatus.get(s.id);
@@ -832,7 +859,7 @@ export function notifyTransitions(sessions) {
         toast(s.waitingFor || t('panel.needsInput'), 'err', s.name);
       } else if (s.status === 'idle' && (before === 'busy' || before === 'shell')) {
         buzz('0,70,110,70');
-        toast(t('panel.sessionFinished', { name: s.name }), 'ok');
+        if (cfg.display?.finishToast !== false) toast(t('panel.sessionFinished', { name: s.name }), 'ok');
       }
     }
     prevStatus.set(s.id, s.status);
@@ -1129,7 +1156,7 @@ setInterval(tickApproval, 1000);
 // while it was down is never replayed. An approval lost that way leaves the command waiting in the dark with nothing
 // on screen, so ask for the list outright as well instead of relying on the event alone. Only while the panel is on
 // screen: the answer is needed when someone is looking, and a phone in a pocket should not poll all night.
-setInterval(() => { if (!PREVIEW && !document.hidden) loadApprovals(); }, 5000);
+setInterval(() => { if (!PREVIEW && !idle()) loadApprovals(); }, 5000);
 
 export async function decide(decision) {
   const a = approvals[0];
@@ -1772,7 +1799,7 @@ pager.addEventListener('touchstart', (e) => {
   swipeTracking = false;
   if (e.touches.length !== 1 || pages.length < 2) return;
   // Dragging a slider, the volume bar, a list or the station carousel must never flip (or wrap) the page.
-  if (volDragging || e.target.closest?.('button, input, textarea, select, a, [contenteditable], .s-list, .vb, .radio-carousel-track, .ac-dial')) return;
+  if (volDragging || e.target.closest?.('button, input, textarea, select, a, [contenteditable], .s-list, .vb, .bar, .radio-carousel-track, .ac-dial')) return;
   swipeStartX = e.touches[0].clientX;
   swipeStartY = e.touches[0].clientY;
   swipeStartPage = curPage;
@@ -2104,7 +2131,7 @@ export function applyState(s, replayGen = null) {
   if (fresh || replayGen === evGen) for (const e of s.events || []) evOffer(e);
   if (!fresh) return replayGen === evGen;
   D.state = s;
-  media = s.media ? { ...s.media, at: performance.now() } : null;
+  media = mediaFrom(media, s.media);
   setOnline(true);
   if (s.cfgVersion !== undefined && cfgVersion !== null && s.cfgVersion !== cfgVersion) loadConfig();
   if (s.pushVersion !== undefined && s.pushVersion !== pushVersion) loadPush();
@@ -2157,9 +2184,30 @@ window.onAgentStream = (event, data) => {
 };
 export const streaming = () => streamOn && Date.now() - lastStateAt < 3000;
 
+// Nobody can see the panel: the screen is off or another app is in front (the shell tells us — WebView.onPause() does not
+// stop JavaScript — and a browser tab reports it as hidden). The shell closes the stream then, and the polling that
+// would take over, the 250 ms refresh and the periodic loads below all wait. Clocks, timers and alarms keep running.
+let appPaused = false;
+export const idle = () => appPaused || document.hidden;
+window.onAppPause = (paused) => {
+  const was = idle();
+  appPaused = !!paused;
+  if (was && !idle()) wokeUp();
+};
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !appPaused) wokeUp(); });
+// what the paused panel skipped is fetched at once, not at the next interval
+function wokeUp() {
+  if (!online) return;
+  loadConfig(); loadPush(); loadApprovals();
+  if (anyNeeds('quotas')) loadQuotas();
+  if (anyNeeds('calendar')) loadCalendar();
+  if (anyNeeds('work') && !streaming()) loadWork();
+}
+
 export async function poll() {
   // a pending replay must go through even while the stream is live: the stream only sends events newer than
   // its own connect, so the poll is the only way to get the ones the restarted agent queued before it
+  if (idle()) { setTimeout(poll, 2000); return; }
   if (!streaming() || evReplay) {
     const replay = evReplay, gen = evGen;
     try {
@@ -2173,18 +2221,34 @@ export async function poll() {
   setTimeout(poll, 1000);
 }
 
+// The status pulses (session dots, OBS LED, on-air sign, dictation mic, radio equalizer) are stepped here, not by CSS animations:
+// an animation that never ends makes the browser draw a frame on every display refresh while it is on screen, and for these
+// that cost the panel 50 to 100 percentage points of a core each on a 120 Hz phone. beat-N is on during every other run of N
+// ticks of 250 ms (N = 2 is a half-second on, a half-second off). It only moves while something that pulses is on screen
+// (every page is mounted, side by side, and a stack keeps its other cards in place at opacity 0, so being in the page is not enough), and the
+// tick above is skipped when the panel is not visible or the night screen is up.
+const PULSING = '.sess.busy, .sess.shell, .sess.waiting, .obs-pill.on, .w-onair.on, .dc-mic.on, .radio-card.is-playing';
+const pulseShown = (el) => { if (el.closest('.stack-item:not(.active)')) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight; };
+let beatN = 0;
+function beat() {
+  if (![...document.querySelectorAll(PULSING)].some(pulseShown)) return;
+  beatN++;
+  const cl = document.documentElement.classList;
+  for (const n of [2, 3, 4]) cl.toggle('beat-' + n, Math.floor(beatN / n) % 2 === 1);
+}
+
 // ---------------------------------------------------------------- start
 buildLayout();
 applyDisplay();
 tick();
 loadWeather();
 setInterval(loadWeather, 15 * 60_000);
-setInterval(() => { if (!nightOn) emit('fast'); }, 250);
-setInterval(() => { if (online && anyNeeds('quotas')) loadQuotas(); }, 30_000);
-setInterval(() => { if (online && anyNeeds('calendar')) loadCalendar(); }, 120_000);
-setInterval(() => { if (online && anyNeeds('work') && !streaming()) loadWork(); }, 3000);
-setInterval(() => { if (online && pageOf('procs')) loadProcs(); if (online && sheet) loadSheet(); }, 2000);
-setInterval(() => { if (online) loadConfig(); }, 60_000);
+setInterval(() => { if (!nightOn && !idle()) { emit('fast'); beat(); } }, 250);
+setInterval(() => { if (online && !idle() && anyNeeds('quotas')) loadQuotas(); }, 30_000);
+setInterval(() => { if (online && !idle() && anyNeeds('calendar')) loadCalendar(); }, 120_000);
+setInterval(() => { if (online && !idle() && anyNeeds('work') && !streaming()) loadWork(); }, 3000);
+setInterval(() => { if (idle()) return; if (online && pageOf('procs')) loadProcs(); if (online && sheet) loadSheet(); }, 2000);
+setInterval(() => { if (online && !idle()) loadConfig(); }, 60_000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && lastHour12 !== null && hour12() !== lastHour12) {
     buildLayout();

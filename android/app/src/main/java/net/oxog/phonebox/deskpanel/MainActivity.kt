@@ -232,6 +232,7 @@ class MainActivity : Activity(), SensorEventListener {
         super.onResume()
         resumed = true
         web.onResume()
+        web.evaluateJavascript("window.onAppPause && window.onAppPause(false)", null) // the panel catches up at once
         stream.start()
         hideSystemUi()
         sensors?.getDefaultSensor(Sensor.TYPE_LIGHT)?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
@@ -249,6 +250,8 @@ class MainActivity : Activity(), SensorEventListener {
         dictation.cancel(0) // the microphone is never left open behind another app or a dark screen
         sensors?.unregisterListener(this)
         stream.stop()
+        // WebView.onPause() leaves JavaScript running: tell the panel to stop polling and refreshing while nobody sees it
+        web.evaluateJavascript("window.onAppPause && window.onAppPause(true)", null)
         web.onPause()
         super.onPause()
     }

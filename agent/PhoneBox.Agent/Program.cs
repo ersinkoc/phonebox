@@ -165,6 +165,27 @@ app.Use((ctx, next) =>
     return next(ctx);
 });
 
+// How long each kind of request takes (GET /api/latency, local only), and a log line for the slow ones: tells a slow
+// control action (osascript on a busy computer...) from a slow phone or network. The live stream is long by design.
+var timings = new RequestTimings();
+app.Use(async (ctx, next) =>
+{
+    if (!ctx.Request.Path.StartsWithSegments("/api") || ctx.Request.Path.StartsWithSegments("/api/stream")) { await next(ctx); return; }
+    var started = System.Diagnostics.Stopwatch.GetTimestamp();
+    try { await next(ctx); }
+    finally
+    {
+        var ms = (long)System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        // only a request that matched an endpoint (routing has run by now), so unknown paths cannot add rows
+        if (RequestTimings.RouteOf(ctx.GetEndpoint(), ctx.Request.Method) is { } route)
+        {
+            timings.Add(route, ms);
+            if (ms >= RequestTimings.SlowMs && ctx.Request.Method != "GET") app.Logger.LogInformation("slow request: {Route} took {Ms} ms", route, ms);
+        }
+    }
+});
+app.MapGet("/api/latency", () => Results.Json(timings.Summary()));
+
 // Security:
 //  - Local port 8765 listens on 127.0.0.1 only; the Host check blocks DNS rebinding. The phone's USB proxy sends
 //    no Origin header; from browsers only the settings page itself (same origin) is accepted (no CSRF).
@@ -605,6 +626,9 @@ app.MapGet("/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.R
 
 // Live stream (server-sent events) for the phone: "state" every second, "event" as soon as one happens, "work" when it
 // changes. The Android shell keeps one connection open instead of polling; the panel falls back to polling without it.
+// One "state" frame for all open streams: they wake on the same second (below), so the state is built and serialized once
+// per tick, not once per phone. Everything State() reads is a singleton, so the root provider will do.
+var stateFrames = new StateFrameCache(() => State(app.Services, null), new JsonSerializerOptions(JsonSerializerDefaults.Web));
 app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, SpectrumAnalyzer spectrum, ILogger<Program> log) =>
 {
     var ct = ctx.RequestAborted;
@@ -620,30 +644,43 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
         await ctx.Response.Body.FlushAsync(ct);
     }
     using var wake = new SemaphoreSlim(0);
+    var poked = 0;
     void OnEmit() { try { wake.Release(); } catch (ObjectDisposedException) { } }
+    // something the phone shows just changed (see StateSignal): send a state now, not at the next whole second
+    void OnPoke() { Volatile.Write(ref poked, 1); OnEmit(); }
     push.Emitted += OnEmit;
+    StateSignal.Changed += OnPoke;
     try
     {
         var seq = push.Seq;
         var lastWork = "";
         var next = 0L;
         var lastSpec = 0L;
+        var lastState = 0L;
         var tick = 0;
         while (!ct.IsCancellationRequested)
         {
             foreach (var e in push.Since(seq)) { await Send("event", e); seq = e.Seq; }
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if (now >= next)
+            var tickDue = now >= next;
+            var pokeDue = Volatile.Read(ref poked) == 1 && now - lastState >= 100;
+            if (tickDue || pokeDue)
             {
+                Volatile.Write(ref poked, 0); // before the frame is built: a change during the build is answered by the next pass
                 if (isPhone) Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, now);
-                await Send("state", State(ctx.RequestServices, null));
+                await ctx.Response.WriteAsync(stateFrames.Get(push.Seq, StateSignal.Version), ct);
+                await ctx.Response.Body.FlushAsync(ct);
+                lastState = now;
+            }
+            if (tickDue)
+            {
                 if (tick++ % 2 == 0)
                 {
                     var work = WorkFeed.Build(sessions, gh);
                     var json = JsonSerializer.Serialize(work, opts);
                     if (json != lastWork) { lastWork = json; await Send("work", work); }
                 }
-                next = now + 1000;
+                next = (now / 1000 + 1) * 1000; // the next whole second, the same for every stream (see stateFrames)
             }
             // spectrum frames for a visualizer on screen (SpectrumAnalyzer runs only while a panel asks for it). While
             // capture runs, every open stream gets them, also a second phone without a visualizer: the stream is opened
@@ -656,6 +693,8 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
                 if (spectrum.Frame() is { } bands) await Send("spectrum", new { b = bands });
             }
             var waitMs = next - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            // a change that arrived within 100 ms of the last state waits out the rest of that gap
+            if (Volatile.Read(ref poked) == 1) waitMs = Math.Min(waitMs, lastState + 100 - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             if (specActive) waitMs = Math.Min(waitMs, lastSpec + 1000 / SpectrumAnalyzer.Fps - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             await wake.WaitAsync(TimeSpan.FromMilliseconds(Math.Max(5, waitMs)), ct);
         }
@@ -665,6 +704,7 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
     finally
     {
         push.Emitted -= OnEmit;
+        StateSignal.Changed -= OnPoke;
         log.LogInformation("live stream closed ({Via})", via);
     }
 });
@@ -744,6 +784,7 @@ app.MapPost("/api/media/{action}", async (string action, long? ms, MediaMonitor 
         if (ok && starting) deck.StopAllRadios();
         return (Ok: ok, Media: deck.EffectiveMedia(media.Snapshot()));
     }, ct);
+    StateSignal.Poke();
     return outcome.Ok ? Results.Json(new { ok = true, media = outcome.Media }) : Results.BadRequest();
 });
 
@@ -757,6 +798,7 @@ app.MapPost("/api/volume", (int? level, string? op, AudioControl audio) =>
         _ when level is { } l => audio.SetVolume(l),
         _ => false,
     };
+    if (ok) StateSignal.Poke(); // the phone's other screens and widgets see it now, not at the next second
     return ok ? Results.Json(audio.Current()) : Results.BadRequest();
 });
 

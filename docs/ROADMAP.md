@@ -34,12 +34,6 @@ people who proposed or prototyped something are credited in the [changelog](../C
 
 ## Waiting on someone else
 
-- **macOS: keep the Accessibility permission across updates**
-  ([#269](https://github.com/ersinkoc/phonebox/issues/269)): the macOS agent is signed ad hoc, so macOS ties the
-  permission to one build and every update needs it granted again. A stable signing identity (an Apple Developer ID,
-  or one fixed certificate for every release) would keep it. Until then the setup script, the docs and the message on
-  the phone say what to do.
-
 - **Signed Windows agent** ([#56](https://github.com/ersinkoc/phonebox/issues/56),
   [#69](https://github.com/ersinkoc/phonebox/issues/69)): SignPath Foundation approved the project and the release
   pipeline already signs `PhoneBoxAgent.exe`. The release certificate, which SignPath Foundation issues in its own

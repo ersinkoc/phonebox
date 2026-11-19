@@ -20,10 +20,10 @@ W.clock = {
   bare: true, needs: ['tick', 'state', 'weather', 'quotas', 'work'],
   create(box, { o }) {
     const status = o.status !== false ? h('div', 'status') : null;
-    const hh = h('span', 'hh', '--'), mm = h('span', 'mm', '--'), ss = h('span', 'sec'), ap = h('span', 'ap');
+    const hh = h('span', 'hh', '--'), colon = h('span', 'colon', ':'), mm = h('span', 'mm', '--'), ss = h('span', 'sec'), ap = h('span', 'ap');
     const date = o.date !== false ? h('div', 'date') : null;
     const wx = o.weather !== false ? wxBlock() : null;
-    box.append(status || '', h('div', 'clock', hh, h('span', 'colon', ':'), mm, ss, ap), date || '', wx || '');
+    box.append(status || '', h('div', 'clock', hh, colon, mm, ss, ap), date || '', wx || '');
     box.style.setProperty('--tf', (0.84 - (status ? 0.1 : 0) - (date ? 0.11 : 0) - (wx ? 0.2 : 0)).toFixed(2));
     return {
       // without the weather line the clock must not make the panel fetch the weather
@@ -36,6 +36,9 @@ W.clock = {
           ap.textContent = h12 ? (H < 12 ? 'AM' : 'PM') : '';
           mm.textContent = pad(now.getMinutes());
           ss.textContent = cfg.display?.showSeconds === false ? '' : pad(now.getSeconds());
+          // the colon blinks once a second from here, not from a CSS animation: a running animation makes the browser draw a frame
+          // on every display refresh (120 a second on some phones) for something that changes once a second
+          colon.classList.toggle('dim', now.getSeconds() % 2 === 1);
           if (date) date.textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
           if (status && now.getSeconds() % 30 === 0) renderStatus(status, o); // battery
         } else if (kind === 'weather') wx?.update();
@@ -73,6 +76,8 @@ W.forecast = {
         if (daily) {
           const d = w.daily;
           for (let i = 0; i < Math.min(n, d.time.length); i++) {
+            // some models (Météo-France, CMA) forecast fewer than 7 days and send null for the rest: stop there, not at "0°"
+            if (d.temperature_2m_max?.[i] == null) break;
             const day = i === 0 ? t('time.today') : new Date(d.time[i] + 'T12:00').toLocaleDateString(LOCALE, { weekday: 'short' });
             const rain = d.precipitation_probability_max?.[i];
             cells.push(h('div', 'fc-i', h('span', 'fc-t', day), h('span', 'fc-ic', emo(wxIcon(d.weather_code[i]))),
@@ -86,7 +91,7 @@ W.forecast = {
           const step = n >= 10 ? 1 : 2;
           for (let k = 0; k < n; k++) {
             const i = start + k * step;
-            if (i >= hr.time.length) break;
+            if (i >= hr.time.length || hr.temperature_2m?.[i] == null) break;
             const rain = hr.precipitation_probability?.[i];
             cells.push(h('div', 'fc-i', h('span', 'fc-t', k === 0 ? 'Now' : hr.time[i].slice(11, 13)), h('span', 'fc-ic', emo(wxIcon(hr.weather_code[i], hr.is_day?.[i]))),
               h('span', 'fc-v', wxDeg(hr.temperature_2m[i]) + '°'), h('span', 'fc-r', rain >= 20 ? rich(`💧${rain}%`) : '')));
@@ -128,13 +133,65 @@ W.media = {
         emit('tick');
       } catch (_) {}
     }));
-    q('.bar').addEventListener('click', async (e) => {
-      if (!media || !media.durMs || !media.canSeek) return;
-      const r = e.currentTarget.getBoundingClientRect();
-      const ms = Math.round(((e.clientX - r.left) / r.width) * media.durMs);
+    // The position bar is a slider. Holding it (touch, mouse) or moving it with the arrow keys shows a bubble with the time
+    // the song will continue from; it seeks on release, not while moving. Meanwhile the once-a-second state and the 250 ms
+    // refresh leave the bar alone (see update()).
+    const bar = q('.bar'), tip = q('.scrub-tip');
+    let scrub = null, seekTimer = 0, ariaSec = -1; // scrub: { id, ms, key } while held
+    const canScrub = () => !!(media && media.durMs > 0 && media.canSeek);
+    // which song a held bar belongs to: a different one underneath (next track) cancels the scrub instead of seeking it
+    const trackKey = () => (media ? [media.app, media.title, media.durMs].join('\n') : '');
+    const paintAria = (ms) => {
+      bar.setAttribute('aria-valuenow', Math.round(ms / 1000));
+      bar.setAttribute('aria-valuetext', fmtTime(ms));
+    };
+    const nowMs = () => Math.min(media.durMs, media.posMs + (media.playing ? performance.now() - media.at : 0));
+    const msFrom = (clientX) => {
+      const r = bar.getBoundingClientRect();
+      return Math.round(Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * media.durMs);
+    };
+    const paintScrub = (ms) => {
+      const pct = (ms / media.durMs) * 100;
+      q('.fill').style.width = pct + '%';
+      q('.m-pos').textContent = tip.textContent = fmtTime(ms);
+      bar.style.setProperty('--tip', pct + '%');
+      paintAria(ms);
+    };
+    const endScrub = (commit) => {
+      clearTimeout(seekTimer);
+      if (!scrub) return;
+      const { ms, key } = scrub;
+      scrub = null;
+      bar.classList.remove('scrubbing');
+      if (!commit || !canScrub() || key !== trackKey()) return; // checked again: the song may have changed since it was held
       haptic();
-      media.posMs = ms; media.at = performance.now();
-      try { await api('/media/seek?ms=' + ms, 'POST'); } catch (_) {}
+      // the bar stays where it was put until the agent has caught up: its next samples still hold the old position
+      media.posMs = ms; media.at = performance.now(); media.hold = performance.now() + 2500;
+      api('/media/seek?ms=' + ms, 'POST').catch(() => {});
+    };
+    const startScrub = (id, ms) => { scrub = { id, ms, key: trackKey() }; bar.classList.add('scrubbing'); paintScrub(ms); };
+    bar.addEventListener('pointerdown', (e) => {
+      if (!canScrub() || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      clearTimeout(seekTimer);
+      startScrub(e.pointerId, msFrom(e.clientX));
+      try { bar.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    bar.addEventListener('pointermove', (e) => {
+      if (scrub && e.pointerId === scrub.id) { scrub.ms = msFrom(e.clientX); paintScrub(scrub.ms); }
+    });
+    bar.addEventListener('pointerup', (e) => { if (scrub && e.pointerId === scrub.id) endScrub(true); });
+    bar.addEventListener('pointercancel', () => endScrub(false));
+    bar.addEventListener('lostpointercapture', () => endScrub(false)); // a no-op after pointerup: the scrub has ended
+    bar.addEventListener('keydown', (e) => {
+      const step = { ArrowRight: 5000, ArrowUp: 5000, ArrowLeft: -5000, ArrowDown: -5000, PageUp: 30000, PageDown: -30000 }[e.key];
+      if (step === undefined && e.key !== 'Home' && e.key !== 'End') return;
+      if (!canScrub()) return;
+      e.preventDefault();
+      const base = scrub ? scrub.ms : nowMs();
+      const ms = e.key === 'Home' ? 0 : e.key === 'End' ? Math.max(0, media.durMs - 1000) : Math.min(media.durMs, Math.max(0, base + step));
+      startScrub(-1, ms);
+      clearTimeout(seekTimer);
+      seekTimer = setTimeout(() => endScrub(true), 350); // a run of key presses seeks once
     });
     const paintVol = (v) => { vol.style.setProperty('--p', v + '%'); q('.vol-val').textContent = v; };
     const cancelVolumeDrag = () => {
@@ -162,12 +219,14 @@ W.media = {
 
     return {
       update(kind) {
+        if (scrub && scrub.key !== trackKey()) endScrub(false); // the song changed under the finger
         if (kind === 'fast') {
-          if (!media) return;
+          if (!media || scrub) return; // while the bar is held it shows the chosen time, not the song's
           if (media.durMs > 0) {
             const pos = Math.min(media.durMs, media.posMs + (media.playing ? performance.now() - media.at : 0));
             q('.fill').style.width = (pos / media.durMs) * 100 + '%';
             q('.m-pos').textContent = fmtTime(pos);
+            if (Math.floor(pos / 1000) !== ariaSec) { ariaSec = Math.floor(pos / 1000); paintAria(pos); } // once a second, not every 250 ms
           } else if (media.app === 'Internet Radio') {
             const pos = Math.max(0, (media.posMs || 0) + (media.playing ? performance.now() - media.at : 0));
             q('.fill').style.width = media.playing ? '100%' : '0';
@@ -185,6 +244,7 @@ W.media = {
         } else q('.vol-val').textContent = 'n/a';
         box.classList.toggle('idle', !m);
         if (!m) {
+          endScrub(false);
           box.classList.remove('playing');
           q('.m-app-name').textContent = 'Media';
           sourceIcon.replaceChildren();
@@ -192,6 +252,7 @@ W.media = {
           q('.m-artist').textContent = t('w.pressToResume');
           q('.fill').style.width = '0';
           q('.m-pos').textContent = q('.m-dur').textContent = '0:00';
+          ariaSec = -1; paintAria(0); bar.setAttribute('aria-disabled', 'true');
           if (artId !== 0) { artId = 0; img.classList.remove('on'); setArtColor(null); }
           return;
         }
@@ -207,13 +268,24 @@ W.media = {
         } else {
           q('.m-dur').textContent = fmtTime(m.durMs);
         }
+        // the slider's range and value for assistive technology (its maximum defaults to 100 without this)
+        if (m.durMs > 0) {
+          bar.setAttribute('aria-valuemax', Math.max(1, Math.round(m.durMs / 1000)));
+          bar.setAttribute('aria-disabled', String(!m.canSeek));
+          if (media && !scrub) { ariaSec = Math.floor(nowMs() / 1000); paintAria(nowMs()); }
+        } else {
+          // no known length (a live stream): no range to move on, and nothing left over from the song before
+          bar.setAttribute('aria-valuemax', '0');
+          bar.setAttribute('aria-disabled', 'true');
+          ariaSec = -1; paintAria(0);
+        }
         if (m.artId !== artId) {
           artId = m.artId;
           if (m.artId) img.src = `${API}/art?id=${m.artId}`;
           else { img.classList.remove('on'); setArtColor(null); }
         }
       },
-      destroy: cancelVolumeDrag,
+      destroy() { endScrub(false); cancelVolumeDrag(); },
     };
   },
 };

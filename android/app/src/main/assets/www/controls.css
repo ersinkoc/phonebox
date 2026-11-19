@@ -21,10 +21,10 @@
 /* Live playing equalizer badge */
 .radio-eq{position:absolute;right:3px;bottom:3px;display:none;align-items:flex-end;gap:1.5px;height:12px;padding:2px 3px;border-radius:5px;background:rgba(9,15,24,.84);backdrop-filter:blur(4px)}
 .radio-card.is-playing .radio-eq{display:inline-flex}
-.radio-eq i{display:block;width:2px;height:8px;border-radius:1px;background:#00e5f5;transform-origin:bottom;animation:radio-eq-bounce .75s ease-in-out infinite alternate}
-.radio-eq i:nth-child(2){animation-delay:.18s;height:10px}
-.radio-eq i:nth-child(3){animation-delay:.34s;height:6px}
-@keyframes radio-eq-bounce{0%{transform:scaleY(.3)}100%{transform:scaleY(1)}}
+.radio-eq i{display:block;width:2px;height:8px;border-radius:1px;background:#00e5f5;transform-origin:bottom}
+.radio-eq i:nth-child(2){height:10px}
+.radio-eq i:nth-child(3){height:6px}
+html.beat-3 .radio-eq i:nth-child(1),html.beat-2 .radio-eq i:nth-child(2),html.beat-4 .radio-eq i:nth-child(3){transform:scaleY(.3)}
 
 /* Horizontal sliding station cards */
 .radio-carousel{container-type:size;align-items:center}

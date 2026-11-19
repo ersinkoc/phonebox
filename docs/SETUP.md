@@ -96,12 +96,12 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
 - **Linux USB permissions**: if `adb devices` shows `no permissions`, adb also needs udev rules. Install
   `android-sdk-platform-tools-common` on Debian/Ubuntu or `android-udev` on Arch. Some systems also need the
   `plugdev` group (`sudo usermod -aG plugdev $USER`, then log out and in). Setup points this out when it happens.
-- **On macOS**, the agent is signed ad hoc, not with an Apple Developer ID. The first time, macOS may ask whether
-  it may control Music or Spotify (for Now Playing), or accept incoming connections (with Wi-Fi on). Shortcuts that
-  press keys need *System Settings › Privacy & Security › Accessibility* for PhoneBoxAgent. macOS ties that
-  permission to the exact build, so it stops applying after every update, even though PhoneBoxAgent stays in the list
-  and can look switched on: remove it there with *−* and add it again
-  ([#269](https://github.com/ersinkoc/phonebox/issues/269)).
+- **On macOS**, the agent is signed with PhoneBox's own certificate, not an Apple Developer ID. The first time,
+  macOS may ask whether it may control Music or Spotify (for Now Playing), or accept incoming connections (with Wi-Fi
+  on). Shortcuts that press keys need *System Settings › Privacy & Security › Accessibility* for PhoneBoxAgent; it
+  carries over to later updates. Before 0.9.22 the agent was signed ad hoc, and macOS dropped the permission with every
+  update, so after updating from an older version allow it once more: remove PhoneBoxAgent there with *−* and add it
+  again, even if it is listed and switched on ([#269](https://github.com/ersinkoc/phonebox/issues/269)).
 - **Windows USB drivers**: if the phone never appears, Windows may need its USB driver. Google phones use the
   Google USB Driver; other brands have one on their support site.
 - **Scoop users**: setup stops if PhoneBox is installed with Scoop, so two copies don't fight over the same port.
