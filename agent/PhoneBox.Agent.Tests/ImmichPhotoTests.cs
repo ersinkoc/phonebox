@@ -52,12 +52,12 @@ public sealed class ImmichPhotoTests : IDisposable
         private static HttpResponseMessage Json(string body) => new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
     }
 
-    private (PhotoFrame Frame, ConfigStore Store) Frame(FakeImmich fake, bool widget = true, string album = Album, string key = Key, string source = "immich")
+    private (PhotoFrame Frame, ConfigStore Store) Frame(FakeImmich fake, bool widget = true, string album = Album, string key = Key, string source = "immich", string url = Server + "/")
     {
         var path = Path.Combine(_dir, "config.json");
         var widgets = widget ? """[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]""" : "[]";
         File.WriteAllText(path, $$"""
-            {"photos":{"source":"{{source}}","immichUrl":"{{Server}}/","immichKey":"{{key}}","immichAlbum":"{{album}}","immichAlbumName":"apple"},
+            {"photos":{"source":"{{source}}","immichUrl":"{{url}}","immichKey":"{{key}}","immichAlbum":"{{album}}","immichAlbumName":"apple"},
              "pages":[{"id":"p","title":"P","widgets":{{widgets}}}]}
             """);
         var store = new ConfigStore(path);
@@ -209,10 +209,13 @@ public sealed class ImmichPhotoTests : IDisposable
     [InlineData("", Album, Key)]
     [InlineData("immich", "", Key)]
     [InlineData("immich", Album, "")]
-    public void AnIncompleteImmichSetupShowsNothing(string source, string album, string key)
+    [InlineData("immich", Album, Key, "")]
+    [InlineData("immich", Album, Key, "ftp://immich.test/")]
+    public void AnIncompleteImmichSetupShowsNothing(string source, string album, string key, string? url = null)
     {
         var fake = new FakeImmich();
-        var (frame, _) = Frame(fake, album: album, key: key, source: source == "" ? "folder" : source);
+        var (frame, _) = Frame(fake, album: album, key: key, source: source == "" ? "folder" : source, url: url ?? Server + "/");
+        Assert.Null(Record.Exception(frame.ScanNow)); // nothing to scan, nothing thrown
         var (ids, error, scanning) = frame.List();
         Assert.Empty(ids);
         Assert.Null(error);
