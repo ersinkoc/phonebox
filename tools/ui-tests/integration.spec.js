@@ -489,6 +489,25 @@ test('the weather asks Open-Meteo for the model the settings pick', async ({ pag
   expect(urls).toEqual(['gfs_seamless', null]);
 });
 
+// Météo-France and CMA forecast fewer than 7 days and send null for the days after: the forecast stops at the last
+// real day instead of showing "0° 0°" (Math.round(null)) under a blank icon.
+test('a forecast whose last days are null shows only the days it has', async ({ page }) => {
+  const now = new Date();
+  const day = (k) => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k, 12); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const hour = `${day(0)}T${String(now.getHours()).padStart(2, '0')}:00`;
+  const days = [0, 1, 2, 3, 4, 5, 6].map(day);
+  await page.route('https://api.open-meteo.com/**', (route) => route.fulfill({ json: {
+    current: { time: hour, temperature_2m: 12, apparent_temperature: 12, weather_code: 3, is_day: 1 },
+    daily: { time: days, weather_code: [3, 3, 3, 3, null, null, null], temperature_2m_max: [14, 15, 16, 17, null, null, null],
+      temperature_2m_min: [8, 9, 10, 11, null, null, null], precipitation_probability_max: [null, null, null, null, null, null, null] },
+    hourly: { time: [hour], weather_code: [3], temperature_2m: [12], precipitation_probability: [null], is_day: [1] },
+  } }));
+  await layout(page, [{ ...widget('forecast', { mode: 'daily' }), w: 12, h: 3 }], { weather: { city: 'Alpha', lat: 10, lon: 10, model: 'meteofrance_seamless' } });
+  await expect(page.locator('.fc-v').first()).toHaveText('14° 8°');
+  await expect(page.locator('.fc-v')).toHaveCount(4);
+  await expect(page.locator('.fc-v', { hasText: /^0°/ })).toHaveCount(0);
+});
+
 // PRIVACY.md: the phone sends the weather location to Open-Meteo only while a page has a widget that uses the weather.
 test('the weather is fetched only while a widget needs it', async ({ page }) => {
   const asked = [];

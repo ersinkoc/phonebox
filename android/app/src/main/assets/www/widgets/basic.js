@@ -73,6 +73,8 @@ W.forecast = {
         if (daily) {
           const d = w.daily;
           for (let i = 0; i < Math.min(n, d.time.length); i++) {
+            // some models (Météo-France, CMA) forecast fewer than 7 days and send null for the rest: stop there, not at "0°"
+            if (d.temperature_2m_max?.[i] == null) break;
             const day = i === 0 ? t('time.today') : new Date(d.time[i] + 'T12:00').toLocaleDateString(LOCALE, { weekday: 'short' });
             const rain = d.precipitation_probability_max?.[i];
             cells.push(h('div', 'fc-i', h('span', 'fc-t', day), h('span', 'fc-ic', emo(wxIcon(d.weather_code[i]))),
@@ -86,7 +88,7 @@ W.forecast = {
           const step = n >= 10 ? 1 : 2;
           for (let k = 0; k < n; k++) {
             const i = start + k * step;
-            if (i >= hr.time.length) break;
+            if (i >= hr.time.length || hr.temperature_2m?.[i] == null) break;
             const rain = hr.precipitation_probability?.[i];
             cells.push(h('div', 'fc-i', h('span', 'fc-t', k === 0 ? 'Now' : hr.time[i].slice(11, 13)), h('span', 'fc-ic', emo(wxIcon(hr.weather_code[i], hr.is_day?.[i]))),
               h('span', 'fc-v', wxDeg(hr.temperature_2m[i]) + '°'), h('span', 'fc-r', rain >= 20 ? rich(`💧${rain}%`) : '')));

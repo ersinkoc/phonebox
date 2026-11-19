@@ -567,7 +567,7 @@ let weatherRetry = 0;
 let weatherFor = ''; // the location the forecast in D.weather belongs to
 let unitShown = ''; // the unit the widgets last drew: a settings change redraws the cached forecast, no new request
 // the model is part of the key: another model is another forecast, fetched now rather than in up to 14 minutes
-const weatherKey = () => { const { lat, lon, model } = cfg.weather || DEFAULT_CFG.weather; return `v3:${lat},${lon}${model ? ':' + model : ''}`; };
+const weatherKey = () => { const { lat, lon } = cfg.weather || DEFAULT_CFG.weather; const model = wxModel(); return `v3:${lat},${lon}${model ? ':' + model : ''}`; };
 // the agent passes only known model names; this guard keeps a hand-edited cached config out of the URL as well
 const wxModel = () => (/^[a-z0-9_]{1,40}$/.test(cfg.weather?.model || '') ? cfg.weather.model : '');
 export async function loadWeather(force = false) {
