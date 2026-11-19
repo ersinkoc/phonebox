@@ -31,6 +31,15 @@ async function show(page, options, state = null) {
   };
 }
 
+test('the icon-only buttons have names, and the start button follows the state', async ({ page }) => {
+  const p = await show(page, { focus: 1, break: 1 });
+  await expect(p.w.getByRole('button', { name: 'Restart', exact: true })).toBeVisible();
+  await expect(p.w.getByRole('button', { name: 'Skip to the next step' })).toBeVisible();
+  await expect(p.w.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
+  await p.play();
+  await expect(p.w.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+});
+
 test('Pomodoro fixture configuration survives delayed default initialization', async ({ page }) => {
   const { gatedLayout } = require('./layout-ordering');
   expect(await gatedLayout(page, p => show(p, { sequence: '25 focus, lunch' }))).toEqual(['p']);

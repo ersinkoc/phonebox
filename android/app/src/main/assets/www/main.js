@@ -328,9 +328,12 @@ export function icon(name, cls = '') {
    translations still hold emoji as plain text; every place that shows one goes through emo()/rich(),
    so the panel draws the same line icons everywhere and unknown characters (a custom emoji or text) stay as typed. */
 const EMOJI_ICON = { '🏠': 'house', '☀': 'sun', '🌙': 'moon', '🌤': 'cloud-sun', '⛅': 'cloud-sun', '☁': 'cloudy', '🌫': 'cloud-fog', '🌦': 'cloud-sun-rain', '🌧': 'cloud-rain', '🌨': 'cloud-snow', '❄': 'snowflake', '⛈': 'cloud-lightning', '🌡': 'thermometer', '📱': 'smartphone', '⚡': 'zap', '📹': 'video', '🎙': 'mic', '📶': 'signal', '🎛': 'sliders-horizontal', '💬': 'message-square', '🔋': 'battery', '⏭': 'skip-forward', '⏮': 'skip-back', '⏯': 'play', '🔤': 'type', '🕒': 'clock', '🎵': 'music', '📈': 'trending-up', '⏲': 'timer', '⏱': 'timer', '📊': 'chart-column', '💾': 'hard-drive', '🎮': 'gamepad-2', '✳': 'asterisk', '🤖': 'bot', '🐙': 'github', '⚙': 'settings', '🔘': 'circle-dot', '🌍': 'globe', '🌐': 'globe', '📅': 'calendar', '🍅': 'timer', '⏳': 'hourglass', '📝': 'notebook-pen', '💻': 'laptop', '📡': 'radio-tower', '📬': 'mailbox', '🕰': 'alarm-clock', '📆': 'calendar-days', '🔢': 'hash', '🫁': 'wind', '✅': 'circle-check', '🔥': 'flame', '🎯': 'target', '🔊': 'volume-2', '🌅': 'sunrise', '🍃': 'leaf', '📰': 'newspaper', '🗞': 'newspaper', '🖼': 'image', '💱': 'arrow-left-right', '🪙': 'coins', '🖥': 'monitor', '🎧': 'headphones', '🖱': 'mouse', '⌨': 'keyboard', '🖊': 'pen', '🔇': 'volume-x', '🔕': 'bell-off', '📞': 'phone', '💡': 'lightbulb', '🔌': 'plug', '🌀': 'fan', '🪟': 'app-window', '📜': 'scroll-text', '🎬': 'clapperboard', '🧑': 'user', '🧹': 'brush', '📷': 'camera', '💧': 'droplet', '🚪': 'door-open', '🏃': 'footprints', '🧍': 'person-standing', '🫧': 'cloudy', '🔒': 'lock', '📳': 'vibrate', '🔓': 'lock-open', '⚠': 'warn', '🔴': 'radio', '🕙': 'clock-10', '👀': 'eye', '❌': 'circle-x', '⏸': 'pause', '🔔': 'bell', '📧': 'mail', '🧮': 'calculator', '✂': 'scissors', '🚀': 'rocket', '🐳': 'container', '🧪': 'flask-conical', '🛠': 'wrench', '📦': 'package', '⭐': 'star', '🦊': 'cat', '📁': 'folder', '📺': 'tv', '🚿': 'shower-head', '🛋': 'sofa', '🛏': 'bed', '🍳': 'egg-fried', '☕': 'coffee', '🌱': 'sprout', '🪴': 'flower-2', '🚗': 'car', '🧺': 'washing-machine', '🖨': 'printer', '📻': 'radio', '➕': 'plus', '⬆': 'arrow-up', '◻': 'square', '👋': 'hand', '🧭': 'compass', '🗓': 'calendar-range', '🏖': 'umbrella', '🧩': 'puzzle', '🗂': 'folders', '🎚': 'sliders-vertical', '🔉': 'volume-1', '⏩': 'fast-forward', '🔀': 'shuffle', '📂': 'folder-open', '📽': 'projector', '🎶': 'music-2', '🎹': 'piano', '🎨': 'palette', '🗑': 'trash-2' };
-const EMOJI_RE = new RegExp('(' + Object.keys(EMOJI_ICON).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\uFE0F?', 'gu');
+// A mapped emoji only counts when it stands alone: not part of a longer sequence (skin tone, joined with U+200D, keycap).
+const EMOJI_RE = new RegExp('(?<!\\u200D)(' + Object.keys(EMOJI_ICON).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\uFE0F?(?![\\u{1F3FB}-\\u{1F3FF}\\u200D\\u20E3])', 'gu');
 export const emojiIcon = (e) => EMOJI_ICON[String(e == null ? '' : e).replace(/\uFE0F/g, '').trim()];
 /** A node for one emoji: its icon when we have one, otherwise the text as typed. */
+/** Names a control that holds only an icon (the icons are aria-hidden), and gives it a tooltip. */
+export function labelled(el, text) { el.setAttribute('aria-label', text); el.title = text; return el; }
 export function emo(e, cls = '') { const n = emojiIcon(e); return n ? icon(n, cls) : document.createTextNode(e == null ? '' : String(e)); }
 /** A text with every known emoji swapped for its inline icon (a DocumentFragment, ready for append/replaceChildren). */
 export function rich(text) {
@@ -1446,7 +1449,7 @@ let navTimer = 0;
 let lastAutoSwitch = 0;
 let lastNav = 0;              // last automatic switch (for the idle timer)
 const dsp = () => cfg.display || {};
-const pageLabel = (i) => { const p = pages[i]; return p ? rich(`${p.icon || ''} ${p.title}`.trim()) : ''; };
+const pageLabel = (i) => { const p = pages[i]; return p ? `${p.icon || ''} ${p.title}`.trim() : ''; };
 
 export function requestPage(d) {
   if (PREVIEW) return;
@@ -1598,7 +1601,7 @@ function renderNav(req = null, why = '') {
     card.classList.remove('on');
     chip.classList.add('on');
     navShown = null;
-    $('ncText').replaceChildren(`${name} → `, target, more);
+    $('ncText').replaceChildren(rich(`${name} → ${target}${more}`));
     $('ncWhy').textContent = why;
     $('ncGo').onclick = () => { haptic(); perform(req); };
     $('ncX').onclick = () => dismiss(req);
@@ -1608,7 +1611,7 @@ function renderNav(req = null, why = '') {
   if (navShown !== navCount) {
     navShown = navCount;
     $('nvName').textContent = name;
-    $('nvLine').textContent = req.kind === 'goto' ? t('panel.switchingTo', { target }) : t('panel.backTo', { target });
+    $('nvLine').replaceChildren(rich(req.kind === 'goto' ? t('panel.switchingTo', { target }) : t('panel.backTo', { target })));
     $('nvDetail').textContent = req.detail && req.detail !== 'test' ? req.detail : more ? t('panel.moreWaiting', { n: navQueue.length - 1 }) : '';
     const ring = $('nvRing');
     ring.style.animation = 'none';
