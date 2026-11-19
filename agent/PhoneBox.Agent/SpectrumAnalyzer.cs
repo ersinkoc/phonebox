@@ -131,6 +131,17 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
         }
     }
 
+    /// <summary>Most boost <see cref="LoopbackGain"/> gives, so a nearly silent slider does not turn noise into bars.</summary>
+    internal const double MaxBoostDb = 40;
+
+    /// <summary>
+    /// The gain that brings loopback back to the level of what is playing. Loopback captures after the Windows volume on
+    /// outputs that apply it in software (HDMI and DisplayPort monitors, S/PDIF…), so at a low slider the bars would sit
+    /// near the floor; outputs with a hardware volume (most USB and Bluetooth headsets) capture at full level already.
+    /// </summary>
+    internal static float LoopbackGain(bool hardwareVolume, float volumeDb) =>
+        hardwareVolume || !float.IsFinite(volumeDb) ? 1 : (float)Math.Pow(10, Math.Clamp(-volumeDb, 0, MaxBoostDb) / 20);
+
 #if WINDOWS
     private readonly Lock _gate = new();
     private readonly float[] _ring = new float[FftSize * 2];
@@ -145,6 +156,7 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
     private string? _deviceId; // the output device being captured, to follow a change of the default output
     private System.Threading.Timer? _timer;
     private int _sampleRate = 48000;
+    private volatile float _gain = 1; // undoes the Windows volume on outputs that apply it in software (see LoopbackGain)
 
     private bool Running { get { lock (_gate) return _capture is not null; } }
 
@@ -178,6 +190,15 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
                 var deviceId = device.ID;
                 var fmt = capture.WaveFormat;
                 _sampleRate = fmt.SampleRate;
+                var volume = device.AudioEndpointVolume;
+                var hardwareVolume = volume.HardwareSupport.HasFlag(EEndpointHardwareSupport.Volume);
+                _gain = LoopbackGain(hardwareVolume, volume.MasterVolumeLevel);
+                if (!hardwareVolume)
+                    volume.OnVolumeNotification += _ =>
+                    {
+                        // unsubscribed when the endpoint is disposed (Release); a late one finds it disposed
+                        try { if (_deviceId == deviceId) _gain = LoopbackGain(false, volume.MasterVolumeLevel); } catch { }
+                    };
                 var (started, startedOn) = (capture, device);
                 var released = 0;
                 void Release()
@@ -201,7 +222,8 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
                 _release = Release;
                 _deviceId = deviceId;
                 _timer = new System.Threading.Timer(_ => Tick(), null, 0, 1000 / Fps);
-                log.LogInformation("spectrum: capture started ({Rate} Hz, {Bits}-bit, {Ch} ch)", fmt.SampleRate, fmt.BitsPerSample, fmt.Channels);
+                log.LogInformation("spectrum: capture started ({Rate} Hz, {Bits}-bit, {Ch} ch, {Volume} volume)", fmt.SampleRate, fmt.BitsPerSample, fmt.Channels,
+                    hardwareVolume ? "hardware" : $"software {volume.MasterVolumeLevel:0.#} dB");
             }
             catch (Exception ex)
             {
@@ -256,7 +278,9 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
                         : bits == 32 ? BitConverter.ToInt32(buf, sampleOffset) / 2147483648.0
                         : BitConverter.ToInt16(buf, sampleOffset) / 32768.0;
                 }
-                _ring[_ringPos] = (float)(sum / ch);
+                // stereo sound on a surround output (a 4-channel controller, 5.1 / 7.1) fills only the front pair: dividing by
+                // every channel would lower it 6–12 dB, so the sum is scaled like stereo
+                _ring[_ringPos] = (float)(sum / Math.Min(ch, 2));
                 _ringPos = (_ringPos + 1) % _ring.Length;
             }
         }
@@ -281,7 +305,8 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
             lock (_ring)
             {
                 var start = (_ringPos - FftSize + _ring.Length) % _ring.Length;
-                for (var i = 0; i < FftSize; i++) _last[i] = _ring[(start + i) % _ring.Length];
+                var gain = _gain;
+                for (var i = 0; i < FftSize; i++) _last[i] = _ring[(start + i) % _ring.Length] * gain;
             }
             _frame = Analyze(_last, _sampleRate);
         }

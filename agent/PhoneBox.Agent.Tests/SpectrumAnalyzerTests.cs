@@ -72,6 +72,28 @@ public sealed class SpectrumAnalyzerTests : IDisposable
         Assert.True(loud > quiet, $"{loud} <= {quiet}");
     }
 
+    [Theory]
+    [InlineData(true, -19.3f, 1f)]    // hardware volume: loopback is at full level already
+    [InlineData(false, 0f, 1f)]       // software volume at 100 %
+    [InlineData(false, -20f, 10f)]    // software volume at -20 dB: undo it
+    [InlineData(false, -65f, 100f)]   // nearly silent slider: at most +40 dB
+    [InlineData(false, 3f, 1f)]       // never turned down
+    [InlineData(false, float.NaN, 1f)]
+    public void LoopbackGainUndoesSoftwareVolume(bool hardware, float db, float gain) =>
+        Assert.Equal(gain, SpectrumAnalyzer.LoopbackGain(hardware, db), 3);
+
+    [Fact]
+    public void SoftwareVolumeNoLongerFlattensTheBars()
+    {
+        // a monitor at 28 % (-19.3 dB) hands over music 19 dB quieter: with the gain the bars match full volume
+        var full = SpectrumAnalyzer.Analyze(Sine(1000, 0.05), 48000).Max();
+        var turnedDown = Sine(1000, 0.05 * Math.Pow(10, -19.3 / 20));
+        var gain = SpectrumAnalyzer.LoopbackGain(false, -19.3f);
+        var restored = SpectrumAnalyzer.Analyze(turnedDown.Select(s => s * gain).ToArray(), 48000).Max();
+        Assert.True(SpectrumAnalyzer.Analyze(turnedDown, 48000).Max() < full - 20);
+        Assert.InRange(restored, full - 1, full + 1);
+    }
+
     [Fact]
     public void OnlyFullWindowsAreAnalyzed() =>
         Assert.Throws<ArgumentException>(() => SpectrumAnalyzer.Analyze(new float[100], 48000));
