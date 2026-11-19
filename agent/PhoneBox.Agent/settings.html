@@ -1478,7 +1478,7 @@ function optionField(w, o, onValChange) {
       return field(h('div', { class: 'row', style: { gap: '8px' } }, select, h('button', { class: 'btn sm', onclick: load }, t('s.js.refresh'))));
     }
     case 'number':
-      return field(h('input', { type: 'number', min: o.min, max: o.max, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
+      return field(h('input', { type: 'number', min: o.min, max: o.max, step: o.step, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
     case 'textarea':
       return field(h('textarea', { rows: /^command/.test(o.key) ? 3 : 4, style: /^command/.test(o.key) ? { fontFamily: 'Consolas, monospace', fontSize: '12.5px' } : {}, oninput: (e) => set(o.key, e.target.value) }, v ?? ''),
         o.key === 'command' ? h('span', { class: 'hint' }, t('s.js.runHint'))
