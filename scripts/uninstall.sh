@@ -36,5 +36,5 @@ fi
 pkill -x PhoneBoxAgent 2>/dev/null || true
 rm -rf "$base/app" "$base/updates"
 if [ "$purge" = 1 ]; then rm -rf "$base" "$conf"; fi
-if [ "$apk" = 1 ] && command -v adb >/dev/null; then adb uninstall net.oxog.phonebox.deskpanel || true; fi
+if [ "$apk" = 1 ] && command -v adb >/dev/null; then adb uninstall net.zephracloud.phonebox.deskpanel || true; fi
 echo "PhoneBox removed."

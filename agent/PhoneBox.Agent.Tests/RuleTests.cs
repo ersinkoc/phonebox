@@ -385,7 +385,7 @@ public class UsbDoctorTests
 public class UpdateServiceTests
 {
     [Theory]
-    [InlineData("https://api.github.com/repos/ersinkoc/phonebox/releases/latest", true)]
+    [InlineData("https://api.github.com/repos/paulgeorge92/phonebox/releases/latest", true)]
     [InlineData("https://API.github.com/repos/x/y/releases/assets/1", true)]
     [InlineData("http://api.github.com/repos/x/y", false)]                      // never over plain HTTP
     [InlineData("https://github.com/x/y/releases/download/v1/a.zip", false)]

@@ -1,4 +1,4 @@
-package net.oxog.phonebox.deskpanel
+package net.zephracloud.phonebox.deskpanel
 
 import java.io.ByteArrayInputStream
 import java.io.InputStream

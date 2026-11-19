@@ -1,126 +1,1558 @@
 [
-  {"type": "clock", "category": "Time", "name": "Clock", "icon": "\ud83d\udd52", "desc": "Big clock and date; optional status line and current weather.", "w": 6, "h": 4, "minW": 2, "minH": 1, "options": [{"key": "status", "label": "Status line (PC, battery, quotas)", "type": "bool", "default": true}, {"key": "providers", "label": "Providers", "type": "multi", "default": ["claude", "codex", "antigravity"], "choices": [["claude", "Claude"], ["codex", "Codex"], ["antigravity", "Antigravity"]]}, {"key": "weather", "label": "Current weather", "type": "bool", "default": true}, {"key": "date", "label": "Date", "type": "bool", "default": true}]},
-  {"type": "analog", "category": "Time", "name": "Analog clock", "icon": "\ud83d\udd70\ufe0f", "desc": "A classic clock face; optionally for another time zone.", "w": 3, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "seconds", "label": "Second hand", "type": "bool", "default": true}, {"key": "numbers", "label": "Numbers (12 · 3 · 6 · 9)", "type": "bool", "default": false}, {"key": "zone", "label": "Time zone (IANA name, empty = this phone)", "type": "text", "default": ""}, {"key": "label", "label": "Label", "type": "text", "default": ""}]},
-  {"type": "worldclock", "category": "Time", "name": "World clocks", "icon": "\ud83c\udf0d", "desc": "Time in several time zones.", "w": 12, "h": 2, "minW": 2, "minH": 1, "options": [{"key": "zones", "label": "Time zones (IANA names, one per line; 'Name=Zone' to rename)", "type": "lines", "default": ["Tallinn=Europe/Tallinn", "Istanbul=Europe/Istanbul", "London=Europe/London", "New York=America/New_York", "Tokyo=Asia/Tokyo"]}]},
-  {"type": "calendar", "category": "Time", "name": "Calendar", "icon": "\ud83d\udcc5", "desc": "This month with today highlighted.", "w": 4, "h": 4, "minW": 3, "minH": 3, "options": []},
-  {"type": "agenda", "category": "Personal", "name": "Agenda", "icon": "\ud83d\udcc6", "desc": "Upcoming events from your calendars (Google, Outlook, iCloud… set up in Settings › General). Small: the next event.", "w": 4, "h": 4, "minW": 2, "minH": 1, "options": [{"key": "title", "label": "Title", "type": "text", "default": "Agenda"}, {"key": "days", "label": "Days ahead", "type": "number", "default": 7, "min": 1, "max": 14}, {"key": "calendars", "label": "Only these calendars (names, comma-separated; empty = all)", "type": "text", "default": ""}, {"key": "location", "label": "Show the location", "type": "bool", "default": true}]},
-  {"type": "progress", "category": "Time", "name": "Time progress", "icon": "\ud83d\udcc6", "desc": "How much of the day, week, month and year has passed.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": []},
-  {"type": "countdown", "category": "Time", "name": "Countdown", "icon": "\u23f3", "desc": "Days / hours until a date.", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": [{"key": "label", "label": "Label", "type": "text", "default": "New Year"}, {"key": "target", "label": "Date and time (YYYY-MM-DD HH:MM)", "type": "text", "default": "2027-01-01 00:00"}]},
-  {"type": "pomodoro", "category": "Time", "name": "Pomodoro", "icon": "\ud83c\udf45", "desc": "Focus timer with breaks, long breaks or your own sequence; vibrates when a step ends.", "w": 4, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "focus", "label": "Focus minutes", "type": "number", "default": 25, "min": 1, "max": 180}, {"key": "break", "label": "Break minutes", "type": "number", "default": 5, "min": 1, "max": 60}, {"key": "longEvery", "label": "Long break after every ... focus sessions (0 = never)", "type": "number", "default": 0, "min": 0, "max": 12}, {"key": "longBreak", "label": "Long break minutes", "type": "number", "default": 15, "min": 1, "max": 120}, {"key": "sequence", "label": "Own sequence instead, e.g. 25 focus, 5 break, 25 focus, 15 long", "type": "text", "default": ""}, {"key": "rounds", "label": "Repeat the sequence (times, 0 = keep going)", "type": "number", "default": 0, "min": 0, "max": 99}]},
-  {"type": "timer", "category": "Time", "name": "Quick timer", "icon": "\u23f2\ufe0f", "desc": "One-tap presets; vibrates when the time is up.", "w": 3, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "label", "label": "Label", "type": "text", "default": "Timer"}, {"key": "presets", "label": "Presets in minutes (one per line)", "type": "lines", "default": ["1", "3", "5", "10", "15", "25"]}, {"key": "color", "label": "Colour", "type": "color", "default": "#38bdf8"}]},
-  {"type": "stopwatch", "category": "Time", "name": "Stopwatch", "icon": "\u23f1\ufe0f", "desc": "Start, pause and laps; keeps running across restarts.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": []},
-  {"type": "weather", "category": "Weather & sky", "name": "Weather", "icon": "\u26c5", "desc": "Current conditions for the configured location.", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": []},
-  {"type": "forecast", "category": "Weather & sky", "name": "Forecast", "icon": "\ud83c\udf26\ufe0f", "desc": "Hourly or daily forecast.", "w": 6, "h": 3, "minW": 3, "minH": 2, "options": [{"key": "mode", "label": "Range", "type": "select", "default": "hourly", "choices": [["hourly", "Next 12 hours"], ["daily", "Next 7 days"]]}]},
-  {"type": "sun", "category": "Weather & sky", "name": "Sun & moon", "icon": "\ud83c\udf05", "desc": "Sunrise, sunset, daylight left, UV index and the moon phase.", "w": 4, "h": 3, "minW": 3, "minH": 2, "options": []},
-  {"type": "air", "category": "Weather & sky", "name": "Air quality", "icon": "\ud83c\udf43", "desc": "European air quality index and pollutants for the configured location.", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": []},
-  {"type": "stat", "category": "Computer", "name": "Metric tile", "icon": "\ud83d\udcc8", "desc": "One live value with a sparkline.", "w": 3, "h": 2, "minW": 2, "minH": 1, "options": [{"key": "metric", "label": "Metric", "type": "select", "default": "cpu", "choices": [["cpu", "CPU load"], ["gpu", "GPU load"], ["ram", "RAM used"], ["vram", "VRAM used"], ["net", "Network"], ["ping", "Ping"], ["gputemp", "GPU temperature"], ["hotspot", "GPU hot spot"], ["gpupower", "GPU power"], ["gpuclock", "GPU clock"], ["cputemp", "CPU temperature"]]}]},
-  {"type": "gauge", "category": "Computer", "name": "Gauge", "icon": "\u23f2\ufe0f", "desc": "Ring gauge for one metric.", "w": 2, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "metric", "label": "Metric", "type": "select", "default": "cpu", "choices": [["cpu", "CPU load"], ["gpu", "GPU load"], ["ram", "RAM used"], ["vram", "VRAM used"], ["gputemp", "GPU temperature"], ["hotspot", "GPU hot spot"], ["gpupower", "GPU power"], ["cputemp", "CPU temperature"]]}]},
-  {"type": "chart", "category": "Computer", "name": "Chart", "icon": "\ud83d\udcca", "desc": "90-second history chart.", "w": 6, "h": 3, "minW": 3, "minH": 2, "options": [{"key": "metrics", "label": "Series", "type": "multi", "default": ["cpu"], "choices": [["cpu", "CPU"], ["gpu", "GPU"], ["ram", "RAM"], ["vram", "VRAM"], ["gputemp", "GPU temperature"], ["hotspot", "GPU hot spot"], ["gpupower", "GPU power"], ["cputemp", "CPU temperature"], ["down", "Download"], ["up", "Upload"], ["ping", "Ping"]]}]},
-  {"type": "meters", "category": "Computer", "name": "Memory & disks", "icon": "\ud83d\udcbe", "desc": "RAM, VRAM and disk usage bars, uptime.", "w": 6, "h": 3, "minW": 3, "minH": 2, "options": []},
-  {"type": "gpu", "category": "Computer", "name": "GPU details", "icon": "\ud83c\udfae", "desc": "One graphics card in depth: load, VRAM, temperatures, power, clocks, fan and driver. NVIDIA, AMD and Intel.", "w": 4, "h": 4, "minW": 3, "minH": 2, "options": [{"key": "adapter", "label": "GPU", "type": "select", "default": "0", "choices": [["0", "Main GPU"], ["1", "Second GPU (e.g. integrated)"], ["2", "Third GPU"]]}]},
-  {"type": "topprocs", "category": "Computer", "name": "Top processes", "icon": "\ud83d\udd25", "desc": "The few heaviest apps, compact. Tap one for its instances.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "sort", "label": "Sort by", "type": "select", "default": "cpu", "choices": [["cpu", "CPU"], ["mem", "Memory"]]}]},
-  {"type": "processes", "category": "Computer", "name": "Processes", "icon": "\u2699\ufe0f", "desc": "Heaviest apps; tap one to end an instance or all of them.", "w": 12, "h": 6, "minW": 4, "minH": 3, "options": [{"key": "allowKill", "label": "Allow ending processes from the phone", "type": "bool", "default": true}]},
-  {"type": "media", "category": "Computer", "name": "Now playing", "icon": "\ud83c\udfb5", "desc": "Track, cover art, controls and volume of the PC's media session.", "w": 6, "h": 4, "minW": 4, "minH": 2, "options": []},
-  {"type": "volume", "category": "Computer", "name": "Volume", "icon": "\ud83d\udd0a", "desc": "PC volume slider (drag), mute and steps. Vertical when tall.", "w": 2, "h": 3, "minW": 2, "minH": 2, "options": []},
-  {"type": "spectrum", "category": "Computer", "name": "Spectrum bars", "icon": "📶", "desc": "Live spectrum analyzer of the sound the PC is playing: segmented bars with falling peak caps (Windows).", "w": 6, "h": 3, "minW": 2, "minH": 1, "options": [{"key": "bars", "label": "Bars", "type": "number", "default": 24, "min": 4, "max": 48}, {"key": "style", "label": "Colours", "type": "select", "default": "classic", "choices": [["classic", "Classic (green · yellow · red)"], ["fire", "Fire (red · orange · yellow)"], ["ice", "Ice (blue · cyan · white)"], ["single", "One colour"]]}, {"key": "color", "label": "Colour (for One colour)", "type": "color", "default": "#2dd4bf"}, {"key": "segments", "label": "Segmented (LED) bars", "type": "bool", "default": true}, {"key": "peaks", "label": "Peak caps", "type": "bool", "default": true}, {"key": "falloff", "label": "Fall speed", "type": "select", "default": "normal", "choices": [["slow", "Slow"], ["normal", "Normal"], ["fast", "Fast"]]}, {"key": "title", "label": "Title (empty = none)", "type": "text", "default": ""}]},
-  {"type": "shortcuts", "category": "Computer", "name": "Shortcut grid", "icon": "\ud83c\udf9b\ufe0f", "desc": "Keys that run commands on the PC.", "w": 12, "h": 6, "minW": 2, "minH": 1, "options": [{"key": "columns", "label": "Columns", "type": "number", "default": 4, "min": 1, "max": 8}, {"key": "ids", "label": "Shortcuts (none selected = all)", "type": "shortcuts", "default": []}]},
-  {"type": "button", "category": "Computer", "name": "Big button", "icon": "\ud83d\udd18", "desc": "One shortcut as a large key.", "w": 3, "h": 2, "minW": 1, "minH": 1, "options": [{"key": "id", "label": "Shortcut", "type": "shortcut", "default": ""}, {"key": "cover", "label": "Fill the button with the shortcut's uploaded picture", "type": "bool", "default": false}, {"key": "showLabel", "label": "Show the label", "type": "bool", "default": true}]},
-  {"type": "trackpad", "category": "Computer", "name": "Trackpad", "icon": "\ud83d\uddb1\ufe0f", "desc": "Control the PC cursor, tap to click, hold to drag, edge scroll bar, two fingers to right-click and scroll (Windows and Linux).", "w": 6, "h": 6, "minW": 3, "minH": 3, "options": [{"key": "control", "label": "Allow controlling the mouse from the phone", "type": "bool", "default": false}, {"key": "sensitivity", "label": "Pointer sensitivity", "type": "number", "default": 1, "min": 0.2, "max": 5, "step": 0.1}, {"key": "acceleration", "label": "Pointer acceleration", "type": "bool", "default": true}, {"key": "scrollSpeed", "label": "Scroll speed", "type": "number", "default": 1, "min": 0.2, "max": 5, "step": 0.1}, {"key": "naturalScroll", "label": "Natural scrolling", "type": "bool", "default": false}, {"key": "holdDuration", "label": "Drag hold duration (ms)", "type": "number", "default": 350, "min": 150, "max": 1500, "step": 50}, {"key": "scrollBar", "label": "Edge scroll bar", "type": "select", "default": "right", "choices": [["right", "Right side"], ["left", "Left side"], ["none", "Hidden"]]}, {"key": "scrollBarWidth", "label": "Scroll bar width (px)", "type": "number", "default": 36, "min": 20, "max": 120, "step": 4}]},
-  {"type": "docker", "category": "Computer", "name": "Docker", "icon": "\ud83d\udc33", "desc": "Docker or Podman containers with their state, CPU and memory; tap one to start, stop or restart it (if allowed).", "w": 4, "h": 4, "minW": 3, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": "Docker"}, {"key": "filter", "label": "Only containers whose name or Compose project contains", "type": "text", "default": ""}, {"key": "stopped", "label": "Show stopped containers", "type": "bool", "default": true}, {"key": "control", "label": "Allow start / stop / restart from the phone", "type": "bool", "default": false}]},
-  {"type": "discord", "category": "Computer", "name": "Discord", "icon": "💬", "desc": "The voice channel or call you are in with who is there, mute / deafen / leave, a list of voice channels to join, and recent notifications (needs the Discord app on the PC).", "w": 4, "h": 5, "minW": 3, "minH": 2, "options": [{"key": "channels", "label": "Show the voice channels to join", "type": "bool", "default": true}, {"key": "notifications", "label": "Show recent notifications", "type": "bool", "default": true}, {"key": "control", "label": "Allow mute, deafen, leave and joining from the phone", "type": "bool", "default": false}]},
-  {"type": "apps", "category": "Computer", "name": "All apps", "icon": "\ud83e\udde9", "desc": "Every application installed on the computer (macOS), with search; tap one to open it or bring it forward.", "w": 6, "h": 4, "minW": 3, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": "Apps"}, {"key": "search", "label": "Show the search box", "type": "bool", "default": true}, {"key": "confirm", "label": "Ask before opening (tap an app twice)", "type": "bool", "default": true}, {"key": "pinned", "label": "Apps shown first (names, comma-separated), e.g. Safari, Terminal", "type": "text", "default": ""}]},
-  {"type": "obs", "category": "Computer", "name": "OBS Studio", "icon": "\ud83c\udfac", "desc": "Live and recording state with timers, the current scene and scene buttons; start / stop and switch scenes from the phone (if allowed).", "w": 4, "h": 4, "minW": 3, "minH": 2, "options": [{"key": "scenes", "label": "Show the scene buttons", "type": "bool", "default": true}, {"key": "control", "label": "Allow recording, streaming and scene switching from the phone", "type": "bool", "default": true}]},
-  {"type": "app-console", "category": "Computer", "name": "App console", "icon": "\ud83c\udf9b\ufe0f", "desc": "Keys and a dial that follow the app in front on the PC: Photoshop gets its brushes, a video editor its cuts. Set the apps and their keys in Settings \u203a General \u203a App console. Windows only.", "w": 6, "h": 4, "minW": 3, "minH": 3, "options": [{"key": "control", "label": "Send keys to the computer", "type": "bool", "default": false}, {"key": "dial", "label": "Show the dial", "type": "bool", "default": true}]},
-  {"type": "dictate", "category": "Computer", "name": "Dictation", "icon": "\ud83c\udf99\ufe0f", "desc": "Tap the microphone and speak: the phone's speech recognizer turns it into text, typed into the app in front on the PC.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "control", "label": "Type the text on the computer", "type": "bool", "default": false}, {"key": "enter", "label": "Press Enter after the text", "type": "bool", "default": false}, {"key": "language", "label": "Language (e.g. en-US; blank = the phone's)", "type": "text", "default": ""}, {"key": "offline", "label": "Recognize on the phone only (Android 12+, with its offline language)", "type": "bool", "default": false}]},
-  {"type": "command", "category": "Computer", "name": "Command", "icon": "\ud83d\udcbb", "desc": "Runs a command on the computer every N seconds and shows its output (PowerShell on Windows, bash on Linux, zsh on macOS).", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": [{"key": "title", "label": "Title", "type": "text", "default": "Command"}, {"key": "command", "label": "Command (runs on the computer)", "type": "textarea", "default": "Get-Date -Format HH:mm:ss"}, {"key": "commandUnix", "label": "Command on Linux / macOS (empty = the same)", "type": "textarea", "default": ""}, {"key": "interval", "label": "Every (seconds)", "type": "number", "default": 30, "min": 5, "max": 86400}]},
-  {"type": "html", "category": "Web & data", "name": "Custom HTML", "icon": "\ud83e\udde9", "desc": "Your own HTML, CSS and JavaScript in a sandbox, fed with the PC's data through window.phonebox.", "w": 3, "h": 2, "minW": 1, "minH": 1, "options": [{"key": "html", "label": "HTML (with <style> and <script>; phonebox.on('state', fn) gets the data)", "type": "textarea", "default": "<style>\n  body { display: grid; place-items: center; }\n  .v { font-size: 34vh; font-weight: 700; color: #2dd4bf; text-align: center; }\n  .l { font-size: 9vh; color: #8a94a3; letter-spacing: .1em; text-align: center; }\n</style>\n<div><div class=\"v\" id=\"v\">–</div><div class=\"l\">CPU</div></div>\n<script>\n  // phonebox.on('state' | 'push' | 'weather' | 'work' | 'quotas', fn); phonebox.run('shortcut-id'); phonebox.goto('page')\n  phonebox.on('state', (s) => { v.textContent = s.pc && s.pc.cpu != null ? Math.round(s.pc.cpu) + '%' : '–'; });\n</script>"}, {"key": "transparent", "label": "No card background", "type": "bool", "default": false}]},
-  {"type": "quotas", "category": "AI & code", "name": "AI quotas", "icon": "\u2733\ufe0f", "desc": "AI service usage limits with burn-rate forecast.", "w": 12, "h": 6, "minW": 4, "minH": 3, "options": [{"key": "providers", "label": "Providers", "type": "multi", "default": ["claude", "codex", "antigravity"], "choices": [["claude", "Claude"], ["codex", "Codex"], ["antigravity", "Antigravity"]]}, {"key": "rotate", "label": "Rotate providers automatically", "type": "bool", "default": true}, {"key": "pageSize", "label": "Cards at a time (0 = all)", "type": "number", "default": 2, "min": 0, "max": 6}, {"key": "rotateInterval", "label": "Rotate every (seconds)", "type": "number", "default": 8, "min": 2, "max": 120}]},
-  {"type": "codexbar", "category": "AI & code", "name": "CodexBar", "icon": "\ud83e\udded", "desc": "Live AI quotas with rotation, card count and custom intervals.", "w": 12, "h": 6, "minW": 4, "minH": 3, "options": [{"key": "providers", "label": "Providers", "type": "multi", "default": ["claude", "codex", "antigravity"], "choices": [["claude", "Claude"], ["codex", "Codex"], ["antigravity", "Antigravity"]]}, {"key": "showOverview", "label": "Include cost overview card", "type": "bool", "default": false}, {"key": "rotate", "label": "Rotate providers automatically", "type": "bool", "default": true}, {"key": "pageSize", "label": "Cards at a time (0 = all)", "type": "number", "default": 2, "min": 0, "max": 6}, {"key": "rotateInterval", "label": "Rotate every (seconds)", "type": "number", "default": 8, "min": 2, "max": 120}]},
-  {"type": "quotaring", "category": "AI & code", "name": "Quota ring", "icon": "\ud83c\udfaf", "desc": "One AI usage limit as a compact ring with the pace marker.", "w": 3, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "provider", "label": "Provider", "type": "select", "default": "claude", "choices": [["claude", "Claude"], ["codex", "Codex"], ["antigravity", "Antigravity"], ["cursor", "Cursor"], ["grok", "Grok"]]}, {"key": "limit", "label": "Limit", "type": "select", "default": "0", "choices": [["0", "First (5-hour session / weekly)"], ["1", "Second (weekly)"], ["2", "Third (weekly · model)"]]}]},
-  {"type": "sessions", "category": "AI & code", "name": "AI sessions", "icon": "\ud83e\udd16", "desc": "Claude Code / Codex / Cursor sessions: working, waiting, idle.", "w": 7, "h": 6, "minW": 3, "minH": 2, "options": []},
-  {"type": "github", "category": "AI & code", "name": "GitHub", "icon": "\ud83d\udc19", "desc": "Review requests, your pull requests with CI, notifications.", "w": 5, "h": 6, "minW": 3, "minH": 3, "options": []},
-  {"type": "note", "category": "Personal", "name": "Note", "icon": "\ud83d\udcdd", "desc": "A sticky note.", "w": 4, "h": 3, "minW": 2, "minH": 1, "options": [{"key": "text", "label": "Text", "type": "textarea", "default": "Write something here…"}, {"key": "color", "label": "Colour", "type": "color", "default": "#fbbf24"}]},
-  {"type": "checklist", "category": "Personal", "name": "Checklist", "icon": "\u2705", "desc": "Tick things off; optionally starts fresh every day.", "w": 4, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": "Today"}, {"key": "items", "label": "Items (one per line)", "type": "lines", "default": ["Water the plants", "Stretch", "Inbox zero"]}, {"key": "daily", "label": "Untick everything every day", "type": "bool", "default": true}]},
-  {"type": "counter", "category": "Personal", "name": "Counter", "icon": "\ud83d\udd22", "desc": "Tap to count: coffees, push-ups, interruptions…", "w": 2, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "label", "label": "Label", "type": "text", "default": "Coffee"}, {"key": "step", "label": "Step", "type": "number", "default": 1, "min": 1, "max": 1000}, {"key": "daily", "label": "Start from zero every day", "type": "bool", "default": true}, {"key": "color", "label": "Colour", "type": "color", "default": "#a78bfa"}]},
-  {"type": "breathe", "category": "Personal", "name": "Breathe", "icon": "\ud83e\udec1", "desc": "Guided breathing; tap to start or stop.", "w": 4, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "pattern", "label": "Pattern", "type": "select", "default": "box", "choices": [["box", "Box 4-4-4-4"], ["relax", "Relax 4-7-8"], ["calm", "Calm 5-5"]]}]},
-  {"type": "quote", "category": "Personal", "name": "Quote", "icon": "\ud83d\udcac", "desc": "A rotating quote; tap for the next one.", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": [{"key": "minutes", "label": "Change every (minutes)", "type": "number", "default": 30, "min": 1, "max": 1440}, {"key": "quotes", "label": "Your own quotes, one per line ('text — author'); empty = built-in", "type": "lines", "default": []}]},
-  {"type": "label", "category": "Personal", "name": "Title", "icon": "\ud83d\udd24", "desc": "A text heading.", "w": 6, "h": 1, "minW": 1, "minH": 1, "options": [{"key": "text", "label": "Text", "type": "text", "default": "Heading"}]},
-  {"type": "battery", "category": "Personal", "name": "Phone battery", "icon": "\ud83d\udd0b", "desc": "Battery level, charging state and temperature of the panel phone.", "w": 2, "h": 3, "minW": 2, "minH": 2, "options": []},
-  {"type": "pcswitch", "category": "Personal", "name": "Computers", "icon": "\ud83d\udda5\ufe0f", "desc": "The computers this phone is paired with over Wi-Fi; tap one to switch to it.", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": [{"key": "title", "label": "Title (empty = none)", "type": "text", "default": "Computers"}]},
-  {"type": "batteries", "category": "Computer", "name": "Device batteries", "icon": "\ud83c\udfa7", "desc": "Battery levels of wireless headphones, mice, keyboards and controllers connected to the PC (and the panel phone).", "w": 4, "h": 3, "minW": 3, "minH": 1, "options": [{"key": "title", "label": "Title", "type": "text", "default": "Batteries"}, {"key": "phone", "label": "Include the panel phone", "type": "bool", "default": true}, {"key": "low", "label": "Low below (%)", "type": "number", "default": 20, "min": 5, "max": 50}]},
-  {"type": "ha", "category": "Web & data", "name": "Home Assistant", "icon": "\ud83c\udfe0", "desc": "Lights, switches, sensors, locks, covers, scenes… from Home Assistant (set up in Settings › General); tap to switch.", "w": 6, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title (empty = none)", "type": "text", "default": "Home"}, {"key": "items", "label": "Entities", "type": "ha-items", "default": []}, {"key": "control", "label": "Allow switching from the phone (default for entities that do not set their own)", "type": "bool", "default": true}]},
-  {"type": "push", "category": "Web & data", "name": "Pushed value", "icon": "\ud83d\udce1", "desc": "Shows data sent to the agent with POST /api/push/<key> (scripts, CI, Home Assistant…).", "w": 3, "h": 2, "minW": 1, "minH": 1, "options": [{"key": "key", "label": "Key (POST /api/push/<key>)", "type": "text", "default": "my-value"}, {"key": "title", "label": "Title (empty = from the data)", "type": "text", "default": ""}, {"key": "style", "label": "Style", "type": "select", "default": "auto", "choices": [["auto", "Automatic"], ["big", "Big value"], ["gauge", "Gauge"], ["list", "List"]]}, {"key": "unit", "label": "Unit", "type": "text", "default": ""}, {"key": "min", "label": "Gauge minimum", "type": "number", "default": 0}, {"key": "max", "label": "Gauge maximum", "type": "number", "default": 100}]},
-  {"type": "inbox", "category": "Web & data", "name": "Notifications", "icon": "\ud83d\udcec", "desc": "The latest messages sent with POST /api/notify.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": []},
-  {"type": "feeds", "category": "Web & data", "name": "News feeds", "icon": "\ud83d\uddde\ufe0f", "desc": "Headlines from your RSS and Atom feeds (set up in Settings \u203a General). With \"Open articles on the PC\" on, a tap opens the article in the PC's browser.", "w": 6, "h": 4, "minW": 3, "minH": 2, "options": [{"key": "title", "label": "Title (empty = none)", "type": "text", "default": "News"}, {"key": "feed", "label": "Only this feed (its name in Settings; empty = all feeds)", "type": "text", "default": ""}, {"key": "showSource", "label": "Show the feed's name", "type": "bool", "default": true}, {"key": "showTime", "label": "Show how old each headline is", "type": "bool", "default": true}, {"key": "lines", "label": "Lines per headline", "type": "select", "default": "1", "choices": [["1", "1"], ["2", "2"], ["3", "3"]]}, {"key": "open", "label": "Open articles on the PC when tapped (starts the PC's browser)", "type": "bool", "default": false}]},
-  {"type": "hackernews", "category": "Web & data", "name": "Hacker News", "icon": "\ud83d\udcf0", "desc": "Top stories, refreshed every 15 minutes.", "w": 6, "h": 4, "minW": 3, "minH": 2, "options": []},
-  {"type": "exchange", "category": "Web & data", "name": "Exchange rates", "icon": "\ud83d\udcb1", "desc": "ECB reference rates with the daily change and a 30-day trend.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "base", "label": "Base currency", "type": "text", "default": "EUR"}, {"key": "symbols", "label": "Currencies (one per line)", "type": "lines", "default": ["TRY", "USD", "GBP"]}]},
-  {"type": "crypto", "category": "Web & data", "name": "Crypto prices", "icon": "\ud83e\ude99", "desc": "Prices with the 24-hour change and a 7-day trend (CoinGecko).", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "coins", "label": "Coins (CoinGecko ids, one per line)", "type": "lines", "default": ["bitcoin", "ethereum", "solana"]}, {"key": "currency", "label": "Currency", "type": "select", "default": "usd", "choices": [["usd", "USD"], ["eur", "EUR"], ["try", "TRY"], ["gbp", "GBP"]]}]},
-  {"type": "photos", "category": "Personal", "name": "Photo frame", "icon": "\ud83d\uddbc\ufe0f", "desc": "A slideshow of the photos in a folder on the PC (a synced OneDrive, Dropbox or iCloud folder works too); set it up in Settings \u203a General.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "interval", "label": "Next photo every (seconds)", "type": "number", "default": 30, "min": 5, "max": 3600}, {"key": "fit", "label": "Fit", "type": "select", "default": "cover", "choices": [["cover", "Fill the widget (crop)"], ["contain", "Show the whole photo"]]}, {"key": "shuffle", "label": "Shuffle", "type": "bool", "default": true}]},
-  {"type": "image", "category": "Web & data", "name": "Image", "icon": "\ud83d\uddbc\ufe0f", "desc": "A picture or webcam snapshot from a URL, optionally refreshed.", "w": 4, "h": 3, "minW": 1, "minH": 1, "options": [{"key": "url", "label": "Image address (https://…)", "type": "text", "default": ""}, {"key": "minutes", "label": "Reload every (minutes, 0 = never)", "type": "number", "default": 0, "min": 0, "max": 1440}, {"key": "fit", "label": "Fit", "type": "select", "default": "cover", "choices": [["cover", "Fill"], ["contain", "Whole image"]]}, {"key": "caption", "label": "Caption", "type": "text", "default": ""}]},
-  {"type": "camera", "category": "Web & data", "name": "Camera", "icon": "\ud83d\udcf9", "desc": "A live picture from an IP camera (RTSP), 5 frames a second by default (1 to 10). Add the camera in Settings \u203a General \u203a Cameras; the computer pulls it with ffmpeg, and its address stays there.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": [{"key": "camera", "label": "Camera", "type": "camera", "default": ""}, {"key": "fit", "label": "Fit", "type": "select", "default": "cover", "choices": [["cover", "Fill"], ["contain", "Whole picture"]]}, {"key": "caption", "label": "Caption (empty = none)", "type": "text", "default": ""}]},
-  {"type": "onair", "category": "Computer", "name": "On air", "icon": "\ud83d\udd34", "desc": "Lights up while the microphone or camera is in use (Windows, Linux), OBS records or streams, or a pushed value is on.", "w": 3, "h": 2, "minW": 2, "minH": 1, "options": [{"key": "source", "label": "Light up for", "type": "select", "default": "both", "choices": [["both", "Microphone, camera or OBS"], ["mic", "Microphone"], ["camera", "Camera"], ["obs", "OBS recording or streaming"], ["push", "Only the pushed value below"]]}, {"key": "key", "label": "…or while this pushed value is on (empty = none)", "type": "text", "default": "onair"}, {"key": "text", "label": "Text", "type": "text", "default": "ON AIR"}]},
-  {"type": "wordclock", "category": "Time", "name": "Word clock", "icon": "\ud83d\udd24", "desc": "The time in words, to the nearest five minutes: \"quarter past ten\".", "w": 6, "h": 3, "minW": 3, "minH": 2, "options": []},
-  {"type": "nextup", "category": "Time", "name": "Next up", "icon": "\u23ed\ufe0f", "desc": "Your next calendar event, big, with a countdown; during an event, how much of it is left.", "w": 4, "h": 3, "minW": 3, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": "Next up"}, {"key": "calendars", "label": "Only these calendars (names, comma-separated; empty = all)", "type": "text", "default": ""}]},
-  {"type": "moon", "category": "Weather & sky", "name": "Moon", "icon": "\ud83c\udf19", "desc": "Tonight's moon drawn to its phase, how much is lit and the next full or new moon.", "w": 4, "h": 2, "minW": 3, "minH": 2, "options": []},
-  {"type": "rules", "category": "Computer", "name": "Rules", "icon": "\u26a1", "desc": "Your automation rules: which ones hold right now, and a button to pause them all for an hour.", "w": 4, "h": 4, "minW": 3, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": "Rules"}]},
-  {"type": "chargecare", "category": "Computer", "name": "Battery care", "icon": "\ud83d\udd0b", "desc": "The phone's battery with the band Battery care keeps it in (Settings › General).", "w": 3, "h": 3, "minW": 2, "minH": 2, "options": []},
-  {"type": "stack", "category": "Layout", "name": "Smart Stack", "icon": "\ud83d\uddc2\ufe0f", "desc": "Cycle through multiple widgets in a single slot like iOS Smart Stack.", "w": 6, "h": 4, "minW": 3, "minH": 2, "options": [{"key": "widgets", "label": "Widgets in stack", "type": "stack-widgets", "default": [{"type": "clock", "enabled": true}, {"type": "weather", "enabled": true}, {"type": "media", "enabled": true}]}, {"key": "interval", "label": "Rotation interval in seconds (0 = only when swiped)", "type": "number", "default": 10, "min": 0, "max": 600}, {"key": "showDots", "label": "Indicator dots", "type": "bool", "default": true}]},
-  {"type": "audio-mixer", "category": "Control Deck", "name": "Application mixer", "icon": "\ud83c\udf9a\ufe0f", "desc": "Individual volume and mute controls for running applications.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "application", "label": "Application (blank = all)", "type": "control-target", "group": "application", "default": ""}, {"key": "layout", "label": "Fader layout", "type": "select", "default": "horizontal", "choices": [["horizontal", "Horizontal"], ["vertical", "Vertical"]]}]},
-  {"type": "app-volume", "category": "Control Deck", "name": "Application volume", "icon": "\ud83c\udf9a\ufe0f", "desc": "A pinned application audio fader.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "application", "label": "Application (blank = all)", "type": "control-target", "group": "application", "default": ""}, {"key": "layout", "label": "Fader layout", "type": "select", "default": "horizontal", "choices": [["horizontal", "Horizontal"], ["vertical", "Vertical"]]}]},
-  {"type": "device-volume", "category": "Control Deck", "name": "Device volume", "icon": "\ud83d\udd0a", "desc": "Control a specific output device independently.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "output", "default": ""}, {"key": "layout", "label": "Fader layout", "type": "select", "default": "horizontal", "choices": [["horizontal", "Horizontal"], ["vertical", "Vertical"]]}]},
-  {"type": "audio-balance", "category": "Control Deck", "name": "Channel balance", "icon": "\u2194\ufe0f", "desc": "Separate left and right channel controls.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "output", "default": ""}]},
-  {"type": "audio-meter", "category": "Control Deck", "name": "Audio levels", "icon": "\ud83d\udcf6", "desc": "Live endpoint audio meters.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "output", "default": ""}]},
-  {"type": "panic-mute", "category": "Control Deck", "name": "Emergency mute", "icon": "\ud83d\udd07", "desc": "Mute computer outputs and microphones with one tap.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "microphone", "category": "Control Deck", "name": "Microphone", "icon": "\ud83c\udf99\ufe0f", "desc": "Microphone gain, mute and live activity.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "input", "default": ""}]},
-  {"type": "audio-inputs", "category": "Control Deck", "name": "Microphone selection", "icon": "\ud83c\udf99\ufe0f", "desc": "Choose the default input device.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "role", "label": "Windows audio role", "type": "select", "default": "all", "choices": [["all", "All roles"], ["media", "Media"], ["communications", "Communications"], ["console", "Console"]]}]},
-  {"type": "audio-outputs", "category": "Control Deck", "name": "Output selection", "icon": "\ud83c\udfa7", "desc": "Switch speakers, headphones or HDMI outputs.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "role", "label": "Windows audio role", "type": "select", "default": "all", "choices": [["all", "All roles"], ["media", "Media"], ["communications", "Communications"], ["console", "Console"]]}]},
-  {"type": "push-to-talk", "category": "Control Deck", "name": "Push to talk", "icon": "\ud83c\udf99\ufe0f", "desc": "Hold to open the microphone; release or disconnect restores its previous state.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "input", "default": ""}]},
-  {"type": "audio-profiles", "category": "Control Deck", "name": "Audio profiles", "icon": "\ud83c\udf9b\ufe0f", "desc": "Apply audio profiles saved on the computer.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "audio-ducking", "category": "Control Deck", "name": "Audio ducking", "icon": "\ud83d\udd09", "desc": "Lower application audio while the microphone is active.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "level", "label": "Ducked volume (% of original)", "type": "number", "default": 25, "min": 0, "max": 100}]},
-  {"type": "media-sources", "category": "Control Deck", "name": "Media sources", "icon": "\ud83c\udfb5", "desc": "Choose which media player the Control Deck operates.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "media-remote", "category": "Control Deck", "name": "Media remote", "icon": "\u23ef\ufe0f", "desc": "Control a selected player rather than only the system media session.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "player", "label": "Pinned player (blank = Media sources selection)", "type": "control-target", "group": "media", "default": ""}]},
-  {"type": "media-seek", "category": "Control Deck", "name": "Playback position", "icon": "\u23e9", "desc": "Seek within the selected media session.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "player", "label": "Pinned player (blank = Media sources selection)", "type": "control-target", "group": "media", "default": ""}]},
-  {"type": "media-modes", "category": "Control Deck", "name": "Shuffle and repeat", "icon": "\ud83d\udd00", "desc": "Shuffle and repeat when the selected player supports them.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "player", "label": "Pinned player (blank = Media sources selection)", "type": "control-target", "group": "media", "default": ""}]},
-  {"type": "media-sleep", "category": "Control Deck", "name": "Music sleep timer", "icon": "\ud83c\udf19", "desc": "Fade the selected application during the final 30 seconds, pause playback, then restore its volume.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "player", "label": "Pinned player (blank = Media sources selection)", "type": "control-target", "group": "media", "default": ""}, {"key": "minutes", "label": "Minutes", "type": "number", "default": 30, "min": 1, "max": 360}]},
-  {"type": "brightness", "category": "Control Deck", "name": "Display brightness", "icon": "\u2600\ufe0f", "desc": "Brightness of monitors exposing DDC/CI controls.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "monitor", "default": ""}]},
-  {"type": "power-plans", "category": "Control Deck", "name": "Power plans", "icon": "\u26a1", "desc": "Choose a computer power plan.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "desktops", "category": "Control Deck", "name": "Virtual desktops", "icon": "\ud83d\udda5\ufe0f", "desc": "Switch virtual desktops.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "system-keys", "category": "Control Deck", "name": "Lock and displays", "icon": "\ud83d\udd12", "desc": "Lock the computer or switch its displays off.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "power-controls", "category": "Control Deck", "name": "Power controls", "icon": "\u23fb", "desc": "Hold to confirm sleep, restart or shutdown; requires desktop opt-in.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "pc-listen", "category": "Control Deck", "name": "Listen to PC audio", "icon": "\ud83c\udfa7", "desc": "Listen to computer audio on the phone; requires desktop opt-in.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "app-dock", "category": "Control Deck", "name": "Application dock", "icon": "\ud83d\ude80", "desc": "Launch configured applications and projects.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": []}]},
-  {"type": "hotkeys", "category": "Control Deck", "name": "Keyboard shortcuts", "icon": "\u2328\ufe0f", "desc": "Assigned application keyboard shortcuts.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": []}]},
-  {"type": "macro-pad", "category": "Control Deck", "name": "Macro pad", "icon": "\ud83e\udde9", "desc": "Run configured action chains.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": []}]},
-  {"type": "window-layouts", "category": "Control Deck", "name": "Window layouts", "icon": "\ud83e\ude9f", "desc": "Apply configured window positions.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "project-launcher", "category": "Control Deck", "name": "Project launcher", "icon": "\ud83d\udcc2", "desc": "Open configured projects and folders.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": []}]},
-  {"type": "snippets", "category": "Control Deck", "name": "Text snippets", "icon": "\ud83d\udcdd", "desc": "Type computer-side snippets without exposing their contents to the phone.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": []}]},
-  {"type": "presentation", "category": "Control Deck", "name": "Presentation remote", "icon": "\ud83d\udcfd\ufe0f", "desc": "Configured presentation controls.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "display-profiles", "category": "Control Deck", "name": "Display profiles", "icon": "\ud83d\udda5\ufe0f", "desc": "Configured resolution, refresh and monitor arrangement profiles.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "focus-profile", "category": "Control Deck", "name": "Focus profiles", "icon": "\ud83c\udfaf", "desc": "Run configured work and focus routines.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "meeting-controls", "category": "Control Deck", "name": "Meeting controls", "icon": "\ud83d\udcde", "desc": "Assigned microphone, camera and sharing shortcuts.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "discord-controls", "category": "Control Deck", "name": "Discord controls", "icon": "\ud83c\udfae", "desc": "Assigned Discord mute and deafen shortcuts.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "meeting-profile", "category": "Control Deck", "name": "Meeting profiles", "icon": "\ud83d\udcde", "desc": "Apply configured meeting routines.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "task-runner", "category": "Control Deck", "name": "Build and test", "icon": "\ud83d\udee0\ufe0f", "desc": "Run configured build and test tasks with status feedback.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "dev-servers", "category": "Control Deck", "name": "Development servers", "icon": "\ud83d\udcbb", "desc": "Start and stop computer-defined development servers.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "services", "category": "Control Deck", "name": "Computer services", "icon": "\u2699\ufe0f", "desc": "Configured service controls, subject to system permissions.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "workflow-runner", "category": "Control Deck", "name": "GitHub workflows", "icon": "\ud83d\udc19", "desc": "Start configured GitHub Actions workflows.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "script-pad", "category": "Control Deck", "name": "Script pad", "icon": "\u25b6\ufe0f", "desc": "Run computer-defined scripts and tasks.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": []}]},
-  {"type": "soundboard", "category": "Control Deck", "name": "Soundboard", "icon": "\ud83c\udfb5", "desc": "Play configured local sounds through a selected device.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "radio", "category": "Control Deck", "name": "Internet radio", "icon": "\ud83d\udcfb", "desc": "Play configured radio streams on the computer.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "view", "label": "View", "type": "select", "default": "grid", "choices": [["grid", "Grid"], ["carousel", "Sliding cards"]]}, {"key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": []}]},
-  {"type": "playlists", "category": "Control Deck", "name": "Playlists", "icon": "\ud83c\udfb6", "desc": "Start configured Spotify playlists.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "audio-routing", "category": "Control Deck", "name": "Application routing", "icon": "\ud83d\udd00", "desc": "Configured per-application output routing.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "external-mixer", "category": "Control Deck", "name": "External mixer", "icon": "\ud83c\udf9b\ufe0f", "desc": "Configured virtual-mixer controls.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "midi-pad", "category": "Control Deck", "name": "MIDI pad", "icon": "\ud83c\udfb9", "desc": "Send configured MIDI messages to a MIDI output.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "osc-pad", "category": "Control Deck", "name": "OSC pad", "icon": "\ud83c\udf9a\ufe0f", "desc": "Send configured OSC messages.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "meeting-status", "category": "Control Deck", "name": "Meeting status", "icon": "\ud83d\udd34", "desc": "Live microphone, camera and recording indicators.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "obs-mixer", "category": "Control Deck", "name": "OBS mixer", "icon": "\ud83c\udf9b\ufe0f", "desc": "Input volume and mute controls.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false}]},
-  {"type": "obs-scenes", "category": "Control Deck", "name": "OBS scenes", "icon": "\ud83c\udf9b\ufe0f", "desc": "Switch the program scene.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false}]},
-  {"type": "obs-sources", "category": "Control Deck", "name": "OBS sources", "icon": "\ud83c\udf9b\ufe0f", "desc": "Show or hide sources in the current scene.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false}]},
-  {"type": "obs-recording", "category": "Control Deck", "name": "OBS recording and stream", "icon": "\ud83c\udf9b\ufe0f", "desc": "Recording, pause and stream controls with elapsed time.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false}]},
-  {"type": "obs-replay", "category": "Control Deck", "name": "OBS replay buffer", "icon": "\ud83c\udf9b\ufe0f", "desc": "Start, stop and save replay buffer.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false}]},
-  {"type": "obs-transition", "category": "Control Deck", "name": "OBS transition", "icon": "\ud83c\udf9b\ufe0f", "desc": "Select transition and duration.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false}]},
-  {"type": "obs-camera", "category": "Control Deck", "name": "OBS virtual camera", "icon": "\ud83c\udf9b\ufe0f", "desc": "Start or stop the virtual camera.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false}]},
-  {"type": "media-queue", "category": "Control Deck", "name": "Spotify queue", "icon": "\ud83c\udf9b\ufe0f", "desc": "What is playing and what comes next on Spotify, with covers; tap a track to play it. Requires connection.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "covers", "label": "Show covers (the phone loads them from Spotify's image server)", "type": "bool", "default": true}]},
-  {"type": "media-favorites", "category": "Control Deck", "name": "Spotify favorites", "icon": "\ud83c\udf9b\ufe0f", "desc": "Save the current item to your Spotify library.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}]},
-  {"type": "meeting-timer", "category": "Control Deck", "name": "Meeting timer", "icon": "\ud83c\udf9b\ufe0f", "desc": "Persistent elapsed meeting timer with overtime indication.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{"key": "title", "label": "Title", "type": "text", "default": ""}, {"key": "minutes", "label": "Overtime after minutes", "type": "number", "default": 30, "min": 1, "max": 1440}, {"key": "timerId", "label": "Timer ID (shared across widgets)", "type": "text", "default": "default"}]}
+	{
+		"type": "clock",
+		"category": "Time",
+		"name": "Clock",
+		"icon": "\ud83d\udd52",
+		"desc": "Big clock and date; optional status line and current weather.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{ "key": "status", "label": "Status line (PC, battery, quotas)", "type": "bool", "default": true },
+			{
+				"key": "providers",
+				"label": "Providers",
+				"type": "multi",
+				"default": ["claude", "codex", "antigravity"],
+				"choices": [
+					["claude", "Claude"],
+					["codex", "Codex"],
+					["antigravity", "Antigravity"]
+				]
+			},
+			{ "key": "weather", "label": "Current weather", "type": "bool", "default": true },
+			{ "key": "date", "label": "Date", "type": "bool", "default": true }
+		]
+	},
+	{
+		"type": "analog",
+		"category": "Time",
+		"name": "Analog clock",
+		"icon": "\ud83d\udd70\ufe0f",
+		"desc": "A classic clock face; optionally for another time zone.",
+		"w": 3,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "seconds", "label": "Second hand", "type": "bool", "default": true },
+			{ "key": "numbers", "label": "Numbers (12 · 3 · 6 · 9)", "type": "bool", "default": false },
+			{ "key": "zone", "label": "Time zone (IANA name, empty = this phone)", "type": "text", "default": "" },
+			{ "key": "label", "label": "Label", "type": "text", "default": "" }
+		]
+	},
+	{ "type": "worldclock", "category": "Time", "name": "World clocks", "icon": "\ud83c\udf0d", "desc": "Time in several time zones.", "w": 12, "h": 2, "minW": 2, "minH": 1, "options": [{ "key": "zones", "label": "Time zones (IANA names, one per line; 'Name=Zone' to rename)", "type": "lines", "default": ["Tallinn=Europe/Tallinn", "Istanbul=Europe/Istanbul", "London=Europe/London", "New York=America/New_York", "Tokyo=Asia/Tokyo"] }] },
+	{ "type": "calendar", "category": "Time", "name": "Calendar", "icon": "\ud83d\udcc5", "desc": "This month with today highlighted.", "w": 4, "h": 4, "minW": 3, "minH": 3, "options": [] },
+	{
+		"type": "agenda",
+		"category": "Personal",
+		"name": "Agenda",
+		"icon": "\ud83d\udcc6",
+		"desc": "Upcoming events from your calendars (Google, Outlook, iCloud… set up in Settings › General). Small: the next event.",
+		"w": 4,
+		"h": 4,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "Agenda" },
+			{ "key": "days", "label": "Days ahead", "type": "number", "default": 7, "min": 1, "max": 14 },
+			{ "key": "calendars", "label": "Only these calendars (names, comma-separated; empty = all)", "type": "text", "default": "" },
+			{ "key": "location", "label": "Show the location", "type": "bool", "default": true }
+		]
+	},
+	{ "type": "progress", "category": "Time", "name": "Time progress", "icon": "\ud83d\udcc6", "desc": "How much of the day, week, month and year has passed.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": [] },
+	{
+		"type": "countdown",
+		"category": "Time",
+		"name": "Countdown",
+		"icon": "\u23f3",
+		"desc": "Days / hours until a date.",
+		"w": 4,
+		"h": 2,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{ "key": "label", "label": "Label", "type": "text", "default": "New Year" },
+			{ "key": "target", "label": "Date and time (YYYY-MM-DD HH:MM)", "type": "text", "default": "2027-01-01 00:00" }
+		]
+	},
+	{
+		"type": "pomodoro",
+		"category": "Time",
+		"name": "Pomodoro",
+		"icon": "\ud83c\udf45",
+		"desc": "Focus timer with breaks, long breaks or your own sequence; vibrates when a step ends.",
+		"w": 4,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "focus", "label": "Focus minutes", "type": "number", "default": 25, "min": 1, "max": 180 },
+			{ "key": "break", "label": "Break minutes", "type": "number", "default": 5, "min": 1, "max": 60 },
+			{ "key": "longEvery", "label": "Long break after every ... focus sessions (0 = never)", "type": "number", "default": 0, "min": 0, "max": 12 },
+			{ "key": "longBreak", "label": "Long break minutes", "type": "number", "default": 15, "min": 1, "max": 120 },
+			{ "key": "sequence", "label": "Own sequence instead, e.g. 25 focus, 5 break, 25 focus, 15 long", "type": "text", "default": "" },
+			{ "key": "rounds", "label": "Repeat the sequence (times, 0 = keep going)", "type": "number", "default": 0, "min": 0, "max": 99 }
+		]
+	},
+	{
+		"type": "timer",
+		"category": "Time",
+		"name": "Quick timer",
+		"icon": "\u23f2\ufe0f",
+		"desc": "One-tap presets; vibrates when the time is up.",
+		"w": 3,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "label", "label": "Label", "type": "text", "default": "Timer" },
+			{ "key": "presets", "label": "Presets in minutes (one per line)", "type": "lines", "default": ["1", "3", "5", "10", "15", "25"] },
+			{ "key": "color", "label": "Colour", "type": "color", "default": "#38bdf8" }
+		]
+	},
+	{ "type": "stopwatch", "category": "Time", "name": "Stopwatch", "icon": "\u23f1\ufe0f", "desc": "Start, pause and laps; keeps running across restarts.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": [] },
+	{ "type": "weather", "category": "Weather & sky", "name": "Weather", "icon": "\u26c5", "desc": "Current conditions for the configured location.", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": [] },
+	{
+		"type": "forecast",
+		"category": "Weather & sky",
+		"name": "Forecast",
+		"icon": "\ud83c\udf26\ufe0f",
+		"desc": "Hourly or daily forecast.",
+		"w": 6,
+		"h": 3,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{
+				"key": "mode",
+				"label": "Range",
+				"type": "select",
+				"default": "hourly",
+				"choices": [
+					["hourly", "Next 12 hours"],
+					["daily", "Next 7 days"]
+				]
+			}
+		]
+	},
+	{ "type": "sun", "category": "Weather & sky", "name": "Sun & moon", "icon": "\ud83c\udf05", "desc": "Sunrise, sunset, daylight left, UV index and the moon phase.", "w": 4, "h": 3, "minW": 3, "minH": 2, "options": [] },
+	{ "type": "air", "category": "Weather & sky", "name": "Air quality", "icon": "\ud83c\udf43", "desc": "European air quality index and pollutants for the configured location.", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": [] },
+	{
+		"type": "stat",
+		"category": "Computer",
+		"name": "Metric tile",
+		"icon": "\ud83d\udcc8",
+		"desc": "One live value with a sparkline.",
+		"w": 3,
+		"h": 2,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{
+				"key": "metric",
+				"label": "Metric",
+				"type": "select",
+				"default": "cpu",
+				"choices": [
+					["cpu", "CPU load"],
+					["gpu", "GPU load"],
+					["ram", "RAM used"],
+					["vram", "VRAM used"],
+					["net", "Network"],
+					["ping", "Ping"],
+					["gputemp", "GPU temperature"],
+					["hotspot", "GPU hot spot"],
+					["gpupower", "GPU power"],
+					["gpuclock", "GPU clock"],
+					["cputemp", "CPU temperature"]
+				]
+			}
+		]
+	},
+	{
+		"type": "gauge",
+		"category": "Computer",
+		"name": "Gauge",
+		"icon": "\u23f2\ufe0f",
+		"desc": "Ring gauge for one metric.",
+		"w": 2,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{
+				"key": "metric",
+				"label": "Metric",
+				"type": "select",
+				"default": "cpu",
+				"choices": [
+					["cpu", "CPU load"],
+					["gpu", "GPU load"],
+					["ram", "RAM used"],
+					["vram", "VRAM used"],
+					["gputemp", "GPU temperature"],
+					["hotspot", "GPU hot spot"],
+					["gpupower", "GPU power"],
+					["cputemp", "CPU temperature"]
+				]
+			}
+		]
+	},
+	{
+		"type": "chart",
+		"category": "Computer",
+		"name": "Chart",
+		"icon": "\ud83d\udcca",
+		"desc": "90-second history chart.",
+		"w": 6,
+		"h": 3,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{
+				"key": "metrics",
+				"label": "Series",
+				"type": "multi",
+				"default": ["cpu"],
+				"choices": [
+					["cpu", "CPU"],
+					["gpu", "GPU"],
+					["ram", "RAM"],
+					["vram", "VRAM"],
+					["gputemp", "GPU temperature"],
+					["hotspot", "GPU hot spot"],
+					["gpupower", "GPU power"],
+					["cputemp", "CPU temperature"],
+					["down", "Download"],
+					["up", "Upload"],
+					["ping", "Ping"]
+				]
+			}
+		]
+	},
+	{ "type": "meters", "category": "Computer", "name": "Memory & disks", "icon": "\ud83d\udcbe", "desc": "RAM, VRAM and disk usage bars, uptime.", "w": 6, "h": 3, "minW": 3, "minH": 2, "options": [] },
+	{
+		"type": "gpu",
+		"category": "Computer",
+		"name": "GPU details",
+		"icon": "\ud83c\udfae",
+		"desc": "One graphics card in depth: load, VRAM, temperatures, power, clocks, fan and driver. NVIDIA, AMD and Intel.",
+		"w": 4,
+		"h": 4,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{
+				"key": "adapter",
+				"label": "GPU",
+				"type": "select",
+				"default": "0",
+				"choices": [
+					["0", "Main GPU"],
+					["1", "Second GPU (e.g. integrated)"],
+					["2", "Third GPU"]
+				]
+			}
+		]
+	},
+	{
+		"type": "topprocs",
+		"category": "Computer",
+		"name": "Top processes",
+		"icon": "\ud83d\udd25",
+		"desc": "The few heaviest apps, compact. Tap one for its instances.",
+		"w": 4,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{
+				"key": "sort",
+				"label": "Sort by",
+				"type": "select",
+				"default": "cpu",
+				"choices": [
+					["cpu", "CPU"],
+					["mem", "Memory"]
+				]
+			}
+		]
+	},
+	{ "type": "processes", "category": "Computer", "name": "Processes", "icon": "\u2699\ufe0f", "desc": "Heaviest apps; tap one to end an instance or all of them.", "w": 12, "h": 6, "minW": 4, "minH": 3, "options": [{ "key": "allowKill", "label": "Allow ending processes from the phone", "type": "bool", "default": true }] },
+	{ "type": "media", "category": "Computer", "name": "Now playing", "icon": "\ud83c\udfb5", "desc": "Track, cover art, controls and volume of the PC's media session.", "w": 6, "h": 4, "minW": 4, "minH": 2, "options": [] },
+	{ "type": "volume", "category": "Computer", "name": "Volume", "icon": "\ud83d\udd0a", "desc": "PC volume slider (drag), mute and steps. Vertical when tall.", "w": 2, "h": 3, "minW": 2, "minH": 2, "options": [] },
+	{
+		"type": "spectrum",
+		"category": "Computer",
+		"name": "Spectrum bars",
+		"icon": "📶",
+		"desc": "Live spectrum analyzer of the sound the PC is playing: segmented bars with falling peak caps (Windows).",
+		"w": 6,
+		"h": 3,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{ "key": "bars", "label": "Bars", "type": "number", "default": 24, "min": 4, "max": 48 },
+			{
+				"key": "style",
+				"label": "Colours",
+				"type": "select",
+				"default": "classic",
+				"choices": [
+					["classic", "Classic (green · yellow · red)"],
+					["fire", "Fire (red · orange · yellow)"],
+					["ice", "Ice (blue · cyan · white)"],
+					["single", "One colour"]
+				]
+			},
+			{ "key": "color", "label": "Colour (for One colour)", "type": "color", "default": "#2dd4bf" },
+			{ "key": "segments", "label": "Segmented (LED) bars", "type": "bool", "default": true },
+			{ "key": "peaks", "label": "Peak caps", "type": "bool", "default": true },
+			{
+				"key": "falloff",
+				"label": "Fall speed",
+				"type": "select",
+				"default": "normal",
+				"choices": [
+					["slow", "Slow"],
+					["normal", "Normal"],
+					["fast", "Fast"]
+				]
+			},
+			{ "key": "title", "label": "Title (empty = none)", "type": "text", "default": "" }
+		]
+	},
+	{
+		"type": "shortcuts",
+		"category": "Computer",
+		"name": "Shortcut grid",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Keys that run commands on the PC.",
+		"w": 12,
+		"h": 6,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{ "key": "columns", "label": "Columns", "type": "number", "default": 4, "min": 1, "max": 8 },
+			{ "key": "ids", "label": "Shortcuts (none selected = all)", "type": "shortcuts", "default": [] }
+		]
+	},
+	{
+		"type": "button",
+		"category": "Computer",
+		"name": "Big button",
+		"icon": "\ud83d\udd18",
+		"desc": "One shortcut as a large key.",
+		"w": 3,
+		"h": 2,
+		"minW": 1,
+		"minH": 1,
+		"options": [
+			{ "key": "id", "label": "Shortcut", "type": "shortcut", "default": "" },
+			{ "key": "cover", "label": "Fill the button with the shortcut's uploaded picture", "type": "bool", "default": false },
+			{ "key": "showLabel", "label": "Show the label", "type": "bool", "default": true }
+		]
+	},
+	{
+		"type": "trackpad",
+		"category": "Computer",
+		"name": "Trackpad",
+		"icon": "\ud83d\uddb1\ufe0f",
+		"desc": "Control the PC cursor, tap to click, hold to drag, edge scroll bar, two fingers to right-click and scroll (Windows and Linux).",
+		"w": 6,
+		"h": 6,
+		"minW": 3,
+		"minH": 3,
+		"options": [
+			{ "key": "control", "label": "Allow controlling the mouse from the phone", "type": "bool", "default": false },
+			{ "key": "sensitivity", "label": "Pointer sensitivity", "type": "number", "default": 1, "min": 0.2, "max": 5, "step": 0.1 },
+			{ "key": "acceleration", "label": "Pointer acceleration", "type": "bool", "default": true },
+			{ "key": "scrollSpeed", "label": "Scroll speed", "type": "number", "default": 1, "min": 0.2, "max": 5, "step": 0.1 },
+			{ "key": "naturalScroll", "label": "Natural scrolling", "type": "bool", "default": false },
+			{ "key": "holdDuration", "label": "Drag hold duration (ms)", "type": "number", "default": 350, "min": 150, "max": 1500, "step": 50 },
+			{
+				"key": "scrollBar",
+				"label": "Edge scroll bar",
+				"type": "select",
+				"default": "right",
+				"choices": [
+					["right", "Right side"],
+					["left", "Left side"],
+					["none", "Hidden"]
+				]
+			},
+			{ "key": "scrollBarWidth", "label": "Scroll bar width (px)", "type": "number", "default": 36, "min": 20, "max": 120, "step": 4 }
+		]
+	},
+	{
+		"type": "docker",
+		"category": "Computer",
+		"name": "Docker",
+		"icon": "\ud83d\udc33",
+		"desc": "Docker or Podman containers with their state, CPU and memory; tap one to start, stop or restart it (if allowed).",
+		"w": 4,
+		"h": 4,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "Docker" },
+			{ "key": "filter", "label": "Only containers whose name or Compose project contains", "type": "text", "default": "" },
+			{ "key": "stopped", "label": "Show stopped containers", "type": "bool", "default": true },
+			{ "key": "control", "label": "Allow start / stop / restart from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "discord",
+		"category": "Computer",
+		"name": "Discord",
+		"icon": "💬",
+		"desc": "The voice channel or call you are in with who is there, mute / deafen / leave, a list of voice channels to join, and recent notifications (needs the Discord app on the PC).",
+		"w": 4,
+		"h": 5,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{ "key": "channels", "label": "Show the voice channels to join", "type": "bool", "default": true },
+			{ "key": "notifications", "label": "Show recent notifications", "type": "bool", "default": true },
+			{ "key": "control", "label": "Allow mute, deafen, leave and joining from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "apps",
+		"category": "Computer",
+		"name": "All apps",
+		"icon": "\ud83e\udde9",
+		"desc": "Every application installed on the computer (macOS), with search; tap one to open it or bring it forward.",
+		"w": 6,
+		"h": 4,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "Apps" },
+			{ "key": "search", "label": "Show the search box", "type": "bool", "default": true },
+			{ "key": "confirm", "label": "Ask before opening (tap an app twice)", "type": "bool", "default": true },
+			{ "key": "pinned", "label": "Apps shown first (names, comma-separated), e.g. Safari, Terminal", "type": "text", "default": "" }
+		]
+	},
+	{
+		"type": "obs",
+		"category": "Computer",
+		"name": "OBS Studio",
+		"icon": "\ud83c\udfac",
+		"desc": "Live and recording state with timers, the current scene and scene buttons; start / stop and switch scenes from the phone (if allowed).",
+		"w": 4,
+		"h": 4,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{ "key": "scenes", "label": "Show the scene buttons", "type": "bool", "default": true },
+			{ "key": "control", "label": "Allow recording, streaming and scene switching from the phone", "type": "bool", "default": true }
+		]
+	},
+	{
+		"type": "app-console",
+		"category": "Computer",
+		"name": "App console",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Keys and a dial that follow the app in front on the PC: Photoshop gets its brushes, a video editor its cuts. Set the apps and their keys in Settings \u203a General \u203a App console. Windows only.",
+		"w": 6,
+		"h": 4,
+		"minW": 3,
+		"minH": 3,
+		"options": [
+			{ "key": "control", "label": "Send keys to the computer", "type": "bool", "default": false },
+			{ "key": "dial", "label": "Show the dial", "type": "bool", "default": true }
+		]
+	},
+	{
+		"type": "dictate",
+		"category": "Computer",
+		"name": "Dictation",
+		"icon": "\ud83c\udf99\ufe0f",
+		"desc": "Tap the microphone and speak: the phone's speech recognizer turns it into text, typed into the app in front on the PC.",
+		"w": 4,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "control", "label": "Type the text on the computer", "type": "bool", "default": false },
+			{ "key": "enter", "label": "Press Enter after the text", "type": "bool", "default": false },
+			{ "key": "language", "label": "Language (e.g. en-US; blank = the phone's)", "type": "text", "default": "" },
+			{ "key": "offline", "label": "Recognize on the phone only (Android 12+, with its offline language)", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "command",
+		"category": "Computer",
+		"name": "Command",
+		"icon": "\ud83d\udcbb",
+		"desc": "Runs a command on the computer every N seconds and shows its output (PowerShell on Windows, bash on Linux, zsh on macOS).",
+		"w": 4,
+		"h": 2,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "Command" },
+			{ "key": "command", "label": "Command (runs on the computer)", "type": "textarea", "default": "Get-Date -Format HH:mm:ss" },
+			{ "key": "commandUnix", "label": "Command on Linux / macOS (empty = the same)", "type": "textarea", "default": "" },
+			{ "key": "interval", "label": "Every (seconds)", "type": "number", "default": 30, "min": 5, "max": 86400 }
+		]
+	},
+	{
+		"type": "html",
+		"category": "Web & data",
+		"name": "Custom HTML",
+		"icon": "\ud83e\udde9",
+		"desc": "Your own HTML, CSS and JavaScript in a sandbox, fed with the PC's data through window.phonebox.",
+		"w": 3,
+		"h": 2,
+		"minW": 1,
+		"minH": 1,
+		"options": [
+			{ "key": "html", "label": "HTML (with <style> and <script>; phonebox.on('state', fn) gets the data)", "type": "textarea", "default": "<style>\n  body { display: grid; place-items: center; }\n  .v { font-size: 34vh; font-weight: 700; color: #2dd4bf; text-align: center; }\n  .l { font-size: 9vh; color: #8a94a3; letter-spacing: .1em; text-align: center; }\n</style>\n<div><div class=\"v\" id=\"v\">–</div><div class=\"l\">CPU</div></div>\n<script>\n  // phonebox.on('state' | 'push' | 'weather' | 'work' | 'quotas', fn); phonebox.run('shortcut-id'); phonebox.goto('page')\n  phonebox.on('state', (s) => { v.textContent = s.pc && s.pc.cpu != null ? Math.round(s.pc.cpu) + '%' : '–'; });\n</script>" },
+			{ "key": "transparent", "label": "No card background", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "quotas",
+		"category": "AI & code",
+		"name": "AI quotas",
+		"icon": "\u2733\ufe0f",
+		"desc": "AI service usage limits with burn-rate forecast.",
+		"w": 12,
+		"h": 6,
+		"minW": 4,
+		"minH": 3,
+		"options": [
+			{
+				"key": "providers",
+				"label": "Providers",
+				"type": "multi",
+				"default": ["claude", "codex", "antigravity"],
+				"choices": [
+					["claude", "Claude"],
+					["codex", "Codex"],
+					["antigravity", "Antigravity"]
+				]
+			},
+			{ "key": "rotate", "label": "Rotate providers automatically", "type": "bool", "default": true },
+			{ "key": "pageSize", "label": "Cards at a time (0 = all)", "type": "number", "default": 2, "min": 0, "max": 6 },
+			{ "key": "rotateInterval", "label": "Rotate every (seconds)", "type": "number", "default": 8, "min": 2, "max": 120 }
+		]
+	},
+	{
+		"type": "codexbar",
+		"category": "AI & code",
+		"name": "CodexBar",
+		"icon": "\ud83e\udded",
+		"desc": "Live AI quotas with rotation, card count and custom intervals.",
+		"w": 12,
+		"h": 6,
+		"minW": 4,
+		"minH": 3,
+		"options": [
+			{
+				"key": "providers",
+				"label": "Providers",
+				"type": "multi",
+				"default": ["claude", "codex", "antigravity"],
+				"choices": [
+					["claude", "Claude"],
+					["codex", "Codex"],
+					["antigravity", "Antigravity"]
+				]
+			},
+			{ "key": "showOverview", "label": "Include cost overview card", "type": "bool", "default": false },
+			{ "key": "rotate", "label": "Rotate providers automatically", "type": "bool", "default": true },
+			{ "key": "pageSize", "label": "Cards at a time (0 = all)", "type": "number", "default": 2, "min": 0, "max": 6 },
+			{ "key": "rotateInterval", "label": "Rotate every (seconds)", "type": "number", "default": 8, "min": 2, "max": 120 }
+		]
+	},
+	{
+		"type": "quotaring",
+		"category": "AI & code",
+		"name": "Quota ring",
+		"icon": "\ud83c\udfaf",
+		"desc": "One AI usage limit as a compact ring with the pace marker.",
+		"w": 3,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{
+				"key": "provider",
+				"label": "Provider",
+				"type": "select",
+				"default": "claude",
+				"choices": [
+					["claude", "Claude"],
+					["codex", "Codex"],
+					["antigravity", "Antigravity"],
+					["cursor", "Cursor"],
+					["grok", "Grok"]
+				]
+			},
+			{
+				"key": "limit",
+				"label": "Limit",
+				"type": "select",
+				"default": "0",
+				"choices": [
+					["0", "First (5-hour session / weekly)"],
+					["1", "Second (weekly)"],
+					["2", "Third (weekly · model)"]
+				]
+			}
+		]
+	},
+	{ "type": "sessions", "category": "AI & code", "name": "AI sessions", "icon": "\ud83e\udd16", "desc": "Claude Code / Codex / Cursor sessions: working, waiting, idle.", "w": 7, "h": 6, "minW": 3, "minH": 2, "options": [] },
+	{ "type": "github", "category": "AI & code", "name": "GitHub", "icon": "\ud83d\udc19", "desc": "Review requests, your pull requests with CI, notifications.", "w": 5, "h": 6, "minW": 3, "minH": 3, "options": [] },
+	{
+		"type": "note",
+		"category": "Personal",
+		"name": "Note",
+		"icon": "\ud83d\udcdd",
+		"desc": "A sticky note.",
+		"w": 4,
+		"h": 3,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{ "key": "text", "label": "Text", "type": "textarea", "default": "Write something here…" },
+			{ "key": "color", "label": "Colour", "type": "color", "default": "#fbbf24" }
+		]
+	},
+	{
+		"type": "checklist",
+		"category": "Personal",
+		"name": "Checklist",
+		"icon": "\u2705",
+		"desc": "Tick things off; optionally starts fresh every day.",
+		"w": 4,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "Today" },
+			{ "key": "items", "label": "Items (one per line)", "type": "lines", "default": ["Water the plants", "Stretch", "Inbox zero"] },
+			{ "key": "daily", "label": "Untick everything every day", "type": "bool", "default": true }
+		]
+	},
+	{
+		"type": "counter",
+		"category": "Personal",
+		"name": "Counter",
+		"icon": "\ud83d\udd22",
+		"desc": "Tap to count: coffees, push-ups, interruptions…",
+		"w": 2,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "label", "label": "Label", "type": "text", "default": "Coffee" },
+			{ "key": "step", "label": "Step", "type": "number", "default": 1, "min": 1, "max": 1000 },
+			{ "key": "daily", "label": "Start from zero every day", "type": "bool", "default": true },
+			{ "key": "color", "label": "Colour", "type": "color", "default": "#a78bfa" }
+		]
+	},
+	{
+		"type": "breathe",
+		"category": "Personal",
+		"name": "Breathe",
+		"icon": "\ud83e\udec1",
+		"desc": "Guided breathing; tap to start or stop.",
+		"w": 4,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{
+				"key": "pattern",
+				"label": "Pattern",
+				"type": "select",
+				"default": "box",
+				"choices": [
+					["box", "Box 4-4-4-4"],
+					["relax", "Relax 4-7-8"],
+					["calm", "Calm 5-5"]
+				]
+			}
+		]
+	},
+	{
+		"type": "quote",
+		"category": "Personal",
+		"name": "Quote",
+		"icon": "\ud83d\udcac",
+		"desc": "A rotating quote; tap for the next one.",
+		"w": 4,
+		"h": 2,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{ "key": "minutes", "label": "Change every (minutes)", "type": "number", "default": 30, "min": 1, "max": 1440 },
+			{ "key": "quotes", "label": "Your own quotes, one per line ('text — author'); empty = built-in", "type": "lines", "default": [] }
+		]
+	},
+	{ "type": "label", "category": "Personal", "name": "Title", "icon": "\ud83d\udd24", "desc": "A text heading.", "w": 6, "h": 1, "minW": 1, "minH": 1, "options": [{ "key": "text", "label": "Text", "type": "text", "default": "Heading" }] },
+	{ "type": "battery", "category": "Personal", "name": "Phone battery", "icon": "\ud83d\udd0b", "desc": "Battery level, charging state and temperature of the panel phone.", "w": 2, "h": 3, "minW": 2, "minH": 2, "options": [] },
+	{ "type": "pcswitch", "category": "Personal", "name": "Computers", "icon": "\ud83d\udda5\ufe0f", "desc": "The computers this phone is paired with over Wi-Fi; tap one to switch to it.", "w": 4, "h": 2, "minW": 2, "minH": 1, "options": [{ "key": "title", "label": "Title (empty = none)", "type": "text", "default": "Computers" }] },
+	{
+		"type": "batteries",
+		"category": "Computer",
+		"name": "Device batteries",
+		"icon": "\ud83c\udfa7",
+		"desc": "Battery levels of wireless headphones, mice, keyboards and controllers connected to the PC (and the panel phone).",
+		"w": 4,
+		"h": 3,
+		"minW": 3,
+		"minH": 1,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "Batteries" },
+			{ "key": "phone", "label": "Include the panel phone", "type": "bool", "default": true },
+			{ "key": "low", "label": "Low below (%)", "type": "number", "default": 20, "min": 5, "max": 50 }
+		]
+	},
+	{
+		"type": "ha",
+		"category": "Web & data",
+		"name": "Home Assistant",
+		"icon": "\ud83c\udfe0",
+		"desc": "Lights, switches, sensors, locks, covers, scenes… from Home Assistant (set up in Settings › General); tap to switch.",
+		"w": 6,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title (empty = none)", "type": "text", "default": "Home" },
+			{ "key": "items", "label": "Entities", "type": "ha-items", "default": [] },
+			{ "key": "control", "label": "Allow switching from the phone (default for entities that do not set their own)", "type": "bool", "default": true }
+		]
+	},
+	{
+		"type": "push",
+		"category": "Web & data",
+		"name": "Pushed value",
+		"icon": "\ud83d\udce1",
+		"desc": "Shows data sent to the agent with POST /api/push/<key> (scripts, CI, Home Assistant…).",
+		"w": 3,
+		"h": 2,
+		"minW": 1,
+		"minH": 1,
+		"options": [
+			{ "key": "key", "label": "Key (POST /api/push/<key>)", "type": "text", "default": "my-value" },
+			{ "key": "title", "label": "Title (empty = from the data)", "type": "text", "default": "" },
+			{
+				"key": "style",
+				"label": "Style",
+				"type": "select",
+				"default": "auto",
+				"choices": [
+					["auto", "Automatic"],
+					["big", "Big value"],
+					["gauge", "Gauge"],
+					["list", "List"]
+				]
+			},
+			{ "key": "unit", "label": "Unit", "type": "text", "default": "" },
+			{ "key": "min", "label": "Gauge minimum", "type": "number", "default": 0 },
+			{ "key": "max", "label": "Gauge maximum", "type": "number", "default": 100 }
+		]
+	},
+	{ "type": "inbox", "category": "Web & data", "name": "Notifications", "icon": "\ud83d\udcec", "desc": "The latest messages sent with POST /api/notify.", "w": 4, "h": 3, "minW": 2, "minH": 2, "options": [] },
+	{
+		"type": "feeds",
+		"category": "Web & data",
+		"name": "News feeds",
+		"icon": "\ud83d\uddde\ufe0f",
+		"desc": "Headlines from your RSS and Atom feeds (set up in Settings \u203a General). With \"Open articles on the PC\" on, a tap opens the article in the PC's browser.",
+		"w": 6,
+		"h": 4,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title (empty = none)", "type": "text", "default": "News" },
+			{ "key": "feed", "label": "Only this feed (its name in Settings; empty = all feeds)", "type": "text", "default": "" },
+			{ "key": "showSource", "label": "Show the feed's name", "type": "bool", "default": true },
+			{ "key": "showTime", "label": "Show how old each headline is", "type": "bool", "default": true },
+			{
+				"key": "lines",
+				"label": "Lines per headline",
+				"type": "select",
+				"default": "1",
+				"choices": [
+					["1", "1"],
+					["2", "2"],
+					["3", "3"]
+				]
+			},
+			{ "key": "open", "label": "Open articles on the PC when tapped (starts the PC's browser)", "type": "bool", "default": false }
+		]
+	},
+	{ "type": "hackernews", "category": "Web & data", "name": "Hacker News", "icon": "\ud83d\udcf0", "desc": "Top stories, refreshed every 15 minutes.", "w": 6, "h": 4, "minW": 3, "minH": 2, "options": [] },
+	{
+		"type": "exchange",
+		"category": "Web & data",
+		"name": "Exchange rates",
+		"icon": "\ud83d\udcb1",
+		"desc": "ECB reference rates with the daily change and a 30-day trend.",
+		"w": 4,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "base", "label": "Base currency", "type": "text", "default": "EUR" },
+			{ "key": "symbols", "label": "Currencies (one per line)", "type": "lines", "default": ["TRY", "USD", "GBP"] }
+		]
+	},
+	{
+		"type": "crypto",
+		"category": "Web & data",
+		"name": "Crypto prices",
+		"icon": "\ud83e\ude99",
+		"desc": "Prices with the 24-hour change and a 7-day trend (CoinGecko).",
+		"w": 4,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "coins", "label": "Coins (CoinGecko ids, one per line)", "type": "lines", "default": ["bitcoin", "ethereum", "solana"] },
+			{
+				"key": "currency",
+				"label": "Currency",
+				"type": "select",
+				"default": "usd",
+				"choices": [
+					["usd", "USD"],
+					["eur", "EUR"],
+					["try", "TRY"],
+					["gbp", "GBP"]
+				]
+			}
+		]
+	},
+	{
+		"type": "photos",
+		"category": "Personal",
+		"name": "Photo frame",
+		"icon": "\ud83d\uddbc\ufe0f",
+		"desc": "A slideshow of the photos in a folder on the PC (a synced OneDrive, Dropbox or iCloud folder works too); set it up in Settings \u203a General.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "interval", "label": "Next photo every (seconds)", "type": "number", "default": 30, "min": 5, "max": 3600 },
+			{
+				"key": "fit",
+				"label": "Fit",
+				"type": "select",
+				"default": "cover",
+				"choices": [
+					["cover", "Fill the widget (crop)"],
+					["contain", "Show the whole photo"]
+				]
+			},
+			{ "key": "shuffle", "label": "Shuffle", "type": "bool", "default": true }
+		]
+	},
+	{
+		"type": "image",
+		"category": "Web & data",
+		"name": "Image",
+		"icon": "\ud83d\uddbc\ufe0f",
+		"desc": "A picture or webcam snapshot from a URL, optionally refreshed.",
+		"w": 4,
+		"h": 3,
+		"minW": 1,
+		"minH": 1,
+		"options": [
+			{ "key": "url", "label": "Image address (https://…)", "type": "text", "default": "" },
+			{ "key": "minutes", "label": "Reload every (minutes, 0 = never)", "type": "number", "default": 0, "min": 0, "max": 1440 },
+			{
+				"key": "fit",
+				"label": "Fit",
+				"type": "select",
+				"default": "cover",
+				"choices": [
+					["cover", "Fill"],
+					["contain", "Whole image"]
+				]
+			},
+			{ "key": "caption", "label": "Caption", "type": "text", "default": "" }
+		]
+	},
+	{
+		"type": "camera",
+		"category": "Web & data",
+		"name": "Camera",
+		"icon": "\ud83d\udcf9",
+		"desc": "A live picture from an IP camera (RTSP), 5 frames a second by default (1 to 10). Add the camera in Settings \u203a General \u203a Cameras; the computer pulls it with ffmpeg, and its address stays there.",
+		"w": 4,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "camera", "label": "Camera", "type": "camera", "default": "" },
+			{
+				"key": "fit",
+				"label": "Fit",
+				"type": "select",
+				"default": "cover",
+				"choices": [
+					["cover", "Fill"],
+					["contain", "Whole picture"]
+				]
+			},
+			{ "key": "caption", "label": "Caption (empty = none)", "type": "text", "default": "" }
+		]
+	},
+	{
+		"type": "onair",
+		"category": "Computer",
+		"name": "On air",
+		"icon": "\ud83d\udd34",
+		"desc": "Lights up while the microphone or camera is in use (Windows, Linux), OBS records or streams, or a pushed value is on.",
+		"w": 3,
+		"h": 2,
+		"minW": 2,
+		"minH": 1,
+		"options": [
+			{
+				"key": "source",
+				"label": "Light up for",
+				"type": "select",
+				"default": "both",
+				"choices": [
+					["both", "Microphone, camera or OBS"],
+					["mic", "Microphone"],
+					["camera", "Camera"],
+					["obs", "OBS recording or streaming"],
+					["push", "Only the pushed value below"]
+				]
+			},
+			{ "key": "key", "label": "…or while this pushed value is on (empty = none)", "type": "text", "default": "onair" },
+			{ "key": "text", "label": "Text", "type": "text", "default": "ON AIR" }
+		]
+	},
+	{ "type": "wordclock", "category": "Time", "name": "Word clock", "icon": "\ud83d\udd24", "desc": "The time in words, to the nearest five minutes: \"quarter past ten\".", "w": 6, "h": 3, "minW": 3, "minH": 2, "options": [] },
+	{
+		"type": "nextup",
+		"category": "Time",
+		"name": "Next up",
+		"icon": "\u23ed\ufe0f",
+		"desc": "Your next calendar event, big, with a countdown; during an event, how much of it is left.",
+		"w": 4,
+		"h": 3,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "Next up" },
+			{ "key": "calendars", "label": "Only these calendars (names, comma-separated; empty = all)", "type": "text", "default": "" }
+		]
+	},
+	{ "type": "moon", "category": "Weather & sky", "name": "Moon", "icon": "\ud83c\udf19", "desc": "Tonight's moon drawn to its phase, how much is lit and the next full or new moon.", "w": 4, "h": 2, "minW": 3, "minH": 2, "options": [] },
+	{ "type": "rules", "category": "Computer", "name": "Rules", "icon": "\u26a1", "desc": "Your automation rules: which ones hold right now, and a button to pause them all for an hour.", "w": 4, "h": 4, "minW": 3, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "Rules" }] },
+	{ "type": "chargecare", "category": "Computer", "name": "Battery care", "icon": "\ud83d\udd0b", "desc": "The phone's battery with the band Battery care keeps it in (Settings › General).", "w": 3, "h": 3, "minW": 2, "minH": 2, "options": [] },
+	{
+		"type": "stack",
+		"category": "Layout",
+		"name": "Smart Stack",
+		"icon": "\ud83d\uddc2\ufe0f",
+		"desc": "Cycle through multiple widgets in a single slot like iOS Smart Stack.",
+		"w": 6,
+		"h": 4,
+		"minW": 3,
+		"minH": 2,
+		"options": [
+			{
+				"key": "widgets",
+				"label": "Widgets in stack",
+				"type": "stack-widgets",
+				"default": [
+					{ "type": "clock", "enabled": true },
+					{ "type": "weather", "enabled": true },
+					{ "type": "media", "enabled": true }
+				]
+			},
+			{ "key": "interval", "label": "Rotation interval in seconds (0 = only when swiped)", "type": "number", "default": 10, "min": 0, "max": 600 },
+			{ "key": "showDots", "label": "Indicator dots", "type": "bool", "default": true }
+		]
+	},
+	{
+		"type": "audio-mixer",
+		"category": "Control Deck",
+		"name": "Application mixer",
+		"icon": "\ud83c\udf9a\ufe0f",
+		"desc": "Individual volume and mute controls for running applications.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "application", "label": "Application (blank = all)", "type": "control-target", "group": "application", "default": "" },
+			{
+				"key": "layout",
+				"label": "Fader layout",
+				"type": "select",
+				"default": "horizontal",
+				"choices": [
+					["horizontal", "Horizontal"],
+					["vertical", "Vertical"]
+				]
+			}
+		]
+	},
+	{
+		"type": "app-volume",
+		"category": "Control Deck",
+		"name": "Application volume",
+		"icon": "\ud83c\udf9a\ufe0f",
+		"desc": "A pinned application audio fader.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "application", "label": "Application (blank = all)", "type": "control-target", "group": "application", "default": "" },
+			{
+				"key": "layout",
+				"label": "Fader layout",
+				"type": "select",
+				"default": "horizontal",
+				"choices": [
+					["horizontal", "Horizontal"],
+					["vertical", "Vertical"]
+				]
+			}
+		]
+	},
+	{
+		"type": "device-volume",
+		"category": "Control Deck",
+		"name": "Device volume",
+		"icon": "\ud83d\udd0a",
+		"desc": "Control a specific output device independently.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "output", "default": "" },
+			{
+				"key": "layout",
+				"label": "Fader layout",
+				"type": "select",
+				"default": "horizontal",
+				"choices": [
+					["horizontal", "Horizontal"],
+					["vertical", "Vertical"]
+				]
+			}
+		]
+	},
+	{
+		"type": "audio-balance",
+		"category": "Control Deck",
+		"name": "Channel balance",
+		"icon": "\u2194\ufe0f",
+		"desc": "Separate left and right channel controls.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "output", "default": "" }
+		]
+	},
+	{
+		"type": "audio-meter",
+		"category": "Control Deck",
+		"name": "Audio levels",
+		"icon": "\ud83d\udcf6",
+		"desc": "Live endpoint audio meters.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "output", "default": "" }
+		]
+	},
+	{ "type": "panic-mute", "category": "Control Deck", "name": "Emergency mute", "icon": "\ud83d\udd07", "desc": "Mute computer outputs and microphones with one tap.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "microphone",
+		"category": "Control Deck",
+		"name": "Microphone",
+		"icon": "\ud83c\udf99\ufe0f",
+		"desc": "Microphone gain, mute and live activity.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "input", "default": "" }
+		]
+	},
+	{
+		"type": "audio-inputs",
+		"category": "Control Deck",
+		"name": "Microphone selection",
+		"icon": "\ud83c\udf99\ufe0f",
+		"desc": "Choose the default input device.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{
+				"key": "role",
+				"label": "Windows audio role",
+				"type": "select",
+				"default": "all",
+				"choices": [
+					["all", "All roles"],
+					["media", "Media"],
+					["communications", "Communications"],
+					["console", "Console"]
+				]
+			}
+		]
+	},
+	{
+		"type": "audio-outputs",
+		"category": "Control Deck",
+		"name": "Output selection",
+		"icon": "\ud83c\udfa7",
+		"desc": "Switch speakers, headphones or HDMI outputs.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{
+				"key": "role",
+				"label": "Windows audio role",
+				"type": "select",
+				"default": "all",
+				"choices": [
+					["all", "All roles"],
+					["media", "Media"],
+					["communications", "Communications"],
+					["console", "Console"]
+				]
+			}
+		]
+	},
+	{
+		"type": "push-to-talk",
+		"category": "Control Deck",
+		"name": "Push to talk",
+		"icon": "\ud83c\udf99\ufe0f",
+		"desc": "Hold to open the microphone; release or disconnect restores its previous state.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "input", "default": "" }
+		]
+	},
+	{ "type": "audio-profiles", "category": "Control Deck", "name": "Audio profiles", "icon": "\ud83c\udf9b\ufe0f", "desc": "Apply audio profiles saved on the computer.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "audio-ducking",
+		"category": "Control Deck",
+		"name": "Audio ducking",
+		"icon": "\ud83d\udd09",
+		"desc": "Lower application audio while the microphone is active.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "level", "label": "Ducked volume (% of original)", "type": "number", "default": 25, "min": 0, "max": 100 }
+		]
+	},
+	{ "type": "media-sources", "category": "Control Deck", "name": "Media sources", "icon": "\ud83c\udfb5", "desc": "Choose which media player the Control Deck operates.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "media-remote",
+		"category": "Control Deck",
+		"name": "Media remote",
+		"icon": "\u23ef\ufe0f",
+		"desc": "Control a selected player rather than only the system media session.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "player", "label": "Pinned player (blank = Media sources selection)", "type": "control-target", "group": "media", "default": "" }
+		]
+	},
+	{
+		"type": "media-seek",
+		"category": "Control Deck",
+		"name": "Playback position",
+		"icon": "\u23e9",
+		"desc": "Seek within the selected media session.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "player", "label": "Pinned player (blank = Media sources selection)", "type": "control-target", "group": "media", "default": "" }
+		]
+	},
+	{
+		"type": "media-modes",
+		"category": "Control Deck",
+		"name": "Shuffle and repeat",
+		"icon": "\ud83d\udd00",
+		"desc": "Shuffle and repeat when the selected player supports them.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "player", "label": "Pinned player (blank = Media sources selection)", "type": "control-target", "group": "media", "default": "" }
+		]
+	},
+	{
+		"type": "media-sleep",
+		"category": "Control Deck",
+		"name": "Music sleep timer",
+		"icon": "\ud83c\udf19",
+		"desc": "Fade the selected application during the final 30 seconds, pause playback, then restore its volume.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "player", "label": "Pinned player (blank = Media sources selection)", "type": "control-target", "group": "media", "default": "" },
+			{ "key": "minutes", "label": "Minutes", "type": "number", "default": 30, "min": 1, "max": 360 }
+		]
+	},
+	{
+		"type": "brightness",
+		"category": "Control Deck",
+		"name": "Display brightness",
+		"icon": "\u2600\ufe0f",
+		"desc": "Brightness of monitors exposing DDC/CI controls.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "device", "label": "Device (blank = automatic)", "type": "control-target", "group": "monitor", "default": "" }
+		]
+	},
+	{ "type": "power-plans", "category": "Control Deck", "name": "Power plans", "icon": "\u26a1", "desc": "Choose a computer power plan.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "desktops", "category": "Control Deck", "name": "Virtual desktops", "icon": "\ud83d\udda5\ufe0f", "desc": "Switch virtual desktops.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "system-keys", "category": "Control Deck", "name": "Lock and displays", "icon": "\ud83d\udd12", "desc": "Lock the computer or switch its displays off.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "power-controls", "category": "Control Deck", "name": "Power controls", "icon": "\u23fb", "desc": "Hold to confirm sleep, restart or shutdown; requires desktop opt-in.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "pc-listen", "category": "Control Deck", "name": "Listen to PC audio", "icon": "\ud83c\udfa7", "desc": "Listen to computer audio on the phone; requires desktop opt-in.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "app-dock",
+		"category": "Control Deck",
+		"name": "Application dock",
+		"icon": "\ud83d\ude80",
+		"desc": "Launch configured applications and projects.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": [] }
+		]
+	},
+	{
+		"type": "hotkeys",
+		"category": "Control Deck",
+		"name": "Keyboard shortcuts",
+		"icon": "\u2328\ufe0f",
+		"desc": "Assigned application keyboard shortcuts.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": [] }
+		]
+	},
+	{
+		"type": "macro-pad",
+		"category": "Control Deck",
+		"name": "Macro pad",
+		"icon": "\ud83e\udde9",
+		"desc": "Run configured action chains.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": [] }
+		]
+	},
+	{ "type": "window-layouts", "category": "Control Deck", "name": "Window layouts", "icon": "\ud83e\ude9f", "desc": "Apply configured window positions.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "project-launcher",
+		"category": "Control Deck",
+		"name": "Project launcher",
+		"icon": "\ud83d\udcc2",
+		"desc": "Open configured projects and folders.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": [] }
+		]
+	},
+	{
+		"type": "snippets",
+		"category": "Control Deck",
+		"name": "Text snippets",
+		"icon": "\ud83d\udcdd",
+		"desc": "Type computer-side snippets without exposing their contents to the phone.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": [] }
+		]
+	},
+	{ "type": "presentation", "category": "Control Deck", "name": "Presentation remote", "icon": "\ud83d\udcfd\ufe0f", "desc": "Configured presentation controls.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "display-profiles", "category": "Control Deck", "name": "Display profiles", "icon": "\ud83d\udda5\ufe0f", "desc": "Configured resolution, refresh and monitor arrangement profiles.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "focus-profile", "category": "Control Deck", "name": "Focus profiles", "icon": "\ud83c\udfaf", "desc": "Run configured work and focus routines.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "meeting-controls", "category": "Control Deck", "name": "Meeting controls", "icon": "\ud83d\udcde", "desc": "Assigned microphone, camera and sharing shortcuts.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "discord-controls", "category": "Control Deck", "name": "Discord controls", "icon": "\ud83c\udfae", "desc": "Assigned Discord mute and deafen shortcuts.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "meeting-profile", "category": "Control Deck", "name": "Meeting profiles", "icon": "\ud83d\udcde", "desc": "Apply configured meeting routines.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "task-runner", "category": "Control Deck", "name": "Build and test", "icon": "\ud83d\udee0\ufe0f", "desc": "Run configured build and test tasks with status feedback.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "dev-servers", "category": "Control Deck", "name": "Development servers", "icon": "\ud83d\udcbb", "desc": "Start and stop computer-defined development servers.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "services", "category": "Control Deck", "name": "Computer services", "icon": "\u2699\ufe0f", "desc": "Configured service controls, subject to system permissions.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "workflow-runner", "category": "Control Deck", "name": "GitHub workflows", "icon": "\ud83d\udc19", "desc": "Start configured GitHub Actions workflows.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "script-pad",
+		"category": "Control Deck",
+		"name": "Script pad",
+		"icon": "\u25b6\ufe0f",
+		"desc": "Run computer-defined scripts and tasks.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": [] }
+		]
+	},
+	{ "type": "soundboard", "category": "Control Deck", "name": "Soundboard", "icon": "\ud83c\udfb5", "desc": "Play configured local sounds through a selected device.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "radio",
+		"category": "Control Deck",
+		"name": "Internet radio",
+		"icon": "\ud83d\udcfb",
+		"desc": "Play configured radio streams on the computer.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{
+				"key": "view",
+				"label": "View",
+				"type": "select",
+				"default": "grid",
+				"choices": [
+					["grid", "Grid"],
+					["carousel", "Sliding cards"]
+				]
+			},
+			{ "key": "ids", "label": "Control IDs (blank = all matching controls)", "type": "lines", "default": [] }
+		]
+	},
+	{ "type": "playlists", "category": "Control Deck", "name": "Spotify playlists", "icon": "\ud83c\udfb6", "desc": "Start configured Spotify playlists.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "audio-routing", "category": "Control Deck", "name": "Application routing", "icon": "\ud83d\udd00", "desc": "Configured per-application output routing.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "external-mixer", "category": "Control Deck", "name": "External mixer", "icon": "\ud83c\udf9b\ufe0f", "desc": "Configured virtual-mixer controls.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "midi-pad", "category": "Control Deck", "name": "MIDI pad", "icon": "\ud83c\udfb9", "desc": "Send configured MIDI messages to a MIDI output.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "osc-pad", "category": "Control Deck", "name": "OSC pad", "icon": "\ud83c\udf9a\ufe0f", "desc": "Send configured OSC messages.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{ "type": "meeting-status", "category": "Control Deck", "name": "Meeting status", "icon": "\ud83d\udd34", "desc": "Live microphone, camera and recording indicators.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "obs-mixer",
+		"category": "Control Deck",
+		"name": "OBS mixer",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Input volume and mute controls.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "obs-scenes",
+		"category": "Control Deck",
+		"name": "OBS scenes",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Switch the program scene.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "obs-sources",
+		"category": "Control Deck",
+		"name": "OBS sources",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Show or hide sources in the current scene.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "obs-recording",
+		"category": "Control Deck",
+		"name": "OBS recording and stream",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Recording, pause and stream controls with elapsed time.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "obs-replay",
+		"category": "Control Deck",
+		"name": "OBS replay buffer",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Start, stop and save replay buffer.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "obs-transition",
+		"category": "Control Deck",
+		"name": "OBS transition",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Select transition and duration.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "obs-camera",
+		"category": "Control Deck",
+		"name": "OBS virtual camera",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Start or stop the virtual camera.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "control", "label": "Allow OBS controls from the phone", "type": "bool", "default": false }
+		]
+	},
+	{
+		"type": "media-queue",
+		"category": "Control Deck",
+		"name": "Spotify queue",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "What is playing and what comes next on Spotify, with covers; tap a track to play it. Requires connection.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "covers", "label": "Show covers (the phone loads them from Spotify's image server)", "type": "bool", "default": true }
+		]
+	},
+	{ "type": "media-favorites", "category": "Control Deck", "name": "Spotify favorites", "icon": "\ud83c\udf9b\ufe0f", "desc": "Save the current item to your Spotify library.", "w": 6, "h": 4, "minW": 2, "minH": 2, "options": [{ "key": "title", "label": "Title", "type": "text", "default": "" }] },
+	{
+		"type": "meeting-timer",
+		"category": "Control Deck",
+		"name": "Meeting timer",
+		"icon": "\ud83c\udf9b\ufe0f",
+		"desc": "Persistent elapsed meeting timer with overtime indication.",
+		"w": 6,
+		"h": 4,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "" },
+			{ "key": "minutes", "label": "Overtime after minutes", "type": "number", "default": 30, "min": 1, "max": 1440 },
+			{ "key": "timerId", "label": "Timer ID (shared across widgets)", "type": "text", "default": "default" }
+		]
+	},
+	{
+		"type": "tcp-status",
+		"category": "Computer",
+		"name": "TCP connection status",
+		"icon": "🔌",
+		"desc": "Shows whether configured IP addresses and TCP ports accept connections, with optional icons and latency.",
+		"w": 4,
+		"h": 3,
+		"minW": 2,
+		"minH": 2,
+		"options": [
+			{ "key": "title", "label": "Title", "type": "text", "default": "Connections" },
+			{ "key": "connections", "label": "Connections (one per line: Name | icon | host | port)", "type": "textarea", "default": "NAS | 💾 | 192.168.1.10 | 445\nMedia server | 📺 | 192.168.1.20 | 8096" },
+			{ "key": "interval", "label": "Check every (seconds)", "type": "number", "default": 10, "min": 1, "max": 3600 },
+			{ "key": "timeout", "label": "Connection timeout (milliseconds)", "type": "number", "default": 1500, "min": 250, "max": 10000 }
+		]
+	}
 ]

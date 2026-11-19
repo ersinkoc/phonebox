@@ -19,47 +19,47 @@ public class UpdateChecksumTests
 {
   "assets": [
     {
-      "browser_download_url": "https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/PhoneBox-0.9.9.apk",
+      "browser_download_url": "https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/PhoneBox-0.9.9.apk",
       "name": "PhoneBox-0.9.9.apk",
-      "url": "https://api.github.com/repos/ersinkoc/phonebox/releases/assets/752008188"
+      "url": "https://api.github.com/repos/paulgeorge92/phonebox/releases/assets/752008188"
     },
     {
-      "browser_download_url": "https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/PhoneBox-0.9.9.intoto.jsonl",
+      "browser_download_url": "https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/PhoneBox-0.9.9.intoto.jsonl",
       "name": "PhoneBox-0.9.9.intoto.jsonl",
-      "url": "https://api.github.com/repos/ersinkoc/phonebox/releases/assets/752008185"
+      "url": "https://api.github.com/repos/paulgeorge92/phonebox/releases/assets/752008185"
     },
     {
-      "browser_download_url": "https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-linux-arm64.zip",
+      "browser_download_url": "https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-linux-arm64.zip",
       "name": "PhoneBoxAgent-0.9.9-linux-arm64.zip",
-      "url": "https://api.github.com/repos/ersinkoc/phonebox/releases/assets/752008190"
+      "url": "https://api.github.com/repos/paulgeorge92/phonebox/releases/assets/752008190"
     },
     {
-      "browser_download_url": "https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-linux-x64.zip",
+      "browser_download_url": "https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-linux-x64.zip",
       "name": "PhoneBoxAgent-0.9.9-linux-x64.zip",
-      "url": "https://api.github.com/repos/ersinkoc/phonebox/releases/assets/752008184"
+      "url": "https://api.github.com/repos/paulgeorge92/phonebox/releases/assets/752008184"
     },
     {
-      "browser_download_url": "https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-osx-arm64.zip",
+      "browser_download_url": "https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-osx-arm64.zip",
       "name": "PhoneBoxAgent-0.9.9-osx-arm64.zip",
-      "url": "https://api.github.com/repos/ersinkoc/phonebox/releases/assets/752008193"
+      "url": "https://api.github.com/repos/paulgeorge92/phonebox/releases/assets/752008193"
     },
     {
-      "browser_download_url": "https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-osx-x64.zip",
+      "browser_download_url": "https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-osx-x64.zip",
       "name": "PhoneBoxAgent-0.9.9-osx-x64.zip",
-      "url": "https://api.github.com/repos/ersinkoc/phonebox/releases/assets/752008208"
+      "url": "https://api.github.com/repos/paulgeorge92/phonebox/releases/assets/752008208"
     },
     {
-      "browser_download_url": "https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-win-x64.zip",
+      "browser_download_url": "https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-win-x64.zip",
       "name": "PhoneBoxAgent-0.9.9-win-x64.zip",
-      "url": "https://api.github.com/repos/ersinkoc/phonebox/releases/assets/752008218"
+      "url": "https://api.github.com/repos/paulgeorge92/phonebox/releases/assets/752008218"
     },
     {
-      "browser_download_url": "https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/SHA256SUMS-0.9.9.txt",
+      "browser_download_url": "https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/SHA256SUMS-0.9.9.txt",
       "name": "SHA256SUMS-0.9.9.txt",
-      "url": "https://api.github.com/repos/ersinkoc/phonebox/releases/assets/752008305"
+      "url": "https://api.github.com/repos/paulgeorge92/phonebox/releases/assets/752008305"
     }
   ],
-  "html_url": "https://github.com/ersinkoc/phonebox/releases/tag/v0.9.9",
+  "html_url": "https://github.com/paulgeorge92/phonebox/releases/tag/v0.9.9",
   "tag_name": "v0.9.9"
 }
 """;
@@ -128,7 +128,7 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
     public void TheAssetNameComesFromTheLinkNotTheCachedName()
     {
         Assert.Equal("PhoneBoxAgent-0.9.9-win-x64.zip",
-            UpdateService.AssetName("https://github.com/ersinkoc/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-win-x64.zip"));
+            UpdateService.AssetName("https://github.com/paulgeorge92/phonebox/releases/download/v0.9.9/PhoneBoxAgent-0.9.9-win-x64.zip"));
     }
 
     [Fact]

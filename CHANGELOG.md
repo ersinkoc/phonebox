@@ -69,6 +69,11 @@
   keys, so a shortcut bound to Ctrl+Alt+Numpad3 in Discord or a game is matched (#270,
   [adrianhermida](https://github.com/adrianhermida)).
 
+## 0.9.22 — 2026-11-20
+
+**Widgets**
+- TCP connection status: monitor configured IP addresses and TCP ports from the desktop, with a name, icon, online/offline state, latency and configurable polling interval.
+
 ## 0.9.21 — 2026-11-18
 
 Security and reliability fixes from an audit of the agent, the panel, the phone app and the installers, Big buttons
@@ -546,8 +551,8 @@ missing. This release also adds OLED burn-in protection and Pomodoro sequences w
   - **Compatibility**: existing widgets keep working as before, including a timer that is running during the update.
 
 **Setup**
-- One-step installers: `irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1 | iex` on Windows,
-  `curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | bash` on Linux and macOS. They
+- One-step installers: `irm https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.ps1 | iex` on Windows,
+  `curl -fsSL https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.sh | bash` on Linux and macOS. They
   download the latest release and check its checksum (and its build provenance with a signed-in GitHub CLI). They
   install adb and the optional helpers when missing, after asking, then the agent and start at login. They can also
   put the app on a phone over USB, with step-by-step help for USB debugging, and finally start PhoneBox. Warnings
@@ -742,18 +747,18 @@ recorded proof.
 
 ## 0.9.3 — 2026-11-11
 
-- Support Podman for the containers widget ([#12](https://github.com/ersinkoc/phonebox/pull/12)). Parse Podman's JSON
+- Support Podman for the containers widget ([#12](https://github.com/paulgeorge92/phonebox/pull/12)). Parse Podman's JSON
   array and NDJSON container/stats output (`Id`, `Names` arrays, object labels, numeric CPU/memory), hide pod infra
   containers, and fall back between `docker` and `podman` when one is unavailable. The first request no longer reports
   "Docker is not running" before the cache is filled, and start/stop/restart waits for an in-flight poll so the panel
   shows the new state.
 - Match Activity Monitor's "Memory Used" on macOS: app memory (anonymous minus purgeable) plus wired and compressed
-  pages ([#11](https://github.com/ersinkoc/phonebox/pull/11)).
+  pages ([#11](https://github.com/paulgeorge92/phonebox/pull/11)).
 - Hide CodexBar's own `claude` usage probe from the sessions widget, matching only its exact
   `CodexBar/ClaudeProbe` directory so real projects with similar names stay visible
-  ([#13](https://github.com/ersinkoc/phonebox/pull/13)).
+  ([#13](https://github.com/paulgeorge92/phonebox/pull/13)).
 - Swipe past the last page to wrap to the first, and past the first to wrap to the last
-  ([#14](https://github.com/ersinkoc/phonebox/pull/14)). The jump is instant, and drags that start on sliders,
+  ([#14](https://github.com/paulgeorge92/phonebox/pull/14)). The jump is instant, and drags that start on sliders,
   buttons, the volume bar or lists never flip pages.
 
 ## 0.9.2 — 2026-11-10
@@ -766,10 +771,10 @@ recorded proof.
 
 ## 0.9.1 — 2026-11-10
 
-- Fix stale Windows media cover art after switching YouTube/Chromium tracks ([#9](https://github.com/ersinkoc/phonebox/issues/9)).
+- Fix stale Windows media cover art after switching YouTube/Chromium tracks ([#9](https://github.com/paulgeorge92/phonebox/issues/9)).
   Refresh delayed thumbnails and media-property changes, periodically recheck missed updates, and keep the artwork ID
   stable when the image is unchanged. Clear artwork when the media session closes.
-- Recover the four affected default icons from known ANSI/UTF-8 double-encoded forms ([#10](https://github.com/ersinkoc/phonebox/issues/10)).
+- Recover the four affected default icons from known ANSI/UTF-8 double-encoded forms ([#10](https://github.com/paulgeorge92/phonebox/issues/10)).
   Repair only page/shortcut icon fields, preserve the original configuration in the normal backup, and escape saved
   icon values so ANSI-based editors cannot corrupt them. Other user text and commands remain unchanged.
 
@@ -803,7 +808,7 @@ recorded proof.
 ## 0.7.3 — 2026-11-10
 
 - Fix the launch crash on Android 9 and 10 (API 28–29), reported in
-  [issue #8](https://github.com/ersinkoc/phonebox/issues/8) by [0z-zy](https://github.com/0z-zy).
+  [issue #8](https://github.com/paulgeorge92/phonebox/issues/8) by [0z-zy](https://github.com/0z-zy).
   Full-screen mode now uses legacy immersive sticky flags on these versions; Android 11+ retains the window-insets path.
 - Run full Android debug lint in CI and classify `NewApi` findings as fatal, so unsupported framework calls block
   both CI and release APK builds. Before the fix, lint reproduced all five unguarded API-30 calls in `hideSystemUi`.
@@ -812,7 +817,7 @@ recorded proof.
 
 Native Antigravity quotas on Windows, Linux and macOS. Existing layouts and pairing settings are retained.
 
-- Add native Antigravity quota and plan monitoring, adapted from [PR #7](https://github.com/ersinkoc/phonebox/pull/7)
+- Add native Antigravity quota and plan monitoring, adapted from [PR #7](https://github.com/paulgeorge92/phonebox/pull/7)
   by [Biswajit9609](https://github.com/Biswajit9609). Support flat and nested measured quota fractions; skip unknown
   or invalid values instead of showing unused quota. Preserve measured zero/full usage.
 - Discover legacy Windows/Linux language-server names and extension-server ports with the matching CSRF token.
@@ -868,8 +873,8 @@ preserved. Add the new widgets or the CodexBar template from the editor when you
 - Opt-in macOS lock sync over ADB. Commands have deadlines, unsuccessful devices are retried, and setup and polling
   share a serialized state reconciler. Secure phone keyguards still require a manual unlock.
 
-Contributions adapted from [PR #1](https://github.com/ersinkoc/phonebox/pull/1) by
-[blx10](https://github.com/blx10) and [PR #2](https://github.com/ersinkoc/phonebox/pull/2) by
+Contributions adapted from [PR #1](https://github.com/paulgeorge92/phonebox/pull/1) by
+[blx10](https://github.com/blx10) and [PR #2](https://github.com/paulgeorge92/phonebox/pull/2) by
 [akpinarserdar](https://github.com/akpinarserdar), preserving the 0.6.9 fixes.
 
 Validated on Windows and an Apple M4 MacBook Air: 175 agent tests per platform, 29 browser tests, signed Android

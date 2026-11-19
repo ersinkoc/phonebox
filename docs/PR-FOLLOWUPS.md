@@ -5,16 +5,16 @@ it does not mean the original branch can be merged unchanged over newer fixes.
 
 ## Dependency updates
 
-- [PR #3](https://github.com/ersinkoc/phonebox/pull/3): merged Playwright 1.65.0 and its lockfile.
-- [PR #5](https://github.com/ersinkoc/phonebox/pull/5): merged Microsoft.NET.Test.Sdk 18.11.0 and
+- [PR #3](https://github.com/paulgeorge92/phonebox/pull/3): merged Playwright 1.65.0 and its lockfile.
+- [PR #5](https://github.com/paulgeorge92/phonebox/pull/5): merged Microsoft.NET.Test.Sdk 18.11.0 and
   xunit.runner.visualstudio 4.0.1. The xUnit framework remains 2.9.3.
-- [PR #6](https://github.com/ersinkoc/phonebox/pull/6): merged the pinned Actions updates after a real artifact
+- [PR #6](https://github.com/paulgeorge92/phonebox/pull/6): merged the pinned Actions updates after a real artifact
   round trip passed. The merged build and the actual Pages deployment passed on commit `9844a56`.
   The artifact contract now runs in the build workflow and, through the reusable build, the release gates.
 
 ## PR #7: native Antigravity quotas
 
-[PR #7](https://github.com/ersinkoc/phonebox/pull/7), head `c62b6a1`, is integrated into 0.7.2. Its native
+[PR #7](https://github.com/paulgeorge92/phonebox/pull/7), head `c62b6a1`, is integrated into 0.7.2. Its native
 quota/plan reader is supplemented with nested-fraction parsing, unknown-measurement rejection, legacy process/port
 discovery, candidate retries, deadlines and an older IDE model-quota fallback. Current release metadata and newer
 test dependencies are preserved. The merge retains these adaptations alongside the original contributor history.
@@ -39,7 +39,7 @@ The isolated test agent was stopped after validation; the installed agent and ph
 
 ## PR #1: remaining independent scope
 
-[PR #1](https://github.com/ersinkoc/phonebox/pull/1) supplied the Smart Stack and CodexBar work adapted into 0.7.0.
+[PR #1](https://github.com/paulgeorge92/phonebox/pull/1) supplied the Smart Stack and CodexBar work adapted into 0.7.0.
 Those widgets, the template and the metadata-only session sheet are already available. Keep the original PR open
 while the following potential additions are evaluated separately:
 
@@ -59,7 +59,7 @@ the current session parser, configuration handling or command execution with the
 
 ## PR #2: adapted macOS features
 
-[PR #2](https://github.com/ersinkoc/phonebox/pull/2) supplied the macOS media/artwork, volume capability, Codex token
+[PR #2](https://github.com/paulgeorge92/phonebox/pull/2) supplied the macOS media/artwork, volume capability, Codex token
 details and optional USB lock synchronization adapted into 0.7.0. The integration also adds bounded subprocesses,
 per-device retry and serialized lock reconciliation, and preserves secure phone keyguards.
 

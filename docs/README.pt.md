@@ -24,13 +24,13 @@ Windows, Linux e macOS. Sem root, sem conta PhoneBox e sem serviço na nuvem.</p
 
 <p align="center">
   <a href="https://ersinkoc.github.io/phonebox/"><b>Experimentar demonstração</b></a> ·
-  <a href="https://github.com/ersinkoc/phonebox/releases/latest"><b>Transferir</b></a> ·
+  <a href="https://github.com/paulgeorge92/phonebox/releases/latest"><b>Transferir</b></a> ·
   <a href="#início-rápido"><b>Início rápido</b></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml"><img src="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml/badge.svg" alt="Estado da compilação"></a>
-  <a href="https://github.com/ersinkoc/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Última versão"></a>
+  <a href="https://github.com/paulgeorge92/phonebox/actions/workflows/build.yml"><img src="https://github.com/paulgeorge92/phonebox/actions/workflows/build.yml/badge.svg" alt="Estado da compilação"></a>
+  <a href="https://github.com/paulgeorge92/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Última versão"></a>
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-.NET%2010-512bd4" alt="Windows, Linux, macOS; .NET 10">
   <img src="https://img.shields.io/badge/Android-5%2B-3ddc84" alt="Android 5+">
   <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="Licença MIT"></a>
@@ -58,13 +58,13 @@ O PhoneBox combina uma **aplicação Android** em ecrã inteiro com um pequeno *
 **Windows 10/11 x64** (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1 | iex
+irm https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.ps1 | iex
 ```
 
 **Linux ou macOS**:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.sh | bash
 ```
 
 As definições abrem em <http://127.0.0.1:8765>. Consulte o [guia de instalação](SETUP.md).
@@ -73,7 +73,7 @@ As definições abrem em <http://127.0.0.1:8765>. Consulte o [guia de instalaç�
 
 | USB | Apenas Wi-Fi |
 |---|---|
-| Ative **Opções de programador → Depuração USB** e ligue o cabo. | Instale o APK da [última versão](https://github.com/ersinkoc/phonebox/releases/latest), ative **Wi-Fi & Tailscale** e leia o código QR. |
+| Ative **Opções de programador → Depuração USB** e ligue o cabo. | Instale o APK da [última versão](https://github.com/paulgeorge92/phonebox/releases/latest), ative **Wi-Fi & Tailscale** e leia o código QR. |
 
 ### 3. Personalizar
 

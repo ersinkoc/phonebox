@@ -5,11 +5,11 @@
 .DESCRIPTION
   Run it from a normal PowerShell window (not "Run as administrator"):
 
-    irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1 | iex
+    irm https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.ps1 | iex
 
   With options:
 
-    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1))) -NoPhone
+    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.ps1))) -NoPhone
 
   What it does, asking first before anything outside the PhoneBox folders:
     1. Checks this PC (Windows 10/11, x64) and finds the latest PhoneBox release.
@@ -49,7 +49,7 @@ param(
 )
 
 $Repo = 'ersinkoc/phonebox'
-$Package = 'net.oxog.phonebox.deskpanel'
+$Package = 'net.zephracloud.phonebox.deskpanel'
 $SettingsUrl = 'http://127.0.0.1:8765'
 
 function Write-Step([string]$Text) { Write-Host ''; Write-Host "==> $Text" -ForegroundColor Cyan }

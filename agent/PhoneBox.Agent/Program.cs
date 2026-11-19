@@ -92,6 +92,7 @@ AddMonitor<BatteryMonitor>(builder.Services);
 AddMonitor<RuleEngine>(builder.Services);
 AddMonitor<ChargeGuard>(builder.Services);
 builder.Services.AddHostedService<Tray>();
+builder.Services.AddSingleton<TcpStatusMonitor>();
 
 var app = builder.Build();
 
@@ -273,7 +274,7 @@ app.MapPost("/api/pair/start", (ConfigStore cfg, PairingCodes codes) =>
     var hosts = Lan.Addresses();
     var fingerprint = Lan.Fingerprint(lanCert);
     var link = PairingCodes.Link(Environment.MachineName, fingerprint, lanCfg.Port, hosts, code);
-    var apk = $"https://github.com/ersinkoc/phonebox/releases/download/v{AppPaths.Version}/PhoneBox-{AppPaths.Version}.apk";
+    var apk = $"https://github.com/paulgeorge92/phonebox/releases/download/v{AppPaths.Version}/PhoneBox-{AppPaths.Version}.apk";
     return Results.Json(new
     {
         enabled = true,
@@ -597,31 +598,34 @@ app.MapPost("/api/discord/{action}", async (string action, string? channel, Disc
 // Battery levels of wireless devices (headphones, mice, keyboards…), for the Device batteries widget.
 app.MapGet("/api/batteries", (BatteryMonitor b) => Results.Json(new { devices = b.Snapshot() }));
 
-// Settings › Rules › Test: runs a rule's action once (the rule may be unsaved).
-app.MapPost("/api/rules/test", (RuleConfig rule, RuleEngine rules) =>
+// TCP connection status widget: probes execute on the computer, from targets owned by this widget.
+app.MapGet("/api/tcp/status", async (TcpStatusMonitor tcp, ConfigStore cfg, HttpRequest req, string page, string widget, CancellationToken ct) =>
 {
-    if (!RuleConfig.Actions.Contains(rule.Then)) return Results.BadRequest(new { error = "unknown action" });
-    if (string.IsNullOrWhiteSpace(rule.Id)) rule.Id = "test";
-    rules.Test(rule);
-    return Results.Ok(new { ok = true });
-});
+    var c = cfg.Get();
+    var key = $"{page}/{widget}";
+    var w = PanelWidgets.Find(c, req.Headers["X-PhoneBox-Device"].ToString(), key, "tcp-status");
+    if (w is null) return Results.NotFound();
 
-// The phone reports its battery (charge guard); the settings show the guard's state and can switch the power to test it.
-app.MapPost("/api/phone/battery", (int level, bool plugged, double? temp, string? source, string? usb) => { ChargeGuard.Report(level, plugged, temp, source, usb); return Results.Ok(); });
-app.MapGet("/api/charge", (ChargeGuard guard) => Results.Json(guard.Status()));
-app.MapPost("/api/charge/test", async (string action, ChargeGuard guard, ConfigStore cfg) =>
-{
-    if (action is not ("on" or "off")) return Results.BadRequest(new { error = "unknown action" });
-    return await guard.Switch(cfg.Get().Charge, action) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true });
+    var targets = TcpStatusMonitor.ParseConnections(w.Str("connections") ?? "");
+    var timeout = Math.Clamp(w.Int("timeout") ?? 1500, 250, 10000);
+    var interval = Math.Clamp(w.Int("interval") ?? 10, 1, 3600);
+    var tasks = targets.Select(async target =>
+    {
+        var status = await tcp.ProbeAsync(target.Host, target.Port, timeout, interval * 1000, ct);
+        return new
+        {
+            name = target.Name,
+            icon = target.Icon,
+            host = target.Host,
+            port = target.Port,
+            online = status.Online,
+            latencyMs = status.LatencyMs,
+            checkedAt = status.CheckedAt,
+            error = status.Error
+        };
+    });
+    return Results.Json(new { connections = await Task.WhenAll(tasks) });
 });
-
-// Pause all rules for a while (the phone's overview, the settings); minutes=0 resumes.
-app.MapPost("/api/rules/pause", (int? minutes, RuleEngine rules) =>
-{
-    rules.Pause(minutes ?? 60);
-    return Results.Ok(new { pausedUntil = rules.PausedUntil() });
-});
-
 app.MapGet("/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.RequestServices, ev)));
 
 // Live stream (server-sent events) for the phone: "state" every second, "event" as soon as one happens, "work" when it

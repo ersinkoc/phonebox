@@ -24,13 +24,13 @@ Windows, Linux και macOS. Χωρίς root, λογαριασμό PhoneBox ή �
 
 <p align="center">
   <a href="https://ersinkoc.github.io/phonebox/"><b>Δοκιμάστε το ζωντανό demo</b></a> ·
-  <a href="https://github.com/ersinkoc/phonebox/releases/latest"><b>Λήψη</b></a> ·
+  <a href="https://github.com/paulgeorge92/phonebox/releases/latest"><b>Λήψη</b></a> ·
   <a href="#γρήγορη-εκκίνηση"><b>Γρήγορη εκκίνηση</b></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml"><img src="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml/badge.svg" alt="Κατάσταση build"></a>
-  <a href="https://github.com/ersinkoc/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Τελευταία έκδοση"></a>
+  <a href="https://github.com/paulgeorge92/phonebox/actions/workflows/build.yml"><img src="https://github.com/paulgeorge92/phonebox/actions/workflows/build.yml/badge.svg" alt="Κατάσταση build"></a>
+  <a href="https://github.com/paulgeorge92/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Τελευταία έκδοση"></a>
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-.NET%2010-512bd4" alt="Windows, Linux, macOS; .NET 10">
   <img src="https://img.shields.io/badge/Android-5%2B-3ddc84" alt="Android 5+">
   <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="Άδεια MIT"></a>
@@ -65,13 +65,13 @@ Windows, Linux και macOS. Χωρίς root, λογαριασμό PhoneBox ή �
 **Windows 10/11 x64** — επικολλήστε σε ένα κανονικό παράθυρο PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1 | iex
+irm https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.ps1 | iex
 ```
 
 **Linux ή macOS** — εκτελέστε το με τον δικό σας χρήστη:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.sh | bash
 ```
 
 Το πρόγραμμα εγκατάστασης κατεβάζει την τελευταία έκδοση, ελέγχει το άθροισμα SHA-256, προτείνει τις εξαρτήσεις που λείπουν και την εκκίνηση κατά τη σύνδεση, και ανοίγει τις ρυθμίσεις στη διεύθυνση <http://127.0.0.1:8765>. Μπορεί επίσης να εγκαταστήσει την εφαρμογή Android μέσω USB.
@@ -88,7 +88,7 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
 
 | USB | Μόνο Wi-Fi |
 |---|---|
-| Ενεργοποιήστε τις **Επιλογές για προγραμματιστές → Εντοπισμός σφαλμάτων USB**, συνδέστε ένα καλώδιο δεδομένων και αποδεχτείτε το αίτημα εξουσιοδότησης στο τηλέφωνο. Αφήστε το πρόγραμμα εγκατάστασης να εγκαταστήσει την εφαρμογή ή χρησιμοποιήστε **Ρυθμίσεις → Γενικά → Εγκατάσταση της εφαρμογής τηλεφώνου**. | Εγκαταστήστε το APK από την [τελευταία έκδοση](https://github.com/ersinkoc/phonebox/releases/latest). Το Wi-Fi είναι απενεργοποιημένο από προεπιλογή: ανοίξτε τη σελίδα ρυθμίσεων (εικονίδιο στην περιοχή ειδοποιήσεων ή `http://127.0.0.1:8765`), ενεργοποιήστε το **Γενικά → Wi-Fi & Tailscale → Να συνδέεται το τηλέφωνο χωρίς καλώδιο USB**, πατήστε **Αποθήκευση** και μετά **Επανεκκίνηση για εφαρμογή** στο πάνω μέρος. Επιλέξτε **Σύζευξη τηλεφώνου μέσω Wi-Fi**, σαρώστε τον κωδικό QR σύζευξης και επιβεβαιώστε ότι ο κωδικός ελέγχου ταιριάζει. |
+| Ενεργοποιήστε τις **Επιλογές για προγραμματιστές → Εντοπισμός σφαλμάτων USB**, συνδέστε ένα καλώδιο δεδομένων και αποδεχτείτε το αίτημα εξουσιοδότησης στο τηλέφωνο. Αφήστε το πρόγραμμα εγκατάστασης να εγκαταστήσει την εφαρμογή ή χρησιμοποιήστε **Ρυθμίσεις → Γενικά → Εγκατάσταση της εφαρμογής τηλεφώνου**. | Εγκαταστήστε το APK από την [τελευταία έκδοση](https://github.com/paulgeorge92/phonebox/releases/latest). Το Wi-Fi είναι απενεργοποιημένο από προεπιλογή: ανοίξτε τη σελίδα ρυθμίσεων (εικονίδιο στην περιοχή ειδοποιήσεων ή `http://127.0.0.1:8765`), ενεργοποιήστε το **Γενικά → Wi-Fi & Tailscale → Να συνδέεται το τηλέφωνο χωρίς καλώδιο USB**, πατήστε **Αποθήκευση** και μετά **Επανεκκίνηση για εφαρμογή** στο πάνω μέρος. Επιλέξτε **Σύζευξη τηλεφώνου μέσω Wi-Fi**, σαρώστε τον κωδικό QR σύζευξης και επιβεβαιώστε ότι ο κωδικός ελέγχου ταιριάζει. |
 | Ξυπνά και ανοίγει το πάνελ κατά τη σύνδεση· υποστηρίζει ενημερώσεις της εφαρμογής μέσω adb. | Δεν χρειάζεται adb ή επιλογές για προγραμματιστές· εγκαθιστάτε χειροκίνητα τις ενημερώσεις της εφαρμογής, εκτός αν ρυθμίσετε αργότερα το USB. |
 
 Η εφαρμογή τηλεφώνου δεν διατίθεται σε κανένα κατάστημα εφαρμογών· προέρχεται μόνο από τις εκδόσεις αυτού του αποθετηρίου. Τρέχει σε Android 5.0
@@ -105,12 +105,12 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
 <details>
 <summary><b>Άλλοι τρόποι εγκατάστασης</b></summary>
 
-- **Χειροκίνητη λήψη:** αποσυμπιέστε τον πράκτορα για το σύστημά σας από τη [σελίδα εκδόσεων](https://github.com/ersinkoc/phonebox/releases/latest)
+- **Χειροκίνητη λήψη:** αποσυμπιέστε τον πράκτορα για το σύστημά σας από τη [σελίδα εκδόσεων](https://github.com/paulgeorge92/phonebox/releases/latest)
   και εκτελέστε τον. Εγκαταστήστε το APK στο τηλέφωνο. Τα αθροίσματα ελέγχου και η προέλευση του build συνοδεύουν τα αρχεία της έκδοσης.
 - **Scoop (Windows):**
 
   ```powershell
-  scoop bucket add phonebox https://github.com/ersinkoc/phonebox
+  scoop bucket add phonebox https://github.com/paulgeorge92/phonebox
   scoop install main/adb phonebox/phonebox
   ```
 
@@ -200,7 +200,7 @@ python tools/demo-server.py
   [ροή εργασίας έκδοσης](../.github/workflows/release.yml). Κάθε αίτημα υπογραφής απαιτεί χειροκίνητη έγκριση.
   Οι ειδοποιήσεις για το runtime και τις βιβλιοθήκες που περιλαμβάνονται βρίσκονται στο [THIRD-PARTY-NOTICES.txt](../agent/PhoneBox.Agent/THIRD-PARTY-NOTICES.txt).
 - **Εφαρμογή Android:** τα APK των εκδόσεων χρησιμοποιούν το δικό τους κλειδί υπογραφής του έργου, ανεξάρτητα από το SignPath.
-- **Ρόλοι ομάδας:** committer, reviewer και εγκρίνων υπογραφής: [ersinkoc](https://github.com/ersinkoc).
+- **Ρόλοι ομάδας:** committer, reviewer και εγκρίνων υπογραφής: [ersinkoc](https://github.com/paulgeorge92).
   Τα pull requests από άλλους συνεισφέροντες ελέγχονται πριν από τη συγχώνευση.
 - **Απόρρητο:** δείτε την [πολιτική απορρήτου](../PRIVACY.md).
 
@@ -208,7 +208,7 @@ python tools/demo-server.py
 
 Άνθρωποι που δοκίμασαν το PhoneBox στο δικό τους υλικό:
 
-- [anandyakshit](https://github.com/anandyakshit): υποστήριξη Android 7, σε τηλέφωνο με Android 7.1.1 ([#73](https://github.com/ersinkoc/phonebox/issues/73)).
+- [anandyakshit](https://github.com/anandyakshit): υποστήριξη Android 7, σε τηλέφωνο με Android 7.1.1 ([#73](https://github.com/paulgeorge92/phonebox/issues/73)).
 
 ## Χορηγός
 

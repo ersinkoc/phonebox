@@ -24,13 +24,13 @@ Windows, Linux và macOS. Không cần root, tài khoản PhoneBox hay dịch v�
 
 <p align="center">
   <a href="https://ersinkoc.github.io/phonebox/"><b>Dùng thử bản demo trực tiếp</b></a> ·
-  <a href="https://github.com/ersinkoc/phonebox/releases/latest"><b>Tải xuống</b></a> ·
+  <a href="https://github.com/paulgeorge92/phonebox/releases/latest"><b>Tải xuống</b></a> ·
   <a href="#bắt-đầu-nhanh"><b>Bắt đầu nhanh</b></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml"><img src="https://github.com/ersinkoc/phonebox/actions/workflows/build.yml/badge.svg" alt="Trạng thái bản dựng"></a>
-  <a href="https://github.com/ersinkoc/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Bản phát hành mới nhất"></a>
+  <a href="https://github.com/paulgeorge92/phonebox/actions/workflows/build.yml"><img src="https://github.com/paulgeorge92/phonebox/actions/workflows/build.yml/badge.svg" alt="Trạng thái bản dựng"></a>
+  <a href="https://github.com/paulgeorge92/phonebox/releases/latest"><img src="https://img.shields.io/github/v/release/ersinkoc/phonebox?label=release" alt="Bản phát hành mới nhất"></a>
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-.NET%2010-512bd4" alt="Windows, Linux, macOS; .NET 10">
   <img src="https://img.shields.io/badge/Android-7%2B-3ddc84" alt="Android 7+">
   <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="Giấy phép MIT"></a>
@@ -65,13 +65,13 @@ Bạn cần một chiếc **điện thoại Android 7+** và một máy tính đ
 **Windows 10/11 x64** — dán vào một cửa sổ PowerShell thông thường:
 
 ```powershell
-irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1 | iex
+irm https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.ps1 | iex
 ```
 
 **Linux hoặc macOS** — chạy bằng tài khoản người dùng của chính bạn:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/paulgeorge92/phonebox/main/setup.sh | bash
 ```
 
 Trình cài đặt sẽ tải bản phát hành mới nhất, kiểm tra mã băm SHA-256 của nó, đề xuất các thành phần phụ thuộc còn thiếu và tùy chọn khởi động cùng lúc đăng nhập, rồi mở trang cài đặt tại <http://127.0.0.1:8765>. Nó cũng có thể cài ứng dụng Android qua USB.
@@ -88,7 +88,7 @@ Hãy đọc các script trước khi chạy chúng: [Windows](../setup.ps1) · [
 
 | USB | Chỉ Wi-Fi |
 |---|---|
-| Bật **Tùy chọn nhà phát triển → Gỡ lỗi USB**, cắm cáp dữ liệu và chấp nhận lời nhắc cấp quyền trên điện thoại. Để trình cài đặt cài ứng dụng, hoặc dùng **Cài đặt → Chung → Cài ứng dụng điện thoại**. | Cài APK từ [bản phát hành mới nhất](https://github.com/ersinkoc/phonebox/releases/latest). Bật **Cài đặt → Chung → Wi-Fi & Tailscale**, khởi động lại agent khi được yêu cầu, rồi chọn **Ghép nối điện thoại qua Wi-Fi**. Quét mã QR ghép nối và xác nhận mã kiểm tra trùng khớp. |
+| Bật **Tùy chọn nhà phát triển → Gỡ lỗi USB**, cắm cáp dữ liệu và chấp nhận lời nhắc cấp quyền trên điện thoại. Để trình cài đặt cài ứng dụng, hoặc dùng **Cài đặt → Chung → Cài ứng dụng điện thoại**. | Cài APK từ [bản phát hành mới nhất](https://github.com/paulgeorge92/phonebox/releases/latest). Bật **Cài đặt → Chung → Wi-Fi & Tailscale**, khởi động lại agent khi được yêu cầu, rồi chọn **Ghép nối điện thoại qua Wi-Fi**. Quét mã QR ghép nối và xác nhận mã kiểm tra trùng khớp. |
 | Đánh thức và mở bảng điều khiển khi kết nối; hỗ trợ cập nhật ứng dụng qua adb. | Không cần adb hay tùy chọn nhà phát triển; cài bản cập nhật ứng dụng thủ công trừ khi bạn cấu hình USB về sau. |
 
 Để tự động dự phòng USB/Wi-Fi, hãy bật Wi-Fi và kết nối điện thoại qua USB một lần.
@@ -102,12 +102,12 @@ Vuốt, chạm vào các chấm chỉ trang hoặc dùng phím âm lượng củ
 <details>
 <summary><b>Các cách cài đặt khác</b></summary>
 
-- **Tải thủ công:** giải nén agent dành cho hệ điều hành của bạn từ [trang phát hành](https://github.com/ersinkoc/phonebox/releases/latest)
+- **Tải thủ công:** giải nén agent dành cho hệ điều hành của bạn từ [trang phát hành](https://github.com/paulgeorge92/phonebox/releases/latest)
   và chạy nó. Cài APK lên điện thoại. Mã kiểm tra và thông tin nguồn gốc bản dựng đi kèm với các tệp của bản phát hành.
 - **Scoop (Windows):**
 
   ```powershell
-  scoop bucket add phonebox https://github.com/ersinkoc/phonebox
+  scoop bucket add phonebox https://github.com/paulgeorge92/phonebox
   scoop install main/adb phonebox/phonebox
   ```
 
@@ -197,7 +197,7 @@ Ký mã miễn phí do [SignPath.io](https://about.signpath.io/) cung cấp, ch�
   [quy trình phát hành](../.github/workflows/release.yml). Mọi yêu cầu ký đều cần phê duyệt thủ công.
   Thông báo về runtime và thư viện đi kèm nằm trong [THIRD-PARTY-NOTICES.txt](../agent/PhoneBox.Agent/THIRD-PARTY-NOTICES.txt).
 - **Ứng dụng Android:** các APK bản phát hành dùng khóa ký riêng của dự án, độc lập với SignPath.
-- **Vai trò trong nhóm:** người commit, người review và người phê duyệt ký số: [ersinkoc](https://github.com/ersinkoc).
+- **Vai trò trong nhóm:** người commit, người review và người phê duyệt ký số: [ersinkoc](https://github.com/paulgeorge92).
   Pull request từ các cộng tác viên khác sẽ được review trước khi hợp nhất.
 - **Quyền riêng tư:** xem [chính sách quyền riêng tư](../PRIVACY.md).
 
@@ -205,7 +205,7 @@ Ký mã miễn phí do [SignPath.io](https://about.signpath.io/) cung cấp, ch�
 
 Những người đã thử nghiệm PhoneBox trên phần cứng của chính họ:
 
-- [anandyakshit](https://github.com/anandyakshit): hỗ trợ Android 7, trên một chiếc điện thoại Android 7.1.1 ([#73](https://github.com/ersinkoc/phonebox/issues/73)).
+- [anandyakshit](https://github.com/anandyakshit): hỗ trợ Android 7, trên một chiếc điện thoại Android 7.1.1 ([#73](https://github.com/paulgeorge92/phonebox/issues/73)).
 
 ## Nhà tài trợ
 

@@ -19,5 +19,5 @@ if ($Purge) {
 }
 if ($Apk) {
     $adb = (Get-Command adb -ErrorAction SilentlyContinue).Source
-    if ($adb) { & $adb uninstall net.oxog.phonebox.deskpanel } else { Write-Warning 'adb not found; remove the PhoneBox app on the phone manually.' }
+    if ($adb) { & $adb uninstall net.zephracloud.phonebox.deskpanel } else { Write-Warning 'adb not found; remove the PhoneBox app on the phone manually.' }
 }

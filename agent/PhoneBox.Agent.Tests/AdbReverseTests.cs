@@ -214,7 +214,7 @@ public sealed class AdbReverseTests : IDisposable
         const string awake = "shell settings put global stay_on_while_plugged_in 7";
         var calls = await RunUntil(fake, new { adbPath = fake, display = new { homeScreen = true, keepAwake = true, followComputerLock = false } }, null,
             c => c.Contains("-s FAKE2 " + awake) && c.Contains("-s FAKE1 " + awake));
-        Assert.Contains("-s FAKE2 shell cmd package set-home-activity net.oxog.phonebox.deskpanel/.HomeAlias", calls);
+        Assert.Contains("-s FAKE2 shell cmd package set-home-activity net.zephracloud.phonebox.deskpanel/.HomeAlias", calls);
         Assert.Contains("-s FAKE1 " + awake, calls);
         Assert.Contains("-s FAKE2 " + awake, calls);
     }

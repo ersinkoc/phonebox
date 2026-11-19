@@ -115,7 +115,7 @@ print('Success')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(calls, [
             ['-s', 'fixture-device', 'install', '-r', apk],
-            ['-s', 'fixture-device', 'shell', 'am', 'start', '-n', 'net.oxog.phonebox.deskpanel/.MainActivity'],
+            ['-s', 'fixture-device', 'shell', 'am', 'start', '-n', 'net.zephracloud.phonebox.deskpanel/.MainActivity'],
         ], result.stdout + result.stderr)
 
     def test_no_serial_installs_and_opens_the_phone_app(self):
@@ -123,7 +123,7 @@ print('Success')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(calls, [
             ['install', '-r', apk],
-            ['shell', 'am', 'start', '-n', 'net.oxog.phonebox.deskpanel/.MainActivity'],
+            ['shell', 'am', 'start', '-n', 'net.zephracloud.phonebox.deskpanel/.MainActivity'],
         ], result.stdout + result.stderr)
 
     def test_newer_android_sources_are_built_before_install(self):

@@ -14,7 +14,7 @@ with tempfile.TemporaryDirectory() as tmp:
     directory = pathlib.Path(tmp, 'manifests/e/ersinkoc/PhoneBox', version)
     locale = (directory / 'ersinkoc.PhoneBox.locale.en-US.yaml').read_text(encoding='utf-8')
     installer = (directory / 'ersinkoc.PhoneBox.installer.yaml').read_text(encoding='utf-8')
-    notes = f'ReleaseNotesUrl: https://github.com/ersinkoc/phonebox/releases/tag/v{version}'
+    notes = f'ReleaseNotesUrl: https://github.com/paulgeorge92/phonebox/releases/tag/v{version}'
     assert notes in locale.splitlines(), 'WinGet default locale must carry the release notes URL'
     assert notes not in installer.splitlines(), 'WinGet installer has no release notes field'
     print('PASS: WinGet release notes live in the default locale')

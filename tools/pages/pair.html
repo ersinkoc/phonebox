@@ -48,12 +48,12 @@ code { font-size: 13px; }
   <div class="card">
     <h2>No PhoneBox app yet?</h2>
     <p class="muted">Install it first (Android 5.0 or later), then scan the QR code again.</p>
-    <a class="btn secondary" href="https://github.com/ersinkoc/phonebox/releases/latest">Download the app</a>
+    <a class="btn secondary" href="https://github.com/paulgeorge92/phonebox/releases/latest">Download the app</a>
   </div>
 
   <p class="muted">This page runs only in your browser. The pairing details are in the part of the link after <code>#</code>,
     which browsers never send to a server, and the page removes them from your history.
-    <a href="https://github.com/ersinkoc/phonebox/blob/main/PRIVACY.md" style="color:var(--accent)">Privacy policy</a></p>
+    <a href="https://github.com/paulgeorge92/phonebox/blob/main/PRIVACY.md" style="color:var(--accent)">Privacy policy</a></p>
 </div>
 <script>
 (() => {
@@ -85,9 +85,9 @@ code { font-size: 13px; }
   // rebuilt from the checked fields only, so nothing else from the link reaches the intent syntax
   const query = ['v', 'pc', 'fp', 'port', 'h', 'c'].filter((k) => p.has(k)).map((k) => k + '=' + encodeURIComponent(p.get(k))).join('&');
   const android = /Android/i.test(navigator.userAgent);
-  const fallback = encodeURIComponent('https://github.com/ersinkoc/phonebox/releases/latest');
+  const fallback = encodeURIComponent('https://github.com/paulgeorge92/phonebox/releases/latest');
   document.getElementById('open').href = android
-    ? `intent://pair?${query}#Intent;scheme=phonebox;package=net.oxog.phonebox.deskpanel;S.browser_fallback_url=${fallback};end`
+    ? `intent://pair?${query}#Intent;scheme=phonebox;package=net.zephracloud.phonebox.deskpanel;S.browser_fallback_url=${fallback};end`
     : `phonebox://pair?${query}`;
   document.getElementById('plain').href = `phonebox://pair?${query}`;
   document.getElementById('plainWrap').hidden = !android;

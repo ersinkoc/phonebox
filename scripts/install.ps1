@@ -108,7 +108,7 @@ if ($Apk) {
     $target = @('-s', $Serial)
     $out = Install-PhoneBoxApk -Adb $adb -ApkPath $apkFile.FullName -Serial $Serial
     $out | Select-Object -Last 1
-    & $adb @target shell am start -n net.oxog.phonebox.deskpanel/.MainActivity | Out-Null
+    & $adb @target shell am start -n net.zephracloud.phonebox.deskpanel/.MainActivity | Out-Null
 }
 
 # the agent could not be started (see above): the phone step ran, the install still failed

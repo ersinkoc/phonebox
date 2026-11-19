@@ -110,5 +110,5 @@ Third-party services have their own privacy policies; PhoneBox does not control 
 
 ## Contact
 
-Questions or concerns: open an issue at <https://github.com/ersinkoc/phonebox/issues>, or for anything sensitive see
+Questions or concerns: open an issue at <https://github.com/paulgeorge92/phonebox/issues>, or for anything sensitive see
 [SECURITY.md](SECURITY.md).

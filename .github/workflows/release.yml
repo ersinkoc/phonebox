@@ -178,7 +178,7 @@ jobs:
           cat >> notes.md <<'EOF'
 
           ---
-          [Code signing policy](https://github.com/ersinkoc/phonebox#code-signing-policy) · [Privacy policy](https://github.com/ersinkoc/phonebox/blob/main/PRIVACY.md)
+          [Code signing policy](https://github.com/paulgeorge92/phonebox#code-signing-policy) · [Privacy policy](https://github.com/paulgeorge92/phonebox/blob/main/PRIVACY.md)
           EOF
       - name: Create the release
         env:
@@ -198,7 +198,7 @@ jobs:
           p = 'bucket/phonebox.json'
           m = json.load(open(p, encoding='utf-8'))
           m['version'] = v
-          m['architecture']['64bit']['url'] = f'https://github.com/ersinkoc/phonebox/releases/download/v{v}/PhoneBoxAgent-{v}-win-x64.zip'
+          m['architecture']['64bit']['url'] = f'https://github.com/paulgeorge92/phonebox/releases/download/v{v}/PhoneBoxAgent-{v}-win-x64.zip'
           m['architecture']['64bit']['hash'] = sha
           # the agent is self-contained since 0.9.7: no .NET runtime to suggest
           m.get('suggest', {}).pop('.NET Desktop Runtime 10', None)
