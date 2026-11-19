@@ -8,6 +8,9 @@
   [Vasilispapg](https://github.com/Vasilispapg)).
 
 **Widgets**
+- CPU and GPU temperature on Macs with Apple silicon (macOS 14 and later), read from the SMC without root or extra
+  tools: the CPU temp metric and the GPU widget's temperature now work on macOS. The keys follow macmon's rule (CPU:
+  Tp/Te/Ts, GPU: Tg). Intel Macs and older macOS versions still show no temperature.
 - Trackpad: move, click and scroll the computer's mouse from the phone, with tap to click, two fingers to right-click
   and scroll, hold to drag and an optional edge scroll bar. Mouse control is off until you turn on **Allow controlling
   the mouse from the phone** in the widget's options; Windows, and Linux with `xdotool` under X11 (#250, #251,
