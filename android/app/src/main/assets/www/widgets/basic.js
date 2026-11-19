@@ -968,6 +968,8 @@ W.pomodoro = {
       const tomatoes = st.count ? '🍅'.repeat(Math.min(st.count, 6)) + (st.count > 6 ? ` ×${st.count}` : '') : t('w.noSessionsToday');
       count.replaceChildren(rich(custom.bad ? `Sequence not understood: "${custom.bad}"`
         : rounds > 1 ? `Round ${(st.round || 0) + 1}/${rounds} · ${tomatoes}` : tomatoes));
+      // the tomato icons are decorative (aria-hidden), so say the count in words for screen readers
+      if (st.count && !custom.bad) count.append(h('span', 'sr-only', ' ' + t('w.a.sessionsToday', { n: st.count })));
       play.replaceChildren(icon(st.endsAt ? 'pause' : 'play'));
       labelled(play, t(st.endsAt ? 'w.a.pause' : 'w.a.start'));
     };

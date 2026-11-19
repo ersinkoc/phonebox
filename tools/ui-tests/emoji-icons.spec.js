@@ -7,10 +7,11 @@ test('rich() swaps a lone mapped emoji and leaves emoji sequences as typed', asy
   const out = await page.evaluate(async () => {
     const { rich } = await import('/panel/main.js');
     const probe = (text) => { const d = document.createElement('div'); d.append(rich(text)); return { icons: d.querySelectorAll('svg').length, text: d.textContent }; };
-    return { bell: probe('\u{1F514} 3'), skin: probe('\u{1F44B}\u{1F3FD}'), family: probe('\u{1F468}\u200D\u{1F469}\u200D\u{1F467}'), unknown: probe('\u{1F984} x') };
+    return { bell: probe('\u{1F514} 3'), skin: probe('\u{1F44B}\u{1F3FD}'), family: probe('\u{1F468}\u200D\u{1F469}\u200D\u{1F467}'), unknown: probe('\u{1F984} x'), vs: probe('\u{1F3C3}\uFE0F\u200D\u{1F4BB}') };
   });
   expect(out.bell).toEqual({ icons: 1, text: ' 3' });
   expect(out.skin).toEqual({ icons: 0, text: '\u{1F44B}\u{1F3FD}' });
   expect(out.family).toEqual({ icons: 0, text: '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}' });
+  expect(out.vs).toEqual({ icons: 0, text: '\u{1F3C3}\uFE0F\u200D\u{1F4BB}' }); // a variation selector before a ZWJ is not given back
   expect(out.unknown).toEqual({ icons: 0, text: '\u{1F984} x' });
 });
