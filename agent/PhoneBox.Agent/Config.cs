@@ -109,6 +109,12 @@ public sealed class WeatherConfig
     /// </summary>
     [JsonConverter(typeof(WeatherUnitJsonConverter))]
     public string Unit { get; set; } = "celsius";
+    /// <summary>
+    /// The Open-Meteo forecast model the phone asks for ("gfs_seamless", "ecmwf_ifs025"…), or "" for Open-Meteo's own
+    /// best match. Only the models in <see cref="WeatherModelJsonConverter.Models"/> reach the phone.
+    /// </summary>
+    [JsonConverter(typeof(WeatherModelJsonConverter))]
+    public string Model { get; set; } = "";
 }
 
 public sealed class PingConfig
@@ -521,6 +527,7 @@ public sealed partial class ConfigStore(string path)
     {
         c.Weather ??= new();
         c.Weather.Unit = WeatherUnitJsonConverter.Normalize(c.Weather.Unit);
+        c.Weather.Model = WeatherModelJsonConverter.Normalize(c.Weather.Model);
         c.CodexBar ??= new();
         c.CodexBar.Providers = (c.CodexBar.Providers ?? []).Where(p => p is "claude" or "codex" or "antigravity").Distinct().ToArray();
         c.CodexBar.PageSize = Math.Clamp(c.CodexBar.PageSize, 0, 6);
@@ -885,6 +892,28 @@ internal sealed class WeatherUnitJsonConverter : JsonConverter<string>
         if (reader.TokenType == JsonTokenType.String) return Normalize(reader.GetString());
         reader.Skip();
         return "celsius";
+    }
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(Normalize(value));
+}
+
+/// <summary>
+/// weather.model: one of the Open-Meteo models the settings offer, anything else "" (Open-Meteo's best match). The value
+/// goes into the phone's forecast URL, so only known names pass; like the unit, a non-string token is skipped.
+/// </summary>
+internal sealed class WeatherModelJsonConverter : JsonConverter<string>
+{
+    public static readonly string[] Models =
+        ["gfs_seamless", "ecmwf_ifs025", "icon_seamless", "ukmo_seamless", "gem_seamless", "jma_seamless", "meteofrance_seamless", "cma_grapes_global"];
+
+    public static string Normalize(string? value) =>
+        Models.FirstOrDefault(m => string.Equals(m, value?.Trim(), StringComparison.OrdinalIgnoreCase)) ?? "";
+
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String) return Normalize(reader.GetString());
+        reader.Skip();
+        return "";
     }
 
     public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(Normalize(value));

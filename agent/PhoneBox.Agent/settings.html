@@ -545,7 +545,20 @@ nav a.on::before { color: var(--accent); }
           </div>
           <div class="field"><label for="weatherUnit" data-i18n="s.weather.unit">Temperature unit</label>
             <select id="weatherUnit" data-bind="weather.unit"><option value="celsius" data-i18n="s.weather.unitC">Celsius (°C)</option><option value="fahrenheit" data-i18n="s.weather.unitF">Fahrenheit (°F)</option></select></div>
+          <div class="field"><label for="weatherModel" data-i18n="s.weather.model">Forecast model</label>
+            <select id="weatherModel" data-bind="weather.model">
+              <option value="" data-i18n="s.weather.modelAuto">Automatic (Open-Meteo best match)</option>
+              <option value="gfs_seamless">GFS (NOAA)</option>
+              <option value="ecmwf_ifs025">ECMWF IFS</option>
+              <option value="icon_seamless">ICON (DWD)</option>
+              <option value="ukmo_seamless">UKMO (Met Office)</option>
+              <option value="gem_seamless">GEM (ECCC)</option>
+              <option value="jma_seamless">JMA</option>
+              <option value="meteofrance_seamless">Météo-France</option>
+              <option value="cma_grapes_global">CMA GRAPES</option>
+            </select></div>
         </div>
+        <p class="hint" style="margin:8px 0 0" data-i18n="s.weather.modelHint">Apps and models disagree by a degree or two. Only Automatic and GFS supply every value: with another model the UV index, and with some also the chance of rain, may be missing.</p>
         <p class="hint" style="margin:8px 0 0" data-i18n="s.weather.openMeteoHint">The phone asks Open-Meteo for this location only while a page has a widget that uses the weather (weather, forecast, sun &amp; moon, a clock with its weather line, Custom HTML).</p>
       </div>
 
@@ -3182,7 +3195,7 @@ async function loadInfo() {
 // The form reads every section it binds and renders, so a config without one — an older export, or a
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
-  cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.photos ??= { folder: '', subfolders: true }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false };
+  cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { folder: '', subfolders: true }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true,
     showSeconds: true, vibrate: true, volumeKeys: true, artTint: true, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;

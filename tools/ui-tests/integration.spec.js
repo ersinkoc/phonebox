@@ -458,6 +458,37 @@ test('the weather shows Fahrenheit when the settings say so', async ({ page }) =
   await expect(page.locator('.fc-v').first()).toHaveText('32° -5°');
 });
 
+// weather.model pins the Open-Meteo model: the forecast URL names it, a model change fetches anew instead of keeping the
+// cached forecast for 14 minutes, and Automatic ("") sends no models parameter at all.
+test('the weather asks Open-Meteo for the model the settings pick', async ({ page }) => {
+  const now = new Date();
+  const hour = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:00`;
+  const urls = [];
+  await page.route('https://api.open-meteo.com/**', (route) => {
+    const model = new URL(route.request().url()).searchParams.get('models');
+    urls.push(model);
+    const t = model === 'gfs_seamless' ? 19 : 21;
+    route.fulfill({ json: {
+      current: { time: hour, temperature_2m: t, apparent_temperature: t, weather_code: 3, is_day: 0 },
+      daily: { time: [hour.slice(0, 10)], weather_code: [3], temperature_2m_max: [22], temperature_2m_min: [17], precipitation_probability_max: [0] },
+      hourly: { time: [hour], weather_code: [3], temperature_2m: [t], precipitation_probability: [0], is_day: [0] },
+    } });
+  });
+  const widgets = [{ ...widget('clock', { weather: true }), h: 2 }];
+  await layout(page, widgets, { weather: { city: 'Alpha', lat: 10, lon: 10, model: 'gfs_seamless' } });
+  await expect(page.locator('.wx-temp')).toHaveText('19°');
+  expect(urls).toEqual(['gfs_seamless']);
+
+  await page.evaluate(async () => {
+    const c = JSON.parse(localStorage.getItem('pb-demo-config'));
+    localStorage.setItem('pb-demo-config', JSON.stringify({ ...c, weather: { ...c.weather, model: '' } }));
+    const m = await import('./main.js');
+    await m.loadConfig();
+  });
+  await expect(page.locator('.wx-temp')).toHaveText('21°');
+  expect(urls).toEqual(['gfs_seamless', null]);
+});
+
 // PRIVACY.md: the phone sends the weather location to Open-Meteo only while a page has a widget that uses the weather.
 test('the weather is fetched only while a widget needs it', async ({ page }) => {
   const asked = [];

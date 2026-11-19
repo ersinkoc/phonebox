@@ -54,7 +54,7 @@ export const FALLBACK_PAGES = [{
 }];
 
 export const DEFAULT_CFG = {
-  weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius' },
+  weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
   display: { showSeconds: true, idleReturnSec: 90, vibrate: true, volumeKeys: true },
   pages: FALLBACK_PAGES,
@@ -566,7 +566,10 @@ export const wxDeg = (c) => Math.round(cfg.weather?.unit === 'fahrenheit' ? c * 
 let weatherRetry = 0;
 let weatherFor = ''; // the location the forecast in D.weather belongs to
 let unitShown = ''; // the unit the widgets last drew: a settings change redraws the cached forecast, no new request
-const weatherKey = () => { const { lat, lon } = cfg.weather || DEFAULT_CFG.weather; return `v3:${lat},${lon}`; };
+// the model is part of the key: another model is another forecast, fetched now rather than in up to 14 minutes
+const weatherKey = () => { const { lat, lon, model } = cfg.weather || DEFAULT_CFG.weather; return `v3:${lat},${lon}${model ? ':' + model : ''}`; };
+// the agent passes only known model names; this guard keeps a hand-edited cached config out of the URL as well
+const wxModel = () => (/^[a-z0-9_]{1,40}$/.test(cfg.weather?.model || '') ? cfg.weather.model : '');
 export async function loadWeather(force = false) {
   const { lat, lon, unit } = cfg.weather || DEFAULT_CFG.weather;
   const key = weatherKey();
@@ -586,7 +589,7 @@ export async function loadWeather(force = false) {
       '&current=temperature_2m,apparent_temperature,weather_code,is_day' +
       '&hourly=temperature_2m,weather_code,precipitation_probability,is_day' +
       '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,daylight_duration,uv_index_max' +
-      '&timezone=auto&forecast_days=7';
+      '&timezone=auto&forecast_days=7' + (wxModel() ? '&models=' + wxModel() : '');
     const ctl = new AbortController();
     setTimeout(() => ctl.abort(), 8000);
     const r = await safeFetch(url, { signal: ctl.signal });

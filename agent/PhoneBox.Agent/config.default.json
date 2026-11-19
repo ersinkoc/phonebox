@@ -8,7 +8,7 @@
   "adbPath": null,
 
   // Weather location (Open-Meteo, no API key required) and the temperature unit: "celsius" or "fahrenheit"
-  "weather": { "city": "Tallinn", "lat": 59.437, "lon": 24.745, "unit": "celsius" },
+  "weather": { "city": "Tallinn", "lat": 59.437, "lon": 24.745, "unit": "celsius", "model": "" },
 
   // Claude Code chats in the sessions widget. Both are off, because they come from your prompts: "shareSessionTitles" shows each
   // chat's title on the phone (without it only the folder name is shown and no title is read); "shareConversation" lets the phone
