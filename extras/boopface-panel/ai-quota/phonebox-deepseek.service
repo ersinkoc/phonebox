@@ -1,0 +1,7 @@
+[Unit]
+Description=Push the DeepSeek balance to the PhoneBox panel
+After=phonebox.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.local/opt/phonebox/deepseek-balance.py

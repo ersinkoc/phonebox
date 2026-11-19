@@ -413,9 +413,6 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         return null;
     }
 
-    private static bool HasAllowedArtExtension(string path) =>
-        Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif";
-
     /// <summary>
     /// The body of a cover art URL, or null when the server refuses it or it is larger than <see cref="MaxArtBytes"/>.
     /// One deadline covers the request and every body read: HttpClient.Timeout ends at the headers, and a server that
@@ -445,9 +442,11 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
             if (url.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
             {
                 if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.IsUnc) return null;
+                // Chromium publishes media artwork as an extension-less temp file (/tmp/.org.chromium.Chromium.XXXXXX),
+                // so an extension allowlist here drops every browser thumbnail. SniffImageMime below is the real check.
                 var path = Uri.UnescapeDataString(uri.AbsolutePath);
                 if (!File.Exists(path) && uri.IsFile) path = uri.LocalPath;
-                if (!HasAllowedArtExtension(path) || !File.Exists(path)) return null;
+                if (!File.Exists(path)) return null;
                 var info = new FileInfo(path);
                 if (info.Length is <= 0 or > MaxArtBytes) return null;
                 var bytes = await File.ReadAllBytesAsync(path);

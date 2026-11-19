@@ -1,0 +1,12 @@
+{
+  "skin": 902,
+  "color": "#2dd4bf",
+  "size": 0.86,
+  "autoSleep": 45000,
+  "wakeOn": "activity",
+  "motion": "auto",
+  "pointerFollow": false,
+  "roundness": null,
+  "pressSqueeze": true,
+  "antennaDrag": false
+}
