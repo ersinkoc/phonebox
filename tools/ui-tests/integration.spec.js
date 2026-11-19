@@ -661,3 +661,29 @@ test('a photo frame on a hidden Smart Stack card fetches nothing', async ({ page
   await page.getByRole('button', { name: 'photos', exact: true }).click();
   await expect(page.locator('.stack-item.active .w-photos .pf-img.on')).toHaveCount(1);
 });
+
+// #258: the Trackpad widget used the native bridge without importing it, so with mouse control on it threw while
+// building in the phone app; the catalogue test builds it with control off and never got that far.
+test('the Trackpad widget sends a tap through the phone bridge when mouse control is on', async ({ browser, baseURL }) => {
+  const ctx = await browser.newContext({ baseURL, viewport: { width: 780, height: 360 } });
+  await ctx.addInitScript(() => {
+    window.__phoneboxKey = 'pb-key-test';
+    window.__tp = [];
+    window.Android = {
+      battery: () => '{}', version: () => 'test', haptic() {}, buzz() {}, setBrightness() {}, setVolumeKeys() {}, is24Hour: () => true,
+      transport: () => 'usb', pcs: () => '[]',
+      trackpad: (key, type) => { if (key === 'pb-key-test') window.__tp.push(type); },
+    };
+  });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await layout(page, [widget('trackpad', { control: true, scrollBar: 'none' })]);
+
+  const pad = page.locator('.deck-trackpad');
+  await expect(pad).not.toHaveClass(/is-disabled/);
+  await pad.click();
+  await expect.poll(() => page.evaluate(() => window.__tp)).toContain('click');
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
