@@ -486,6 +486,8 @@ object State(IServiceProvider sp, long? ev)
         rules = sp.GetRequiredService<RuleEngine>().Active(),
         rulesPaused = sp.GetRequiredService<RuleEngine>().PausedUntil(),
         privacy = sp.GetRequiredService<PrivacyMonitor>().Snapshot(),
+        // the phone's own battery, which the panel reports every 30 s to /api/phone/battery
+        phone = ChargeGuard.LastReport is { } b ? new { level = b.Level, plugged = b.Plugged } : null,
         obs = sp.GetRequiredService<ObsMonitor>().Snapshot() is { Connected: true } o ? new { o.Streaming, o.Recording, o.RecordPaused } : null,
         toggles = Shortcuts.States(sp.GetRequiredService<ConfigStore>().Get(), push, sp.GetRequiredService<AudioControl>()),
     };
