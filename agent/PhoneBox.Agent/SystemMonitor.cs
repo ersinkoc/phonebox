@@ -182,6 +182,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         }
     }
 
+#if !WINDOWS
     /// <summary>
     /// macOS: CPU and GPU temperature from the SMC every 2 s. Without an SMC or its temperature keys (Intel, macOS 13
     /// and older) it stops and both stay null; a failed read clears them and opens the SMC again 30 s later.
@@ -214,6 +215,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         catch (OperationCanceledException) { }
         finally { smc?.Dispose(); }
     }
+#endif
 
     /// <summary>Reads the GPU from the ioreg text. The memory is unified: the total is the machine's RAM, the used part what the GPU holds.</summary>
     internal static GpuInfo? ParseAppleGpu(string ioreg, double totalMemoryBytes)

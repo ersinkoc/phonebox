@@ -39,9 +39,17 @@ internal sealed class AppleSmc : IDisposable
         finally { IOObjectRelease(service); }
     }
 
-    /// <summary>The CPU and GPU averages in °C, rounded to a tenth; either is null without a valid reading.</summary>
-    public (double? Cpu, double? Gpu) Read() =>
-        (Average(_cpuKeys.Select(ReadFloat)), Average(_gpuKeys.Select(ReadFloat)));
+    /// <summary>
+    /// The CPU and GPU averages in °C, rounded to a tenth; either is null without a valid reading. Throws when no key
+    /// answers at all: every one of them did when the SMC was opened, so the connection is gone and must be opened again.
+    /// </summary>
+    public (double? Cpu, double? Gpu) Read()
+    {
+        var cpu = _cpuKeys.Select(ReadFloat).ToList();
+        var gpu = _gpuKeys.Select(ReadFloat).ToList();
+        if (cpu.Concat(gpu).All(v => v is null)) throw new IOException("the SMC answered no temperature key");
+        return (Average(cpu), Average(gpu));
+    }
 
     // "Ts*P" keys don't follow the CPU load (macmon), so they are left out of the CPU average.
     internal static bool IsCpuKey(string key) =>
