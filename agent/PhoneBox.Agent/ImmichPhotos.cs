@@ -52,7 +52,7 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
             foreach (var a in doc.RootElement.EnumerateArray())
             {
                 if (a.ValueKind != JsonValueKind.Object || Str(a, "id") is not { } id || !Guid.TryParse(id, out _)) continue;
-                albums.Add(new(id, Str(a, "albumName") ?? "", a.TryGetProperty("assetCount", out var n) && n.TryGetInt32(out var count) ? count : 0));
+                albums.Add(new(id, Str(a, "albumName") ?? "", a.TryGetProperty("assetCount", out var n) && n.ValueKind == JsonValueKind.Number && n.TryGetInt32(out var count) ? count : 0));
                 if (albums.Count >= MaxAlbums) break;
             }
             albums.Sort((x, y) => string.Compare(x.Name, y.Name, StringComparison.CurrentCultureIgnoreCase));

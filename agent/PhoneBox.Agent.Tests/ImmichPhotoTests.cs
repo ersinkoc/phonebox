@@ -82,6 +82,24 @@ public sealed class ImmichPhotoTests : IDisposable
         Assert.DoesNotContain(fake.Seen, s => s.Path.Contains(Key)); // never in the address
     }
 
+    [Theory]
+    [InlineData("null")]
+    [InlineData("\"5\"")]
+    [InlineData("{}")]
+    [InlineData("1.5")]
+    public async Task AnAlbumWhoseCountIsNotAnIntegerIsStillListed(string count)
+    {
+        var fake = new FakeImmich(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent($$$"""[{"id":"{{{Album}}}","albumName":"Odd","assetCount":{{{count}}}},{"id":"{{{Other}}}","albumName":"Fine","assetCount":7}]""", Encoding.UTF8, "application/json"),
+        });
+        var (albums, error) = await Frame(fake).Frame.ImmichAlbums(Server, Key, CancellationToken.None);
+        Assert.Null(error);
+        Assert.Equal(["Fine", "Odd"], albums!.Select(a => a.Name).ToArray());
+        Assert.Equal(0, albums!.Single(a => a.Name == "Odd").Count); // the count is only a label: an odd value reads as 0
+        Assert.Equal(7, albums!.Single(a => a.Name == "Fine").Count);
+    }
+
     [Fact]
     public async Task TheSavedKeyStandsInOnlyForTheSavedAddress()
     {
