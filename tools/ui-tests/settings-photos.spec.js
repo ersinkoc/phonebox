@@ -75,3 +75,88 @@ test('a loaded album list shows the albums and keeps the chosen one', async ({ p
   await albums.selectOption(ALBUM_A);
   await expect(page.locator('#save')).toBeEnabled();
 });
+
+// ---- the album list belongs to the address and key it was loaded with ----
+
+const LOADED = [{ id: ALBUM_A, name: 'Family trip', count: 128 }, { id: ALBUM_B, name: 'Garden', count: 42 }];
+
+// every album request waits until the test answers it, in the order they were made
+async function holdAlbumRequests(page) {
+  await page.evaluate(() => {
+    const original = window.fetch;
+    window.__held = [];
+    window.fetch = (url, options) => {
+      if (String(url) !== '/api/immich/albums') return original(url, options);
+      return new Promise((resolve) => window.__held.push((albums) => resolve(Response.json({ albums }))));
+    };
+  });
+}
+const answerRequest = (page, index, albums) => page.evaluate(([i, albums]) => window.__held[i](albums), [index, albums]);
+
+async function loadedAlbumsFrom(page) {
+  await page.goto('/settings/#general');
+  await applyJson(page, immich(ALBUM_B, 'Garden'));
+  await answerAlbums(page, LOADED);
+  await page.locator('#photosImmichLoad').click();
+  await expect(page.locator('#photosImmichState')).toHaveText('2 albums');
+  await expect(page.locator('#photosImmichAlbum option')).toHaveCount(3);
+}
+
+test('the album list is dropped when the address changes', async ({ page }) => {
+  await loadedAlbumsFrom(page);
+  await page.locator('[data-bind="photos.immichUrl"]').fill('http://192.168.1.99:2283');
+  await expect(page.locator('#photosImmichAlbum option')).toHaveText(['Garden']); // only the chosen album, not the other server's
+  await expect(page.locator('#photosImmichAlbum')).toHaveValue(ALBUM_B);
+  await expect(page.locator('#photosImmichState')).toHaveText('');
+});
+
+test('the album list is dropped when the key changes', async ({ page }) => {
+  await loadedAlbumsFrom(page);
+  await page.locator('[data-bind="photos.immichKey"]').fill('another-key');
+  await expect(page.locator('#photosImmichAlbum option')).toHaveText(['Garden']);
+  await expect(page.locator('#photosImmichState')).toHaveText('');
+});
+
+test('the album list is dropped when Apply JSON brings another server', async ({ page }) => {
+  await loadedAlbumsFrom(page);
+  await applyJson(page, { ...immich(ALBUM_B, 'Garden'), immichUrl: 'http://192.168.1.99:2283' });
+  await expect(page.locator('#photosImmichAlbum option')).toHaveText(['Garden']);
+});
+
+test('the album list stays when Apply JSON brings the same server and another album', async ({ page }) => {
+  await loadedAlbumsFrom(page);
+  await applyJson(page, immich(ALBUM_A, 'Family trip'));
+  await expect(page.locator('#photosImmichAlbum option')).toHaveText(['Choose an album…', 'Family trip (128)', 'Garden (42)']);
+  await expect(page.locator('#photosImmichAlbum')).toHaveValue(ALBUM_A);
+});
+
+test('an answer that arrives after the address changed is dropped', async ({ page }) => {
+  await page.goto('/settings/#general');
+  await applyJson(page, immich(ALBUM_B, 'Garden'));
+  await holdAlbumRequests(page);
+  await page.locator('#photosImmichLoad').click();
+  await page.locator('[data-bind="photos.immichUrl"]').fill('http://192.168.1.99:2283');
+  await answerRequest(page, 0, LOADED);
+  await expect(page.locator('#photosImmichState')).not.toHaveText('2 albums');
+  await expect(page.locator('#photosImmichAlbum option')).toHaveText(['Garden']);
+});
+
+test('only the newest load counts', async ({ page }) => {
+  await page.goto('/settings/#general');
+  await applyJson(page, immich(ALBUM_B, 'Garden'));
+  await holdAlbumRequests(page);
+  await page.locator('#photosImmichLoad').click();
+  await page.locator('#photosImmichLoad').click();
+  await answerRequest(page, 1, LOADED); // the second request answers first
+  await expect(page.locator('#photosImmichState')).toHaveText('2 albums');
+  await answerRequest(page, 0, [{ id: ALBUM_A, name: 'Old answer', count: 1 }]); // the first one is late
+  await expect(page.locator('#photosImmichAlbum option')).toHaveText(['Choose an album…', 'Family trip (128)', 'Garden (42)']);
+});
+
+test('the key is not written into the page markup', async ({ page }) => {
+  await loadedAlbumsFrom(page);
+  await page.locator('[data-bind="photos.immichKey"]').fill('sk-markup-check-7421');
+  await page.locator('#photosImmichLoad').click();
+  await expect(page.locator('#photosImmichState')).toHaveText('2 albums');
+  expect(await page.content()).not.toContain('sk-markup-check-7421');
+});

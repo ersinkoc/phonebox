@@ -2140,11 +2140,16 @@ $('installApp').onclick = async () => {
   setTimeout(loadInfo, 4000);
 };
 // Photo frame: show the fields of the chosen source; the Immich album list is only fetched on request
-let immichAlbums = []; // the last list the agent sent; the chosen album is shown against it, also after Apply JSON or Revert
+let immichAlbums = [];   // the last list the agent sent; the chosen album is shown against it, also after Apply JSON or Revert
+let immichFor = '';      // the address and key that list was loaded with (compared in memory, never put in the page)
+let immichLoadSeq = 0;   // the newest Load albums request: an older answer is dropped
+const immichConnection = () => JSON.stringify([cfg.photos.immichUrl, cfg.photos.immichKey]);
 function renderPhotoSource() {
   const immich = cfg.photos.source === 'immich';
   $('photosFolderBox').hidden = immich;
   $('photosImmichBox').hidden = !immich;
+  // another server (or key) has other albums: the list is kept only for the connection it came from
+  if (immichAlbums.length && immichFor !== immichConnection()) { immichAlbums = []; immichFor = ''; $('photosImmichState').textContent = ''; }
   fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
 }
 function fillAlbums(albums, current, currentName) {
@@ -2167,17 +2172,21 @@ $('photosImmichAlbum').onchange = () => {
 };
 $('photosImmichLoad').onclick = async () => {
   const state = $('photosImmichState');
+  const conn = immichConnection(), seq = ++immichLoadSeq;
   state.textContent = t('s.js.immichLoading');
   // the agent gives up on the server after 30 s; this is a little longer, so a lost agent doesn't leave "Loading…" for good
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), 35000);
   try {
     const r = await (await fetch('/api/immich/albums', { method: 'POST', signal: abort.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: cfg.photos.immichUrl, key: cfg.photos.immichKey }) })).json();
+    if (seq !== immichLoadSeq) return; // a newer request is the one that counts
+    if (conn !== immichConnection()) { state.textContent = ''; return; } // the address or key changed while it was out
     if (r.error) { state.textContent = r.error; return; }
     immichAlbums = r.albums;
+    immichFor = conn;
     fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
     state.textContent = r.albums.length ? t('s.js.immichCount', { n: r.albums.length }) : t('s.js.immichNone');
-  } catch (_) { state.textContent = t('s.js.immichFailed'); }
+  } catch (_) { if (seq === immichLoadSeq && conn === immichConnection()) state.textContent = t('s.js.immichFailed'); }
   finally { clearTimeout(timer); }
 };
 $('haTest').onclick = async () => {
@@ -3173,7 +3182,7 @@ function bindForm() {
       $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
       if (p === 'charge.method') renderCharge();
       if (p === 'lan.enabled') renderLanStatus();
-      if (p === 'photos.source') renderPhotoSource();
+      if (p === 'photos.source' || p === 'photos.immichUrl' || p === 'photos.immichKey') renderPhotoSource();
       changed();
     };
   });
