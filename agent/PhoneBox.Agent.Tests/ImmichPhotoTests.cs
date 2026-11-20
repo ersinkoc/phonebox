@@ -593,6 +593,62 @@ public sealed class ImmichPhotoTests : IDisposable
         else { Assert.Null(photo.Bytes); Assert.Equal("That photo is too large to show", photo.Error); }
     }
 
+    /// <summary>A JPEG with <paramref name="padding"/> bytes of APP1 data in front of its frame header (as a large EXIF block or colour profile would be).</summary>
+    private static byte[] JpegWith(int padding, int w, int h, bool frame = true)
+    {
+        using var ms = new MemoryStream();
+        ms.Write([0xFF, 0xD8]);
+        for (var left = padding; left > 0;)
+        {
+            var n = Math.Min(left, 60_000);
+            ms.Write([0xFF, 0xE1, (byte)((n + 2) >> 8), (byte)(n + 2)]);
+            ms.Write(new byte[n]);
+            left -= n;
+        }
+        if (frame) ms.Write([0xFF, 0xC0, 0x00, 0x11, 0x08, (byte)(h >> 8), (byte)h, (byte)(w >> 8), (byte)w, 0x03, 0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01]);
+        ms.Write([0xFF, 0xD9]);
+        return ms.ToArray();
+    }
+
+    private async Task<(byte[]? Bytes, string? Type, string? Error)> ServePreview(byte[] picture)
+    {
+        var fake = new FakeImmich(r => r.RequestUri!.AbsolutePath.EndsWith("/thumbnail")
+            ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(picture) }
+            : r.Method == HttpMethod.Post
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent($$$"""{"assets":{"items":[{"id":"{{{A1}}}","type":"IMAGE"}],"nextPage":null}}""", Encoding.UTF8, "application/json") }
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var (frame, _) = Frame(fake);
+        frame.ScanNow();
+        return await frame.Get(Assert.Single(frame.List().Ids), CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task APreviewWhoseSizeIsPastTheFirstQuarterMegabyteIsStillMeasured()
+    {
+        var picture = JpegWith(padding: 300_000, w: 20000, h: 20000); // the frame header comes after 300 KB of metadata
+        Assert.True(picture.Length > 256 * 1024);
+        var photo = await ServePreview(picture);
+        Assert.Null(photo.Bytes);
+        Assert.Equal("That photo is too large to show", photo.Error);
+    }
+
+    [Fact]
+    public async Task APreviewWithNoReadableSizeIsRefused()
+    {
+        var photo = await ServePreview(JpegWith(padding: 1000, w: 0, h: 0, frame: false));
+        Assert.Null(photo.Bytes);
+        Assert.Equal("That photo can't be shown", photo.Error);
+    }
+
+    [Fact]
+    public async Task APreviewWithALargeMetadataBlockAndAnAcceptableSizeIsServed()
+    {
+        var picture = JpegWith(padding: 300_000, w: 2048, h: 1152);
+        var photo = await ServePreview(picture);
+        Assert.Equal(picture, photo.Bytes);
+        Assert.Equal("image/jpeg", photo.Type);
+    }
+
     [Fact]
     public async Task NothingIsFetchedWhileNoEnabledPageShowsTheWidget()
     {
