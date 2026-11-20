@@ -111,9 +111,10 @@ def post(dest, path, body):
 def main(argv):
     args = [a for a in argv if a not in ("--notify", "--check")]
     check, notify = "--check" in argv, "--notify" in argv
-    if not sys.stdin.isatty():
-        sys.stdin.buffer.read()
     try:
+        # inside the try: a hook whose stdin cannot be read still stays silent and exits 0
+        if sys.stdin is not None and not sys.stdin.isatty():
+            sys.stdin.buffer.read()
         if len(args) != 1 or args[0] not in STATES:
             raise BridgeError("usage: copilot-cli-bridge.py working|finished|attention [--notify] [--check]")
         push_key = setting("PHONEBOX_PUSH_KEY", "copilot")
