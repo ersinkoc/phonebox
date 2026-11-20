@@ -98,6 +98,18 @@ public sealed class AgentConfig
     /// <summary>True when an enabled page (including enabled Smart Stack children) shows the quota cost overview card.</summary>
     public bool ShowQuotaOverview() => Widgets(enabledPagesOnly: true)
         .Any(w => w.Type is "codexbar" or "quotas" && w.Bool("showOverview") == true);
+
+    /// <summary>True when an enabled page (including enabled Smart Stack children) shows a quota or CodexBar widget that includes Codex.</summary>
+    public bool ShowCodexQuota() => Widgets(enabledPagesOnly: true)
+        .Any(w => w.Type is "codexbar" or "quotas" && WidgetIncludesProvider(w, "codex"));
+
+    private bool WidgetIncludesProvider(WidgetConfig w, string id)
+    {
+        if (w.Opt("providers") is { ValueKind: JsonValueKind.Array } arr)
+            return arr.EnumerateArray().Any(e => e.ValueKind == JsonValueKind.String
+                && string.Equals(e.GetString(), id, StringComparison.OrdinalIgnoreCase));
+        return CodexBar.Providers.Any(p => string.Equals(p, id, StringComparison.OrdinalIgnoreCase));
+    }
 }
 
 public sealed class WeatherConfig
@@ -935,6 +947,8 @@ public sealed class CodexBarConfig
     public bool Rotate { get; set; } = true;
     public int PageSize { get; set; } = 2;
     public int RotateInterval { get; set; } = 8;
+    /// <summary>Opt-in: poll live Codex quotas through the local Codex CLI app-server (off by default).</summary>
+    public bool CodexLiveQuota { get; set; }
 }
 
 /// <summary>

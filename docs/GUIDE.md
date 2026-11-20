@@ -133,6 +133,12 @@ PhoneBox uses native local sources when no compatible CLI is installed.
 app keeps its own sign-in to itself, so with only the desktop app the widget shows the plan and says so; its sessions
 still show up in the Sessions widget.
 
+**Codex live quotas** are off by default (normally PhoneBox reads Codex's local session logs without running `codex`).
+Turn on **Read live Codex quotas with the Codex CLI** in **Settings › General › AI quotas & CodexBar** to query
+account-wide limits through `codex app-server` even when no Codex session is active. It runs every few minutes only
+while an enabled page shows Codex quotas and fresh CodexBar data is not already winning, and backs off on failures.
+Because it starts the Codex CLI, Codex may refresh its own sign-in in `~/.codex/auth.json`.
+
 **Native Antigravity quotas** use a running app/hub's advertised HTTP port and CSRF token, the HTTPS port of newer
 IDE servers (2.32 picks it at start-up, so the agent tries the loopback ports that server process listens
 on and accepts its self-signed certificate only for loopback addresses), or a signed-in
@@ -339,12 +345,11 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   It is rate limited per account and shared with Claude Code, so PhoneBox asks at most every 3 minutes, and waits
   longer after errors and as long as a `429` asks for, across restarts too. An expired or refused token is not sent:
   PhoneBox waits until Claude Code renews it.
-- **Codex quota** is queried every minute through the locally installed, signed-in `codex` CLI app-server.
-  No coding session or inference prompt is required; the reading includes account usage from other computers.
-  Uncheck **Codex** under **Settings › General › AI quotas & CodexBar › Tracked AI services** to stop live polling.
-  Healthy, recent CodexBar quota retains priority when available. If the live query fails, local session quota
-  is used with an availability warning. **Codex sessions and token details** are read from local files in
-  `~/.codex/sessions`; Claude Code sessions from
+- **Codex quota and sessions** are read from local files in `~/.codex/sessions`. With the opt-in
+  **Read live Codex quotas with the Codex CLI** setting (**Settings › General › AI quotas & CodexBar**, off by
+  default), PhoneBox also queries `codex app-server` about every 3 minutes (backing off on failures) while an enabled
+  page shows Codex quotas and fresh CodexBar data is not already winning; no coding session or inference prompt is
+  required, and local session quota stays as fallback. Claude Code sessions come from
   `~/.claude/sessions`. Cursor sessions (opt-in in **Settings › General › Cursor sessions**) come from recent agent
   transcripts under `~/.cursor/projects/*/agent-transcripts`. Only the last message's role is kept; chat text is never
   shown, stored or sent. Project names use the folder basename from Cursor's `workspaceStorage`.

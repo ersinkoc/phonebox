@@ -798,6 +798,10 @@ nav a.on::before { color: var(--accent); }
         <div class="field" style="margin-top:10px">
           <label class="check"><input type="checkbox" data-bind="codexBar.rotate"> <span data-i18n="s.quotas.rotate">Rotate providers automatically</span></label>
         </div>
+        <div class="field" style="margin-top:10px">
+          <label class="check"><input type="checkbox" data-bind="codexBar.codexLiveQuota"> <span data-i18n="s.quotas.codexLive">Read live Codex quotas with the Codex CLI</span></label>
+          <span class="hint" data-i18n="s.quotas.codexLiveHint">Runs codex in the background every few minutes while a page shows Codex quotas (off by default). The Codex CLI manages its own sign-in and may refresh it.</span>
+        </div>
         <div class="row" style="gap:12px;margin-top:10px">
           <div class="field" style="max-width:180px"><label data-i18n="s.quotas.pageSize">Cards at a time</label><input type="number" min="0" max="6" data-bind="codexBar.pageSize" data-type="int"><span class="hint" data-i18n="s.quotas.pageSizeHint">0 = show all</span></div>
           <div class="field" style="max-width:240px"><label data-i18n="s.quotas.rotateInterval">Rotate every (seconds)</label><input type="number" min="2" max="300" data-bind="codexBar.rotateInterval" data-type="int"><span class="hint" data-i18n="s.quotas.rotateIntervalHint">e.g. 5, 8, 15 seconds</span></div>

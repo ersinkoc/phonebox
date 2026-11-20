@@ -163,7 +163,6 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     private volatile QuotaProvider? _codex;
     private volatile QuotaProvider? _codexLive;
     private volatile string? _codexLiveError;
-    private long _nextCodexQuota;
     private volatile QuotaProvider? _antigravity;
     private long _claudeNextAt;           // wall-clock ms of the next Claude request
     private int _claudeFailures;          // consecutive failed requests, for the back-off
@@ -216,12 +215,62 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     /// <summary>Returns the current cost overview evaluated at <paramref name="now"/>.</summary>
     internal QuotaOverview? Overview(long now) => CodexBar.SelectOverview(_overview, IsOverviewEnabled(), now);
 
+    /// <summary>Returns true when live Codex CLI polling is opted in and an enabled page shows Codex quotas.</summary>
+    internal bool IsCodexLiveEnabled() => config is null || (config.Get() is { } c && c.CodexBar.CodexLiveQuota && c.ShowCodexQuota());
+
+    internal const long CodexLiveIntervalMs = 180_000;
+    internal const long CodexLiveStaleMs = 360_000;
+
+    /// <summary>Exponential backoff for live Codex CLI failures: 2m, 4m, 8m, 16m, capped at 30m.</summary>
+    internal static long CodexLiveBackoffMs(int failures) =>
+        Math.Min(1_800_000L, 120_000L << Math.Clamp(failures - 1, 0, 4));
+
+    internal enum CodexLiveOutcome { Ok, Skipped, Failed }
+
     /// <summary>
-    /// Periodically refreshes local/CodexBar quota providers and gated cost overview in the background.
+    /// Periodically refreshes local/CodexBar quota providers, gated cost overview and opt-in live Codex quota in the background.
     /// </summary>
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        await Task.WhenAll(RunUsageLoopAsync(ct), RunOverviewLoopAsync(ct));
+        await Task.WhenAll(RunUsageLoopAsync(ct), RunOverviewLoopAsync(ct), RunCodexLiveLoopAsync(ct));
+    }
+
+    private async Task RunCodexLiveLoopAsync(CancellationToken ct)
+    {
+        long next = 0;
+        var failures = 0;
+        var wakes = Wake.Count;
+        while (!ct.IsCancellationRequested)
+        {
+            if (!IsCodexLiveEnabled())
+            {
+                _codexLive = null;
+                _codexLiveError = null;
+                failures = 0;
+                next = 0;
+            }
+            else if (Environment.TickCount64 >= next || Wake.Count != wakes)
+            {
+                wakes = Wake.Count;
+                var outcome = await RefreshCodexOnceAsync(CodexQuota.Find, CodexQuota.ReadAsync, ct);
+                if (outcome == CodexLiveOutcome.Ok)
+                {
+                    failures = 0;
+                    next = Environment.TickCount64 + CodexLiveIntervalMs;
+                }
+                else if (outcome == CodexLiveOutcome.Skipped)
+                {
+                    failures = 0;
+                    next = Environment.TickCount64 + 60_000;
+                }
+                else
+                {
+                    failures++;
+                    next = Environment.TickCount64 + CodexLiveBackoffMs(failures);
+                }
+            }
+            await Wake.Delay(TimeSpan.FromSeconds(5), ct);
+        }
     }
 
     private async Task RunOverviewLoopAsync(CancellationToken ct)
@@ -334,11 +383,6 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
                 }
             }
             CodexTick();
-            if (Environment.TickCount64 >= _nextCodexQuota)
-            {
-                await RefreshCodexOnceAsync(CodexQuota.Find, CodexQuota.ReadAsync, ct);
-                _nextCodexQuota = Environment.TickCount64 + 60_000;
-            }
 
             if (Environment.TickCount64 >= _nextAntigravity)
             {
@@ -724,26 +768,37 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     }
 
     /// <summary>Refresh account-wide quota without creating a thread or inference turn.</summary>
-    internal async Task RefreshCodexOnceAsync(Func<string?> findTool,
-        Func<string, CancellationToken, Task<QuotaProvider>> read, CancellationToken ct)
+    internal Task<CodexLiveOutcome> RefreshCodexOnceAsync(Func<string?> findTool,
+        Func<string, CancellationToken, Task<QuotaProvider>> read, CancellationToken ct) =>
+        RefreshCodexOnceAsync(findTool, read, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct);
+
+    internal async Task<CodexLiveOutcome> RefreshCodexOnceAsync(Func<string?> findTool,
+        Func<string, CancellationToken, Task<QuotaProvider>> read, long now, CancellationToken ct)
     {
         try
         {
-            if (config is not null && !config.Get().CodexBar.Providers.Contains("codex"))
+            if (!IsCodexLiveEnabled())
             {
                 _codexLive = null;
                 _codexLiveError = null;
-                return;
+                return CodexLiveOutcome.Skipped;
+            }
+            var external = _external.FirstOrDefault(p => p.Id == "codex");
+            if (external is { Error: null, Limits.Count: > 0, UpdatedAt: { } updated } && now - updated <= 600_000)
+            {
+                _codexLiveError = null;
+                return CodexLiveOutcome.Skipped;
             }
             var path = findTool();
             if (path is null)
             {
-                _codexLiveError = _codex is not null || _codexLive is not null ? "Codex CLI is not installed" : null;
+                _codexLiveError = "Codex CLI is not installed";
                 _codexLive = null;
-                return;
+                return CodexLiveOutcome.Failed;
             }
             _codexLive = await read(path, ct);
             _codexLiveError = null;
+            return CodexLiveOutcome.Ok;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
@@ -751,14 +806,17 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
             log.LogDebug("codex live quota: {Message}", ex.Message);
             _codexLive = null;
             _codexLiveError = "Live Codex quota unavailable";
+            return CodexLiveOutcome.Failed;
         }
     }
 
     internal QuotaProvider? CodexSnapshot(long now, QuotaProvider? external = null)
     {
-        var live = _codexLive;
         var local = _codex;
-        var fresh = live is { Error: null, Limits.Count: > 0, UpdatedAt: { } at } && now - at <= 120_000;
+        if (!IsCodexLiveEnabled())
+            return CodexBar.Select(local, external, now);
+        var live = _codexLive;
+        var fresh = live is { Error: null, Limits.Count: > 0, UpdatedAt: { } at } && now - at <= CodexLiveStaleMs;
         var direct = fresh ? live! with { Codex = local?.Codex } : local;
         var selected = CodexBar.Select(direct, external, now);
         if (selected?.Source is "codex-app-server" or "codexbar") return selected;

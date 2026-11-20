@@ -60,9 +60,46 @@ public sealed class CodexLiveQuotaTests
     }
 
     [Fact]
-    public void WindowsNpmEntryPointUsesNodeArgumentListWithoutShell()
+    public void PlanNamesReplaceUnderscoresWithSpaces()
     {
-        if (!OperatingSystem.IsWindows()) return;
+        var result = Parse("""{"rateLimits":{"planType":"self_serve_plus","primary":{"usedPercent":10}}}""");
+        Assert.Equal("Self serve plus", result.Plan);
+    }
+
+    [Fact]
+    public void WindowsDiscoveryIgnoresPosixShimAndPrefersExeOverCmd()
+    {
+        var dir1 = Directory.CreateTempSubdirectory("pb-codex-find-1-").FullName;
+        var dir2 = Directory.CreateTempSubdirectory("pb-codex-find-2-").FullName;
+        try
+        {
+            // Bare POSIX `codex` shim next to `codex.cmd`: must pick `codex.cmd`, never bare `codex`.
+            File.WriteAllText(Path.Combine(dir1, "codex"), "#!/bin/sh\n");
+            var cmd = Path.Combine(dir1, "codex.cmd");
+            File.WriteAllText(cmd, "@echo off\r\n");
+            var pathEnv = dir1 + Path.PathSeparator + dir2;
+            Assert.Equal(cmd, CodexQuota.Find(pathEnv, isWindows: true));
+
+            // When a native `codex.exe` exists later on PATH, prefer `.exe` over `.cmd`.
+            var exe = Path.Combine(dir2, "codex.exe");
+            File.WriteAllText(exe, "fake exe");
+            Assert.Equal(exe, CodexQuota.Find(pathEnv, isWindows: true));
+
+            // With only bare POSIX `codex` on Windows, return null.
+            File.Delete(cmd);
+            File.Delete(exe);
+            Assert.Null(CodexQuota.Find(pathEnv, isWindows: true));
+        }
+        finally
+        {
+            Directory.Delete(dir1, recursive: true);
+            Directory.Delete(dir2, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void WindowsNpmEntryPointPrefersNativeVendorBinaryThenFallsBackToNode()
+    {
         var root = Directory.CreateTempSubdirectory("pb codex & shim ").FullName;
         try
         {
@@ -71,34 +108,88 @@ public sealed class CodexLiveQuotaTests
             File.WriteAllText(script, "// fake entry point; not executed");
             var node = Path.Combine(root, "node.exe");
             File.WriteAllText(node, "fake node; not executed");
-            var start = CodexQuota.StartInfo(Path.Combine(root, "codex.cmd"));
-            Assert.Equal(node, start.FileName);
-            Assert.Equal(new[] { script, "app-server" }, start.ArgumentList);
-            Assert.Empty(start.Arguments);
+            var cmd = Path.Combine(root, "codex.cmd");
+
+            // Fallback to Node + codex.js when native vendor binary is absent
+            var fallback = CodexQuota.StartInfo(cmd, isWindows: true, System.Runtime.InteropServices.Architecture.X64);
+            Assert.Equal(node, fallback.FileName);
+            Assert.Equal(new[] { script, "app-server" }, fallback.ArgumentList);
+            Assert.Empty(fallback.Arguments);
+
+            // Prefer bundled native codex.exe when present (no Node needed)
+            var native = Path.Combine(root, "node_modules", "@openai", "codex", "vendor", "x86_64-pc-windows-msvc", "codex", "codex.exe");
+            Directory.CreateDirectory(Path.GetDirectoryName(native)!);
+            File.WriteAllText(native, "fake native binary");
+            var direct = CodexQuota.StartInfo(cmd, isWindows: true, System.Runtime.InteropServices.Architecture.X64);
+            Assert.Equal(native, direct.FileName);
+            Assert.Equal(new[] { "app-server" }, direct.ArgumentList);
+
+            // Missing both native binary and script (e.g. pnpm shim) throws IOException cleanly
+            File.Delete(native);
             File.Delete(script);
-            Assert.Throws<IOException>(() => CodexQuota.StartInfo(Path.Combine(root, "codex.cmd")));
+            Assert.Throws<IOException>(() => CodexQuota.StartInfo(cmd, isWindows: true, System.Runtime.InteropServices.Architecture.X64));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task UncheckingCodexStopsLiveQueriesAndClearsLiveCache()
+    public async Task LivePollingIsOptInRequiresVisibleCodexWidgetAndYieldsToFreshCodexBar()
     {
-        var root = Directory.CreateTempSubdirectory("pb-codex-disabled-").FullName;
+        var root = Directory.CreateTempSubdirectory("pb-codex-gating-").FullName;
         try
         {
             var path = Path.Combine(root, "config.json");
-            File.WriteAllText(path, """{"codexBar":{"providers":["codex"]}}""");
+            // Default config: codexLiveQuota is false -> must not poll and must not surface an error
+            File.WriteAllText(path, """{"codexBar":{"providers":["codex"]},"pages":[{"id":"p1","enabled":true,"widgets":[{"type":"quotas"}]}]}""");
             var store = new ConfigStore(path);
             var agent = new QuotaMonitor(store, NullLogger<QuotaMonitor>.Instance);
-            await agent.RefreshCodexOnceAsync(() => "fake", (_, _) => Task.FromResult(Parse("{\"rateLimits\":" + Rate + "}")), default);
+            Assert.False(store.Get().CodexBar.CodexLiveQuota);
+            Assert.Equal(QuotaMonitor.CodexLiveOutcome.Skipped,
+                await agent.RefreshCodexOnceAsync(() => throw new Exception("must not discover CLI"),
+                    (_, _) => throw new Exception("must not query CLI"), 1000, default));
+            Assert.Null(agent.CodexSnapshot(1000));
+
+            // Opted in, but widget excludes codex -> must not poll
+            store.Get().CodexBar.CodexLiveQuota = true;
+            store.Get().Pages[0].Widgets![0].Set("providers", new[] { "claude" });
+            Assert.Equal(QuotaMonitor.CodexLiveOutcome.Skipped,
+                await agent.RefreshCodexOnceAsync(() => throw new Exception("must not discover CLI"),
+                    (_, _) => throw new Exception("must not query CLI"), 1000, default));
+
+            // Widget includes codex again -> polls and succeeds
+            store.Get().Pages[0].Widgets![0].Options = null;
+            Assert.Equal(QuotaMonitor.CodexLiveOutcome.Ok,
+                await agent.RefreshCodexOnceAsync(() => "fake", (_, _) => Task.FromResult(Parse("{\"rateLimits\":" + Rate + "}")), 1000, default));
             Assert.NotNull(agent.CodexSnapshot(1000));
+
+            // Fresh CodexBar data wins -> skips live CLI poll
+            var freshExternal = new QuotaProvider("codex", "Codex", "Plus",
+                [new QuotaLimit("5-hour", 20, null, 18000, "normal")], null, 1000, null, Source: "codexbar");
+            agent.SetStateForTest(external: [freshExternal]);
+            Assert.Equal(QuotaMonitor.CodexLiveOutcome.Skipped,
+                await agent.RefreshCodexOnceAsync(() => throw new Exception("must skip while CodexBar is fresh"),
+                    (_, _) => throw new Exception("must skip while CodexBar is fresh"), 1000, default));
+
+            // Unchecking Codex stops polling and clears live cache
+            agent.SetStateForTest(external: []);
             store.Get().CodexBar.Providers = [];
-            await agent.RefreshCodexOnceAsync(() => throw new Exception("must not discover CLI"),
-                (_, _) => throw new Exception("must not query CLI"), default);
+            Assert.Equal(QuotaMonitor.CodexLiveOutcome.Skipped,
+                await agent.RefreshCodexOnceAsync(() => throw new Exception("must not discover CLI"),
+                    (_, _) => throw new Exception("must not query CLI"), 1000, default));
             Assert.Null(agent.CodexSnapshot(1000));
         }
         finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void FailureBackoffGrowsExponentiallyUpToThirtyMinutes()
+    {
+        Assert.Equal(120_000, QuotaMonitor.CodexLiveBackoffMs(1));
+        Assert.Equal(240_000, QuotaMonitor.CodexLiveBackoffMs(2));
+        Assert.Equal(480_000, QuotaMonitor.CodexLiveBackoffMs(3));
+        Assert.Equal(960_000, QuotaMonitor.CodexLiveBackoffMs(4));
+        Assert.Equal(1_800_000, QuotaMonitor.CodexLiveBackoffMs(5));
+        Assert.Equal(1_800_000, QuotaMonitor.CodexLiveBackoffMs(10));
     }
 
     [Fact]
@@ -107,8 +198,8 @@ public sealed class CodexLiveQuotaTests
         var agent = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance);
         await agent.RefreshCodexOnceAsync(() => "fake", (_, _) => Task.FromResult(Parse("{\"rateLimits\":" + Rate + "}")), default);
         Assert.Equal(82, agent.CodexSnapshot(1000)!.Limits[0].Percent);
-        Assert.Equal("codex-app-server", agent.CodexSnapshot(121000)!.Source);
-        Assert.Contains("stale", agent.CodexSnapshot(121001)!.Error);
+        Assert.Equal("codex-app-server", agent.CodexSnapshot(361000)!.Source);
+        Assert.Contains("stale", agent.CodexSnapshot(361001)!.Error);
     }
 
     [Fact]
@@ -144,8 +235,8 @@ public sealed class CodexLiveQuotaTests
         try
         {
             var start = Shell(
-                $"$a=[Console]::ReadLine(); [IO.File]::WriteAllText('{transcript}', $a + \"`n\"); [Console]::WriteLine('{{\"id\":1,\"result\":{{}}}}'); $b=[Console]::ReadLine(); $c=[Console]::ReadLine(); [IO.File]::AppendAllText('{transcript}', $b + \"`n\" + $c); [Console]::WriteLine('{{\"method\":\"notification\"}}'); [Console]::WriteLine('{{\"id\":99,\"result\":{{}}}}'); [Console]::WriteLine('{response}'); Start-Sleep 60",
-                $"read -r a; printf '%s\\n' \"$a\" > '{transcript}'; printf '%s\\n' '{{\"id\":1,\"result\":{{}}}}'; read -r b; read -r c; printf '%s\\n' \"$b\" \"$c\" >> '{transcript}'; printf '%s\\n' 'diagnostic' '{{\"method\":\"notification\"}}' '{{\"id\":99,\"result\":{{}}}}' '{response}'; exec sleep 60");
+                $"$a=[Console]::ReadLine(); [IO.File]::WriteAllText('{transcript}', $a + \"`n\"); [Console]::WriteLine('{{\"id\":1,\"method\":\"server/ping\"}}'); [Console]::WriteLine('{{\"id\":1,\"result\":{{}}}}'); $b=[Console]::ReadLine(); $c=[Console]::ReadLine(); [IO.File]::AppendAllText('{transcript}', $b + \"`n\" + $c); [Console]::WriteLine('{{\"method\":\"notification\"}}'); [Console]::WriteLine('{{\"id\":2,\"method\":\"server/request\"}}'); [Console]::WriteLine('{{\"id\":99,\"result\":{{}}}}'); [Console]::WriteLine('{response}'); Start-Sleep 60",
+                $"read -r a; printf '%s\\n' \"$a\" > '{transcript}'; printf '%s\\n' '{{\"id\":1,\"method\":\"server/ping\"}}' '{{\"id\":1,\"result\":{{}}}}'; read -r b; read -r c; printf '%s\\n' \"$b\" \"$c\" >> '{transcript}'; printf '%s\\n' 'diagnostic' '{{\"method\":\"notification\"}}' '{{\"id\":2,\"method\":\"server/request\"}}' '{{\"id\":99,\"result\":{{}}}}' '{response}'; exec sleep 60");
             var result = await CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(10), default);
             Assert.Equal(82, result.Limits[0].Percent);
             var requests = File.ReadAllLines(transcript).Select(line => JsonDocument.Parse(line)).ToArray();
@@ -153,6 +244,7 @@ public sealed class CodexLiveQuotaTests
             {
                 Assert.Equal(3, requests.Length);
                 Assert.Equal("initialize", requests[0].RootElement.GetProperty("method").GetString());
+                Assert.False(requests[0].RootElement.GetProperty("params").TryGetProperty("capabilities", out _));
                 Assert.Equal("initialized", requests[1].RootElement.GetProperty("method").GetString());
                 Assert.Equal("account/rateLimits/read", requests[2].RootElement.GetProperty("method").GetString());
                 Assert.True(requests[2].RootElement.GetProperty("params").GetProperty("excludeResetCreditDetails").GetBoolean());
