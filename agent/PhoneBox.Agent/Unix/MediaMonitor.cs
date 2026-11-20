@@ -98,6 +98,8 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         // a control that waited here for the loop's own reading uses that one instead of starting the tools again
         if (onlyIfStale && !IsStale(Interlocked.Read(ref _lastReading), Environment.TickCount64)) { _pollGate.Release(); return; }
         var before = _snap;
+        // fresh from when the players were asked, not from when the artwork finished loading
+        var asked = Environment.TickCount64;
         try
         {
             var (snap, art) = OperatingSystem.IsMacOS() ? ReadMac() : ReadLinux();
@@ -122,7 +124,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         }
         finally
         {
-            Interlocked.Exchange(ref _lastReading, Environment.TickCount64);
+            Interlocked.Exchange(ref _lastReading, asked);
             _pollGate.Release();
             // a new track, a pause or a seek reaches the phone now, not at its next whole-second state
             if (StateSignal.MediaChanged(before, _snap)) StateSignal.Poke();
