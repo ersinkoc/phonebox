@@ -179,7 +179,7 @@ before you install it.
 
 | Add-on | What it does | What it sends outside the PC |
 |---|---|---|
-| [PhoneBox Games Tab](https://github.com/lucasaz/phonebox-games-tab) (Windows) | A Games page with live FPS, cover art and play time, through the push API and a Custom HTML widget | Store / Xbox apps' package names to the Microsoft Store catalog (`displaycatalog.mp.microsoft.com`); the phone loads cover images from Steam's and Microsoft's image servers |
+| [PhoneBox Games Tab](https://github.com/lucasaz/phonebox-games-tab) (Windows) | A Games page with live FPS, cover art and play time, through the push API and a Custom HTML widget | Store / Xbox apps' package names, with the Windows display language and region, to the Microsoft Store catalog (`displaycatalog.mp.microsoft.com`); the phone loads cover images from Microsoft's image servers and from Steam's, whose URL contains the game's Steam app ID |
 
 ## Security & privacy
 
