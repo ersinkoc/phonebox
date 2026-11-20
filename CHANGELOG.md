@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Widgets**
+- News feeds on Windows: an article whose link has square brackets after the host, such as Franceinfo's
+  `#xtor=RSS-3-[lestitres]`, opens in the browser instead of File Explorer's Documents folder (#312,
+  [Emsaco64](https://github.com/Emsaco64)).
+
 ## 0.9.24 — 2026-11-20
 
 A security fix for phones connected over USB: the USB connection now answers only the PhoneBox app, so **update the

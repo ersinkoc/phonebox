@@ -10,6 +10,14 @@ namespace PhoneBox.Agent.Tests;
 
 public sealed class FeedParserTests
 {
+    [Theory]
+    [InlineData("https://www.francetvinfo.fr/monde/a_1.html#xtor=RSS-3-[lestitres]", "https://www.francetvinfo.fr/monde/a_1.html#xtor=RSS-3-%5Blestitres%5D")]
+    [InlineData("https://a.example/p[1]?q=[a]#f", "https://a.example/p%5B1%5D?q=%5Ba%5D#f")]
+    [InlineData("http://[::1]:8080/x[y]", "http://[::1]:8080/x%5By%5D")]
+    [InlineData("https://user@a.example/plain?q=1#top", "https://user@a.example/plain?q=1#top")]
+    public void TheLaunchedAddressHasNoRawBracketsAfterTheHost(string link, string expected) =>
+        Assert.Equal(expected, FeedParser.LaunchAddress(FeedParser.SafeLink(link)!));
+
     private static readonly Uri Base = new("https://example.com/blog/feed.xml");
     private static List<FeedItem> Parse(string xml, int max = 50) => FeedParser.Parse(Encoding.UTF8.GetBytes(xml), Base, "k", max);
 
