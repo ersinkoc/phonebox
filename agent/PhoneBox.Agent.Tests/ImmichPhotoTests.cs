@@ -129,6 +129,51 @@ public sealed class ImmichPhotoTests : IDisposable
         Assert.Equal("The Immich server rejected the API key", (await Frame(odd).Frame.ImmichAlbums(Server, Key, CancellationToken.None)).Error);
     }
 
+    /// <summary>A body of zeros that never says how long it is and counts what is read from it.</summary>
+    private sealed class EndlessZeros(long total) : Stream
+    {
+        private long _read;
+        public long Read_ => Interlocked.Read(ref _read);
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var n = (int)Math.Min(count, Math.Max(0, total - Interlocked.Read(ref _read)));
+            Array.Clear(buffer, offset, n);
+            Interlocked.Add(ref _read, n);
+            return n;
+        }
+    }
+
+    [Fact]
+    public async Task ALargeForbiddenBodyIsNotReadInFull()
+    {
+        var body = new EndlessZeros(200L * 1024 * 1024);
+        var fake = new FakeImmich(_ => new HttpResponseMessage(HttpStatusCode.Forbidden) { Content = new StreamContent(body) });
+        var (_, error) = await Frame(fake).Frame.ImmichAlbums(Server, Key, CancellationToken.None);
+        Assert.Equal("The Immich server rejected the API key", error);
+        Assert.True(body.Read_ < 64 * 1024, $"read {body.Read_} bytes of a 200 MB error body");
+    }
+
+    [Fact]
+    public async Task AForbiddenBodyThatSaysItIsLargeIsNotRead()
+    {
+        var body = new EndlessZeros(1_000_000);
+        var content = new StreamContent(body);
+        content.Headers.ContentLength = 1_000_000;
+        var fake = new FakeImmich(_ => new HttpResponseMessage(HttpStatusCode.Forbidden) { Content = content });
+        var (_, error) = await Frame(fake).Frame.ImmichAlbums(Server, Key, CancellationToken.None);
+        Assert.Equal("The Immich server rejected the API key", error);
+        Assert.Equal(0, body.Read_);
+    }
+
     [Fact]
     public async Task ARedirectIsAnErrorNotFollowed()
     {

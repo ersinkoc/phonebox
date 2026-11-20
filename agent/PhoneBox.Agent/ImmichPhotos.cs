@@ -15,7 +15,7 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
 {
     internal const int MaxAlbums = 500;
     private const long MaxJsonBytes = 64L * 1024 * 1024, MaxImageBytes = 12L * 1024 * 1024;
-    private const int PageSize = 1000, MaxPages = 10;
+    private const int PageSize = 1000, MaxPages = 10, MaxForbiddenBytes = 4096;
 
     internal sealed record Asset(string Id, long Ticks);
 
@@ -99,10 +99,11 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
     private static async Task<string> Forbidden(HttpResponseMessage res, CancellationToken ct)
     {
         const string generic = "The Immich server rejected the API key";
+        // a message is a few dozen bytes: a bigger body is never read, whatever it says about itself
+        if (res.Content.Headers.ContentLength > MaxForbiddenBytes) return generic;
         try
         {
-            var text = await res.Content.ReadAsStringAsync(ct);
-            if (text.Length > 4096) return generic;
+            if (await ReadCapped(res.Content, MaxForbiddenBytes, ct) is not { } text) return generic;
             using var doc = JsonDocument.Parse(text);
             const string prefix = "Missing required permission: ";
             if (Str(doc.RootElement, "message") is { } m && m.StartsWith(prefix, StringComparison.Ordinal) && m[prefix.Length..] is { Length: > 0 and <= 40 } perm
@@ -125,7 +126,7 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
             if (json is not null) req.Content = new StringContent(json, Encoding.UTF8, "application/json");
             using var res = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, limit.Token);
             if (res.StatusCode == HttpStatusCode.Unauthorized) return (null, "The Immich server rejected the API key");
-            if (res.StatusCode == HttpStatusCode.Forbidden) return (null, await Forbidden(res, ct));
+            if (res.StatusCode == HttpStatusCode.Forbidden) return (null, await Forbidden(res, limit.Token));
             if (res.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest) return (null, "Immich couldn't find that");
             // a redirect is never followed: it could carry the key to another address
             if (!res.IsSuccessStatusCode) return (null, $"The Immich server answered {(int)res.StatusCode}");
@@ -145,7 +146,7 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
     {
         await using var stream = await content.ReadAsStreamAsync(ct);
         using var ms = new MemoryStream();
-        var buffer = new byte[81920];
+        var buffer = new byte[(int)Math.Min(81920, max + 1)]; // never asks for more than one byte past the cap
         int n;
         while ((n = await stream.ReadAsync(buffer, ct)) > 0)
         {
