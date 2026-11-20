@@ -52,6 +52,32 @@ public sealed class CodexQuotaTests : IDisposable
     }
 
     [Fact]
+    public async Task LiveQuotaOverridesLocalQuotaAndRetainsSessionDetails()
+    {
+        Log(Reading(12), """{"type":"turn_context","payload":{"model":"test-model","effort":"medium"}}""");
+        var agent = Agent();
+        agent.CodexTick();
+        var live = new QuotaProvider("codex", "Codex", "Plus", [new("5-hour", 82, null, 18000, "warning")], null, 1000, null, Source: "codex-app-server");
+        await agent.RefreshCodexOnceAsync(() => "fake", (_, _) => Task.FromResult(live), default);
+        var result = agent.CodexSnapshot(1001)!;
+        Assert.Equal(82, result.Limits[0].Percent);
+        Assert.Equal("test-model", result.Codex!.Model);
+        var external = live with { Source = "codexbar", Limits = [new("5-hour", 90, null, 18000, "warning")] };
+        Assert.Equal(90, agent.CodexSnapshot(1001, external)!.Limits[0].Percent);
+        Assert.Equal("test-model", agent.CodexSnapshot(1001, external)!.Codex!.Model);
+        Assert.Equal(82, agent.CodexSnapshot(1001, external with { Error = "failed" })!.Limits[0].Percent);
+        Assert.Equal(82, agent.CodexSnapshot(1001, external with { UpdatedAt = -600000 })!.Limits[0].Percent);
+        await agent.RefreshCodexOnceAsync(() => "fake", (_, _) => throw new IOException("offline"), default);
+        Assert.Equal(12, agent.CodexSnapshot(1002)!.Limits[0].Percent);
+        Assert.Contains("local session snapshot", agent.CodexSnapshot(1002)!.Error);
+        Assert.Equal("test-model", agent.CodexSnapshot(1002)!.Codex!.Model);
+        Assert.Null(agent.CodexSnapshot(1002, external)!.Error);
+        await agent.RefreshCodexOnceAsync(() => null, (_, _) => throw new Exception("must not run"), default);
+        Assert.Equal(12, agent.CodexSnapshot(1003)!.Limits[0].Percent);
+        Assert.Contains("not installed", agent.CodexSnapshot(1003)!.Error);
+    }
+
+    [Fact]
     public void ALockedLogKeepsTheLastReading()
     {
         if (!OperatingSystem.IsWindows()) return; // FileShare.None only locks other readers on Windows

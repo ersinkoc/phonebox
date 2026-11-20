@@ -29,7 +29,7 @@ public sealed record QuotaProvider(string Id, string Name, string Plan, IReadOnl
 ///    keychain search list, normally the login Keychain, if its token expires later)
 ///    (the endpoint behind Claude Code's /usage command). The token is only read and NEVER refreshed;
 ///    Claude Code refreshes it itself (refreshing it here could break Claude Code's session).
-///  - Codex: the last "rate_limits" record in the newest rollout file under ~/.codex/sessions (fully local).
+///  - Codex: live account quota through the signed-in Codex CLI app-server, with local session logs as fallback.
 ///  - Antigravity: a running local server, or the signed-in agy CLI's structured /usage command.
 /// </summary>
 public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonitor> log) : BackgroundService
@@ -161,6 +161,9 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
 
     private volatile QuotaProvider? _claude;
     private volatile QuotaProvider? _codex;
+    private volatile QuotaProvider? _codexLive;
+    private volatile string? _codexLiveError;
+    private long _nextCodexQuota;
     private volatile QuotaProvider? _antigravity;
     private long _claudeNextAt;           // wall-clock ms of the next Claude request
     private int _claudeFailures;          // consecutive failed requests, for the back-off
@@ -181,8 +184,8 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var external = _external;
         var core = new[] { "claude", "codex", "antigravity" }
-            .Select(id => CodexBar.Select(id == "claude" ? _claude : id == "codex" ? _codex : _antigravity,
-                external.FirstOrDefault(p => p.Id == id), now))
+            .Select(id => id == "codex" ? CodexSnapshot(now, external.FirstOrDefault(p => p.Id == id))
+                : CodexBar.Select(id == "claude" ? _claude : _antigravity, external.FirstOrDefault(p => p.Id == id), now))
             .OfType<QuotaProvider>();
         var extra = external
             .Where(p => p.Id is not ("claude" or "codex" or "antigravity"))
@@ -199,7 +202,7 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
             ? l with { Percent = 0, ResetsAt = null, Severity = "normal", ResetDescription = null, DeltaPercent = null, ExpectedPercent = null, PaceOnTrack = null }
             : l).ToList();
         const string reached = "Limit reached";
-        var extra = p.Extra is { } x && x.StartsWith(reached, StringComparison.Ordinal) && !limits.Any(l => l.Percent >= 100)
+        var extra = p.Source != "codex-app-server" && p.Extra is { } x && x.StartsWith(reached, StringComparison.Ordinal) && !limits.Any(l => l.Percent >= 100)
             ? (x.Length > reached.Length + 3 ? x[(reached.Length + 3)..] : null) : p.Extra;
         return p with { Limits = limits, Extra = extra };
     }
@@ -331,6 +334,11 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
                 }
             }
             CodexTick();
+            if (Environment.TickCount64 >= _nextCodexQuota)
+            {
+                await RefreshCodexOnceAsync(CodexQuota.Find, CodexQuota.ReadAsync, ct);
+                _nextCodexQuota = Environment.TickCount64 + 60_000;
+            }
 
             if (Environment.TickCount64 >= _nextAntigravity)
             {
@@ -713,6 +721,46 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
             log.LogDebug("codex quota: {Msg}", ex.Message); // the log is busy for a moment; it's read again in 30 s
         }
         catch (Exception ex) { _codex = Fail("codex", "Codex", ex.Message); }
+    }
+
+    /// <summary>Refresh account-wide quota without creating a thread or inference turn.</summary>
+    internal async Task RefreshCodexOnceAsync(Func<string?> findTool,
+        Func<string, CancellationToken, Task<QuotaProvider>> read, CancellationToken ct)
+    {
+        try
+        {
+            var path = findTool();
+            if (path is null)
+            {
+                _codexLiveError = _codex is not null || _codexLive is not null ? "Codex CLI is not installed" : null;
+                _codexLive = null;
+                return;
+            }
+            _codexLive = await read(path, ct);
+            _codexLiveError = null;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            log.LogDebug("codex live quota: {Message}", ex.Message);
+            _codexLive = null;
+            _codexLiveError = "Live Codex quota unavailable";
+        }
+    }
+
+    internal QuotaProvider? CodexSnapshot(long now, QuotaProvider? external = null)
+    {
+        var live = _codexLive;
+        var local = _codex;
+        var fresh = live is { Error: null, Limits.Count: > 0, UpdatedAt: { } at } && now - at <= 120_000;
+        var direct = fresh ? live! with { Codex = local?.Codex } : local;
+        var selected = CodexBar.Select(direct, external, now);
+        if (selected?.Source is "codex-app-server" or "codexbar") return selected;
+        var error = _codexLiveError ?? (live is not null && !fresh ? "Live Codex quota is stale" : null);
+        if (error is null) return selected;
+        return selected is { Limits.Count: > 0 }
+            ? selected with { Error = error + "; showing local session snapshot" }
+            : selected is not null ? selected with { Error = error } : Fail("codex", "Codex", error);
     }
 
     private QuotaProvider? ReadCodex()

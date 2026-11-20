@@ -339,7 +339,11 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   It is rate limited per account and shared with Claude Code, so PhoneBox asks at most every 3 minutes, and waits
   longer after errors and as long as a `429` asks for, across restarts too. An expired or refused token is not sent:
   PhoneBox waits until Claude Code renews it.
-- **Codex quota and sessions** are read from local files in `~/.codex/sessions`; Claude Code sessions from
+- **Codex quota** is queried every minute through the locally installed, signed-in `codex` CLI app-server.
+  No coding session or inference prompt is required; the reading includes account usage from other computers.
+  Healthy, recent CodexBar quota retains priority when available. If the live query fails, local session quota
+  is used with an availability warning. **Codex sessions and token details** are read from local files in
+  `~/.codex/sessions`; Claude Code sessions from
   `~/.claude/sessions`. Cursor sessions (opt-in in **Settings › General › Cursor sessions**) come from recent agent
   transcripts under `~/.cursor/projects/*/agent-transcripts`. Only the last message's role is kept; chat text is never
   shown, stored or sent. Project names use the folder basename from Cursor's `workspaceStorage`.
