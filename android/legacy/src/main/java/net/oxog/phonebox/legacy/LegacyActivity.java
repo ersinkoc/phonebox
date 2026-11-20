@@ -50,6 +50,18 @@ public final class LegacyActivity extends Activity {
                     address.setError("Enter a full http:// or https:// address without credentials");
                     return;
                 }
+                String host = uri.getHost();
+                boolean privateAddress = host.startsWith("10.") || host.startsWith("192.168.") || host.endsWith(".local");
+                String[] parts = host.split("\\.");
+                if (parts.length == 4 && "172".equals(parts[0])) {
+                    try { int second = Integer.parseInt(parts[1]); privateAddress |= second >= 16 && second <= 31; }
+                    catch (NumberFormatException ignored) { }
+                }
+                // HTTP is only for the user's opt-in bridge on a private LAN.
+                if ("http".equals(uri.getScheme()) && !privateAddress) {
+                    address.setError("Use the computer's private LAN IP or a .local hostname");
+                    return;
+                }
                 origin = uri.getScheme() + "://" + uri.getEncodedAuthority();
                 getPreferences(MODE_PRIVATE).edit().putString("address", url).apply();
                 openPanel(url);

@@ -5,7 +5,7 @@ android {
     defaultConfig {
         applicationId = "net.oxog.phonebox.legacy"
         minSdk = 16
-        targetSdk = 28
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1.0-experimental"
     }
