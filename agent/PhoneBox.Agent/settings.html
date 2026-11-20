@@ -2140,11 +2140,12 @@ $('installApp').onclick = async () => {
   setTimeout(loadInfo, 4000);
 };
 // Photo frame: show the fields of the chosen source; the Immich album list is only fetched on request
+let immichAlbums = []; // the last list the agent sent; the chosen album is shown against it, also after Apply JSON or Revert
 function renderPhotoSource() {
   const immich = cfg.photos.source === 'immich';
   $('photosFolderBox').hidden = immich;
   $('photosImmichBox').hidden = !immich;
-  if (!$('photosImmichAlbum').options.length) fillAlbums([], cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
+  fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
 }
 function fillAlbums(albums, current, currentName) {
   const sel = $('photosImmichAlbum');
@@ -2167,12 +2168,17 @@ $('photosImmichAlbum').onchange = () => {
 $('photosImmichLoad').onclick = async () => {
   const state = $('photosImmichState');
   state.textContent = t('s.js.immichLoading');
+  // the agent gives up on the server after 30 s; this is a little longer, so a lost agent doesn't leave "Loading…" for good
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 35000);
   try {
-    const r = await (await fetch('/api/immich/albums', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: cfg.photos.immichUrl, key: cfg.photos.immichKey }) })).json();
+    const r = await (await fetch('/api/immich/albums', { method: 'POST', signal: abort.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: cfg.photos.immichUrl, key: cfg.photos.immichKey }) })).json();
     if (r.error) { state.textContent = r.error; return; }
-    fillAlbums(r.albums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
+    immichAlbums = r.albums;
+    fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
     state.textContent = r.albums.length ? t('s.js.immichCount', { n: r.albums.length }) : t('s.js.immichNone');
   } catch (_) { state.textContent = t('s.js.immichFailed'); }
+  finally { clearTimeout(timer); }
 };
 $('haTest').onclick = async () => {
   $('haState').textContent = 'checking…';
