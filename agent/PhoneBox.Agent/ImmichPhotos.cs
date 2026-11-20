@@ -216,7 +216,12 @@ public sealed partial class PhotoFrame
             var (bytes, error) = await Client.Preview(photo.Path, ct);
             // the messages that name no address or key (a missing permission, a rejected key) help the user fix the settings
             if (bytes is null) return (null, null, error is "Unknown photo" || error?.StartsWith("The Immich ", StringComparison.Ordinal) == true && error.Contains("API key") ? error : "That photo can't be shown");
-            return MimeOf(bytes) is { } mime ? (bytes, mime, null) : (null, null, "That photo can't be shown");
+            if (MimeOf(bytes) is not { } mime) return (null, null, "That photo can't be shown");
+            // the size limits a folder photo is held to (the server may be set to send larger previews); nothing is scaled here
+            if (SizeOf(bytes.AsSpan(0, Math.Min(bytes.Length, 256 * 1024)), mime) is { } d
+                && (d.W <= 0 || d.H <= 0 || d.W > 8192 || d.H > 8192 || (long)d.W * d.H > MaxPhonePixels))
+                return (null, null, "That photo is too large to show");
+            return (bytes, mime, null);
         }
     }
 }

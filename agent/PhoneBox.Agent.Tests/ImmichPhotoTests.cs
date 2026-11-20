@@ -432,6 +432,31 @@ public sealed class ImmichPhotoTests : IDisposable
         Assert.Contains(fake.Seen, s => s.Path.EndsWith("/thumbnail?size=preview") && s.Key == Key);
     }
 
+    private static byte[] PngOf(int w, int h) =>
+        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D, (byte)'I', (byte)'H', (byte)'D', (byte)'R',
+         (byte)(w >> 24), (byte)(w >> 16), (byte)(w >> 8), (byte)w, (byte)(h >> 24), (byte)(h >> 16), (byte)(h >> 8), (byte)h, 8, 6, 0, 0, 0];
+
+    [Theory]
+    [InlineData(20000, 20000, false)] // far too many pixels for an old phone
+    [InlineData(9000, 100, false)]    // over 8192 px a side
+    [InlineData(4097, 4097, false)]   // one pixel over the area folder photos are held to
+    [InlineData(4096, 4096, true)]
+    [InlineData(2048, 1152, true)]
+    public async Task APreviewIsHeldToTheSameSizeLimitsAsAFolderPhoto(int w, int h, bool served)
+    {
+        var picture = PngOf(w, h);
+        var fake = new FakeImmich(r => r.RequestUri!.AbsolutePath.EndsWith("/thumbnail")
+            ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(picture) }
+            : r.Method == HttpMethod.Post
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent($$$"""{"assets":{"items":[{"id":"{{{A1}}}","type":"IMAGE"}],"nextPage":null}}""", Encoding.UTF8, "application/json") }
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var (frame, _) = Frame(fake);
+        frame.ScanNow();
+        var photo = await frame.Get(Assert.Single(frame.List().Ids), CancellationToken.None);
+        if (served) { Assert.Equal(picture, photo.Bytes); Assert.Equal("image/png", photo.Type); }
+        else { Assert.Null(photo.Bytes); Assert.Equal("That photo is too large to show", photo.Error); }
+    }
+
     [Fact]
     public async Task NothingIsFetchedWhileNoEnabledPageShowsTheWidget()
     {
