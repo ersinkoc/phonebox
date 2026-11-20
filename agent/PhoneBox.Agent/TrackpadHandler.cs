@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace PhoneBox.Agent;
 
@@ -9,10 +10,21 @@ public static class TrackpadHandler
     private const int MaxMovementDelta = 500;
     private const int MaxScrollDelta = 1000;
 
+    /// <summary>The multi-finger gestures the phone sends: <c>swipe3up</c>, <c>swipe4left</c>, <c>spread</c>, <c>pinch</c>.</summary>
+    internal static readonly Regex GestureName = new("^(?:swipe(?<n>[34])(?<dir>up|down|left|right)|(?<pinch>spread|pinch))$", RegexOptions.Compiled);
+
     public static bool IsAllowed(AgentConfig config) =>
         config.Widgets(enabledPagesOnly: true).Any(w => w.Type == "trackpad" && w.Bool("control") == true);
 
     private static volatile bool _executionErrorLogged;
+
+    /// <summary>The first failure to act on the phone's input (macOS refusing without the Accessibility permission, say) is logged; the phone gets no answer.</summary>
+    private static void ReportFailure(ILogger? log, Exception ex)
+    {
+        if (_executionErrorLogged) return;
+        _executionErrorLogged = true;
+        log?.LogWarning(ex, "Trackpad execution failed");
+    }
 
     public static void ProcessPayload(ReadOnlySpan<byte> utf8, ConfigStore config, ILogger? log = null)
     {
@@ -30,15 +42,11 @@ public static class TrackpadHandler
             {
                 try
                 {
-                    Execute(msg);
+                    Execute(msg, ex => ReportFailure(log, ex));
                 }
                 catch (Exception ex)
                 {
-                    if (!_executionErrorLogged)
-                    {
-                        _executionErrorLogged = true;
-                        log?.LogWarning(ex, "Trackpad execution failed");
-                    }
+                    ReportFailure(log, ex);
                 }
             }
         }
@@ -48,7 +56,7 @@ public static class TrackpadHandler
         }
     }
 
-    public static void Execute(TrackpadPayload msg)
+    public static void Execute(TrackpadPayload msg, Action<Exception>? onFailure = null)
     {
         var action = (msg.Type ?? msg.Action)?.ToLowerInvariant();
         switch (action)
@@ -100,7 +108,8 @@ public static class TrackpadHandler
                 break;
             }
             default:
-                // Ignore unknown message types
+                // swipe3up, swipe4left, spread, pinch...: macOS only; anything else is ignored
+                if (action is not null && GestureName.IsMatch(action)) KeySender.MouseGesture(action, onFailure);
                 break;
         }
     }

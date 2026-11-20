@@ -57,6 +57,10 @@ Last updated: 2026-11-20 (PhoneBox 0.9.6).
   on your computer (over USB or pinned-TLS Wi-Fi) to control the cursor and scroll. No mouse or gesture data is ever
   recorded, stored or sent outside your local connection. It is active only while an enabled page contains the Trackpad
   widget with **Allow controlling the mouse from the phone** enabled (off by default).
+  On a Mac, a three-, four- or five-finger gesture from the phone opens Mission Control or Apps, signals the Dock, or
+  presses a key (moving between desktops or pages). While you gesture, the agent reads the Mac's Trackpad, `com.apple.dock`
+  and `com.apple.symbolichotkeys` preferences (at most once every 2 seconds) to do what your own trackpad would do. Only
+  the gesture settings are kept, in memory, and nothing is stored or sent.
 - **Local services**: LibreHardwareMonitor's web server (`127.0.0.1:8085`), a running Antigravity language server
   (loopback, over HTTP or HTTPS), the Docker / Podman socket, OBS WebSocket and the Discord desktop app's local connection (a named pipe
   or socket on this computer) are local connections.

@@ -7,7 +7,8 @@ namespace PhoneBox.Agent;
 /// "playpause"; several combos separated by commas are pressed one after another.
 ///  - Windows: SendInput.
 ///  - Linux: xdotool (X11) or wtype (Wayland).
-///  - macOS: System Events via osascript (needs the Accessibility permission for the agent).
+///  - macOS: System Events via osascript (needs the Accessibility permission for the agent). The mouse (Trackpad
+///    widget) is Quartz events, see Unix/MacMouse.cs.
 /// </summary>
 public static class KeySender
 {
@@ -269,6 +270,12 @@ public static class KeySender
         INPUT[] inputs = [MouseInput(0, 0, 0, MOUSEEVENTF_LEFTUP)];
         SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
     }
+    /// <summary>The Trackpad widget's multi-finger gestures are a macOS feature; elsewhere they are ignored.</summary>
+    public static bool MouseGesture(string type, Action<Exception>? onFailure = null)
+    {
+        if (TestMouseSink is not null) { TestMouseSink(new MouseCall(type, 0, 0, 0)); return true; }
+        return false;
+    }
 #else
     /// <summary>Presses one parsed combo; false when xdotool or wtype failed (macOS throws when it refuses).</summary>
     public static bool SendCombo(List<string> combo) => Send(combo);
@@ -348,6 +355,13 @@ public static class KeySender
         Osa($"tell application \"System Events\" to {action}{using_}");
     }
 
+    /// <summary>Presses a key by its macOS key code, with modifiers named the way System Events does ("control down").</summary>
+    internal static void MacKeyCode(int code, IReadOnlyList<string> modifiers)
+    {
+        var using_ = modifiers.Count > 0 ? $" using {{{string.Join(", ", modifiers)}}}" : "";
+        Osa($"tell application \"System Events\" to key code {code}{using_}");
+    }
+
     private static int MacF(int n) => n switch
     {
         1 => 122, 2 => 120, 3 => 99, 4 => 118, 5 => 96, 6 => 97, 7 => 98, 8 => 100, 9 => 101, 10 => 109, 11 => 103, 12 => 111,
@@ -391,8 +405,6 @@ public static class KeySender
 
     private static void UnixMouse(params string[] args)
     {
-        if (OperatingSystem.IsMacOS())
-            throw new PlatformNotSupportedException("The Trackpad widget is not supported on macOS yet.");
         var xdotool = Sh.Which("xdotool");
         if (xdotool is null)
             throw new InvalidOperationException("controlling the mouse needs xdotool (X11)");
@@ -411,6 +423,7 @@ public static class KeySender
     public static void MouseMove(int dx, int dy)
     {
         if (TestMouseSink is not null) { TestMouseSink(new MouseCall("move", dx, dy, 0)); return; }
+        if (OperatingSystem.IsMacOS()) { MacMouse.Move(dx, dy); return; }
         lock (UnixMoveLock)
         {
             _unixPendingDx += dx;
@@ -432,12 +445,14 @@ public static class KeySender
     public static void MouseClick()
     {
         if (TestMouseSink is not null) { TestMouseSink(new MouseCall("click", 0, 0, 0)); return; }
+        if (OperatingSystem.IsMacOS()) { MacMouse.Click(); return; }
         UnixAction("click", "1");
     }
 
     public static void MouseRightClick()
     {
         if (TestMouseSink is not null) { TestMouseSink(new MouseCall("rightClick", 0, 0, 0)); return; }
+        if (OperatingSystem.IsMacOS()) { MacMouse.RightClick(); return; }
         UnixAction("click", "3");
     }
 
@@ -448,6 +463,7 @@ public static class KeySender
     {
         if (delta == 0) return;
         if (TestMouseSink is not null) { TestMouseSink(new MouseCall("scroll", 0, 0, delta)); return; }
+        if (OperatingSystem.IsMacOS()) { MacMouse.Scroll(delta); return; }
         _unixVScrollAcc += delta;
         var n = Math.Abs(_unixVScrollAcc) / 120;
         if (n == 0) return;
@@ -460,6 +476,7 @@ public static class KeySender
     {
         if (delta == 0) return;
         if (TestMouseSink is not null) { TestMouseSink(new MouseCall("hscroll", 0, 0, delta)); return; }
+        if (OperatingSystem.IsMacOS()) { MacMouse.HorizontalScroll(delta); return; }
         _unixHScrollAcc += delta;
         var n = Math.Abs(_unixHScrollAcc) / 120;
         if (n == 0) return;
@@ -471,13 +488,29 @@ public static class KeySender
     public static void MouseDown()
     {
         if (TestMouseSink is not null) { TestMouseSink(new MouseCall("mouseDown", 0, 0, 0)); return; }
+        if (OperatingSystem.IsMacOS()) { MacMouse.Down(); return; }
         UnixAction("mousedown", "1");
     }
 
     public static void MouseUp()
     {
         if (TestMouseSink is not null) { TestMouseSink(new MouseCall("mouseUp", 0, 0, 0)); return; }
+        if (OperatingSystem.IsMacOS()) { MacMouse.Up(); return; }
         UnixAction("mouseup", "1");
     }
+    /// <summary>
+    /// A three- or four-finger swipe, or a spread or pinch, from the Trackpad widget. Only macOS has these gestures,
+    /// and what they do follows the Mac's own Trackpad settings (see Unix/MacGestures.cs). The action starts in the
+    /// background: it can take a moment and the phone's next movement should not wait for it.
+    /// </summary>
+    public static bool MouseGesture(string type, Action<Exception>? onFailure = null)
+    {
+        if (TestMouseSink is not null) { TestMouseSink(new MouseCall(type, 0, 0, 0)); return true; }
+        if (!OperatingSystem.IsMacOS() || !MacGestures.IsGesture(type)) return false;
+        // a gesture that macOS refuses (no Accessibility permission, say) is reported to the caller, which has the logger
+        Task.Run(() => { try { MacGestures.Run(type); } catch (Exception ex) { onFailure?.Invoke(ex); } });
+        return true;
+    }
+
 #endif
 }

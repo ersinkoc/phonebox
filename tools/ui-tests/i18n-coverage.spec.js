@@ -53,6 +53,11 @@ function englishLeftovers(texts, allowed) {
   return [...new Set(texts.map(norm))].filter(isEnglish);
 }
 
+// isEnglish below flags a run of two words with no diacritic anywhere in the string. Vietnamese marks tone on
+// nearly every syllable, so that is a reliable signal there; Portuguese is not (plenty of whole phrases, like
+// "Nenhum telefone conectado", carry no accent at all), so this check stays Vietnamese-only. The language-agnostic
+// completeness checks for Portuguese (Brazil) and every other language live in tools/ui-tests/i18n.spec.js instead,
+// comparing each dictionary directly against the English one rather than guessing from the rendered text.
 test('the settings page shows no English left in Vietnamese, with every section open', async ({ page }) => {
   await page.goto('/settings/');
   // A page-level fetch mock would hide the real /api/settings answer, so switch the language through the UI contract:
@@ -125,15 +130,18 @@ test('the settings page shows no English left in Vietnamese, with every section 
   expect(leftoversKept, `untranslated text still on the settings page:\n${leftoversKept.join('\n')}`).toEqual([]);
 });
 
-test('every string in widgets.json and templates.json has a Vietnamese catalog entry', async ({ page }) => {
+// Checked for every language with a complete widget/template catalog (CATALOG.<lang> covers every widgets.json and
+// templates.json string): today that is Vietnamese and Portuguese (Brazil).
+for (const lang of ['vi', 'pt-BR']) {
+test(`every string in widgets.json and templates.json has a ${lang} catalog entry`, async ({ page }) => {
   await page.goto('/panel/');
-  const out = await page.evaluate(async () => {
+  const out = await page.evaluate(async (lang) => {
     const I18n = window.PhoneBoxI18n;
     const cat = await (await fetch('/widgets.json', { cache: 'no-store' })).json();
     const tpl = await (await fetch('/templates.json', { cache: 'no-store' })).json();
     const widgets = Array.isArray(cat) ? cat : (cat.widgets || []);
     const templates = Array.isArray(tpl) ? tpl : (tpl.templates || []);
-    const vi = I18n.CATALOG.vi || {};
+    const dict = I18n.CATALOG[lang] || {};
 
     const wanted = new Set();
     for (const w of widgets) {
@@ -150,13 +158,14 @@ test('every string in widgets.json and templates.json has a Vietnamese catalog e
     const isValue = (s) => /^[\d.,%\-/+ ]+$/.test(s);
     // TRY is the Turkish lira code, used as a currency label: translating it would turn the code into a word.
     const NOT_TRANSLATED = new Set(['TRY']);
-    const missing = [...wanted].filter((s) => !(s in vi) && !NOT_TRANSLATED.has(s) && !isValue(s));
+    const missing = [...wanted].filter((s) => !(s in dict) && !NOT_TRANSLATED.has(s) && !isValue(s));
     return { widgets: widgets.length, templates: templates.length, wanted: wanted.size, missing };
-  });
+  }, lang);
 
   expect(out.widgets).toBeGreaterThan(0);
   expect(out.missing, `catalog entries missing for:\n${out.missing.join('\n')}`).toEqual([]);
 });
+}
 
 test('settings.html keeps no English literal in a position that reaches the screen', async () => {
   const file = path.join(__dirname, '..', '..', 'agent', 'PhoneBox.Agent', 'settings.html');

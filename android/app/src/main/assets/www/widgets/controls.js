@@ -1,4 +1,4 @@
-import { API, PANEL_HEADERS, api, applyState, bridge, D, evSeq, h, en, haptic, icon, toast, store, t } from '../main.js';
+import { API, PANEL_HEADERS, api, applyState, bridge, buzz, D, evSeq, h, en, haptic, icon, toast, store, t } from '../main.js';
 import { W } from '../registry.js';
 
 let cached = null, at = 0, epoch = 0, pending = null;
@@ -751,6 +751,21 @@ W.trackpad = {
     const holdDuration = Math.max(100, Number(o.holdDuration) || 350);
     const scrollBar = o.scrollBar || 'right';
     const scrollBarWidth = Math.max(16, Number(o.scrollBarWidth) || 36);
+    // A different feel for each thing the pad does: a tick for a click, two for a right click, a firmer press when a
+    // drag starts, a longer one when a gesture fires, and a light tick for every notch of a scroll. "Haptic feedback"
+    // sets how strong they are (or turns them off) and "Tick while scrolling" turns the scroll ticks on (off by default).
+    // They go through the panel's buzz(), so night mode and the display's vibration switch silence them too. The gestures
+    // vibrate only for a Mac: the agent ignores them on any other computer, where a vibration would suggest something happened.
+    const strength = o.haptics === 'off' ? 0 : ({ light: 0.6, strong: 1.8 }[o.haptics] ?? 1);
+    const scrollTicks = o.scrollHaptics === true;
+    const patterns = { click: '0,14', rightClick: '0,14,70,14', drag: '0,30', swipe: '0,20,45,20', spread: '0,45', pinch: '0,45', scroll: '0,8' };
+    const feel = (kind) => {
+      if (!strength || (kind === 'scroll' && !scrollTicks) || !patterns[kind]) return;
+      if ((kind === 'swipe' || kind === 'spread' || kind === 'pinch') && D.state?.os !== 'macos') return;
+      // only the vibrations get weaker or stronger, not the pauses between them
+      const pattern = patterns[kind].split(',').map((ms, i) => (i % 2 ? Math.max(4, Math.round(Number(ms) * strength)) : Number(ms))).join(',');
+      buzz(pattern);
+    };
 
     const surface = h('div', 'deck-trackpad-surface',
       h('div', 'deck-trackpad-icon', icon(controlEnabled ? 'mouse' : 'lock')),
@@ -861,13 +876,81 @@ W.trackpad = {
       const sy = Math.round(accScrollY);
       accScrollX -= sx;
       accScrollY -= sy;
-      if (sx !== 0 || sy !== 0) send({ type: 'scroll', dx: sx, dy: sy, delta: sy });
+      if (sx !== 0 || sy !== 0) { send({ type: 'scroll', dx: sx, dy: sy, delta: sy }); scrollFeel(sx, sy); }
+    }
+    // a light tick for each notch of a wheel (120), at most one every 45 ms so a fast scroll hums instead of buzzing
+    let scrollSince = 0, lastScrollTick = 0;
+    function scrollFeel(dx, dy) {
+      scrollSince += Math.abs(dx) + Math.abs(dy);
+      const now = performance.now();
+      if (scrollSince < 120 || now - lastScrollTick < 45) return;
+      scrollSince %= 120;
+      lastScrollTick = now;
+      feel('scroll');
     }
 
     const activePointers = new Map();
     let maxActivePointers = 0, moved = false, tapFired = false;
     let isDragging = false, holdTimer = null;
     let scrollAxis = null, cumScrollX = 0, cumScrollY = 0;
+
+    // Three or more fingers make a gesture, as on a Mac's trackpad: a swipe (3 or 4 fingers) or, with 4 or more, a spread
+    // or pinch. The agent decides what it does from the Mac's own Trackpad settings and ignores it on other computers.
+    let gestureBase = null, gestureFired = false, gestureCheckScheduled = false, gestureQuietTimer = null;
+    const touches = () => [...activePointers.values()].filter((p) => !p.isBar);
+    function gestureShape() {
+      const ps = touches(), n = ps.length;
+      let cx = 0, cy = 0, r = 0;
+      for (const p of ps) { cx += p.lastX; cy += p.lastY; }
+      cx /= n; cy /= n;
+      for (const p of ps) r += Math.hypot(p.lastX - cx, p.lastY - cy);
+      return { n, cx, cy, r: r / n };
+    }
+    // measure from here: with three or more fingers down, or no gesture to judge
+    function rebase() {
+      clearTimeout(gestureQuietTimer);
+      const ps = touches();
+      gestureBase = !gestureFired && ps.length >= 3 ? gestureShape() : null;
+      for (const p of ps) { p.baseX = p.lastX; p.baseY = p.lastY; }
+    }
+    // 'out' when every finger that has moved went mostly away from the middle it started around, 'in' when mostly towards it
+    function radialMotion(b) {
+      let out = 0, inward = 0, other = 0;
+      for (const p of touches()) {
+        const dx = p.lastX - p.baseX, dy = p.lastY - p.baseY, d = Math.hypot(dx, dy);
+        if (d <= 12) continue; // it rests
+        const rx = p.baseX - b.cx, ry = p.baseY - b.cy, r = Math.hypot(rx, ry);
+        if (r < 8) continue; // it started in the middle: there is no away or towards, so it neither helps nor hinders
+        const along = (dx * rx + dy * ry) / (d * r);
+        if (along >= 0.6) out++; else if (along <= -0.6) inward++; else other++;
+      }
+      return other === 0 && out > 0 && inward === 0 ? 'out' : other === 0 && inward > 0 && out === 0 ? 'in' : null;
+    }
+    // A swipe is judged as it goes, from how far the fingers' middle has moved. A spread or pinch is judged only when the fingers
+    // have finished (one lifts, or they have been still for a moment): while they are moving, a frame can show some of them
+    // moved and the others not yet, which is a partial sample that looks like one.
+    function checkGesture(final = false) {
+      const g = gestureShape(), b = gestureBase;
+      if (g.n !== b.n) { rebase(); return; } // a finger landed or lifted: measure again from here
+      const dx = g.cx - b.cx, dy = g.cy - b.cy, dist = Math.hypot(dx, dy);
+      const ratio = b.r > 8 ? g.r / b.r : 1;
+      // A spread or pinch is the fingers moving apart or together, so at least half of them must have moved: one finger that
+      // has moved before the others (a frame, a pause, a finger lifting) is not one, and fingers that rest do not stop it.
+      const together = touches().filter((p) => Math.hypot(p.lastX - p.baseX, p.lastY - p.baseY) > 12).length >= Math.ceil(g.n / 2);
+      // and the way they moved: away from the middle for a spread, towards it for a pinch. One finger that moved along
+      // (up, say, while the others have yet to follow) changed the spread of the fingers but did not open them.
+      const way = radialMotion(b);
+      let type = null;
+      if (final && g.n >= 4 && together && way === 'out' && dist < 45 && ratio > 1.35) type = 'spread';
+      else if (final && g.n >= 4 && together && way === 'in' && dist < 45 && ratio < 0.72) type = 'pinch';
+      else if (dist > 60) type = 'swipe' + Math.min(g.n, 4) + (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down'));
+      if (!type) return;
+      gestureFired = true;
+      clearTimeout(gestureQuietTimer);
+      moved = true;
+      send({ type });
+      feel(type.startsWith('swipe') ? 'swipe' : type);
+    }
 
     pad.addEventListener('pointerdown', (e) => {
       e.stopPropagation(); e.preventDefault();
@@ -894,6 +977,7 @@ W.trackpad = {
         cumScrollX = 0;
         cumScrollY = 0;
       }
+      if (!isBar) rebase();
       if (!isBar && activePointers.size === 1) {
         moved = false;
         tapFired = false;
@@ -902,7 +986,7 @@ W.trackpad = {
             isDragging = true;
             flushMove();
             send({ type: 'mousedown' });
-            haptic();
+            feel('drag');
           }
         }, holdDuration);
       }
@@ -914,6 +998,8 @@ W.trackpad = {
       if (!pt) return;
       const rawDx = e.clientX - pt.lastX, rawDy = e.clientY - pt.lastY;
       pt.lastX = e.clientX; pt.lastY = e.clientY;
+      // after a gesture fires, the fingers still down do nothing until all of them lift (no scroll, no pointer)
+      if (gestureFired) return;
 
       if (pt.isBar) {
         const factor = natural ? 1 : -1;
@@ -924,6 +1010,19 @@ W.trackpad = {
       if (Math.hypot(e.clientX - pt.startX, e.clientY - pt.startY) > 6) {
         moved = true;
         if (!isDragging && holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      }
+
+      // a finger's pointermove comes one at a time, so look at the fingers together once per frame, not between two of them
+      if (gestureBase && !gestureFired && !gestureCheckScheduled) {
+        gestureCheckScheduled = true;
+        requestAnimationFrame(() => {
+          gestureCheckScheduled = false;
+          if (!destroyed && gestureBase && !gestureFired) checkGesture();
+        });
+      }
+      clearTimeout(gestureQuietTimer);
+      if (gestureBase && !gestureFired) {
+        gestureQuietTimer = setTimeout(() => { if (!destroyed && gestureBase && !gestureFired) checkGesture(true); }, 90);
       }
 
       if (activePointers.size === 1) {
@@ -1008,6 +1107,8 @@ W.trackpad = {
       e.stopPropagation(); e.preventDefault();
       try { pad.releasePointerCapture(e.pointerId); } catch (_) {}
       if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      // a quick flick can lift in the frame of its last move: judge the fingers now, before the one that lifts is gone
+      if (e.type === 'pointerup' && gestureBase && !gestureFired) checkGesture(true);
       const pt = activePointers.get(e.pointerId);
       if (pt?.isBar) {
         if (scrollBarEl) scrollBarEl.classList.remove('is-scrolling');
@@ -1022,17 +1123,18 @@ W.trackpad = {
         if (maxActivePointers === 1 && duration < 300) {
           flushMove();
           send({ type: 'click' });
-          haptic();
+          feel('click');
           tapFired = true;
         } else if (maxActivePointers === 2 && duration < 400) {
           flushMove();
           flushScroll();
           send({ type: 'rightClick' });
-          haptic();
+          feel('rightClick');
           tapFired = true;
         }
       }
       activePointers.delete(e.pointerId);
+      rebase();
       if (activePointers.size < 2) {
         scrollAxis = null;
         cumScrollX = 0;
@@ -1040,6 +1142,7 @@ W.trackpad = {
       }
       if (activePointers.size === 0) {
         maxActivePointers = 0; moved = false; tapFired = false;
+        gestureFired = false; gestureBase = null; scrollSince = 0;
         if (scrollBarEl) scrollBarEl.classList.remove('is-scrolling');
         flushMove(); flushScroll();
       }
@@ -1065,6 +1168,7 @@ W.trackpad = {
         cumScrollY = 0;
         if (reconnectTimer) clearTimeout(reconnectTimer);
         if (holdTimer) clearTimeout(holdTimer);
+        clearTimeout(gestureQuietTimer);
         if (isDragging) { send({ type: 'mouseup' }); isDragging = false; }
         if (ws) { try { ws.close(); } catch (_) {} ws = null; }
         activePointers.clear();

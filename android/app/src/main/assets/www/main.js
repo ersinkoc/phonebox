@@ -730,13 +730,14 @@ export async function runShortcut(btn, id, hold = false) {
  *  instead of the centred icon; without `label`, the key shows no name (screen readers still get it). */
 export function keyButton(s, { cover = false, label = true } = {}) {
   const icon = h('span', 'k-icon', s.icon ? rich(s.icon) : '•');
-  const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
+  const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (s.cycle ? ' cycle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
   // The agent accepts a blank label, and a filled key hides its icon, so the id keeps the button named when no text
   // is shown; visible text names it otherwise.
   const name = String(s.label || '').trim();
   if (!label || !name) b.setAttribute('aria-label', name || s.id);
   b.style.setProperty('--k', s.color || '#6b7280');
   b.dataset.id = s.id;
+  b._cover = cover;
   if (s.hold) holdToRun(b, s.id);
   else b.addEventListener('click', () => runShortcut(b, s.id));
   // Only an upload fills the key: a program's own icon is 32 px on Windows, 64 px on macOS, and on Linux whatever logo
@@ -765,13 +766,31 @@ function holdToRun(b, id) {
   b.addEventListener('click', () => { if (held) held = false; else runShortcut(b, id); });
 }
 
+/** Shows another shortcut's face on a key: a cycle key shows the key that ran last, with its icon (emoji, program icon or
+ *  upload) and name; the key's own picture is taken off. Shown with the key's own shortcut it restores the key's face. */
+export function setKeyFace(b, s, cover = false) {
+  b.dataset.face = s.id === b.dataset.id ? '' : s.id;
+  b.querySelectorAll('.k-bg, .k-shade').forEach((n) => n.remove());
+  b.classList.remove('k-cover');
+  const icon = b.querySelector('.k-icon');
+  icon.classList.remove('k-icon-img');
+  icon.replaceChildren(s.icon ? rich(s.icon) : '•');
+  b.querySelector('.k-label').textContent = s.label;
+  // a key that had no visible name is named by its id; the name follows the face
+  if (b.hasAttribute('aria-label')) b.setAttribute('aria-label', String(s.label || '').trim() || s.id);
+  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true);
+}
+
 function applyShortcutIcon(b, icon, id, cover) {
+  // a picture that arrives after the key changed face (a cycle key) is not the face any more: it is dropped
+  const current = () => (b.dataset.face || b.dataset.id) === id;
   const url = `${API}/shortcuts/icon?id=${encodeURIComponent(id)}`;
   const img = new Image();
   if (cover) {
     // the upload only: if it was removed since the config was read, the key falls back to the centred icon (the
     // program's own, or the emoji) instead of the agent's next choice stretched across it
     img.onload = () => {
+      if (!current()) return;
       img.className = 'k-bg';
       img.alt = '';
       b.prepend(img, h('span', 'k-shade'));
@@ -781,7 +800,7 @@ function applyShortcutIcon(b, icon, id, cover) {
     img.src = url + '&upload=true'; // "true", not "1": the agent binds it as a bool and answers 400 to "1"
     return;
   }
-  img.onload = () => { icon.replaceChildren(img); icon.classList.add('k-icon-img'); };
+  img.onload = () => { if (!current()) return; icon.replaceChildren(img); icon.classList.add('k-icon-img'); };
   img.src = url;
 }
 

@@ -98,7 +98,8 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
   `plugdev` group (`sudo usermod -aG plugdev $USER`, then log out and in). Setup points this out when it happens.
 - **On macOS**, the agent is signed with PhoneBox's own certificate, not an Apple Developer ID. The first time,
   macOS may ask whether it may control Music or Spotify (for Now Playing), or accept incoming connections (with Wi-Fi
-  on). Shortcuts that press keys need *System Settings › Privacy & Security › Accessibility* for PhoneBoxAgent; it
+  on). Shortcuts that press keys, and the Trackpad widget (its mouse events and its gestures), need *System Settings ›
+  Privacy & Security › Accessibility* for PhoneBoxAgent; it
   carries over to later updates. Before 0.9.22 the agent was signed ad hoc, and macOS dropped the permission with every
   update, so after updating from an older version allow it once more: remove PhoneBoxAgent there with *−* and add it
   again, even if it is listed and switched on ([#269](https://github.com/ersinkoc/phonebox/issues/269)).

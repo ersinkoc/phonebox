@@ -94,7 +94,27 @@ PhoneBox afterwards so it finds ffmpeg in PATH, or enter ffmpeg's full path in t
 a Camera widget for it is on the phone's screen, at 5 frames a second by default; pick 1 to 10 next to the camera (smoother costs more CPU on the PC and more data to the phone), and expect a short delay. Choose
 **UDP** for a camera that doesn't stream over TCP. At most 4 cameras play at the same time.
 
-**Trackpad** turns a tile into a laptop-style touchpad for the computer with precision acceleration, tap to click, two fingers to right-click, hold to drag, and two-finger scrolling or an optional edge scrollbar. For safety, mouse control is turned off by default: check **Allow controlling the mouse from the phone** in the widget's settings on an enabled page. Supported on Windows (native input) and Linux (with `xdotool` under X11; Wayland sessions block synthetic mouse input); macOS is not supported yet.
+**Trackpad** turns a tile into a laptop-style touchpad for the computer with precision acceleration, tap to click, two fingers to right-click, hold to drag, and two-finger scrolling or an optional edge scrollbar. For safety, mouse control is turned off by default: check **Allow controlling the mouse from the phone** in the widget's settings on an enabled page. Supported on Windows (native input), Linux (with `xdotool` under X11; Wayland sessions block synthetic mouse input) and macOS (Quartz events; the agent needs the Accessibility permission, the same one that sends keys).
+
+On a Mac the Trackpad also has the trackpad's **multi-finger gestures**, and each Mac decides what they do from its own
+**System Settings › Trackpad › More Gestures**, so a gesture that is off there does nothing here: swipe **up** with three
+(or four) fingers for Mission Control, **down** for App Exposé, **left or right** to move between full-screen apps and
+desktops (it presses the Mac's "Move left / right a space" shortcut as set in Keyboard Shortcuts, and does nothing while that
+is off; or, set to three fingers, between pages), and with four or five fingers **spread** to show the desktop or
+**pinch** to open Apps (Launchpad before macOS 26). A Mac that never saved the settings uses Apple's defaults: four fingers
+for the swipes. Mission Control and Apps are opened as apps. App Exposé and Show Desktop cannot be opened that way, so the
+agent sends the Dock the same notification its own gesture sends (an undocumented one): the default shortcut (Ctrl+Down, F11)
+is pressed only if that call cannot be found on the Mac, and if a later macOS keeps it but the Dock stops reacting, those two
+do nothing. These gestures need the phone app from the same release, and the Mac's Accessibility permission for PhoneBoxAgent
+(moving between desktops and pages press keys). Some phones act on three fingers themselves, Samsung's screenshot swipe
+(**Settings › Advanced features › Motions and gestures › Palm swipe to capture** and its three-finger variant) among them:
+turn that off if a three-finger swipe down takes a screenshot instead of reaching the Mac.
+
+The pad answers each touch with its own vibration: a tick for a click, two for a right click, a firmer one when a drag
+starts and a longer one when a gesture fires (only for a Mac: another computer ignores gestures, so the phone does not
+vibrate for them). **Tick while scrolling**, off by default, adds a light tick for each notch of a scroll. In the widget's
+settings, **Haptic feedback** sets how strong they are (no vibration, light, normal or strong). The vibrations follow the
+display's vibration switch and night mode like the panel's other ones.
 
 **Smart Stack** combines up to 12 widgets in one slot. Add it from the Layout category, then drag widgets into it or
 use its picker. Reorder cards, open their settings, or disable individual cards. Tap the dots or swipe vertically to
@@ -240,7 +260,7 @@ for senders that cannot set headers). That key opens only the webhook endpoints,
 | music or video plays (optionally in some apps: `Spotify\|Music`) | show a notification (`{detail}` = what happened) |
 | an app is running (`zoom\|Teams\|obs64`) | push a value (e.g. `onair`, shown by a Pushed value widget) |
 | an app is in front (`Code\|obs64\|Safari` — needs Accessibility on macOS, `xdotool` on Linux; not on Wayland) | |
-| the microphone / the camera is in use (Windows, Linux) | |
+| the microphone / the camera is in use (Windows, Linux, macOS. On macOS 14.2 and later the microphone is named by its app; before that a rule sees only "microphone", for an input device with no output side (a USB or built-in microphone), so an app filter cannot match. The camera is named by the camera itself, as macOS does not say which app runs it, and **the camera has not been tried on real hardware yet**: macOS may report it as running only while the agent has a run loop, so on a Mac with a built-in camera check once, with Photo Booth or FaceTime on and then off, and tell us if it stays "in use". On a browser call the name is the process macOS lists, so a filter has to match what the list shows: `Google Chrome Helper`, `com.apple.WebKit.GPU` and the like, not just the app's name) | |
 | a calendar event is on (optionally by title) | |
 | OBS is recording or streaming | |
 | the CPU stays above a percentage for 15 s | |

@@ -1,6 +1,6 @@
 namespace PhoneBox.Agent;
 
-/// <param name="Mic">Whether an app is using a microphone; null where this cannot be detected (macOS).</param>
+/// <param name="Mic">Whether an app is using a microphone; null where this cannot be detected.</param>
 public sealed record PrivacySnapshot(bool? Mic, bool? Camera, IReadOnlyList<string> MicApps, IReadOnlyList<string> CameraApps);
 
 /// <summary>
@@ -9,7 +9,7 @@ public sealed record PrivacySnapshot(bool? Mic, bool? Camera, IReadOnlyList<stri
 ///    The privacy consent store (behind the taskbar's microphone and camera icons) is the fallback where those can't
 ///    be read: Windows 11 stopped updating it in late 2026 builds (26200 with the October updates, 26300).
 ///  - Linux: ALSA capture streams that are running, and processes with a /dev/video* device open.
-///  - macOS: not detectable without extra permissions; reported as unknown.
+///  - macOS: what the menu bar's microphone and camera dots show, from CoreAudio and CoreMediaIO (see Unix/MacPrivacyProbe.cs).
 /// </summary>
 public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log) : BackgroundService
 {
@@ -19,7 +19,6 @@ public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log) : BackgroundServ
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        if (OperatingSystem.IsMacOS()) { _snap = new(null, null, [], []); return; }
         string? lastLog = null;
         while (!ct.IsCancellationRequested)
         {
@@ -45,7 +44,7 @@ public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log) : BackgroundServ
         foreach (var p in System.Diagnostics.Process.GetProcesses()) using (p) { try { running.Add(p.ProcessName); } catch { } }
         return (mic ?? ConsentStore("microphone", running), camera ?? ConsentStore("webcam", running));
 #else
-        return (LinuxMic(), LinuxCamera());
+        return OperatingSystem.IsMacOS() ? MacPrivacyProbe.Read() : (LinuxMic(), LinuxCamera());
 #endif
     }
 

@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, labelled, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich } from '../main.js';
 import { W } from '../registry.js';
 import { invalidateDeckState } from './controls.js';
 
@@ -895,6 +895,22 @@ W.processes = {
 export function applyToggles(root) {
   const t = D.state?.toggles || {};
   root.querySelectorAll('.key.toggle').forEach((b) => b.classList.toggle('on', t[b.dataset.id] === true));
+  applyCycles(root);
+}
+
+// A key that cycles through other keys shows the one that ran last (D.state.cycles: { id: the id of that key }); before the
+// first tap, and after the agent restarted, it shows its own icon and name. The agent sends the id, not a position, so
+// the face never depends on which version of the list the phone has loaded.
+function applyCycles(root) {
+  const at = D.state?.cycles || {}, all = cfg.shortcuts || [];
+  root.querySelectorAll('.key.cycle').forEach((b) => {
+    const id = b.dataset.id, own = all.find((x) => x.id === id);
+    if (!own) return;
+    const want = at[id] != null ? all.find((x) => x.id === at[id]) : (b.dataset.face ? own : null);
+    // a key the phone has not loaded yet leaves the face as it is: not the key's own, which did not run
+    if (!want || (b.dataset.face || '') === (want.id === id ? '' : want.id)) return;
+    setKeyFace(b, want, b._cover === true);
+  });
 }
 
 W.shortcuts = {

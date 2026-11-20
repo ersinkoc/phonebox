@@ -2,10 +2,22 @@
 
 ## Unreleased
 
+**Languages**
+- Brazilian Portuguese (pt-BR): the panel, the settings page, the widget catalog and the Android pairing dialog. A phone
+  set to pt-BR picks it on its own, and other Portuguese phones keep Portugal's Portuguese (#313,
+  [ThalesAugusto0](https://github.com/ThalesAugusto0)).
+
 **Widgets**
 - Shortcut keys: a **Long press runs** option on each key. Tapping the key on the phone runs it as before; holding it for
   half a second runs another key you choose (hold *Mute* to open the mixer). The phone only says the key was held, so
   the long press cannot point at anything but a key from your own settings (#307,
+  [Vasilispapg](https://github.com/Vasilispapg)).
+- Shortcut keys: a new **Cycle through other keys** kind. Each tap runs the next key of its list and starts again after
+  the last, and the key shows the face of the key that ran. Where it stands is kept until the agent restarts (#310,
+  [Vasilispapg](https://github.com/Vasilispapg)).
+- Shortcut macros: `if:` … `else` … `endif` runs steps only when a condition holds: `running:<program>`, `muted`,
+  `on:<shortcut id>` (a toggle that is on) or `push:<key>` (a pushed value that is on), and `!` in front turns it
+  around. Each macro is checked before its first step, so a missing `endif` stops it before anything runs (#309,
   [Vasilispapg](https://github.com/Vasilispapg)).
 - News feeds on Windows: an article whose link has square brackets after the host, such as Franceinfo's
   `#xtor=RSS-3-[lestitres]`, opens in the browser instead of File Explorer's Documents folder (#312,
@@ -17,8 +29,20 @@
   [docs/STEAM.md](docs/STEAM.md) (#244, [Sawaid-hub](https://github.com/Sawaid-hub)).
 - Pomodoro: an optional sound when a step ends, off by default and silent on the night screen, at a share of the
   phone's media volume (#305, [abdulah-x](https://github.com/abdulah-x)).
+- Trackpad on macOS: the widget now moves the pointer, clicks and scrolls on a Mac, and three- and four-finger swipes,
+  spread and pinch do what the Mac's own Trackpad settings say (Mission Control, App Exposé, moving between
+  full-screen apps, Show Desktop, Apps). It needs Accessibility for PhoneBox. New **Haptics** options set how strongly the phone vibrates;
+  a tick while scrolling is off by default, and gestures vibrate only where the computer acts on them (#300,
+  [Vasilispapg](https://github.com/Vasilispapg)).
+- On air and the `mic-in-use` / `camera-in-use` rules work on macOS: the agent reads which apps use the microphone
+  (macOS 14.2 and later; before that, only whether one does) and whether a camera is running. The camera part is
+  untested on a Mac with a built-in camera; see the guide (#301, [Vasilispapg](https://github.com/Vasilispapg)).
 
 **Agent**
+- Shortcuts on Windows: a program a shortcut starts (Spotify, say) opens in front instead of behind the window in use,
+  as the App dock's apps already do (#322, [adamjorgkaizen-oss](https://github.com/adamjorgkaizen-oss)).
+- Discord: the login no longer fails with `invalid_request: Missing "redirect_uri"`. The authorization request now
+  names the same `http://127.0.0.1` redirect as the token exchange (#316, [Sune2you](https://github.com/Sune2you)).
 - Wake-on-LAN: a **Wake a computer** shortcut (Settings › Shortcuts) turns on another machine on your network from its
   MAC address, also while the phone is away on Tailscale. It sends a magic packet on the local network only; see the
   guide for the BIOS and adapter settings the machine needs (#302, [Vasilispapg](https://github.com/Vasilispapg)).

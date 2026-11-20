@@ -22,6 +22,26 @@ public class TrackpadTests : IDisposable
     }
 
     [Fact]
+    public void AFailureToActIsReportedToTheCaller()
+    {
+        // the macOS code reports through the callback it is given, which is how the handler logs it once (no Accessibility, say)
+        Exception? seen = null;
+        TrackpadHandler.Execute(new TrackpadPayload("swipe3up", null, null, null, null), ex => seen = ex);
+        Assert.Null(seen); // the seam stands in for macOS: nothing failed
+        Assert.Contains(_calls, c => c.Action == "swipe3up");
+    }
+
+    [Fact]
+    public void GestureMessagesReachTheGestureSeam()
+    {
+        TrackpadHandler.Execute(new TrackpadPayload("swipe3up", null, null, null, null));
+        TrackpadHandler.Execute(new TrackpadPayload("spread", null, null, null, null));
+        TrackpadHandler.Execute(new TrackpadPayload("nonsense", null, null, null, null));
+        // only the gesture names get through; what a gesture does is up to the Mac's settings
+        Assert.Equal(["swipe3up", "spread"], _calls.Select(c => c.Action).ToArray());
+    }
+
+    [Fact]
     public void MouseMethodsInvokeTestSeam()
     {
         KeySender.MouseMove(5, -3);

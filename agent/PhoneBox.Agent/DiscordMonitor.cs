@@ -179,7 +179,7 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
         }
         const string retry = " PhoneBox will not ask again until you change the Discord settings (or turn Discord off and on).";
         JsonNode? granted;
-        try { granted = await Request("AUTHORIZE", new JsonObject { ["client_id"] = cfg.ClientId, ["scopes"] = new JsonArray(Scopes.Select(s => (JsonNode)s).ToArray()) }, null, ct, TimeSpan.FromMinutes(2)); }
+        try { granted = await Request("AUTHORIZE", AuthorizeArgs(cfg.ClientId), null, ct, TimeSpan.FromMinutes(2)); }
         catch (TimeoutException) { throw new LoginRefusedException("PhoneBox was not approved in Discord in time." + retry); }
         catch (Exception ex) when (ex is not (OperationCanceledException or IOException)) { throw new LoginRefusedException($"Discord login was refused ({ex.Message})." + retry); }
         // no answer at all means the connection ended (Discord closed or restarted): that is not a refusal
@@ -196,6 +196,17 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
         try { return await Auth(tokens.Access, ct); }
         catch (Exception ex) when (ex is not (OperationCanceledException or IOException)) { throw new LoginRefusedException($"Discord refused the new login ({ex.Message})." + retry); }
     }
+
+    /// <summary>
+    /// The AUTHORIZE request. It names the same redirect as the token exchange: Discord refuses an AUTHORIZE without one
+    /// (<c>invalid_request: Missing "redirect_uri"</c>), even though the code comes back over IPC, not to the redirect.
+    /// </summary>
+    internal static JsonObject AuthorizeArgs(string? clientId) => new()
+    {
+        ["client_id"] = clientId,
+        ["scopes"] = new JsonArray(Scopes.Select(s => (JsonNode)s).ToArray()),
+        ["redirect_uri"] = Redirect,
+    };
 
     private async Task<string> Auth(string token, CancellationToken ct)
     {

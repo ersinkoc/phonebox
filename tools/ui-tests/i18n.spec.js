@@ -97,14 +97,17 @@ test('every translated key is really translated, and the rest fall back to Engli
   expect(result.translated).toBe('Thêm widget');
 });
 
-test('the Vietnamese panel dictionary is complete', async ({ page }) => {
+// Vietnamese and Portuguese (Brazil) are the two languages with every en key translated, settings page included.
+for (const lang of ['vi', 'pt-BR']) {
+test(`the ${lang} dictionary is complete`, async ({ page }) => {
   await page.goto('/panel/');
-  const gaps = await page.evaluate(() => {
+  const gaps = await page.evaluate((lang) => {
     const S = window.PhoneBoxI18n.STRINGS;
-    return Object.keys(S.en).filter((k) => !(k in S.vi));
-  });
+    return Object.keys(S.en).filter((k) => !(k in S[lang]));
+  }, lang);
   expect(gaps).toEqual([]);
 });
+}
 
 test('the Greek dictionary and widget catalog are complete', async ({ page }) => {
   await page.goto('/panel/');
@@ -147,6 +150,24 @@ test('the widget catalog translates by its English text', async ({ page }) => {
   expect(out.category).toBe('Thời tiết & bầu trời');
   expect(out.untouched).toBe('not in the catalog');
   expect(out.other).toBe('Clock');
+});
+
+test('the widget catalog translates by its English text (pt-BR)', async ({ page }) => {
+  await page.goto('/panel/');
+  const out = await page.evaluate(() => {
+    const I18n = window.PhoneBoxI18n;
+    I18n.setLang('pt-BR');
+    return {
+      name: I18n.tc('Clock'),
+      desc: I18n.tc('Clock, weather, now playing and PC tiles.'),
+      category: I18n.tc('Weather & sky'),
+      untouched: I18n.tc('not in the catalog'),
+    };
+  });
+  expect(out.name).toBe('Relógio');
+  expect(out.desc).toContain('Relógio');
+  expect(out.category).toBe('Clima & céu');
+  expect(out.untouched).toBe('not in the catalog');
 });
 
 // A JavaScript object literal keeps the last of two equal keys without a warning, so a key defined twice in one
