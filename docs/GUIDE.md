@@ -154,7 +154,7 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   phones (several at once, each with its own pages); Wi-Fi & Tailscale; updates.
 - **Photo frame** (in General): the Photo frame widget shows a folder on this computer, or one album of an Immich
   server: enter its address and an API key with the `album.read`, `asset.read` and `asset.view` permissions, press
-  **Load albums** and pick one. The Immich source has been tested with Immich 3.4.1; other versions may work.
+  **Load albums** and pick one. The Immich source has been tested with Immich 3.4.2 (and earlier with 3.4.1); other versions may work.
 - **Advanced**: the raw JSON.
 
 Settings live in `%APPDATA%\PhoneBox\config.json` (Linux: `~/.config/PhoneBox`, macOS: `~/Library/Application Support/PhoneBox`);
