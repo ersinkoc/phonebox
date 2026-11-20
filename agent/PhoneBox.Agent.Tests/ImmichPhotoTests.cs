@@ -57,7 +57,7 @@ public sealed class ImmichPhotoTests : IDisposable
         private static HttpResponseMessage Json(string body) => new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
     }
 
-    private (PhotoFrame Frame, ConfigStore Store) Frame(FakeImmich fake, bool widget = true, string album = Album, string key = Key, string source = "immich", string url = Server + "/", Func<long>? now = null)
+    private (PhotoFrame Frame, ConfigStore Store) Frame(HttpMessageHandler fake, bool widget = true, string album = Album, string key = Key, string source = "immich", string url = Server + "/", Func<long>? now = null)
     {
         var path = Path.Combine(_dir, "config.json");
         var widgets = widget ? """[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]""" : "[]";
@@ -278,6 +278,101 @@ public sealed class ImmichPhotoTests : IDisposable
         await c.Response.OutputStream.WriteAsync("[{"u8.ToArray(), stop);
         await c.Response.OutputStream.FlushAsync(stop);
         try { await Task.Delay(Timeout.Infinite, stop); } catch (OperationCanceledException) { }
+    }
+
+    /// <summary>An album of several pages; the second page waits until the test lets it go (or the request is cancelled).</summary>
+    private sealed class PagedImmich(int pages) : HttpMessageHandler
+    {
+        public int SearchRequests;
+        public readonly TaskCompletionSource SecondPageStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            if (request.Method != HttpMethod.Post || request.RequestUri!.AbsolutePath != "/api/search/metadata") return new HttpResponseMessage(HttpStatusCode.NotFound);
+            var page = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct)).RootElement.GetProperty("page").GetInt32();
+            Interlocked.Increment(ref SearchRequests);
+            if (page == 2) { SecondPageStarted.TrySetResult(); await Release.Task.WaitAsync(ct); }
+            var next = page < pages ? $"\"{page + 1}\"" : "null";
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent($$$"""{"assets":{"items":[{"id":"aaaaaaaa-0000-0000-0000-{{{page:D12}}}","type":"IMAGE"}],"nextPage":{{{next}}}}}""", Encoding.UTF8, "application/json"),
+            };
+        }
+    }
+
+    private void WriteConfig(string album, bool widget)
+    {
+        var path = Path.Combine(_dir, "config.json");
+        var widgets = widget ? """[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]""" : "[]";
+        File.WriteAllText(path, $$"""
+            {"photos":{"source":"immich","immichUrl":"{{Server}}/","immichKey":"{{Key}}","immichAlbum":"{{album}}"},
+             "pages":[{"id":"p","title":"P","widgets":{{widgets}}}]}
+            """);
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(++_configEdits)); // the store notices a newer file
+    }
+    private int _configEdits = 10;
+
+    private static async Task ScanToEnd(PhotoFrame frame)
+    {
+        var field = typeof(PhotoFrame).GetField("_scan", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        for (var i = 0; i < 1000 && field.GetValue(frame) is Task t && !t.IsCompleted; i++) await Task.Delay(10);
+        await Task.Delay(50); // the scan clears its slot just after it publishes
+    }
+
+    /// <summary>A scan stopped in the middle of its second page, with a way to see how many pages were asked for in all.</summary>
+    private async Task<(PhotoFrame Frame, PagedImmich Server)> ScanInTheMiddle()
+    {
+        var server = new PagedImmich(pages: 5);
+        var (frame, _) = Frame(server);
+        _ = frame.List(); // starts the scan in the background
+        await server.SecondPageStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        return (frame, server);
+    }
+
+    [Fact]
+    public async Task AScanStopsRequestingPagesWhenTheWidgetIsRemoved()
+    {
+        var (frame, server) = await ScanInTheMiddle();
+        WriteConfig(Album, widget: false);
+        frame.SettingsSaved();
+        server.Release.TrySetResult();
+        await ScanToEnd(frame);
+        Assert.Equal(2, Volatile.Read(ref server.SearchRequests)); // before the fix the scan went on to pages 3 to 5
+    }
+
+    [Fact]
+    public async Task AScanStopsRequestingPagesWhenTheAlbumChanges()
+    {
+        var (frame, server) = await ScanInTheMiddle();
+        WriteConfig(Other, widget: true);
+        frame.SettingsSaved();
+        server.Release.TrySetResult();
+        await ScanToEnd(frame);
+        Assert.Equal(2, Volatile.Read(ref server.SearchRequests));
+        Assert.Empty(frame.List().Ids); // nothing of the old album was published (the new one is only now starting)
+    }
+
+    [Fact]
+    public async Task AScanStopsRequestingPagesWhenAListIsAskedForWhileNoPageShowsTheWidget()
+    {
+        var (frame, server) = await ScanInTheMiddle();
+        WriteConfig(Album, widget: false); // the settings were edited on disk; the next request from the phone notices
+        Assert.Equal("Add a Photo frame widget to a page to show photos", frame.List().Error);
+        server.Release.TrySetResult();
+        await ScanToEnd(frame);
+        Assert.Equal(2, Volatile.Read(ref server.SearchRequests));
+    }
+
+    [Fact]
+    public async Task SavingTheSameSettingsLetsTheScanFinish()
+    {
+        var (frame, server) = await ScanInTheMiddle();
+        WriteConfig(Album, widget: true); // same source, same album
+        frame.SettingsSaved();
+        server.Release.TrySetResult();
+        await ScanToEnd(frame);
+        Assert.Equal(5, Volatile.Read(ref server.SearchRequests));
+        Assert.Equal(5, frame.List().Ids.Count);
     }
 
     [Fact]

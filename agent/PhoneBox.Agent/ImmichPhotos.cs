@@ -72,6 +72,7 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
         var seen = new HashSet<string>(StringComparer.Ordinal);
         for (var page = 1; page <= MaxPages && assets.Count < PhotoFrame.MaxFiles; page++)
         {
+            ct.ThrowIfCancellationRequested(); // no more pages once the scan is not wanted
             var request = JsonSerializer.Serialize(new { albumIds = new[] { album }, type = "IMAGE", size = PageSize, page });
             var (body, error) = await Send(HttpMethod.Post, "api/search/metadata", request, MaxJsonBytes, ct);
             // a 400 or 404 may be a deleted album, or a server that doesn't take the album filter: don't say which
@@ -207,9 +208,9 @@ public sealed partial class PhotoFrame
         public string ScanError => "The Immich album can't be read";
         private ImmichClient Client => new(owner.ImmichHttp, server, key) { RequestTimeout = owner.ImmichTimeout };
 
-        public Library Scan()
+        public Library Scan(CancellationToken ct)
         {
-            var (assets, error) = Client.AlbumAssets(album, CancellationToken.None).GetAwaiter().GetResult();
+            var (assets, error) = Client.AlbumAssets(album, ct).GetAwaiter().GetResult();
             if (assets is null) return new(Key, [], 0, error, ImmichClient.IsTransient(error));
             // Path holds the asset id: the phone only ever sees the keyed id
             var photos = assets.Select(a => new Photo(IdOf("immich:" + album, a.Id), a.Id, 0, a.Ticks)).ToList();
