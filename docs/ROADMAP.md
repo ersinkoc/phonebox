@@ -25,6 +25,12 @@ people who proposed or prototyped something are credited in the [changelog](../C
 - **Codex permission prompts on the phone**: answer Codex's own approval requests with Allow / Deny, like Claude Code's
   ([#253](https://github.com/ersinkoc/phonebox/issues/253), pull request
   [#254](https://github.com/ersinkoc/phonebox/pull/254)).
+- **Live Codex quota without a running session**: read the quota through Codex's own app-server, so the numbers
+  update while Codex isn't running on this computer ([#298](https://github.com/ersinkoc/phonebox/issues/298), pull
+  request [#290](https://github.com/ersinkoc/phonebox/pull/290)).
+- **Wake the PC from the panel**: a Wake button while the paired computer is unreachable; the phone sends the
+  Wake-on-LAN packet itself ([#304](https://github.com/ersinkoc/phonebox/issues/304), pull request
+  [#303](https://github.com/ersinkoc/phonebox/pull/303)). The Wake a computer shortcut is #302.
 - **Voice commands**: say what you want and a language model of your choice (local through Ollama, or a hosted one)
   picks from the shortcuts you allowed; opt-in, off by default ([#257](https://github.com/ersinkoc/phonebox/issues/257)).
 - **Pomodoro: an optional sound when a step ends**, off by default and silent in night mode

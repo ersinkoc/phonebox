@@ -3,6 +3,9 @@
 ## Unreleased
 
 **Widgets**
+- Shortcut keys: a **Long press runs** option on each key. Tapping the key on the phone runs it as before; holding it for
+  half a second runs another key you choose (hold *Mute* to open the mixer). The phone only says the key was held, so
+  the long press cannot point at anything but a key from your own settings.
 - News feeds on Windows: an article whose link has square brackets after the host, such as Franceinfo's
   `#xtor=RSS-3-[lestitres]`, opens in the browser instead of File Explorer's Documents folder (#312,
   [Emsaco64](https://github.com/Emsaco64)).

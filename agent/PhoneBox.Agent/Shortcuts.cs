@@ -12,10 +12,17 @@ public static class Shortcuts
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> Remembered = new();
 
     /// <returns>An error message, or null on success.</returns>
-    public static string? Run(AgentConfig cfg, string id, ILogger log, PushStore? push = null, AudioControl? audio = null)
+    public static string? Run(AgentConfig cfg, string id, ILogger log, PushStore? push = null, AudioControl? audio = null, bool hold = false)
     {
         var sc = cfg.Shortcuts.FirstOrDefault(s => s.Id == id);
-        return sc is null ? $"no such shortcut: {id}" : RunCore(cfg, sc, log, push, audio, 0);
+        if (sc is null) return $"no such shortcut: {id}";
+        // a long press runs the key's own LongPress target (one hop: that key's own long press is not followed)
+        if (hold)
+        {
+            if (sc.LongPress is null || cfg.Shortcuts.FirstOrDefault(s => s.Id == sc.LongPress) is not { } held) return $"shortcut {id} has no long press";
+            sc = held;
+        }
+        return RunCore(cfg, sc, log, push, audio, 0);
     }
 
     private static string? RunCore(AgentConfig? cfg, Shortcut sc, ILogger log, PushStore? push, AudioControl? audio, int depth)

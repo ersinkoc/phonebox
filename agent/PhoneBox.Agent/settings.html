@@ -2638,6 +2638,13 @@ function actionFields(s, upd, text, cmdIn, preset) {
       'A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.'));
     if (kind === 'run') fields.push(text('offCmd', t('s.cd.offCmdPlaceholder'), t('s.cd.offCmdHint')), text('offArgs', t('s.k.offArgs'), ''));
   }
+  // holding the key on the phone runs another key (a key that was never saved has no id to point at yet)
+  const others = cfg.shortcuts.filter((o) => o !== s && o.id);
+  fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.longPress')),
+    h('select', { onchange: (e) => { s.longPress = e.target.value || null; changed(); } },
+      h('option', { value: '' }, t('s.k.longPressNone')),
+      ...others.map((o) => h('option', { value: o.id, selected: o.id === s.longPress }, o.label || o.id))),
+    h('span', { class: 'hint' }, t('s.k.longPressHint'))));
   return fields;
 }
 

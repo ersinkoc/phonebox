@@ -677,12 +677,13 @@ export function renderStatus(el, o = {}) {
 }
 
 // ---------------------------------------------------------------- shortcuts
-export async function runShortcut(btn, id) {
+export async function runShortcut(btn, id, hold = false) {
   haptic();
   btn.classList.remove('ok', 'err');
   btn.classList.add('busy');
   let ok = false;
-  try { await api('/run/' + encodeURIComponent(id), 'POST', 5000); ok = true; } catch (_) {}
+  // hold: the agent runs the key's own long-press shortcut; the phone still sends only this key's id
+  try { await api('/run/' + encodeURIComponent(id) + (hold ? '?hold=true' : ''), 'POST', 5000); ok = true; } catch (_) {}
   btn.classList.remove('busy');
   btn.classList.add(ok ? 'ok' : 'err');
   setTimeout(() => btn.classList.remove('ok', 'err'), 900);
@@ -699,12 +700,32 @@ export function keyButton(s, { cover = false, label = true } = {}) {
   if (!label || !name) b.setAttribute('aria-label', name || s.id);
   b.style.setProperty('--k', s.color || '#6b7280');
   b.dataset.id = s.id;
-  b.addEventListener('click', () => runShortcut(b, s.id));
+  if (s.hold) holdToRun(b, s.id);
+  else b.addEventListener('click', () => runShortcut(b, s.id));
   // Only an upload fills the key: a program's own icon is 32 px on Windows, 64 px on macOS, and on Linux whatever logo
   // the icon theme has, none of them a picture the user chose for the button. The agent says which is which, since the
   // picture's size cannot tell (an SVG reports a default size, often 24 px from an icon set).
   if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true);
   return b;
+}
+
+const HOLD_MS = 500, HOLD_SLOP = 12;
+/** A key with a long press: a tap runs the key, holding it for half a second runs its long-press shortcut instead (and
+ *  the tap that ends the hold does nothing). Moving the finger more than a few pixels turns it into a scroll, not a hold.
+ *  Only the pointer that started the press counts (a second finger, or a mouse's right button, never starts or ends one). */
+function holdToRun(b, id) {
+  let timer = 0, held = false, owner = null, x0 = 0, y0 = 0;
+  const cancel = () => { clearTimeout(timer); timer = 0; };
+  b.addEventListener('pointerdown', (e) => {
+    if (owner !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    owner = e.pointerId; held = false; x0 = e.clientX; y0 = e.clientY; cancel();
+    timer = setTimeout(() => { timer = 0; held = true; runShortcut(b, id, true); }, HOLD_MS);
+  });
+  b.addEventListener('pointermove', (e) => { if (timer && e.pointerId === owner && Math.hypot(e.clientX - x0, e.clientY - y0) > HOLD_SLOP) cancel(); });
+  // the press is over when its own pointer lifts or is taken over (a scroll); `held` stays set until the click that follows
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, (e) => { if (e.pointerId === owner) { cancel(); owner = null; } });
+  b.addEventListener('contextmenu', (e) => e.preventDefault()); // Android's WebView opens a menu on a long press
+  b.addEventListener('click', () => { if (held) held = false; else runShortcut(b, id); });
 }
 
 function applyShortcutIcon(b, icon, id, cover) {
