@@ -106,9 +106,9 @@ public sealed class AgentConfig
     private bool WidgetIncludesProvider(WidgetConfig w, string id)
     {
         if (w.Opt("providers") is { ValueKind: JsonValueKind.Array } arr)
-            return arr.EnumerateArray().Any(e => e.ValueKind == JsonValueKind.String
-                && string.Equals(e.GetString(), id, StringComparison.OrdinalIgnoreCase));
-        return CodexBar.Providers.Any(p => string.Equals(p, id, StringComparison.OrdinalIgnoreCase));
+            // case-sensitive, as the panel compares them: "CODEX" shows no Codex card, so it starts no polling either
+            return arr.EnumerateArray().Any(e => e.ValueKind == JsonValueKind.String && e.GetString() == id);
+        return CodexBar.Providers.Any(p => p == id);
     }
 }
 

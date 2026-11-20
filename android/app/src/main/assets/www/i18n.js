@@ -3451,6 +3451,8 @@
       's.approvals.hookRemoved': 'Hook do {agent} removido',
       's.approvals.hookError': 'Não foi possível alterar o hook',
       's.approvals.codexTrust': 'Necessário uma vez: inicie uma nova sessão do Codex e depois confie no hook do PhoneBox em <b>Configurações › Hooks</b> (desktop) ou <code>/hooks</code> (CLI).',
+      's.quotas.codexLive': 'Ler as cotas do Codex ao vivo com a CLI do Codex',
+      's.quotas.codexLiveHint': 'Executa o codex em segundo plano a cada poucos minutos enquanto uma página mostra as cotas do Codex (desativado por padrão). A CLI do Codex gerencia o próprio login e pode renová-lo.',
       'panel.wake': 'Acordar o PC',
       'panel.waking': 'Acordando…',
       'panel.wakeFailed': 'Não acordou. Só funciona na própria rede do PC; confira as configurações da BIOS e da placa de rede (guia do PhoneBox: Wake-on-LAN).',
