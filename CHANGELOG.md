@@ -10,11 +10,21 @@
 - News feeds on Windows: an article whose link has square brackets after the host, such as Franceinfo's
   `#xtor=RSS-3-[lestitres]`, opens in the browser instead of File Explorer's Documents folder (#312,
   [Emsaco64](https://github.com/Emsaco64)).
+- **Steam friends** and **Steam friend activity** widgets: friends' avatars, online state, last seen time and current
+  game, and a short feed of friends coming online, starting a game or going offline. They need a Steam Web API key,
+  which stays on the computer: the agent asks Steam, about once a minute and only while one of the widgets is on an
+  enabled page, and the phone never contacts Steam. The activity feed lives in memory only. See
+  [docs/STEAM.md](docs/STEAM.md) (#244, [Sawaid-hub](https://github.com/Sawaid-hub)).
+- Pomodoro: an optional sound when a step ends, off by default and silent on the night screen, at a share of the
+  phone's media volume (#305, [abdulah-x](https://github.com/abdulah-x)).
 
 **Agent**
 - Wake-on-LAN: a **Wake a computer** shortcut (Settings › Shortcuts) turns on another machine on your network from its
   MAC address, also while the phone is away on Tailscale. It sends a magic packet on the local network only; see the
   guide for the BIOS and adapter settings the machine needs (#302, [Vasilispapg](https://github.com/Vasilispapg)).
+- Now Playing on macOS and Linux is read every second only while a panel or a `media-playing` rule asks for it, and
+  every 10 seconds otherwise, so an idle computer no longer starts `nowplaying-cli` or `playerctl` every second (#299,
+  [EgglezosHub](https://github.com/EgglezosHub)).
 
 ## 0.9.24 — 2026-11-20
 

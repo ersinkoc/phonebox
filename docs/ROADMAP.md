@@ -33,10 +33,6 @@ people who proposed or prototyped something are credited in the [changelog](../C
   [#303](https://github.com/ersinkoc/phonebox/pull/303)). The Wake a computer shortcut is #302.
 - **Voice commands**: say what you want and a language model of your choice (local through Ollama, or a hosted one)
   picks from the shortcuts you allowed; opt-in, off by default ([#257](https://github.com/ersinkoc/phonebox/issues/257)).
-- **Pomodoro: an optional sound when a step ends**, off by default and silent in night mode
-  ([#267](https://github.com/ersinkoc/phonebox/issues/267)).
-- **Steam friends and activity widgets** ([#289](https://github.com/ersinkoc/phonebox/issues/289), pull request
-  [#244](https://github.com/ersinkoc/phonebox/pull/244)): scope agreed; waiting for a rebase and the review fixes.
 - **Immich album as a photo frame source** ([#278](https://github.com/ersinkoc/phonebox/issues/278), pull requests
   [#279](https://github.com/ersinkoc/phonebox/pull/279) and [#280](https://github.com/ersinkoc/phonebox/pull/280)).
 
