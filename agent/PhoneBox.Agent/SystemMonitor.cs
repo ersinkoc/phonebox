@@ -35,6 +35,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
     // GPU sources, highest priority first: nvidia-smi, LibreHardwareMonitor, the OS (D3DKMT + counters / sysfs / ioreg)
     private volatile IReadOnlyList<GpuInfo>? _nvidia, _lhmGpus, _osGpus;
     private double? _cpuTemp;
+    private double? _appleGpuTemp; // macOS: the GPU's temperature from the SMC, added to the ioreg GPU
     private IReadOnlyList<DiskInfo> _disks = [];
 
     public PcSnapshot? Snapshot() => _snap;
@@ -171,7 +172,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
                 {
                     var text = await p.StandardOutput.ReadToEndAsync(cts.Token);
                     await p.WaitForExitAsync(cts.Token);
-                    _osGpus = ParseAppleGpu(text, Memory().Total) is { } g ? [g] : null;
+                    _osGpus = ParseAppleGpu(text, Memory().Total) is { } g ? [g with { Temp = _appleGpuTemp }] : null;
                 }
                 catch (OperationCanceledException) when (!ct.IsCancellationRequested) { try { p.Kill(); } catch { } _osGpus = null; }
             }
@@ -180,6 +181,41 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             await Task.Delay(TimeSpan.FromSeconds(2), ct);
         }
     }
+
+#if !WINDOWS
+    /// <summary>
+    /// macOS: CPU and GPU temperature from the SMC every 2 s. Without an SMC or its temperature keys (Intel, macOS 13
+    /// and older) it stops and both stay null; a failed read clears them and opens the SMC again 30 s later.
+    /// </summary>
+    private async Task AppleTempLoop(CancellationToken ct)
+    {
+        AppleSmc? smc = null;
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                try
+                {
+                    smc ??= AppleSmc.Open();
+                    if (smc is null) { log.LogInformation("CPU temperature: no SMC temperature sensors on this Mac"); return; }
+                    (_cpuTemp, _appleGpuTemp) = smc.Read();
+                    await Task.Delay(2000, ct);
+                }
+                catch (OperationCanceledException) { return; }
+                catch (Exception ex)
+                {
+                    log.LogDebug("apple-smc: {Msg}", ex.Message);
+                    (_cpuTemp, _appleGpuTemp) = (null, null);
+                    smc?.Dispose();
+                    smc = null;
+                    await Task.Delay(30_000, ct);
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
+        finally { smc?.Dispose(); }
+    }
+#endif
 
     /// <summary>Reads the GPU from the ioreg text. The memory is unified: the total is the machine's RAM, the used part what the GPU holds.</summary>
     internal static GpuInfo? ParseAppleGpu(string ioreg, double totalMemoryBytes)
@@ -196,12 +232,14 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             Vendor: "apple", Source: "ioreg", Integrated: true);
     }
 
-    // CPU temperature: Windows from LibreHardwareMonitor's web server (port 8085), when it is running; Linux from hwmon.
-    // The same LibreHardwareMonitor answer carries the GPU sensors too (hot spot, board power, fan, clocks).
+    // CPU temperature: Windows from LibreHardwareMonitor's web server (port 8085), when it is running; Linux from hwmon;
+    // macOS on Apple silicon from the SMC (CPU and GPU). The same LibreHardwareMonitor answer carries the GPU sensors
+    // too (hot spot, board power, fan, clocks).
     private async Task CpuTempLoop(CancellationToken ct)
     {
 #if !WINDOWS
         _lhmGpus = null; // LibreHardwareMonitor is Windows only
+        if (OperatingSystem.IsMacOS()) { await AppleTempLoop(ct); return; }
         while (!ct.IsCancellationRequested)
         {
             _cpuTemp = UnixSystem.CpuTemp();

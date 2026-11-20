@@ -45,6 +45,26 @@ public class ConfigTests
         Assert.Equal(expected, weather.GetProperty("unit").GetString());
     }
 
+    // The model goes into the phone's forecast URL, so only the names the settings offer get through.
+    [Theory]
+    [InlineData("""{"weather":{"city":"Tallinn","lat":59.437,"lon":24.745}}""", "")]
+    [InlineData("""{"weather":{"model":"gfs_seamless"}}""", "gfs_seamless")]
+    [InlineData("""{"weather":{"model":" GFS_Seamless "}}""", "gfs_seamless")]
+    [InlineData("""{"weather":{"model":"ecmwf_ifs025"}}""", "ecmwf_ifs025")]
+    [InlineData("""{"weather":{"model":"gfs_seamless&daily=x"}}""", "")]
+    [InlineData("""{"weather":{"model":"accuweather"}}""", "")]
+    [InlineData("""{"weather":{"model":null}}""", "")]
+    [InlineData("""{"weather":{"city":"Oslo","model":42}}""", "")]
+    [InlineData("""{"weather":{"city":"Oslo","model":["gfs_seamless"]}}""", "")]
+    public void WeatherModelIsOneOfTheOfferedModelsOrBestMatch(string json, string expected)
+    {
+        var c = Load(json);
+        Assert.Equal(expected, c.Weather.Model);
+        if (json.Contains("Oslo")) Assert.Equal("Oslo", c.Weather.City);
+        var weather = JsonSerializer.SerializeToElement(c.ToPublic(), ConfigStore.WriteOpts).GetProperty("weather");
+        Assert.Equal(expected, weather.GetProperty("model").GetString());
+    }
+
     [Fact]
     public void BurnInProtectionIsOffByDefaultAndTheDimTimeIsClamped()
     {

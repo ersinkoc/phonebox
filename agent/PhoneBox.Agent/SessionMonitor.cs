@@ -75,6 +75,11 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log, ConfigStore? con
     internal static bool IsCodexBarProbe(string cwd) =>
         cwd.Replace('\\', '/').TrimEnd('/').EndsWith("/CodexBar/ClaudeProbe", StringComparison.OrdinalIgnoreCase);
 
+    // claude-mem starts short background Claude Code sessions in ~/.claude-mem/observer-sessions/<n> to write its memory notes.
+    // They are not the user's work, and each one that finished showed a "finished" toast on the phone (#275).
+    internal static bool IsClaudeMemObserver(string cwd) =>
+        (cwd.Replace('\\', '/').TrimEnd('/') + "/").Contains("/.claude-mem/observer-sessions/", StringComparison.OrdinalIgnoreCase);
+
     internal static IEnumerable<AgentSession> ReadClaude(string? homeDir = null, Func<int, bool>? isAlive = null, bool titles = false)
     {
         var home = homeDir ?? Home;
@@ -96,7 +101,7 @@ public sealed class SessionMonitor(ILogger<SessionMonitor> log, ConfigStore? con
                 var name = Str(r, "name") ?? Path.GetFileName(cwd.TrimEnd('\\', '/'));
                 var project = Path.GetFileName(cwd.TrimEnd('\\', '/'));
 
-                if (IsCodexBarProbe(cwd)) continue;
+                if (IsCodexBarProbe(cwd) || IsClaudeMemObserver(cwd)) continue;
 
                 s = new AgentSession(
                     Id: "claude:" + (Str(r, "sessionId") ?? pid.ToString()),

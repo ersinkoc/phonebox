@@ -25,7 +25,8 @@ public sealed record QuotaProvider(string Id, string Name, string Plan, IReadOnl
 /// <summary>
 /// Collects quota usage of AI subscriptions:
 ///  - Claude: api.anthropic.com/api/oauth/usage with the OAuth token from ~/.claude/.credentials.json (on macOS, when
-///    that file doesn't exist, the "Claude Code-credentials" item from the default keychain search list, normally the login Keychain)
+///    that file doesn't exist or its token is missing or expired, the "Claude Code-credentials" item from the default
+///    keychain search list, normally the login Keychain, if its token expires later)
 ///    (the endpoint behind Claude Code's /usage command). The token is only read and NEVER refreshed;
 ///    Claude Code refreshes it itself (refreshing it here could break Claude Code's session).
 ///  - Codex: the last "rate_limits" record in the newest rollout file under ~/.codex/sessions (fully local).
@@ -56,6 +57,54 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
 
     /// <summary>Claude Code's credentials file (read only). Tests point it at a file of their own.</summary>
     internal string CredentialsPath { get; init; } = DefaultCredentialsPath;
+
+    /// <summary>
+    /// Reads Claude Code's macOS Keychain item; null uses the `security` tool, and only for the default credentials path
+    /// on macOS. Tests give a reader of their own so nothing here touches the real Keychain.
+    /// </summary>
+    internal Func<string?>? ReadKeychain { get; init; }
+
+    private Func<string?>? KeychainReader()
+    {
+        if (ReadKeychain is not null) return ReadKeychain;
+#if !WINDOWS
+        if (OperatingSystem.IsMacOS() && CredentialsPath == DefaultCredentialsPath)
+            return () => Sh.Run("security", "find-generic-password", "-s", "Claude Code-credentials", "-w")?.Trim();
+#endif
+        return null;
+    }
+
+    /// <summary>The expiry of a Claude Code sign-in with an access token (0 when it has none), or null without one.</summary>
+    internal static long? SignInExpiry(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object
+                || !doc.RootElement.TryGetProperty("claudeAiOauth", out var o) || o.ValueKind != JsonValueKind.Object
+                || string.IsNullOrEmpty(Str(o, "accessToken"))) return null;
+            return o.TryGetProperty("expiresAt", out var e) && e.ValueKind == JsonValueKind.Number && e.TryGetInt64(out var ms) ? ms : 0;
+        }
+        catch (JsonException) { return null; }
+    }
+
+    /// <summary>
+    /// Of the credentials file and the Keychain item, the sign-in whose token expires later. Claude Code on macOS keeps
+    /// and renews its sign-in in the Keychain, so a file another tool or an older version left behind can hold a token
+    /// that expired hours ago. Only called once the file's token is missing or expired; without a usable Keychain
+    /// sign-in the file is returned unchanged, so a half-written or signed-out file is still reported as before.
+    /// </summary>
+    internal static string? PickCredentials(string? file, string? keychain)
+    {
+        var fileExpiry = SignInExpiry(file);
+        var keychainExpiry = SignInExpiry(keychain);
+        if (keychainExpiry is null) return file;
+        if (fileExpiry is null) return keychain;
+        // 0 is "no expiry given": it is never later than a known one, and a known one never beats it
+        if (fileExpiry == 0) return file;
+        return keychainExpiry == 0 || keychainExpiry > fileExpiry ? keychain : file;
+    }
 
     /// <summary>The addresses in the order to try them: IPv4 first, each family keeping its resolver order.</summary>
     internal static IEnumerable<IPAddress> Ipv4First(IEnumerable<IPAddress> addresses) =>
@@ -346,11 +395,11 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         string? json = null;
         try { if (File.Exists(CredentialsPath)) json = await File.ReadAllTextAsync(CredentialsPath, ct); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
-#if !WINDOWS
-        // macOS: Claude Code stores the credentials in the login Keychain instead of a file (read-only access).
-        if (json is null && OperatingSystem.IsMacOS() && CredentialsPath == DefaultCredentialsPath)
-            json = Sh.Run("security", "find-generic-password", "-s", "Claude Code-credentials", "-w")?.Trim();
-#endif
+        // macOS: Claude Code stores the credentials in the login Keychain (read-only access). It is read when there is
+        // no file, and when the file's token is missing or expired: a stale file must not hide a renewed Keychain sign-in.
+        if (KeychainReader() is { } readKeychain
+            && (json is null || SignInExpiry(json) is not { } fileExpiry || fileExpiry > 0 && fileExpiry - nowMs < ClaudeTokenMarginMs))
+            json = PickCredentials(json, readKeychain());
         if (string.IsNullOrEmpty(json))
         {
             // Claude Code is not set up here

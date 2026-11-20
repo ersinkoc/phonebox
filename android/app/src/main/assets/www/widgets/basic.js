@@ -20,10 +20,10 @@ W.clock = {
   bare: true, needs: ['tick', 'state', 'weather', 'quotas', 'work'],
   create(box, { o }) {
     const status = o.status !== false ? h('div', 'status') : null;
-    const hh = h('span', 'hh', '--'), mm = h('span', 'mm', '--'), ss = h('span', 'sec'), ap = h('span', 'ap');
+    const hh = h('span', 'hh', '--'), colon = h('span', 'colon', ':'), mm = h('span', 'mm', '--'), ss = h('span', 'sec'), ap = h('span', 'ap');
     const date = o.date !== false ? h('div', 'date') : null;
     const wx = o.weather !== false ? wxBlock() : null;
-    box.append(status || '', h('div', 'clock', hh, h('span', 'colon', ':'), mm, ss, ap), date || '', wx || '');
+    box.append(status || '', h('div', 'clock', hh, colon, mm, ss, ap), date || '', wx || '');
     box.style.setProperty('--tf', (0.84 - (status ? 0.1 : 0) - (date ? 0.11 : 0) - (wx ? 0.2 : 0)).toFixed(2));
     return {
       // without the weather line the clock must not make the panel fetch the weather
@@ -36,6 +36,9 @@ W.clock = {
           ap.textContent = h12 ? (H < 12 ? 'AM' : 'PM') : '';
           mm.textContent = pad(now.getMinutes());
           ss.textContent = cfg.display?.showSeconds === false ? '' : pad(now.getSeconds());
+          // the colon blinks once a second from here, not from a CSS animation: a running animation makes the browser draw a frame
+          // on every display refresh (120 a second on some phones) for something that changes once a second
+          colon.classList.toggle('dim', now.getSeconds() % 2 === 1);
           if (date) date.textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
           if (status && now.getSeconds() % 30 === 0) renderStatus(status, o); // battery
         } else if (kind === 'weather') wx?.update();
@@ -73,6 +76,8 @@ W.forecast = {
         if (daily) {
           const d = w.daily;
           for (let i = 0; i < Math.min(n, d.time.length); i++) {
+            // some models (Météo-France, CMA) forecast fewer than 7 days and send null for the rest: stop there, not at "0°"
+            if (d.temperature_2m_max?.[i] == null) break;
             const day = i === 0 ? t('time.today') : new Date(d.time[i] + 'T12:00').toLocaleDateString(LOCALE, { weekday: 'short' });
             const rain = d.precipitation_probability_max?.[i];
             cells.push(h('div', 'fc-i', h('span', 'fc-t', day), h('span', 'fc-ic', emo(wxIcon(d.weather_code[i]))),
@@ -86,7 +91,7 @@ W.forecast = {
           const step = n >= 10 ? 1 : 2;
           for (let k = 0; k < n; k++) {
             const i = start + k * step;
-            if (i >= hr.time.length) break;
+            if (i >= hr.time.length || hr.temperature_2m?.[i] == null) break;
             const rain = hr.precipitation_probability?.[i];
             cells.push(h('div', 'fc-i', h('span', 'fc-t', k === 0 ? 'Now' : hr.time[i].slice(11, 13)), h('span', 'fc-ic', emo(wxIcon(hr.weather_code[i], hr.is_day?.[i]))),
               h('span', 'fc-v', wxDeg(hr.temperature_2m[i]) + '°'), h('span', 'fc-r', rain >= 20 ? rich(`💧${rain}%`) : '')));

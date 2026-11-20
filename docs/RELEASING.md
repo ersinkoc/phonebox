@@ -8,7 +8,7 @@
 5. Run the **release** workflow on that commit. Use a draft for artifact review, or publish after the gates pass.
 
 The release workflow reuses the build checks, then tests and smoke-runs the agent on native Windows x64,
-Linux x64/ARM64, and macOS ARM64/Intel runners. It builds the signed APK, signs macOS apphosts ad hoc, creates
+Linux x64/ARM64, and macOS ARM64/Intel runners. It builds the signed APK, signs the macOS agent with PhoneBox's own certificate, creates
 provenance attestations and SHA-256 checksums, and publishes the release notes from the changelog.
 The reusable artifact contract also checks the real upload/download boundary with transfer fixtures: exact release
 filenames and hashes, exclusion of debug intermediates, and the actual demo's Pages tar format. It never publishes
@@ -24,6 +24,13 @@ purpose: the zip is barely smaller and a compressed bundle costs about 90 MB mor
 Required GitHub Actions secrets are `PHONEBOX_KEYSTORE_BASE64`, `PHONEBOX_STORE_PASSWORD`, `PHONEBOX_KEY_ALIAS`
 and `PHONEBOX_KEY_PASSWORD`. Keep the original Android signing key: an incompatible APK must fail the update
 while preserving the installed app and its data. Never commit the key or its passwords.
+
+The macOS agent is signed with a self-signed certificate made once with `tools/make-macos-signing-cert.sh`
+(secrets `MACOS_SIGNING_P12_BASE64` and `MACOS_SIGNING_P12_PASSWORD`; the release stops without them). Every release
+then has the same designated requirement, `identifier "net.oxog.phonebox.agent"` plus that certificate, so macOS keeps
+the Accessibility permission across updates. Keep the certificate: a new one, a new identifier or the hardened runtime
+(library validation would refuse the native libraries next to the agent) makes every Mac user grant it again. The
+build workflow runs the same signing step with a throwaway certificate on every change.
 
 `PhoneBoxAgent.exe` in the Windows zip is Authenticode-signed through [SignPath Foundation](https://signpath.org)
 while the repository variable `SIGNPATH_SIGNING_POLICY` is `release-signing` (the API token is the

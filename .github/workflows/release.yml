@@ -6,6 +6,8 @@ name: release
 # The APK must be signed with the same key as the app already on the phones, or Android refuses the update. Add the
 # key as repository secrets: PHONEBOX_KEYSTORE_BASE64 (base64 of the .jks / .keystore file), PHONEBOX_STORE_PASSWORD,
 # PHONEBOX_KEY_ALIAS and PHONEBOX_KEY_PASSWORD. Without them the workflow stops before publishing anything.
+# The macOS agent is signed with PhoneBox's own certificate, MACOS_SIGNING_P12_BASE64 and MACOS_SIGNING_P12_PASSWORD
+# (tools/make-macos-signing-cert.sh); without them the workflow stops too.
 on:
   workflow_dispatch:
     inputs:
@@ -104,9 +106,16 @@ jobs:
       # loose next to the exe instead of being extracted to the temp folder at run time.
       - name: Publish (self-contained, single file)
         run: dotnet publish agent/PhoneBox.Agent -c Release -f ${{ matrix.tfm }} -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -o out --nologo
-      - name: Sign macOS apphost ad hoc
+      # PhoneBox's own certificate (tools/make-macos-signing-cert.sh): every release has the same designated
+      # requirement, so macOS keeps the Accessibility permission across updates (#269). Without the secrets the release
+      # stops: an ad hoc signature would make every Mac lose the permission again.
+      - name: Sign the macOS agent
         if: startsWith(matrix.rid, 'osx-')
-        run: codesign --force --sign - out/PhoneBoxAgent
+        uses: ./.github/actions/sign-macos-agent
+        with:
+          binary: out/PhoneBoxAgent
+          p12-base64: ${{ secrets.MACOS_SIGNING_P12_BASE64 }}
+          p12-password: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
       # Authenticode signing through SignPath Foundation, before the smoke test, the zip, the checksums, the attestation
       # and the Scoop/winget hash, which all cover the signed file. It is on while the repository variable
       # SIGNPATH_SIGNING_POLICY names a policy (release-signing); each request waits for a manual approval in SignPath.

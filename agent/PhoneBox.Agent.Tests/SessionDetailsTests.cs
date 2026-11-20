@@ -122,7 +122,14 @@ public sealed class SessionDetailsTests : IDisposable
     [InlineData("/Users/test/Projects/CodexBar/Sources", false)]
     [InlineData("/Users/test/Projects/ClaudeProbeKit", false)]
     [InlineData("/Users/test/CodexBar/ClaudeProbe/subdir", false)]
-    public void Claude_OnlyTheExactCodexBarProbeDirectoryIsIgnored(string cwd, bool ignored)
+    // claude-mem's background sessions write memory notes from ~/.claude-mem/observer-sessions/<n> (#275)
+    [InlineData("/Users/test/.claude-mem/observer-sessions/108", true)]
+    [InlineData(@"C:\Users\test\.claude-mem\observer-sessions\110\", true)]
+    [InlineData("/home/test/.claude-mem/observer-sessions", true)]
+    [InlineData("/home/test/.claude-mem", false)]
+    [InlineData("/home/test/Projects/claude-mem/observer-sessions", false)]
+    [InlineData("/home/test/Projects/claude-mem", false)]
+    public void Claude_OnlyTheBackgroundToolDirectoriesAreIgnored(string cwd, bool ignored)
     {
         var claudeDir = Path.Combine(_root, ".claude", "sessions");
         Directory.CreateDirectory(claudeDir);

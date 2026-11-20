@@ -2,18 +2,44 @@
 
 ## Unreleased
 
+**Settings page**
+- A waiting update shows in the header, so it is seen from every section instead of only in the Updates card far
+  down General: **Update to 0.9.x** installs it, like the card's Update now. It waits while there are unsaved changes,
+  because the agent restarts, and says so while the update runs.
+
+**Agent**
+- Claude quotas on macOS: a `~/.claude/.credentials.json` left behind by another tool or an older Claude Code no
+  longer hides the sign-in Claude Code renews in the Keychain. Once the file's token is missing or expired, the agent
+  reads the Keychain too and uses the sign-in that expires later, instead of showing "Token expired" for good (#277,
+  [sonvc94](https://github.com/sonvc94)).
+
+## 0.9.22 — 2026-11-19
+
+Greek, a Trackpad widget, Claude Code session details and chat titles, CPU and GPU temperature on Apple silicon Macs,
+a choice of weather model, stroke icons everywhere, closer media sync, much less CPU for blinking status lights, and a
+macOS Accessibility permission that survives updates.
+
 **Languages**
 - Greek (Ελληνικά): the panel, the settings page, the widget and template catalog, the Android pairing dialogs and a
   Greek README. Pick it under Settings › General › Language, or let the phone's language choose it (#262,
   [Vasilispapg](https://github.com/Vasilispapg)).
 
 **Widgets**
+- CPU and GPU temperature on Macs with Apple silicon (macOS 14 and later), read from the SMC without root or extra
+  tools: the CPU temp metric and the GPU widget's temperature now work on macOS. The keys follow macmon's rule (CPU:
+  Tp/Te/Ts, GPU: Tg). Intel Macs and older macOS versions still show no temperature (#272,
+  [sonvc94](https://github.com/sonvc94)).
 - Trackpad: move, click and scroll the computer's mouse from the phone, with tap to click, two fingers to right-click
   and scroll, hold to drag and an optional edge scroll bar. Mouse control is off until you turn on **Allow controlling
   the mouse from the phone** in the widget's options; Windows, and Linux with `xdotool` under X11 (#250, #251,
   [Prajjwal2404](https://github.com/Prajjwal2404)).
 - Weather: Settings › General › Weather has a temperature unit, Celsius or Fahrenheit, for the clock's weather line
   and the Forecast widget (#256, [haydn9000](https://github.com/haydn9000)).
+- Weather: Settings › General › Weather can pin the Open-Meteo forecast model (GFS, ECMWF, ICON, UKMO, GEM, JMA,
+  Météo-France or CMA) instead of Open-Meteo's automatic best match. Only Automatic and GFS supply every value; other
+  models may leave out the UV index or the chance of rain, and the panel then just leaves those out. Météo-France
+  and CMA forecast about 4 and 5 days, and the Forecast widget shows only the days there are (#271,
+  [sonvc94](https://github.com/sonvc94)).
 - Quota ring: provider list includes Cursor and Grok (Grok uses its own mark), and offers every provider currently
   reported by CodexBar (#260, [ajaybali9](https://github.com/ajaybali9)).
 - AI sessions: Cursor agent chats from `~/.cursor/projects/*/agent-transcripts` can show alongside Claude Code and Codex
@@ -27,6 +53,11 @@
   [Vasilispapg](https://github.com/Vasilispapg)).
 
 **Panel**
+- Less CPU, so a panel on battery lasts longer: the clock's colon, the session status dots, the OBS light, the on-air
+  sign, the dictation microphone and the radio equalizer no longer run endless CSS animations, which made the phone
+  draw a frame on every display refresh (120 a second on some phones) while they were on screen. On a Galaxy S25 Ultra
+  the clock page went from about 18 % to 9 % of a core. The colon blinks as before; the other lights pulse in two steps
+  instead of fading (#273, #274, [Vasilispapg](https://github.com/Vasilispapg)).
 - Media: the position bar is a slider; hold it to see where the song will continue, and it seeks when you let go. The
   song time follows the computer more closely, also with Spotify on macOS, which reports no position of its own, and
   no longer steps back and forth.
@@ -45,6 +76,10 @@
   Claude Code chat titles on the phone** (off by default) shows each chat's title, the name you gave it or the one
   Claude Code wrote, with the folder on the second line. The title is read from the end of the chat's own file on this
   computer and, with the switch off, is not read or sent at all (#261, [Vasilispapg](https://github.com/Vasilispapg)).
+- Sessions: claude-mem's background sessions (the short Claude Code runs in `~/.claude-mem/observer-sessions` that
+  write its memory notes) no longer show up, so they no longer pop up a "finished" message every few minutes.
+  Settings › General › Display › **Show a message when a session finishes** turns that message off for every session;
+  the "needs input" message still shows (#275, [TheRedViperV](https://github.com/TheRedViperV)).
 - Session details show Folder, Status, Started and Last activity in one compact row (two rows on a narrow screen)
   instead of four lines.
 - Every remaining emoji in the panel and the settings page (weather, battery, widget and page icons, Home Assistant
@@ -60,10 +95,11 @@
   system's reduce-motion setting (#264, [Vasilispapg](https://github.com/Vasilispapg)).
 
 **Agent**
-- macOS: when a shortcut cannot press keys, the message on the phone says what helps after an update (remove
-  PhoneBoxAgent under Accessibility and add it again), and the setup script says it when it updates the agent. macOS
-  ties the permission to the exact build of the ad hoc signed agent (#269,
-  [nejcbat-x](https://github.com/nejcbat-x)).
+- macOS: the Accessibility permission (shortcuts that press keys) carries over to later updates. The agent is signed
+  with PhoneBox's own certificate instead of ad hoc, whose signature changed with every build, so macOS dropped the
+  permission after every update. Updating from an older version needs it once more: remove PhoneBoxAgent under
+  System Settings › Privacy & Security › Accessibility with − and add it again. The setup script and the message on
+  the phone say so (#269, [nejcbat-x](https://github.com/nejcbat-x)).
 - Shortcuts that press keys can use the keypad: `numpad0` to `numpad9`, `numpadenter`, `numpadadd`, `numpadsubtract`,
   `numpadmultiply`, `numpaddivide` and `numpaddecimal` (also written `num3`, `kp3` or `KP_3`), sent as the keypad's own
   keys, so a shortcut bound to Ctrl+Alt+Numpad3 in Discord or a game is matched (#270,

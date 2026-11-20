@@ -23,12 +23,18 @@ public sealed class ClaudeQuotaScheduleTests : IDisposable
 
     private string Creds => Path.Combine(_dir, "credentials.json");
 
+    private string? _keychain;
+
     private QuotaMonitor Agent() => new(NullLogger<QuotaMonitor>.Instance)
     {
         ClaudeCachePath = Path.Combine(_dir, "claude-quota.json"),
         CredentialsPath = Creds,
         HttpHandler = _api,
+        ReadKeychain = () => _keychain,
     };
+
+    private static string SignInJson(string token, long expiresAt) =>
+        $$$"""{"claudeAiOauth":{"accessToken":"{{{token}}}","expiresAt":{{{expiresAt}}},"subscriptionType":"max","rateLimitTier":"default_claude_max_20x"}}""";
 
     private void SignIn(string token, long expiresAt) => File.WriteAllText(Creds,
         $$$"""{"claudeAiOauth":{"accessToken":"{{{token}}}","expiresAt":{{{expiresAt}}},"subscriptionType":"max","rateLimitTier":"default_claude_max_20x"}}""");
@@ -406,10 +412,80 @@ public sealed class ClaudeQuotaScheduleTests : IDisposable
         Assert.Equal(4, _api.Calls);
     }
 
+    // macOS: Claude Code renews its sign-in in the Keychain. A credentials file left behind by another tool or an older
+    // version keeps a token that expired hours ago; it must not hide the renewed one.
+    [Fact]
+    public async Task AStaleFileGivesWayToTheRenewedKeychainSignIn()
+    {
+        SignIn("stale-file-token", _t0 - 4 * 3_600_000);
+        _keychain = SignInJson("keychain-token", _t0 + 3_600_000);
+        _api.Respond(HttpStatusCode.OK, Usage);
+        var agent = Agent();
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal(1, _api.Calls);
+        Assert.Equal("keychain-token", _api.LastToken);
+        Assert.Null(Claude(agent).Error);
+    }
+
+    [Fact]
+    public async Task AValidFileIsUsedWithoutReadingTheKeychain()
+    {
+        SignIn("file-token", _t0 + 3_600_000);
+        var reads = 0;
+        var agent = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance)
+        {
+            ClaudeCachePath = Path.Combine(_dir, "claude-quota.json"),
+            CredentialsPath = Creds,
+            HttpHandler = _api,
+            ReadKeychain = () => { reads++; return SignInJson("keychain-token", _t0 + 7_200_000); },
+        };
+        _api.Respond(HttpStatusCode.OK, Usage);
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal(0, reads); // each Keychain read starts the security tool: not while the file is good
+        Assert.Equal("file-token", _api.LastToken);
+    }
+
+    [Fact]
+    public async Task WhenBothAreExpiredTheMessageStaysAndNothingIsSent()
+    {
+        SignIn("stale-file-token", _t0 - 4 * 3_600_000);
+        _keychain = SignInJson("old-keychain-token", _t0 - 3_600_000);
+        var agent = Agent();
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal(0, _api.Calls);
+        Assert.Contains("expired", Claude(agent).Error);
+    }
+
+    [Theory]
+    [InlineData(-4, 1, "keychain")]   // the file expired, the Keychain was renewed
+    [InlineData(1, 2, "keychain")]    // (the caller reads the Keychain only once the file has expired)
+    [InlineData(-4, -2, "keychain")]  // both expired: the later one, so the message says what Claude Code last saved
+    [InlineData(-1, -4, "file")]
+    public void TheSignInThatExpiresLaterIsUsed(int fileHours, int keychainHours, string expected)
+    {
+        var file = SignInJson("file", _t0 + fileHours * 3_600_000L);
+        var keychain = SignInJson("keychain", _t0 + keychainHours * 3_600_000L);
+        var chosen = QuotaMonitor.PickCredentials(file, keychain);
+        Assert.Equal(expected == "file" ? file : keychain, chosen);
+    }
+
+    [Fact]
+    public void AFileWithoutATokenOrNoKeychainAnswerIsHandled()
+    {
+        var keychain = SignInJson("keychain", _t0 + 3_600_000);
+        const string desktopOnly = """{"claudeAiOauth":{"subscriptionType":"max"}}""";
+        Assert.Equal(keychain, QuotaMonitor.PickCredentials(desktopOnly, keychain));
+        Assert.Equal(keychain, QuotaMonitor.PickCredentials(null, keychain));
+        Assert.Equal(desktopOnly, QuotaMonitor.PickCredentials(desktopOnly, null));
+        Assert.Equal(desktopOnly, QuotaMonitor.PickCredentials(desktopOnly, "not json"));
+        Assert.Null(QuotaMonitor.PickCredentials(null, null));
+    }
+
     private sealed class FakeAnthropic : HttpMessageHandler
     {
         private Func<HttpResponseMessage> _next = () => new HttpResponseMessage(HttpStatusCode.InternalServerError);
         public int Calls { get; private set; }
+        public string? LastToken { get; private set; }
         public Action? OnSend { get; set; }
 
         public void Respond(HttpStatusCode status, string body, int? retryAfterSeconds = null) => _next = () =>
@@ -424,6 +500,7 @@ public sealed class ClaudeQuotaScheduleTests : IDisposable
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             Calls++;
+            LastToken = request.Headers.Authorization?.Parameter;
             OnSend?.Invoke();
             Assert.Equal("https://api.anthropic.com/api/oauth/usage", request.RequestUri!.ToString());
             return Task.FromResult(_next());

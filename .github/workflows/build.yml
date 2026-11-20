@@ -103,9 +103,52 @@ jobs:
       # the same build as the release (release.yml), so a pull request runs what ships
       - name: Publish agent (self-contained, single file)
         run: dotnet publish agent/PhoneBox.Agent -c Release -f ${{ matrix.tfm }} -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -o out --nologo
-      - name: Sign macOS apphost ad hoc
+      # The release signs with PhoneBox's own certificate (#269); here the same action signs with a throwaway one, so
+      # every change tests the step each release depends on, without a secret (pull requests from forks have none).
+      - name: Throwaway signing certificate (macOS)
+        id: cert
         if: startsWith(matrix.rid, 'osx-')
-        run: codesign --force --sign - out/PhoneBoxAgent
+        run: |
+          openssl version
+          bash tools/make-macos-signing-cert.sh --out "$RUNNER_TEMP/cert"
+          password="$(cat "$RUNNER_TEMP/cert/phonebox-macos-signing.password")"
+          echo "::add-mask::$password"
+          {
+            echo "p12=$(base64 < "$RUNNER_TEMP/cert/phonebox-macos-signing.p12" | tr -d '\n')"
+            echo "password=$password"
+          } >> "$GITHUB_OUTPUT"
+          rm -rf "$RUNNER_TEMP/cert"
+          # a second, different program for the requirement check below
+          printf 'int main(void) { return 0; }\n' | clang -x c - -o "$RUNNER_TEMP/other-build"
+      - name: Sign the macOS agent (throwaway certificate)
+        if: startsWith(matrix.rid, 'osx-')
+        uses: ./.github/actions/sign-macos-agent
+        with:
+          binary: out/PhoneBoxAgent
+          p12-base64: ${{ steps.cert.outputs.p12 }}
+          p12-password: ${{ steps.cert.outputs.password }}
+      - name: Sign a different program with the same certificate
+        if: startsWith(matrix.rid, 'osx-')
+        uses: ./.github/actions/sign-macos-agent
+        with:
+          binary: ${{ runner.temp }}/other-build
+          p12-base64: ${{ steps.cert.outputs.p12 }}
+          p12-password: ${{ steps.cert.outputs.password }}
+      # What a user's Mac checks after an update, without the certificate (the action deleted its keychain): setup.sh
+      # re-signs ad hoc a binary whose signature does not verify, and macOS keeps the Accessibility permission only for
+      # a binary that satisfies the designated requirement it stored for the old one.
+      - name: Signature checks (macOS)
+        if: startsWith(matrix.rid, 'osx-')
+        run: |
+          if security find-certificate -c "PhoneBox Agent" >/dev/null 2>&1; then echo "::error::the signing keychain was left behind"; exit 1; fi
+          codesign --verify --strict --verbose=2 out/PhoneBoxAgent
+          requirement="$(codesign -d -r- out/PhoneBoxAgent 2>&1 | sed -n 's/^designated => //p')"
+          echo "Designated requirement: $requirement"
+          codesign --verify --verbose=2 -R="$requirement" "$RUNNER_TEMP/other-build"
+          # and an ad hoc signature (what releases had before) does not, or the check above proves nothing
+          cp "$RUNNER_TEMP/other-build" "$RUNNER_TEMP/adhoc-build"
+          codesign --force --sign - --identifier net.oxog.phonebox.agent "$RUNNER_TEMP/adhoc-build"
+          if codesign --verify -R="$requirement" "$RUNNER_TEMP/adhoc-build" 2>/dev/null; then echo "::error::an ad hoc build satisfies the requirement"; exit 1; fi
       - name: Smoke test the single-file agent (Windows)
         if: matrix.rid == 'win-x64'
         shell: pwsh
