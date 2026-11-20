@@ -83,7 +83,7 @@ over HTTPS and with the webhook key. That key opens only the webhook endpoints, 
    Ctrl+D):
 
    ```sh
-   (umask 077; d="${XDG_CONFIG_HOME:-$HOME/.config}/phonebox"; mkdir -p "$d"; cat > "$d/webhook-key")
+   (umask 077; d="${XDG_CONFIG_HOME:-$HOME/.config}/phonebox"; mkdir -p "$d"; touch "$d/webhook-key"; chmod 600 "$d/webhook-key"; cat > "$d/webhook-key")
    ```
 
 3. On Windows, open `http://127.0.0.1:8765/api/lan` and copy the `fingerprint` value. The agent's certificate is
@@ -101,7 +101,7 @@ over HTTPS and with the webhook key. That key opens only the webhook endpoints, 
 | `PHONEBOX_WEBHOOK_KEY` | The webhook key, for `https://` only. Read from `PHONEBOX_WEBHOOK_KEY_FILE` when not set |
 | `PHONEBOX_WEBHOOK_KEY_FILE` | The file holding the key (default `$XDG_CONFIG_HOME/phonebox/webhook-key`, or `~/.config/phonebox/webhook-key` without it) |
 | `PHONEBOX_CERT_SHA256` | The agent's certificate fingerprint, required for `https://` |
-| `PHONEBOX_PUSH_KEY` | The key of the pushed value (default `copilot`), for example one per computer |
+| `PHONEBOX_PUSH_KEY` | The key of the pushed value (default `copilot`), for example one per computer. Set the same key in the **Pushed value** widget's options, since the example page reads `copilot` |
 
 Try it by hand; `--check` reports what happened instead of staying silent:
 
