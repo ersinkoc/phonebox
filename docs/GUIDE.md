@@ -278,6 +278,9 @@ From this PC no key is needed. With Wi-Fi on, other machines on the network or T
 on `https://<pc>:8766` with the **webhook key** from the settings (`Authorization: Bearer <key>`, or `?token=<key>`
 for senders that cannot set headers). That key opens only the webhook endpoints, never the phone API.
 
+To show whether a GitHub Copilot CLI session is working or waiting for you (also from WSL2), see the
+[Copilot CLI guide](COPILOT-CLI.md).
+
 ## Rules
 
 **Settings › Rules** lets the panel react to what happens on the computer. Each rule is *when → then*:
