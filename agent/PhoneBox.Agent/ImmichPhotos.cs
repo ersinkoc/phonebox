@@ -19,6 +19,7 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
 
     internal sealed record Asset(string Id, long Ticks);
 
+    internal const string BadKey = "The Immich API key has characters that are not allowed";
     internal const string Unreachable = "The Immich server can't be reached", TimedOut = "The Immich server didn't answer in time";
 
     /// <summary>A failure that says nothing about the settings: the server is down, slow or erroring, so a list already shown stays.</summary>
@@ -122,6 +123,8 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
 
     private async Task<(byte[]? Body, string? Error)> Send(HttpMethod method, string path, string? json, long max, CancellationToken ct)
     {
+        // a header value can't hold a control character or anything outside ASCII: refuse here, instead of throwing from Headers.Add
+        if (key.Any(c => char.IsControl(c) || c > '~')) return (null, BadKey);
         // one limit for the whole exchange: a server that sends its headers and then stalls must not hold a scan for good
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
         limit.CancelAfter(RequestTimeout);
@@ -141,6 +144,7 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (OperationCanceledException) { return (null, TimedOut); }
+        catch (FormatException) { return (null, BadKey); }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
         {
             return (null, Unreachable);

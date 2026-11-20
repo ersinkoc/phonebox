@@ -497,6 +497,34 @@ public sealed class ImmichPhotoTests : IDisposable
     }
 
     [Theory]
+    [InlineData("ab\ncd")]
+    [InlineData("ab\0cd")]
+    [InlineData("ab\r\nX-Other: 1")]
+    public async Task AKeyWithControlCharactersIsAnErrorNotAnException(string badKey)
+    {
+        var fake = new FakeImmich();
+        var (frame, _) = Frame(fake);
+        var (albums, error) = await frame.ImmichAlbums(Server, badKey, CancellationToken.None);
+        Assert.Null(albums);
+        Assert.Equal("The Immich API key has characters that are not allowed", error);
+        Assert.Empty(fake.Seen); // nothing was sent
+    }
+
+    [Fact]
+    public void ControlCharactersAreRemovedFromTheSavedKey()
+    {
+        var path = Path.Combine(_dir, "ctl.json");
+        File.WriteAllText(path, """{"photos":{"source":"immich","immichUrl":"http://immich.test:2283","immichKey":"  ab\u0000c\nd\r  ","immichAlbum":"11111111-1111-1111-1111-111111111111"}}""");
+        var store = new ConfigStore(path);
+        Assert.Equal("abcd", store.Get().Photos.ImmichKey);
+        // and a frame set up with it neither throws nor sends a malformed header
+        var fake = new FakeImmich();
+        var frame = new PhotoFrame(store, NullLogger<PhotoFrame>.Instance) { ImmichHandler = fake, CacheDir = Path.Combine(_dir, "cache-ctl") };
+        Assert.Null(Record.Exception(frame.ScanNow));
+        Assert.Null(Record.Exception(() => frame.List()));
+    }
+
+    [Theory]
     [InlineData("IMMICH", "immich")]
     [InlineData("  immich ", "immich")]
     [InlineData("dropbox", "folder")]

@@ -692,7 +692,8 @@ public sealed partial class ConfigStore(string path)
         c.Photos.Folder = (c.Photos.Folder ?? "").Trim() is { Length: > 1024 } longFolder ? longFolder[..1024] : (c.Photos.Folder ?? "").Trim();
         c.Photos.Source = string.Equals(c.Photos.Source?.Trim(), PhotoFrameConfig.SourceImmich, StringComparison.OrdinalIgnoreCase) ? PhotoFrameConfig.SourceImmich : PhotoFrameConfig.SourceFolder;
         c.Photos.ImmichUrl = Cap((c.Photos.ImmichUrl ?? "").Trim(), 2048);
-        c.Photos.ImmichKey = Cap((c.Photos.ImmichKey ?? "").Trim(), 256);
+        // a control character (a stray newline from a paste) can't be part of a key, and would break the request header
+        c.Photos.ImmichKey = Cap(new string((c.Photos.ImmichKey ?? "").Where(ch => !char.IsControl(ch)).ToArray()).Trim(), 256);
         c.Photos.ImmichAlbum = Cap((c.Photos.ImmichAlbum ?? "").Trim(), 64);
         c.Photos.ImmichAlbumName = Cap((c.Photos.ImmichAlbumName ?? "").Trim(), 200);
         foreach (var f in c.Feeds) { var n = f.Name?.Trim() ?? ""; f.Name = n.Length > 60 ? n[..60] : n; f.Url = f.Url?.Trim() ?? ""; }
