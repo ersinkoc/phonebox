@@ -78,7 +78,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
     private async Task RefreshIfIdle()
     {
         if (!IsStale(Interlocked.Read(ref _lastReading), Environment.TickCount64)) return;
-        try { await Poll(); }
+        try { await Poll(onlyIfStale: true); }
         catch (Exception ex) { log.LogDebug("media: {Msg}", ex.Message); }
     }
 
@@ -92,9 +92,11 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         }
     }
 
-    private async Task Poll()
+    private async Task Poll(bool onlyIfStale = false)
     {
         await _pollGate.WaitAsync();
+        // a control that waited here for the loop's own reading uses that one instead of starting the tools again
+        if (onlyIfStale && !IsStale(Interlocked.Read(ref _lastReading), Environment.TickCount64)) { _pollGate.Release(); return; }
         var before = _snap;
         try
         {
