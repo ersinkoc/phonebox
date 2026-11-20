@@ -338,6 +338,15 @@ public sealed class DiscordTests : IDisposable
 
     // --config with a settings file named like the login file: saving a login must not replace the settings.
     [Fact]
+    public void Authorize_names_the_redirect_the_token_exchange_uses()
+    {
+        var args = DiscordMonitor.AuthorizeArgs("123");
+        Assert.Equal("123", args["client_id"]!.GetValue<string>());
+        Assert.Equal("http://127.0.0.1", args["redirect_uri"]!.GetValue<string>());
+        Assert.Contains("rpc", args["scopes"]!.AsArray().Select(s => s!.GetValue<string>()));
+    }
+
+    [Fact]
     public void The_login_file_never_is_the_settings_file()
     {
         var dir = Directory.CreateTempSubdirectory("phonebox-discord-token-").FullName;

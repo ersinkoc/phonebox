@@ -19,6 +19,8 @@
   phone's media volume (#305, [abdulah-x](https://github.com/abdulah-x)).
 
 **Agent**
+- Discord: the login no longer fails with `invalid_request: Missing "redirect_uri"`. The authorization request now
+  names the same `http://127.0.0.1` redirect as the token exchange (#316, [Sune2you](https://github.com/Sune2you)).
 - Wake-on-LAN: a **Wake a computer** shortcut (Settings › Shortcuts) turns on another machine on your network from its
   MAC address, also while the phone is away on Tailscale. It sends a magic packet on the local network only; see the
   guide for the BIOS and adapter settings the machine needs (#302, [Vasilispapg](https://github.com/Vasilispapg)).
