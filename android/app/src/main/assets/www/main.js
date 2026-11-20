@@ -148,7 +148,8 @@ export async function api(path, method = 'GET', timeout = 2500) {
 export const haptic = () => { try { bridge && bridge.haptic(); } catch (_) {} };
 export const buzz = (p) => { try { if (bridge && !nightOn && cfg.display?.vibrate !== false) bridge.buzz(p); } catch (_) {} };
 // One AudioContext for the whole panel: Chrome limits how many can be open, so a new one per chime would run out.
-let chimeCtx = null;
+// It is suspended a second after the last tone, so a panel that runs all day doesn't keep an audio output open.
+let chimeCtx = null, chimeIdle = 0;
 /**
  * A short tone for timers, made with Web Audio so the app needs no sound file. Silent on the night screen, like
  * buzz(). volume is a percentage (10–100); finished plays a rising three-note pattern instead of two beeps.
@@ -176,6 +177,11 @@ export const chime = (volume, finished = false) => {
       osc.start(at);
       osc.stop(at + 0.24);
     });
+    clearTimeout(chimeIdle);
+    const ctx = chimeCtx;
+    chimeIdle = setTimeout(() => {
+      try { if (ctx.state === 'running' && ctx.suspend) { const r = ctx.suspend(); if (r && r.catch) r.catch(() => {}); } } catch (_) {}
+    }, (notes.length * 0.25 + 1) * 1000);
   } catch (_) {}
 };
 export const transport = () => { try { return bridge ? bridge.transport() : ''; } catch (_) { return ''; } };

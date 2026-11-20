@@ -144,8 +144,9 @@ async function stubAudio(page) {
     window.__tones = [];
     const param = (set) => ({ setValueAtTime: set, linearRampToValueAtTime: set, exponentialRampToValueAtTime() {} });
     window.AudioContext = class {
-      constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; }
-      resume() { return Promise.resolve(); }
+      constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; window.__audio = this; }
+      resume() { this.state = 'running'; return Promise.resolve(); }
+      suspend() { this.state = 'suspended'; return Promise.resolve(); }
       createGain() { const g = { peak: 0, connect() {} }; g.gain = param((v) => { g.peak = Math.max(g.peak, v); }); return g; }
       createOscillator() {
         const o = { freq: 0, gain: null, stop() {} };
@@ -251,4 +252,16 @@ test('the same step rings once when the panel opens in the day, as before', asyn
   await expect(page.locator('body')).not.toHaveClass(/night/);
   expect((await tones(page)).length).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.__buzz.length)).toBe(1);
+});
+
+test('the audio output is let go a moment after the chime, and the next chime takes it again', async ({ page }) => {
+  await stubAudio(page);
+  await show(page, { focus: 1, break: 1, sound: true });
+  await page.evaluate(async () => (await import('/panel/main.js')).chime(60));
+  expect(await page.evaluate(() => window.__audio.state)).toBe('running');
+  await page.clock.fastForward(2000);
+  expect(await page.evaluate(() => window.__audio.state)).toBe('suspended');
+  await page.evaluate(async () => { window.__tones = []; (await import('/panel/main.js')).chime(60); });
+  expect(await page.evaluate(() => window.__audio.state)).toBe('running');
+  expect((await tones(page)).length).toBeGreaterThan(0);
 });

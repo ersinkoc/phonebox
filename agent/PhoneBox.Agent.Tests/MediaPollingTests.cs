@@ -17,6 +17,16 @@ public sealed class MediaPollingTests
     }
 
     [Fact]
+    public void AControlReadsAgainWhenTheLastReadingIsOldEvenIfSomethingJustAsked()
+    {
+        const long read = 100_000;
+        Assert.False(MediaMonitor.IsStale(read, read + MediaMonitor.FreshForMs));
+        Assert.True(MediaMonitor.IsStale(read, read + MediaMonitor.FreshForMs + 1));
+        Assert.True(MediaMonitor.IsStale(long.MinValue / 2, read)); // never read yet
+        Assert.True(MediaMonitor.FreshForMs < MediaMonitor.IdlePoll.TotalMilliseconds);
+    }
+
+    [Fact]
     public void TheFirstRequestAfterAQuietSpellReadsAtOnce()
     {
         var monitor = new MediaMonitor(NullLogger<MediaMonitor>.Instance);

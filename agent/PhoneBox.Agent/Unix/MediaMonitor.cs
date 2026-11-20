@@ -48,6 +48,9 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
     internal static readonly TimeSpan IdlePoll = TimeSpan.FromSeconds(10);
     internal const long WantedForMs = 15_000;
     private long _lastRequest = -WantedForMs; // nobody has asked yet
+    // when the last reading finished; a control acts on that reading, so it reads again first when this is old
+    private long _lastReading = long.MinValue / 2;
+    internal const long FreshForMs = 2_000;
     private readonly SemaphoreSlim _wake = new(0, 1);
 
     public AlbumArt? Art { get; private set; }
@@ -60,6 +63,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
     }
 
     internal static bool IsIdle(long lastRequest, long now) => now - lastRequest >= WantedForMs;
+    internal static bool IsStale(long lastReading, long now) => now - lastReading > FreshForMs;
     private bool Idle => IsIdle(Interlocked.Read(ref _lastRequest), Environment.TickCount64);
 
     /// <summary>A request came back after a quiet spell and the next reading will not wait out IdlePoll.</summary>
@@ -67,10 +71,13 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
 
     private void Wake() { try { _wake.Release(); } catch (SemaphoreFullException) { } }
 
-    /// <summary>While nobody watches, the last reading can be up to IdlePoll old: read again before acting on it.</summary>
+    /// <summary>
+    /// While nobody watches, the last reading can be up to IdlePoll old: read again before acting on it. Keyed on the
+    /// reading, not the last request, because the phone's /api/media asks for the snapshot just before it acts.
+    /// </summary>
     private async Task RefreshIfIdle()
     {
-        if (!Idle) return;
+        if (!IsStale(Interlocked.Read(ref _lastReading), Environment.TickCount64)) return;
         try { await Poll(); }
         catch (Exception ex) { log.LogDebug("media: {Msg}", ex.Message); }
     }
@@ -113,6 +120,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         }
         finally
         {
+            Interlocked.Exchange(ref _lastReading, Environment.TickCount64);
             _pollGate.Release();
             // a new track, a pause or a seek reaches the phone now, not at its next whole-second state
             if (StateSignal.MediaChanged(before, _snap)) StateSignal.Poke();
