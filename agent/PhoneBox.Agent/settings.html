@@ -2186,7 +2186,10 @@ $('photosImmichLoad').onclick = async () => {
     immichFor = conn;
     fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
     state.textContent = r.albums.length ? t('s.js.immichCount', { n: r.albums.length }) : t('s.js.immichNone');
-  } catch (_) { if (seq === immichLoadSeq && conn === immichConnection()) state.textContent = t('s.js.immichFailed'); }
+  } catch (_) {
+    // only the newest request speaks for the status; if the address or key changed meanwhile, there is nothing to report for it
+    if (seq === immichLoadSeq) state.textContent = conn === immichConnection() ? t('s.js.immichFailed') : '';
+  }
   finally { clearTimeout(timer); }
 };
 $('haTest').onclick = async () => {

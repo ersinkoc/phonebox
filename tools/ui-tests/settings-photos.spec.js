@@ -87,7 +87,10 @@ async function holdAlbumRequests(page) {
     window.__held = [];
     window.fetch = (url, options) => {
       if (String(url) !== '/api/immich/albums') return original(url, options);
-      return new Promise((resolve) => window.__held.push((albums) => resolve(Response.json({ albums }))));
+      return new Promise((resolve, reject) => {
+        window.__held.push((albums) => resolve(Response.json({ albums })));
+        options?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+      });
     };
   });
 }
@@ -159,4 +162,31 @@ test('the key is not written into the page markup', async ({ page }) => {
   await page.locator('#photosImmichLoad').click();
   await expect(page.locator('#photosImmichState')).toHaveText('2 albums');
   expect(await page.content()).not.toContain('sk-markup-check-7421');
+});
+
+test('a load that times out after the address changed leaves no Loading… text behind', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/settings/#general');
+  await applyJson(page, immich('', ''));
+  await answerAlbums(page, null); // the request never answers, and is rejected when it is aborted
+  const state = page.locator('#photosImmichState');
+  await page.locator('#photosImmichLoad').click();
+  await expect(state).toHaveText('Loading…');
+  await page.locator('[data-bind="photos.immichUrl"]').fill('http://192.168.1.99:2283');
+  await page.clock.fastForward(36_000);
+  await expect(state).toHaveText(''); // not "Loading…", and not a failure for an address nobody asked about
+});
+
+test('an older request that times out does not change the status of a newer one', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/settings/#general');
+  await applyJson(page, immich('', ''));
+  await holdAlbumRequests(page);
+  const state = page.locator('#photosImmichState');
+  await page.locator('#photosImmichLoad').click();
+  await page.clock.fastForward(20_000);
+  await page.locator('#photosImmichLoad').click(); // the second request starts 20 s later
+  await expect(state).toHaveText('Loading…');
+  await page.clock.fastForward(20_000); // the first one's 35 s are up, the second one's are not
+  await expect(state).toHaveText('Loading…');
 });
