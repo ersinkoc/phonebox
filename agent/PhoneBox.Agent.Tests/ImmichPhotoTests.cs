@@ -175,6 +175,31 @@ public sealed class ImmichPhotoTests : IDisposable
     }
 
     [Fact]
+    public async Task AnAnswerOverSixteenMegabytesIsRefused()
+    {
+        var fake = new FakeImmich(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new EndlessZeros(17L * 1024 * 1024)) });
+        var (albums, error) = await Frame(fake).Frame.ImmichAlbums(Server, Key, CancellationToken.None);
+        Assert.Null(albums);
+        Assert.Equal("The Immich answer is too large", error);
+    }
+
+    [Fact]
+    public void AFullPageOfAThousandAssetsStillFits()
+    {
+        // about 2.5 KB an asset, more than the metadata Immich sends for one
+        var pad = new string('x', 2300);
+        var items = string.Join(",", Enumerable.Range(0, 1000).Select(i => $$$"""{"id":"aaaaaaaa-0000-0000-0000-{{{i:D12}}}","type":"IMAGE","pad":"{{{pad}}}"}"""));
+        var body = $$$"""{"assets":{"items":[{{{items}}}],"nextPage":null}}""";
+        Assert.True(body.Length > 2_000_000 && body.Length < 16 * 1024 * 1024);
+        var fake = new FakeImmich(r => r.Method == HttpMethod.Post
+            ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") }
+            : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var (frame, _) = Frame(fake);
+        frame.ScanNow();
+        Assert.Equal(1000, frame.List().Ids.Count);
+    }
+
+    [Fact]
     public async Task ARedirectIsAnErrorNotFollowed()
     {
         var fake = new FakeImmich(_ => new HttpResponseMessage(HttpStatusCode.Found) { Headers = { Location = new Uri("http://other.test/") } });

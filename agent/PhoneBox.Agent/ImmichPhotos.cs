@@ -14,7 +14,7 @@ public sealed record ImmichAlbum(string Id, string Name, int Count);
 internal sealed class ImmichClient(HttpClient http, Uri server, string key)
 {
     internal const int MaxAlbums = 500;
-    private const long MaxJsonBytes = 64L * 1024 * 1024, MaxImageBytes = 12L * 1024 * 1024;
+    private const long MaxJsonBytes = 16L * 1024 * 1024, MaxImageBytes = 12L * 1024 * 1024;
     private const int PageSize = 1000, MaxPages = 10, MaxForbiddenBytes = 4096;
 
     internal sealed record Asset(string Id, long Ticks);
