@@ -165,7 +165,7 @@ public sealed class FeedMonitor(ConfigStore config, ILogger<FeedMonitor> log) : 
     {
         var psi = new ProcessStartInfo(OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "/usr/bin/open" : "xdg-open")
             { UseShellExecute = false, CreateNoWindow = true };
-        psi.ArgumentList.Add(FeedParser.LaunchAddress(uri));
+        psi.ArgumentList.Add(OperatingSystem.IsWindows() ? FeedParser.LaunchAddress(uri) : uri.AbsoluteUri);
         var p = Process.Start(psi) ?? throw new InvalidOperationException("the browser launcher did not start");
         if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS()) { p.Dispose(); return; }
         _ = Task.Run(async () =>
@@ -400,9 +400,9 @@ internal static partial class FeedParser
 
     /// <summary>Only http and https links are ever opened (no file:, javascript:, custom app schemes).</summary>
     /// <summary>
-    /// The address as handed to the browser launcher. .NET leaves '[' and ']' raw after the host (as in a
+    /// The address as handed to explorer.exe. .NET leaves '[' and ']' raw after the host (as in a
     /// <c>#xtor=RSS-3-[lestitres]</c> tracking fragment), and explorer.exe then opens the Documents folder instead of the
-    /// browser, so they are percent-encoded there. An IPv6 host keeps its brackets.
+    /// browser, so they are percent-encoded there. An IPv6 host keeps its brackets. macOS and Linux get the address as is.
     /// </summary>
     internal static string LaunchAddress(Uri uri)
     {
