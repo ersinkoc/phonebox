@@ -19,6 +19,9 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
 
     internal sealed record Asset(string Id, long Ticks);
 
+    /// <summary>How long one request may take, from sending it to the last byte of its body (HttpClient.Timeout ends at the headers).</summary>
+    internal TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
     /// <summary>The server address as a base for relative calls; null unless it is a plain http(s) address (no login, query or fragment).</summary>
     internal static Uri? ParseServer(string? url)
     {
@@ -112,34 +115,44 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
 
     private async Task<(byte[]? Body, string? Error)> Send(HttpMethod method, string path, string? json, long max, CancellationToken ct)
     {
+        // one limit for the whole exchange: a server that sends its headers and then stalls must not hold a scan for good
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(RequestTimeout);
         try
         {
             using var req = new HttpRequestMessage(method, new Uri(server, path));
             req.Headers.Add("x-api-key", key);
             if (json is not null) req.Content = new StringContent(json, Encoding.UTF8, "application/json");
-            using var res = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var res = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, limit.Token);
             if (res.StatusCode == HttpStatusCode.Unauthorized) return (null, "The Immich server rejected the API key");
             if (res.StatusCode == HttpStatusCode.Forbidden) return (null, await Forbidden(res, ct));
             if (res.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest) return (null, "Immich couldn't find that");
             // a redirect is never followed: it could carry the key to another address
             if (!res.IsSuccessStatusCode) return (null, $"The Immich server answered {(int)res.StatusCode}");
             if (res.Content.Headers.ContentLength > max) return (null, "The Immich answer is too large");
-            await using var stream = await res.Content.ReadAsStreamAsync(ct);
-            using var ms = new MemoryStream();
-            var buffer = new byte[81920];
-            int n;
-            while ((n = await stream.ReadAsync(buffer, ct)) > 0)
-            {
-                if (ms.Length + n > max) return (null, "The Immich answer is too large");
-                ms.Write(buffer, 0, n);
-            }
-            return (ms.ToArray(), null);
+            return await ReadCapped(res.Content, max, limit.Token) is { } body ? (body, null) : (null, "The Immich answer is too large");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or IOException or InvalidOperationException)
+        catch (OperationCanceledException) { return (null, "The Immich server didn't answer in time"); }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
         {
             return (null, "The Immich server can't be reached");
         }
+    }
+
+    /// <summary>The body, or null when it is longer than <paramref name="max"/> bytes (reading stops there).</summary>
+    private static async Task<byte[]?> ReadCapped(HttpContent content, long max, CancellationToken ct)
+    {
+        await using var stream = await content.ReadAsStreamAsync(ct);
+        using var ms = new MemoryStream();
+        var buffer = new byte[81920];
+        int n;
+        while ((n = await stream.ReadAsync(buffer, ct)) > 0)
+        {
+            if (ms.Length + n > max) return null;
+            ms.Write(buffer, 0, n);
+        }
+        return ms.ToArray();
     }
 }
 
@@ -147,6 +160,8 @@ public sealed partial class PhotoFrame
 {
     /// <summary>Test seam: the handler Immich requests go through. Redirects are never followed in production.</summary>
     internal HttpMessageHandler? ImmichHandler { get; init; }
+    /// <summary>Test seam: how long one Immich request, its body included, may take.</summary>
+    internal TimeSpan ImmichTimeout { get; init; } = TimeSpan.FromSeconds(30);
     private HttpClient? _immichHttp;
 
     private HttpClient ImmichHttp
@@ -166,7 +181,7 @@ public sealed partial class PhotoFrame
         if (server is null) return (null, "Enter the address of your Immich server, like http://192.168.1.10:2283");
         var useKey = string.IsNullOrWhiteSpace(key) && server == ImmichClient.ParseServer(saved.ImmichUrl) ? saved.ImmichKey : (key ?? "").Trim();
         if (useKey.Length == 0) return (null, "Enter an API key");
-        return await new ImmichClient(ImmichHttp, server, useKey).ListAlbums(ct);
+        return await new ImmichClient(ImmichHttp, server, useKey) { RequestTimeout = ImmichTimeout }.ListAlbums(ct);
     }
 
     /// <summary>Photos from one Immich album, as the preview-size pictures Immich makes itself.</summary>
@@ -174,7 +189,7 @@ public sealed partial class PhotoFrame
     {
         public string Key { get; } = "immich\n" + server + "\n" + album + "\n" + ImmichClient.KeyTag(key);
         public string ScanError => "The Immich album can't be read";
-        private ImmichClient Client => new(owner.ImmichHttp, server, key);
+        private ImmichClient Client => new(owner.ImmichHttp, server, key) { RequestTimeout = owner.ImmichTimeout };
 
         public Library Scan()
         {

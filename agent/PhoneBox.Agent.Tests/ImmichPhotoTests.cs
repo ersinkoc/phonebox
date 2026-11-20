@@ -140,12 +140,99 @@ public sealed class ImmichPhotoTests : IDisposable
         Assert.Single(fake.Seen);
     }
 
-    /// <summary>A frame that talks to a real local server through the production handler (no test seam).</summary>
-    private PhotoFrame RealFrame()
+    /// <summary>A frame that talks to a real local server through the production handler (no test seam); with an address it is set up for that Immich album.</summary>
+    private PhotoFrame RealFrame(string? immichUrl = null, TimeSpan? timeout = null, string key = Key)
     {
         var path = Path.Combine(_dir, "config-real.json");
-        File.WriteAllText(path, """{"pages":[{"id":"p","title":"P","widgets":[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]}]}""");
-        return new PhotoFrame(new ConfigStore(path), NullLogger<PhotoFrame>.Instance) { CacheDir = Path.Combine(_dir, "cache-real") };
+        var photos = immichUrl is null ? "" : $$"""
+            "photos":{"source":"immich","immichUrl":"{{immichUrl}}","immichKey":{{JsonSerializer.Serialize(key)}},"immichAlbum":"{{Album}}"},
+            """;
+        File.WriteAllText(path, "{" + photos + """
+            "pages":[{"id":"p","title":"P","widgets":[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]}]}
+            """);
+        return new PhotoFrame(new ConfigStore(path), NullLogger<PhotoFrame>.Instance)
+            { CacheDir = Path.Combine(_dir, "cache-real"), ImmichTimeout = timeout ?? TimeSpan.FromSeconds(30) };
+    }
+
+    /// <summary>Serves a local listener until the test ends; every request goes to <paramref name="handle"/>.</summary>
+    private static void Serve(HttpListener listener, CancellationToken stop, Func<HttpListenerContext, Task> handle) =>
+        _ = Task.Run(async () =>
+        {
+            try { while (!stop.IsCancellationRequested) { var c = await listener.GetContextAsync(); _ = Task.Run(() => handle(c).ContinueWith(_ => { })); } }
+            catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException or InvalidOperationException) { }
+        });
+
+    /// <summary>The status line and headers go out, a few body bytes follow, and then the server goes quiet.</summary>
+    private static async Task StallBody(HttpListenerContext c, CancellationToken stop, int status = 200, string type = "application/json")
+    {
+        c.Response.StatusCode = status;
+        c.Response.ContentType = type;
+        c.Response.SendChunked = true;
+        await c.Response.OutputStream.WriteAsync("[{"u8.ToArray(), stop);
+        await c.Response.OutputStream.FlushAsync(stop);
+        try { await Task.Delay(Timeout.Infinite, stop); } catch (OperationCanceledException) { }
+    }
+
+    [Fact]
+    public async Task AServerThatStallsAfterTheHeadersDoesNotHangTheAlbumList()
+    {
+        using var stop = new CancellationTokenSource();
+        using var server = TestPorts.Listen();
+        try
+        {
+            Serve(server, stop.Token, c => StallBody(c, stop.Token));
+            var (albums, error) = await RealFrame(timeout: TimeSpan.FromSeconds(1))
+                .ImmichAlbums(server.Prefixes.Single(), Key, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Null(albums);
+            Assert.Equal("The Immich server didn't answer in time", error);
+        }
+        finally { stop.Cancel(); }
+    }
+
+    [Fact]
+    public async Task AServerThatStallsAfterTheHeadersDoesNotKeepAScanRunning()
+    {
+        using var stop = new CancellationTokenSource();
+        using var server = TestPorts.Listen();
+        try
+        {
+            Serve(server, stop.Token, c => StallBody(c, stop.Token));
+            var frame = RealFrame(server.Prefixes.Single().TrimEnd('/'), TimeSpan.FromSeconds(1));
+            await Task.Run(frame.ScanNow).WaitAsync(TimeSpan.FromSeconds(10)); // before the fix this waits for the 30 s cap and publishes nothing
+            var (ids, error, scanning) = frame.List();
+            Assert.Empty(ids);
+            Assert.Equal("The Immich server didn't answer in time", error);
+            Assert.False(scanning);
+        }
+        finally { stop.Cancel(); }
+    }
+
+    [Fact]
+    public async Task APreviewThatStallsAfterTheHeadersDoesNotHangThePhoto()
+    {
+        using var stop = new CancellationTokenSource();
+        using var server = TestPorts.Listen();
+        try
+        {
+            Serve(server, stop.Token, async c =>
+            {
+                if (c.Request.HttpMethod == "POST")
+                {
+                    var body = Encoding.UTF8.GetBytes($$$"""{"assets":{"items":[{"id":"{{{A1}}}","type":"IMAGE"}],"nextPage":null}}""");
+                    c.Response.ContentType = "application/json";
+                    await c.Response.OutputStream.WriteAsync(body);
+                    c.Response.Close();
+                }
+                else await StallBody(c, stop.Token, type: "image/webp");
+            });
+            var frame = RealFrame(server.Prefixes.Single().TrimEnd('/'), TimeSpan.FromSeconds(1));
+            frame.ScanNow();
+            var id = Assert.Single(frame.List().Ids);
+            var photo = await frame.Get(id, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Null(photo.Bytes);
+            Assert.Equal("That photo can't be shown", photo.Error);
+        }
+        finally { stop.Cancel(); }
     }
 
     [Fact]
