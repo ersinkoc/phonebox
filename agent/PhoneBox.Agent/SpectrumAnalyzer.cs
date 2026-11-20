@@ -142,6 +142,34 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
     internal static float LoopbackGain(bool hardwareVolume, float volumeDb) =>
         hardwareVolume || !float.IsFinite(volumeDb) ? 1 : (float)Math.Pow(10, Math.Clamp(-volumeDb, 0, MaxBoostDb) / 20);
 
+    /// <summary>
+    /// Writes interleaved frames (32-bit float, or 16/32-bit PCM) to <paramref name="ring"/> as mono from
+    /// <paramref name="pos"/>, times <paramref name="gain"/>, and returns the next position. The gain belongs to the
+    /// samples as they are captured: a later volume change does not rescale what is already in the ring.
+    /// </summary>
+    internal static int Downmix(ReadOnlySpan<byte> buf, int channels, int bits, bool isFloat, int frameBytes, float gain, float[] ring, int pos)
+    {
+        var ch = Math.Max(1, channels);
+        var sampleBytes = bits / 8;
+        // stereo sound on a surround output (a 4-channel controller, 5.1 / 7.1) fills only the front pair: dividing by
+        // every channel would lower it 6–12 dB, so the sum is scaled like stereo
+        var scale = gain / Math.Min(ch, 2);
+        for (var off = 0; off + frameBytes <= buf.Length; off += frameBytes)
+        {
+            double sum = 0;
+            for (var c = 0; c < ch; c++)
+            {
+                var s = buf[(off + c * sampleBytes)..];
+                sum += isFloat ? BitConverter.ToSingle(s)
+                    : bits == 32 ? BitConverter.ToInt32(s) / 2147483648.0
+                    : BitConverter.ToInt16(s) / 32768.0;
+            }
+            ring[pos] = (float)(sum * scale);
+            pos = (pos + 1) % ring.Length;
+        }
+        return pos;
+    }
+
 #if WINDOWS
     private readonly Lock _gate = new();
     private readonly float[] _ring = new float[FftSize * 2];
@@ -156,7 +184,10 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
     private string? _deviceId; // the output device being captured, to follow a change of the default output
     private System.Threading.Timer? _timer;
     private int _sampleRate = 48000;
-    private volatile float _gain = 1; // undoes the Windows volume on outputs that apply it in software (see LoopbackGain)
+    private bool _failing; // the last Start failed (warned once); under _gate
+
+    /// <summary>A capture's <see cref="LoopbackGain"/>, updated by its endpoint's volume notifications.</summary>
+    private sealed class GainBox { public volatile float Value = 1; }
 
     private bool Running { get { lock (_gate) return _capture is not null; } }
 
@@ -192,13 +223,15 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
                 _sampleRate = fmt.SampleRate;
                 var volume = device.AudioEndpointVolume;
                 var hardwareVolume = volume.HardwareSupport.HasFlag(EEndpointHardwareSupport.Volume);
-                _gain = LoopbackGain(hardwareVolume, volume.MasterVolumeLevel);
+                // this capture's own gain, applied as its samples arrive (OnData), so a volume change never rescales audio
+                // already in the ring, and a late notification from an earlier capture cannot touch it
+                var gain = new GainBox();
                 if (!hardwareVolume)
-                    volume.OnVolumeNotification += _ =>
-                    {
-                        // unsubscribed when the endpoint is disposed (Release); a late one finds it disposed
-                        try { if (_deviceId == deviceId) _gain = LoopbackGain(false, volume.MasterVolumeLevel); } catch { }
-                    };
+                    // subscribed before the first read, so a change in between is not lost; unsubscribed when the endpoint
+                    // is disposed (Release), and a late one finds it disposed
+                    volume.OnVolumeNotification += _ => { try { gain.Value = LoopbackGain(false, volume.MasterVolumeLevel); } catch { } };
+                var masterDb = volume.MasterVolumeLevel;
+                gain.Value = LoopbackGain(hardwareVolume, masterDb);
                 var (started, startedOn) = (capture, device);
                 var released = 0;
                 void Release()
@@ -207,7 +240,7 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
                     started.Dispose();
                     startedOn.Dispose(); // after the capture: its thread uses the endpoint until it has stopped
                 }
-                capture.DataAvailable += (_, e) => OnData(e.Buffer, e.BytesRecorded, fmt);
+                capture.DataAvailable += (_, e) => OnData(e.Buffer, e.BytesRecorded, fmt, gain.Value);
                 capture.RecordingStopped += (_, e) =>
                 {
                     if (e.Exception is not null) log.LogInformation("spectrum: capture stopped: {Msg}", e.Exception.Message);
@@ -222,15 +255,22 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
                 _release = Release;
                 _deviceId = deviceId;
                 _timer = new System.Threading.Timer(_ => Tick(), null, 0, 1000 / Fps);
+                _failing = false;
+                // masterDb was read before StartRecording: reading the endpoint again here could throw into the catch below,
+                // which disposes the running capture under _gate while its RecordingStopped handler waits for _gate
                 log.LogInformation("spectrum: capture started ({Rate} Hz, {Bits}-bit, {Ch} ch, {Volume} volume)", fmt.SampleRate, fmt.BitsPerSample, fmt.Channels,
-                    hardwareVolume ? "hardware" : $"software {volume.MasterVolumeLevel:0.#} dB");
+                    hardwareVolume ? "hardware" : $"software {masterDb:0.#} dB");
             }
             catch (Exception ex)
             {
                 // a capture that failed to start raises no RecordingStopped, so nothing else would dispose it or the endpoint
                 capture?.Dispose();
                 device?.Dispose();
-                log.LogWarning("spectrum: cannot capture the output device: {Msg}", ex.Message);
+                // a panel asks every second while the widget shows, and with no output device (Bluetooth headphones gone,
+                // nothing else set as default) every ask fails the same way: warn once, then quietly until capture works
+                if (!_failing) log.LogWarning("spectrum: cannot capture the output device: {Msg}", ex.Message);
+                else log.LogDebug("spectrum: cannot capture the output device: {Msg}", ex.Message);
+                _failing = true;
             }
         }
     }
@@ -256,34 +296,14 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
         log.LogInformation("spectrum: capture stopped ({Why})", why);
     }
 
-    /// <summary>Downmixes 32-bit float or 16/32-bit PCM samples to mono in the ring buffer.</summary>
-    private void OnData(byte[] buf, int bytes, WaveFormat fmt)
+    /// <summary>Downmixes 32-bit float or 16/32-bit PCM samples to mono in the ring buffer, with this capture's gain.</summary>
+    private void OnData(byte[] buf, int bytes, WaveFormat fmt, float gain)
     {
-        var ch = Math.Max(1, fmt.Channels);
         var encoding = (fmt is WaveFormatExtensible extended ? extended.ToStandardWaveFormat() : fmt).Encoding;
         var isFloat = encoding == WaveFormatEncoding.IeeeFloat;
         var bits = fmt.BitsPerSample;
-        var frameBytes = fmt.BlockAlign;
-        if (frameBytes <= 0 || (isFloat ? bits != 32 : encoding != WaveFormatEncoding.Pcm || bits is not (16 or 32))) return;
-        var sampleBytes = bits / 8;
-        lock (_ring)
-        {
-            for (var off = 0; off + frameBytes <= bytes; off += frameBytes)
-            {
-                double sum = 0;
-                for (var c = 0; c < ch; c++)
-                {
-                    var sampleOffset = off + c * sampleBytes;
-                    sum += isFloat ? BitConverter.ToSingle(buf, sampleOffset)
-                        : bits == 32 ? BitConverter.ToInt32(buf, sampleOffset) / 2147483648.0
-                        : BitConverter.ToInt16(buf, sampleOffset) / 32768.0;
-                }
-                // stereo sound on a surround output (a 4-channel controller, 5.1 / 7.1) fills only the front pair: dividing by
-                // every channel would lower it 6–12 dB, so the sum is scaled like stereo
-                _ring[_ringPos] = (float)(sum / Math.Min(ch, 2));
-                _ringPos = (_ringPos + 1) % _ring.Length;
-            }
-        }
+        if (fmt.BlockAlign <= 0 || (isFloat ? bits != 32 : encoding != WaveFormatEncoding.Pcm || bits is not (16 or 32))) return;
+        lock (_ring) _ringPos = Downmix(buf.AsSpan(0, bytes), fmt.Channels, bits, isFloat, fmt.BlockAlign, gain, _ring, _ringPos);
         if (bytes > 0) Interlocked.Exchange(ref _lastAudio, Now);
     }
 
@@ -305,8 +325,7 @@ public sealed class SpectrumAnalyzer(ConfigStore config, ILogger<SpectrumAnalyze
             lock (_ring)
             {
                 var start = (_ringPos - FftSize + _ring.Length) % _ring.Length;
-                var gain = _gain;
-                for (var i = 0; i < FftSize; i++) _last[i] = _ring[(start + i) % _ring.Length] * gain;
+                for (var i = 0; i < FftSize; i++) _last[i] = _ring[(start + i) % _ring.Length];
             }
             _frame = Analyze(_last, _sampleRate);
         }

@@ -94,6 +94,44 @@ public sealed class SpectrumAnalyzerTests : IDisposable
         Assert.InRange(restored, full - 1, full + 1);
     }
 
+    private static byte[] FloatFrames(int frames, params float[] frame) =>
+        Enumerable.Repeat(frame, frames).SelectMany(f => f).SelectMany(BitConverter.GetBytes).ToArray();
+
+    [Fact]
+    public void AVolumeChangeOnlyScalesAudioCapturedAfterIt()
+    {
+        // a monitor at -40 dB (gain 100) for the first block, then turned up to 0 dB (gain 1) before the next one arrives:
+        // the samples already in the ring keep the gain they were captured with
+        var ring = new float[8];
+        var pos = SpectrumAnalyzer.Downmix(FloatFrames(4, 0.001f, 0.001f), 2, 32, true, 8, SpectrumAnalyzer.LoopbackGain(false, -40), ring, 0);
+        pos = SpectrumAnalyzer.Downmix(FloatFrames(4, 0.1f, 0.1f), 2, 32, true, 8, SpectrumAnalyzer.LoopbackGain(false, 0), ring, pos);
+        Assert.Equal(0, pos);
+        Assert.All(ring, s => Assert.Equal(0.1f, s, 4)); // the same level before and after the change
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)] // DualSense
+    [InlineData(8)] // 7.1
+    public void StereoOnASurroundOutputKeepsItsLevel(int channels)
+    {
+        // stereo content fills the front pair only; the other channels are silent
+        var frame = new float[channels];
+        frame[0] = frame[1] = 0.5f;
+        var ring = new float[4];
+        SpectrumAnalyzer.Downmix(FloatFrames(4, frame), channels, 32, true, channels * 4, 1, ring, 0);
+        Assert.All(ring, s => Assert.Equal(0.5f, s, 4));
+    }
+
+    [Fact]
+    public void PcmIsDownmixedToo()
+    {
+        var ring = new float[2];
+        var pcm16 = new short[] { 16384, 16384, -16384, -16384 }.SelectMany(BitConverter.GetBytes).ToArray();
+        SpectrumAnalyzer.Downmix(pcm16, 2, 16, false, 4, 1, ring, 0);
+        Assert.Equal([0.5f, -0.5f], ring);
+    }
+
     [Fact]
     public void OnlyFullWindowsAreAnalyzed() =>
         Assert.Throws<ArgumentException>(() => SpectrumAnalyzer.Analyze(new float[100], 48000));
