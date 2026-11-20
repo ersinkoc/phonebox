@@ -341,6 +341,7 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   PhoneBox waits until Claude Code renews it.
 - **Codex quota** is queried every minute through the locally installed, signed-in `codex` CLI app-server.
   No coding session or inference prompt is required; the reading includes account usage from other computers.
+  Uncheck **Codex** under **Settings › General › AI quotas & CodexBar › Tracked AI services** to stop live polling.
   Healthy, recent CodexBar quota retains priority when available. If the live query fails, local session quota
   is used with an availability warning. **Codex sessions and token details** are read from local files in
   `~/.codex/sessions`; Claude Code sessions from

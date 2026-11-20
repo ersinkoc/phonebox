@@ -16,15 +16,23 @@ internal static class CodexQuota
 
     internal static ProcessStartInfo StartInfo(string path)
     {
-        // npm installs a .cmd shim on Windows; execute it explicitly without shelling Unix paths.
+        // npm's Windows shim sits beside node_modules/@openai/codex/bin/codex.js.
+        // Launch that entry point through Node rather than executing a command shell.
         var shim = OperatingSystem.IsWindows() && path.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
-        var start = new ProcessStartInfo(shim ? Path.Combine(Environment.SystemDirectory, "cmd.exe") : path);
+        ProcessStartInfo start;
         if (shim)
         {
-            start.Environment["PHONEBOX_CODEX_CLI"] = path;
-            start.Arguments = "/d /v:off /s /c \"\"%PHONEBOX_CODEX_CLI%\" app-server\"";
+            var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+            var script = Path.Combine(directory, "node_modules", "@openai", "codex", "bin", "codex.js");
+            var bundledNode = Path.Combine(directory, "node.exe");
+            var node = File.Exists(bundledNode) ? bundledNode : ToolProcess.Find("node");
+            if (node is null || !File.Exists(script))
+                throw new IOException("Could not locate the npm Codex entry point and Node executable");
+            start = new ProcessStartInfo(node);
+            start.ArgumentList.Add(script);
         }
-        else start.ArgumentList.Add("app-server");
+        else start = new ProcessStartInfo(path);
+        start.ArgumentList.Add("app-server");
         // Stdio is the default transport, including CLI versions before --stdio was added.
         return start;
     }

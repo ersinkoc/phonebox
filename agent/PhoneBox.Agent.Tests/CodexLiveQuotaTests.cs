@@ -60,18 +60,43 @@ public sealed class CodexLiveQuotaTests
     }
 
     [Fact]
-    public async Task WindowsNpmShimCanBeLaunchedFromPathWithSpacesAndAmpersand()
+    public void WindowsNpmEntryPointUsesNodeArgumentListWithoutShell()
     {
         if (!OperatingSystem.IsWindows()) return;
         var root = Directory.CreateTempSubdirectory("pb codex & shim ").FullName;
         try
         {
-            var script = Path.Combine(root, "server.ps1");
-            await File.WriteAllTextAsync(script, "$null=[Console]::ReadLine(); [Console]::WriteLine('{\"id\":1,\"result\":{}}'); $null=[Console]::ReadLine(); $null=[Console]::ReadLine(); [Console]::WriteLine('{\"id\":2,\"result\":{\"rateLimits\":" + Rate + "}}'); Start-Sleep 60");
-            var shim = Path.Combine(root, "codex.cmd");
-            await File.WriteAllTextAsync(shim, "@echo off\r\n\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"%~dp0server.ps1\"\r\n");
-            var result = await CodexQuota.ReadAsync(CodexQuota.StartInfo(shim), TimeSpan.FromSeconds(10), default);
-            Assert.Equal(82, result.Limits[0].Percent);
+            var script = Path.Combine(root, "node_modules", "@openai", "codex", "bin", "codex.js");
+            Directory.CreateDirectory(Path.GetDirectoryName(script)!);
+            File.WriteAllText(script, "// fake entry point; not executed");
+            var node = Path.Combine(root, "node.exe");
+            File.WriteAllText(node, "fake node; not executed");
+            var start = CodexQuota.StartInfo(Path.Combine(root, "codex.cmd"));
+            Assert.Equal(node, start.FileName);
+            Assert.Equal(new[] { script, "app-server" }, start.ArgumentList);
+            Assert.Empty(start.Arguments);
+            File.Delete(script);
+            Assert.Throws<IOException>(() => CodexQuota.StartInfo(Path.Combine(root, "codex.cmd")));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task UncheckingCodexStopsLiveQueriesAndClearsLiveCache()
+    {
+        var root = Directory.CreateTempSubdirectory("pb-codex-disabled-").FullName;
+        try
+        {
+            var path = Path.Combine(root, "config.json");
+            File.WriteAllText(path, """{"codexBar":{"providers":["codex"]}}""");
+            var store = new ConfigStore(path);
+            var agent = new QuotaMonitor(store, NullLogger<QuotaMonitor>.Instance);
+            await agent.RefreshCodexOnceAsync(() => "fake", (_, _) => Task.FromResult(Parse("{\"rateLimits\":" + Rate + "}")), default);
+            Assert.NotNull(agent.CodexSnapshot(1000));
+            store.Get().CodexBar.Providers = [];
+            await agent.RefreshCodexOnceAsync(() => throw new Exception("must not discover CLI"),
+                (_, _) => throw new Exception("must not query CLI"), default);
+            Assert.Null(agent.CodexSnapshot(1000));
         }
         finally { Directory.Delete(root, recursive: true); }
     }

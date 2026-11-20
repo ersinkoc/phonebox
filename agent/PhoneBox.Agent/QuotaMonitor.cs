@@ -729,6 +729,12 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     {
         try
         {
+            if (config is not null && !config.Get().CodexBar.Providers.Contains("codex"))
+            {
+                _codexLive = null;
+                _codexLiveError = null;
+                return;
+            }
             var path = findTool();
             if (path is null)
             {
