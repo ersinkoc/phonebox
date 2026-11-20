@@ -101,7 +101,8 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
     internal async Task<(byte[]? Bytes, string? Error)> Preview(string asset, CancellationToken ct) =>
         Guid.TryParse(asset, out _) ? await Send(HttpMethod.Get, "api/assets/" + asset + "/thumbnail?size=preview", null, MaxImageBytes, ct) : (null, "Unknown photo");
 
-    private static string? Str(JsonElement o, string name) => o.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+    // TryGetProperty throws on anything but an object, so a body that is an array or a bare value has no such property
+    private static string? Str(JsonElement o, string name) => o.ValueKind == JsonValueKind.Object && o.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
     /// <summary>A key with too few permissions: Immich says which one ("Missing required permission: asset.view"), so the user can fix the key.</summary>
     private static async Task<string> Forbidden(HttpResponseMessage res, CancellationToken ct)

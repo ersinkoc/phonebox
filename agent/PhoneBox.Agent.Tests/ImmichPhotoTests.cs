@@ -152,6 +152,20 @@ public sealed class ImmichPhotoTests : IDisposable
         Assert.Equal("The Immich server rejected the API key", (await Frame(odd).Frame.ImmichAlbums(Server, Key, CancellationToken.None)).Error);
     }
 
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("[\"Missing required permission: asset.view\"]")]
+    [InlineData("\"Missing required permission: asset.view\"")]
+    [InlineData("42")]
+    [InlineData("null")]
+    public async Task AForbiddenBodyThatIsNotAnObjectIsAKeyErrorNotAnUnreachableServer(string body)
+    {
+        var fake = new FakeImmich(_ => new HttpResponseMessage(HttpStatusCode.Forbidden) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+        var (_, error) = await Frame(fake).Frame.ImmichAlbums(Server, Key, CancellationToken.None);
+        Assert.Equal("The Immich server rejected the API key", error);
+        Assert.False(ImmichClient.IsTransient(error)); // a rejected key must show, not hide behind the last good list
+    }
+
     /// <summary>A body of zeros that never says how long it is and counts what is read from it.</summary>
     private sealed class EndlessZeros(long total) : Stream
     {
