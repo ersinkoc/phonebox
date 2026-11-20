@@ -42,6 +42,9 @@ people who proposed or prototyped something are credited in the [changelog](../C
 
 Agreed in principle, not being built in-house. Say so on the issue before starting.
 
+- **Typing from the phone's keyboard**: a text field and a row of keys (Enter, Backspace, Esc, Tab, arrows, optionally
+  Ctrl / Alt / Shift) on the Dictation widget, behind its **Type the text on the computer** switch and through
+  `/api/dictate`; nothing logged or stored ([#320](https://github.com/ersinkoc/phonebox/issues/320)).
 - **Photo frame pictures as the page background** ([#288](https://github.com/ersinkoc/phonebox/issues/288)): a
   per-page background from the photo frame's folder, dimmed under the widgets, using the same `/api/photos` feed.
 - **Android screen saver (DreamService)** ([#287](https://github.com/ersinkoc/phonebox/issues/287)): show the panel as
