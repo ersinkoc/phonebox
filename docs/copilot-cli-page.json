@@ -1,0 +1,14 @@
+{
+  "phonebox": "pages",
+  "version": 1,
+  "pages": [
+    {
+      "title": "Copilot CLI",
+      "icon": "💻",
+      "widgets": [
+        { "type": "push", "x": 0, "y": 0, "w": 5, "h": 6, "options": { "key": "copilot", "title": "Copilot CLI", "style": "big" } },
+        { "type": "inbox", "x": 5, "y": 0, "w": 7, "h": 6 }
+      ]
+    }
+  ]
+}
