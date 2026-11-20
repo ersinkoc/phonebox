@@ -50,3 +50,7 @@ tools/ui-tests/test-results/
 
 *.log
 *.txt
+# Rebuilt original panel for legacy Firefox
+agent/PhoneBox.Agent/kiosk-lite/
+
+**/node_modules/
