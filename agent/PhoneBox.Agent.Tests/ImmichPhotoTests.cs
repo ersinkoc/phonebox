@@ -22,11 +22,16 @@ public sealed class ImmichPhotoTests : IDisposable
     {
         public List<(string Path, string? Key)> Seen { get; } = [];
         public bool AlbumGone { get; set; }
+        /// <summary>When set, every request fails this way: an exception (server down) or a status.</summary>
+        public Exception? Down { get; set; }
+        public HttpStatusCode? Answer { get; set; }
         public List<string> Searches { get; } = [];
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var key = request.Headers.TryGetValues("x-api-key", out var v) ? v.Single() : null;
             lock (Seen) Seen.Add((request.RequestUri!.PathAndQuery, key));
+            if (Down is not null) throw Down;
+            if (Answer is { } status) return Task.FromResult(new HttpResponseMessage(status));
             if (custom is not null) return Task.FromResult(custom(request));
             if (key != Key) return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
             var path = request.RequestUri.AbsolutePath;
@@ -52,7 +57,7 @@ public sealed class ImmichPhotoTests : IDisposable
         private static HttpResponseMessage Json(string body) => new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
     }
 
-    private (PhotoFrame Frame, ConfigStore Store) Frame(FakeImmich fake, bool widget = true, string album = Album, string key = Key, string source = "immich", string url = Server + "/")
+    private (PhotoFrame Frame, ConfigStore Store) Frame(FakeImmich fake, bool widget = true, string album = Album, string key = Key, string source = "immich", string url = Server + "/", Func<long>? now = null)
     {
         var path = Path.Combine(_dir, "config.json");
         var widgets = widget ? """[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]""" : "[]";
@@ -61,7 +66,7 @@ public sealed class ImmichPhotoTests : IDisposable
              "pages":[{"id":"p","title":"P","widgets":{{widgets}}}]}
             """);
         var store = new ConfigStore(path);
-        return (new PhotoFrame(store, NullLogger<PhotoFrame>.Instance) { CacheDir = Path.Combine(_dir, "cache"), ImmichHandler = fake }, store);
+        return (new PhotoFrame(store, NullLogger<PhotoFrame>.Instance) { CacheDir = Path.Combine(_dir, "cache"), ImmichHandler = fake, Now = now ?? (() => Environment.TickCount64) }, store);
     }
 
     [Fact]
@@ -357,6 +362,56 @@ public sealed class ImmichPhotoTests : IDisposable
         Assert.Equal(2, fake.Searches.Count); // both pages were read
         Assert.All(fake.Searches, q => Assert.Contains("\"type\":\"IMAGE\"", q));
         Assert.Contains(fake.Seen, s => s.Path == "/api/search/metadata" && s.Key == Key);
+    }
+
+    /// <summary>Lists again after the five minutes are up and waits for the background scan that starts.</summary>
+    private static void RescanAfterTheInterval(PhotoFrame frame, ref long clock)
+    {
+        Interlocked.Add(ref clock, 6 * 60 * 1000);
+        _ = frame.List();
+        var field = typeof(PhotoFrame).GetField("_scan", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        for (var i = 0; i < 500 && field.GetValue(frame) is Task t && !t.IsCompleted; i++) Thread.Sleep(10);
+        Thread.Sleep(50); // the scan clears its slot just after it publishes
+    }
+
+    [Theory]
+    [InlineData("down", true)]
+    [InlineData("503", true)]
+    [InlineData("502", true)]
+    [InlineData("401", false)]
+    [InlineData("403", false)]
+    [InlineData("400", false)]
+    public void AScanThatFailsForTheNetworkKeepsTheLastGoodList(string failure, bool keep)
+    {
+        long clock = 1_000;
+        var fake = new FakeImmich();
+        var (frame, _) = Frame(fake, now: () => Interlocked.Read(ref clock));
+        frame.ScanNow();
+        Assert.Equal(2, frame.List().Ids.Count);
+
+        if (failure == "down") fake.Down = new HttpRequestException("connection refused");
+        else fake.Answer = (HttpStatusCode)int.Parse(failure);
+        RescanAfterTheInterval(frame, ref clock);
+
+        var (ids, error, _) = frame.List();
+        if (keep) { Assert.Equal(2, ids.Count); Assert.Null(error); }
+        else { Assert.Empty(ids); Assert.NotNull(error); } // a rejected key or a missing album is for the user to fix, so it shows
+    }
+
+    [Fact]
+    public void ARecoveredServerReplacesTheKeptList()
+    {
+        long clock = 1_000;
+        var fake = new FakeImmich();
+        var (frame, _) = Frame(fake, now: () => Interlocked.Read(ref clock));
+        frame.ScanNow();
+        fake.Down = new HttpRequestException("connection refused");
+        RescanAfterTheInterval(frame, ref clock);
+        Assert.Equal(2, frame.List().Ids.Count);
+        fake.Down = null;
+        RescanAfterTheInterval(frame, ref clock);
+        Assert.Equal(2, frame.List().Ids.Count);
+        Assert.Contains(fake.Seen, s => s.Path == "/api/search/metadata");
     }
 
     [Fact]

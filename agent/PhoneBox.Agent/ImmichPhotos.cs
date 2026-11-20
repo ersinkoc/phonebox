@@ -19,6 +19,12 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
 
     internal sealed record Asset(string Id, long Ticks);
 
+    internal const string Unreachable = "The Immich server can't be reached", TimedOut = "The Immich server didn't answer in time";
+
+    /// <summary>A failure that says nothing about the settings: the server is down, slow or erroring, so a list already shown stays.</summary>
+    internal static bool IsTransient(string? error) =>
+        error is Unreachable or TimedOut || error?.StartsWith("The Immich server answered 5", StringComparison.Ordinal) == true;
+
     /// <summary>How long one request may take, from sending it to the last byte of its body (HttpClient.Timeout ends at the headers).</summary>
     internal TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
@@ -134,10 +140,10 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
             return await ReadCapped(res.Content, max, limit.Token) is { } body ? (body, null) : (null, "The Immich answer is too large");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (OperationCanceledException) { return (null, "The Immich server didn't answer in time"); }
+        catch (OperationCanceledException) { return (null, TimedOut); }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
         {
-            return (null, "The Immich server can't be reached");
+            return (null, Unreachable);
         }
     }
 
@@ -195,7 +201,7 @@ public sealed partial class PhotoFrame
         public Library Scan()
         {
             var (assets, error) = Client.AlbumAssets(album, CancellationToken.None).GetAwaiter().GetResult();
-            if (assets is null) return new(Key, [], 0, error);
+            if (assets is null) return new(Key, [], 0, error, ImmichClient.IsTransient(error));
             // Path holds the asset id: the phone only ever sees the keyed id
             var photos = assets.Select(a => new Photo(IdOf("immich:" + album, a.Id), a.Id, 0, a.Ticks)).ToList();
             return new(Key, photos, 0, photos.Count == 0 ? "No photos in the album" : null);

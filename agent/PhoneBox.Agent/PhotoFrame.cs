@@ -50,8 +50,11 @@ public sealed partial class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> l
 
     /// <summary>One photo of the source; <c>Path</c> is the file path for a folder, the source's own reference otherwise.</summary>
     internal sealed record Photo(string Id, string Path, long Length, long Ticks);
-    /// <summary>The photos of one selection (<see cref="IPhotoSource.Key"/>) as of the last scan.</summary>
-    internal sealed record Library(string Key, IReadOnlyList<Photo> Photos, long ScannedAt, string? Error);
+    /// <summary>
+    /// The photos of one selection (<see cref="IPhotoSource.Key"/>) as of the last scan. <c>Transient</c> marks an
+    /// <c>Error</c> that is the network's doing (the server can't be reached), not the settings': the last good list stays.
+    /// </summary>
+    internal sealed record Library(string Key, IReadOnlyList<Photo> Photos, long ScannedAt, string? Error, bool Transient = false);
 
     /// <summary>Where the photos come from. One is chosen from the settings; the frame scans it in the background and asks it for one photo at a time.</summary>
     internal interface IPhotoSource
@@ -143,7 +146,9 @@ public sealed partial class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> l
                     {
                         if (_scan == launched && _generation == gen && _scanKey == key)
                         {
-                            _library = next with { ScannedAt = Now() };
+                            // a server that can't be reached right now doesn't empty a slideshow that was showing photos
+                            _library = next.Transient && _library is { } good && good.Key == next.Key && good.Photos.Count > 0
+                                ? good with { ScannedAt = Now() } : next with { ScannedAt = Now() };
                             try { CleanCacheLocked(next); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
                         }
                         if (_scan == launched) { _scan = null; _scanKey = null; }
