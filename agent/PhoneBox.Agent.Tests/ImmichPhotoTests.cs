@@ -140,6 +140,42 @@ public sealed class ImmichPhotoTests : IDisposable
         Assert.Single(fake.Seen);
     }
 
+    /// <summary>A frame that talks to a real local server through the production handler (no test seam).</summary>
+    private PhotoFrame RealFrame()
+    {
+        var path = Path.Combine(_dir, "config-real.json");
+        File.WriteAllText(path, """{"pages":[{"id":"p","title":"P","widgets":[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]}]}""");
+        return new PhotoFrame(new ConfigStore(path), NullLogger<PhotoFrame>.Instance) { CacheDir = Path.Combine(_dir, "cache-real") };
+    }
+
+    [Fact]
+    public async Task ARedirectIsNotFollowedByTheProductionHandler()
+    {
+        using var target = TestPorts.Listen();
+        using var first = TestPorts.Listen();
+        var targetHits = 0;
+        _ = Task.Run(async () =>
+        {
+            try { while (true) { var c = await target.GetContextAsync(); Interlocked.Increment(ref targetHits); c.Response.StatusCode = 200; c.Response.Close(); } }
+            catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException or InvalidOperationException) { }
+        });
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var c = await first.GetContextAsync();
+                c.Response.StatusCode = 302;
+                c.Response.RedirectLocation = target.Prefixes.Single() + "api/albums";
+                c.Response.Close();
+            }
+            catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException or InvalidOperationException) { }
+        });
+        var (albums, error) = await RealFrame().ImmichAlbums(first.Prefixes.Single(), Key, CancellationToken.None);
+        Assert.Null(albums);
+        Assert.Equal("The Immich server answered 302", error);
+        Assert.Equal(0, Volatile.Read(ref targetHits)); // the key was never sent to the other address
+    }
+
     [Fact]
     public async Task AnUnreachableServerIsReportedWithoutItsAddress()
     {
