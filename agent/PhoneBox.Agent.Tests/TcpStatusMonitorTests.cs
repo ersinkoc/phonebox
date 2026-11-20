@@ -60,4 +60,23 @@ public sealed class TcpStatusMonitorTests
         Assert.False(second.Online);
         Assert.Equal(first.CheckedAt, second.CheckedAt);
     }
+
+    [Fact]
+    public void ParseConnectionsPreservesEmojiAndHttpsImageUrls()
+    {
+        var targets = TcpStatusMonitor.ParseConnections("NAS | https://example.com/nas.png | 192.168.1.10 | 445\nPrinter | 🖨️ | 192.168.1.20 | 9100");
+
+        Assert.Collection(targets,
+            target => Assert.Equal("https://example.com/nas.png", target.Icon),
+            target => Assert.Equal("🖨️", target.Icon));
+    }
+
+    [Fact]
+    public void ParseConnectionsRejectsNonHttpIconUrls()
+    {
+        var targets = TcpStatusMonitor.ParseConnections("NAS | javascript:alert(1) | 192.168.1.10 | 445");
+
+        Assert.Single(targets);
+        Assert.Equal("🌐", targets[0].Icon);
+    }
 }

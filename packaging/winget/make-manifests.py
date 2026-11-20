@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes the winget manifests for a release:  python packaging/winget/make-manifests.py 0.6.3 <sha256 of the win-x64 zip>
 
-They land in packaging/winget/manifests/e/ersinkoc/PhoneBox/<version>/ (the layout of microsoft/winget-pkgs). Check them
+They land in packaging/winget/manifests/e/paulgeorge92/PhoneBox/<version>/ (the layout of microsoft/winget-pkgs). Check them
 with `winget validate --manifest <folder>` and submit them with `wingetcreate submit <folder>` (or a pull request to
 microsoft/winget-pkgs). The release workflow runs this script and attaches the result to the release.
 """
@@ -11,8 +11,8 @@ from pathlib import Path
 if len(sys.argv) != 3:
     sys.exit(__doc__)
 version, sha = sys.argv[1], sys.argv[2].upper()
-pkg = 'ersinkoc.PhoneBox'
-out = Path(__file__).resolve().parent / 'manifests' / 'e' / 'ersinkoc' / 'PhoneBox' / version
+pkg = 'paulgeorge92.PhoneBox'
+out = Path(__file__).resolve().parent / 'manifests' / 'e' / 'paulgeorge92' / 'PhoneBox' / version
 out.mkdir(parents=True, exist_ok=True)
 schema = '1.6.0'
 header = '# yaml-language-server: $schema=https://aka.ms/winget-manifest.{kind}.' + schema + '.schema.json\n'
@@ -48,7 +48,7 @@ ManifestVersion: {schema}
 PackageIdentifier: {pkg}
 PackageVersion: {version}
 PackageLocale: en-US
-Publisher: ersinkoc
+Publisher: paulgeorge92
 PublisherUrl: https://github.com/paulgeorge92
 PackageName: PhoneBox
 PackageUrl: https://github.com/paulgeorge92/phonebox

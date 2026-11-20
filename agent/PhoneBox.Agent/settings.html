@@ -6290,7 +6290,7 @@
 				cfg.weather.unit ??= 'celsius';
 				cfg.photos ??= { folder: '', subfolders: true };
 				cfg.lan ??= { enabled: false, port: 8766 };
-				cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' };
+				cfg.updates ??= { auto: true, repo: 'paulgeorge92/phonebox' };
 				cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false };
 				cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
 				for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, showSeconds: true, vibrate: true, volumeKeys: true, artTint: true, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
@@ -6407,7 +6407,7 @@
 			$('cityBtn').onclick = searchCity;
 			function renderUpdate(u) {
 				const s = u.status;
-				$('updRepo').textContent = cfg.updates?.repo || 'ersinkoc/phonebox';
+				$('updRepo').textContent = cfg.updates?.repo || 'paulgeorge92/phonebox';
 				const line = (k, v) => [h('dt', {}, k), h('dd', {}, v)];
 				$('updInfo').replaceChildren(...line(t('s.adv.agent'), s.agentVersion + (s.agentUpdate ? ` → ${s.latest}` : ' ' + t('s.adv.upToDate')) + (u.installed ? '' : ' · ' + t('s.adv.notInstalledCopy'))), ...line(t('s.adv.phoneApp'), s.appVersion ? s.appVersion + (s.appUpdate ? ` → ${s.latest} ` + t('s.adv.needsUsb') : ' ' + t('s.adv.upToDate')) : t('s.adv.notSeenYet')), ...line(t('s.adv.latestRelease'), s.latest ? s.latest : '—'), ...line(t('s.adv.lastCheck'), s.lastCheck ? new Date(s.lastCheck).toLocaleString() : t('s.adv.notYet')));
 				$('updApply').hidden = !(s.agentUpdate || s.appUpdate);

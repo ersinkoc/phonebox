@@ -139,8 +139,8 @@ The settings are at <http://127.0.0.1:8765>, on Windows also from the tray icon.
   scoop install main/adb phonebox/phonebox
   ```
 
-- **winget**: a package (`ersinkoc.PhoneBox`) is prepared in [`packaging/winget`](../packaging/winget) for
-  winget-pkgs. Once it is accepted, `winget install ersinkoc.PhoneBox` will install it.
+- **winget**: a package (`paulgeorge92.PhoneBox`) is prepared in [`packaging/winget`](../packaging/winget) for
+  winget-pkgs. Once it is accepted, `winget install paulgeorge92.PhoneBox` will install it.
 - **From source** (for development): needs the [.NET 10 SDK](https://dotnet.microsoft.com/download) and `adb`. To build
   the phone app it also needs **JDK 17** and **Android SDK Platform 35** (for example through Android Studio), with
   `JAVA_HOME` set and `ANDROID_HOME` or `android/local.properties` (`sdk.dir`) pointing at the SDK.

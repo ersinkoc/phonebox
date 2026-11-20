@@ -88,6 +88,10 @@ public sealed class TcpStatusMonitor
             var icon = parts.Length >= 4 ? parts[1] : "🌐";
             var host = parts.Length >= 4 ? parts[2] : parts[1];
             var portText = parts.Length >= 4 ? parts[3] : parts[2];
+            if (Uri.TryCreate(icon, UriKind.Absolute, out var iconUri)
+                && iconUri.Scheme is not ("http" or "https"))
+                icon = "🌐";
+            if (icon.Length > 2048) icon = "🌐";
             if (!int.TryParse(portText, out var port)) continue;
             port = Math.Clamp(port, 1, 65535);
             if (name.Length > 80 || host.Length > 253) continue;

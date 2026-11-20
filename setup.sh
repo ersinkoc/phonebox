@@ -18,7 +18,7 @@
 #   --dry-run           download and check everything, show what would happen, change nothing
 set -euo pipefail
 
-repo="ersinkoc/phonebox"
+repo="paulgeorge92/phonebox"
 package="net.zephracloud.phonebox.deskpanel"
 settings_url="http://127.0.0.1:8765"
 

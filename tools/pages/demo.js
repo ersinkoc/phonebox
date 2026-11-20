@@ -64,7 +64,7 @@
         artTint: true, autoBrightness: false, nightWhenDark: false, proximityWake: true, pin: false, homeScreen: false, keepAwake: true, followComputerLock: false,
         homePage: null, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30 },
       lan: { enabled: true, port: 8766, token: 'demo', webhookToken: 'demo-webhook-key' },
-      updates: { auto: true, repo: 'ersinkoc/phonebox' },
+      updates: { auto: true, repo: 'paulgeorge92/phonebox' },
       claude: { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false },
       pages: PAGES.filter((id) => byId[id]).map((id) => {
         const t = byId[id], seen = {};

@@ -48,7 +48,7 @@ param(
     [switch]$AllowAdministrator
 )
 
-$Repo = 'ersinkoc/phonebox'
+$Repo = 'paulgeorge92/phonebox'
 $Package = 'net.zephracloud.phonebox.deskpanel'
 $SettingsUrl = 'http://127.0.0.1:8765'
 

@@ -33,7 +33,7 @@ manifests all cover the signed file. Without the variable the agent is released 
 workflow runs the same step on its own with the test certificate, without releasing anything.
 
 After publishing, verify the tag points to the intended commit, every asset matches `SHA256SUMS-<version>.txt`,
-and `gh attestation verify <asset> --repo ersinkoc/phonebox` succeeds for the APK and agent archives.
+and `gh attestation verify <asset> --repo paulgeorge92/phonebox` succeeds for the APK and agent archives.
 Extract downloaded archives and run `python tools/smoke-agent.py <executable> --version <version>` on available
 native machines. Separate CI proof, downloaded-binary checks and physical-device tests in the release report.
 

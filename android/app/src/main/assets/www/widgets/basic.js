@@ -637,8 +637,6 @@ W.quotas = {
   },
 };
 
-W.codexbar = W.quotas;
-
 W.sessions = {
   needs: ['work', 'tick'],
   create(box) {
@@ -916,12 +914,22 @@ W['tcp-status'] = {
               const row = h('div', 'tcp-status-row');
               const dot = h('span', 'tcp-status-dot');
               dot.classList.add(c.online ? 'online' : 'offline');
-              const icon = h('span', 'tcp-status-icon', c.icon ? rich(c.icon + ' ') : '');
+              const icon = h('span', 'tcp-status-icon');
+              if (/^https?:\/\//i.test(c.icon || '')) {
+                const img = h('img', 'tcp-status-icon-image');
+                img.src = c.icon;
+                img.alt = c.name || '';
+                img.referrerPolicy = 'no-referrer';
+                img.onerror = () => { img.remove(); icon.textContent = '🌐'; };
+                icon.append(img);
+              } else {
+                icon.textContent = c.icon ? String(c.icon) : '🌐';
+              }
               const text = h('span', 'tcp-status-name', c.name);
               const address = h('span', 'tcp-status-address', `${c.host}:${c.port}`);
               const status = h('span', 'tcp-status-state' + (c.online ? ' online' : ' offline'), c.online ? 'Online' : 'Offline');
               if (c.online && c.latencyMs != null) status.append(h('small', null, ` · ${Math.round(c.latencyMs)} ms`));
-              row.append(dot, icon, h('span', 'tcp-status-text', text, address), status);
+              row.append(icon, h('span', 'tcp-status-text', text, address), dot, status);
               return row;
             }));
           }
@@ -1444,103 +1452,5 @@ W.sessions = {
         list.replaceChildren(...rows);
       },
     };
-  },
-};
-
-W.github = {
-  needs: ['work'],
-  create(box) {
-    box.style.setProperty('--c', '#c9d1d9');
-    const user = h('span', 'w-sum'), bell = h('span', 'gh-bell');
-    const rc = h('b'), mc = h('b'), rev = h('div', 'gh-list'), mine = h('div', 'gh-list'), err = h('div', 'gh-err', 'Waiting for GitHub data…');
-    box.append(h('div', 'w-head', h('span', 's-label', 'GitHub'), user, bell),
-      h('div', 'gh-sec', h('span', null, 'Review requests'), rc), rev,
-      h('div', 'gh-sec', h('span', null, 'My pull requests'), mc), mine, err);
-    return {
-      update() {
-        const g = D.work?.github;
-        if (!g) return;
-        const rows = Math.max(1, Math.floor((box.clientHeight - 90) / 25));
-        user.textContent = g.user ? '@' + g.user : '';
-        bell.replaceChildren(rich(`🔔 ${g.notifications >= 50 ? '50+' : g.notifications}`));
-        rc.textContent = g.reviewRequests.length;
-        mc.textContent = g.myPrs.length;
-        const nRev = Math.min(g.reviewRequests.length || 1, Math.max(1, Math.floor(rows / 2)));
-        rev.replaceChildren(...(g.reviewRequests.length ? g.reviewRequests.slice(0, nRev).map((p) => prRow(p, false)) : [h('div', 'gh-pr', t('w.noReviews'))]));
-        mine.replaceChildren(...(g.myPrs.length ? g.myPrs.slice(0, Math.max(1, rows - nRev)).map((p) => prRow(p, true)) : [h('div', 'gh-pr', t('w.noPrs'))]));
-        err.textContent = g.error ? 'GitHub: ' + g.error : '';
-      },
-    };
-  },
-};
-
-W.processes = {
-  needs: ['procs', 'state'],
-  create(box, { o }) {
-    const canKill = o.allowKill !== false;
-    let sort = currentProcessesSort();
-    const sum = h('span', 'p-sum');
-    const seg = h('div', 'seg', h('button', sort === 'cpu' ? 'on' : null, 'CPU'), h('button', sort === 'mem' ? 'on' : null, 'RAM'));
-    const grid = h('div', 'p-grid', h('div', 'empty', t('w.procsWait')));
-    box.style.setProperty('--c', '#f472b6');
-    box.append(h('div', 'p-head', h('span', 's-label', t('w.processes')), sum, seg), grid);
-    const els = new Map();
-    const rowEl = (g) => {
-      let e = els.get(g.name);
-      if (e) return e;
-      e = h('div', 'proc');
-      e.innerHTML = '<div class="p-ico"></div><div class="p-info"><div class="p-title"><span class="p-t"></span><span class="p-count"></span><span class="p-lock"></span></div>' +
-        '<div class="p-bar"><i></i></div></div><div class="p-nums"><b></b><small></small></div>';
-      fillIcon(e.querySelector('.p-ico'), g);
-      e.addEventListener('click', () => { haptic(); openSheet(e._g, canKill); });
-      els.set(g.name, e);
-      return e;
-    };
-    const render = () => {
-      const data = D.procs;
-      if (!data) return;
-      if (!data.groups.length) { sum.textContent = ''; grid.replaceChildren(h('div', 'empty', t('w.measuring'))); return; }
-      const cols = box.clientWidth > 460 ? 2 : 1;
-      const rows = Math.max(1, Math.floor((box.clientHeight - 46) / 40));
-      grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
-      grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-      const list = [...data.groups].sort((a, b) => (sort === 'cpu' ? b.cpu - a.cpu || b.memMb - a.memMb : b.memMb - a.memMb)).slice(0, cols * rows);
-      const max = Math.max(0.1, ...list.map((g) => (sort === 'cpu' ? g.cpu : g.memMb)));
-      const pc = D.state?.pc;
-      const cpuPct = pc && pc.cpu != null ? Math.round(pc.cpu) : null;
-      const ramPct = pc && pc.ramTotalGb ? Math.round((pc.ramUsedGb / pc.ramTotalGb) * 100) : null;
-      const ramStr = ramPct != null && pc.ramUsedGb != null && pc.ramTotalGb != null
-        ? `Total RAM ${ramPct}% (${Math.round(pc.ramUsedGb)}/${Math.round(pc.ramTotalGb)} GB) · `
-        : (ramPct != null ? `Total RAM ${ramPct}% · ` : '');
-      const loadPart = sort === 'cpu'
-        ? (cpuPct != null ? `Total CPU ${cpuPct}% · ` : '')
-        : ramStr;
-      sum.textContent = box.clientWidth > 380 ? loadPart + t('w.procsSummary', { n: data.total, apps: data.groupCount ?? data.groups.length }) : loadPart + t('w.procsSummaryShort', { n: data.total });
-      if (grid.querySelector('.empty')) grid.replaceChildren();
-      const keep = new Set(list.map((g) => g.name));
-      for (const [n, e] of els) if (!keep.has(n)) { e.remove(); els.delete(n); }
-      for (const g of list) {
-        const e = rowEl(g);
-        e._g = g;
-        e.querySelector('.p-t').textContent = g.title;
-        e.querySelector('.p-count').textContent = g.count > 1 ? '×' + g.count : '';
-        e.querySelector('.p-lock').replaceChildren(...(g.locked ? [emo('🔒')] : []));
-        e.querySelector('.p-bar i').style.width = ((sort === 'cpu' ? g.cpu : g.memMb) / max) * 100 + '%';
-        e.querySelector('.p-nums b').textContent = sort === 'cpu' ? g.cpu.toFixed(1) + '%' : fmtMem(g.memMb);
-        e.querySelector('.p-nums small').textContent = sort === 'cpu' ? fmtMem(g.memMb) : g.cpu.toFixed(1) + '%';
-        grid.appendChild(e); // keeps the order
-      }
-    };
-    const setSort = (s) => {
-      sort = s === 'mem' ? 'mem' : 'cpu';
-      [...seg.children].forEach((x, i) => x.classList.toggle('on', (i === 0 ? 'cpu' : 'mem') === sort));
-      render();
-    };
-    registerProcessesSorter(setSort);
-    [...seg.children].forEach((b, i) => b.addEventListener('click', () => {
-      haptic();
-      setSort(i === 0 ? 'cpu' : 'mem');
-    }));
-    return { update: render };
   },
 };
