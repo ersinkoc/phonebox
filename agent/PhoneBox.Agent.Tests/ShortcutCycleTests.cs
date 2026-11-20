@@ -1,13 +1,55 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
-/// <summary>A cycle key runs the next key of its list on each tap, and remembers which ran last.</summary>
+/// <summary>
+/// A cycle key runs the next key of its list on each tap, and remembers which ran last. Keys are replaced by a recorder:
+/// a "keys:hold:NAME" step reports that it started and waits until the test releases it, so overlapping taps happen in
+/// a fixed order instead of by sleeping; "keys:not_a_key" fails.
+/// </summary>
+[Collection("Macro recorders")]
 public sealed class ShortcutCycleTests : IDisposable
 {
     private readonly string _dir = Directory.CreateTempSubdirectory("phonebox-cycle-").FullName;
-    public void Dispose() => Directory.Delete(_dir, recursive: true);
+    private readonly ConcurrentDictionary<string, (ManualResetEventSlim Started, ManualResetEventSlim Release)> _gates = new();
+    private readonly ConcurrentBag<Task> _taps = [];
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(10);
+
+    public ShortcutCycleTests() => Shortcuts.TestKeys = spec =>
+    {
+        if (spec == "not_a_key") throw new InvalidOperationException("unknown key: not_a_key");
+        if (!spec.StartsWith("hold:")) return;
+        var gate = Gate(spec[5..]);
+        gate.Started.Set();
+        if (!gate.Release.Wait(Patience)) throw new TimeoutException($"{spec} was never released");
+    };
+
+    public void Dispose()
+    {
+        // let every tap still in flight finish before the static hook goes, so none reaches the next test's recorder
+        foreach (var (_, release) in _gates.Values) release.Set();
+        try { Task.WaitAll([.. _taps], Patience); } catch (AggregateException) { }
+        Shortcuts.TestKeys = null;
+        foreach (var (started, release) in _gates.Values) { started.Dispose(); release.Dispose(); }
+        Directory.Delete(_dir, recursive: true);
+    }
+
+    /// <summary>A tap on another thread, joined when the test ends.</summary>
+    private Task<string?> Tap(AgentConfig cfg, string id)
+    {
+        var tap = Task.Run(() => Shortcuts.Run(cfg, id, NullLogger.Instance));
+        _taps.Add(tap);
+        return tap;
+    }
+
+    /// <summary>The tap failed on its bad key, not on a gate that timed out.</summary>
+    private static void FailedOnTheBadKey(string? result) => Assert.Contains("not_a_key", result ?? "");
+
+    private (ManualResetEventSlim Started, ManualResetEventSlim Release) Gate(string name) => _gates.GetOrAdd(name, _ => (new(), new()));
+    private void Started(string name) => Assert.True(Gate(name).Started.Wait(Patience), $"{name} never started");
+    private void Release(string name) => Gate(name).Release.Set();
 
     // a toggle remembers its state in the agent, which is how a test sees which key ran (ids are unique: the memory is static)
     private static Shortcut Lamp(string id) => new() { Id = id, Label = id, Toggle = true, Cmd = "builtin:macro", Steps = ["wait:1"] };
@@ -62,15 +104,15 @@ public sealed class ShortcutCycleTests : IDisposable
     public void TwoTapsAtOnceRunTwoDifferentKeys()
     {
         var id = Id();
-        // the first key is slow, so the second tap arrives while it still runs
-        var slow = new Shortcut { Id = id + "slow", Label = "slow", Toggle = true, Cmd = "builtin:macro", Steps = ["wait:400"] };
+        // the first key is held until the second tap has run, so the second tap arrives while the first still runs
+        var slow = new Shortcut { Id = id + "slow", Label = "slow", Toggle = true, Cmd = "builtin:macro", Steps = ["keys:hold:slow"] };
         Shortcut fast = Lamp(id + "fast"), key = Cycle(id, slow.Id, fast.Id);
         var cfg = new AgentConfig { Shortcuts = [slow, fast, key] };
-        var first = Task.Run(() => Shortcuts.Run(cfg, id, NullLogger.Instance));
-        Thread.Sleep(100);
-        var second = Task.Run(() => Shortcuts.Run(cfg, id, NullLogger.Instance));
+        var first = Tap(cfg, id);
+        Started("slow");
+        Assert.Null(Shortcuts.Run(cfg, id, NullLogger.Instance));
+        Release("slow");
         Assert.Null(first.Result);
-        Assert.Null(second.Result);
         Assert.True(On(slow));
         Assert.True(On(fast));   // the second tap ran the second key, not the slow one again
         Assert.Equal(slow.Id, Shortcuts.CycleStates(cfg)![id]); // the one that finished last is the one shown
@@ -80,13 +122,14 @@ public sealed class ShortcutCycleTests : IDisposable
     public void AKeyThatIsStillRunningOrFailedIsNotReportedAsTheOneThatRan()
     {
         var id = Id();
-        var slow = new Shortcut { Id = id + "slow", Label = "slow", Cmd = "builtin:macro", Steps = ["wait:300", "keys:not_a_key"] };
+        var slow = new Shortcut { Id = id + "slow", Label = "slow", Cmd = "builtin:macro", Steps = ["keys:hold:slow", "keys:not_a_key"] };
         var key = Cycle(id, slow.Id, id + "other");
         var cfg = new AgentConfig { Shortcuts = [slow, Lamp(id + "other"), key] };
-        var tap = Task.Run(() => Shortcuts.Run(cfg, id, NullLogger.Instance));
-        Thread.Sleep(100);
+        var tap = Tap(cfg, id);
+        Started("slow");
         Assert.Null(Shortcuts.CycleStates(cfg)); // claimed, but not run yet: the face does not change
-        Assert.NotNull(tap.Result);              // and it failed
+        Release("slow");
+        FailedOnTheBadKey(tap.Result);           // and it failed
         Assert.Null(Shortcuts.CycleStates(cfg)); // so it never counts
     }
 
@@ -94,15 +137,18 @@ public sealed class ShortcutCycleTests : IDisposable
     public void WhenTwoOverlappingTapsBothFailTheNextTapRetriesTheEarlierKey()
     {
         var id = Id();
-        Shortcut a = new() { Id = id + "a", Label = "a", Toggle = true, Cmd = "builtin:macro", Steps = ["wait:200", "keys:not_a_key"] };
-        Shortcut b = new() { Id = id + "b", Label = "b", Toggle = true, Cmd = "builtin:macro", Steps = ["wait:200", "keys:not_a_key"] };
+        Shortcut a = new() { Id = id + "a", Label = "a", Toggle = true, Cmd = "builtin:macro", Steps = ["keys:hold:a", "keys:not_a_key"] };
+        Shortcut b = new() { Id = id + "b", Label = "b", Toggle = true, Cmd = "builtin:macro", Steps = ["keys:hold:b", "keys:not_a_key"] };
         var key = Cycle(id, a.Id, b.Id);
         var cfg = new AgentConfig { Shortcuts = [a, b, key] };
-        var first = Task.Run(() => Shortcuts.Run(cfg, id, NullLogger.Instance));
-        Thread.Sleep(50);
-        var second = Task.Run(() => Shortcuts.Run(cfg, id, NullLogger.Instance));
-        Assert.NotNull(first.Result);
-        Assert.NotNull(second.Result);
+        var first = Tap(cfg, id);
+        Started("a");                                          // the first tap claimed a
+        var second = Tap(cfg, id);
+        Started("b");                                          // the second claimed b while a still ran
+        Release("a");
+        FailedOnTheBadKey(first.Result);                       // a failed first
+        Release("b");
+        FailedOnTheBadKey(second.Result);
         a.Steps = ["wait:1"]; b.Steps = ["wait:1"];           // both work now
         Assert.Null(Shortcuts.Run(cfg, id, NullLogger.Instance));
         Assert.True(On(a));                                    // it was a that failed first: it is tried again
@@ -113,15 +159,16 @@ public sealed class ShortcutCycleTests : IDisposable
     public void AnOldFailureDoesNotUndoANewerClaimAfterAFullWrap()
     {
         var id = Id();
-        Shortcut slowBad = new() { Id = id + "a", Label = "a", Cmd = "builtin:macro", Steps = ["wait:300", "keys:not_a_key"] };
+        Shortcut slowBad = new() { Id = id + "a", Label = "a", Cmd = "builtin:macro", Steps = ["keys:hold:a", "keys:not_a_key"] };
         Shortcut b = Lamp(id + "b"), c = Lamp(id + "c");
         var key = Cycle(id, slowBad.Id, b.Id, c.Id);
         var cfg = new AgentConfig { Shortcuts = [slowBad, b, c, key] };
-        var first = Task.Run(() => Shortcuts.Run(cfg, id, NullLogger.Instance)); // claims a, fails after 300 ms
-        Thread.Sleep(50);
+        var first = Tap(cfg, id); // claims a, held
+        Started("a");
         Assert.Null(Shortcuts.Run(cfg, id, NullLogger.Instance));                 // b
         Assert.Null(Shortcuts.Run(cfg, id, NullLogger.Instance));                 // c
-        Assert.NotNull(first.Result);                                             // a failed: it is next, once
+        Release("a");
+        FailedOnTheBadKey(first.Result);                                          // a failed: it is next, once
         Assert.NotNull(Shortcuts.Run(cfg, id, NullLogger.Instance));              // a again (it fails the same way, but it is the one tried)
         Assert.Equal(c.Id, Shortcuts.CycleStates(cfg)![id]);
     }
