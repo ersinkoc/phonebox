@@ -40,8 +40,40 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
     private string _macSource = "";
     private DateTimeOffset _macSourceAt;
 
+    // Every reading starts nowplaying-cli or playerctl (and osascript when nothing is in Now Playing), and on macOS .NET
+    // forks the whole agent to start each one. A panel on screen asks for the snapshot every second (the live stream's
+    // state), and so does a "media-playing" rule while one exists. With nobody asking (the phone's screen is off, it is
+    // unplugged, no panel is open) a reading every IdlePoll is enough, and the first request after that reads at once.
+    internal static readonly TimeSpan ActivePoll = TimeSpan.FromSeconds(1);
+    internal static readonly TimeSpan IdlePoll = TimeSpan.FromSeconds(10);
+    internal const long WantedForMs = 15_000;
+    private long _lastRequest = -WantedForMs; // nobody has asked yet
+    private readonly SemaphoreSlim _wake = new(0, 1);
+
     public AlbumArt? Art { get; private set; }
-    public MediaSnapshot? Snapshot() => _snap;
+
+    public MediaSnapshot? Snapshot()
+    {
+        var now = Environment.TickCount64;
+        if (IsIdle(Interlocked.Exchange(ref _lastRequest, now), now)) Wake();
+        return _snap;
+    }
+
+    internal static bool IsIdle(long lastRequest, long now) => now - lastRequest >= WantedForMs;
+    private bool Idle => IsIdle(Interlocked.Read(ref _lastRequest), Environment.TickCount64);
+
+    /// <summary>A request came back after a quiet spell and the next reading will not wait out IdlePoll.</summary>
+    internal bool ReadingDue => _wake.CurrentCount > 0;
+
+    private void Wake() { try { _wake.Release(); } catch (SemaphoreFullException) { } }
+
+    /// <summary>While nobody watches, the last reading can be up to IdlePoll old: read again before acting on it.</summary>
+    private async Task RefreshIfIdle()
+    {
+        if (!Idle) return;
+        try { await Poll(); }
+        catch (Exception ex) { log.LogDebug("media: {Msg}", ex.Message); }
+    }
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -49,7 +81,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         {
             try { await Poll(); }
             catch (Exception ex) { log.LogDebug("media: {Msg}", ex.Message); _snap = null; }
-            await Task.Delay(1000, ct);
+            await _wake.WaitAsync(Idle ? IdlePoll : ActivePoll, ct);
         }
     }
 
@@ -465,6 +497,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
 
     public async Task<bool> Control(string action, long? ms)
     {
+        await RefreshIfIdle(); // which player to ask comes from the last reading
         bool ok;
         if (OperatingSystem.IsMacOS())
         {
@@ -517,6 +550,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
 
     public async Task<bool> PauseAsync()
     {
+        await RefreshIfIdle();
         var snap = _snap;
         if (snap is not { Playing: true }) return false;
         bool ok;
