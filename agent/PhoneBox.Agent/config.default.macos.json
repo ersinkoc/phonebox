@@ -21,6 +21,8 @@
   "discord": { "enabled": false, "clientId": null, "clientSecret": null },
   // Cursor agent chats on the AI sessions widget (off by default)
   "cursor": { "sessions": false },
+  // Live Codex quotas read through the Codex CLI (off by default; Settings › General › AI quotas & CodexBar)
+  "codexBar": { "codexLiveQuota": false },
   // App console widget (Windows): keys and dial bindings per app, matched by the focused window's process name
   "console": { "profiles": [] },
   // Steam friends widget: enter your SteamID64 and a user Web API key in Settings › General (see docs/STEAM.md)
