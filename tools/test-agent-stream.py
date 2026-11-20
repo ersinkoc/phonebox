@@ -103,6 +103,8 @@ object WebViewCompat { @JvmStatic fun getCurrentWebViewPackage(ctx: android.cont
 """,
     "RStubs.kt": """package net.oxog.phonebox.deskpanel
 object R { object string { const val pair_failed_unreachable = 1; const val pair_failed_code = 2; const val pair_failed_answer = 3; const val pair_failed_certificate = 4 } }
+// No certificate pin from the agent yet, so AgentLink never uses USB here: these checks cover Wi-Fi.
+object UsbKey { fun pin(context: android.content.Context): String? = null; fun get(context: android.content.Context): String = "k" }
 """,
     "JsonStubs.kt": """package org.json
 class JSONArray(items: Collection<*> = emptyList<Any?>()) {
