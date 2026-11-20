@@ -143,11 +143,15 @@ public static class ClaudeHook
             var i = pos + hostPrefix.Length;
             var digitsStart = i;
             while (i < cmd.Length && char.IsAsciiDigit(cmd[i])) i++;
-            if (i > digitsStart && cmd.AsSpan(i).StartsWith(endpoint.AsSpan(), StringComparison.Ordinal))
+            // the endpoint must end there: /api/hooks/codex/permission-audit is someone else's hook
+            if (i > digitsStart && cmd.AsSpan(i).StartsWith(endpoint.AsSpan(), StringComparison.Ordinal)
+                && (i + endpoint.Length == cmd.Length || !IsPathChar(cmd[i + endpoint.Length])))
                 return true;
         }
         return false;
     }
+
+    private static bool IsPathChar(char c) => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' or '/' or '~' or '%';
 
     public static bool Installed() => Installed(SettingsPath);
 

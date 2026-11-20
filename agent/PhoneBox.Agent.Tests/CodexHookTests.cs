@@ -95,4 +95,24 @@ public sealed class CodexHookTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    [Fact]
+    public void AHookOnALongerPathAtTheSameAddressIsNotOurs()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "phonebox-codex-longer-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var path = Path.Combine(dir, "hooks.json");
+            File.WriteAllText(path, """
+                {"hooks":{"PermissionRequest":[{"matcher":".*","hooks":[{"type":"command","command":"curl -s http://127.0.0.1:9000/api/hooks/codex/permission-audit -d @-"}]}]}}
+                """);
+
+            Assert.False(CodexHook.Installed(path));
+            Assert.Null(CodexHook.Configure(true, 18765, 30, path));
+            Assert.Null(CodexHook.Configure(false, 18765, 30, path));
+            Assert.Contains("/api/hooks/codex/permission-audit", File.ReadAllText(path)); // someone else's hook survives
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }

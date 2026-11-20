@@ -10,7 +10,10 @@ public static class CodexHook
 {
     public const string Endpoint = "/api/hooks/codex/permission";
     private static readonly string Home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-    public static readonly string HooksPath = Path.Combine(Home, ".codex", "hooks.json");
+    // Codex keeps its hooks in CODEX_HOME when that is set (as the agent sees it), otherwise in ~/.codex
+    public static readonly string HooksPath = Path.Combine(
+        Environment.GetEnvironmentVariable("CODEX_HOME") is { Length: > 0 } codexHome ? codexHome : Path.Combine(Home, ".codex"),
+        "hooks.json");
 
     public static Task<object?> HandleAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
         SessionMonitor sessions, CancellationToken aborted) =>
