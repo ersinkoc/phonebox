@@ -9,7 +9,7 @@ const KEYS = [
   's.js.immichLoadFirst', 's.js.immichChoose', 's.js.immichChosen', 's.js.immichUntitled', 's.js.immichLoading',
   's.js.immichCount', 's.js.immichNone', 's.js.immichFailed',
 ];
-const LANGUAGES = ['en', 'tr', 'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'ru', 'el', 'vi', 'zh'];
+const LANGUAGES = ['en', 'tr', 'de', 'fr', 'es', 'it', 'pt', 'pt-BR', 'nl', 'pl', 'ru', 'el', 'vi', 'zh'];
 
 for (const lang of LANGUAGES) {
   test(`the Immich photo source strings are in ${lang}`, async ({ page }) => {
