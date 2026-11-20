@@ -171,6 +171,16 @@ release builds. See the [full compatibility table](docs/SETUP.md#what-works-wher
 
 The [UMIDIGI BISON extras](extras/umidigi-bison) contain the reversible, no-root tune-up used on the original development phone.
 
+## Community add-ons
+
+Add-ons are written and maintained by their authors. PhoneBox doesn't review or ship them. They run with your own
+rights on the computer and can change PhoneBox settings through `PUT /api/settings`, so read what an add-on does
+before you install it.
+
+| Add-on | What it does | What it sends outside the PC |
+|---|---|---|
+| [PhoneBox Games Tab](https://github.com/lucasaz/phonebox-games-tab) (Windows) | A Games page with live FPS, cover art and play time, through the push API and a Custom HTML widget | Store / Xbox apps' package names to the Microsoft Store catalog (`displaycatalog.mp.microsoft.com`); the phone loads cover images from Steam's and Microsoft's image servers |
+
 ## Security & privacy
 
 The desktop settings server listens on `127.0.0.1:8765`. USB reaches the agent through `adb reverse` on a loopback
