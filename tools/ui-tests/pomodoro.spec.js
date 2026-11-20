@@ -137,3 +137,118 @@ test('a sequence longer than 48 steps is refused, not cut short', async ({ page 
   const p = await show(page, { focus: 1, break: 1, sequence: Array(49).fill('1 focus').join(', ') });
   await expect(p.sub).toHaveText('Sequence not understood: "more than 48 steps"');
 });
+
+// Sound when a step ends (#267). The AudioContext is stubbed: each started tone is recorded with its pitch and loudness.
+async function stubAudio(page) {
+  await page.addInitScript(() => {
+    window.__tones = [];
+    const param = (set) => ({ setValueAtTime: set, linearRampToValueAtTime: set, exponentialRampToValueAtTime() {} });
+    window.AudioContext = class {
+      constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; }
+      resume() { return Promise.resolve(); }
+      createGain() { const g = { peak: 0, connect() {} }; g.gain = param((v) => { g.peak = Math.max(g.peak, v); }); return g; }
+      createOscillator() {
+        const o = { freq: 0, gain: null, stop() {} };
+        o.frequency = param((v) => { o.freq = v; });
+        o.connect = (g) => { o.gain = g; };
+        o.start = () => window.__tones.push({ freq: o.freq, peak: o.gain ? o.gain.peak : 0 });
+        return o;
+      }
+    };
+  });
+}
+const tones = (page) => page.evaluate(() => window.__tones);
+
+test('with the sound option on, a step end plays a tone at the chosen volume', async ({ page }) => {
+  await stubAudio(page);
+  const p = await show(page, { focus: 1, break: 1, sound: true, soundVolume: 50 });
+  await p.play();
+  await page.clock.fastForward(MIN + 1500);
+  await expect(p.label).toHaveText('Break');
+  const half = await tones(page);
+  expect(half.length).toBeGreaterThan(0);
+  // the same chime at full volume is twice as loud
+  await page.evaluate(async () => { window.__tones = []; (await import('/panel/main.js')).chime(100); });
+  const full = await tones(page);
+  expect(half[0].peak).toBeGreaterThan(0);
+  expect(half[0].peak / full[0].peak).toBeCloseTo(0.5, 5);
+});
+
+test('without the sound option a step end stays silent, as before', async ({ page }) => {
+  await stubAudio(page);
+  const p = await show(page, { focus: 1, break: 1 });
+  await p.play();
+  await page.clock.fastForward(MIN + 1500);
+  await expect(p.label).toHaveText('Break');
+  expect(await tones(page)).toEqual([]);
+});
+
+test('the end of the whole sequence sounds different from a step end', async ({ page }) => {
+  await stubAudio(page);
+  const p = await show(page, { sequence: '1 focus, 1 break', rounds: 1, sound: true });
+  await p.play();
+  await page.clock.fastForward(MIN + 1500);
+  await expect(p.label).toHaveText('Break');
+  const step = (await tones(page)).map((x) => x.freq);
+  await page.evaluate(() => { window.__tones = []; });
+  await page.clock.fastForward(MIN + 1500);
+  await expect(page.locator('#toast')).toContainText('Sequence finished');
+  const done = (await tones(page)).map((x) => x.freq);
+  expect(step.length).toBeGreaterThan(0);
+  expect(done.length).toBeGreaterThan(0);
+  expect(done).not.toEqual(step);
+});
+
+test('the night screen keeps the chime silent, as it does the vibration', async ({ page }) => {
+  await stubAudio(page);
+  await page.clock.install({ time: NOON });
+  await page.goto('/panel/style.css');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config', JSON.stringify({
+      night: { enabled: true, start: '11:00', end: '13:00' }, rules: [], shortcuts: [], display: { idleReturnSec: 0 },
+      pages: [{ id: 'p', title: 'Focus', widgets: [{ id: 'pomo', type: 'pomodoro', x: 0, y: 0, w: 6, h: 6, options: { sound: true } }] }],
+    }));
+  });
+  await page.goto('/panel/');
+  await expect(page.locator('body')).toHaveClass(/night/);
+  await page.evaluate(async () => (await import('/panel/main.js')).chime(100));
+  expect(await tones(page)).toEqual([]);
+});
+
+// A focus step that ended while the panel was closed is counted when the panel opens. With the schedule saying night,
+// that must not ring: nightOn is still unset while the widgets are first built (#305 review).
+async function openWithExpiredStep(page, night) {
+  await stubAudio(page);
+  await page.addInitScript(() => {
+    window.__buzz = []; // the phone bridge, recording vibrations
+    window.Android = { battery: () => '{}', transport: () => 'usb', version: () => 'test', haptic() {}, buzz: (p) => window.__buzz.push(p),
+      setBrightness() {}, setVolumeKeys() {}, is24Hour: () => true };
+  });
+  await page.clock.install({ time: NOON });
+  await page.goto('/panel/style.css');
+  await page.evaluate((night) => {
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config', JSON.stringify({
+      night: night ? { enabled: true, start: '11:00', end: '13:00' } : { enabled: false }, rules: [], shortcuts: [], display: { idleReturnSec: 0 },
+      pages: [{ id: 'p', title: 'Focus', widgets: [{ id: 'pomo', type: 'pomodoro', x: 0, y: 0, w: 6, h: 6, options: { focus: 1, break: 1, sound: true } }] }],
+    }));
+    localStorage.setItem('pomo:p/pomo', JSON.stringify({ phase: 'focus', step: 0, round: 0, endsAt: Date.now() - 60_000, left: 60_000, count: 0, day: new Date().toDateString() }));
+  }, night);
+  await page.goto('/panel/');
+  await expect(page.locator('.w-pomodoro .g-label')).toHaveText('Break'); // the finished step was counted
+}
+
+test('a step that ended while the panel was closed stays silent when the panel opens at night', async ({ page }) => {
+  await openWithExpiredStep(page, true);
+  await expect(page.locator('body')).toHaveClass(/night/);
+  expect(await tones(page)).toEqual([]);
+  expect(await page.evaluate(() => window.__buzz)).toEqual([]);
+});
+
+test('the same step rings once when the panel opens in the day, as before', async ({ page }) => {
+  await openWithExpiredStep(page, false);
+  await expect(page.locator('body')).not.toHaveClass(/night/);
+  expect((await tones(page)).length).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.__buzz.length)).toBe(1);
+});

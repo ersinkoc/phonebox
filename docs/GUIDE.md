@@ -160,6 +160,28 @@ Use UTF-8 when editing this file externally. Saved page and shortcut icons use J
 ANSI-based editors; the settings editor displays the actual symbols. On startup, known double-encoded forms of
 the four affected default icons are repaired, with the original file kept in `config.json.bak`.
 
+## Wake-on-LAN
+
+A **Wake a computer** shortcut (Settings › Shortcuts › preset *Built-in: wake a computer*) turns on another machine on
+your network, for example a NAS or a second PC. Put its MAC address in the arguments (`AA:BB:CC:DD:EE:FF`; dashes work
+too). A second value is an optional broadcast address (`AA:BB:CC:DD:EE:FF 192.168.1.255`) for networks where the
+default does not reach the machine; it has to be the broadcast address of one of this computer's own networks (or
+`255.255.255.255`), because the packet never leaves the local network. The agent sends a standard "magic packet" (UDP, port 9) from every private LAN
+adapter of the computer it runs on, so the key also works when the phone is away, for example over Tailscale. It
+reports "packets sent", not "the machine is up": the machine has to be set up to listen.
+
+What it does not do: it cannot reach across the Internet, Tailscale or mobile data (a magic packet is a broadcast on
+the local network), it cannot wake a machine over Wi-Fi in most cases (use a cable), and, like every Wake-on-LAN
+packet, it carries no password, so anyone on the same network who knows a MAC address can wake that machine.
+
+**Setting up the machine to be woken (Windows):**
+1. In the BIOS / UEFI, turn on *Wake on LAN* (sometimes *Power on by PCI-E* or *Resume by LAN*).
+2. Device Manager › Network adapters › your Ethernet adapter › Properties › Advanced: *Wake on Magic Packet* on.
+3. Same dialog › Power Management: *Allow this device to wake the computer* on, and *Only allow a magic packet to wake
+   the computer* on.
+4. Waking from sleep or hibernate works most reliably. Waking from a full shutdown depends on the board, and
+   Windows *Fast startup* can interfere: turn it off if a shut-down machine does not wake.
+
 ## Claude Code permission prompts
 
 When Claude Code asks for permission (run a command, edit a file, use an MCP tool…), the phone shows the request —

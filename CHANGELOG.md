@@ -5,10 +5,16 @@
 **Widgets**
 - Shortcut keys: a **Long press runs** option on each key. Tapping the key on the phone runs it as before; holding it for
   half a second runs another key you choose (hold *Mute* to open the mixer). The phone only says the key was held, so
-  the long press cannot point at anything but a key from your own settings.
+  the long press cannot point at anything but a key from your own settings (#307,
+  [Vasilispapg](https://github.com/Vasilispapg)).
 - News feeds on Windows: an article whose link has square brackets after the host, such as Franceinfo's
   `#xtor=RSS-3-[lestitres]`, opens in the browser instead of File Explorer's Documents folder (#312,
   [Emsaco64](https://github.com/Emsaco64)).
+
+**Agent**
+- Wake-on-LAN: a **Wake a computer** shortcut (Settings › Shortcuts) turns on another machine on your network from its
+  MAC address, also while the phone is away on Tailscale. It sends a magic packet on the local network only; see the
+  guide for the BIOS and adapter settings the machine needs (#302, [Vasilispapg](https://github.com/Vasilispapg)).
 
 ## 0.9.24 — 2026-11-20
 

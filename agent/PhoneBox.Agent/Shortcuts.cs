@@ -96,6 +96,10 @@ public static class Shortcuts
                         Thread.Sleep(40);
                     }
                     break;
+                case "builtin:wake":
+                    // "packets sent", never "the machine is up"
+                    if (WakeOnLan.Wake(sc.Args) is { } wakeError) throw new InvalidOperationException(wakeError);
+                    break;
 #if WINDOWS
                 case "builtin:lock":
                     LockWorkStation();
