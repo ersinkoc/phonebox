@@ -34,6 +34,8 @@
   untested on a Mac with a built-in camera; see the guide (#301, [Vasilispapg](https://github.com/Vasilispapg)).
 
 **Agent**
+- Shortcuts on Windows: a program a shortcut starts (Spotify, say) opens in front instead of behind the window in use,
+  as the App dock's apps already do (#322, [adamjorgkaizen-oss](https://github.com/adamjorgkaizen-oss)).
 - Discord: the login no longer fails with `invalid_request: Missing "redirect_uri"`. The authorization request now
   names the same `http://127.0.0.1` redirect as the token exchange (#316, [Sune2you](https://github.com/Sune2you)).
 - Wake-on-LAN: a **Wake a computer** shortcut (Settings › Shortcuts) turns on another machine on your network from its

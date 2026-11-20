@@ -238,6 +238,7 @@ public static class Shortcuts
         var psi = new ProcessStartInfo(Home(sc.Cmd), Home(sc.Args ?? "")) { UseShellExecute = true };
         if (!string.IsNullOrEmpty(sc.Cwd)) psi.WorkingDirectory = Home(sc.Cwd);
 #if WINDOWS
+        LetTheNewWindowComeForward();
         try
         {
             Process.Start(psi);
@@ -294,6 +295,17 @@ public static class Shortcuts
         s == "~" || s.StartsWith("~/") ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + s[1..] : s.Replace(" ~/", " " + Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "/");
 
 #if WINDOWS
+    /// <summary>
+    /// Windows keeps a program started by a background process (the agent answering the phone) behind the window in use,
+    /// flashing in the taskbar (#322). A zero-pixel mouse move makes the agent the process that received the last input,
+    /// which lets it pass the right to come forward to any process; the app, or the launcher it starts through, then
+    /// takes it when its window opens. The right ends with the user's next input.
+    /// </summary>
+    private static void LetTheNewWindowComeForward()
+    {
+        try { if (KeySender.NudgeInput()) AllowSetForegroundWindow(-1 /* ASFW_ANY */); } catch { }
+    }
+    [DllImport("user32.dll")] private static extern bool AllowSetForegroundWindow(int processId);
     [DllImport("user32.dll")] private static extern bool LockWorkStation();
     [DllImport("user32.dll")] private static extern bool PostMessage(nint hWnd, uint msg, nint wParam, nint lParam);
 #else
