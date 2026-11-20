@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Wake button only: names the Wi-Fi network so that the Wake-on-LAN packet cannot leave through mobile data -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Dictation widget only: asked for the first time its microphone button is tapped -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 

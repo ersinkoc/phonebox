@@ -442,6 +442,17 @@ class MainActivity : Activity(), SensorEventListener {
         @JavascriptInterface
         fun forgetPc(key: String, id: String) { if (ok(key)) link.forget(id) }
 
+        /** True when the Wake button can work: the active computer's MACs are known and the phone is on a local network. */
+        @JavascriptInterface
+        fun canWake(key: String): Boolean = ok(key) && link.canWake()
+
+        /**
+         * Sends a Wake-on-LAN packet to the paired computer [id]. Takes a computer's id and never a MAC address, so a
+         * page cannot aim the packet at an arbitrary machine. False when nothing could be sent.
+         */
+        @JavascriptInterface
+        fun wakePc(key: String, id: String): Boolean = ok(key) && link.wake(id)
+
         /** "landscape" (default), "portrait" or "auto" (follow the phone). */
         @JavascriptInterface
         fun setOrientation(key: String, mode: String) {

@@ -590,10 +590,24 @@ nav a.on::before { color: var(--accent); }
 
       <div class="card">
         <h3 data-i18n="s.photos.title">Photo frame</h3>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.photos.hint">For the Photo frame widget: a folder of photos on this computer. A synced OneDrive, Dropbox or iCloud folder works too; photos that are only in the cloud are skipped. Large photos are scaled down here before they go to the phone, and the path stays on this computer.</p>
-        <div class="field"><label data-i18n="s.photos.folder">Photo folder (full path)</label>
-          <input type="text" data-bind="photos.folder" placeholder="C:\Users\you\Pictures\Frame" spellcheck="false" autocomplete="off"></div>
-        <label class="check"><input type="checkbox" data-bind="photos.subfolders"> <span data-i18n="s.photos.subfolders">Include subfolders</span></label>
+        <div class="field"><label data-i18n="s.photos.source">Photos from</label>
+          <select id="photosSource" data-bind="photos.source"><option value="folder" data-i18n="s.photos.sourceFolder">A folder on this computer</option><option value="immich" data-i18n="s.photos.sourceImmich">An Immich album</option></select></div>
+        <div id="photosFolderBox">
+          <p class="hint" style="margin:0 0 12px" data-i18n="s.photos.hint">For the Photo frame widget: a folder of photos on this computer. A synced OneDrive, Dropbox or iCloud folder works too; photos that are only in the cloud are skipped. Large photos are scaled down here before they go to the phone, and the path stays on this computer.</p>
+          <div class="field"><label data-i18n="s.photos.folder">Photo folder (full path)</label>
+            <input type="text" data-bind="photos.folder" placeholder="C:\Users\you\Pictures\Frame" spellcheck="false" autocomplete="off"></div>
+          <label class="check"><input type="checkbox" data-bind="photos.subfolders"> <span data-i18n="s.photos.subfolders">Include subfolders</span></label>
+        </div>
+        <div id="photosImmichBox" hidden>
+          <p class="hint" style="margin:0 0 12px" data-i18n="s.photos.immichHint">PhoneBox reads the album from your Immich server and shows the preview-size pictures Immich makes. A read-only API key is enough: it needs the album.read, asset.read and asset.view permissions (Immich › Account Settings › API Keys). The address and key stay on this computer; only this server is contacted.</p>
+          <div class="field"><label data-i18n="s.photos.immichUrl">Immich address</label>
+            <input type="text" data-bind="photos.immichUrl" placeholder="http://192.168.1.10:2283" spellcheck="false" autocomplete="off"></div>
+          <div class="field"><label data-i18n="s.photos.immichKey">API key</label>
+            <input type="password" data-bind="photos.immichKey" autocomplete="off"></div>
+          <div class="field"><label data-i18n="s.photos.immichAlbum">Album</label>
+            <select id="photosImmichAlbum"></select></div>
+          <div class="row"><button class="btn sm" id="photosImmichLoad" data-i18n="s.photos.immichLoad">Load albums</button><span class="hint" id="photosImmichState"></span></div>
+        </div>
       </div>
 
       <div class="card">
@@ -2139,6 +2153,59 @@ $('installApp').onclick = async () => {
   $('installApp').disabled = false;
   setTimeout(loadInfo, 4000);
 };
+// Photo frame: show the fields of the chosen source; the Immich album list is only fetched on request
+let immichAlbums = [];   // the last list the agent sent; the chosen album is shown against it, also after Apply JSON or Revert
+let immichFor = '';      // the address and key that list was loaded with (compared in memory, never put in the page)
+let immichLoadSeq = 0;   // the newest Load albums request: an older answer is dropped
+const immichConnection = () => JSON.stringify([cfg.photos.immichUrl, cfg.photos.immichKey]);
+function renderPhotoSource() {
+  const immich = cfg.photos.source === 'immich';
+  $('photosFolderBox').hidden = immich;
+  $('photosImmichBox').hidden = !immich;
+  // another server (or key) has other albums: the list is kept only for the connection it came from
+  if (immichAlbums.length && immichFor !== immichConnection()) { immichAlbums = []; immichFor = ''; $('photosImmichState').textContent = ''; }
+  fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
+}
+function fillAlbums(albums, current, currentName) {
+  const sel = $('photosImmichAlbum');
+  sel.replaceChildren();
+  const add = (value, label) => { const o = document.createElement('option'); o.value = value; o.textContent = label; sel.appendChild(o); };
+  if (!albums.length) add(current || '', current ? (currentName || t('s.js.immichChosen')) : t('s.js.immichLoadFirst'));
+  else {
+    add('', t('s.js.immichChoose'));
+    if (current && !albums.some((a) => a.id === current)) add(current, currentName || t('s.js.immichChosen'));
+    for (const a of albums) add(a.id, `${a.name || t('s.js.immichUntitled')} (${a.count})`);
+  }
+  sel.value = current || '';
+}
+$('photosImmichAlbum').onchange = () => {
+  const o = $('photosImmichAlbum').selectedOptions[0];
+  cfg.photos.immichAlbum = o ? o.value : '';
+  cfg.photos.immichAlbumName = o && o.value ? o.textContent.replace(/ \(\d+\)$/, '') : '';
+  changed();
+};
+$('photosImmichLoad').onclick = async () => {
+  const state = $('photosImmichState');
+  const conn = immichConnection(), seq = ++immichLoadSeq;
+  state.textContent = t('s.js.immichLoading');
+  // the agent gives up on the server after 30 s; this is a little longer, so a lost agent doesn't leave "Loading…" for good
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 35000);
+  try {
+    const r = await (await fetch('/api/immich/albums', { method: 'POST', signal: abort.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: cfg.photos.immichUrl, key: cfg.photos.immichKey }) })).json();
+    if (seq !== immichLoadSeq) return; // a newer request is the one that counts
+    if (conn !== immichConnection()) { state.textContent = ''; return; } // the address or key changed while it was out
+    if (r.error) { state.textContent = r.error; return; }
+    immichAlbums = r.albums;
+    immichFor = conn;
+    fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
+    state.textContent = r.albums.length ? t('s.js.immichCount', { n: r.albums.length }) : t('s.js.immichNone');
+  } catch (_) {
+    // only the newest request speaks for the status; if the address or key changed meanwhile, there is nothing to report for it
+    if (seq === immichLoadSeq) state.textContent = conn === immichConnection() ? t('s.js.immichFailed') : '';
+  }
+  finally { clearTimeout(timer); }
+};
 $('haTest').onclick = async () => {
   $('haState').textContent = 'checking…';
   try {
@@ -2289,7 +2356,7 @@ const RULE_PRESETS = [
 let activeRules = [];
 
 function renderRules() {
-  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { folder: '', subfolders: true }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.discord ??= { enabled: false }; cfg.steam ??= { enabled: false };
+  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.discord ??= { enabled: false }; cfg.steam ??= { enabled: false };
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
@@ -2623,8 +2690,8 @@ function customIconField(s) {
 }
 
 // What a key does: run a program, press keys, type text or run a macro; plus the on / off (toggle) options.
-const KINDS = () => ({ run: t('s.k.runProgram'), keys: t('s.k.pressKeys'), text: t('s.k.typeText'), macro: t('s.k.runMacro') });
-const kindOf = (s) => (s.cmd === 'builtin:keys' ? 'keys' : s.cmd === 'builtin:text' ? 'text' : s.cmd === 'builtin:macro' ? 'macro' : 'run');
+const KINDS = () => ({ run: t('s.k.runProgram'), keys: t('s.k.pressKeys'), text: t('s.k.typeText'), macro: t('s.k.runMacro'), cycle: t('s.k.cycle') });
+const kindOf = (s) => (s.cmd === 'builtin:keys' ? 'keys' : s.cmd === 'builtin:text' ? 'text' : s.cmd === 'builtin:macro' ? 'macro' : s.cmd === 'builtin:cycle' ? 'cycle' : 'run');
 function actionFields(s, upd, text, cmdIn, preset) {
   const kind = kindOf(s);
   const area = (value, ph, rows, oninput) => h('textarea', { rows, placeholder: ph, spellcheck: 'false', oninput }, value);
@@ -2633,6 +2700,8 @@ function actionFields(s, upd, text, cmdIn, preset) {
       const k = e.target.value;
       s.cmd = k === 'run' ? '' : 'builtin:' + k;
       if (k !== 'macro') delete s.steps;
+      if (k !== 'cycle') delete s.cycle; else s.cycle ??= [];
+      if (k === 'cycle') s.toggle = false;
       s.args = null; s.cwd = null;
       changed(); renderEditor();
     } }, ...Object.entries(KINDS()).map(([k, l]) => h('option', { value: k, selected: k === kind }, l))))];
@@ -2646,16 +2715,28 @@ function actionFields(s, upd, text, cmdIn, preset) {
     fields.push(text('args', t('s.k.keys'), 'e.g. ctrl+shift+m', 'Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, numpad0–numpad9, numpadenter, numpadadd, numpadsubtract, numpadmultiply, numpaddivide, numpaddecimal, playpause, next, prev, mute, volumeup, volumedown.'));
   } else if (kind === 'text') {
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.textToType')), area(s.args || '', 'Typed into whatever window has the focus', 3, (e) => upd('args', e.target.value, false))));
+  } else if (kind === 'cycle') {
+    // each tap runs the next key of the list; the key on the phone shows the one that ran last
+    const choices = cfg.shortcuts.filter((o) => o !== s && o.id);
+    const rows = (s.cycle ??= []).map((id, i) => h('div', { class: 'row', style: { alignItems: 'center', gap: '8px', marginBottom: '6px' } },
+      h('span', { class: 'hint' }, (i + 1) + '.'),
+      h('select', { onchange: (e) => { s.cycle[i] = e.target.value; changed(); } },
+        ...choices.map((o) => h('option', { value: o.id, selected: o.id === id }, o.label || o.id))),
+      h('button', { class: 'btn sm', type: 'button', 'aria-label': t('s.k.remove'), onclick: () => { s.cycle.splice(i, 1); changed(); renderEditor(); } }, '×')));
+    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.cycleKeys')), ...rows,
+      h('button', { class: 'btn sm', type: 'button', disabled: !choices.length || s.cycle.length >= 20, onclick: () => { s.cycle.push(choices[0].id); changed(); renderEditor(); } }, t('s.k.cycleAdd')),
+      h('span', { class: 'hint' }, t('s.k.cycleHint')),
+      ...(s.cycle.length < 2 ? [h('span', { class: 'hint' }, t('s.k.cycleFew'))] : [])));
   } else {
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.steps')),
       area((s.steps || []).join('\n'), 'keys:ctrl+c\nwait:200\ntext:Hello\nshortcut:terminal', 6, (e) => upd('steps', e.target.value.split('\n').map((x) => x.trim()).filter(Boolean), false)),
       h('span', { class: 'hint' }, t('s.k.macroHint'))));
   }
-  if (osName === 'macos' && kind !== 'run') fields.push(h('p', { class: 'hint' }, t('s.k.macosPermission')));
-  if (osName === 'linux' && kind !== 'run') fields.push(h('p', { class: 'hint' }, t('s.k.linuxNeedsXdotool')));
+  if (osName === 'macos' && kind !== 'run' && kind !== 'cycle') fields.push(h('p', { class: 'hint' }, t('s.k.macosPermission')));
+  if (osName === 'linux' && kind !== 'run' && kind !== 'cycle') fields.push(h('p', { class: 'hint' }, t('s.k.linuxNeedsXdotool')));
 
   const isMute = s.cmd === 'builtin:mute';
-  fields.push(h('label', { class: 'check', style: { marginTop: '4px' } },
+  if (kind !== 'cycle') fields.push(h('label', { class: 'check', style: { marginTop: '4px' } },
     h('input', { type: 'checkbox', checked: !!s.toggle || isMute, disabled: isMute, onchange: (e) => { s.toggle = e.target.checked; changed(); renderEditor(); } }),
     isMute ? t('s.k.toggleLabelMute') : t('s.k.toggleLabel')));
   if (s.toggle && !isMute) {
@@ -2692,6 +2773,8 @@ function delKey() {
   const s = cfg.shortcuts[selKey];
   if (!confirm(`Delete "${s.label}"?`)) return;
   cfg.shortcuts.splice(selKey, 1);
+  // a key that cycles through the deleted one no longer lists it (the select would otherwise show another key for it)
+  for (const o of cfg.shortcuts) if (Array.isArray(o.cycle)) o.cycle = o.cycle.filter((id) => id !== s.id);
   selKey = Math.max(0, selKey - 1);
   renderDeck(); changed();
 }
@@ -3131,10 +3214,12 @@ function bindForm() {
       $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
       if (p === 'charge.method') renderCharge();
       if (p === 'lan.enabled') renderLanStatus();
+      if (p === 'photos.source' || p === 'photos.immichUrl' || p === 'photos.immichKey') renderPhotoSource();
       changed();
     };
   });
   bindCodexBar();
+  renderPhotoSource();
   $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
 }
 
@@ -3243,7 +3328,7 @@ async function loadInfo() {
 // The form reads every section it binds and renders, so a config without one — an older export, or a
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
-  cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { folder: '', subfolders: true }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false };
+  cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
     showSeconds: true, vibrate: true, finishToast: true, volumeKeys: true, artTint: true, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;

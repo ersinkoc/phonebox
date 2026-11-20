@@ -33,8 +33,9 @@
   // switch pages with the phone's volume keys
   "display": { "showSeconds": true, "idleReturnSec": 90, "vibrate": true, "finishToast": true, "volumeKeys": true, "pixelShift": false, "controlsTop": false, "idleDimMin": 0, "language": "auto" },
 
-  // Photo frame widget: the folder its slideshow shows (empty = off) and whether subfolders count
-  "photos": { "folder": "", "subfolders": true },
+  // Photo frame widget: "source" is "folder" or "immich". A folder source shows "folder" (empty = off) and whether subfolders count;
+  // an Immich source shows one album ("immichAlbum" is its id) of the server at "immichUrl", read with the API key "immichKey". None of these go to the phone.
+  "photos": { "source": "folder", "folder": "", "subfolders": true, "immichUrl": "", "immichKey": "", "immichAlbum": "", "immichAlbumName": "" },
   // IP cameras for the Camera widget: { "id", "name", "url": "rtsp://user:password@host:554/…", "transport": "tcp" | "udp", "fps": 1 to 10 (5) }.
   // "ffmpeg": its full path, or empty to find it in PATH. The addresses never go to the phone.
   "cameras": { "ffmpeg": "", "sources": [] },

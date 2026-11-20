@@ -553,6 +553,7 @@ object State(IServiceProvider sp, long? ev)
         privacy = sp.GetRequiredService<PrivacyMonitor>().Snapshot(),
         obs = sp.GetRequiredService<ObsMonitor>().Snapshot() is { Connected: true } o ? new { o.Streaming, o.Recording, o.RecordPaused } : null,
         toggles = Shortcuts.States(sp.GetRequiredService<ConfigStore>().Get(), push, sp.GetRequiredService<AudioControl>()),
+        cycles = Shortcuts.CycleStates(sp.GetRequiredService<ConfigStore>().Get()),
     };
 }
 
@@ -611,6 +612,14 @@ app.MapGet("/api/ha/entities", async (HomeAssistant ha) => Results.Json(await ha
 // Settings › General › Home Assistant › Test (local only)
 app.MapPost("/api/ha/test", async (HomeAssistantConfig body) =>
     Results.Json(new { result = await HomeAssistant.TestAsync(body.Url ?? "", body.Token ?? "") }));
+
+// Settings › General › Photo frame › Immich › Load albums (local only: not on the Wi-Fi allow-list). The key in the body
+// is used for this request only; the saved one stands in when the address is unchanged and the field was left empty.
+app.MapPost("/api/immich/albums", async (ImmichAlbumsRequest body, PhotoFrame photos, CancellationToken ct) =>
+{
+    var (albums, error) = await photos.ImmichAlbums(body.Url, body.Key, ct);
+    return albums is null ? Results.Json(new { error }) : Results.Json(new { albums });
+});
 
 // Dictation (widget): text the phone recognized, typed into the app in front (only if that widget allows it).
 // The text is in the query: the phone's WebView sees no request bodies, so its transport (USB and Wi-Fi) sends POSTs

@@ -60,4 +60,7 @@ android {
 
 dependencies {
     implementation("androidx.webkit:webkit:1.12.1")
+    testImplementation("junit:junit:4.13.2")
+    // android.jar's org.json is a stub on the JVM; the real one lets the unit tests build and read JSON
+    testImplementation("org.json:json:20240303")
 }

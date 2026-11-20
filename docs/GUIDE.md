@@ -77,7 +77,7 @@ keeps the screen on.
 | **Weather & sky** | Weather · Forecast (hourly / 7 days) · Sun & moon (daylight left, UV, moon phase) · **Moon** · Air quality (European AQI, PM2.5, PM10, O₃, NO₂) |
 | **Computer** | **Rules** (which hold, pause) · **Battery care** · On air (microphone / camera / OBS) · OBS Studio (live, recording, scenes) · **Dictation** (speak on the phone, typed on the PC; the app asks for the microphone on first use) · **App console** (Windows: keys and a dial for the app in front, set per app in Settings › General; use the focused app's process name from Task Manager's Details tab; packaged Store apps can all show up as `ApplicationFrameHost` and terminal tabs as `WindowsTerminal`, so a profile for those names covers all of them) · Device batteries (headphones, mice, keyboards) · Docker / Podman (containers, start / stop) · Metric tile · Gauge · Chart · GPU details · Memory & disks · Top processes · Processes · Now playing · Radio · Volume · **Spectrum bars** (Windows: a live spectrum of what the PC is playing, like the classic LED bar visualizers) · Shortcut grid · Big button (optionally filled with the shortcut's uploaded picture) · **Command** (PowerShell / bash / zsh output, refreshed every N seconds) · **Trackpad** (control PC cursor, tap to click, hold to drag, scroll) |
 | **AI & code** | AI quotas · Quota ring · AI sessions (Claude Code, Codex, Cursor) · GitHub |
-| **Personal** | **Agenda** (Google / Outlook / iCloud calendars) · Note (edit it from the phone) · Checklist (resets daily) · Counter · Breathe · Quote · Title · Phone battery · **Computers** (switch between paired computers) · **Photo frame** (a slideshow from a photo folder on the PC) |
+| **Personal** | **Agenda** (Google / Outlook / iCloud calendars) · Note (edit it from the phone) · Checklist (resets daily) · Counter · Breathe · Quote · Title · Phone battery · **Computers** (switch between paired computers) · **Photo frame** (a slideshow from a photo folder on the PC or an Immich album) |
 | **Web & data** | **Custom HTML** (your own widget, sandboxed) · **Home Assistant** (entities with their own name and icon, tap to switch) · **Pushed value** · **Notifications** (both fed by [webhooks](#webhooks)) · **News feeds** (your RSS and Atom feeds; with its "Open articles on the PC" option, a tap opens the article on the PC) · Hacker News · Exchange rates (ECB) · Crypto prices · Image / webcam · **Camera** (a live picture from an IP camera over RTSP, pulled by ffmpeg on the PC) |
 
 Widgets scale to the size you give them. Weather, air quality, rates, crypto and Hacker News come straight from free
@@ -172,6 +172,9 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   manually). Lock sync needs the agent to run in the macOS GUI session; [battery care](#rules);
   [AI agent permission prompts](#ai-agent-permission-prompts);
   phones (several at once, each with its own pages); Wi-Fi & Tailscale; updates.
+- **Photo frame** (in General): the Photo frame widget shows a folder on this computer, or one album of an Immich
+  server: enter its address and an API key with the `album.read`, `asset.read` and `asset.view` permissions, press
+  **Load albums** and pick one. The Immich source has been tested with Immich 3.4.2 (and earlier with 3.4.1); other versions may work.
 - **Advanced**: the raw JSON.
 
 Settings live in `%APPDATA%\PhoneBox\config.json` (Linux: `~/.config/PhoneBox`, macOS: `~/Library/Application Support/PhoneBox`);
@@ -189,6 +192,20 @@ default does not reach the machine; it has to be the broadcast address of one of
 `255.255.255.255`), because the packet never leaves the local network. The agent sends a standard "magic packet" (UDP, port 9) from every private LAN
 adapter of the computer it runs on, so the key also works when the phone is away, for example over Tailscale. It
 reports "packets sent", not "the machine is up": the machine has to be set up to listen.
+
+**Waking the computer the phone is paired with.** While that computer is asleep or off, its agent is not running, so
+the phone cannot ask it for anything. The Android app therefore keeps the computer's MAC addresses and shows a **Wake
+the PC** button under the "PC not connected" badge. Tap it and the phone sends the magic packet itself, from its Wi-Fi,
+to the computer's wired adapter; the button then reads *Waking…* until the agent answers (up to 3 minutes), and says it
+did not wake after that.
+
+The button appears only when the phone knows the computer's MAC addresses **and** is on one of the computer's own
+networks: the phone's network has to hold one of the addresses the computer was paired with, so a packet is never sent
+on a café's or a hotel's Wi-Fi. The computer gives its MAC addresses to the phone when Wi-Fi pairing is turned on
+(Settings › General › Wi-Fi & Tailscale), over the USB cable as well as when you pair over Wi-Fi; with Wi-Fi pairing off
+there are no MAC addresses and no button. If the computer later reports none (for example while its network adapter
+is down), the phone keeps the ones it has. On Android 5.0 the button is not offered, because a packet cannot be
+tied to the Wi-Fi network there.
 
 What it does not do: it cannot reach across the Internet, Tailscale or mobile data (a magic packet is a broadcast on
 the local network), it cannot wake a machine over Wi-Fi in most cases (use a cable), and, like every Wake-on-LAN

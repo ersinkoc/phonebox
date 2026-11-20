@@ -45,12 +45,18 @@ class AgentLink(private val context: Context) {
 
     private val prefs = context.getSharedPreferences("pairing", Context.MODE_PRIVATE)
 
-    /** A computer this phone is paired with; the certificate fingerprint is its id. */
-    internal class Pc(val id: String, val name: String, val hosts: List<String>, val port: Int, val token: String) {
+    /**
+     * A computer this phone is paired with; the certificate fingerprint is its id. [macs] are the MAC addresses of its
+     * LAN adapters ("AA:BB:CC:DD:EE:FF"), kept so the phone can wake it while its agent is not running; a computer
+     * stored by an older version has none.
+     */
+    internal class Pc(val id: String, val name: String, val hosts: List<String>, val port: Int, val token: String, val macs: List<String> = emptyList()) {
         fun json(): JSONObject = JSONObject().put("id", id).put("name", name).put("hosts", JSONArray(hosts)).put("port", port).put("token", token)
+            .put("macs", JSONArray(macs))
         companion object {
             fun from(j: JSONObject) = Pc(j.getString("id"), j.optString("name"),
-                j.getJSONArray("hosts").let { a -> (0 until a.length()).map { a.getString(it) } }, j.getInt("port"), j.getString("token"))
+                j.getJSONArray("hosts").let { a -> (0 until a.length()).map { a.getString(it) } }, j.getInt("port"), j.getString("token"),
+                j.optJSONArray("macs")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList())
         }
     }
 
@@ -145,6 +151,7 @@ class AgentLink(private val context: Context) {
         }
         wifi(method, pathAndQuery, 4000, body, contentType)?.let {
             route = Route.WIFI
+            maybeRefreshMacs()
             return it
         }
         route = Route.NONE
@@ -243,8 +250,9 @@ class AgentLink(private val context: Context) {
     private fun wifi(method: String, pathAndQuery: String, readTimeout: Int = 4000): Reply? =
         wifi(method, pathAndQuery, readTimeout, null, null)
 
-    private fun wifi(method: String, pathAndQuery: String, readTimeout: Int, body: ByteArray?, contentType: String?): Reply? {
-        val pc = activePc() ?: return null
+    /** Over Wi-Fi to the active computer, or to [target] when a caller must reach one particular computer. */
+    private fun wifi(method: String, pathAndQuery: String, readTimeout: Int, body: ByteArray?, contentType: String?, target: Pc? = null): Reply? {
+        val pc = target ?: activePc() ?: return null
         val hosts = pc.hosts
         val token = pc.token
         val pin = pc.id
@@ -253,7 +261,8 @@ class AgentLink(private val context: Context) {
         // Reuse one socket factory per pinned certificate so HTTPS connections are kept alive between requests.
         val f = factory?.takeIf { it.first == pin }?.second ?: pinnedFactory(pin).also { factory = pin to it }
         // Start with the address that worked last time.
-        val order = hosts.indices.sortedBy { if (it == preferredHost) -1 else it }
+        // (preferredHost indexes the active computer's addresses, so another computer neither uses nor sets it)
+        val order = hosts.indices.sortedBy { if (target == null && it == preferredHost) -1 else it }
         for (i in order) {
             try {
                 val c = URL("https://${hosts[i]}:$port$pathAndQuery").openConnection() as HttpsURLConnection
@@ -262,7 +271,7 @@ class AgentLink(private val context: Context) {
                 c.connectTimeout = 1500
                 c.setRequestProperty("Authorization", "Bearer $token")
                 val r = send(c, method, readTimeout, body, contentType)
-                preferredHost = i
+                if (target == null) preferredHost = i
                 return r
             } catch (e: Exception) {
                 // try the next address
@@ -312,6 +321,108 @@ class AgentLink(private val context: Context) {
         return Reply(code, c.contentType, body)
     }
 
+    private val macRefreshThrottle = RefreshThrottle(10 * 60_000)
+
+    /**
+     * Over Wi-Fi only (no USB refresh of the pairing), asks the agent for its MACs at most every 10 minutes for each
+     * computer, so a replaced network card does not leave the Wake button sending to the old address, and one
+     * computer's refresh does not hold another's back. The answer replaces the list.
+     */
+    private fun maybeRefreshMacs() {
+        // the computer is fixed here, on the calling thread: the worker must not look the active one up again, or a
+        // switch in between would send the request to (and save the answer for) another computer
+        val pc = activePc() ?: return
+        if (!macRefreshThrottle.allow(pc.id, System.currentTimeMillis())) return
+        try {
+            background.execute {
+                try { refreshMacs(pc) } catch (_: Exception) {}
+            }
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+        }
+    }
+
+    /** Asks [pc] (not whichever computer is active now) for its MACs and replaces the stored list of that same computer. */
+    private fun refreshMacs(pc: Pc) {
+        val r = wifi("GET", "/api/wake/macs", 4000, null, null, pc) ?: return
+        if (r.code != 200) { r.body.close(); return }
+        val macs = r.body.use { WakePacket.macsFrom(JSONObject(it.bufferedReader().readText()).optJSONArray("macs")) } ?: return
+        synchronized(pcsLock) {
+            val current = pcs.firstOrNull { it.id == pc.id }
+            if (!closed && current != null && current.macs != macs)
+                savePcs(pcs.map { if (it.id == pc.id) Pc(it.id, it.name, it.hosts, it.port, it.token, macs) else it }, activeId)
+        }
+    }
+
+    /**
+     * Where a packet can leave from, read from the network interfaces themselves: the interface name, the address and
+     * the subnet's broadcast address are not something Android's ConnectivityManager gives. The Android network that
+     * runs on the interface is looked up separately by [networkOwning]. Private addresses only.
+     */
+    private fun lanLinks(): List<LanLink> = try {
+        (java.net.NetworkInterface.getNetworkInterfaces()?.toList() ?: emptyList())
+            .filter { it.isUp && !it.isLoopback && (it.name.startsWith("wlan") || it.name.startsWith("eth")) }
+            .flatMap { ni ->
+                ni.interfaceAddresses.mapNotNull { ia ->
+                    (ia.address as? java.net.Inet4Address)?.takeIf { it.isSiteLocalAddress }?.let { LanLink(it, ia.broadcast, ni.name, ia.networkPrefixLength.toInt()) }
+                }
+            }
+    } catch (_: Exception) { emptyList() }
+
+    /**
+     * The Android network that runs on [link]'s interface and holds its address (for a Wi-Fi link, the Wi-Fi network).
+     * Needs ACCESS_NETWORK_STATE; null when none matches or Android refuses the lookup.
+     */
+    @Suppress("DEPRECATION") // allNetworks: still the only way to list every network on API 21-30
+    private fun networkOwning(link: LanLink): android.net.Network? = try {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        WakePacket.networkOwning(link, cm.allNetworks.map { n ->
+            val properties = cm.getLinkProperties(n)
+            NetCandidate(n, properties?.interfaceName, properties?.linkAddresses?.map { it.address } ?: emptyList())
+        })
+    } catch (_: Exception) { null }
+
+    /**
+     * Where a packet for [pc] may leave from: a link on a network the computer is on (its subnet holds one of the
+     * computer's stored addresses, so never a café's or a hotel's network) whose Android network can be named, because
+     * the socket is bound to that network and nothing is sent without it. Below API 22 a DatagramSocket cannot be bound
+     * to a network, so there is no link there at all.
+     */
+    private fun wakeTargets(pc: Pc): List<Pair<LanLink, android.net.Network>> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP_MR1) return emptyList()
+        return WakePacket.linksOnOwnNetwork(pc.hosts, lanLinks()).mapNotNull { link -> networkOwning(link)?.let { link to it } }
+    }
+
+    /** True when the active computer's MACs are known and the phone is on that computer's own network, where a packet can be sent. */
+    fun canWake(): Boolean = activePc()?.let { it.macs.isNotEmpty() && wakeTargets(it).isNotEmpty() } == true
+
+    /**
+     * Sends the magic packet for the stored computer [id] (3 times, 100 ms apart) to its MACs, on the phone's links to
+     * that computer's own network, to the subnet's broadcast address and to 255.255.255.255. The page only ever passes
+     * an id. Returns false when nothing can be sent (unknown id, no MAC stored, not on the computer's network); true
+     * once it is queued.
+     */
+    fun wake(id: String): Boolean {
+        val pc = pcs.firstOrNull { it.id == id } ?: return false
+        val macs = pc.macs.mapNotNull { WakePacket.parseMac(it) }
+        val targets = wakeTargets(pc)
+        if (macs.isEmpty() || targets.isEmpty()) return false
+        val networks = targets.toMap() // looked up once per burst, not for every packet
+        return try {
+            background.execute {
+                WakePacket.burst(macs, targets.map { it.first }, send = { link, target, packet ->
+                    val network = networks.getValue(link)
+                    java.net.DatagramSocket().use {
+                        // inside use: a bind that fails (Wi-Fi gone since the lookup) must still close the socket
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) network.bindSocket(it)
+                        it.broadcast = true
+                        it.send(java.net.DatagramPacket(packet, packet.size, target, WakePacket.PORT))
+                    }
+                })
+            }
+            true
+        } catch (_: java.util.concurrent.RejectedExecutionException) { false }
+    }
+
     /** While on USB, refresh the Wi-Fi pairing data about once a minute. */
     private fun maybePair() {
         val now = System.currentTimeMillis()
@@ -348,8 +459,16 @@ class AgentLink(private val context: Context) {
         if (j.optBoolean("enabled")) {
             // add or refresh this computer and make it the active one
             val hosts = j.getJSONArray("hosts")
-            val pc = Pc(j.getString("fingerprint"), name, (0 until hosts.length()).map { hosts.getString(it) }, j.getInt("port"), j.getString("token"))
-            synchronized(pcsLock) { if (!closed) savePcs(pcs.filter { it.id != pc.id && !(name.isNotEmpty() && it.name == name) } + pc, pc.id) }
+            val fingerprint = j.getString("fingerprint")
+            val reportedMacs = WakePacket.macsFrom(j.optJSONArray("macs"))
+            synchronized(pcsLock) {
+                if (!closed) {
+                    // an older agent sends no list: keep the MACs already stored instead of forgetting them
+                    val pc = Pc(fingerprint, name, (0 until hosts.length()).map { hosts.getString(it) }, j.getInt("port"), j.getString("token"),
+                        reportedMacs ?: pcs.firstOrNull { it.id == fingerprint }?.macs ?: emptyList())
+                    savePcs(pcs.filter { it.id != pc.id && !(name.isNotEmpty() && it.name == name) } + pc, pc.id)
+                }
+            }
         } else if (name.isNotEmpty()) {
             // Wi-Fi was turned off on this computer: forget its pairing, keep the others
             synchronized(pcsLock) {
@@ -482,8 +601,12 @@ class AgentLink(private val context: Context) {
                     ?.filter { PairLink.isLocalAddress(it) }?.takeIf { it.isNotEmpty() } ?: link.hosts
                 // the name the user confirmed; only an entry for this very certificate is replaced, never one that
                 // merely has the same name
-                val pc = Pc(link.fingerprint.lowercase(), link.pc, hosts, j.optInt("port", link.port), j.getString("token"))
+                val reportedMacs = WakePacket.macsFrom(j.optJSONArray("macs"))
                 synchronized(pcsLock) {
+                    // an empty report (an adapter briefly not eligible) must not wipe the MACs already stored for it
+                    val id = link.fingerprint.lowercase()
+                    val pc = Pc(id, link.pc, hosts, j.optInt("port", link.port), j.getString("token"),
+                        reportedMacs ?: pcs.firstOrNull { it.id == id }?.macs ?: emptyList())
                     savePcs(pcs.filter { it.id != pc.id } + pc, pc.id)
                     factory = null
                     preferredHost = 0

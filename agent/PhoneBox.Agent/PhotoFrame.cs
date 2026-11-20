@@ -6,20 +6,35 @@ using System.Text;
 
 namespace PhoneBox.Agent;
 
-/// <summary>Settings › General › Photo frame. The folder stays on this computer (a local path names the user).</summary>
+/// <summary>The settings page's request to list the albums of an Immich server (never logged).</summary>
+public sealed record ImmichAlbumsRequest(string? Url, string? Key);
+
+/// <summary>
+/// Settings › General › Photo frame. The folder stays on this computer (a local path names the user); so do the Immich
+/// address and API key, which are only used by the agent and never go to the phone.
+/// </summary>
 public sealed class PhotoFrameConfig
 {
+    public const string SourceFolder = "folder", SourceImmich = "immich";
+
+    /// <summary>"folder" (default) or "immich".</summary>
+    public string Source { get; set; } = SourceFolder;
     public string Folder { get; set; } = "";
     public bool Subfolders { get; set; } = true;
+    public string ImmichUrl { get; set; } = "";
+    public string ImmichKey { get; set; } = "";
+    /// <summary>The album's id and its name (the name is only for the settings page).</summary>
+    public string ImmichAlbum { get; set; } = "";
+    public string ImmichAlbumName { get; set; } = "";
 }
 
 /// <summary>
 /// Photos for the Photo frame widget from one folder on this computer (a synced OneDrive, Dropbox or iCloud folder
-/// works too). The phone gets ids and asks for one photo at a time; large photos are scaled down here first, so an old
+/// works too) or from one Immich album. The phone gets ids and asks for one photo at a time; large photos are scaled down here first, so an old
 /// phone never decodes a camera original. Nothing is scanned or served while no enabled page shows the widget, and
 /// files that are only in the cloud are skipped, so a slideshow never downloads a whole synced library.
 /// </summary>
-public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
+public sealed partial class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
 {
     internal const string WidgetType = "photos";
     internal const int MaxFiles = 5000, MaxEntries = 50_000, LongEdge = 1600;
@@ -35,8 +50,11 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
 
     /// <summary>One photo of the source; <c>Path</c> is the file path for a folder, the source's own reference otherwise.</summary>
     internal sealed record Photo(string Id, string Path, long Length, long Ticks);
-    /// <summary>The photos of one selection (<see cref="IPhotoSource.Key"/>) as of the last scan.</summary>
-    internal sealed record Library(string Key, IReadOnlyList<Photo> Photos, long ScannedAt, string? Error);
+    /// <summary>
+    /// The photos of one selection (<see cref="IPhotoSource.Key"/>) as of the last scan. <c>Transient</c> marks an
+    /// <c>Error</c> that is the network's doing (the server can't be reached), not the settings': the last good list stays.
+    /// </summary>
+    internal sealed record Library(string Key, IReadOnlyList<Photo> Photos, long ScannedAt, string? Error, bool Transient = false);
 
     /// <summary>Where the photos come from. One is chosen from the settings; the frame scans it in the background and asks it for one photo at a time.</summary>
     internal interface IPhotoSource
@@ -45,8 +63,11 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
         string Key { get; }
         /// <summary>What the phone is told when a scan throws; never a path or address.</summary>
         string ScanError { get; }
-        /// <summary>Lists the photos. Blocks, so it runs on a worker; a problem the phone can show goes in <see cref="Library.Error"/>.</summary>
-        Library Scan();
+        /// <summary>
+        /// Lists the photos. Blocks, so it runs on a worker; a problem the phone can show goes in <see cref="Library.Error"/>.
+        /// <paramref name="ct"/> is cancelled when the result is no longer wanted (the source changed or no page shows the widget).
+        /// </summary>
+        Library Scan(CancellationToken ct);
         /// <summary>One photo ready for the phone, or the reason it can't be served.</summary>
         Task<(byte[]? Bytes, string? Type, string? Error)> Fetch(Photo photo, CancellationToken ct);
     }
@@ -54,6 +75,7 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     private readonly Lock _gate = new();
     private Library? _library;
     private Task? _scan;
+    private CancellationTokenSource? _scanStop; // cancelled when the scan in flight is no longer wanted; used under _gate
     private (string Key, int Generation)? _scanKey;
     // bumped when the photo source setting is cleared or changed: a scan or conversion from before must not write back
     private int _generation;
@@ -77,8 +99,13 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     }
 
     /// <summary>The source chosen in the settings; null while none is set up.</summary>
-    private IPhotoSource? Source(PhotoFrameConfig cfg) =>
-        string.IsNullOrWhiteSpace(cfg.Folder) ? null : new FolderSource(this, log, cfg.Folder.Trim(), cfg.Subfolders);
+    private IPhotoSource? Source(PhotoFrameConfig cfg)
+    {
+        if (cfg.Source == PhotoFrameConfig.SourceImmich)
+            return ImmichClient.ParseServer(cfg.ImmichUrl) is { } server && cfg.ImmichKey.Length > 0 && cfg.ImmichAlbum.Length > 0
+                ? new ImmichSource(this, server, cfg.ImmichKey, cfg.ImmichAlbum) : null;
+        return string.IsNullOrWhiteSpace(cfg.Folder) ? null : new FolderSource(this, log, cfg.Folder.Trim(), cfg.Subfolders);
+    }
 
     public bool Shown() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == WidgetType);
 
@@ -86,7 +113,7 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     public (IReadOnlyList<string> Ids, string? Error, bool Scanning) List()
     {
         if (Source(config.Get().Photos) is not { } source) { ForgetCache(); return ([], null, false); }
-        if (!Shown()) return ([], "Add a Photo frame widget to a page to show photos", false);
+        if (!Shown()) { CancelScan(); return ([], "Add a Photo frame widget to a page to show photos", false); }
         var lib = Current(source, wait: false);
         if (lib is null) return ([], null, true);
         return (lib.Photos.Select(p => p.Id).ToList(), lib.Error, false);
@@ -105,12 +132,15 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
             var key = (source.Key, gen);
             if (_scan is null || _scanKey != key)
             {
+                _scanStop?.Cancel(); // an older scan for another selection has nothing left to do
                 _scanKey = key;
+                var stop = _scanStop = new CancellationTokenSource();
                 Task? launched = null;
                 launched = _scan = Task.Run(() =>
                 {
-                    Library next;
-                    try { next = source.Scan(); }
+                    Library? next;
+                    try { next = source.Scan(stop.Token); }
+                    catch (OperationCanceledException) when (stop.IsCancellationRequested) { next = null; } // not wanted any more: nothing to publish
                     catch (Exception ex)
                     {
                         log.LogDebug("photo scan: {Msg}", ex.Message);
@@ -121,12 +151,16 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
                     // the same lock, so a copy cached for a folder chosen since can't be deleted by this scan.
                     lock (_gate)
                     {
-                        if (_scan == launched && _generation == gen && _scanKey == key)
+                        if (next is not null && _scan == launched && _generation == gen && _scanKey == key)
                         {
-                            _library = next with { ScannedAt = Now() };
+                            // a server that can't be reached right now doesn't empty a slideshow that was showing photos
+                            _library = next.Transient && _library is { } good && good.Key == next.Key && good.Photos.Count > 0
+                                ? good with { ScannedAt = Now() } : next with { ScannedAt = Now() };
                             try { CleanCacheLocked(next); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
                         }
                         if (_scan == launched) { _scan = null; _scanKey = null; }
+                        if (_scanStop == stop) _scanStop = null;
+                        stop.Dispose();
                     }
                 });
             }
@@ -238,17 +272,22 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
         if (Source(config.Get().Photos) is not { } source) { ForgetCache(); return; }
         var key = source.Key;
         // every option of the source counts as much as the source: a recursive scan in flight must not publish after it was turned off
+        var shown = Shown();
         lock (_gate)
         {
-            if (_library is { } lib && lib.Key != key) { _library = null; _generation++; }
-            else if (_scanKey is { } sk && sk.Key != key) _generation++;
+            if (_library is { } lib && lib.Key != key) { _library = null; _generation++; _scanStop?.Cancel(); }
+            else if (_scanKey is { } sk && sk.Key != key) { _generation++; _scanStop?.Cancel(); }
+            if (!shown) _scanStop?.Cancel(); // the widget is gone: a scan in flight stops asking the source for more
         }
     }
+
+    /// <summary>No enabled page shows the widget: a scan in flight has no use, so it stops (the same source keeps running otherwise).</summary>
+    private void CancelScan() { lock (_gate) _scanStop?.Cancel(); }
 
     /// <summary>One photo, scaled down when it is large; null with a reason when it can't be served.</summary>
     public async Task<(byte[]? Bytes, string? Type, string? Error)> Get(string? id, CancellationToken ct)
     {
-        if (!Shown()) return (null, null, "Add a Photo frame widget to a page to show photos");
+        if (!Shown()) { CancelScan(); return (null, null, "Add a Photo frame widget to a page to show photos"); }
         if (string.IsNullOrEmpty(id) || Source(config.Get().Photos) is not { } source) return (null, null, "Unknown photo");
         var lib = Current(source, wait: false);
         if (lib?.Photos.FirstOrDefault(p => p.Id == id) is not { } photo) return (null, null, "Unknown photo");
@@ -260,7 +299,11 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     {
         public string Key { get; } = FolderKey(root, subfolders);
         public string ScanError => "The photo folder can't be read";
-        public Library Scan() => owner.Scanner(root, subfolders) with { Key = Key };
+        public Library Scan(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested(); // a folder scan is bounded and not interrupted once it runs
+            return owner.Scanner(root, subfolders) with { Key = Key };
+        }
 
         public async Task<(byte[]? Bytes, string? Type, string? Error)> Fetch(Photo photo, CancellationToken ct)
         {
@@ -367,6 +410,7 @@ public sealed class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> log)
     {
         lock (_gate)
         {
+            _scanStop?.Cancel();
             _library = null;
             _scan = null;
             _scanKey = null;

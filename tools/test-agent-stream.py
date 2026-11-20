@@ -74,7 +74,8 @@ interface SharedPreferences {
 }
 open class ContentResolver
 open class Context {
-    companion object { const val MODE_PRIVATE = 0 }
+    companion object { const val MODE_PRIVATE = 0; const val CONNECTIVITY_SERVICE = "connectivity" }
+    open fun getSystemService(name: String): Any? = null
     private val prefs = mutableMapOf<String, SharedPreferencesImpl>()
     open fun getSharedPreferences(name: String, mode: Int): SharedPreferences = prefs.getOrPut(name) { SharedPreferencesImpl() }
     open val packageName: String get() = "net.oxog.phonebox.deskpanel"
@@ -88,7 +89,11 @@ class PackageInfo { @JvmField var packageName: String = "wv"; @JvmField var vers
 class PackageManager { fun getPackageInfo(pkg: String, flags: Int) = PackageInfo() }
 """,
     "OsStubs.kt": """package android.os
-object Build { @JvmField var MANUFACTURER: String = "Test"; @JvmField var MODEL: String = "Phone" }
+object Build {
+    @JvmField var MANUFACTURER: String = "Test"; @JvmField var MODEL: String = "Phone"
+    object VERSION { @JvmField var SDK_INT: Int = 34 }
+    object VERSION_CODES { const val LOLLIPOP_MR1 = 22 }
+}
 """,
     "ProviderStubs.kt": """package android.provider
 object Settings { object Secure { const val ANDROID_ID = "android_id"; @JvmStatic fun getString(cr: android.content.ContentResolver?, n: String) = "id1" } }
@@ -96,6 +101,13 @@ object Settings { object Secure { const val ANDROID_ID = "android_id"; @JvmStati
     "NetStubs.kt": """package android.net
 class Uri private constructor(val scheme: String?, val host: String?, val path: String?, val encodedFragment: String?, val encodedQuery: String?) {
     companion object { @JvmStatic fun decode(s: String): String = java.net.URLDecoder.decode(s, "UTF-8") }
+}
+class Network { fun bindSocket(socket: java.net.DatagramSocket) {} }
+class LinkAddress(val address: java.net.InetAddress)
+class LinkProperties { val linkAddresses: List<LinkAddress> = emptyList(); val interfaceName: String? = null }
+class ConnectivityManager {
+    val allNetworks: Array<Network> = emptyArray()
+    fun getLinkProperties(network: Network): LinkProperties? = null
 }
 """,
     "WebkitStubs.kt": """package androidx.webkit
@@ -113,6 +125,7 @@ class JSONArray(items: Collection<*> = emptyList<Any?>()) {
     fun length(): Int = list.size
     fun put(v: Any?): JSONArray { list.add(v); return this }
     fun getString(i: Int): String = list[i].toString()
+    fun optString(i: Int): String = list.getOrNull(i)?.toString() ?: ""
     fun getJSONObject(i: Int): JSONObject = list[i] as JSONObject
     override fun toString(): String = list.joinToString(",", "[", "]") { renderVal(it) }
 }
@@ -221,14 +234,113 @@ fun checkPairRefresh() {
     println("PAIR VERIFIED")
 }
 
+/**
+ * The MACs stored for a computer survive an answer that reports none (its adapter was briefly not eligible), and a
+ * report that has some replaces them.
+ */
+fun checkAnEmptyMacReportKeepsTheStoredMacs() {
+    val refresh = AgentLink::class.java.getDeclaredMethod("refreshPairing", java.net.HttpURLConnection::class.java).apply { isAccessible = true }
+    val stored = JSONArray().put(JSONObject().put("id", "fp1").put("name", "Office").put("hosts", JSONArray(listOf("192.168.1.2"))).put("port", 8766).put("token", "t1")
+        .put("macs", JSONArray(listOf("AA:BB:CC:DD:EE:01")))).toString()
+    fun answerWith(macs: String): String {
+        val ctx = Context()
+        ctx.getSharedPreferences("pairing", 0).edit().putString("pcs", stored).putString("active", "fp1").apply()
+        val link = AgentLink(ctx)
+        val body = "{\\"pc\\":\\"Office\\",\\"enabled\\":true,\\"fingerprint\\":\\"fp1\\",\\"hosts\\":[\\"192.168.1.2\\"],\\"port\\":8766,\\"token\\":\\"t1\\",\\"macs\\":$macs}"
+        refresh.invoke(link, PairAnswer(200, body))
+        link.close()
+        return ctx.getSharedPreferences("pairing", 0).getString("pcs", null)!!
+    }
+    check(answerWith("[]").contains("AA:BB:CC:DD:EE:01")) { "An empty MAC report wiped the stored MACs" }
+    check(answerWith("[\\"aa-bb-cc-dd-ee-02\\"]").let { it.contains("AA:BB:CC:DD:EE:02") && !it.contains("AA:BB:CC:DD:EE:01") }) { "A MAC report did not replace the stored MACs" }
+    println("EMPTY MACS VERIFIED")
+}
+
+/** A MAC refresh belongs to the computer that asked for it, even when another computer is the active one meanwhile. */
+fun checkMacRefreshStaysWithItsComputer(ssl: SSLContext, fp: String) {
+    val server = ssl.serverSocketFactory.createServerSocket(0) as SSLServerSocket
+    val body = "{\\"macs\\":[\\"aa-bb-cc-dd-ee-07\\"]}"
+    val serverThread = Thread {
+        try {
+            server.accept().use { s ->
+                s.getInputStream().read(ByteArray(4096))
+                s.getOutputStream().write(("HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: ${body.length}\\r\\nConnection: close\\r\\n\\r\\n" + body).toByteArray(Charsets.ISO_8859_1))
+                s.getOutputStream().flush()
+            }
+        } catch (_: Exception) {}
+    }.apply { isDaemon = true; start() }
+    try {
+        val ctx = Context()
+        val other = JSONObject().put("id", "other-fp").put("name", "Other").put("hosts", JSONArray(listOf("127.0.0.1"))).put("port", 1).put("token", "t0")
+        val target = JSONObject().put("id", fp).put("name", "Target").put("hosts", JSONArray(listOf("127.0.0.1"))).put("port", server.localPort).put("token", "t1")
+        ctx.getSharedPreferences("pairing", 0).edit().putString("pcs", JSONArray().put(other).put(target).toString()).putString("active", "other-fp").apply()
+        val link = AgentLink(ctx)
+        val refresh = AgentLink::class.java.getDeclaredMethod("refreshMacs", AgentLink.Pc::class.java).apply { isAccessible = true }
+        refresh.invoke(link, AgentLink.Pc(fp, "Target", listOf("127.0.0.1"), server.localPort, "t1"))
+        val saved = JSONArray(ctx.getSharedPreferences("pairing", 0).getString("pcs", null))
+        fun macsOf(i: Int) = saved.getJSONObject(i).optJSONArray("macs")
+        check(macsOf(1)?.length() == 1 && macsOf(1)!!.getString(0) == "AA:BB:CC:DD:EE:07") { "The refreshed MACs did not land on the computer that asked: $saved" }
+        check((macsOf(0)?.length() ?: 0) == 0) { "Another computer received the refreshed MACs: $saved" }
+        link.close()
+        println("MACS VERIFIED")
+    } finally {
+        server.close()
+        serverThread.join(2000)
+    }
+}
+
+/**
+ * The computer is fixed when a refresh is queued: if another computer becomes the active one before the worker runs
+ * the queued refresh, the request must still go to (and the answer be saved for) the computer that queued it.
+ */
+fun checkMacRefreshSurvivesAComputerSwitch(ssl: SSLContext, fp: String) {
+    val server = ssl.serverSocketFactory.createServerSocket(0) as SSLServerSocket
+    val body = "{\\"macs\\":[\\"aa-bb-cc-dd-ee-09\\"]}"
+    val serverThread = Thread {
+        try {
+            server.accept().use { s ->
+                s.getInputStream().read(ByteArray(4096))
+                s.getOutputStream().write(("HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: ${body.length}\\r\\nConnection: close\\r\\n\\r\\n" + body).toByteArray(Charsets.ISO_8859_1))
+                s.getOutputStream().flush()
+            }
+        } catch (_: Exception) {}
+    }.apply { isDaemon = true; start() }
+    try {
+        val ctx = Context()
+        val target = JSONObject().put("id", fp).put("name", "Target").put("hosts", JSONArray(listOf("127.0.0.1"))).put("port", server.localPort).put("token", "t1")
+        val other = JSONObject().put("id", "other-fp").put("name", "Other").put("hosts", JSONArray(listOf("127.0.0.1"))).put("port", 1).put("token", "t0")
+        ctx.getSharedPreferences("pairing", 0).edit().putString("pcs", JSONArray().put(target).put(other).toString()).putString("active", fp).apply()
+        val link = AgentLink(ctx)
+        val bg = AgentLink::class.java.getDeclaredField("background").apply { isAccessible = true }.get(link) as ExecutorService
+        val release = java.util.concurrent.CountDownLatch(1)
+        bg.execute { release.await() } // the worker is busy, so the refresh waits in the queue
+        AgentLink::class.java.getDeclaredMethod("maybeRefreshMacs").apply { isAccessible = true }.invoke(link)
+        check(link.select("other-fp")) { "Could not switch to the other computer" } // it becomes the active one meanwhile
+        release.countDown()
+        bg.submit {}.get(10, java.util.concurrent.TimeUnit.SECONDS) // everything queued before this has run
+        val saved = JSONArray(ctx.getSharedPreferences("pairing", 0).getString("pcs", null))
+        fun macsOf(i: Int) = saved.getJSONObject(i).optJSONArray("macs")
+        check(macsOf(0)?.length() == 1 && macsOf(0)!!.getString(0) == "AA:BB:CC:DD:EE:09") { "The refresh queued for the first computer was not saved for it after a switch: $saved" }
+        check((macsOf(1)?.length() ?: 0) == 0) { "The computer switched to received the first one's MACs: $saved" }
+        link.close()
+        println("SWITCH VERIFIED")
+    } finally {
+        server.close()
+        serverThread.join(2000)
+    }
+}
+
 fun main(args: Array<String>) {
     checkPairRefresh()
+    checkAnEmptyMacReportKeepsTheStoredMacs()
     val ks = KeyStore.getInstance("PKCS12")
     java.io.FileInputStream(args[0]).use { ks.load(it, "changeit".toCharArray()) }
     val cert = ks.getCertificate(ks.aliases().nextElement())
     val fp = MessageDigest.getInstance("SHA-256").digest(cert.encoded).joinToString("") { "%02x".format(it) }
     val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply { init(ks, "changeit".toCharArray()) }
     val ssl = SSLContext.getInstance("TLS").apply { init(kmf.keyManagers, null, null) }
+    checkMacRefreshStaysWithItsComputer(ssl, fp)
+    checkMacRefreshSurvivesAComputerSwitch(ssl, fp)
     val server = ssl.serverSocketFactory.createServerSocket(0) as SSLServerSocket
     // Redirect target: kept listening (no accept) until the requests are done, then checked for a queued connection.
     val spy = java.net.ServerSocket(0)
@@ -289,7 +401,9 @@ def check_agent_link(compiler_cp: str, classpath: str, base_out: Path) -> None:
          "-sigalg", "SHA256withECDSA", "-dname", "CN=PhoneBoxTest", "-validity", "1",
          "-storetype", "PKCS12", "-keystore", str(pfx), "-storepass", "changeit", "-keypass", "changeit"],
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
-    src_files = [ROOT / "android/app/src/main/java/net/oxog/phonebox/deskpanel/AgentLink.kt"]
+    deskpanel = ROOT / "android/app/src/main/java/net/oxog/phonebox/deskpanel"
+    # WakePacket.kt holds what AgentLink's Wake-on-LAN code uses (packet, MAC parsing, LanLink)
+    src_files = [deskpanel / "AgentLink.kt", deskpanel / "WakePacket.kt"]
     for name, content in LINK_STUBS.items():
         path = src_dir / name
         path.write_text(content, encoding="utf-8")
