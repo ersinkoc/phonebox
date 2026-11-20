@@ -130,8 +130,10 @@ public static class ClaudeHook
 
     // ---------------------------------------------------------------- install / remove the hook in ~/.claude/settings.json
 
+    // --noproxy: a proxy in the user's curl settings (or *_proxy variables) must never receive the request, which
+    // carries the command and paths the agent asks about
     private static string HookCommand(int port, string endpoint) =>
-        $"{(OperatingSystem.IsWindows() ? "curl.exe" : "curl")} -s --max-time 3600 -X POST http://127.0.0.1:{port}{endpoint} -H \"Content-Type: application/json\" --data-binary \"@-\"";
+        $"{(OperatingSystem.IsWindows() ? "curl.exe" : "curl")} -s --noproxy 127.0.0.1 --max-time 3600 -X POST http://127.0.0.1:{port}{endpoint} -H \"Content-Type: application/json\" --data-binary \"@-\"";
 
     private static bool IsOurs(JsonNode? hook, string endpoint)
     {

@@ -1214,7 +1214,8 @@ export function renderApproval() {
   $('apLogo').className = `ap-logo ${sourceKind}`;
   $('apSource').textContent = source;
   $('apProject').textContent = a.project || a.session || '';
-  $('apCwd').textContent = a.cwd || '';
+  // a long path keeps its end, which tells projects apart; the whole path is in the title
+  $('apCwd').textContent = (a.cwd || '').length > 140 ? '…' + a.cwd.slice(-139) : (a.cwd || '');
   $('apCwd').title = a.cwd || '';
   $('apContextSep').hidden = !(a.cwd && (a.project || a.session));
   $('apCount').textContent = approvals.length > 1 ? t('panel.oneOfN', { n: approvals.length }) : '';
