@@ -1,0 +1,31 @@
+name: Legacy Android 4.1
+on:
+  workflow_dispatch:
+  push:
+    branches: [add-android-4]
+permissions:
+  contents: read
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m unittest discover -s tools -p 'legacy_test*.py' -v
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npx --yes --package acorn@8.14.1 acorn --ecma5 android/app/src/main/assets/www/legacy/legacy.js > /dev/null
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: android-actions/setup-android@v3
+      - run: ./gradlew :legacy:lintDebug :legacy:assembleDebug
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PhoneBox-Legacy-API16-debug
+          path: android/legacy/build/outputs/apk/debug/*.apk
