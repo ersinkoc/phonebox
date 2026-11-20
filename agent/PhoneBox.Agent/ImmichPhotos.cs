@@ -181,9 +181,12 @@ public sealed partial class PhotoFrame
         get
         {
             lock (_gate)
-                return _immichHttp ??= new HttpClient(ImmichHandler ?? new SocketsHttpHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(30) };
+                return _immichHttp ??= new HttpClient(ImmichHandler ?? NewImmichHandler()) { Timeout = TimeSpan.FromSeconds(30) };
         }
     }
+
+    /// <summary>The handler for a real server: a redirect is never followed (it could carry the key elsewhere), and a pooled connection is dropped after five minutes so a changed DNS answer is picked up.</summary>
+    internal static SocketsHttpHandler NewImmichHandler() => new() { AllowAutoRedirect = false, PooledConnectionLifetime = TimeSpan.FromMinutes(5) };
 
     /// <summary>For the settings page's album picker: lists the albums of a server. The key is the saved one when the address is the saved one and none is given.</summary>
     internal async Task<(IReadOnlyList<ImmichAlbum>? Albums, string? Error)> ImmichAlbums(string? url, string? key, CancellationToken ct)

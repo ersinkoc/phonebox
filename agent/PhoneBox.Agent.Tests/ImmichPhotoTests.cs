@@ -311,6 +311,15 @@ public sealed class ImmichPhotoTests : IDisposable
     }
 
     [Fact]
+    public void TheProductionHandlerDoesNotFollowRedirectsAndRecyclesConnections()
+    {
+        using var handler = PhotoFrame.NewImmichHandler();
+        Assert.False(handler.AllowAutoRedirect);
+        // pooled connections are dropped now and then, so a changed address (a new DNS answer) is picked up
+        Assert.Equal(TimeSpan.FromMinutes(5), handler.PooledConnectionLifetime);
+    }
+
+    [Fact]
     public async Task ARedirectIsNotFollowedByTheProductionHandler()
     {
         using var target = TestPorts.Listen();
