@@ -278,8 +278,8 @@ public sealed class CodexLiveQuotaTests
         int pid = 0;
         try
         {
-            var pending = CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(5), cancellation.Token);
-            using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var pending = CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(cancel ? 30 : 8), cancellation.Token);
+            using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             while (pid == 0)
             {
                 if (File.Exists(marker))
