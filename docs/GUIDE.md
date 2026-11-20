@@ -146,7 +146,8 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   vibration, the message when a session finishes, volume-key paging and the phone's sensors (brightness that follows the room, the night screen when the
   room goes dark, wave to wake it); [OLED burn-in protection](#appearance); [page switching](#rules) (home page, countdown, back home after);
   kiosk options (screen pinning, the panel as the phone's home screen so it starts after a reboot, keep the phone
-  awake on the charger; no root needed); on macOS, optionally follow the computer lock (sleep the phone on lock,
+  awake on the charger, open the panel when the phone is plugged in, which you can turn off for a phone you also
+  use for app testing; no root needed); on macOS, optionally follow the computer lock (sleep the phone on lock,
   wake it and open PhoneBox on unlock, with an ADB connection; phones secured by a PIN or password must be unlocked
   manually). Lock sync needs the agent to run in the macOS GUI session; [battery care](#rules);
   [Claude Code permission prompts](#claude-code-permission-prompts);

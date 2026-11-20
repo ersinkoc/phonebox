@@ -4,7 +4,8 @@ namespace PhoneBox.Agent;
 
 /// <summary>
 /// While a phone is connected over USB, keeps an "adb reverse tcp:8765 tcp:8765" rule in place so that
-/// 127.0.0.1:8765 on the phone reaches this agent. When a phone is newly plugged in, wakes it and opens the panel.
+/// 127.0.0.1:8765 on the phone reaches this agent. When a phone is newly plugged in, wakes it and opens the panel
+/// (unless Settings › Display › open on connect is off).
 /// </summary>
 public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEndpoint? endpoint = null) : BackgroundService
 {
@@ -156,12 +157,14 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             {
                 await SyncSessionAsync(ct, force: true);
             }
-            else
+            else if (cfg.Get().Display.OpenOnConnect)
             {
                 await Adb(adb, $"-s {d} shell input keyevent KEYCODE_WAKEUP", ct);
                 await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", ct);
                 log.LogInformation("{Device}: adb reverse set up, panel opened", d);
             }
+            // Settings › Display › open on connect is off: the phone stays as it is (the panel opens when the user starts it).
+            else log.LogInformation("{Device}: adb reverse set up", d);
         }
         // Settings › Display › home screen: the app offers itself as a home app; make it the default one (no root needed).
         if (cfg.Get().Display.HomeScreen)

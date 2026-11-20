@@ -183,6 +183,9 @@ public sealed class DisplayConfig
 
     /// <summary>Over USB, turn off Android's screen saver (it starts on the dock / charger) and keep the phone awake while it is plugged in.</summary>
     public bool KeepAwake { get; set; } = true;
+    /// <summary>Over USB, wake the phone and open PhoneBox when it is plugged in (or adb reconnects). Off: the panel opens only
+    /// when you start it on the phone, from the tray or the settings page.</summary>
+    public bool OpenOnConnect { get; set; } = true;
     /// <summary>On macOS, sleep the connected phone when the computer locks; wake it and open PhoneBox after unlock.</summary>
     public bool FollowComputerLock { get; set; }
     /// <summary>The page the panel returns to (idle return, Back); null = the first page.</summary>

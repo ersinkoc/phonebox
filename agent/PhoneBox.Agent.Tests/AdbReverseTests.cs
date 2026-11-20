@@ -246,4 +246,30 @@ public sealed class AdbReverseTests : IDisposable
         Assert.True(calls.Count(c => c == "devices") >= 2, "the loop did not run twice");
         Assert.DoesNotContain(calls, c => c.StartsWith("-s FAKE1 reverse tcp:") || c.Contains("am start"));
     }
+
+    /// <summary>
+    /// A newly plugged-in phone is woken and shows the panel, unless Settings › Display › open on connect is off (a phone
+    /// that is also used for app testing): then only the reverse rule is set and the phone is left as it is.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ANewPhoneOpensThePanelOnlyWhenOpenOnConnectIsOn(bool openOnConnect)
+    {
+        var fake = FakeAdb(["FAKE1"], "", homeRefused: null);
+        var calls = await RunUntil(fake, new { adbPath = fake, deviceSerial = "FAKE1",
+                display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect } },
+            null, c => c.Count(x => x == "devices") >= 2);
+        Assert.Contains("-s FAKE1 reverse tcp:8765 tcp:8765", calls);
+        Assert.Equal(openOnConnect, calls.Contains("-s FAKE1 shell am start -n net.oxog.phonebox.deskpanel/.MainActivity"));
+        Assert.Equal(openOnConnect, calls.Contains("-s FAKE1 shell input keyevent KEYCODE_WAKEUP"));
+    }
+
+    [Fact]
+    public void OpenOnConnectIsOnByDefault()
+    {
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, "{}");
+        Assert.True(new ConfigStore(path).Get().Display.OpenOnConnect);
+    }
 }
