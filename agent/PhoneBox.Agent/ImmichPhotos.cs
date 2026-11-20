@@ -74,7 +74,8 @@ internal sealed class ImmichClient(HttpClient http, Uri server, string key)
         {
             var request = JsonSerializer.Serialize(new { albumIds = new[] { album }, type = "IMAGE", size = PageSize, page });
             var (body, error) = await Send(HttpMethod.Post, "api/search/metadata", request, MaxJsonBytes, ct);
-            if (body is null) return (null, error == "Immich couldn't find that" ? "That Immich album no longer exists" : error);
+            // a 400 or 404 may be a deleted album, or a server that doesn't take the album filter: don't say which
+            if (body is null) return (null, error == "Immich couldn't find that" ? "Immich couldn't read that album" : error);
             try
             {
                 using var doc = JsonDocument.Parse(body);

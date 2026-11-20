@@ -467,15 +467,18 @@ public sealed class ImmichPhotoTests : IDisposable
         Assert.Empty(fake.Seen);
     }
 
-    [Fact]
-    public void AMissingAlbumShowsAMessageNotAnAddress()
+    [Theory]
+    [InlineData(400)] // what the test server answers; an Immich that doesn't take the album filter may answer this too
+    [InlineData(404)]
+    public void ARejectedAlbumSearchShowsANeutralMessageNotAnAddress(int status)
     {
-        var fake = new FakeImmich { AlbumGone = true };
+        var fake = new FakeImmich { Answer = (HttpStatusCode)status };
         var (frame, _) = Frame(fake);
         frame.ScanNow();
         var (ids, error, _) = frame.List();
         Assert.Empty(ids);
-        Assert.Equal("That Immich album no longer exists", error);
+        Assert.Equal("Immich couldn't read that album", error); // it doesn't claim the album was deleted
+        Assert.DoesNotContain("immich.test", error);
     }
 
     [Theory]
