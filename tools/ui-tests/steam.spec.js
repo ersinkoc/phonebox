@@ -15,24 +15,23 @@ async function configureSteamFriends(page, testFlag) {
 
 async function mockSteamAvatarFetches(page, failedRequests) {
   await page.addInitScript((failCount) => {
+    // demo.js keeps the fetch it finds (the browser's) and then installs its own; avatar requests are counted, and the
+    // first failCount fail, in front of that one. No re-entrancy guard: a guard shared by overlapping requests sent
+    // some of them past the demo to the static server, so the Steam data sometimes never loaded (CI flake).
     const native = window.fetch.bind(window);
-    let inner = native;
-    let depth = 0;
+    let inner = null;
     window.__steamAvatarRequests = 0;
+    const counting = async (input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+      if (url.pathname.endsWith('/api/steam/avatar')) {
+        window.__steamAvatarRequests++;
+        if (window.__steamAvatarRequests <= failCount) return new Response('', { status: 503 });
+      }
+      return inner(input, init);
+    };
     Object.defineProperty(window, 'fetch', {
       configurable: true,
-      get() {
-        return async (input, init) => {
-          if (depth) return native(input, init);
-          const url = new URL(typeof input === 'string' ? input : input.url, location.href);
-          if (url.pathname.endsWith('/api/steam/avatar')) {
-            window.__steamAvatarRequests++;
-            if (window.__steamAvatarRequests <= failCount) return new Response('', { status: 503 });
-          }
-          depth++;
-          try { return await inner(input, init); } finally { depth--; }
-        };
-      },
+      get() { return inner ? counting : native; },
       set(fetch) { inner = fetch; },
     });
   }, failedRequests);
