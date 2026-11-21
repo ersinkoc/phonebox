@@ -9,6 +9,8 @@
 - Discord: a speaking ring can no longer stay on after someone stops talking when you switch channels; speaking
   events count only once both of the channel's subscriptions are in place (#354,
   [M00n-of-saturn](https://github.com/M00n-of-saturn)).
+- Display brightness: the slider keeps the level it was set to. It used to jump back to the old level for up to
+  30 s, until the agent read the monitor again (#360, [andrii-pavlykivskyi](https://github.com/andrii-pavlykivskyi)).
 
 ## 0.9.27 — 2026-11-21
 

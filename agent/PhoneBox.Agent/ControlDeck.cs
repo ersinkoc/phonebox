@@ -39,6 +39,9 @@ public sealed partial class ControlDeck : BackgroundService
     private Task? _hardwareJob;
     private long _hardwareAt;
     private IReadOnlyList<DeckMonitor> _monitors = [];
+    // Brightness levels set since the running monitor read began (guarded by _state): that read may have seen the monitor
+    // before the set, and must not bring the old level back for the next 30 s (#360).
+    private readonly Dictionary<string, int> _brightnessSet = new(StringComparer.Ordinal);
     private IReadOnlyList<DeckItem> _plans = [], _midi = [];
 
     private readonly PushStore? _push;
@@ -149,13 +152,24 @@ public sealed partial class ControlDeck : BackgroundService
         {
             if (_hardwareJob?.IsCompleted == false || Environment.TickCount64 - _hardwareAt < 30_000) return;
             _hardwareAt = Environment.TickCount64;
+            _brightnessSet.Clear(); // the read below starts after every set so far, so it sees them
             _hardwareJob = Task.Run(() =>
             {
-                try { _monitors = _native.Monitors(); _plans = _native.PowerPlans(); _midi = _native.MidiPorts(); }
+                try
+                {
+                    var monitors = _native.Monitors();
+                    lock (_state) _monitors = WithBrightnessSet(monitors);
+                    _plans = _native.PowerPlans(); _midi = _native.MidiPorts();
+                }
                 catch (Exception ex) { _log.LogDebug(ex, "Control hardware discovery failed"); }
             });
         }
     }
+
+    /// <summary>The monitors with the brightness levels set since the running read began. Call under <c>_state</c>.</summary>
+    private IReadOnlyList<DeckMonitor> WithBrightnessSet(IReadOnlyList<DeckMonitor> monitors) =>
+        _brightnessSet.Count == 0 ? monitors
+            : monitors.Select(m => _brightnessSet.TryGetValue(m.Id, out var level) ? m with { Brightness = level } : m).ToArray();
 
     /// <summary>Returns a draft for the desktop editor; saving still uses the ordinary config version check.</summary>
     public DeckProfile CaptureProfile()
@@ -272,7 +286,11 @@ public sealed partial class ControlDeck : BackgroundService
                     else { StopRadio(id, clearLast: true); }
                     ok = true; break;
                 case "action": return await Action(id, op, value, ct);
-                case "brightness": ok = value is >= 0 and <= 100 && _native.Brightness(id, value.Value); break;
+                case "brightness":
+                    ok = value is >= 0 and <= 100 && _native.Brightness(id, value.Value);
+                    // shown at once: the next monitor read can be up to 30 s away (#360)
+                    if (ok) lock (_state) { _brightnessSet[id] = value!.Value; _monitors = WithBrightnessSet(_monitors); }
+                    break;
                 case "desktop": ok = value is -1 or 1 && await _native.PlatformAction("desktop", "", null, value.Value, ct); break;
                 case "power-plan": ok = _native.PowerPlans().Any(p => p.Id == id) && await _native.PlatformAction("power-plan", id, null, 0, ct); break;
                 case "power-arm":
