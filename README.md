@@ -167,6 +167,9 @@ release builds. See the [full compatibility table](docs/SETUP.md#what-works-wher
 
 ## Documentation
 
+Use the phone as a webcam with per-session approval: native **PhoneBox Camera** on Windows 11 x64, or optional OBS output.
+[Phone camera setup and privacy](docs/PHONE-CAMERA.md).
+
 | Guide | Contents |
 |---|---|
 | [Installation and connections](docs/SETUP.md) | Setup options, warnings, manual and source installs, USB, Wi-Fi, Tailscale, updates, uninstall and troubleshooting |

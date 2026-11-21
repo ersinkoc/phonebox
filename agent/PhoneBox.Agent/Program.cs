@@ -86,6 +86,8 @@ AddMonitor<OpenCodeApprovals>(builder.Services);
 AddMonitor<FeedMonitor>(builder.Services);
 builder.Services.AddSingleton<PhotoFrame>();
 builder.Services.AddSingleton<CameraFeeds>();
+builder.Services.AddSingleton<PhoneCamera>();
+builder.Services.AddSingleton<NativeCamera>();
 AddMonitor<GitHubMonitor>(builder.Services);
 AddMonitor<PingMonitor>(builder.Services);
 AddMonitor<AdbReverse>(builder.Services);
@@ -268,6 +270,7 @@ app.Use(async (ctx, next) =>
 });
 
 app.Map("/api/trackpad", TrackpadHandler.HandleEndpoint);
+app.MapPhoneCamera(Port);
 
 // ---------------------------------------------------------------- Wi-Fi pairing (local / USB only)
 // The phone calls this through the USB tunnel and stores everything it needs to connect over Wi-Fi.

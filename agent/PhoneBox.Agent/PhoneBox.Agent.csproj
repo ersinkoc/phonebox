@@ -70,4 +70,11 @@
   <ItemGroup>
     <InternalsVisibleTo Include="PhoneBox.Agent.Tests" />
   </ItemGroup>
+
+  <!-- Build the optional Windows component first with tools/build-native-camera.ps1. Keep it outside the .NET
+       single-file bundle: setup copies the COM source to protected Program Files so Frame Server can load it. -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <Content Include="..\..\native\PhoneBox.Camera\dist\bin\Release\PhoneBoxCamera.dll" Condition="Exists('..\..\native\PhoneBox.Camera\dist\bin\Release\PhoneBoxCamera.dll')" Link="camera\PhoneBoxCamera.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\native\PhoneBox.Camera\dist\bin\Release\PhoneBoxCameraSetup.exe" Condition="Exists('..\..\native\PhoneBox.Camera\dist\bin\Release\PhoneBoxCameraSetup.exe')" Link="camera\PhoneBoxCameraSetup.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
 </Project>

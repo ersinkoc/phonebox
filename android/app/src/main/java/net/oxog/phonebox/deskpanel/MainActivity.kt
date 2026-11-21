@@ -67,6 +67,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var destroyed = false
     private val dictation by lazy { Dictation(this) { script -> if (!destroyed) web.evaluateJavascript(script, null) } }
     private lateinit var link: AgentLink
+    private val phoneCamera by lazy { PhoneCamera(this, link) }
     private lateinit var stream: AgentStream
     @Volatile private var resumed = false
     @Volatile private var volumeKeysFlipPages = true
@@ -144,6 +145,11 @@ class MainActivity : Activity(), SensorEventListener {
         handlePairingLink(intent)
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        phoneCamera.stop() // a fresh request recalculates camera orientation
+    }
+
     /** A pairing link from the computer's QR code (Settings › Wi-Fi › Pair a phone over Wi-Fi): ask, then pair. */
     private fun handlePairingLink(intent: Intent?) {
         val pairing = AgentLink.PairLink.parse(intent?.data) ?: return
@@ -166,6 +172,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun pair(pairing: AgentLink.PairLink, context: Context) {
+        phoneCamera.stop()
         Toast.makeText(context, context.getString(R.string.pair_progress, pairing.pc), Toast.LENGTH_SHORT).show()
         Thread {
             val problem = link.claim(pairing)
@@ -248,6 +255,7 @@ class MainActivity : Activity(), SensorEventListener {
         web.onResume()
         web.evaluateJavascript("window.onAppPause && window.onAppPause(false)", null) // the panel catches up at once
         stream.start()
+        phoneCamera.resume()
         hideSystemUi()
         sensors?.getDefaultSensor(Sensor.TYPE_LIGHT)?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
         sensors?.getDefaultSensor(Sensor.TYPE_PROXIMITY)?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
@@ -261,6 +269,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onPause() {
         resumed = false
+        phoneCamera.pause()
         dictation.cancel(0) // the microphone is never left open behind another app or a dark screen
         sensors?.unregisterListener(this)
         stream.stop()
@@ -272,6 +281,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onDestroy() {
         destroyed = true
+        phoneCamera.destroy()
         resumed = false
         dictation.cancel(0)
         sensors?.unregisterListener(this)
@@ -474,15 +484,17 @@ class MainActivity : Activity(), SensorEventListener {
         /** Switches to another paired computer and reloads the panel from it. */
         @JavascriptInterface
         fun selectPc(key: String, id: String) {
-            if (!ok(key) || !link.select(id)) return
+            if (!ok(key)) return
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
+                phoneCamera.stop()
+                if (!link.select(id)) return@runOnUiThread
                 stream.stop(); if (resumed) stream.start(); web.reload()
             }
         }
 
         @JavascriptInterface
-        fun forgetPc(key: String, id: String) { if (ok(key)) link.forget(id) }
+        fun forgetPc(key: String, id: String) { if (ok(key)) runOnUiThread { phoneCamera.stop(); link.forget(id) } }
 
         /** True when the Wake button can work: the active computer's MACs are known and the phone is on a local network. */
         @JavascriptInterface

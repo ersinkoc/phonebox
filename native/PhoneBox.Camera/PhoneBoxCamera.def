@@ -1,0 +1,6 @@
+LIBRARY PhoneBoxCamera
+EXPORTS
+  DllGetClassObject PRIVATE
+  DllCanUnloadNow PRIVATE
+  PhoneBoxCameraStart
+  PhoneBoxCameraStop

@@ -26,7 +26,16 @@ Last updated: 2026-11-20 (PhoneBox 0.9.6).
 - **Phone app**: caches (weather, rates, widget state) in its own app storage. The app asks for `INTERNET`,
   `VIBRATE` and `ACCESS_NETWORK_STATE` (only to tell which network is Wi-Fi when the Wake button sends its packet; Android
   grants it without a prompt), and for the microphone (`RECORD_AUDIO`) only when a Dictation widget's button is tapped for
-  the first time.
+  the first time. The camera (`CAMERA`) is requested only after choosing **Allow this session** for the phone webcam.
+  Each video session requires native confirmation even when Android camera permission has already been granted.
+- **Phone webcam** (off by default): after per-session approval, JPEG video frames travel only to the chosen computer,
+  over the existing pinned-TLS USB or paired Wi-Fi connection. Frames and consent are kept in memory only; PhoneBox
+  does not record them. On Windows 11 x64, the optional PhoneBox Camera component exposes the picture through Windows
+  Media Foundation, without OBS. Its one-time installation requires administrator approval; the camera runs with
+  session lifetime for the current Windows user. Windows Frame Server reads only the agent's local loopback frame
+  endpoint and does not receive phone keys. The optional OBS Browser source is also available.
+  Other local applications and the destination computer can record it. No audio is included. Leaving PhoneBox,
+  locking the phone, stopping the session or losing the connection ends sharing. See [Phone as webcam](docs/PHONE-CAMERA.md).
 - **Computer data shown on the panel** (CPU, GPU, memory, disks, processes, media, volume, AI coding sessions and
   quotas, Docker / Podman, OBS) is read locally and goes only to your phone: over the USB cable (`adb reverse` to
   `127.0.0.1`, with a key only the PhoneBox app has) or, after pairing, over Wi-Fi / Tailscale with a pinned certificate and a key. On Linux, an Intel GPU's

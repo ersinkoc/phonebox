@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Dictation widget only: asked for the first time its microphone button is tapped -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Phone camera: requested only after an explicit, per-session native confirmation. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- Android 11+: the speech recognizer has to be visible to the app (Dictation widget) -->
     <queries>

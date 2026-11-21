@@ -94,6 +94,57 @@ class AgentLink(private val context: Context) {
     internal fun activePc(): Pc? = pcs.firstOrNull { it.id == activeId } ?: pcs.firstOrNull()
     internal fun getPinnedFactory(pin: String): SSLSocketFactory = pinnedFactory(pin)
 
+    /** Immutable camera destination: no fallback, redirects or retries to another computer after consent. */
+    internal inner class CameraTarget(val pin: String, val name: String, private val base: String,
+        private val token: String, private val capturedRoute: Route) {
+        private val tls = pinnedFactory(pin)
+        private val cameraLock = Any()
+        @Volatile private var cancelled = false
+        @Volatile private var connection: HttpsURLConnection? = null
+        fun current(): Boolean = !cancelled && route == capturedRoute && if (capturedRoute == Route.USB)
+            UsbKey.pin(context) == pin else activePc()?.let { it.id == pin && it.token == token } == true
+
+        fun call(action: String, id: String = "", session: String = "", bytes: ByteArray? = null, rotation: Int = 0): String {
+            if (action != "end" && !current()) throw java.io.IOException("Camera destination changed")
+            val c = URL("$base/api/phone-camera/phone").openConnection() as HttpsURLConnection
+            synchronized(cameraLock) {
+                if (action != "end" && cancelled) { c.disconnect(); throw java.io.IOException("Camera stopped") }
+                connection = c
+            }
+            try {
+                c.sslSocketFactory = tls
+                c.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                c.instanceFollowRedirects = false
+                c.connectTimeout = 1500
+                c.readTimeout = 2000
+                c.useCaches = false
+                c.requestMethod = "POST"
+                c.setRequestProperty("Authorization", "Bearer $token")
+                c.setRequestProperty("X-PhoneBox-Device", deviceId)
+                c.setRequestProperty("X-PhoneBox-Model", deviceModel)
+                c.setRequestProperty("X-Camera-Action", action)
+                c.setRequestProperty("X-Camera-Request", id)
+                c.setRequestProperty("X-Camera-Session", session)
+                c.setRequestProperty("X-Camera-Rotation", rotation.toString())
+                c.setRequestProperty("Content-Type", if (bytes == null) "application/octet-stream" else "image/jpeg")
+                c.doOutput = true
+                c.setFixedLengthStreamingMode(bytes?.size ?: 0)
+                c.outputStream.use { if (bytes != null) it.write(bytes) }
+                if (c.responseCode != 200) throw java.io.IOException("Camera session ended")
+                return c.inputStream.bufferedReader().use { it.readText() }
+            } finally { c.disconnect(); if (connection === c) connection = null }
+        }
+        fun cancel() { synchronized(cameraLock) { cancelled = true; connection?.disconnect() } }
+    }
+
+    internal fun cameraTarget(): CameraTarget? = when (route) {
+        Route.USB -> UsbKey.pin(context)?.let { pin -> CameraTarget(pin,
+            pcs.firstOrNull { it.id == pin }?.name ?: "USB computer", USB_BASE, UsbKey.get(context), Route.USB) }
+        Route.WIFI -> activePc()?.let { pc -> pc.hosts.getOrNull(preferredHost)?.let { host ->
+            CameraTarget(pc.id, pc.name, "https://$host:${pc.port}", pc.token, Route.WIFI) } }
+        else -> null
+    }
+
     /** The paired computers for the panel: [{"id", "name", "active"}]. */
     fun pcsJson(): String {
         val active = activePc()?.id

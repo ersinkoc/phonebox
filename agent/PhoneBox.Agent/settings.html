@@ -624,6 +624,31 @@ nav a.on::before { color: var(--accent); }
       </div>
 
       <div class="card">
+        <h3>Phone as webcam</h3>
+        <p class="hint">Request video from a connected phone. The phone must approve each session. Video only; PhoneBox does not record it. Applications on this computer can record received video. Leaving PhoneBox or locking the phone stops sharing.</p>
+        <p class="hint">On Windows 11 x64, install the camera component once (Windows asks for administrator approval), then enable it and select <b>PhoneBox Camera</b> in your calling app. Enabling the virtual camera does not turn on the phone camera.</p>
+        <div class="row" id="nativeCameraControls" hidden>
+          <button class="btn sm" type="button" id="nativeCameraInstall" disabled>Install component</button>
+          <button class="btn sm" type="button" id="nativeCameraEnable" disabled>Enable PhoneBox Camera</button>
+          <button class="btn sm" type="button" id="nativeCameraDisable" disabled>Disable virtual camera</button>
+          <button class="btn sm danger" type="button" id="nativeCameraUninstall" disabled>Remove component</button>
+        </div>
+        <p class="hint" id="nativeCameraStatus" role="status">Checking native camera support…</p>
+        <div class="row">
+          <select id="phoneCameraDevice" aria-label="Camera phone"></select>
+          <button class="btn sm" type="button" id="phoneCameraRequest">Request camera</button>
+          <button class="btn sm danger" type="button" id="phoneCameraStop">Stop</button>
+          <span class="hint" id="phoneCameraStatus" role="status">Camera off</span>
+        </div>
+        <p class="hint">Video only · up to 720p / 10 fps. Keep PhoneBox open on the phone. Enable PhoneBox Camera again after restarting the desktop agent.</p>
+        <a href="/phone-camera" target="_blank" rel="noopener">Open camera preview</a>
+        <details id="phoneCameraObs"><summary>Optional OBS output (Windows 10, Linux and macOS)</summary>
+        <p class="hint">In OBS add a Browser source with this address (1280 × 720), then Start Virtual Camera. Select OBS Virtual Camera in your calling app.</p>
+        <input id="phoneCameraUrl" type="text" readonly aria-label="OBS Browser source address" style="width:100%">
+        </details>
+      </div>
+
+      <div class="card">
         <h3 data-i18n="s.camera.title">Cameras</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.camera.hint">IP cameras for the Camera widget: a name and the camera’s RTSP address (rtsp://user:password@address:554/…, from its manual or app). This computer pulls a camera with ffmpeg only while a Camera widget shows it, and sends the phone a few pictures a second (set next to each camera). The addresses stay on this computer, but while a camera runs they are visible in its process list.</p>
         <div class="field"><label data-i18n="s.camera.ffmpeg">ffmpeg (full path; empty = find it in PATH)</label>
@@ -2473,6 +2498,70 @@ $('feedAdd').onclick = () => {
 };
 $('feedImport').onclick = openFeedImportModal;
 // ---------------------------------------------------------------- cameras
+// Transient camera consent is deliberately separate from saved settings.
+let nativeCameraBusy = false;
+async function nativeCameraRefresh() {
+  try {
+    const r = await fetch('/api/phone-camera/native');
+    if (!r.ok) throw new Error();
+    const state = await r.json(), busy = nativeCameraBusy || state.busy;
+    $('nativeCameraControls').hidden = !state.supported;
+    $('nativeCameraInstall').textContent = state.installed ? 'Update component' : 'Install component';
+    $('nativeCameraInstall').disabled = busy || !state.packaged || state.running;
+    $('nativeCameraEnable').disabled = busy || !state.installed || state.running;
+    $('nativeCameraDisable').disabled = busy || !state.running;
+    $('nativeCameraUninstall').disabled = busy || !state.installed || state.running;
+    $('nativeCameraStatus').textContent = state.error || (busy ? 'Camera operation in progress…' : !state.supported
+      ? 'Native camera requires Windows 11 x64. OBS output is available below.'
+      : state.running ? 'PhoneBox Camera is available to calling apps. Phone approval is still required for video.'
+      : state.installed ? 'Component installed. Enable PhoneBox Camera for this agent session.'
+      : state.packaged ? 'Install the component to use PhoneBox Camera without OBS.' : 'This agent package does not include the native camera component.');
+  } catch (_) { $('nativeCameraStatus').textContent = 'Native camera status unavailable'; }
+}
+async function nativeCameraAction(action) {
+  if (nativeCameraBusy) return;
+  nativeCameraBusy = true;
+  for (const id of ['Install', 'Enable', 'Disable', 'Uninstall']) $('nativeCamera' + id).disabled = true;
+  $('nativeCameraStatus').textContent = action === 'install' || action === 'uninstall'
+    ? 'Waiting for Windows administrator approval and camera setup…' : 'Updating virtual camera…';
+  try {
+    const r = await fetch('/api/phone-camera/native/' + action, { method: 'POST' });
+    if (!r.ok) toast((await r.json()).error || 'Camera operation failed');
+  } catch (_) { toast('Cannot reach the agent'); }
+  finally { nativeCameraBusy = false; await nativeCameraRefresh(); await phoneCameraRefresh(); }
+}
+for (const action of ['install', 'enable', 'disable', 'uninstall'])
+  $('nativeCamera' + action[0].toUpperCase() + action.slice(1)).onclick = () => nativeCameraAction(action);
+nativeCameraRefresh();
+setInterval(() => { if (!document.hidden) nativeCameraRefresh(); }, 3000);
+$('phoneCameraUrl').value = `${location.origin}/phone-camera`;
+async function phoneCameraRefresh() {
+  try {
+    const [phones, status] = await Promise.all([
+      fetch('/api/phones').then(r => r.json()), fetch('/api/phone-camera/status').then(r => r.json())]);
+    const select = $('phoneCameraDevice'), previous = select.value;
+    select.replaceChildren(...phones.filter(p => p.lastSeen && Date.now() - p.lastSeen < 15000)
+      .map(p => h('option', { value: p.id }, p.name || p.model || p.id)));
+    if ([...select.options].some(o => o.value === previous)) select.value = previous;
+    $('phoneCameraStatus').textContent = status.state === 'live' ? 'Sharing video' : status.state === 'waiting' ? 'Waiting for phone approval (30 seconds)' : 'Camera off';
+    $('phoneCameraRequest').disabled = !select.value || status.state !== 'off';
+    $('phoneCameraStop').disabled = status.state === 'off';
+  } catch (_) { $('phoneCameraStatus').textContent = 'Camera status unavailable'; }
+}
+$('phoneCameraRequest').onclick = async () => {
+  try {
+    const r = await fetch(`/api/phone-camera/request?device=${encodeURIComponent($('phoneCameraDevice').value)}`, { method: 'POST' });
+    if (!r.ok) toast('Phone unavailable or camera already requested');
+  } catch (_) { toast('Cannot reach the agent'); }
+  await phoneCameraRefresh();
+};
+$('phoneCameraStop').onclick = async () => {
+  try { await fetch('/api/phone-camera/stop', { method: 'POST' }); } catch (_) { toast('Cannot reach the agent'); }
+  await phoneCameraRefresh();
+};
+phoneCameraRefresh();
+setInterval(() => { if (!document.hidden) phoneCameraRefresh(); }, 3000);
+
 // Ids are made here, not from the name: a widget points at its camera by id, so renaming one keeps its widgets.
 const cameraId = () => Array.from({ length: 12 }, () => '0123456789abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 36)]).join('');
 function renderCameras() {

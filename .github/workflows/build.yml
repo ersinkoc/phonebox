@@ -101,6 +101,10 @@ jobs:
           python3 tools/test-unix-autostart.py /bin/bash
           python3 tools/test-unix-uninstall.py
       # the same build as the release (release.yml), so a pull request runs what ships
+      - name: Build and test native Windows camera
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: ./tools/build-native-camera.ps1 -Test
       - name: Publish agent (self-contained, single file)
         run: dotnet publish agent/PhoneBox.Agent -c Release -f ${{ matrix.tfm }} -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -o out --nologo
       # The release signs with PhoneBox's own certificate (#269); here the same action signs with a throwaway one, so

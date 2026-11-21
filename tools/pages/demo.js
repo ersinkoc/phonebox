@@ -613,6 +613,11 @@
       if (a === 'mute') dc.muted = !dc.muted; else if (a === 'deafen') dc.deaf = !dc.deaf; else if (a === 'leave') dc.in = null; else if (a === 'join') dc.in = q.get('channel'); else return json({ error: 'unknown action' }, 400);
       return json({ ok: true });
     }
+    if (path === '/api/phone-camera/status') return json({ state: 'off', device: null });
+    if (path === '/api/phone-camera/native') return json({ supported: false, packaged: false, installed: false, running: false, busy: false, error: null });
+    if (path.startsWith('/api/phone-camera/native/')) return json({ error: 'A real Windows agent is needed for the native camera' }, 400);
+    if (path === '/api/phone-camera/request') return json({ error: 'A real phone and agent are needed for camera sharing' }, 409);
+    if (path === '/api/phone-camera/stop') return json({ ok: true });
     if (path === '/api/phones') return json([
       { id: '3f9a1c0d7b2e', model: 'UMIDIGI BISON', lastSeen: now() - 2000, via: 'USB', webView: 'com.google.android.webview/134.0.6998.135', webviewProblem: null, name: null, pages: null },
       { id: 'c81e728d9d4c', model: 'samsung SM-X200', lastSeen: now() - 140000, via: 'Wi-Fi', webView: 'com.google.android.webview/134.0.6998.135', webviewProblem: null, name: null, pages: null },
