@@ -45,7 +45,7 @@ people who proposed or prototyped something are credited in the [changelog](../C
 - **Phone flashlight from the night screen** ([#369](https://github.com/ersinkoc/phonebox/issues/369)): a torch icon,
   off by default, that turns on the phone's flash through Android's `CameraManager.setTorchMode` (no camera
   permission) or fills the screen with white at full brightness; it turns off with a tap, after a set time, or when
-  the app leaves the screen.
+  the app leaves the screen or the screen goes off.
 - **Named quota accounts through ai-usagebar** ([#371](https://github.com/ersinkoc/phonebox/issues/371)), after #351:
   an opt-in quota source, off by default, that runs `ai-usagebar usage --json` as a fixed command without a shell,
   with a timeout and an output cap, and shows accounts such as `claude@personal` and `claude@work` as separate cards.
