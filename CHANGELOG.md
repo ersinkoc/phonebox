@@ -13,6 +13,10 @@
   turn is running. Off by default (**Settings › General › Antigravity sessions**), and chat titles reach the phone only
   with their own switch on. The agent reads the local transcripts for their step metadata only; prompts, replies and
   tool arguments are never kept or sent (#341, [blx10](https://github.com/blx10)).
+- Discord: the login no longer fails with "Redirect URI cannot be used in the RPC OAuth2 Authorization flow". The
+  request to the Discord app asks for a code (`response_type: code`) instead of naming the redirect, which Discord
+  allows only over its WebSocket transport. `http://127.0.0.1` has to be the first redirect of the Discord application
+  (#338, #343, [NAWAF-Techpro](https://github.com/NAWAF-Techpro), [xynnpg](https://github.com/xynnpg)).
 
 **Setup**
 - Windows: setup adds PhoneBox to the Start Menu, so it can be started again after **Quit** without the autostart

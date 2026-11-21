@@ -15,7 +15,9 @@ PhoneBox agent. Windows, macOS and Linux work through Discord's local socket; th
 1. Open the [Discord Developer Portal](https://discord.com/developers/applications) and sign in.
 2. Click **New Application**, name it (for example `PhoneBox`), accept the terms and click **Create**.
 3. In the left menu open **OAuth2**.
-4. Under **Redirects** click **Add Redirect**, enter exactly `http://127.0.0.1` and click **Save Changes**.
+4. Under **Redirects** click **Add Redirect**, enter exactly `http://127.0.0.1` and click **Save Changes**. If the
+   application has other redirects, `http://127.0.0.1` must be the first one: Discord's desktop app uses the first
+   redirect for the login.
 5. On the same page copy the **Client ID**. Click **Reset Secret** to show the **Client Secret** and copy it too.
    Discord shows the secret only once; if you lose it, reset it again.
 
@@ -53,7 +55,7 @@ never sent to the phone. See the Discord row in [PRIVACY.md](../PRIVACY.md) for 
 | Problem | What to try |
 |---|---|
 | Widget says Discord is not connected | Start the Discord desktop app, then wait a few seconds; the agent retries on its own |
-| "Invalid redirect" or similar login error | The redirect must be exactly `http://127.0.0.1` (no trailing slash, no port) |
+| "Invalid redirect" or similar login error | The redirect must be exactly `http://127.0.0.1` (no trailing slash, no port), and the first one in the list |
 | Discord refuses the login | Add your account under **App Testers** in the Developer Portal |
 | Login keeps failing after changing the secret | Paste the new secret in Settings; delete `discord-token.json` next to `config.json` to force a fresh login |
 | Only some servers appear | The widget lists voice channels of the first 60 servers Discord reports, so servers beyond that do not appear. For fewer than 60: the list comes from the Discord app and is retried every minute, so wait a little or restart Discord |

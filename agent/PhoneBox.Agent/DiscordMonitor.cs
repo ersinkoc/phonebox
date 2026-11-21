@@ -198,14 +198,17 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
     }
 
     /// <summary>
-    /// The AUTHORIZE request. It names the same redirect as the token exchange: Discord refuses an AUTHORIZE without one
-    /// (<c>invalid_request: Missing "redirect_uri"</c>), even though the code comes back over IPC, not to the redirect.
+    /// The AUTHORIZE request over Discord's local socket. Without <c>response_type</c> Discord answers
+    /// <c>invalid_request: Missing "redirect_uri"</c> (#316), and <c>redirect_uri</c> itself is only allowed over the
+    /// WebSocket transport: over IPC it is refused with "Redirect URI cannot be used in the RPC OAuth2 Authorization
+    /// flow" (#338, #343). With <c>response_type: code</c> and no redirect, Discord uses the application's first
+    /// registered redirect, which the token exchange then names (<see cref="Redirect"/>).
     /// </summary>
     internal static JsonObject AuthorizeArgs(string? clientId) => new()
     {
         ["client_id"] = clientId,
+        ["response_type"] = "code",
         ["scopes"] = new JsonArray(Scopes.Select(s => (JsonNode)s).ToArray()),
-        ["redirect_uri"] = Redirect,
     };
 
     private async Task<string> Auth(string token, CancellationToken ct)

@@ -338,11 +338,13 @@ public sealed class DiscordTests : IDisposable
 
     // --config with a settings file named like the login file: saving a login must not replace the settings.
     [Fact]
-    public void Authorize_names_the_redirect_the_token_exchange_uses()
+    public void Authorize_asks_for_a_code_without_naming_a_redirect()
     {
+        // over IPC Discord refuses redirect_uri (#338, #343), and without response_type it asks for one (#316)
         var args = DiscordMonitor.AuthorizeArgs("123");
         Assert.Equal("123", args["client_id"]!.GetValue<string>());
-        Assert.Equal("http://127.0.0.1", args["redirect_uri"]!.GetValue<string>());
+        Assert.Equal("code", args["response_type"]!.GetValue<string>());
+        Assert.False(args.ContainsKey("redirect_uri"));
         Assert.Contains("rpc", args["scopes"]!.AsArray().Select(s => s!.GetValue<string>()));
     }
 
