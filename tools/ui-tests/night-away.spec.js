@@ -77,6 +77,25 @@ test('a touch wakes the panel, then the night screen returns while still away', 
   await expect(body(page)).toHaveClass(/night/);
 });
 
+test('a panel that has never reached the computer keeps showing how to connect', async ({ page }) => {
+  // midday, so the default night hours (00:30-07:30) of a panel without a config don't apply
+  await page.clock.install({ time: new Date('2026-11-21T12:00:00') });
+  // the agent is unreachable from the first request: the demo installs its fetch while loading, so wrap whatever it sets
+  await page.addInitScript(() => {
+    try { localStorage.clear(); } catch (_) {}
+    let inner = window.fetch;
+    const down = (url, init) => String(url).includes('/api/') ? Promise.reject(new TypeError('Failed to fetch')) : inner(url, init);
+    Object.defineProperty(window, 'fetch', { configurable: true, get: () => down, set: (f) => { inner = f; } });
+  });
+  await page.goto('/panel/');
+  await page.clock.fastForward(2_000);
+  await expect(body(page)).toHaveClass(/offline/);
+  await page.clock.fastForward(300_000);
+  await expect(body(page)).toHaveClass(/offline/);
+  await expect(body(page)).not.toHaveClass(/night/);
+  await expect(page.locator('.offline-msg')).toBeVisible();
+});
+
 test('turned off, being away never brings the night screen', async ({ page }) => {
   await show(page, { nightWhenAway: false });
   await away(page, true);
