@@ -12,7 +12,7 @@ using System.Xml.Linq;
 namespace PhoneBox.Agent;
 
 /// <summary>One headline. <see cref="Link"/> stays on this computer: the phone opens an item by its id.</summary>
-public sealed record FeedItem(string Id, string Title, string Source, long Published, [property: JsonIgnore] string? Link)
+public sealed record FeedItem(string Id, string Title, string Source, long Published, [property: JsonIgnore] string? Link, string Category = "")
 {
     public bool Openable => Link is not null;
 }
@@ -135,7 +135,8 @@ public sealed class FeedMonitor(ConfigStore config, ILogger<FeedMonitor> log) : 
             {
                 if (!_feeds.TryGetValue(src.Url, out var st)) continue;
                 var name = NameOf(src);
-                items.AddRange(st.Items.Select(i => i with { Source = name }));
+                var category = src.Category?.Trim() ?? "";
+                items.AddRange(st.Items.Select(i => i with { Source = name, Category = category }));
                 if (st.Error is { } e) errors.Add($"{name}: {e}");
             }
         // newest first; undated items keep their feed order after the dated ones

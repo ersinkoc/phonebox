@@ -423,6 +423,7 @@ public sealed class FeedSource
 {
     public string Name { get; set; } = "";
     public string Url { get; set; } = "";
+    public string Category { get; set; } = "";
 }
 
 public sealed class CalendarSource
@@ -750,7 +751,14 @@ public sealed partial class ConfigStore(string path)
         c.Photos.ImmichKey = Cap(new string((c.Photos.ImmichKey ?? "").Where(ch => !char.IsControl(ch)).ToArray()).Trim(), 256);
         c.Photos.ImmichAlbum = Cap((c.Photos.ImmichAlbum ?? "").Trim(), 64);
         c.Photos.ImmichAlbumName = Cap((c.Photos.ImmichAlbumName ?? "").Trim(), 200);
-        foreach (var f in c.Feeds) { var n = f.Name?.Trim() ?? ""; f.Name = n.Length > 60 ? n[..60] : n; f.Url = f.Url?.Trim() ?? ""; }
+        foreach (var f in c.Feeds)
+        {
+            var n = f.Name?.Trim() ?? "";
+            f.Name = n.Length > 60 ? n[..60] : n;
+            f.Url = f.Url?.Trim() ?? "";
+            var cat = f.Category?.Trim() ?? "";
+            f.Category = cat.Length > 40 ? cat[..40] : cat;
+        }
         c.Cameras ??= new();
         c.Cameras.Ffmpeg = (c.Cameras.Ffmpeg ?? "").Trim() is { Length: > 1024 } longFfmpeg ? longFfmpeg[..1024] : (c.Cameras.Ffmpeg ?? "").Trim();
         // a row left empty in the editor is dropped; ids are random and kept, so widgets keep pointing at the same camera

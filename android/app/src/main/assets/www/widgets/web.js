@@ -46,6 +46,7 @@ W.feeds = {
   needs: ['tick'],
   create(box, { o }) {
     const only = String(o.feed || '').trim().toLowerCase();
+    const onlyCat = String(o.category || '').trim().toLowerCase();
     const showSource = o.showSource !== false, showTime = o.showTime !== false;
     const lineCount = ['2', '3'].includes(String(o.lines)) ? +o.lines : 1;
     const list = h('div', 'fd-list', h('div', 'empty', t('w.loading')));
@@ -73,7 +74,11 @@ W.feeds = {
       finally { clearTimeout(timer); busy = null; }
     };
     const render = () => {
-      const items = (data?.items || []).filter((i) => !only || i.source.toLowerCase() === only).slice(0, FEEDS_SHOWN);
+      const items = (data?.items || []).filter((i) => {
+        if (only && i.source.toLowerCase() !== only) return false;
+        if (onlyCat && (i.category || '').toLowerCase() !== onlyCat) return false;
+        return true;
+      }).slice(0, FEEDS_SHOWN);
       const canOpen = o.open === true && !!data?.canOpen;
       const read = feedsRead();
       const key = JSON.stringify([!!data, canOpen, items.map((i) => i.id + (read.has(i.id) ? '.' : '')), data?.errors, Math.floor(Date.now() / 60_000)]);
@@ -84,7 +89,8 @@ W.feeds = {
       sub.title = err.join('\n');
       if (!data) return;
       if (!items.length) {
-        list.replaceChildren(h('div', 'empty', err.length ? err[0] : data.updated && (data.items || []).length ? t('w.feeds.noneFrom', { name: o.feed }) : t('w.feeds.addInSettings')));
+        const filterName = o.category && o.feed ? `${o.category} · ${o.feed}` : (o.category || o.feed);
+        list.replaceChildren(h('div', 'empty', err.length ? err[0] : data.updated && (data.items || []).length ? t('w.feeds.noneFrom', { name: filterName }) : t('w.feeds.addInSettings')));
         return;
       }
       // the list is rebuilt every minute (the ages): keep where it was scrolled to
