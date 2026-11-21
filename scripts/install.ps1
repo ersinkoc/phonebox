@@ -56,12 +56,17 @@ Remove-Item (Join-Path $startup 'DeskAgent.lnk') -ErrorAction SilentlyContinue
 $programs = [Environment]::GetFolderPath('Programs')
 if ($programs -and (Test-Path $programs)) {
     Write-Host '==> Adding Start Menu shortcut'
-    $shell = New-Object -ComObject WScript.Shell
-    $lnk = $shell.CreateShortcut((Join-Path $programs 'PhoneBox.lnk'))
-    $lnk.TargetPath = $exe
-    $lnk.WorkingDirectory = $app
-    $lnk.Description = 'PhoneBox agent'
-    $lnk.Save()
+    # a shortcut that cannot be written must not stop the script before the agent is started again
+    try {
+        $shell = New-Object -ComObject WScript.Shell
+        $lnk = $shell.CreateShortcut((Join-Path $programs 'PhoneBox.lnk'))
+        $lnk.TargetPath = $exe
+        $lnk.WorkingDirectory = $app
+        $lnk.Description = 'PhoneBox agent'
+        $lnk.Save()
+    } catch {
+        Write-Warning "Could not create the Start Menu shortcut: $($_.Exception.Message)"
+    }
 }
 
 if ($Autostart) {
