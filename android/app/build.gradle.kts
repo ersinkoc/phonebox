@@ -19,6 +19,7 @@ android {
         targetSdk = 35
         versionCode = 44
         versionName = "0.9.23"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -60,4 +61,6 @@ android {
 
 dependencies {
     implementation("androidx.webkit:webkit:1.12.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }

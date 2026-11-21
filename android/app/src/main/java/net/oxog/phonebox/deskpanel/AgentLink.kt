@@ -239,7 +239,7 @@ class AgentLink(private val context: Context) {
             try {
                 val c = URL("https://${hosts[i]}:$port$pathAndQuery").openConnection() as HttpsURLConnection
                 c.sslSocketFactory = f
-                c.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true } // identity is the pinned certificate
+                c.hostnameVerifier = PINNED_HOSTNAME_VERIFIER // identity is the pinned certificate
                 c.connectTimeout = 1500
                 c.setRequestProperty("Authorization", "Bearer $token")
                 val r = send(c, method, readTimeout, body, contentType)
@@ -444,7 +444,7 @@ class AgentLink(private val context: Context) {
                 val c = URL("https://$host:${link.port}/api/pair/claim").openConnection() as HttpsURLConnection
                 c.instanceFollowRedirects = false
                 c.sslSocketFactory = pinned
-                c.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true } // identity is the pinned certificate
+                c.hostnameVerifier = PINNED_HOSTNAME_VERIFIER // identity is the pinned certificate
                 c.connectTimeout = 3000
                 c.readTimeout = 8000
                 c.requestMethod = "POST"
@@ -492,6 +492,11 @@ class AgentLink(private val context: Context) {
     }
 
     companion object {
+        // Android keys HTTPS connection reuse on verifier identity as well as the socket factory.
+        // A fresh SAM/lambda per request prevents reuse and exhausts descriptors on Android 6.
+        // Only use this with pinnedFactory: the pinned certificate, not its hostname, is the identity.
+        private val PINNED_HOSTNAME_VERIFIER = javax.net.ssl.HostnameVerifier { _, _ -> true }
+
         private const val USB_BASE = "http://127.0.0.1:8765"
         /** The agent sends "state" every second, so a silent connection for this long is dead. */
         private const val STREAM_READ_TIMEOUT = 8000
