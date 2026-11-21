@@ -172,7 +172,7 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
 - **General**: weather location search, the temperature unit (°C or °F) and the forecast model; calendars (ICS links from Google, Outlook or iCloud), Home Assistant and OBS
   connections; night mode; theme and accent colour, orientation (landscape, portrait or follow the phone), clock seconds,
   vibration, the message when a session finishes, volume-key paging and the phone's sensors (brightness that follows the room, the night screen when the
-  room goes dark, wave to wake it); the night screen when the computer has been away for 2 minutes (on by default),
+  room goes dark, wave to wake it); the night screen when the computer has not been connected for 2 minutes (on by default),
   so a phone on a powered hub doesn't stay bright while the computer is off; [OLED burn-in protection](#appearance); [page switching](#rules) (home page, countdown, back home after);
   kiosk options (screen pinning, the panel as the phone's home screen so it starts after a reboot, keep the phone
   awake on the charger, open the panel when the phone is plugged in, which you can turn off for a phone you also
