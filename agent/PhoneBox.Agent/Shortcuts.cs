@@ -262,8 +262,7 @@ public static class Shortcuts
                     LockWorkStation();
                     break;
                 case "builtin:monitor-off":
-                    // HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2 = off
-                    PostMessage(0xFFFF, 0x0112, 0xF170, 2);
+                    MonitorOff();
                     break;
                 case "builtin:mute":
                     Keys.Tap(Keys.VK_VOLUME_MUTE);
@@ -370,7 +369,25 @@ public static class Shortcuts
     }
     [DllImport("user32.dll")] private static extern bool AllowSetForegroundWindow(int processId);
     [DllImport("user32.dll")] private static extern bool LockWorkStation();
-    [DllImport("user32.dll")] private static extern bool PostMessage(nint hWnd, uint msg, nint wParam, nint lParam);
+
+    /// <summary>
+    /// Turns the display off with one WM_SYSCOMMAND / SC_MONITORPOWER, sent to a hidden window of the agent's own.
+    /// Broadcasting it (HWND_BROADCAST) put a copy in every top-level window's queue: on a Modern Standby PC the first
+    /// copy sent the PC to standby while the others were still queued, and after the wake each window handled its copy
+    /// and turned the display off again, on and off for about a minute (#335).
+    /// </summary>
+    private static void MonitorOff()
+    {
+        var window = CreateWindowEx(0, "STATIC", "", 0x80000000 /* WS_POPUP, never shown */, 0, 0, 0, 0, 0, 0, 0, 0);
+        if (window == 0) throw new InvalidOperationException($"could not turn the display off (error {Marshal.GetLastPInvokeError()})");
+        try { SendMessage(window, 0x0112 /* WM_SYSCOMMAND */, 0xF170 /* SC_MONITORPOWER */, 2 /* off */); }
+        finally { DestroyWindow(window); }
+    }
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern nint CreateWindowEx(uint exStyle, string className, string windowName, uint style,
+        int x, int y, int width, int height, nint parent, nint menu, nint instance, nint param);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern nint SendMessage(nint hWnd, uint msg, nint wParam, nint lParam);
+    [DllImport("user32.dll")] private static extern bool DestroyWindow(nint hWnd);
 #else
     private static void Unix(string tool, params string[] args)
     {

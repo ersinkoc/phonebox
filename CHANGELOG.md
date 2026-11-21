@@ -7,6 +7,9 @@
   every ten seconds. The agent no longer asks these phones for their `adb reverse` rules (their adb answers with a
   protocol fault and drops the phone, and the phone's own USB dialog covered the panel); it remembers the rule it set,
   and sets it again when the phone is plugged in again (#334, [binhnguyenbinh](https://github.com/binhnguyenbinh)).
+- Turn off the monitor on a Modern Standby PC: after the wake the display no longer goes off and on again for about a
+  minute. The agent now sends the command once, to a hidden window of its own, instead of to every window (#335,
+  [nosmile199x](https://github.com/nosmile199x)).
 
 ## 0.9.25 — 2026-11-21
 
