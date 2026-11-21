@@ -145,7 +145,7 @@ public sealed class AdbReverseTests : IDisposable
     {
         var devices = new[] { "FAKE1", "FAKE2" };
         var path = Path.Combine(_dir, "config.json");
-        var fake = FakeAdb(devices, "", homeRefused: null);
+        var fake = FakeAdb(devices, "", homeRefused: null, reverseRefused: "FAKE1");
         File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false, followComputerLock = false } }));
         var store = new ConfigStore(path);
         Assert.Equal(fake, AdbReverse.FindAdb(store.Get().AdbPath));
@@ -155,12 +155,9 @@ public sealed class AdbReverseTests : IDisposable
         const string first = "-s FAKE1 reverse tcp:8765 tcp:8765";
         const string second = "-s FAKE2 reverse tcp:8765 tcp:8765";
 
-        await Pass();
-        Assert.Contains(first, Calls());
-        Assert.Contains(second, Calls());
-        File.Delete(CallLog);
-
-        FakeAdb(devices, "", homeRefused: null, reverseRefused: "FAKE1");
+        // a phone whose "reverse --list" fails sits out the round: the other phone is still configured and the round
+        // does not end with an error. The failing phone is not asked again (that question is what drops its connection
+        // on Android 5 and 6), so the rule of a phone already set up stays as it is.
         var error = await Record.ExceptionAsync(Pass);
         var calls = Calls();
         var secondConfigured = calls.Contains(second);
@@ -269,6 +266,23 @@ public sealed class AdbReverseTests : IDisposable
         Assert.Contains("-s FAKE1 reverse tcp:8765 tcp:8765", calls);
         Assert.Equal(openOnConnect, calls.Contains("-s FAKE1 shell am start -n net.oxog.phonebox.deskpanel/.MainActivity"));
         Assert.Equal(openOnConnect, calls.Contains("-s FAKE1 shell input keyevent KEYCODE_WAKEUP"));
+    }
+
+    /// <summary>
+    /// Android 5 and 6 (API 21-23) answer "reverse --list" with nothing at all although the adb reverse rule is there
+    /// (their adbd cannot list rules). The rule then looked missing every round and the panel was reopened every round,
+    /// which restarted its data stream: it has to be set up once per connection.
+    /// </summary>
+    [Fact]
+    public async Task APanelIsNotReopenedEveryRoundWhenThePhoneCannotListReverseRules()
+    {
+        var fake = FakeAdb(["FAKE1"], "", homeRefused: null);
+        var calls = await RunUntil(fake, new { adbPath = fake, deviceSerial = "FAKE1",
+                display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect = true } },
+            null, c => c.Count(x => x == "devices") >= 3);
+        Assert.Equal(1, calls.Count(x => x == "-s FAKE1 shell am start -n net.oxog.phonebox.deskpanel/.MainActivity"));
+        // and the rule is set once: setting it again drops the panel's open connection
+        Assert.Equal(1, calls.Count(x => x == "-s FAKE1 reverse tcp:8765 tcp:8765"));
     }
 
     [Fact]

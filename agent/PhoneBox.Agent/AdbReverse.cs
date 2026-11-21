@@ -22,6 +22,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private string TargetRule => $"tcp:{usb?.Port ?? endpoint?.Port ?? 8765}";
     private readonly Dictionary<string, long> _keyTriedAt = []; // serial -> when its key was last asked for (Ensure only)
     private readonly HashSet<string> _oldApp = [];              // phones already told that their app is too old
+    private readonly HashSet<string> _reverseSet = [];          // phones whose reverse rule this agent set (or believes set)
+    private readonly HashSet<string> _reverseListUnsupported = []; // adbd that cannot answer "reverse --list" (Android 5 and 6)
     internal const long KeyRetryMs = 30_000;
     // asked again now and then even when known: an app whose data was cleared has a new key and no pin, and can't say so
     internal const long KeyRefreshMs = 120_000;
@@ -147,15 +149,22 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         var unreachable = new HashSet<string>();
         foreach (var d in devices)
         {
-            string list;
-            try { list = await Adb(adb, $"-s {d} reverse --list", ct); }
-            catch (Exception ex) when (ex is IOException or TimeoutException)
+            // adbd on Android 5 and 6 (API 21-23) answers "reverse --list" with "protocol fault", and adb drops and
+            // re-attaches the phone when that happens (the phone's own USB dialog then covers the panel): ask once and
+            // leave it alone, tracking the rule here instead.
+            var list = "";
+            if (!_reverseListUnsupported.Contains(d))
             {
-                log.LogWarning("{Device}: could not list adb reverse rules ({Message})", d, ex.Message);
-                unreachable.Add(d);
-                continue;
+                try { list = await Adb(adb, $"-s {d} reverse --list", ct); }
+                catch (Exception ex) when (ex is IOException or TimeoutException)
+                {
+                    log.LogWarning("{Device}: could not list adb reverse rules ({Message}); not asking again", d, ex.Message);
+                    _reverseListUnsupported.Add(d);
+                    unreachable.Add(d);
+                    continue;
+                }
             }
-            var ruled = HasOwnRule(list);
+            var ruled = _reverseListUnsupported.Contains(d) ? _reverseSet.Contains(d) : HasOwnRule(list);
             var keyed = usb is null || KeyAskedRecently(d, usb.HasKey(d) && !refreshKeys ? KeyRefreshMs : KeyRetryMs);
             if (ruled && keyed && !_missingApp.Contains(d)) continue;
             // is the app there at all? (the agent may have been installed on its own, with winget or Scoop)
@@ -164,10 +173,17 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (!installed) { Report($"{d}: the PhoneBox app is not installed (Settings › General › Install the phone app)"); continue; }
             if (!keyed) await ReadKeyAsync(adb, d, ct);
             if (ruled) continue;
+            if (_reverseSet.Contains(d))
+            {
+                // This agent set the rule already. Setting the same rule again drops the connection the panel has open,
+                // and an old adbd (Android 5 and 6) lists no rules at all, so the rule looks missing every round.
+                continue;
+            }
             // the phone had a rule already: this agent restarted (its USB port changed), the phone was not plugged in now
-            var restarted = HasAnyRule(list);
+            var moved = HasAnyRule(list);
             await Adb(adb, $"-s {d} reverse {Rule} {TargetRule}", ct);
-            if (restarted) { log.LogInformation("{Device}: adb reverse moved to this agent", d); continue; }
+            _reverseSet.Add(d);
+            if (moved) { log.LogInformation("{Device}: adb reverse moved to this agent", d); continue; }
             // A newly plugged-in phone must not light up while the computer is locked.
             if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
             {
@@ -259,6 +275,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private void SetDevices(string[] devices)
     {
         _awakeSet.IntersectWith(devices);
+        _reverseSet.IntersectWith(devices); // plugged in again: the rule has to be set again
         var changed = string.Join(",", devices) != string.Join(",", _devices);
         _devices = devices;
         if (changed) StateChanged?.Invoke();
