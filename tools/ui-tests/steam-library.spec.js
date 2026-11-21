@@ -84,6 +84,18 @@ test('with starting turned on, the first tap arms a game and the second starts i
   expect(errors).toEqual([]);
 });
 
+test('a keyboard user keeps the focus on the tile and confirms with a second Enter', async ({ page }) => {
+  await open(page, '/panel/', { allowLaunch: true });
+  const tile = page.locator('.w-steam-library .sl-tile').nth(1);
+  await tile.focus();
+  await page.keyboard.press('Enter');
+  await expect(tile).toHaveClass(/armed/);
+  await expect(tile).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(toast(page, 'Starting Starfall Tactics')).toBeVisible();
+  await expect(tile).toBeFocused();
+});
+
 test('the option on a widget of a disabled page does not let the phone start games', async ({ page }) => {
   await page.goto('/panel/');
   await page.evaluate(async () => {

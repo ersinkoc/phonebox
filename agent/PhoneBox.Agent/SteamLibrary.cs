@@ -415,14 +415,18 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
         return new SteamGame(id!, name, app.Long("LastPlayed"), Math.Round(app.Long("SizeOnDisk") / 1e9, 1), state, progress, false);
     }
 
-    /// <summary>A manifest's StateFlags as the widget shows them, with the download's progress when Steam reports one.</summary>
+    /// <summary>
+    /// A manifest's StateFlags (Steam's EAppState bits) as the widget shows them, with the download's progress when Steam
+    /// reports one. A pause being applied (UpdateStopping) already shows as paused.
+    /// </summary>
     internal static (string State, double? Progress) StateOf(long flags, long toDownload, long downloaded)
     {
-        const long UpdateRequired = 2, FullyInstalled = 4, UpdateRunning = 256, UpdatePaused = 512, UpdateStarted = 1024,
-            Validating = 16384, AddingFiles = 32768, Preallocating = 65536, Downloading = 131072, Staging = 262144, Committing = 524288;
+        const long UpdateRequired = 1 << 1, FullyInstalled = 1 << 2, UpdateRunning = 1 << 8, UpdatePaused = 1 << 9, UpdateStarted = 1 << 10,
+            Reconfiguring = 1 << 16, Validating = 1 << 17, AddingFiles = 1 << 18, Preallocating = 1 << 19, Downloading = 1 << 20,
+            Staging = 1 << 21, Committing = 1 << 22, UpdateStopping = 1 << 23;
         double? progress = toDownload > 0 ? Math.Round(Math.Clamp((double)downloaded / toDownload, 0, 1), 3) : null;
-        if ((flags & UpdatePaused) != 0) return ("paused", progress);
-        if ((flags & (UpdateRunning | UpdateStarted | Validating | AddingFiles | Preallocating | Downloading | Staging | Committing)) != 0)
+        if ((flags & (UpdatePaused | UpdateStopping)) != 0) return ("paused", progress);
+        if ((flags & (UpdateRunning | UpdateStarted | Reconfiguring | Validating | AddingFiles | Preallocating | Downloading | Staging | Committing)) != 0)
             return ("updating", progress);
         if ((flags & UpdateRequired) != 0 || (flags & FullyInstalled) == 0) return ("update", progress);
         return ("ready", null);

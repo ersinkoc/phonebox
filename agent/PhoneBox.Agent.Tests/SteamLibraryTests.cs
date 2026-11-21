@@ -163,8 +163,14 @@ public sealed class SteamLibraryTests : IDisposable
     [InlineData(4L, 0L, 0L, "ready", null)]
     [InlineData(6L, 100L, 0L, "update", 0.0)]
     [InlineData(1026L, 200L, 50L, "updating", 0.25)]
-    [InlineData(4L | 131072L, 1000L, 999L, "updating", 0.999)]
+    [InlineData(4L | 131072L, 1000L, 999L, "updating", 0.999)] // validating
+    [InlineData(4L | 1048576L, 400L, 100L, "updating", 0.25)]   // downloading
+    [InlineData(4L | 2097152L, 400L, 400L, "updating", 1.0)]    // staging
+    [InlineData(4L | 4194304L, 0L, 0L, "updating", null)]        // committing
+    [InlineData(4L | 65536L, 0L, 0L, "updating", null)]          // reconfiguring
     [InlineData(4L | 512L, 10L, 5L, "paused", 0.5)]
+    [InlineData(4L | 8388608L | 1048576L, 10L, 5L, "paused", 0.5)] // a pause being applied
+    [InlineData(4L | 16384L, 0L, 0L, "ready", null)]              // not a state Steam uses
     [InlineData(1L, 0L, 0L, "update", null)]
     public void StateFlagsBecomeWhatTheWidgetShows(long flags, long toDownload, long downloaded, string state, double? progress)
     {

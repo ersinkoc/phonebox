@@ -127,7 +127,10 @@ W['steam-library'] = {
       if (!data.found) { message(t('w.steamlib.notFound')); return; }
       if (data.error && !games.length) { message(t('w.steamlib.unreadable')); return; }
       if (!games.length) { message(t(data.games?.length ? 'w.steamlib.noFavorites' : 'w.steamlib.empty')); return; }
+      // a tile that had the focus (a keyboard or switch user) keeps it in its new copy, so a second Enter confirms
+      const focused = grid.contains(document.activeElement) ? document.activeElement.dataset?.id : null;
       grid.replaceChildren(...games.map(tile));
+      if (focused) grid.querySelector(`.sl-tile[data-id="${CSS.escape(focused)}"]`)?.focus();
     };
     // an update under way is followed every 5 s; otherwise the list changes rarely and is read every 30 s
     let fast = false;
