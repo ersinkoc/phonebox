@@ -93,7 +93,7 @@ Setup downloads the latest release, checks its SHA-256 checksum, offers missing 
 and opens the settings at <http://127.0.0.1:8765>. It can also install the Android app over USB.
 Run setup again to update or repair the installation while keeping settings and pairings.
 
-> **Windows signing:** release agents are currently unsigned while the SignPath Foundation application is pending.
+> **Windows signing:** release agents are still unsigned: SignPath Foundation accepted PhoneBox and test signing works, and releases are signed once its release certificate is issued.
 > SmartScreen or antivirus software may warn or block them. See the [code signing policy](#code-signing-policy)
 > and [installation warnings](docs/SETUP.md#quick-start). USB debugging should be authorized only on computers you trust.
 
@@ -224,7 +224,8 @@ Contributions are welcome; start with [CONTRIBUTING.md](CONTRIBUTING.md).
 Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
 [SignPath Foundation](https://signpath.org/).
 
-- **Windows agent:** the SignPath Foundation application is pending; releases are unsigned until approved.
+- **Windows agent:** SignPath Foundation accepted the project and a test-signed build passed; releases stay unsigned
+  until the Foundation's release certificate is issued.
   The intended signing target is `PhoneBoxAgent.exe` in the `win-x64` release zip, built by the
   [release workflow](.github/workflows/release.yml). Every signing request requires manual approval.
   Bundled runtime and library notices are in [THIRD-PARTY-NOTICES.txt](agent/PhoneBox.Agent/THIRD-PARTY-NOTICES.txt).
