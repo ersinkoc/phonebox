@@ -196,7 +196,7 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
             {
                 try
                 {
-                    var output = await Run(adbExe, ["-s", serial, "install", apk], ct);
+                    var output = await InstallAsync(adbExe, serial, apk, replace: false, ct);
                     if (!output.Contains("Success")) failed.Add($"installing on {serial} failed: {output.Trim().Split('\n').LastOrDefault()}");
                     else log.LogInformation("phone app {Version} installed on {Serial}", _latest.Version, serial);
                 }
@@ -230,7 +230,16 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
         foreach (var serial in targets)
         {
             string output;
-            try { output = await Run(adbExe, ["-s", serial, "install", "-r", apk], ct); }
+            try
+            {
+                // updated another way meanwhile (by hand, or from a store): nothing to install, and no retry left (#353)
+                if (AppCurrentOn(await InstalledDumpAsync(adbExe, serial, ct), _latest.Version))
+                {
+                    log.LogInformation("phone app on {Serial} is already {Version}", serial, _latest.Version);
+                    continue;
+                }
+                output = await InstallAsync(adbExe, serial, apk, replace: true, ct);
+            }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 failed.Add((serial, ex.Message)); // a phone that hangs (time limit) must not cost the others their update
@@ -450,6 +459,38 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
     /// The phones to update: all connected ones, or, when the app the phones report is already current, only those whose
     /// update failed before (AppVersion comes from whichever phone spoke last, so it cannot speak for the others).
     /// </summary>
+    /// <summary>
+    /// "adb install", and once more with --no-streaming when the streamed install failed on its way to the phone. A
+    /// phone whose kernel cannot splice() the streamed APK (a new Android on an old kernel) answers "failed to write;
+    /// splice failed: EINVAL" every time, but installs a pushed APK (#353). A refusal by the package manager
+    /// (INSTALL_FAILED_..., INSTALL_PARSE_FAILED_...) is not a transfer problem and is not tried again.
+    /// </summary>
+    private async Task<string> InstallAsync(string adbExe, string serial, string apk, bool replace, CancellationToken ct)
+    {
+        string[] args = replace ? ["-s", serial, "install", "-r"] : ["-s", serial, "install"];
+        var output = await Run(adbExe, [.. args, apk], ct);
+        if (!RetryWithoutStreaming(output)) return output;
+        log.LogInformation("{Serial}: the streamed install failed ({Why}); trying again without streaming", serial,
+            output.Trim().Split('\n').LastOrDefault());
+        return await Run(adbExe, [.. args, "--no-streaming", apk], ct);
+    }
+
+    /// <summary>"dumpsys package" for the app; empty when the phone does not answer (the install then goes ahead).</summary>
+    private static async Task<string> InstalledDumpAsync(string adbExe, string serial, CancellationToken ct)
+    {
+        try { return await Run(adbExe, ["-s", serial, "shell", "dumpsys", "package", "net.oxog.phonebox.deskpanel"], ct, TimeSpan.FromSeconds(20)); }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { return ""; }
+    }
+
+    internal static bool RetryWithoutStreaming(string output) =>
+        !output.Contains("Success", StringComparison.Ordinal)
+        && !output.Contains("INSTALL_FAILED_", StringComparison.Ordinal)
+        && !output.Contains("INSTALL_PARSE_FAILED_", StringComparison.Ordinal);
+
+    /// <summary>The app's version in "dumpsys package" output is the latest release or newer.</summary>
+    internal static bool AppCurrentOn(string dumpsys, string latest) =>
+        UsbLink.ParseVersionName(dumpsys) is { } installed && !Newer(latest, installed);
+
     internal static string[] PhoneTargets(string[] connected, bool appCurrent, string[] retry) =>
         appCurrent ? connected.Where(retry.Contains).ToArray() : connected;
 

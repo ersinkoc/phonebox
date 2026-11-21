@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Agent**
+- Phone app updates: a phone that cannot take a streamed install (`splice failed: EINVAL`, seen with Android 15 on a
+  3.10 kernel) is tried once more without streaming, and a phone whose app was updated another way no longer keeps
+  "Update available" on until the agent restarts (#353, [MU74NTLabs](https://github.com/MU74NTLabs)).
+
 ## 0.9.27 — 2026-11-21
 
 The Discord login works again, nine new languages (23 in all, Arabic right to left), Discord shows who is speaking,

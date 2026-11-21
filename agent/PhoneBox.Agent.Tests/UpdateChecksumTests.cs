@@ -170,6 +170,30 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
     }
 
     [Fact]
+    public void AStreamedInstallThatFailsInTransferIsTriedAgainWithoutStreaming()
+    {
+        // a new Android on an old kernel cannot splice() the streamed APK; a pushed one installs (#353)
+        Assert.True(UpdateService.RetryWithoutStreaming(
+            "Performing Streamed Install\nadb.exe: failed to install PhoneBox.apk: Error: failed to write; splice failed: EINVAL (Invalid argument)\n"));
+        Assert.False(UpdateService.RetryWithoutStreaming("Performing Streamed Install\nSuccess\n"));
+        // refusals by the package manager are not a transfer problem
+        Assert.False(UpdateService.RetryWithoutStreaming("adb: failed to install x.apk: Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]"));
+        Assert.False(UpdateService.RetryWithoutStreaming("Failure [INSTALL_PARSE_FAILED_NOT_APK]"));
+    }
+
+    [Fact]
+    public void APhoneUpdatedAnotherWayIsNotInstalledAgain()
+    {
+        // installed by hand after a failed update: the retry ends without installing, so "update available" clears (#353)
+        const string dump = "Packages:\n  Package [net.oxog.phonebox.deskpanel] (3ec2f24):\n    versionCode=47 minSdk=21 targetSdk=35\n    versionName=0.9.26\n";
+        Assert.True(UpdateService.AppCurrentOn(dump, "0.9.26"));
+        Assert.True(UpdateService.AppCurrentOn(dump.Replace("0.9.26", "0.9.27"), "0.9.26"));
+        Assert.False(UpdateService.AppCurrentOn(dump.Replace("0.9.26", "0.9.25"), "0.9.26"));
+        Assert.False(UpdateService.AppCurrentOn("", "0.9.26"));                   // no answer: install as before
+        Assert.False(UpdateService.AppCurrentOn("Unable to find package", "0.9.26"));
+    }
+
+    [Fact]
     public void APhoneStaysPendingUntilItsOwnUpdateWorks()
     {
         Assert.Equal(["A"], UpdateService.NextPhoneRetry([], attempted: ["A", "B"], failed: ["A"]));
