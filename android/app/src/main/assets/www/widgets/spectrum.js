@@ -2,7 +2,7 @@
 // Frames arrive as "spectrum" stream events (~30 per second, 48 bands of 0–100); this widget merges them into its
 // own number of bars and animates the fall and the peak caps itself, so it stays smooth between frames.
 import { W } from '../registry.js';
-import { h, api, D, emit, streaming, t, pages, curPage } from '../main.js';
+import { h, api, D, emit, streaming, t, pages, curPage, idle } from '../main.js';
 
 const PALETTES = {
   classic: [[0, '#16a34a'], [0.55, '#84cc16'], [0.72, '#facc15'], [0.88, '#f97316'], [1, '#ef4444']],
@@ -25,8 +25,9 @@ window.addEventListener('phonebox-spectrum', (e) => frame(e.detail));
 // Every mounted Spectrum bars widget, with its page. A widget counts as on screen only while it is really visible:
 // not under the night screen, on the current page, and not in a Smart Stack card that is not showing. Mounted is not
 // enough: neighbouring pages and hidden stack cards stay mounted, and asking for them would keep the agent capturing.
+// Nor is a panel nobody can see (idle(): screen off, another app in front, a hidden tab).
 const mountedBars = new Set();
-const shows = (m) => !document.body.classList.contains('night')
+const shows = (m) => !idle() && !document.body.classList.contains('night')
   && m.box.isConnected && pages[curPage] === m.page && !m.box.closest('.stack-item:not(.active)');
 const onScreen = () => [...mountedBars].some(shows);
 

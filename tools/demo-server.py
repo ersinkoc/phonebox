@@ -113,6 +113,10 @@ class Handler(BaseHTTPRequestHandler):
     def handle_any(self):
         u = urlparse(self.path)
         path = u.path
+        # A body this server does not read stays on the connection and would be taken for the next request: refuse it
+        # and close the connection (chunked bodies are not decoded; send the body with a Content-Length).
+        if self.headers.get('Transfer-Encoding') is not None:
+            return self.send(411, 'application/json', b'{"error":"send the body with a Content-Length"}', {'Connection': 'close'})
         body = self.rfile.read(int(self.headers.get('Content-Length') or 0)) or None
         if path == '/demo/events': return self.events()
         if path in ('/panel', '/settings'): return self.send(301, 'text/plain', b'', {'Location': path + '/'})

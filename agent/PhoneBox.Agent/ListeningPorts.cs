@@ -23,7 +23,7 @@ internal static class ListeningPorts
 
     /// <summary>
     /// Lists the loopback (or all-interfaces) TCP listening ports of <paramref name="pid"/>, lowest first; a port open on
-    /// both families is listed once, with IPv4.
+    /// both families is listed twice, IPv4 first, since the two sockets can be different servers.
     /// </summary>
     public static IReadOnlyList<Listener> ForProcess(int pid, int max = DefaultMax)
     {

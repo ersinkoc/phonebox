@@ -1,4 +1,4 @@
-import { API, PANEL_HEADERS, curPage, h, haptic, pages, t, toast } from '../main.js';
+import { API, PANEL_HEADERS, curPage, h, haptic, idle, pages, t, toast } from '../main.js';
 import { W } from '../registry.js';
 
 // ---------------------------------------------------------------- app console
@@ -95,7 +95,8 @@ W['app-console'] = {
     };
 
     let start = null, onKnob = false;
-    const visible = () => !document.body.classList.contains('night') && pages[curPage] === page && !box.closest('.stack-item:not(.active)');
+    // idle(): nobody can see the panel (screen off, another app in front, a hidden tab)
+    const visible = () => !idle() && !document.body.classList.contains('night') && pages[curPage] === page && !box.closest('.stack-item:not(.active)');
     const at = (e) => { const r = dial.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI; };
     dial.onpointerdown = (e) => {
       const r = dial.getBoundingClientRect();
