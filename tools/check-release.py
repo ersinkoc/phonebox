@@ -30,3 +30,61 @@ demo=(root/'tools/pages/demo.js').read_text(encoding='utf-8')
 pages=json.loads(re.search(r'const PAGES = (\[[^\]]*\])',demo)[1].replace("'",'"'))
 assert sorted(pages)==sorted(t['id'] for t in templates),'The demo does not show every template exactly once'
 print(f'PASS: {version}; Android metadata; {len(widgets)} widgets; {len(templates)} templates; README/demo counts')
+
+
+def check_languages():
+    www = root / 'android/app/src/main/assets/www'
+    res = root / 'android/app/src/main/res'
+    agent = root / 'agent/PhoneBox.Agent'
+    source = (www / 'i18n.js').read_text(encoding='utf-8')
+    codes = set(re.findall(r"\{ code: '([\w-]+)'", source))
+    assert 'en' in codes
+    config = (agent / 'Config.cs').read_text(encoding='utf-8')
+    saved_codes = re.search(r'Languages = \[([^\]]+)\]', config)[1]
+    assert set(re.findall(r'"([\w-]+)"', saved_codes)) == codes | {'auto'}
+    culture = {code: 'zh-Hans' if code == 'zh' else code for code in codes}
+    android_config = ET.parse(res / 'xml/locales_config.xml').getroot()
+    assert {n.attrib['{http://schemas.android.com/apk/res/android}name'] for n in android_config} == set(culture.values())
+    csproj = (agent / 'PhoneBox.Agent.csproj').read_text(encoding='utf-8')
+    windows_codes = re.findall(r'<SatelliteResourceLanguages>(.*?)</SatelliteResourceLanguages>', csproj)[-1]
+    assert set(windows_codes.split(';')) == set(culture.values())
+
+    def values(file, element, child=None):
+        return {n.attrib['name']: n.text if child is None else n.findtext(child)
+                for n in ET.parse(file).findall(element)}
+
+    def check_placeholders(english, translated, pattern, code):
+        assert english.keys() == translated.keys(), (code, english.keys() - translated.keys())
+        for key, text in english.items():
+            value = translated[key]
+            assert value and value.strip(), (code, key)
+            assert sorted(re.findall(pattern, text)) == sorted(re.findall(pattern, value)), (code, key)
+
+    android = values(res / 'values/strings.xml', 'string')
+    windows = values(agent / 'TrayStrings.resx', 'data', 'value')
+    android_folders = {'id': 'in', 'pt-BR': 'b+pt+BR', 'zh-Hant': 'zh-rTW'}
+    for code in sorted(codes - {'en'}):
+        folder = android_folders.get(code, code)
+        android_strings = values(res / f'values-{folder}/strings.xml', 'string')
+        tray_strings = values(agent / f'TrayStrings.{culture[code]}.resx', 'data', 'value')
+        check_placeholders(android, android_strings, r'%[0-9]+\$[sd]', code)
+        check_placeholders(windows, tray_strings, r'\{[0-9]+\}', code)
+
+    packs = {p.name for p in www.glob('locale-*.js')}
+    assert packs
+    for page in (www / 'index.html', agent / 'settings.html'):
+        loaded = re.findall(r'<script src="(?:\.\./panel/)?(locale-[\w-]+\.js)">', page.read_text(encoding='utf-8'))
+        assert len(loaded) == len(set(loaded)) and set(loaded) == packs, page
+
+    readmes = {'en': root / 'README.md'}
+    readmes.update({code: root / f'docs/README.{code}.md' for code in codes - {'en'}})
+    assert set((root / 'docs').glob('README.*.md')) == set(readmes.values()) - {readmes['en']}
+    for code, path in readmes.items():
+        content = path.read_text(encoding='utf-8')
+        first_links = re.search(r'<h1[^>]*>PhoneBox</h1>\s*<p[^>]*>(.*?)</p>', content, re.S)[1]
+        links = {(path.parent / href).resolve() for href in re.findall(r'href="([^"]+)"', first_links)}
+        assert links == set(readmes.values()) - {path}, (code, links)
+    print(f'PASS: {len(codes)} interface variants; Android, Windows, and README language lists and native placeholders')
+
+
+check_languages()

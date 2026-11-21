@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+    </resheader>
+    <data xml:space="preserve" name="settings">
+        <value>सेटिंग…</value>
+    </data>
+    <data xml:space="preserve" name="openPanel">
+        <value>फ़ोन पर पैनल खोलें</value>
+    </data>
+    <data xml:space="preserve" name="editConfig">
+        <value>config.json संपादित करें</value>
+    </data>
+    <data xml:space="preserve" name="openLog">
+        <value>लॉग खोलें</value>
+    </data>
+    <data xml:space="preserve" name="autostart">
+        <value>Windows के साथ शुरू करें</value>
+    </data>
+    <data xml:space="preserve" name="quit">
+        <value>बाहर निकलें</value>
+    </data>
+    <data xml:space="preserve" name="connected">
+        <value>फोन कनेक्टेड ({0})</value>
+    </data>
+    <data xml:space="preserve" name="disconnected">
+        <value>कोई फोन जुड़ा नहीं है</value>
+    </data>
+    <data xml:space="preserve" name="tooltipConnected">
+        <value>PhoneBox — फोन जुड़ा</value>
+    </data>
+    <data xml:space="preserve" name="tooltipWaiting">
+        <value>PhoneBox — फोन के लिए प्रतीक्षारत</value>
+    </data>
+    <data xml:space="preserve" name="autostartError">
+        <value>प्रारंभिक शॉर्टकट को बदल नहीं सका: {0}</value>
+    </data>
+</root>

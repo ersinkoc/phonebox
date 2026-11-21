@@ -10,12 +10,22 @@
   <a href="README.es.md">Español</a> ·
   <a href="README.it.md">Italiano</a> ·
   <a href="README.pt.md">Português</a> ·
+  <a href="README.pt-BR.md">Português (Brasil)</a> ·
   <b>Nederlands</b> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
   <a href="README.el.md">Ελληνικά</a> ·
   <a href="README.vi.md">Tiếng Việt</a> ·
-  <a href="README.zh.md">中文 (简体)</a>
+  <a href="README.zh.md">中文 (简体)</a> ·
+  <a href="README.ja.md">日本語</a> ·
+  <a href="README.ko.md">한국어</a> ·
+  <a href="README.id.md">Bahasa Indonesia</a> ·
+  <a href="README.th.md">ไทย</a> ·
+  <a href="README.uk.md">Українська</a> ·
+  <a href="README.hi.md">हिन्दी</a> ·
+  <a href="README.cs.md">Čeština</a> ·
+  <a href="README.ar.md">العربية</a> ·
+  <a href="README.zh-Hant.md">中文（繁體）</a>
 </p>
 
 <p align="center"><b>Verander een oude Android-telefoon in een bureaupaneel voor je computer.</b><br>

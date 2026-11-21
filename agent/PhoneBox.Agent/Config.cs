@@ -165,7 +165,7 @@ public sealed class DisplayConfig
     public string Language { get; set; } = "auto";
     /// <summary>The codes the panel and the settings page are translated into (i18n.js). Casing matters for pt-BR:
     /// it is a distinct entry from pt, not a variant of it, so it must survive a save in this exact form.</summary>
-    internal static readonly string[] Languages = ["auto", "en", "tr", "de", "fr", "es", "it", "pt", "pt-BR", "nl", "pl", "ru", "el", "vi", "zh"];
+    internal static readonly string[] Languages = ["auto", "en", "tr", "de", "fr", "es", "it", "pt", "pt-BR", "nl", "pl", "ru", "el", "vi", "zh", "ja", "ko", "id", "th", "uk", "hi", "cs", "ar", "zh-Hant"];
     public bool ShowSeconds { get; set; } = true;
     /// <summary>false ("14:05", default), true ("2:05 PM") or "auto" (follow the phone).</summary>
     [JsonConverter(typeof(Hour12JsonConverter))]

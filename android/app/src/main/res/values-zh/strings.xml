@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">与电脑配对?</string>
+    <string name="pair_message">“%1$s”，地址 %2$s（端口 %3$d）。\n\n请确认电脑的配对窗口显示代码 %4$s。\n\n仅在你从这台电脑发起了配对时继续。</string>
+    <string name="pair_positive">对</string>
+    <string name="pair_negative">取消</string>
+    <string name="pair_progress">配对 %1$s…</string>
+    <string name="pair_done">配对 %1$s</string>
+    <string name="pair_failed_title">配对无效</string>
+    <string name="pair_failed_unreachable">无法找到 %1$s 2014年1月1日至 %2$s手机和计算机必须处于同一网络(或两者都在同一网络上) Tailscale) , 计算机的防火墙必须允许 PhoneBox.</string>
+    <string name="pair_failed_code">%1$s 没有接受代码:它只能工作一次,并且持续 5 分钟。 在计算机上重新开始配对。</string>
+    <string name="pair_failed_answer">%1$s 答复 %2$d.</string>
+    <string name="pair_failed_certificate">计算机的证书与 QR 代码不同。 重新开始配对。</string>
+    <string name="ok">好的</string>
+</resources>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+    </resheader>
+    <data xml:space="preserve" name="settings">
+        <value>設定…</value>
+    </data>
+    <data xml:space="preserve" name="openPanel">
+        <value>スマートフォンでパネルを開く</value>
+    </data>
+    <data xml:space="preserve" name="editConfig">
+        <value>config.json を編集</value>
+    </data>
+    <data xml:space="preserve" name="openLog">
+        <value>ログを開く</value>
+    </data>
+    <data xml:space="preserve" name="autostart">
+        <value>Windows と同時に起動</value>
+    </data>
+    <data xml:space="preserve" name="quit">
+        <value>終了</value>
+    </data>
+    <data xml:space="preserve" name="connected">
+        <value>電話が接続されました ({0})</value>
+    </data>
+    <data xml:space="preserve" name="disconnected">
+        <value>電話が接続されていません</value>
+    </data>
+    <data xml:space="preserve" name="tooltipConnected">
+        <value>PhoneBox - 電話が接続されました</value>
+    </data>
+    <data xml:space="preserve" name="tooltipWaiting">
+        <value>PhoneBox — 電話待ち</value>
+    </data>
+    <data xml:space="preserve" name="autostartError">
+        <value>起動ショートカットを変更できませんでした: {0}</value>
+    </data>
+</root>

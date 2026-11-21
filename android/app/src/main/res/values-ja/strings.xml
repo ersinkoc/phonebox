@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">パソコンとペアリングしますか？</string>
+    <string name="pair_message">「%1$s」\nアドレス: %2$s（ポート %3$d）\n\nパソコンのペアリング画面に表示されるコードが %4$s と一致することを確認してください。\n\nそのパソコンでペアリングを開始した場合のみ続けてください。</string>
+    <string name="pair_positive">ペアリング</string>
+    <string name="pair_negative">キャンセル</string>
+    <string name="pair_progress">%1$s とペアリングしています…</string>
+    <string name="pair_done">%1$s とペアリングしました</string>
+    <string name="pair_failed_title">ペアリングが失敗しました</string>
+    <string name="pair_failed_unreachable">%2$s の %1$s に接続できません。スマートフォンとパソコンを同じネットワーク、または Tailscale に接続し、パソコンのファイアウォールで PhoneBox を許可してください。</string>
+    <string name="pair_failed_code">%1$s はコードを受け入れませんでした。一度だけ5分間有効です。コンピュータでペアリングを再開してください。</string>
+    <string name="pair_failed_answer">%1$s からエラー %2$d が返されました。</string>
+    <string name="pair_failed_certificate">このコンピュータは QR コードと異なる証明書を持っています。ペアリングを再開してください。</string>
+    <string name="ok">OK</string>
+</resources>

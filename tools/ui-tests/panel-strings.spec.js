@@ -59,7 +59,7 @@ test('every language in PANEL translates each panel literal and keeps its placeh
   }
 });
 
-test('tp() translates where PANEL has the language and keeps English everywhere else', async ({ page }) => {
+test('tp() translates panel labels and preserves unknown text', async ({ page }) => {
   await page.goto('/panel/');
   const out = await page.evaluate(async () => {
     const I = window.PhoneBoxI18n;
@@ -73,12 +73,15 @@ test('tp() translates where PANEL has the language and keeps English everywhere 
       repeat: I.tp('Track'),
       power: main.tpv('{n}% power', { n: 40 }),
       quota: main.quotaText('5-hour session · Opus'),
+      unknown: I.tp('A label entered by the user'),
       // an agent label that happens to name an Object member is text, not the inherited member
       inherited: [I.tp('constructor'), I.tc('toString'), main.quotaText('constructor')],
     };
   });
   expect(out.inherited).toEqual(['constructor', 'toString', 'constructor']);
-  expect(out.de).toBe('Waiting for GitHub data…');
+  expect(out.de).toMatch(/GitHub/);
+  expect(out.de).not.toBe('Waiting for GitHub data…');
+  expect(out.unknown).toBe('A label entered by the user');
   expect(out.pt).toBe('Sem detecção');
   expect(out.repeat).toBe('Faixa');
   expect(out.power).toBe('40% de energia');

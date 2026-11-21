@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+    </resheader>
+    <data xml:space="preserve" name="settings">
+        <value>การตั้งค่า…</value>
+    </data>
+    <data xml:space="preserve" name="openPanel">
+        <value>เปิดแผงควบคุมบนโทรศัพท์</value>
+    </data>
+    <data xml:space="preserve" name="editConfig">
+        <value>แก้ไข config.json</value>
+    </data>
+    <data xml:space="preserve" name="openLog">
+        <value>เปิดบันทึก</value>
+    </data>
+    <data xml:space="preserve" name="autostart">
+        <value>เปิดเมื่อเริ่ม Windows</value>
+    </data>
+    <data xml:space="preserve" name="quit">
+        <value>ออก</value>
+    </data>
+    <data xml:space="preserve" name="connected">
+        <value>โทรศัพท์เชื่อมต่อแล้ว ({0})</value>
+    </data>
+    <data xml:space="preserve" name="disconnected">
+        <value>ไม่มีโทรศัพท์เชื่อมต่อ</value>
+    </data>
+    <data xml:space="preserve" name="tooltipConnected">
+        <value>PhoneBox เชื่อมต่อ</value>
+    </data>
+    <data xml:space="preserve" name="tooltipWaiting">
+        <value>PhoneBox - รอโทรศัพท์</value>
+    </data>
+    <data xml:space="preserve" name="autostartError">
+        <value>ไม่สามารถเปลี่ยนปุ่มพิมพ์ลัดในการเริ่มการทำงานได้: {0}</value>
+    </data>
+</root>

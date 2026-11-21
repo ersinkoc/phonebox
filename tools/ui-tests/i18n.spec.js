@@ -60,22 +60,16 @@ test('the breathe widget greets in the panel language before the first tap', asy
   await expect(page.locator('.br-w')).toHaveText('Tippen zum Starten');
 });
 
-// Panel keys are translated in all thirteen languages and are checked strictly. Settings-page strings were added for
-// English and Vietnamese only: t() falls back to the English entry for a key a language does not define, so a missing
-// s.* key never shows a key name. The languages that do define a key must not carry English text in its place, which is
-// the failure mode a plain "every key exists" check cannot see.
+// A copied English label can pass a key-coverage check, so check the translations and their placeholders too.
 test('every translated key is really translated, and the rest fall back to English', async ({ page }) => {
   await page.goto('/panel/');
   const result = await page.evaluate(() => {
     const I18n = window.PhoneBoxI18n;
     const S = I18n.STRINGS;
     const en = S.en;
-    // Panel keys (everything outside s.*) are the strings the phone shows, and they are translated in all thirteen
-    // languages, so a missing one is a regression. Settings-page keys (s.*) were added for English and Vietnamese only
-    // and are allowed to fall back; every other gap is a failure.
-    const gaps = Object.keys(S).flatMap((lang) =>
+    const gaps = I18n.LANGUAGES.flatMap(({ code: lang }) =>
       lang === 'en' ? [] : Object.keys(en)
-        .filter((k) => !k.startsWith('s.') && !(k in S[lang]))
+        .filter((k) => typeof S[lang]?.[k] !== 'string' || !S[lang][k].trim())
         .map((k) => `${lang}:${k}`));
     // a key whose text is identical to English is either a name that is not translated (Wi-Fi, USB, Client secret) or
     // padding; the Vietnamese dictionary is complete, so check it exactly, and spot-check the rest for copied sentences.
@@ -84,20 +78,27 @@ test('every translated key is really translated, and the rest fall back to Engli
       Object.keys(S[lang])
         .filter((k) => S[lang][k] === en[k] && !SAME_IS_FINE.has(k) && en[k].length > 12 && /[a-z]{4,} [a-z]{3,}/.test(en[k]))
         .map((k) => `${lang}:${k}`));
-    // a missing key must fall back to English, not print the key
+    const placeholders = (text) => (text.match(/\{[\w.]+\}/g) || []).sort().join();
+    const changedPlaceholders = Object.keys(S).filter((lang) => lang !== 'en').flatMap((lang) =>
+      Object.keys(en).filter((k) => typeof S[lang][k] === 'string' &&
+        placeholders(S[lang][k]) !== placeholders(en[k])).map((k) => `${lang}:${k}`));
+    // An English key can ship before its translation.
     I18n.setLang('de');
-    const fallback = I18n.t('s.js.addWidget');
+    S.en['test.englishFallback'] = 'English fallback';
+    const fallback = I18n.t('test.englishFallback');
+    delete S.en['test.englishFallback'];
     I18n.setLang('vi');
     const translated = I18n.t('s.js.addWidget');
-    return { gaps, copied, fallback, translated };
+    return { gaps, copied, changedPlaceholders, fallback, translated };
   });
-  expect(result.gaps).toEqual([]); // panel keys must exist in every language; s.* may fall back to English
+  expect(result.gaps).toEqual([]);
   expect(result.copied).toEqual([]);
-  expect(result.fallback).toBe('Add a widget');
+  expect(result.changedPlaceholders).toEqual([]);
+  expect(result.fallback).toBe('English fallback');
   expect(result.translated).toBe('Thêm widget');
 });
 
-// Vietnamese and Portuguese (Brazil) are the two languages with every en key translated, settings page included.
+// Keep dedicated checks for the two established full dictionaries.
 for (const lang of ['vi', 'pt-BR']) {
 test(`the ${lang} dictionary is complete`, async ({ page }) => {
   await page.goto('/panel/');
@@ -142,7 +143,7 @@ test('the widget catalog translates by its English text', async ({ page }) => {
       category: I18n.tc('Weather & sky'),
       untouched: I18n.tc('not in the catalog'),
       // the catalog is keyed by English, so another language keeps the English name rather than a wrong one
-      other: (I18n.setLang('de'), I18n.tc('Clock')),
+      other: (I18n.setLang('en'), I18n.tc('Clock')),
     };
   });
   expect(out.name).toBe('Đồng hồ');
@@ -236,9 +237,7 @@ test('both settings language selectors stay in sync and Revert restores the save
   await expect(page.locator('#save')).toBeDisabled();
 });
 
-test('built-in English widget titles keep English capitals in a Turkish panel', async ({ page }) => {
-  // The panel's <html lang> follows the chosen language and widget titles are uppercased in CSS, so English text
-  // without lang="en" was uppercased with Turkish rules ("Notifications" -> "NOTİFİCATİONS").
+test('a widget title typed in Turkish uses Turkish capitals', async ({ page }) => {
   await page.goto('/panel/');
   await page.evaluate(() => {
     localStorage.clear();
@@ -256,8 +255,66 @@ test('built-in English widget titles keep English capitals in a Turkish panel', 
   await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
   // innerText is the rendered text, so it shows what text-transform made of it; the widgets are laid out in order
   const title = (i) => page.locator('.w-title').nth(i).evaluate((e) => e.innerText.split('\n')[0].trim());
-  await expect.poll(() => title(0)).toBe('NOTIFICATIONS');
-  expect(await title(1)).toBe('STOPWATCH');
-  // a title the user typed stays in the panel language
-  expect(await title(2)).toBe('İÇECEK');
+  await expect.poll(() => title(2)).toBe('İÇECEK');
+});
+
+
+test('the saved Japanese preference reaches the settings and the phone panel', async ({ page }) => {
+  await page.goto('/settings/#general');
+  await expect(page.locator('#save')).toBeDisabled();
+  await page.locator('#langSel').selectOption('ja');
+  await expect(page.locator('#save')).toHaveText('保存');
+  await page.locator('#save').click();
+  await expect(page.locator('#save')).toBeDisabled();
+  await page.reload();
+  await expect(page.locator('#displayLangSel')).toHaveValue('ja');
+  await page.goto('/panel/');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await expect(page.locator('#dots')).toHaveAttribute('title', /[^\x00-\x7f]/);
+});
+
+test('Arabic reads right to left without moving saved widget coordinates', async ({ page }) => {
+  await show(page, [
+    { id: 'left', type: 'clock', x: 0, y: 0, w: 3, h: 2 },
+    { id: 'right', type: 'clock', x: 9, y: 0, w: 3, h: 2 },
+  ]);
+  await page.evaluate(() => {
+    const cfg = JSON.parse(localStorage.getItem('pb-demo-config'));
+    cfg.display.language = 'ar';
+    localStorage.setItem('pb-demo-config', JSON.stringify(cfg));
+  });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  const widgets = page.locator('.grid .w');
+  await expect(widgets).toHaveCount(2);
+  await expect(widgets.first()).toHaveCSS('direction', 'rtl');
+  const left = await widgets.first().boundingBox();
+  const right = await widgets.last().boundingBox();
+  expect(left.x).toBeLessThan(right.x);
+});
+
+test('Arabic settings wraps a long adb path and localizes the appearance defaults', async ({ page }) => {
+  await page.setViewportSize({ width: 1120, height: 780 });
+  await page.goto('/settings/#general');
+  await page.locator('#langSel').selectOption('ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.locator('#appearanceSettings output').first()).toHaveText('تلقائي');
+  const fits = await page.locator('#adbFound').evaluate((hint) => {
+    hint.textContent = 'C:\\platform-tools\\' + 'long-directory\\'.repeat(18) + 'adb.exe';
+    return hint.scrollWidth <= hint.clientWidth &&
+      document.documentElement.scrollWidth <= window.innerWidth;
+  });
+  expect(fits).toBe(true);
+});
+
+test('follow system distinguishes Traditional Chinese and the legacy Indonesian tag', async ({ page }) => {
+  await page.goto('/panel/');
+  const resolved = await page.evaluate(() => {
+    const i18n = window.PhoneBoxI18n;
+    return ['zh-Hant-TW', 'zh-HK', 'zh_CN', 'in-ID', 'xx', 'constructor'].map((tag) => {
+      Object.defineProperty(navigator, 'languages', { value: [tag], configurable: true });
+      return i18n.resolveLang('auto');
+    });
+  });
+  expect(resolved).toEqual(['zh-Hant', 'zh-Hant', 'zh', 'id', 'en', 'en']);
 });

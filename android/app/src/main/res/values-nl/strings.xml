@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">Koppelen met een computer?</string>
+    <string name="pair_message">‘%1$s’ op %2$s (poort %3$d).\n\nControleer of het koppelvenster op de computer de code %4$s toont.\n\nGa alleen verder als je het koppelen op die computer hebt gestart.</string>
+    <string name="pair_positive">Paar</string>
+    <string name="pair_negative">Annuleren</string>
+    <string name="pair_progress">Koppelen met %1$s …</string>
+    <string name="pair_done">Gekoppeld met %1$s</string>
+    <string name="pair_failed_title">Koppelen werkte niet</string>
+    <string name="pair_failed_unreachable">Kon niet bereiken %1$s bij %2$sDe telefoon en de computer moeten op hetzelfde netwerk zijn aangesloten (of beide op Tailscale), en de firewall van de computer moet PhoneBox.</string>
+    <string name="pair_failed_code">%1$s heeft de code niet geaccepteerd: deze werkt eenmalig en voor 5 minuten, start het koppelen opnieuw op de computer.</string>
+    <string name="pair_failed_answer">%1$s heeft geantwoord op %2$d .</string>
+    <string name="pair_failed_certificate">De computer heeft een ander certificaat dan de code QR. Begin opnieuw met koppelen.</string>
+    <string name="ok">OK</string>
+</resources>

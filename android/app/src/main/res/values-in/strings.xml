@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">Sandingkan dengan komputer?</string>
+    <string name="pair_message">“%1$s” di %2$s (port %3$d).\n\nPastikan layar penyandingan di komputer menampilkan kode %4$s.\n\nLanjutkan hanya jika Anda memulai penyandingan di komputer itu.</string>
+    <string name="pair_positive">Sandingkan</string>
+    <string name="pair_negative">Batal</string>
+    <string name="pair_progress">Menyandingkan dengan %1$s…</string>
+    <string name="pair_done">Tersanding dengan %1$s</string>
+    <string name="pair_failed_title">Tidak dapat menyandingkan</string>
+    <string name="pair_failed_unreachable">Tidak dapat menghubungi %1$s di %2$s. Ponsel dan komputer harus berada di jaringan yang sama atau sama-sama tersambung ke Tailscale. Pastikan firewall komputer mengizinkan PhoneBox.</string>
+    <string name="pair_failed_code">%1$s tidak menerima kode. Kode hanya dapat digunakan sekali dan berlaku selama 5 menit. Mulai lagi penyandingan di komputer.</string>
+    <string name="pair_failed_answer">%1$s mengembalikan respons %2$d.</string>
+    <string name="pair_failed_certificate">Sertifikat komputer berbeda dari yang tercantum pada kode QR. Mulai lagi penyandingan.</string>
+    <string name="ok">OK</string>
+</resources>

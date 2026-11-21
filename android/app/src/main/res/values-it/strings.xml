@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">Associare con un computer?</string>
+    <string name="pair_message">«%1$s» all’indirizzo %2$s (porta %3$d).\n\nVerifica che la finestra di abbinamento sul computer mostri il codice %4$s.\n\nContinua solo se hai avviato l’abbinamento su quel computer.</string>
+    <string name="pair_positive">Coppia</string>
+    <string name="pair_negative">Annulla</string>
+    <string name="pair_progress">Abbinamento con %1$s …</string>
+    <string name="pair_done">Accoppiato con %1$s</string>
+    <string name="pair_failed_title">L\'associazione non ha funzionato</string>
+    <string name="pair_failed_unreachable">Non potevo raggiungere %1$s al %2$sIl telefono e il computer devono essere collegati alla stessa rete (o entrambi sulla stessa rete). Tailscale), e il firewall del computer deve consentire PhoneBox.</string>
+    <string name="pair_failed_code">%1$s non ha accettato il codice: funziona una volta e per 5 minuti, ricominciare l\'accoppiamento sul computer.</string>
+    <string name="pair_failed_answer">%1$s ha risposto a %2$d .</string>
+    <string name="pair_failed_certificate">Il computer dispone di un certificato diverso da quello indicato dal codice QR.</string>
+    <string name="ok">OK</string>
+</resources>

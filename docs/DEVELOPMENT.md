@@ -133,3 +133,18 @@ and `PHONEBOX_KEY_PASSWORD` are set (in `~/.gradle/gradle.properties` or the env
 is used. Debug builds make the WebView debuggable through `chrome://inspect`. To publish a release: bump the
 version in `PhoneBox.Agent.csproj` and `android/app/build.gradle.kts`, commit, then run `.\scripts\release.ps1`.
 The script dispatches the gated GitHub release workflow; see [the release checklist](RELEASING.md).
+
+## Translations
+
+The Android panel and desktop editor load the same `assets/www/i18n.js` and
+`locale-*.js` dictionaries. Use `t()` for interface keys, `tc()` for widget,
+template, and editor captions, and `tp()` for panel labels indexed by their
+English text. Preserve placeholders, HTML tags, paths, and protocol identifiers.
+Widget positions are measured from the left in both left-to-right and right-to-left interfaces.
+
+Each locale also has Android pairing strings in `res/values-*/strings.xml`, a
+Windows `TrayStrings.<culture>.resx`, and a localized README. After adding a
+language to `i18n.js`, run `python tools/sync-locales.py` to update the two
+platform lists and the README links. Add the locale's dictionary to the panel
+and editor script lists. Run `python tools/check-release.py` and the Playwright
+localization tests after changing a locale.

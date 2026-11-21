@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+    </resheader>
+    <data xml:space="preserve" name="settings">
+        <value>Impostazioni…</value>
+    </data>
+    <data xml:space="preserve" name="openPanel">
+        <value>Aprire il pannello sul telefono</value>
+    </data>
+    <data xml:space="preserve" name="editConfig">
+        <value>Modifica config.json</value>
+    </data>
+    <data xml:space="preserve" name="openLog">
+        <value>Apri il log</value>
+    </data>
+    <data xml:space="preserve" name="autostart">
+        <value>Inizia con Windows</value>
+    </data>
+    <data xml:space="preserve" name="quit">
+        <value>Esci</value>
+    </data>
+    <data xml:space="preserve" name="connected">
+        <value>Telefono collegato ( {0} )</value>
+    </data>
+    <data xml:space="preserve" name="disconnected">
+        <value>Nessun telefono collegato</value>
+    </data>
+    <data xml:space="preserve" name="tooltipConnected">
+        <value>PhoneBox — telefono collegato</value>
+    </data>
+    <data xml:space="preserve" name="tooltipWaiting">
+        <value>PhoneBox — in attesa di telefono</value>
+    </data>
+    <data xml:space="preserve" name="autostartError">
+        <value>Impossibile modificare il collegamento di avvio: {0}</value>
+    </data>
+</root>

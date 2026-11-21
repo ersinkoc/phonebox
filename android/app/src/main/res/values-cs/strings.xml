@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">Spárovat s počítačem?</string>
+    <string name="pair_message">„%1$s“ na adrese %2$s (port %3$d).\n\nOvěřte, že se v párovacím okně na počítači zobrazuje kód %4$s.\n\nPokračujte pouze v případě, že jste párování zahájili na tomto počítači.</string>
+    <string name="pair_positive">Spárovat</string>
+    <string name="pair_negative">Zrušit</string>
+    <string name="pair_progress">Párování s %1$s…</string>
+    <string name="pair_done">Spárováno s %1$s</string>
+    <string name="pair_failed_title">Párování se nezdařilo</string>
+    <string name="pair_failed_unreachable">Nelze se připojit k %1$s na adrese %2$s. Telefon a počítač musí být ve stejné síti nebo oba připojené přes Tailscale. Brána firewall počítače musí povolit připojení PhoneBoxu.</string>
+    <string name="pair_failed_code">%1$s kód nepřijal. Kód platí 5 minut a lze ho použít jen jednou. Spusťte párování znovu na počítači.</string>
+    <string name="pair_failed_answer">%1$s vrátil kód odpovědi %2$d.</string>
+    <string name="pair_failed_certificate">Certifikát počítače se liší od certifikátu v QR kódu. Spusťte párování znovu.</string>
+    <string name="ok">OK</string>
+</resources>

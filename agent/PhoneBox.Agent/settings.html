@@ -59,6 +59,7 @@ h2 { font-size: 20px; margin: 0 0 4px; }
 /* a widget's options in groups: an option with a "section" starts a new one under a small heading */
 .opt-section { margin: 18px 0 10px; padding-top: 12px; border-top: 1px solid var(--line, #e5e7eb); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .field .hint { font-size: 12px; color: var(--muted); }
+#adbFound { overflow-wrap: anywhere; }
 input[type=text], input[type=number], input[type=time], select, textarea {
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; outline: none; min-width: 0;
 }
@@ -99,6 +100,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .preview { position: relative; aspect-ratio: 780 / 360; overflow: hidden; border-radius: 10px; background: #000; }
 .preview iframe { position: absolute; left: 0; top: 0; width: 780px; height: 360px; border: 0; transform-origin: 0 0; }
 .phone { width: 100%; max-width: 860px; padding: 14px 18px; border-radius: 28px; background: #06080b; border: 1px solid #22262e; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+/* Match the panel's saved grid coordinates regardless of the interface language. */
+[dir="rtl"] .canvas, [dir="rtl"] .mini { direction: ltr; }
+[dir="rtl"] .canvas > *, [dir="rtl"] .mini > * { direction: rtl; }
+[dir="rtl"] input[type="url"], [dir="rtl"] input[type="number"], [dir="rtl"] code { direction: ltr; unicode-bidi: isolate; }
 .canvas { position: relative; aspect-ratio: 752 / 333; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(6, 1fr); gap: 6px; touch-action: none; }
 .canvas .cell { border-radius: 6px; background: rgba(255,255,255,.035); }
 .wb { position: relative; z-index: 1; border-radius: 10px; background: #1a2230; border: 1.5px solid #2c3647; color: #e8ecf1; cursor: grab; overflow: hidden; display: flex; container-type: size; }
@@ -116,7 +121,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .pal-cat { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 10px 0 2px 8px; }
 .pal-cat:first-child { margin-top: 0; }
 input[type=search] { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; outline: none; }
-.pal { display: flex; gap: 10px; align-items: center; text-align: left; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: none; cursor: pointer; }
+.pal { display: flex; gap: 10px; align-items: center; text-align: start; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: none; cursor: pointer; }
 .pal:hover { background: var(--panel-2); border-color: var(--line); }
 .pal-ico { font-size: 20px; width: 28px; text-align: center; }
 .pal b { display: block; font-size: 13px; }
@@ -131,7 +136,7 @@ textarea { width: 100%; resize: vertical; }
 .pair-qr.expired img { opacity: .15; }
 .modal-box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; width: min(1000px, 100%); max-height: 90vh; overflow-y: auto; }
 .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
-.tpl { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; }
+.tpl { display: flex; flex-direction: column; gap: 4px; text-align: start; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; }
 .tpl:hover { border-color: var(--accent); }
 .tpl small { color: var(--muted); font-size: 12px; }
 .mini { aspect-ratio: 2.26; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(6, 1fr); gap: 2px; background: #06080b; border-radius: 8px; padding: 4px; margin-bottom: 4px; }
@@ -300,7 +305,7 @@ input[type=color] { width: 42px; height: 34px; border: 1px solid var(--line); bo
 
 /* city search */
 .results { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-top: 6px; }
-.results button { text-align: left; border: 0; background: var(--panel); padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.results button { text-align: start; border: 0; background: var(--panel); padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--line); }
 .results button:last-child { border-bottom: 0; }
 .results button:hover { background: var(--panel-2); }
 .results small { color: var(--muted); }
@@ -910,6 +915,17 @@ nav a.on::before { color: var(--accent); }
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal" hidden><div class="modal-box"><div id="modalBody"></div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="modalClose" data-i18n="s.cancel">Cancel</button></div></div></div>
 
+<script src="../panel/locale-existing.js"></script>
+<script src="../panel/locale-tr.js"></script>
+<script src="../panel/locale-ja.js"></script>
+<script src="../panel/locale-ko.js"></script>
+<script src="../panel/locale-id.js"></script>
+<script src="../panel/locale-th.js"></script>
+<script src="../panel/locale-uk.js"></script>
+<script src="../panel/locale-hi.js"></script>
+<script src="../panel/locale-cs.js"></script>
+<script src="../panel/locale-ar.js"></script>
+<script src="../panel/locale-zh-Hant.js"></script>
 <script src="../panel/i18n.js"></script>
 <script src="../panel/appearance.js"></script>
 <script>
@@ -2024,22 +2040,22 @@ async function pairOverWifi() {
   const left = h('b', {}, '');
   const pairBox = h('div', { class: 'pair-qr' },
     h('b', {}, t('s.wifi.step2')),
-    h('img', { src: svg(r.qr), alt: 'Pairing QR code' }),
+    h('img', { src: svg(r.qr), alt: t('s.pair.qr') }),
     h('small', { class: 'hint' }, t('s.wifi.step2Hint'), h('b', {}, r.check), '. ', left));
   $('modalBody').replaceChildren(
-    h('h3', {}, `Pair a phone with ${r.pc}`),
+    h('h3', {}, t('s.pair.title', { pc: r.pc })),
     h('p', { class: 'hint', style: 'margin:0' }, t('s.wifi.noCableHint')),
     h('div', { class: 'pair-qrs' },
       h('div', { class: 'pair-qr' },
         h('b', {}, t('s.wifi.step1')),
-        h('img', { src: svg(r.appQr), alt: 'QR code of the app download' }),
+        h('img', { src: svg(r.appQr), alt: t('s.pair.downloadQr') }),
         h('small', { class: 'hint' }, t('s.wifi.step1Hint'))),
       pairBox),
     h('p', { class: 'hint', style: 'margin:0' }, r.hosts.length
-      ? `The phone will connect to ${r.hosts.join(', ')} on port ${r.port}. The code works once, for 5 minutes; the key itself is not in the QR code.`
-      : 'No LAN or Tailscale address was found on this computer, so the phone has nothing to connect to.'),
+      ? t('s.pair.hosts', { hosts: r.hosts.join(', '), port: r.port })
+      : t('s.pair.noHosts')),
     h('div', { class: 'row', style: 'margin-top:8px' },
-      h('button', { class: 'btn sm', onclick: () => { navigator.clipboard?.writeText(r.link); toast(t('s.js.pairLinkCopied')); } }, 'Copy the pairing link')));
+      h('button', { class: 'btn sm', onclick: () => { navigator.clipboard?.writeText(r.link); toast(t('s.js.pairLinkCopied')); } }, t('s.pair.copy'))));
   const tick = async () => {
     try {
       const s = await (await fetch('/api/pair/status')).json();
@@ -2048,8 +2064,8 @@ async function pairOverWifi() {
     } catch (_) { }
     if (mine !== pairAttempt) return;
     const ms = r.expiresAt - Date.now();
-    if (ms <= 0) { left.textContent = 'Expired: close and start again.'; pairBox.classList.add('expired'); clearInterval(timer); return; }
-    left.textContent = `Expires in ${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}.`;
+    if (ms <= 0) { left.textContent = t('s.pair.expired'); pairBox.classList.add('expired'); clearInterval(timer); return; }
+    left.textContent = t('s.pair.expires', { time: `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}` });
   };
   const timer = setInterval(tick, 1000);
   tick();
@@ -3248,15 +3264,16 @@ function appearanceEditor(owner, parents, label, widget = false) {
       return PhoneBoxAppearance.resolve(...parents(), inherited).font;
     })();
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.ap.font')),
-      h('select', { 'aria-label': 'Font', onchange: e => { set('font', e.target.value || null); render(); } },
+      h('select', { 'aria-label': t('s.ap.font'), onchange: e => { set('font', e.target.value || null); render(); } },
         h('option', { value: '', selected: owner.appearance?.font == null }, !inheritedFont || inheritedFont === 'default' ? t('s.appearance.originalWidgetFont') : t('s.ap.inheritFont', { font: tl(fontLabels[inheritedFont]) })),
         ...Object.entries(fontLabels).map(([value, text]) => h('option', { value, selected: owner.appearance?.font === value }, tl(text))))));
     const numeric = (key, title, max, fallback, min = 0, step = 1, unit = ' px') => {
       const value = current[key];
-      const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? 'Automatic' : value + unit);
+      const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? tl('Automatic') : value + unit);
       const input = h('input', { type: 'range', min, max, step, value: value ?? fallback, 'aria-label': title, style: { flex: '1', minWidth: '60px' } });
       input.oninput = () => { set(key, Number(input.value)); output.textContent = input.value + unit; };
-      const reset = h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Inherit ' + title.toLowerCase(), onclick: () => { set(key, null); render(); } }, t('s.ap.inherit'));
+      const inherit = t('s.ap.inherit');
+      const reset = h('button', { type: 'button', class: 'btn sm', 'aria-label': inherit + ' · ' + title, onclick: () => { set(key, null); render(); } }, inherit);
       fields.push(h('div', { class: 'field' }, h('label', {}, title), h('div', { class: 'row', style: { gap: '10px' } }, input, output, reset)));
     };
     numeric('fontScale', t('s.ap.fontSize'), 200, 100, 50, 5, '%');
@@ -3264,14 +3281,16 @@ function appearanceEditor(owner, parents, label, widget = false) {
     if (!widget) numeric('gap', t('s.ap.gap'), 24, 8);
     numeric('padding', t('s.ap.padding'), 24, 12);
     if (!widget) numeric('pagePadding', t('s.ap.pagePadding'), 32, 14);
+    const on = window.PhoneBoxI18n?.tp('On') ?? 'On';
+    const off = window.PhoneBoxI18n?.tp('Off') ?? 'Off';
     for (const [key, title] of [['border', t('s.ap.border')], ['shadow', t('s.ap.shadow')]]) {
       const value = owner.appearance?.[key];
       const inherited = { ...(owner.appearance || {}) }; delete inherited[key];
       const fallback = PhoneBoxAppearance.resolve(...parents(), inherited)[key];
       fields.push(h('div', { class: 'field' }, h('label', {}, title),
         h('select', { 'aria-label': title, onchange: e => set(key, e.target.value === '' ? null : e.target.value === 'true') },
-          h('option', { value: '', selected: value == null }, fallback == null ? t('s.appearance.originalWidgetDefault') : 'Inherit (' + (fallback ? 'on' : 'off') + ')'),
-          h('option', { value: 'true', selected: value === true }, 'On'), h('option', { value: 'false', selected: value === false }, 'Off'))));
+          h('option', { value: '', selected: value == null }, fallback == null ? t('s.appearance.originalWidgetDefault') : t('s.ap.inherit') + ' (' + (fallback ? on : off) + ')'),
+          h('option', { value: 'true', selected: value === true }, on), h('option', { value: 'false', selected: value === false }, off))));
     }
     root.replaceChildren(h('summary', {}, label), h('p', { class: 'hint' }, widget
       ? 'Overrides the page and global appearance. Inherit restores the preset or parent value.'

@@ -2,6 +2,7 @@
 (() => {
   'use strict';
 
+  const LOCALE_DATA = window.PhoneBoxLocaleData || {};
   const LANGUAGES = Object.freeze([
     { code: 'en', name: 'English', nativeName: 'English', locale: 'en-GB' },
     { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', locale: 'tr-TR' },
@@ -17,10 +18,19 @@
     { code: 'el', name: 'Greek', nativeName: 'Ελληνικά', locale: 'el-GR' },
     { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt', locale: 'vi-VN' },
     { code: 'zh', name: 'Chinese', nativeName: '中文 (简体)', locale: 'zh-CN' },
+    { code: 'ja', name: 'Japanese', nativeName: '日本語', locale: 'ja-JP' },
+    { code: 'ko', name: 'Korean', nativeName: '한국어', locale: 'ko-KR' },
+    { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia', locale: 'id-ID' },
+    { code: 'th', name: 'Thai', nativeName: 'ไทย', locale: 'th-TH' },
+    { code: 'uk', name: 'Ukrainian', nativeName: 'Українська', locale: 'uk-UA' },
+    { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', locale: 'hi-IN' },
+    { code: 'cs', name: 'Czech', nativeName: 'Čeština', locale: 'cs-CZ' },
+    { code: 'ar', name: 'Arabic', nativeName: 'العربية', locale: 'ar', dir: 'rtl' },
+    { code: 'zh-Hant', name: 'Traditional Chinese', nativeName: '中文（繁體）', locale: 'zh-TW' },
   ]);
 
-  const BY_CODE = Object.fromEntries(LANGUAGES.map((l) => [l.code, l]));
-  const BY_CODE_LOWER = Object.fromEntries(LANGUAGES.map((l) => [l.code.toLowerCase(), l.code]));
+  const BY_CODE = new Map(LANGUAGES.map((l) => [l.code, l]));
+  const BY_CODE_LOWER = new Map(LANGUAGES.map((l) => [l.code.toLowerCase(), l.code]));
 
   const STRINGS = {
     en: {
@@ -10782,8 +10792,16 @@
     },
   };
   for (const [lang, entries] of Object.entries(STEAM_CATALOG)) {
-    Object.assign(CATALOG[lang] ||= {}, entries);
+    if (!CATALOG[lang]) CATALOG[lang] = {};
+    Object.assign(CATALOG[lang], entries);
   }
+
+  for (const [lang, data] of Object.entries(LOCALE_DATA)) {
+    if (data.strings) STRINGS[lang] = { ...STRINGS[lang], ...data.strings };
+    if (data.catalog) CATALOG[lang] = { ...CATALOG[lang], ...data.catalog };
+    if (data.panel) PANEL[lang] = { ...PANEL[lang], ...data.panel };
+  }
+  delete window.PhoneBoxLocaleData;
 
   let pref = 'auto';
   let active = 'en';
@@ -10794,34 +10812,47 @@
   } catch (_) {}
 
   function resolveLang(p) {
-    if (p && p !== 'auto' && BY_CODE[p]) return p;
+    const explicit = typeof p === 'string' && BY_CODE_LOWER.get(p.toLowerCase());
+    if (explicit) return explicit;
     const navs = Array.isArray(navigator.languages) && navigator.languages.length
       ? navigator.languages
       : [navigator.language || 'en'];
-    for (const raw of navs) {
+    // The APK can have its own system language on Android 13+, independent of WebView's defaults.
+    const native = Array.isArray(window.__phoneboxLanguages) ? window.__phoneboxLanguages : [];
+    for (const raw of [...native, ...navs]) {
       if (!raw) continue;
-      const lower = String(raw).toLowerCase();
+      const lower = String(raw).toLowerCase().replace(/_/g, '-');
       // Check the full tag first: a hyphenated code like pt-BR has its own entry distinct from the
       // base-stripped pt (Portugal), so stripping to the base first would always match the wrong one.
-      if (BY_CODE_LOWER[lower]) return BY_CODE_LOWER[lower];
-      const base = lower.split(/[-_]/)[0];
-      if (BY_CODE[base]) return base;
+      const exact = BY_CODE_LOWER.get(lower);
+      if (exact) return exact;
+      if (/^zh-(?:hant|tw|hk|mo)(?:-|$)/.test(lower)) return 'zh-Hant';
+      const base = lower.split('-')[0];
+      if (base === 'in') return 'id'; // Android's legacy Indonesian language code
+      const match = BY_CODE_LOWER.get(base);
+      if (match) return match;
     }
     return 'en';
   }
 
+  function applyLanguageAttributes() {
+    if (typeof document === 'undefined') return;
+    document.documentElement.lang = active === 'zh' ? 'zh-Hans' : active;
+    document.documentElement.dir = BY_CODE.get(active).dir || 'ltr';
+  }
+
   function setLang(nextPref) {
-    pref = nextPref && (nextPref === 'auto' || BY_CODE[nextPref]) ? nextPref : 'auto';
+    pref = (typeof nextPref === 'string' && BY_CODE_LOWER.get(nextPref.toLowerCase())) || 'auto';
     const prev = active;
     active = resolveLang(pref);
     try { localStorage.setItem('pb-lang', pref); } catch (_) {}
-    try { document.documentElement.lang = active; } catch (_) {}
+    applyLanguageAttributes();
     return active !== prev;
   }
 
   function getLang() { return active; }
   function getPref() { return pref; }
-  function getLocale() { return (BY_CODE[active] && BY_CODE[active].locale) || 'en-GB'; }
+  function getLocale() { return BY_CODE.get(active).locale; }
 
   function t(key, vars) {
     const dict = STRINGS[active] || STRINGS.en;
@@ -10830,7 +10861,8 @@
     if (s === undefined) return key;
     if (vars) {
       for (const [k, v] of Object.entries(vars)) {
-        s = s.split(`{${k}}`).join(v == null ? '' : String(v));
+        const text = v == null ? '' : String(v);
+        s = s.split(`{${k}}`).join(text && BY_CODE.get(active).dir === 'rtl' ? '\u2068' + text + '\u2069' : text);
       }
     }
     return s;
@@ -10892,13 +10924,15 @@
       const opt = document.createElement('option');
       opt.value = lang.code;
       opt.textContent = lang.nativeName;
+      opt.lang = lang.code === 'zh' ? 'zh-Hans' : lang.code;
+      opt.dir = lang.dir || 'ltr';
       sel.appendChild(opt);
     }
     if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
   }
 
   active = resolveLang(pref);
-  try { document.documentElement.lang = active; } catch (_) {}
+  applyLanguageAttributes();
 
   window.PhoneBoxI18n = Object.freeze({
     LANGUAGES,

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+    </resheader>
+    <data xml:space="preserve" name="settings">
+        <value>Pengaturan…</value>
+    </data>
+    <data xml:space="preserve" name="openPanel">
+        <value>Buka panel di ponsel</value>
+    </data>
+    <data xml:space="preserve" name="editConfig">
+        <value>Edit config.json</value>
+    </data>
+    <data xml:space="preserve" name="openLog">
+        <value>Buka log</value>
+    </data>
+    <data xml:space="preserve" name="autostart">
+        <value>Jalankan saat Windows dimulai</value>
+    </data>
+    <data xml:space="preserve" name="quit">
+        <value>Keluar</value>
+    </data>
+    <data xml:space="preserve" name="connected">
+        <value>Telepon terhubung ( {0} )</value>
+    </data>
+    <data xml:space="preserve" name="disconnected">
+        <value>Tidak ada telepon yang terhubung</value>
+    </data>
+    <data xml:space="preserve" name="tooltipConnected">
+        <value>PhoneBox — telepon terhubung</value>
+    </data>
+    <data xml:space="preserve" name="tooltipWaiting">
+        <value>PhoneBox — menunggu telepon</value>
+    </data>
+    <data xml:space="preserve" name="autostartError">
+        <value>Tak dapat mengubah jalan pintas startup: {0}</value>
+    </data>
+</root>

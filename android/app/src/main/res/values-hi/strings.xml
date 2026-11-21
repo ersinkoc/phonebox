@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">कंप्यूटर के साथ पेयर करें?</string>
+    <string name="pair_message">“%1$s”, पता %2$s (पोर्ट %3$d)।\n\nपक्का करें कि कंप्यूटर की पेयरिंग विंडो में कोड %4$s दिख रहा है।\n\nकेवल तभी जारी रखें, जब आपने उस कंप्यूटर पर पेयरिंग शुरू की हो।</string>
+    <string name="pair_positive">पेयर करें</string>
+    <string name="pair_negative">रद्द करें</string>
+    <string name="pair_progress">%1$s के साथ पेयर किया जा रहा है…</string>
+    <string name="pair_done">%1$s के साथ पेयर हो गया</string>
+    <string name="pair_failed_title">पेयरिंग पूरी नहीं हुई</string>
+    <string name="pair_failed_unreachable">%2$s पते पर %1$s से कनेक्ट नहीं हो सका। फ़ोन और कंप्यूटर एक ही नेटवर्क पर हों या दोनों Tailscale पर जुड़े हों। कंप्यूटर के फ़ायरवॉल में PhoneBox को अनुमति दें।</string>
+    <string name="pair_failed_code">%1$s ने कोड स्वीकार नहीं किया। कोड एक बार इस्तेमाल किया जा सकता है और 5 मिनट तक मान्य है। कंप्यूटर पर फिर से पेयरिंग शुरू करें।</string>
+    <string name="pair_failed_answer">%1$s ने प्रतिक्रिया कोड %2$d लौटाया।</string>
+    <string name="pair_failed_certificate">कंप्यूटर का सर्टिफ़िकेट QR कोड में दिए गए सर्टिफ़िकेट से अलग है। फिर से पेयरिंग शुरू करें।</string>
+    <string name="ok">ठीक है</string>
+</resources>

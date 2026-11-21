@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+    </resheader>
+    <data xml:space="preserve" name="settings">
+        <value>Ayarlar…</value>
+    </data>
+    <data xml:space="preserve" name="openPanel">
+        <value>Paneli telefonda aç</value>
+    </data>
+    <data xml:space="preserve" name="editConfig">
+        <value>config.json dosyasını düzenle</value>
+    </data>
+    <data xml:space="preserve" name="openLog">
+        <value>Günlüğü aç</value>
+    </data>
+    <data xml:space="preserve" name="autostart">
+        <value>Windows ile başlat</value>
+    </data>
+    <data xml:space="preserve" name="quit">
+        <value>Çık</value>
+    </data>
+    <data xml:space="preserve" name="connected">
+        <value>Telefon bağlandı ({0})</value>
+    </data>
+    <data xml:space="preserve" name="disconnected">
+        <value>Telefon bağlanmadı</value>
+    </data>
+    <data xml:space="preserve" name="tooltipConnected">
+        <value>PhoneBox — telefon bağlandı</value>
+    </data>
+    <data xml:space="preserve" name="tooltipWaiting">
+        <value>PhoneBox — telefon bekle</value>
+    </data>
+    <data xml:space="preserve" name="autostartError">
+        <value>Başlatma kısayolunu değiştirilemedi: {0}</value>
+    </data>
+</root>

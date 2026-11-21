@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">Створити пару з комп’ютером?</string>
+    <string name="pair_message">«%1$s» за адресою %2$s (порт %3$d).\n\nПереконайтеся, що у вікні створення пари на комп’ютері відображається код %4$s.\n\nПродовжуйте, лише якщо ви почали створення пари на цьому комп’ютері.</string>
+    <string name="pair_positive">Створити пару</string>
+    <string name="pair_negative">Скасувати</string>
+    <string name="pair_progress">Створення пари з %1$s…</string>
+    <string name="pair_done">Створено пару з %1$s</string>
+    <string name="pair_failed_title">Не вдалося створити пару</string>
+    <string name="pair_failed_unreachable">Не вдалося підключитися до %1$s за адресою %2$s. Телефон і комп’ютер мають бути в одній мережі або обидва підключені до Tailscale. Брандмауер комп’ютера має дозволити підключення PhoneBox.</string>
+    <string name="pair_failed_code">%1$s не прийняв код. Код дійсний 5 хвилин і його можна використати лише раз. Почніть створення пари на комп’ютері ще раз.</string>
+    <string name="pair_failed_answer">%1$s повернув код відповіді %2$d.</string>
+    <string name="pair_failed_certificate">Сертифікат комп’ютера відрізняється від сертифіката в QR-коді. Почніть створення пари ще раз.</string>
+    <string name="ok">OK</string>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">จับคู่กับคอมพิวเตอร์หรือไม่</string>
+    <string name="pair_message">“%1$s” ที่ %2$s (พอร์ต %3$d)\n\nตรวจสอบว่าหน้าต่างจับคู่บนคอมพิวเตอร์แสดงรหัส %4$s\n\nดำเนินการต่อเฉพาะเมื่อคุณเริ่มการจับคู่จากคอมพิวเตอร์เครื่องนั้น</string>
+    <string name="pair_positive">จับคู่</string>
+    <string name="pair_negative">ยกเลิก</string>
+    <string name="pair_progress">กำลังจับคู่กับ %1$s…</string>
+    <string name="pair_done">จับคู่กับ %1$s แล้ว</string>
+    <string name="pair_failed_title">จับคู่ไม่สำเร็จ</string>
+    <string name="pair_failed_unreachable">เชื่อมต่อกับ %1$s ที่ %2$s ไม่ได้ โทรศัพท์และคอมพิวเตอร์ต้องอยู่ในเครือข่ายเดียวกันหรือเชื่อมต่อ Tailscale ทั้งคู่ และไฟร์วอลล์ของคอมพิวเตอร์ต้องอนุญาตให้ PhoneBox เชื่อมต่อ</string>
+    <string name="pair_failed_code">%1$s ไม่ยอมรับรหัส รหัสใช้ได้ครั้งเดียวและหมดอายุใน 5 นาที เริ่มจับคู่ใหม่บนคอมพิวเตอร์</string>
+    <string name="pair_failed_answer">%1$s ส่งรหัสตอบกลับ %2$d</string>
+    <string name="pair_failed_certificate">ใบรับรองของคอมพิวเตอร์ไม่ตรงกับข้อมูลในรหัส QR โปรดเริ่มจับคู่ใหม่</string>
+    <string name="ok">ตกลง</string>
+</resources>

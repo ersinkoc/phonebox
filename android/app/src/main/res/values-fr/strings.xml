@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">Coupler avec un ordinateur ?</string>
+    <string name="pair_message">« %1$s » à l’adresse %2$s (port %3$d).\n\nVérifiez que la fenêtre d’association sur l’ordinateur affiche le code %4$s.\n\nNe continuez que si vous avez lancé l’association sur cet ordinateur.</string>
+    <string name="pair_positive">Pair</string>
+    <string name="pair_negative">Annuler</string>
+    <string name="pair_progress">Couplage avec %1$s …</string>
+    <string name="pair_done">Couplé avec %1$s</string>
+    <string name="pair_failed_title">L\'appairage n\'a pas fonctionné</string>
+    <string name="pair_failed_unreachable">Impossible d\'atteindre %1$s à %2$s. Le téléphone et l\'ordinateur doivent être sur le même réseau (ou les deux Tailscale), et le pare-feu de l\'ordinateur doit autoriser PhoneBox.</string>
+    <string name="pair_failed_code">%1$s n\'a pas accepté le code: il fonctionne une fois et pendant 5 minutes.Recommencez l\'appariement sur l\'ordinateur.</string>
+    <string name="pair_failed_answer">%1$s a répondu à %2$d .</string>
+    <string name="pair_failed_certificate">L\'ordinateur possède un certificat différent de celui indiqué par le code QR.</string>
+    <string name="ok">OK</string>
+</resources>

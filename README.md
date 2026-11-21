@@ -10,12 +10,22 @@
   <a href="docs/README.es.md">Español</a> ·
   <a href="docs/README.it.md">Italiano</a> ·
   <a href="docs/README.pt.md">Português</a> ·
+  <a href="docs/README.pt-BR.md">Português (Brasil)</a> ·
   <a href="docs/README.nl.md">Nederlands</a> ·
   <a href="docs/README.pl.md">Polski</a> ·
   <a href="docs/README.ru.md">Русский</a> ·
   <a href="docs/README.el.md">Ελληνικά</a> ·
   <a href="docs/README.vi.md">Tiếng Việt</a> ·
-  <a href="docs/README.zh.md">中文 (简体)</a>
+  <a href="docs/README.zh.md">中文 (简体)</a> ·
+  <a href="docs/README.ja.md">日本語</a> ·
+  <a href="docs/README.ko.md">한국어</a> ·
+  <a href="docs/README.id.md">Bahasa Indonesia</a> ·
+  <a href="docs/README.th.md">ไทย</a> ·
+  <a href="docs/README.uk.md">Українська</a> ·
+  <a href="docs/README.hi.md">हिन्दी</a> ·
+  <a href="docs/README.cs.md">Čeština</a> ·
+  <a href="docs/README.ar.md">العربية</a> ·
+  <a href="docs/README.zh-Hant.md">中文（繁體）</a>
 </p>
 
 <p align="center"><b>Turn an old Android phone into a desk panel for your computer.</b><br>

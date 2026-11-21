@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">要與電腦配對嗎？</string>
+    <string name="pair_message">「%1$s」，位址 %2$s（連接埠 %3$d）。\n\n請確認電腦的配對視窗顯示代碼 %4$s。\n\n只有在您從該電腦發起配對時才繼續。</string>
+    <string name="pair_positive">配對</string>
+    <string name="pair_negative">取消</string>
+    <string name="pair_progress">正在與 %1$s 配對…</string>
+    <string name="pair_done">已與 %1$s 配對</string>
+    <string name="pair_failed_title">配對失敗</string>
+    <string name="pair_failed_unreachable">無法連線至 %2$s 的 %1$s。手機和電腦必須位於同一個網路，或兩者都已連線到 Tailscale。請確認電腦的防火牆允許 PhoneBox 連線。</string>
+    <string name="pair_failed_code">%1$s 未接受代碼。代碼只能使用一次，有效期限為 5 分鐘。請在電腦上重新開始配對。</string>
+    <string name="pair_failed_answer">%1$s 傳回回應代碼 %2$d。</string>
+    <string name="pair_failed_certificate">電腦的憑證與 QR 碼中的憑證不符。請重新開始配對。</string>
+    <string name="ok">確定</string>
+</resources>

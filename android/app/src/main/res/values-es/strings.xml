@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pair_title">¿Se empareja con un ordenador?</string>
+    <string name="pair_message">«%1$s» en %2$s (puerto %3$d).\n\nComprueba que la ventana de vinculación del ordenador muestra el código %4$s.\n\nContinúa solo si iniciaste la vinculación en ese ordenador.</string>
+    <string name="pair_positive">Par</string>
+    <string name="pair_negative">Cancelar</string>
+    <string name="pair_progress">Emparejamiento con %1$s …</string>
+    <string name="pair_done">Emparejado con %1$s</string>
+    <string name="pair_failed_title">El emparejamiento no funcionó</string>
+    <string name="pair_failed_unreachable">No se pudo alcanzar %1$s at %2$s. El teléfono y el ordenador deben estar en la misma red (o ambos en Tailscale), y el firewall del equipo debe permitir PhoneBox.</string>
+    <string name="pair_failed_code">%1$s no aceptó el código: funciona una vez y durante 5 minutos, comience de nuevo la vinculación en el ordenador.</string>
+    <string name="pair_failed_answer">%1$s respondió %2$d .</string>
+    <string name="pair_failed_certificate">El ordenador tiene un certificado diferente al código QR. Comience a emparejar de nuevo.</string>
+    <string name="ok">OK</string>
+</resources>

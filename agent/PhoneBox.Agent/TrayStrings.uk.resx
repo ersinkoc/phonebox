@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+    </resheader>
+    <data xml:space="preserve" name="settings">
+        <value>Налаштування…</value>
+    </data>
+    <data xml:space="preserve" name="openPanel">
+        <value>Відкрити панель на телефоні</value>
+    </data>
+    <data xml:space="preserve" name="editConfig">
+        <value>Редагувати config.json</value>
+    </data>
+    <data xml:space="preserve" name="openLog">
+        <value>Відкрити журнал</value>
+    </data>
+    <data xml:space="preserve" name="autostart">
+        <value>Запускати разом із Windows</value>
+    </data>
+    <data xml:space="preserve" name="quit">
+        <value>Вийти</value>
+    </data>
+    <data xml:space="preserve" name="connected">
+        <value>Телефон з' єднано ({0}) Name</value>
+    </data>
+    <data xml:space="preserve" name="disconnected">
+        <value>Телефон не з' єднано</value>
+    </data>
+    <data xml:space="preserve" name="tooltipConnected">
+        <value>PhoneBox — телефон з’ єднано</value>
+    </data>
+    <data xml:space="preserve" name="tooltipWaiting">
+        <value>PhoneBox — очікування на телефон</value>
+    </data>
+    <data xml:space="preserve" name="autostartError">
+        <value>Не вдалося змінити скорочення для запуску: {0}</value>
+    </data>
+</root>

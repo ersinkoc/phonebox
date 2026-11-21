@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+    </resheader>
+    <data xml:space="preserve" name="settings">
+        <value>設定…</value>
+    </data>
+    <data xml:space="preserve" name="openPanel">
+        <value>在手機上開啟面板</value>
+    </data>
+    <data xml:space="preserve" name="editConfig">
+        <value>編輯 config.json</value>
+    </data>
+    <data xml:space="preserve" name="openLog">
+        <value>開啟記錄</value>
+    </data>
+    <data xml:space="preserve" name="autostart">
+        <value>隨 Windows 啟動</value>
+    </data>
+    <data xml:space="preserve" name="quit">
+        <value>結束</value>
+    </data>
+    <data xml:space="preserve" name="connected">
+        <value>電話連接{0})</value>
+    </data>
+    <data xml:space="preserve" name="disconnected">
+        <value>沒有連接電話</value>
+    </data>
+    <data xml:space="preserve" name="tooltipConnected">
+        <value>PhoneBox — 電話連接了</value>
+    </data>
+    <data xml:space="preserve" name="tooltipWaiting">
+        <value>PhoneBox — 等待電話</value>
+    </data>
+    <data xml:space="preserve" name="autostartError">
+        <value>未能更改啟動快捷方式: {0}</value>
+    </data>
+</root>

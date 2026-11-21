@@ -76,7 +76,7 @@ test('the settings page shows no English left in Vietnamese, with every section 
   await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
   await page.waitForTimeout(800);
 
-  const leftovers = await page.evaluate(() => {
+  const { texts, names } = await page.evaluate(() => {
     // Input values are user data, not interface text; their placeholder and aria-label still are.
     const skip = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'TEXTAREA']);
     const out = [];
@@ -99,11 +99,11 @@ test('the settings page shows no English left in Vietnamese, with every section 
       for (const c of el.children) walk(c);
     };
     walk(document.body);
-    return out;
+    return { texts: out, names: window.PhoneBoxI18n.LANGUAGES.map((lang) => lang.nativeName) };
   });
 
   // Product names and platform names that are not translated on purpose, and demo/sample data the config carries.
-  const leftoversKept = englishLeftovers(leftovers, [
+  const leftoversKept = englishLeftovers(texts, [
     'Control Deck', 'PhoneBox', 'Spotify', 'Claude', 'Codex', 'GitHub', 'OBS Studio', 'Home Assistant',
     'Discord', 'Antigravity', 'Tailscale', 'Windows', 'macOS', 'Linux', 'Android', 'WebView',
     'Windows Terminal', 'File Explorer (args: folder)', 'Task Manager', 'AppID', 'PowerShell',
@@ -122,7 +122,7 @@ test('the settings page shows no English left in Vietnamese, with every section 
     '(ok / warn / error)', '(ok / warn / error),',
   ].concat(
     // English names of the other languages in the picker
-    ['English', 'Deutsch', 'Français', 'Español', 'Italiano', 'Nederlands', 'Polski', 'Русский', '中文', 'Türkçe', 'Português'],
+    names,
     // the sample config: page, rule, shortcut, adapter and device names come from the file, not from the UI
     DEMO_NAMES,
   ));
@@ -130,18 +130,14 @@ test('the settings page shows no English left in Vietnamese, with every section 
   expect(leftoversKept, `untranslated text still on the settings page:\n${leftoversKept.join('\n')}`).toEqual([]);
 });
 
-// Checked for every language with a complete widget/template catalog (CATALOG.<lang> covers every widgets.json and
-// templates.json string): today that is Vietnamese and Portuguese (Brazil).
-for (const lang of ['vi', 'pt-BR']) {
-test(`every string in widgets.json and templates.json has a ${lang} catalog entry`, async ({ page }) => {
+test('widget and template catalog entries are available in every interface language', async ({ page }) => {
   await page.goto('/panel/');
-  const out = await page.evaluate(async (lang) => {
+  const out = await page.evaluate(async () => {
     const I18n = window.PhoneBoxI18n;
     const cat = await (await fetch('/widgets.json', { cache: 'no-store' })).json();
     const tpl = await (await fetch('/templates.json', { cache: 'no-store' })).json();
     const widgets = Array.isArray(cat) ? cat : (cat.widgets || []);
     const templates = Array.isArray(tpl) ? tpl : (tpl.templates || []);
-    const dict = I18n.CATALOG[lang] || {};
 
     const wanted = new Set();
     for (const w of widgets) {
@@ -158,14 +154,17 @@ test(`every string in widgets.json and templates.json has a ${lang} catalog entr
     const isValue = (s) => /^[\d.,%\-/+ ]+$/.test(s);
     // TRY is the Turkish lira code, used as a currency label: translating it would turn the code into a word.
     const NOT_TRANSLATED = new Set(['TRY']);
-    const missing = [...wanted].filter((s) => !(s in dict) && !NOT_TRANSLATED.has(s) && !isValue(s));
-    return { widgets: widgets.length, templates: templates.length, wanted: wanted.size, missing };
-  }, lang);
+    const missing = I18n.LANGUAGES.filter(({ code }) => code !== 'en').flatMap(({ code }) => {
+      const dict = I18n.CATALOG[code] || {};
+      return [...wanted].filter((s) => !dict[s]?.trim() && !NOT_TRANSLATED.has(s) && !isValue(s))
+        .map((s) => `${code}: ${s}`);
+    });
+    return { widgets: widgets.length, missing };
+  });
 
   expect(out.widgets).toBeGreaterThan(0);
   expect(out.missing, `catalog entries missing for:\n${out.missing.join('\n')}`).toEqual([]);
 });
-}
 
 test('settings.html keeps no English literal in a position that reaches the screen', async () => {
   const file = path.join(__dirname, '..', '..', 'agent', 'PhoneBox.Agent', 'settings.html');
