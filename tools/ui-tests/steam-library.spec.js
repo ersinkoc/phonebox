@@ -96,20 +96,58 @@ test('a keyboard user keeps the focus on the tile and confirms with a second Ent
   await expect(tile).toBeFocused();
 });
 
-test('the option on a widget of a disabled page does not let the phone start games', async ({ page }) => {
+test('each widget decides for itself: the one with starting off never asks the agent', async ({ page }) => {
+  const errors = watch(page);
   await page.goto('/panel/');
-  await page.evaluate(async () => {
-    localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, shortcuts: [], pages: [
-      { id: 'off', title: 'Off', enabled: false, widgets: [{ id: 'a', type: 'steam-library', x: 0, y: 0, w: 6, h: 4, options: { allowLaunch: true } }] },
-      { id: 'on', title: 'On', enabled: true, widgets: [{ id: 'b', type: 'steam-library', x: 0, y: 0, w: 6, h: 4, options: {} }] }] }));
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, shortcuts: [], pages: [{ id: 'test', title: 'Test', enabled: true, widgets: [
+      { id: 'on', type: 'steam-library', x: 0, y: 0, w: 6, h: 6, options: { allowLaunch: true, confirm: false, limit: 2 } },
+      { id: 'off', type: 'steam-library', x: 6, y: 0, w: 6, h: 6, options: { allowLaunch: false, confirm: false, limit: 2 } }] }] }));
   });
   await page.reload();
-  const r = await page.evaluate(async () => {
-    const res = await fetch('/agent/api/steam/launch?id=900020', { method: 'POST', headers: { 'X-PhoneBox-Panel': '1' } });
-    return { status: res.status, body: await res.json() };
+  await page.evaluate(() => {
+    window.__launches = [];
+    const real = window.fetch;
+    window.fetch = (url, ...rest) => { if (String(url).includes('/steam/launch')) window.__launches.push(String(url)); return real(url, ...rest); };
   });
-  expect(r.status).toBe(400);
-  expect(r.body.code).toBe('off');
+  const [on, off] = [page.locator('.w-steam-library').nth(0), page.locator('.w-steam-library').nth(1)];
+  await expect(off.locator('.sl-tile')).toHaveCount(2);
+
+  // the "off" widget: a tap only says how to turn it on, and nothing is sent to the agent
+  await off.locator('.sl-tile').nth(1).click();
+  await off.locator('.sl-tile').nth(1).click();
+  await expect(toast(page, 'Let the phone start games')).toBeVisible();
+  await expect(off.locator('.sl-tile.armed')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__launches)).toEqual([]);
+
+  // the "on" widget names itself, and the agent (here the demo) checks that widget's option
+  await on.locator('.sl-tile').nth(1).click();
+  await expect(toast(page, 'Starting Starfall Tactics')).toBeVisible();
+  const launches = await page.evaluate(() => window.__launches);
+  expect(launches).toHaveLength(1);
+  expect(launches[0]).toContain('widget=' + encodeURIComponent('test/on'));
+  expect(errors).toEqual([]);
+});
+
+test('the agent checks the option of the widget named in the request, not of any other', async ({ page }) => {
+  await page.goto('/panel/');
+  await page.evaluate(() => {
+    localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, shortcuts: [], pages: [
+      { id: 'hidden', title: 'Off', enabled: false, widgets: [{ id: 'a', type: 'steam-library', x: 0, y: 0, w: 6, h: 4, options: { allowLaunch: true } }] },
+      { id: 'test', title: 'On', enabled: true, widgets: [
+        { id: 'on', type: 'steam-library', x: 0, y: 0, w: 6, h: 4, options: { allowLaunch: true } },
+        { id: 'off', type: 'steam-library', x: 6, y: 0, w: 6, h: 4, options: {} }] }] }));
+  });
+  await page.reload();
+  const launch = (widget) => page.evaluate(async (widget) => {
+    const res = await fetch('/agent/api/steam/launch?id=900020' + (widget ? '&widget=' + encodeURIComponent(widget) : ''), { method: 'POST', headers: { 'X-PhoneBox-Panel': '1' } });
+    return { status: res.status, code: (await res.json()).code };
+  }, widget);
+  expect(await launch('test/off')).toEqual({ status: 400, code: 'off' });
+  expect(await launch('hidden/a')).toEqual({ status: 400, code: 'off' }); // a disabled page
+  expect(await launch(null)).toEqual({ status: 400, code: 'off' });
+  expect(await launch('test/on')).toEqual({ status: 200, code: undefined });
 });
 
 test('the library speaks the panel language', async ({ page }) => {

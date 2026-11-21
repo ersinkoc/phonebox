@@ -704,10 +704,12 @@ app.MapGet("/api/steam/cover", (string? id, SteamLibrary library, HttpResponse r
     res.Headers.CacheControl = "private, max-age=86400";
     return Results.File(bytes, path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg");
 });
-// Starts an installed game through Steam (steam://rungameid/<id>), only with a Steam library widget's
-// "Let the phone start games" on (off by default).
-app.MapPost("/api/steam/launch", (string? id, SteamLibrary library) =>
-    library.Launch(id) is { } refused ? Results.BadRequest(new { error = refused.Error, code = refused.Code }) : Results.Ok(new { ok = true }));
+// Starts an installed game through Steam (steam://rungameid/<id>) for the asking widget ("widget=pageId/widgetId"),
+// only with that widget's "Let the phone start games" on (off by default), like the App console and Dictation.
+app.MapPost("/api/steam/launch", (string? id, string? widget, HttpRequest req, SteamLibrary library) =>
+    library.Launch(req.Headers["X-PhoneBox-Device"].ToString(), widget, id) is { } refused
+        ? Results.BadRequest(new { error = refused.Error, code = refused.Code })
+        : Results.Ok(new { ok = true }));
 
 // Battery levels of wireless devices (headphones, mice, keyboards…), for the Device batteries widget.
 app.MapGet("/api/batteries", (BatteryMonitor b) => Results.Json(new { devices = b.Snapshot() }));

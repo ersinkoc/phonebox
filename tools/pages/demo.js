@@ -610,14 +610,15 @@
     if (path === '/api/steam/library') {
       const c = await config();
       const mine = shownWidgets(c).filter((w) => w.type === 'steam-library');
-      return json({ enabled: mine.length > 0, found: true, error: null, running: '900010', canLaunch: mine.some((w) => w.options?.allowLaunch === true),
+      return json({ enabled: mine.length > 0, found: true, error: null, running: '900010',
         games: DEMO_GAMES.map(([id, name, hoursAgo, state, progress]) => ({ id, name, lastPlayed: hoursAgo == null ? 0 : Math.floor(now() / 1000) - hoursAgo * 3600,
           sizeGb: 12.5, state, progress, cover: true })) });
     }
     if (path === '/api/steam/games') return json(DEMO_GAMES.map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
     if (path === '/api/steam/launch' && method === 'POST') {
-      if (!shownWidgets(await config()).some((w) => w.type === 'steam-library' && w.options?.allowLaunch === true)) {
-        return json({ error: 'Turn on "Let the phone start games" in a Steam library widget on an enabled page', code: 'off' }, 400);
+      // the asking widget's own option, like the agent (PanelWidgets.Find): another widget's does not count
+      if (panelWidget(await config(), q.get('widget'), 'steam-library')?.options?.allowLaunch !== true) {
+        return json({ error: 'Turn on "Let the phone start games" in this Steam library widget\'s settings', code: 'off' }, 400);
       }
       return DEMO_GAMES.some((g) => g[0] === q.get('id')) ? json({ ok: true }) : json({ error: 'That game is not installed', code: 'notinstalled' }, 400);
     }

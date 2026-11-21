@@ -7,18 +7,32 @@ namespace PhoneBox.Agent;
 /// <summary>A node of Valve's KeyValues text format (.vdf, .acf): a string value, or a block of named children.</summary>
 public sealed class VdfNode
 {
+    private static readonly IReadOnlyDictionary<string, VdfNode> NoChildren = new Dictionary<string, VdfNode>();
+    private Dictionary<string, VdfNode>? _children; // made for a block's first child: most nodes are values
+
     public string? Value { get; init; }
-    public Dictionary<string, VdfNode> Children { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public VdfNode? this[string key] => Children.TryGetValue(key, out var n) ? n : null;
+    public IReadOnlyDictionary<string, VdfNode> Children => _children ?? NoChildren;
+    public VdfNode? this[string key] => _children is not null && _children.TryGetValue(key, out var n) ? n : null;
     public string? Str(string key) => this[key]?.Value;
     public long Long(string key) => long.TryParse(Str(key), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : 0;
+
+    private void Set(string key, VdfNode node) => (_children ??= new(StringComparer.OrdinalIgnoreCase))[key] = node;
 
     /// <summary>
     /// Reads KeyValues text: <c>"key" "value"</c> pairs and <c>"key" { … }</c> blocks, <c>//</c> comments, <c>\\</c> and
     /// <c>\"</c> escapes inside quotes. Platform conditions such as <c>[$WIN32]</c> are skipped. Keys are case-insensitive.
+    /// Broken text never throws: what can be read is kept.
     /// </summary>
-    public static VdfNode Parse(string text)
+    public static VdfNode Parse(string text) => Parse(text, out _);
+
+    /// <inheritdoc cref="Parse(string)"/>
+    /// <param name="complete">
+    /// False when the text ends inside a quoted string or a block, has a <c>}</c> with no <c>{</c>, a block with no key,
+    /// or a key with no value: a file Steam is still writing, or a broken one.
+    /// </param>
+    public static VdfNode Parse(string text, out bool complete)
     {
+        complete = true;
         var root = new VdfNode();
         var stack = new Stack<VdfNode>();
         stack.Push(root);
@@ -37,7 +51,8 @@ public sealed class VdfNode
             {
                 i++;
                 var block = new VdfNode();
-                if (key is not null) { stack.Peek().Children[key] = block; key = null; }
+                if (key is not null) { stack.Peek().Set(key, block); key = null; }
+                else complete = false;
                 stack.Push(block);
                 continue;
             }
@@ -45,6 +60,8 @@ public sealed class VdfNode
             {
                 i++;
                 if (stack.Count > 1) stack.Pop();
+                else complete = false;
+                if (key is not null) complete = false;
                 key = null;
                 continue;
             }
@@ -63,6 +80,7 @@ public sealed class VdfNode
                     }
                     sb.Append(text[i++]);
                 }
+                if (i >= text.Length) { complete = false; break; } // no closing quote: the token is cut short
                 i++; // the closing quote
                 token = sb.ToString();
             }
@@ -76,10 +94,11 @@ public sealed class VdfNode
             if (key is null) key = token;
             else
             {
-                stack.Peek().Children[key] = new VdfNode { Value = token };
+                stack.Peek().Set(key, new VdfNode { Value = token });
                 key = null;
             }
         }
+        if (stack.Count > 1 || key is not null) complete = false;
         return root;
     }
 }
@@ -95,8 +114,7 @@ public sealed record SteamPick(string Id, string Name);
 
 /// <param name="Enabled">False while no Steam library widget is on an enabled page: then nothing is read.</param>
 /// <param name="Running">The app id Steam runs now (RunningAppID), or null.</param>
-/// <param name="CanLaunch">A Steam library widget on an enabled page has "Let the phone start games" on.</param>
-public sealed record SteamLibraryView(bool Enabled, bool Found, string? Error, string? Running, IReadOnlyList<SteamGame> Games, bool CanLaunch);
+public sealed record SteamLibraryView(bool Enabled, bool Found, string? Error, string? Running, IReadOnlyList<SteamGame> Games);
 
 /// <summary>
 /// The Steam library on this computer, read from Steam's own files: no Steam Web API key, no account and no internet.
@@ -105,26 +123,33 @@ public sealed record SteamLibraryView(bool Enabled, bool Found, string? Error, s
 /// Steam's RunningAppID (the registry on Windows, registry.vdf elsewhere).
 /// <para>
 /// Files are read only while a Steam library widget is on an enabled page, at most every <see cref="MinScanMs"/>, and a
-/// file is parsed again only when its modification time or size changed. Every read has a size cap.
+/// file is parsed again only when its modification time or size changed. Every read has a size cap. The reading happens
+/// outside <see cref="_gate"/>, one scan at a time, so a slow library folder (an unplugged or network drive) never holds
+/// up other requests: they get the last list.
 /// </para>
 /// <para>
-/// Starting a game is off by default (the widget's "Let the phone start games"). The phone sends an app id; the agent
-/// starts only an installed game from the list it reads right then, and hands Steam a URL built from that list's own
-/// numeric id, never from the request.
+/// Starting a game is off by default and decided per widget (its "Let the phone start games"): the phone names the asking
+/// widget and sends an app id; the agent starts only an installed game from the list it reads right then, and hands
+/// Steam a URL built from that list's own numeric id, never from the request.
 /// </para>
 /// </summary>
 public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
 {
     /// <summary>Steam tools, runtimes and redistributables: installed like games, but nothing to play.</summary>
-    private static readonly HashSet<string> Tools = ["228980", "1070560", "1391110", "1628350", "1493710", "2180100", "2348590", "250820", "1826330"];
+    private static readonly HashSet<string> Tools = ["228980", "1007", "1070560", "1391110", "1628350", "1493710", "2180100", "2348590", "250820", "1826330"];
 
     /// <summary>The widget asks every 5 s while an update runs and every 30 s otherwise; several phones share one read.</summary>
     internal const int MinScanMs = 2000;
+    /// <summary>How long a start waits for a scan already under way before reading the list itself.</summary>
+    internal const int LaunchWaitMs = 10_000;
     // Size caps: a manifest or libraryfolders.vdf is a few KB, localconfig.vdf a few MB on a big account, a cover ~100 KB.
     internal const long MaxManifestBytes = 1 << 20, MaxLocalConfigBytes = 32L << 20, MaxRegistryBytes = 4 << 20, MaxCoverBytes = 4 << 20;
     private static readonly string[] CoverNames = ["library_600x900.jpg", "library_600x900_2x.jpg", "library_capsule.jpg", "header.jpg"];
 
+    /// <summary>Guards the last results below (<see cref="_root"/> to <see cref="_error"/>, <see cref="_registryVdf"/>); never held while reading files.</summary>
     private readonly Lock _gate = new();
+    /// <summary>One scan at a time. The file caches (<see cref="_manifests"/> to <see cref="_coversAt"/>) belong to the scan.</summary>
+    private readonly SemaphoreSlim _scan = new(1, 1);
     private string? _root;
     private long _rootAt = Never;
     private const long Never = -(1L << 40); // far enough back that "now minus it" cannot overflow
@@ -150,28 +175,35 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
     internal Func<long> Clock { get; init; } = () => Environment.TickCount64;
     /// <summary>Overridable for tests: hands the steam:// URL to the system (tests record it instead of starting Steam).</summary>
     internal Action<ProcessStartInfo> StartProcess { get; init; } = psi => { using var p = Process.Start(psi); };
+    /// <summary>Overridable for tests: whether a library folder's steamapps folder is there (a slow drive in the tests).</summary>
+    internal Func<string, bool> FolderExists { get; init; } = Directory.Exists;
     /// <summary>How many manifests were parsed (tests: an unchanged file is not read again).</summary>
     internal int ManifestReads { get; private set; }
 
     public bool Wanted() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "steam-library");
 
-    /// <summary>Starting games is opt-in: a Steam library widget on an enabled page with "Let the phone start games" on.</summary>
-    public bool LaunchAllowed() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "steam-library" && w.Bool("allowLaunch") == true);
+    /// <summary>
+    /// Starting games is opt-in per widget: <paramref name="widget"/> ("pageId/widgetId", or "pageId/stackId:cardId" for a
+    /// Smart Stack card) must be a Steam library widget on an enabled page this phone shows, with "Let the phone start
+    /// games" on. Another widget's option does not count.
+    /// </summary>
+    public bool LaunchAllowed(string? deviceId, string? widget) =>
+        PanelWidgets.Find(config.Get(), deviceId, widget, "steam-library")?.Bool("allowLaunch") == true;
 
-    /// <summary>The library for the phone: installed games, the one being played, and whether the phone may start one.</summary>
+    /// <summary>The library for the phone: installed games and the one being played.</summary>
     public SteamLibraryView View()
     {
-        if (!Wanted()) return new SteamLibraryView(false, false, null, null, [], false);
+        if (!Wanted()) return new SteamLibraryView(false, false, null, null, []);
         var root = Root();
-        if (root is null) return new SteamLibraryView(true, false, "Steam was not found on this computer", null, [], false);
-        var games = Games(force: false);
+        if (root is null) return new SteamLibraryView(true, false, "Steam was not found on this computer", null, []);
+        var games = Games();
         string? error;
         lock (_gate) error = _error;
         var running = (RunningAppId ?? ReadRunningAppId)(root);
         var runningId = running > 0 ? running.ToString(CultureInfo.InvariantCulture) : null;
         // most recently played first, then by name; never played games last
         var sorted = games.OrderByDescending(g => g.LastPlayed).ThenBy(g => g.Name, StringComparer.OrdinalIgnoreCase).ToList();
-        return new SteamLibraryView(true, true, error, runningId, sorted, LaunchAllowed());
+        return new SteamLibraryView(true, true, error, runningId, sorted);
     }
 
     /// <summary>
@@ -179,7 +211,7 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
     /// Wi-Fi: <c>/api/steam/games</c> is not in <see cref="Lan"/>). Read when the widget's editor opens, not on a timer.
     /// </summary>
     public IReadOnlyList<SteamPick> Installed() =>
-        Root() is null ? [] : Games(force: false).OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).Select(g => new SteamPick(g.Id, g.Name)).ToList();
+        Root() is null ? [] : Games().OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).Select(g => new SteamPick(g.Id, g.Name)).ToList();
 
     /// <summary>
     /// The cover of an installed game, as a file under Steam's appcache/librarycache that belongs to that app id, or null.
@@ -189,21 +221,25 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
     {
         if (!IsAppId(id) || !Wanted()) return null;
         var root = Root();
-        if (root is null || !Games(force: false).Any(g => g.Id == id)) return null;
+        if (root is null || !Games().Any(g => g.Id == id)) return null;
         return FindCover(root, id!);
     }
 
     /// <summary>A refused start: a code the phone translates (off, nosteam, notinstalled, failed) and an English text.</summary>
     public sealed record LaunchError(string Code, string Error);
 
-    /// <summary>Starts an installed game through Steam; returns why it did not, or null when Steam was asked to start it.</summary>
-    public LaunchError? Launch(string? id)
+    /// <summary>
+    /// Starts an installed game through Steam for the asking <paramref name="widget"/> (see <see cref="LaunchAllowed"/>);
+    /// returns why it did not, or null when Steam was asked to start it.
+    /// </summary>
+    public LaunchError? Launch(string? deviceId, string? widget, string? id)
     {
+        if (!LaunchAllowed(deviceId, widget)) return new("off", "Turn on \"Let the phone start games\" in this Steam library widget's settings");
         if (!IsAppId(id)) return new("notinstalled", "That game is not installed");
-        if (!LaunchAllowed()) return new("off", "Turn on \"Let the phone start games\" in a Steam library widget on an enabled page");
         if (Root() is null) return new("nosteam", "Steam was not found on this computer");
         // the installed list read right now (unchanged files come from the cache), not a list the phone saw a while ago
-        var game = Games(force: true).FirstOrDefault(g => g.Id == id);
+        if (Rescan(LaunchWaitMs, force: true) is not { } games) return new("failed", "The Steam library is still being read");
+        var game = games.FirstOrDefault(g => g.Id == id);
         if (game is null) return new("notinstalled", "That game is not installed");
         // the URL is built from the manifest's own number, so no text from the request reaches the URL handler
         var url = "steam://rungameid/" + long.Parse(game.Id, NumberStyles.None, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture);
@@ -217,7 +253,7 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
                 psi.ArgumentList.Add(url);
             }
             StartProcess(psi);
-            log.LogInformation("steam game started from the phone: {Id} {Name}", game.Id, game.Name);
+            log.LogInformation("steam game started from the phone: app {Id}", game.Id);
             return null;
         }
         catch (Exception ex)
@@ -229,40 +265,75 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
 
     internal static bool IsAppId(string? id) => id is { Length: > 0 and <= 10 } && id.All(char.IsAsciiDigit);
 
+    /// <summary>Where Steam is, looked up again after a minute; the lookup itself runs outside <see cref="_gate"/>.</summary>
     private string? Root()
     {
         lock (_gate)
         {
-            var now = Clock();
-            if (now - _rootAt < 60_000) return _root;
-            _rootAt = now;
-            try { _root = FindRoot(); } catch { _root = null; }
-            return _root;
+            if (Clock() - _rootAt < 60_000) return _root;
         }
-    }
-
-    /// <summary>The installed games, read again at most every <see cref="MinScanMs"/> unless <paramref name="force"/>.</summary>
-    private List<SteamGame> Games(bool force)
-    {
-        var root = Root();
+        string? root;
+        try { root = FindRoot(); } catch { root = null; }
         lock (_gate)
         {
-            var now = Clock();
-            if (!force && now - _scannedAt < MinScanMs) return _games;
-            _scannedAt = now;
-            if (root is null) { _games = []; _error = null; return _games; }
-            try
-            {
-                _games = Scan(root);
-                _error = null;
-            }
-            catch (Exception ex)
-            {
-                log.LogDebug("steam library: {Msg}", ex.Message);
-                _error = "The Steam library could not be read";
-            }
-            return _games;
+            _root = root;
+            _rootAt = Clock();
         }
+        return root;
+    }
+
+    /// <summary>
+    /// The installed games, read again at most every <see cref="MinScanMs"/>. While a scan is under way (a slow drive),
+    /// the last list comes back at once instead of waiting for it.
+    /// </summary>
+    private List<SteamGame> Games()
+    {
+        lock (_gate)
+        {
+            if (Clock() - _scannedAt < MinScanMs) return _games;
+        }
+        if (Rescan(0, force: false) is { } games) return games;
+        lock (_gate) return _games;
+    }
+
+    /// <summary>
+    /// Reads the library folders, one scan at a time, waiting up to <paramref name="waitMs"/> for a scan under way; null when
+    /// that wait ran out. Without <paramref name="force"/>, a list read less than <see cref="MinScanMs"/> ago is reused.
+    /// </summary>
+    private List<SteamGame>? Rescan(int waitMs, bool force)
+    {
+        if (!_scan.Wait(waitMs)) return null;
+        try
+        {
+            if (!force)
+            {
+                lock (_gate)
+                {
+                    if (Clock() - _scannedAt < MinScanMs) return _games;
+                }
+            }
+            var root = Root();
+            List<SteamGame> games = [];
+            string? error = null;
+            if (root is not null)
+            {
+                try { games = Scan(root); }
+                catch (Exception ex)
+                {
+                    log.LogDebug("steam library: {Msg}", ex.Message);
+                    error = "The Steam library could not be read";
+                    lock (_gate) games = _games; // keep showing the last list
+                }
+            }
+            lock (_gate)
+            {
+                _games = games;
+                _error = error;
+                _scannedAt = Clock();
+            }
+            return games;
+        }
+        finally { _scan.Release(); }
     }
 
     /// <summary>Every library folder's manifests; a file whose time and size did not change is not parsed again.</summary>
@@ -274,7 +345,7 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
         foreach (var folder in Folders(root))
         {
             var apps = Path.Combine(folder, "steamapps");
-            if (!Directory.Exists(apps)) continue;
+            if (!FolderExists(apps)) continue; // an unplugged or network drive can take a long while to answer
             List<string> files;
             try { files = Directory.EnumerateFiles(apps, "appmanifest_*.acf").ToList(); }
             catch { continue; }
@@ -401,16 +472,20 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
         return folders.Select(f => f.TrimEnd('/', '\\')).Distinct(PathComparer).ToList();
     }
 
-    /// <summary>One appmanifest_*.acf, or null for a tool or runtime that is not a game.</summary>
+    /// <summary>One appmanifest_*.acf, or null for a tool or runtime that is not a game, or a cut-short or broken file.</summary>
     internal static SteamGame? ReadManifest(string text)
     {
-        var app = VdfNode.Parse(text)["AppState"];
+        // a manifest Steam is still writing (or a broken one) is skipped; its next write changes its time and size
+        var doc = VdfNode.Parse(text, out var complete);
+        if (!complete) return null;
+        var app = doc["AppState"];
         var id = app?.Str("appid");
         if (app is null || !IsAppId(id) || Tools.Contains(id!)) return null;
         var name = app.Str("name");
         if (string.IsNullOrWhiteSpace(name)) name = $"App {id}";
+        // Steamworks Common Redistributables, Steamworks SDK Redist (1007), …
         if (name.StartsWith("Proton ", StringComparison.OrdinalIgnoreCase) || name.StartsWith("Steam Linux Runtime", StringComparison.OrdinalIgnoreCase)
-            || name.StartsWith("Steamworks Common", StringComparison.OrdinalIgnoreCase)) return null;
+            || name.StartsWith("Steamworks ", StringComparison.OrdinalIgnoreCase)) return null;
         var (state, progress) = StateOf(app.Long("StateFlags"), app.Long("BytesToDownload"), app.Long("BytesDownloaded"));
         return new SteamGame(id!, name, app.Long("LastPlayed"), Math.Round(app.Long("SizeOnDisk") / 1e9, 1), state, progress, false);
     }
@@ -554,10 +629,10 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
                 lock (_gate)
                 {
                     if (_registryVdf is { } r && r.Path == file && r.Stamp == info.LastWriteTimeUtc && r.Length == info.Length) return r.Id;
-                    var id = info.Length <= MaxRegistryBytes ? RunningAppIdFromRegistryVdf(File.ReadAllText(file)) : 0;
-                    _registryVdf = (file, info.LastWriteTimeUtc, info.Length, id);
-                    return id;
                 }
+                var id = info.Length <= MaxRegistryBytes ? RunningAppIdFromRegistryVdf(File.ReadAllText(file)) : 0;
+                lock (_gate) _registryVdf = (file, info.LastWriteTimeUtc, info.Length, id);
+                return id;
             }
             catch { }
         }

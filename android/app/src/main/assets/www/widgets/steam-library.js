@@ -55,11 +55,14 @@ export function pickGames(games, favorites, onlyFavorites, limit) {
 
 // The installed Steam games: the favorites picked in the widget's options first, then the most recently played, with
 // their covers and update progress. Starting a game from
-// the phone is off by default (the widget's "Let the phone start games"); with it on, a tap starts the game through
-// Steam, and with "ask first" on (the default) the first tap only arms the tile. Nothing needs a Steam account key.
+// the phone is off by default and decided per widget (its "Let the phone start games"): the agent checks the option of
+// the widget named in the request, not of any other. With it on, a tap starts the game through Steam, and with "ask
+// first" on (the default) the first tap only arms the tile. Nothing needs a Steam account key.
 W['steam-library'] = {
   needs: ['tick'],
-  create(box, { o }) {
+  create(box, { o, page, w }) {
+    const canLaunch = o.allowLaunch === true; // this widget's own option; the agent checks it again for this widget
+    const wq = 'widget=' + encodeURIComponent(`${page.id}/${w.id}`);
     const confirm = o.confirm !== false;
     const limit = Math.max(1, Math.min(60, Math.round(+o.limit || 8)));
     const favorites = new Set((Array.isArray(o.favorites) ? o.favorites : []).map(String));
@@ -78,11 +81,10 @@ W['steam-library'] = {
       haptic();
       busy = g.id; render(true);
       try {
-        const r = await fetch(`${API}/steam/launch?id=${encodeURIComponent(g.id)}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
+        const r = await fetch(`${API}/steam/launch?id=${encodeURIComponent(g.id)}&${wq}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
         const j = await r.json().catch(() => ({}));
         if (r.ok) toast(t('w.steamlib.starting', { game: g.name }), 'ok');
         else toast((LAUNCH_ERRORS[j.code] || (() => t('w.steamlib.startFailed', { game: g.name })))(g.name), 'err');
-        if (j.code === 'off' && data) data.canLaunch = false;
       } catch (_) { toast(t('w.unavailable'), 'err'); }
       busy = null; render(true);
     };
@@ -103,7 +105,7 @@ W['steam-library'] = {
         b.append(bar);
       }
       b.addEventListener('click', () => {
-        if (!data?.canLaunch) { toast(t('w.steamlib.launchOff')); return; }
+        if (!canLaunch) { toast(t('w.steamlib.launchOff')); return; }
         if (running) { toast(t('w.steamlib.alreadyRunning', { game: g.name })); return; }
         if (!confirm || armed === g.id) { clearTimeout(armTimer); armed = null; launch(g); return; }
         haptic();
@@ -117,11 +119,11 @@ W['steam-library'] = {
     const message = (text) => grid.replaceChildren(h('div', 'empty', text));
     const render = (force = false) => {
       const games = pickGames(data?.games, o.favorites, o.onlyFavorites === true, limit);
-      const key = JSON.stringify([games, data?.running, data?.enabled, data?.found, data?.error, data?.canLaunch, failed, armed, busy]);
+      const key = JSON.stringify([games, data?.running, data?.enabled, data?.found, data?.error, failed, armed, busy]);
       if (!force && key === lastKey) return;
       lastKey = key;
       count.textContent = data?.games?.length ? ' ' + data.games.length : ''; // how many are installed
-      box.classList.toggle('sl-can-launch', !!data?.canLaunch);
+      box.classList.toggle('sl-can-launch', canLaunch);
       if (!data) { message(t(failed ? 'w.unavailable' : 'w.loading')); return; }
       if (!data.enabled) { message(t('w.steamlib.off')); return; }
       if (!data.found) { message(t('w.steamlib.notFound')); return; }

@@ -84,6 +84,13 @@ public sealed class SteamLibraryTests : IDisposable
         return store;
     }
 
+    private ConfigStore ConfigJson(string json)
+    {
+        var path = Path.Combine(_dir, "config-" + Guid.NewGuid().ToString("N") + ".json");
+        File.WriteAllText(path, json);
+        return new ConfigStore(path);
+    }
+
     private SteamLibrary Library(ConfigStore config, Func<long>? clock = null, long running = 0) =>
         new(config, NullLogger<SteamLibrary>.Instance)
         {
@@ -118,6 +125,41 @@ public sealed class SteamLibraryTests : IDisposable
         Assert.Equal(42, root["nested"]!.Long("N"));
         Assert.Equal("value", root.Str("bare"));
         Assert.Equal(0, root.Long("missing"));
+        Assert.Empty(root["quote"]!.Children); // a value has no children (and no dictionary)
+        VdfNode.Parse("\"a\" { \"b\" \"c\" } // the end", out var complete);
+        Assert.True(complete);
+    }
+
+    [Theory]
+    [InlineData("\"AppState\" {")]                                  // ends inside a block
+    [InlineData("\"AppState\" { \"appid\" \"570\" \"name\" \"Dota")] // ends inside a quoted string
+    [InlineData("\"AppState\" { \"appid\" \"570\" } }")]             // a } with no {
+    [InlineData("\"AppState\" { \"appid\" \"570\" \"name\" }")]      // a key with no value
+    [InlineData("{ \"appid\" \"570\" }")]                            // a block with no key
+    [InlineData("\u0001\uFFFD garbage \"\\")]                        // not KeyValues at all
+    public void ABrokenManifestIsSkippedWithoutThrowing(string text)
+    {
+        VdfNode.Parse(text, out var complete);
+        Assert.False(complete);
+        Assert.Null(SteamLibrary.ReadManifest(text));
+    }
+
+    [Fact]
+    public void AManifestStillBeingWrittenIsReadOnceItIsComplete()
+    {
+        Manifest(Root, "570", "Dota 2");
+        var path = Path.Combine(Root, "steamapps", "appmanifest_620.acf");
+        File.WriteAllText(path, "\"AppState\"\n{\n\t\"appid\"\t\t\"620\"\n\t\"name\"\t\t\"Port");
+        long now = 1_000_000;
+        var library = Library(Config(), () => now);
+        Assert.Equal(new[] { "570" }, library.View().Games.Select(g => g.Id).ToArray());
+
+        Manifest(Root, "620", "Portal 2");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));
+        now += SteamLibrary.MinScanMs + 1;
+        Assert.Equal(new[] { "570", "620" }, library.View().Games.Select(g => g.Id).Order().ToArray());
+        Assert.Empty(VdfNode.Parse("").Children);
+        Assert.Null(SteamLibrary.ReadManifest(""));
     }
 
     [Fact]
@@ -128,6 +170,7 @@ public sealed class SteamLibraryTests : IDisposable
         Manifest(Other, "1245620", "ELDEN RING", lastPlayed: 1_800_000_000);
         Manifest(Other, "400", "Portal", lastPlayed: 0);
         Manifest(Root, "228980", "Steamworks Common Redistributables");
+        Manifest(Other, "1007", "Steamworks SDK Redist");
         Manifest(Other, "1493710", "Proton Experimental");
 
         var view = Library(Config()).View();
@@ -332,6 +375,43 @@ public sealed class SteamLibraryTests : IDisposable
     }
 
     [Fact]
+    public async Task ASlowLibraryFolderDoesNotHoldUpOtherRequests()
+    {
+        var slow = Path.Combine(_dir, "Slow");
+        File.WriteAllText(Path.Combine(Root, "steamapps", "libraryfolders.vdf"), $$"""
+            "libraryfolders" { "0" { "path" "{{Quote(Root)}}" } "1" { "path" "{{Quote(slow)}}" } }
+            """);
+        Manifest(Root, "570", "Dota 2");
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var library = new SteamLibrary(Config(), NullLogger<SteamLibrary>.Instance)
+        {
+            FindRoot = () => Root, RunningAppId = _ => 0, StartProcess = _started.Add,
+            // an unplugged or network drive: the first look at it hangs until the test lets it go
+            FolderExists = path =>
+            {
+                if (path.StartsWith(slow, StringComparison.OrdinalIgnoreCase)) { entered.Set(); release.Wait(TimeSpan.FromSeconds(10)); }
+                return Directory.Exists(path);
+            },
+        };
+
+        var first = Task.Run(() => library.View());
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
+        // while that scan waits on the drive, other requests answer at once with the last list (none yet)
+        var clock = Stopwatch.StartNew();
+        var view = library.View();
+        Assert.True(view.Found);
+        Assert.Empty(view.Games);
+        Assert.Null(library.CoverPath("570"));
+        Assert.Empty(library.Installed());
+        Assert.True(clock.ElapsedMilliseconds < 2000, $"waited {clock.ElapsedMilliseconds} ms");
+
+        release.Set();
+        var done = await first.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal("570", Assert.Single(done.Games).Id);
+    }
+
+    [Fact]
     public void AManifestOverTheSizeCapIsSkipped()
     {
         Manifest(Root, "570", "Dota 2");
@@ -349,7 +429,6 @@ public sealed class SteamLibraryTests : IDisposable
             var view = library.View();
             Assert.False(view.Enabled);
             Assert.Empty(view.Games);
-            Assert.False(view.CanLaunch);
             Assert.Equal(0, library.ManifestReads);
         }
     }
@@ -376,35 +455,63 @@ public sealed class SteamLibraryTests : IDisposable
 
         // the widget alone only shows the library: starting games is a separate option, off by default
         var shownOnly = Library(Config(allowLaunch: false));
-        Assert.False(shownOnly.View().CanLaunch);
         Assert.NotEmpty(shownOnly.View().Games);
-        Assert.Equal("off", shownOnly.Launch("570")?.Code);
+        Assert.Equal("off", shownOnly.Launch(null, "p/w", "570")?.Code);
 
-        // the option on a widget of a disabled page does not count
-        Assert.Equal("off", Library(Config(pageEnabled: false)).Launch("570")?.Code);
-        Assert.Equal("off", Library(Config("clock")).Launch("570")?.Code);
+        // the option on a widget of a disabled page does not count, nor a widget of another type with that key
+        Assert.Equal("off", Library(Config(pageEnabled: false)).Launch(null, "p/w", "570")?.Code);
+        Assert.Equal("off", Library(Config("clock")).Launch(null, "p/w", "570")?.Code);
 
         var allowed = Library(Config());
-        Assert.True(allowed.View().CanLaunch);
         // only a number that is in the installed list reaches Steam; nothing else is started
-        Assert.Equal("notinstalled", allowed.Launch("570; calc")?.Code);
-        Assert.Equal("notinstalled", allowed.Launch("570 & calc")?.Code);
-        Assert.Equal("notinstalled", allowed.Launch("steam://rungameid/570")?.Code);
-        Assert.Equal("notinstalled", allowed.Launch(null)?.Code);
-        Assert.Equal("notinstalled", allowed.Launch("12345")?.Code);
+        Assert.Equal("notinstalled", allowed.Launch(null, "p/w", "570; calc")?.Code);
+        Assert.Equal("notinstalled", allowed.Launch(null, "p/w", "570 & calc")?.Code);
+        Assert.Equal("notinstalled", allowed.Launch(null, "p/w", "steam://rungameid/570")?.Code);
+        Assert.Equal("notinstalled", allowed.Launch(null, "p/w", null)?.Code);
+        Assert.Equal("notinstalled", allowed.Launch(null, "p/w", "12345")?.Code);
 
         var none = new SteamLibrary(Config(), NullLogger<SteamLibrary>.Instance) { FindRoot = () => null, RunningAppId = _ => 0, StartProcess = _started.Add };
         Assert.False(none.View().Found);
         Assert.Empty(none.View().Games);
-        Assert.Equal("nosteam", none.Launch("570")?.Code);
+        Assert.Equal("nosteam", none.Launch(null, "p/w", "570")?.Code);
         Assert.Empty(_started); // nothing above reached the system
+    }
+
+    [Fact]
+    public void EachWidgetDecidesForItself()
+    {
+        Manifest(Root, "570", "Dota 2");
+        var library = Library(ConfigJson("""
+            {"pages":[
+              {"id":"p","title":"P","enabled":true,"widgets":[
+                {"id":"on","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":{"allowLaunch":true}},
+                {"id":"off","type":"steam-library","x":6,"y":0,"w":6,"h":4,"options":{"allowLaunch":false}},
+                {"id":"plain","type":"steam-library","x":0,"y":4,"w":6,"h":4}]},
+              {"id":"q","title":"Q","enabled":false,"widgets":[
+                {"id":"on","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":{"allowLaunch":true}}]}]}
+            """));
+
+        // another widget with the option on does not let this one start games
+        Assert.False(library.LaunchAllowed(null, "p/off"));
+        Assert.Equal("off", library.Launch(null, "p/off", "570")?.Code);
+        Assert.Equal("off", library.Launch(null, "p/plain", "570")?.Code); // off by default
+        Assert.Equal("off", library.Launch(null, "q/on", "570")?.Code);    // a disabled page
+        Assert.Equal("off", library.Launch(null, null, "570")?.Code);      // no widget named
+        Assert.Equal("off", library.Launch(null, "", "570")?.Code);
+        Assert.Equal("off", library.Launch(null, "p", "570")?.Code);
+        Assert.Equal("off", library.Launch(null, "p/missing", "570")?.Code);
+        Assert.Empty(_started);
+
+        Assert.True(library.LaunchAllowed(null, "p/on"));
+        Assert.Null(library.Launch(null, "p/on", "570"));
+        Assert.Single(_started);
     }
 
     [Fact]
     public void AnInstalledGameIsHandedToSteamsUrlHandlerByItsOwnNumber()
     {
         Manifest(Root, "570", "Dota 2");
-        Assert.Null(Library(Config()).Launch("570"));
+        Assert.Null(Library(Config()).Launch(null, "p/w", "570"));
         var psi = Assert.Single(_started);
         if (OperatingSystem.IsWindows())
         {

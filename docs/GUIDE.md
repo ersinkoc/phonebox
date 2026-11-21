@@ -128,7 +128,8 @@ game was last played, covers from Steam's `appcache/librarycache`, and Steam's `
 however many phones ask, and parses a file again only after it changed; each file has a size limit. Steam tools and
 runtimes (Proton, Steamworks Common Redistributables…) are left out.
 
-Starting a game from the phone is off by default: turn on **Let the phone start games** in the widget's options. With
+Starting a game from the phone is off by default: turn on **Let the phone start games** in the widget's options. Each
+Steam library widget decides for itself: the agent checks the option of the widget a tap comes from. With
 **Ask before starting** (on by default) the first tap marks the game and a second tap within four seconds starts it.
 The phone sends only the game's app id; the agent starts it only if that id is installed right then, by handing
 Steam's own `steam://rungameid/<id>` link to the system (Windows' URL handler, `xdg-open` on Linux, `open` on macOS).
