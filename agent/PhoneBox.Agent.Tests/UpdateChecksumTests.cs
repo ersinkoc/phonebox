@@ -192,6 +192,7 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
         Assert.False(UpdateService.AppCurrentOn("", "0.9.26"));                   // no answer: install as before
         Assert.False(UpdateService.AppCurrentOn("Unable to find package", "0.9.26"));
         Assert.False(UpdateService.AppCurrentOn(dump.Replace("0.9.26", "0.9.25+local"), "0.9.26")); // can't compare: install
+        Assert.False(UpdateService.AppCurrentOn(dump.Replace("0.9.26", "0.9.26_local"), "0.9.26"));
     }
 
     [Fact]

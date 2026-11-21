@@ -489,9 +489,9 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
 
     /// <summary>The app's version in "dumpsys package" output is the latest release or newer.</summary>
     internal static bool AppCurrentOn(string dumpsys, string latest) =>
-        UsbLink.ParseVersionName(dumpsys) is { } installed
-        // only a version that compares: one that doesn't parse (0.9.25+local) installs as before
-        && Version.TryParse(latest, out var l) && Version.TryParse(installed.Split('-')[0], out var i) && i >= l;
+        // the whole versionName field, and only a version that compares: 0.9.25+local or 0.9.26_local installs as before
+        System.Text.RegularExpressions.Regex.Match(dumpsys, @"versionName=(\S+)") is { Success: true } m
+        && Version.TryParse(latest, out var l) && Version.TryParse(m.Groups[1].Value.Split('-')[0], out var i) && i >= l;
 
     internal static string[] PhoneTargets(string[] connected, bool appCurrent, string[] retry) =>
         appCurrent ? connected.Where(retry.Contains).ToArray() : connected;
