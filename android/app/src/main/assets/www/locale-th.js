@@ -365,6 +365,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.volumeKeys": "ปุ่มปรับระดับเสียงของโทรศัพท์ เปลี่ยนหน้า",
       "s.display.autoBrightness": "ปรับความสว่างตามห้อง (เซ็นเซอร์แสง)",
       "s.display.nightWhenDark": "แสดงหน้าจอกลางคืนเมื่อห้องมืด",
+      "s.display.nightWhenAway": "แสดงหน้าจอกลางคืนเมื่อคอมพิวเตอร์ไม่ได้เชื่อมต่อ",
       "s.display.proximityWake": "มือที่อยู่ใกล้โทรศัพท์ ปลุกจอกลางคืน",
       "s.display.controlsTop": "จุดบนหน้า และปุ่มอนุญาต/ ปฏิเสธ ที่ด้านบนของจอภาพ",
       "s.oled.title": "OLED ป้องกันการเผาไหม้",

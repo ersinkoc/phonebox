@@ -365,6 +365,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.volumeKeys": "휴대폰의 볼륨 키로 페이지 전환",
       "s.display.autoBrightness": "밝기가 방을 따라갑니다(광센서)",
       "s.display.nightWhenDark": "방이 어두울 때마다 야간 화면 보기",
+      "s.display.nightWhenAway": "컴퓨터가 연결되지 않았을 때 야간 화면 보기",
       "s.display.proximityWake": "전화 근처에 손이 밤 스크린을 깨워",
       "s.display.controlsTop": "페이지 도트와 화면 상단의 허용 / 거부 단추",
       "s.oled.title": "OLED 버닝 보호",
