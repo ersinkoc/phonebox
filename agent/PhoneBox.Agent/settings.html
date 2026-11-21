@@ -2431,8 +2431,8 @@ function openFeedImportModal() {
     const catCount = new Set(cfg.feeds.map((f) => f.category).filter(Boolean)).size;
     const limitMsg = skippedLimit ? t('s.feeds.skippedLimitToast', { count: skippedLimit, max: MAX_FEEDS }) : '';
     const toastMsg = updated
-      ? t('s.feeds.importedUpdatedToast', { added, s: added === 1 ? '' : 's', updated, categories: catCount })
-      : t('s.feeds.importedToast', { added, s: added === 1 ? '' : 's', categories: catCount });
+      ? t('s.feeds.importedUpdatedToast', { added, updated, categories: catCount })
+      : t('s.feeds.importedToast', { added, categories: catCount });
     toast(toastMsg + limitMsg);
   };
 

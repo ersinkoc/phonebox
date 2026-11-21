@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Languages**
+- The panel, the settings page, the Android pairing dialog and the tray menu now come in 23 languages. New: Turkish,
+  Japanese, Korean, Indonesian, Thai, Ukrainian, Hindi, Czech, Arabic (right to left) and Traditional Chinese, next to
+  English, German, French, Spanish, Italian, Portuguese, Brazilian Portuguese, Dutch, Polish, Russian, Greek, Vietnamese
+  and Simplified Chinese. **Follow system** picks the phone's or the computer's language, and each language has its own
+  README.
+
 **Widgets**
 - News feeds: each feed can have a **category**, and a News feeds widget can show only one category (**Only this
   category**). **Import feeds (OPML / bulk)** in Settings › General › News feeds reads an OPML export (Feedly,
