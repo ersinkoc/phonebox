@@ -273,6 +273,28 @@ test('the saved Japanese preference reaches the settings and the phone panel', a
   await expect(page.locator('#dots')).toHaveAttribute('title', /[^\x00-\x7f]/);
 });
 
+test('Arabic pages still turn: the pager keeps scrolling left to right', async ({ page }) => {
+  await page.goto('/panel/');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config', JSON.stringify({
+      night: { enabled: false }, rules: [], shortcuts: [],
+      display: { language: 'ar' },
+      pages: [
+        { id: 'one', title: 'One', widgets: [{ id: 'a', type: 'clock', x: 0, y: 0, w: 3, h: 2 }] },
+        { id: 'two', title: 'Two', widgets: [{ id: 'b', type: 'clock', x: 0, y: 0, w: 3, h: 2 }] },
+      ],
+    }));
+  });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.locator('#pager')).toHaveCSS('direction', 'ltr');
+  await expect(page.locator('#pager > .page').first()).toHaveCSS('direction', 'rtl');
+  await page.evaluate(async () => { const { goPage } = await import('/panel/main.js'); goPage(1, true); });
+  const second = await page.locator('#pager > .page').nth(1).boundingBox();
+  expect(Math.abs(second.x)).toBeLessThan(2); // the second page is the one on screen
+});
+
 test('Arabic reads right to left without moving saved widget coordinates', async ({ page }) => {
   await show(page, [
     { id: 'left', type: 'clock', x: 0, y: 0, w: 3, h: 2 },

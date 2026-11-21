@@ -88,6 +88,9 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   gap: 8px;
 }
 /* Widget coordinates are saved from the left edge in both the panel and the editor. */
+/* The pager scrolls by positive offsets (page i at i × width), so it stays left to right as well. */
+[dir="rtl"] #pager { direction: ltr; }
+[dir="rtl"] #pager > .page { direction: rtl; }
 [dir="rtl"] .grid { direction: ltr; }
 [dir="rtl"] .grid > .w { direction: rtl; }
 [dir="rtl"] input[type="range"] { direction: ltr; }
