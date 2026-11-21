@@ -19,6 +19,8 @@
   "ping": { "host": "1.1.1.1", "adapters": [] },
   // Discord widget: talks to the Discord desktop app on this computer. Create an application at discord.com/developers/applications, add the redirect http://127.0.0.1, and enter its client ID and secret (see docs/DISCORD.md)
   "discord": { "enabled": false, "clientId": null, "clientSecret": null },
+  // Telegram notifications: signs in to your Telegram account as one more device and shows new messages on the phone, following each chat's settings in Telegram. Needs an api_id and api_hash from my.telegram.org; sign in from Settings › General › Telegram (see docs/TELEGRAM.md)
+  "telegram": { "enabled": false, "apiId": null, "apiHash": null, "phone": null, "showText": true, "vibrate": "double", "sound": "telegram", "volume": 60, "chats": [] },
   // Cursor agent chats on the AI sessions widget (off by default)
   "cursor": { "sessions": false },
   // Antigravity chats on the AI sessions widget (off by default)

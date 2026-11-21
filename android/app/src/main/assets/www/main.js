@@ -169,40 +169,90 @@ export const buzz = (p) => { try { if (bridge && !nightOn && cfg.display?.vibrat
 // One AudioContext for the whole panel: Chrome limits how many can be open, so a new one per chime would run out.
 // It is suspended a second after the last tone, so a panel that runs all day doesn't keep an audio output open.
 let chimeCtx = null, chimeIdle = 0;
-/**
- * A short tone for timers, made with Web Audio so the app needs no sound file. Silent on the night screen, like
- * buzz(). volume is a percentage (10–100); finished plays a rising three-note pattern instead of two beeps.
- */
-export const chime = (volume, finished = false) => {
+/** The panel's tones: frequencies played one after another, each with its own length (seconds). */
+const TONES = {
+  chime: [[880, 0.22], [880, 0.22]],
+  finished: [[660, 0.22], [880, 0.22], [1100, 0.22]],
+  ding: [[1320, 0.5]],
+  pop: [[520, 0.09]],
+  rising: [[523, 0.16], [659, 0.16], [784, 0.3]],
+  knock: [[180, 0.08], [180, 0.08]],
+};
+function audioCtx() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  if (!chimeCtx) chimeCtx = new Ctx();
+  // a context made without a tap starts suspended in a desktop browser; the phone's WebView allows playback
+  if (chimeCtx.state === 'suspended') { const r = chimeCtx.resume(); if (r && r.catch) r.catch(() => {}); }
+  return chimeCtx;
+}
+// It is suspended a second after the last sound, so a panel that runs all day doesn't keep an audio output open.
+function idleAfter(seconds) {
+  clearTimeout(chimeIdle);
+  const ctx = chimeCtx;
+  chimeIdle = setTimeout(() => {
+    try { if (ctx.state === 'running' && ctx.suspend) { const r = ctx.suspend(); if (r && r.catch) r.catch(() => {}); } } catch (_) {}
+  }, (seconds + 1) * 1000);
+}
+const peakOf = (volume) => 0.4 * Math.min(100, Math.max(10, +volume || 60)) / 100; // below 1, so two notes never clip
+/** Plays a tone from TONES by name (unknown names play nothing). Silent on the night screen, like buzz(). */
+export const tone = (name, volume) => {
   try {
-    if (nightOn) return;
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    if (!chimeCtx) chimeCtx = new Ctx();
-    // a context made without a tap starts suspended in a desktop browser; the phone's WebView allows playback
-    if (chimeCtx.state === 'suspended') { const r = chimeCtx.resume(); if (r && r.catch) r.catch(() => {}); }
-    const peak = 0.4 * Math.min(100, Math.max(10, +volume || 60)) / 100; // below 1, so two notes never clip
-    const notes = finished ? [660, 880, 1100] : [880, 880];
-    const t0 = chimeCtx.currentTime + 0.02;
-    notes.forEach((freq, i) => {
-      const at = t0 + i * 0.25, osc = chimeCtx.createOscillator(), gain = chimeCtx.createGain();
+    const notes = TONES[name];
+    if (nightOn || !notes) return;
+    const ctx = audioCtx();
+    if (!ctx) return;
+    const peak = peakOf(volume);
+    let at = ctx.currentTime + 0.02;
+    for (const [freq, len] of notes) {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, at);
       gain.gain.setValueAtTime(0.0001, at);
       gain.gain.linearRampToValueAtTime(peak, at + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22); // a quick fade-out, no click at the end
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + len); // a quick fade-out, no click at the end
       osc.connect(gain);
-      gain.connect(chimeCtx.destination);
+      gain.connect(ctx.destination);
       osc.start(at);
-      osc.stop(at + 0.24);
-    });
-    clearTimeout(chimeIdle);
-    const ctx = chimeCtx;
-    chimeIdle = setTimeout(() => {
-      try { if (ctx.state === 'running' && ctx.suspend) { const r = ctx.suspend(); if (r && r.catch) r.catch(() => {}); } } catch (_) {}
-    }, (notes.length * 0.25 + 1) * 1000);
+      osc.stop(at + len + 0.02);
+      at += len + 0.03;
+    }
+    idleAfter(at - ctx.currentTime);
   } catch (_) {}
 };
+/**
+ * A short tone for timers, made with Web Audio so the app needs no sound file. Silent on the night screen, like
+ * buzz(). volume is a percentage (10–100); finished plays a rising three-note pattern instead of two beeps.
+ */
+export const chime = (volume, finished = false) => tone(finished ? 'finished' : 'chime', volume);
+
+// Telegram ringtones, decoded once each (a few kept, they are short).
+const soundCache = new Map();
+/** Plays a ringtone the agent fetched from Telegram; falls back to the tone when it cannot be had or decoded. */
+export async function playTelegramSound(id, fallback, volume) {
+  if (nightOn) return;
+  try {
+    const ctx = audioCtx();
+    if (!ctx || !/^-?\d{1,20}$/.test(String(id))) throw new Error('no sound');
+    let buf = soundCache.get(id);
+    if (!buf) {
+      const r = await fetch(API + '/telegram/sound?id=' + encodeURIComponent(id), { cache: 'no-store', headers: PANEL_HEADERS });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.arrayBuffer();
+      buf = await new Promise((ok, fail) => { const p = ctx.decodeAudioData(data, ok, fail); if (p && p.catch) p.catch(fail); });
+      if (soundCache.size > 8) soundCache.clear();
+      soundCache.set(id, buf);
+    }
+    const src = ctx.createBufferSource(), gain = ctx.createGain();
+    src.buffer = buf;
+    gain.gain.value = peakOf(volume) * 2.5; // a recorded sound is quieter than a pure tone at the same peak
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    const len = Math.min(buf.duration, 10);
+    src.start(0, 0, len);
+    idleAfter(len);
+  } catch (_) { tone(fallback, volume); }
+}
 export const transport = () => { try { return bridge ? bridge.transport() : ''; } catch (_) { return ''; } };
 
 /** h('div', 'cls', child, 'text', [more]) */
@@ -1158,12 +1208,30 @@ export const levelOf = (v) => v.level || (typeof v.value === 'string' ? (/^(ok|p
   : /^(fail(ed|ure)?|error|red|down|offline|broken)$/i.test(v.value) ? 'error' : /^(running|pending|building|warn(ing)?|yellow)$/i.test(v.value) ? 'warn' : '') : '');
 
 // ---------------------------------------------------------------- notifications (POST /api/notify)
+/** Named vibrations a notification may ask for ("vibrate": "long"); "wait,vibrate,…" milliseconds work too. */
+const VIBRATIONS = {
+  short: '0,60', double: '0,70,110,70', long: '0,450', triple: '0,60,90,60,90,60', heartbeat: '0,70,90,160',
+};
+export function vibration(v, level) {
+  if (typeof v === 'string') {
+    if (Object.prototype.hasOwnProperty.call(VIBRATIONS, v)) return VIBRATIONS[v];
+    // own patterns from a webhook: up to 16 steps and 3 seconds, so a typo cannot buzz for a minute
+    const parts = v.split(',').map((x) => x.trim());
+    if (parts.length <= 16 && parts.every((x) => /^\d{1,4}$/.test(x)) && parts.reduce((a, x) => a + +x, 0) <= 3000) return parts.join(',');
+  }
+  return level === 'err' ? '0,90,90,90,90,160' : VIBRATIONS.double;
+}
+
 export function handleNotify(d) {
   const level = d.level === 'error' ? 'err' : d.level === 'ok' || d.level === 'success' ? 'ok' : d.level === 'warn' ? 'warn' : '';
   if (d.wake && nightOn) { wakeUntil = Date.now() + 30_000; setNight(false); }
   undim();
   toast(d.text || '', level, d.title || '', d.seconds || 5);
-  if (d.vibrate !== false) buzz(level === 'err' ? '0,90,90,90,90,160' : '0,70,110,70');
+  if (d.vibrate !== false && d.vibrate !== 'off') buzz(vibration(d.vibrate, level));
+  if (typeof d.sound === 'string' || d.soundId != null) {
+    if (d.soundId != null) playTelegramSound(String(d.soundId), d.sound, d.soundVolume);
+    else tone(d.sound, d.soundVolume);
+  }
   D.notes.unshift({ title: d.title || '', text: d.text || '', level: d.level || 'info', at: Date.now() });
   D.notes = D.notes.slice(0, 30);
   store.set('notes', D.notes);

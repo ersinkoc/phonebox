@@ -96,6 +96,7 @@ AddMonitor<CalendarMonitor>(builder.Services);
 AddMonitor<DockerMonitor>(builder.Services);
 AddMonitor<ObsMonitor>(builder.Services);
 AddMonitor<DiscordMonitor>(builder.Services);
+AddMonitor<TelegramMonitor>(builder.Services);
 AddMonitor<SteamMonitor>(builder.Services);
 AddMonitor<BatteryMonitor>(builder.Services);
 AddMonitor<RuleEngine>(builder.Services);
@@ -669,6 +670,16 @@ app.MapGet("/api/discord/img", async (string kind, string id, string hash, Disco
 app.MapPost("/api/discord/{action}", async (string action, string? channel, DiscordMonitor dc) =>
     await dc.ActAsync(action, channel) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
 
+// Telegram: new messages become phone notifications (TelegramMonitor). The login steps stay local-only, deliberately
+// not under /api/telegram, which the phone may reach over Wi-Fi; the phone only fetches a chat's saved ringtone.
+app.MapGet("/api/telegram-status", (TelegramMonitor tg) => Results.Json(tg.Status()));
+app.MapPost("/api/telegram-login", async (TelegramMonitor tg) => Results.Json(await tg.StartLogin()));
+app.MapPost("/api/telegram-login/code", async (TelegramLoginBody body, TelegramMonitor tg) =>
+    string.IsNullOrWhiteSpace(body.Value) ? Results.BadRequest(new { error = "empty" }) : Results.Json(await tg.Submit(body.Value)));
+app.MapPost("/api/telegram-logout", async (TelegramMonitor tg) => Results.Json(await tg.Logout()));
+app.MapGet("/api/telegram/sound", async (long id, TelegramMonitor tg) =>
+    await tg.Sound(id) is { } s ? Results.File(s.Data, s.Type, lastModified: null, entityTag: null, enableRangeProcessing: false) : Results.NotFound());
+
 // Steam friends presence; the API key stays on the computer and only the public presence snapshot reaches the phone.
 app.MapGet("/api/steam", (SteamMonitor steam, ConfigStore cfg) =>
 {
@@ -1006,6 +1017,9 @@ static void AddMonitor<T>(IServiceCollection s) where T : class, IHostedService
     s.AddSingleton<T>();
     s.AddHostedService(sp => sp.GetRequiredService<T>());
 }
+
+/// <summary>Body of POST /api/telegram-login/code: the code Telegram sent, or the cloud password.</summary>
+internal sealed record TelegramLoginBody(string? Value);
 
 /// <summary>Body of POST /api/pair/claim.</summary>
 internal sealed record PairClaim(string? Code);

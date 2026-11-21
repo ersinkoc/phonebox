@@ -174,6 +174,7 @@ release builds. See the [full compatibility table](docs/SETUP.md#what-works-wher
 | [Appearance](docs/APPEARANCE.md) | Fonts, surfaces, presets, inheritance and live preview |
 | [Control Deck](docs/CONTROL-DECK.md) | Audio, media, OBS, shortcuts, tasks, protocols, dependencies and platform limits |
 | [Discord widget](docs/DISCORD.md) | Creating the Discord application, connecting it, controls and troubleshooting |
+| [Telegram notifications](docs/TELEGRAM.md) | Telegram messages on the phone with each chat's own settings, vibration and sound |
 | [Development](docs/DEVELOPMENT.md) | Architecture, local demo, builds, tests, widget sources and isolated agent runs |
 | [Contributing](CONTRIBUTING.md) | Contribution scope, review expectations, privacy and required checks |
 | [Changelog](CHANGELOG.md) | Release history and unreleased changes |

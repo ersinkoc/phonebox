@@ -1,6 +1,6 @@
 PhoneBox agent: third-party software
 
-The release agent is self-contained: it includes the .NET runtime and ASP.NET Core, QRCoder, and on Windows also
+The release agent is self-contained: it includes the .NET runtime and ASP.NET Core, QRCoder, WTelegramClient, and on Windows also
 Windows Forms, the C#/WinRT projection (WinRT.Runtime, Microsoft.Windows.SDK.NET) and NAudio.
 
 .NET runtime, ASP.NET Core, Windows Forms, C#/WinRT
@@ -14,6 +14,13 @@ MIT License, Copyright (c) .NET Foundation and Contributors / Microsoft Corporat
 QRCoder 1.8.1
 https://github.com/Shane32/QRCoder
 MIT License, Copyright (c) 2013-2025 Raffael Herrmann; Copyright (c) 2024-2025 Shane Krueger
+(the same MIT terms as below)
+
+--------------------------------------------------------------------------------
+
+WTelegramClient 4.4.11
+https://github.com/wiz0u/WTelegramClient
+MIT License, Copyright (c) Olivier Marcoux 2021-2026
 (the same MIT terms as below)
 
 --------------------------------------------------------------------------------

@@ -46,6 +46,8 @@ public sealed class AgentConfig
     public ObsConfig Obs { get; set; } = new();
     /// <summary>Discord desktop app (local IPC): the developer application's client id and secret (the secret never goes to the phone).</summary>
     public DiscordConfig Discord { get; set; } = new();
+    /// <summary>Telegram account (MTProto): new messages become notifications on the phone, following Telegram's own per-chat settings.</summary>
+    public TelegramConfig Telegram { get; set; } = new();
     /// <summary>App console widget: key and dial bindings per app (the phone gets labels and ids, not the keys to press).</summary>
     public ConsoleConfig Console { get; set; } = new();
     /// <summary>Steam friends presence (the Web API key stays on this computer and is never sent to the phone).</summary>
@@ -407,6 +409,40 @@ public sealed class DiscordConfig
     public string? ClientSecret { get; set; }
 }
 
+public sealed class TelegramConfig
+{
+    public bool Enabled { get; set; }
+    /// <summary>api_id and api_hash of the user's own application from my.telegram.org (they stay on this computer).</summary>
+    public int? ApiId { get; set; }
+    public string? ApiHash { get; set; }
+    /// <summary>The account's phone number in international format.</summary>
+    public string? Phone { get; set; }
+    /// <summary>Show the message text on the phone; a chat with "show previews" off in Telegram shows only its name.</summary>
+    public bool ShowText { get; set; } = true;
+    /// <summary>Vibration preset for a new message: off, short, double, long, triple, heartbeat.</summary>
+    public string Vibrate { get; set; } = "double";
+    /// <summary>"telegram" follows each chat's sound in Telegram (its own ringtone too), "none", or a phone tone preset.</summary>
+    public string Sound { get; set; } = "telegram";
+    /// <summary>Sound volume, % of the phone's media volume.</summary>
+    public int Volume { get; set; } = 60;
+    /// <summary>Per-chat changes on top of Telegram's settings, the first matching one wins.</summary>
+    public List<TelegramChatRule> Chats { get; set; } = [];
+}
+
+public sealed class TelegramChatRule
+{
+    /// <summary>Chat name as Telegram shows it, its @username or its numeric id (case does not matter).</summary>
+    public string Match { get; set; } = "";
+    /// <summary>Vibration preset for this chat, or null for the default.</summary>
+    public string? Vibrate { get; set; }
+    /// <summary>Sound for this chat ("telegram", "none" or a tone preset), or null for the default.</summary>
+    public string? Sound { get; set; }
+    /// <summary>No notification from this chat on the phone (Telegram itself is not changed).</summary>
+    public bool Mute { get; set; }
+    /// <summary>Notify even when the chat is muted in Telegram.</summary>
+    public bool Always { get; set; }
+}
+
 public sealed class SteamConfig
 {
     public bool Enabled { get; set; }
@@ -725,6 +761,20 @@ public sealed partial class ConfigStore(string path)
         c.Discord ??= new();
         c.Discord.ClientId = string.IsNullOrWhiteSpace(c.Discord.ClientId) ? null : c.Discord.ClientId.Trim();
         c.Discord.ClientSecret = string.IsNullOrWhiteSpace(c.Discord.ClientSecret) ? null : c.Discord.ClientSecret.Trim();
+        c.Telegram ??= new();
+        c.Telegram.ApiHash = string.IsNullOrWhiteSpace(c.Telegram.ApiHash) ? null : c.Telegram.ApiHash.Trim();
+        c.Telegram.Phone = string.IsNullOrWhiteSpace(c.Telegram.Phone) ? null : c.Telegram.Phone.Trim();
+        if (c.Telegram.ApiId is <= 0) c.Telegram.ApiId = null;
+        c.Telegram.Vibrate = TelegramMonitor.Vibrations.Contains(c.Telegram.Vibrate) ? c.Telegram.Vibrate : "double";
+        c.Telegram.Sound = TelegramMonitor.IsSound(c.Telegram.Sound) ? c.Telegram.Sound : "telegram";
+        c.Telegram.Volume = Math.Clamp(c.Telegram.Volume, 10, 100);
+        c.Telegram.Chats = (c.Telegram.Chats ?? []).Where(r => r is not null && !string.IsNullOrWhiteSpace(r.Match)).Take(100).ToList();
+        foreach (var r in c.Telegram.Chats)
+        {
+            r.Match = r.Match.Trim();
+            if (r.Vibrate is not null && !TelegramMonitor.Vibrations.Contains(r.Vibrate)) r.Vibrate = null;
+            if (r.Sound is not null && !TelegramMonitor.IsSound(r.Sound)) r.Sound = null;
+        }
         c.Steam ??= new();
         c.Steam.SteamId = string.IsNullOrWhiteSpace(c.Steam.SteamId) ? null : c.Steam.SteamId.Trim();
         c.Steam.ApiKey = string.IsNullOrWhiteSpace(c.Steam.ApiKey) ? null : c.Steam.ApiKey.Trim();

@@ -47,6 +47,7 @@
   <ItemGroup>
     <!-- QR codes for pairing a phone over Wi-Fi (settings page) -->
     <PackageReference Include="QRCoder" Version="1.8.1" />
+    <PackageReference Include="WTelegramClient" Version="4.4.11" />
   </ItemGroup>
 
   <ItemGroup>

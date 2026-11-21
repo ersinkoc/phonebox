@@ -178,6 +178,8 @@ table.items td.val { font-family: Consolas, monospace; font-size: 12px; max-widt
 .console-row textarea { font-family: ui-monospace, Consolas, monospace; }
 .console-dial { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cal-row input[type=color] { width: 44px; height: 34px; padding: 2px; }
+.tg-row { display: grid; grid-template-columns: minmax(150px, 1fr) 115px 125px auto auto auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+@media (max-width: 700px) { .tg-row { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 700px) { .cal-row { grid-template-columns: 1fr 44px auto; } .feed-row { grid-template-columns: 1fr 1fr auto; } .cam-row { grid-template-columns: 1fr 80px 80px auto; } .cal-row .cal-url { grid-column: 1 / -1; grid-row: 2; } }
 
 /* shortcuts */
@@ -659,6 +661,35 @@ nav a.on::before { color: var(--accent); }
           <div class="field"><label data-i18n="s.discord.clientId">Client ID</label><input type="text" data-bind="discord.clientId" autocomplete="off" spellcheck="false"></div>
           <div class="field"><label data-i18n="s.discord.clientSecret">Client secret</label><input type="password" data-bind="discord.clientSecret" autocomplete="off"></div>
         </div>
+      </div>
+
+      <div class="card" id="tgCard">
+        <h3 data-i18n="s.tg.title">Telegram</h3>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="telegram.enabled" aria-labelledby="tgEnabledLabel"><span></span></label> <span id="tgEnabledLabel" data-i18n="s.tg.enable">Show new Telegram messages on the phone, with Telegram's own notification settings for each chat</span></div>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.tg.hint">PhoneBox signs in to your account as one more device, so Windows notifications for Telegram Desktop are not needed. Create an app at my.telegram.org (API development tools) and copy its api_id and api_hash here, save, then press Sign in. Muted chats, silent messages, hidden previews and each chat's sound (your own ringtones too) follow Telegram. Step by step: docs/TELEGRAM.md.</p>
+        <div class="grid2">
+          <div class="field"><label>api_id</label><input type="text" inputmode="numeric" data-bind="telegram.apiId" data-type="int" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label>api_hash</label><input type="password" data-bind="telegram.apiHash" autocomplete="off"></div>
+          <div class="field"><label data-i18n="s.tg.phone">Phone number</label><input type="text" data-bind="telegram.phone" placeholder="+380…" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div class="row" style="margin:4px 0 12px;flex-wrap:wrap;gap:8px">
+          <button class="btn sm" id="tgLogin" data-i18n="s.tg.signIn">Sign in</button>
+          <input type="text" id="tgCode" autocomplete="one-time-code" spellcheck="false" style="display:none;max-width:200px">
+          <button class="btn sm" id="tgSend" style="display:none" data-i18n="s.tg.send">Send</button>
+          <button class="btn sm danger" id="tgLogout" style="display:none" data-i18n="s.tg.signOut">Sign out</button>
+          <span class="hint" id="tgState"></span>
+        </div>
+        <label class="check"><input type="checkbox" data-bind="telegram.showText"> <span data-i18n="s.tg.showText">Show the message text (otherwise only the chat name)</span></label>
+        <div class="grid2" style="margin-top:10px">
+          <div class="field"><label data-i18n="s.tg.vibrate">Vibration</label><select data-bind="telegram.vibrate" id="tgVibrate"></select></div>
+          <div class="field"><label data-i18n="s.tg.sound">Sound</label><select data-bind="telegram.sound" id="tgSound"></select></div>
+          <div class="field"><label data-i18n="s.tg.volume">Sound volume (% of the phone's media volume)</label><input type="number" min="10" max="100" data-bind="telegram.volume" data-type="int"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn sm" id="tgTest" data-i18n="s.tg.test">Try on the phone</button></div>
+        </div>
+        <h4 style="margin:14px 0 6px" data-i18n="s.tg.chats">Chats with their own vibration or sound</h4>
+        <p class="hint" style="margin:0 0 8px" data-i18n="s.tg.chatsHint">The chat name as Telegram shows it, its @username or its id. "Mute here" keeps a chat off the phone only; "Even when muted" lets it through while it is muted in Telegram.</p>
+        <div id="tgChats"></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm" id="tgAdd" data-i18n="s.tg.add">＋ Add a chat</button><span class="hint" id="tgRecent"></span></div>
       </div>
 
       <div class="card">
@@ -2249,6 +2280,87 @@ $('haTest').onclick = async () => {
     $('haState').textContent = r.result;
   } catch (_) { $('haState').textContent = 'Could not check'; }
 };
+// ---------------------------------------------------------------- Telegram
+const TG_VIBRATIONS = ['off', 'short', 'double', 'long', 'triple', 'heartbeat'];
+const TG_SOUNDS = ['telegram', 'none', 'ding', 'chime', 'pop', 'rising', 'knock'];
+const tgOptions = (sel, kind, list, withDefault) => sel.replaceChildren(...(withDefault ? [''] : []).concat(list)
+  .map((v) => h('option', { value: v }, t(v ? `s.tg.${kind}.${v}` : 's.tg.default'))));
+function showTelegram(st) {
+  if (!st || !st.state) return;
+  const asking = st.state === 'code' || st.state === 'password';
+  $('tgCode').style.display = $('tgSend').style.display = asking ? '' : 'none';
+  $('tgCode').type = st.state === 'password' ? 'password' : 'text';
+  $('tgCode').placeholder = t(st.state === 'password' ? 's.tg.passwordPh' : 's.tg.codePh');
+  $('tgLogout').style.display = st.state === 'connected' ? '' : 'none';
+  $('tgLogin').style.display = st.state === 'connected' || st.state === 'off' ? 'none' : '';
+  let text = st.state === 'connected' && st.user ? t('s.tg.st.connectedAs', { name: st.user }) : t('s.tg.st.' + st.state);
+  if (st.error) text += (st.state === 'error' ? ': ' : ' · ') + st.error; // the agent's own message, in English
+  $('tgState').textContent = text;
+  const recent = st.recentChats || [];
+  $('tgRecent').textContent = recent.length ? t('s.tg.recent', { list: recent.join(', ') }) : '';
+}
+async function tgCall(path, body) {
+  try {
+    const init = path === '/api/telegram-status' ? { cache: 'no-store' }
+      : body === undefined ? { method: 'POST' }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+    const r = await fetch(path, init);
+    if (r.ok) showTelegram(await r.json());
+  } catch (_) { $('tgState').textContent = t('s.tg.noAgent'); }
+}
+// Runs while the page script loads: t() is declared further down, so this only wires handlers (the options are filled
+// by renderTelegramChats, once the settings are in).
+function bindTelegram() {
+  $('tgLogin').onclick = async () => {
+    $('tgState').textContent = t('s.tg.asking');
+    await tgCall('/api/telegram-login');
+  };
+  $('tgSend').onclick = async () => {
+    const value = $('tgCode').value.trim();
+    if (!value) return;
+    $('tgCode').value = '';
+    $('tgState').textContent = t('s.tg.checking');
+    await tgCall('/api/telegram-login/code', { value });
+  };
+  $('tgCode').onkeydown = (e) => { if (e.key === 'Enter') $('tgSend').click(); };
+  $('tgLogout').onclick = () => tgCall('/api/telegram-logout');
+  $('tgTest').onclick = async () => {
+    const tg = cfg.telegram || {};
+    const sound = tg.sound === 'telegram' ? 'ding' : tg.sound === 'none' ? undefined : tg.sound;
+    try {
+      await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Telegram', text: t('s.tg.testText'), vibrate: tg.vibrate === 'off' ? false : tg.vibrate, sound, soundVolume: tg.volume }) });
+    } catch (_) { toast(t('s.tg.noAgent'), true); }
+  };
+  $('tgAdd').onclick = () => { cfg.telegram.chats.push({ match: '', vibrate: null, sound: null, mute: false, always: false }); renderTelegramChats(); changed(); };
+  tgCall('/api/telegram-status');
+  setInterval(() => { if (!document.hidden && $('tgCard').offsetParent) tgCall('/api/telegram-status'); }, 4000);
+}
+function renderTelegramChats() {
+  cfg.telegram ??= { enabled: false, chats: [] };
+  cfg.telegram.chats ??= [];
+  // the select options are filled here too, so a language change shows them in the new language
+  tgOptions($('tgVibrate'), 'vib', TG_VIBRATIONS, false);
+  tgOptions($('tgSound'), 'snd', TG_SOUNDS, false);
+  $('tgVibrate').value = cfg.telegram.vibrate || 'double';
+  $('tgSound').value = cfg.telegram.sound || 'telegram';
+  const sel = (kind, list, value, set) => {
+    const e = h('select', { onchange: (ev) => { set(ev.target.value || null); changed(); } });
+    tgOptions(e, kind, list, true);
+    e.value = value || '';
+    return e;
+  };
+  const box = (on, key, set) => h('label', { class: 'check' },
+    h('input', { type: 'checkbox', checked: !!on, onchange: (e) => { set(e.target.checked); changed(); } }), ' ' + t(key));
+  $('tgChats').replaceChildren(...cfg.telegram.chats.map((c, i) => h('div', { class: 'tg-row' },
+    h('input', { type: 'text', value: c.match || '', placeholder: t('s.tg.chatPh'), spellcheck: 'false', oninput: (e) => { c.match = e.target.value; changed(); } }),
+    sel('vib', TG_VIBRATIONS, c.vibrate, (v) => { c.vibrate = v; }),
+    sel('snd', TG_SOUNDS, c.sound, (v) => { c.sound = v; }),
+    box(c.mute, 's.tg.muteHere', (v) => { c.mute = v; }),
+    box(c.always, 's.tg.always', (v) => { c.always = v; }),
+    h('button', { class: 'btn sm danger', onclick: () => { cfg.telegram.chats.splice(i, 1); renderTelegramChats(); changed(); } }, t('s.js.remove')))));
+}
+bindTelegram();
 $('obsTest').onclick = async () => {
   $('obsState').textContent = 'connecting…';
   try {
@@ -2549,7 +2661,7 @@ const RULE_PRESETS = [
 let activeRules = [];
 
 function renderRules() {
-  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.discord ??= { enabled: false }; cfg.steam ??= { enabled: false };
+  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.discord ??= { enabled: false }; cfg.telegram ??= { enabled: false, showText: true, vibrate: 'double', sound: 'telegram', volume: 60, chats: [] }; cfg.telegram.chats ??= []; cfg.steam ??= { enabled: false };
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
@@ -3543,7 +3655,7 @@ async function load() {
   // in English that has display.language = "vi" would otherwise render every editor in English and never rebuild them
   if (window.PhoneBoxI18n) applyLanguageUi(cfg.display?.language || 'auto');
   else localizeCatalog();
-  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderCharge(); bindForm();
+  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderTelegramChats(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderCharge(); bindForm();
   // the editors fill in the sections and fields they own (feeds, cameras, an action's "enabled", ...), so the
   // baseline is taken after they ran: otherwise a freshly loaded page already counts as unsaved, and Revert can never
   // get back to a clean state
@@ -3582,7 +3694,7 @@ async function doSave() {
 }
 
 $('save').onclick = save;
-$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); };
+$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderRules(); renderCalendars(); renderTelegramChats(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); };
 // Over USB this also wakes the phone and brings the panel to the front (adb); over Wi-Fi the phone switches to the
 // page selected in the editor through the live stream.
 $('openPhone').onclick = async () => {
@@ -3683,7 +3795,7 @@ $('applyJson').onclick = () => {
     cfg = c;
     fillDefaults();
     $('jsonErr').textContent = '';
-    renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); toast(t('s.jsonLoaded'));
+    renderPages(); renderDeck(); renderRules(); renderCalendars(); renderTelegramChats(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); toast(t('s.jsonLoaded'));
   }
   catch (e) { $('jsonErr').textContent = e.message; }
 };

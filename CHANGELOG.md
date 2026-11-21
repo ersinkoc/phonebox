@@ -60,6 +60,16 @@ and phones with Android 5 or 6 stay connected over USB.
   minute. The agent now sends the command once, to a hidden window of its own, instead of to every window (#336, #335,
   [nosmile199x](https://github.com/nosmile199x)).
 
+**Notifications**
+- Telegram notifications: PhoneBox signs in to your Telegram account as one more device and shows new messages on the
+  phone, so Windows notifications for Telegram Desktop are not needed. Each chat's settings in Telegram are followed
+  (muted, silent, hidden previews, its sound, your own ringtones too), and a chat can get its own vibration and sound,
+  be muted on the phone only, or come through while it is muted in Telegram. Off by default; needs an api_id from
+  my.telegram.org (see [docs/TELEGRAM.md](docs/TELEGRAM.md)).
+- `POST /api/notify` takes `vibrate` as a name (`short`, `double`, `long`, `triple`, `heartbeat`) or as
+  `"wait,vibrate,…"` milliseconds (up to 3 seconds), and `sound` (`ding`, `chime`, `pop`, `rising`, `knock`) with
+  `soundVolume`.
+
 ## 0.9.25 — 2026-11-21
 
 Brazilian Portuguese for the panel and the settings page, OpenCode and Codex permission prompts on the phone, Copilot
