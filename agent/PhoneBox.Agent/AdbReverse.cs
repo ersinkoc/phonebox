@@ -185,7 +185,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                 // A phone unplugged and plugged in again between two rounds keeps its serial but loses its rule (adb binds
                 // reverse rules to the connection). adb gives each connection a new transport id: a new one means set it again.
                 transports ??= await Transports(adb, ct);
-                if (transports.TryGetValue(d, out var now) && _transport.TryGetValue(d, out var then) && now != then)
+                // no id on record (adb could not say when the rule was set): set it once more to have one
+                if (transports.TryGetValue(d, out var now) && (!_transport.TryGetValue(d, out var then) || now != then))
                     _reverseSet.Remove(d);
             }
             var ruled = listable ? HasOwnRule(list) : _reverseSet.Contains(d);
