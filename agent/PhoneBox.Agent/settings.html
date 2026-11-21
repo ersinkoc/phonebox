@@ -1905,6 +1905,7 @@ function optionField(w, o, onValChange) {
         ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, plain(`${s.icon} ${s.label}`) || s.id))),
         h('span', { class: 'hint' }, t('s.js.newShortcutsId')));
     case 'ha-items': return haItemsEditor(w, o, set);
+    case 'steam-games': return steamGamesEditor(w, o, set);
     case 'shortcuts': {
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
       return field(h('div', { class: 'opts' }, ...cfg.shortcuts.map((s) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(s.id), onchange: (e) => {
@@ -1915,6 +1916,27 @@ function optionField(w, o, onValChange) {
       return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
         w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, t('s.js.pushHint')) : null);
   }
+}
+
+// Steam library: tick the favorite games, read from Steam's files on this computer when the editor opens. They come
+// first on the phone in the order they were ticked; a favorite that is no longer installed stays until it is unticked.
+function steamGamesEditor(w, o, set) {
+  const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x.map(String) : []; };
+  const box = h('div', { class: 'opts' }, h('span', { class: 'hint' }, t('w.loading')));
+  const draw = (games) => {
+    const names = new Map(games.map((g) => [g.id, g.name]));
+    const ids = [...games.map((g) => g.id), ...cur().filter((id) => !names.has(id))];
+    if (!ids.length) { box.replaceChildren(h('span', { class: 'hint' }, t('w.steamlib.empty'))); return; }
+    box.replaceChildren(...ids.map((id) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(id), onchange: (e) => {
+      const rest = cur().filter((x) => x !== id);
+      set(o.key, e.target.checked ? [...rest, id] : rest);
+    } }), names.get(id) ?? `${t('s.js.unavailable')} ${id}`)));
+  };
+  const load = () => fetch('/api/steam/games').then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((games) => draw(Array.isArray(games) ? games : []))
+    .catch(() => box.replaceChildren(h('span', { class: 'hint' }, t('w.steamlib.notFound'))));
+  load();
+  return h('div', { class: 'field' }, h('label', {}, o.label), box, h('button', { class: 'btn sm', onclick: load }, t('s.js.refresh')));
 }
 
 // Home Assistant widget: one row per entity (id, display name, icon, what to show, whether the phone may switch it).

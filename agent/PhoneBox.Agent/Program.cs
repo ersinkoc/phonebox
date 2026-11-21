@@ -97,6 +97,7 @@ AddMonitor<DockerMonitor>(builder.Services);
 AddMonitor<ObsMonitor>(builder.Services);
 AddMonitor<DiscordMonitor>(builder.Services);
 AddMonitor<SteamMonitor>(builder.Services);
+builder.Services.AddSingleton<SteamLibrary>();
 AddMonitor<BatteryMonitor>(builder.Services);
 AddMonitor<RuleEngine>(builder.Services);
 AddMonitor<ChargeGuard>(builder.Services);
@@ -686,6 +687,27 @@ app.MapGet("/api/steam", (SteamMonitor steam, ConfigStore cfg) =>
 app.MapGet("/api/steam/avatar", async (string id, SteamMonitor steam, CancellationToken ct) =>
     await steam.AvatarAsync(id, ct) is { } img
         ? Results.File(img.Data, img.Type, lastModified: null, entityTag: null, enableRangeProcessing: false) : Results.NotFound());
+
+// Steam library from Steam's own files on this computer (no API key, no account): installed games, covers, the game
+// being played. Nothing is read while no Steam library widget is on an enabled page.
+app.MapGet("/api/steam/library", (SteamLibrary library) => Results.Json(library.View()));
+// The installed games (id and name) for the widget's favorites picker in settings. Not in Lan.cs: the computer only.
+app.MapGet("/api/steam/games", (SteamLibrary library) => Results.Json(library.Installed()));
+// A cover from Steam's appcache/librarycache, for an installed app id only (SteamLibrary.FindCover checks the path).
+// The id goes in the query string: the Android app lets image requests through by exact path (READ_ONLY_IMAGES).
+app.MapGet("/api/steam/cover", (string? id, SteamLibrary library, HttpResponse res) =>
+{
+    if (library.CoverPath(id) is not { } path) return Results.NotFound();
+    byte[] bytes;
+    try { bytes = File.ReadAllBytes(path); } catch { return Results.NotFound(); }
+    if (bytes.Length > SteamLibrary.MaxCoverBytes) return Results.NotFound();
+    res.Headers.CacheControl = "private, max-age=86400";
+    return Results.File(bytes, path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg");
+});
+// Starts an installed game through Steam (steam://rungameid/<id>), only with a Steam library widget's
+// "Let the phone start games" on (off by default).
+app.MapPost("/api/steam/launch", (string? id, SteamLibrary library) =>
+    library.Launch(id) is { } refused ? Results.BadRequest(new { error = refused.Error, code = refused.Code }) : Results.Ok(new { ok = true }));
 
 // Battery levels of wireless devices (headphones, mice, keyboards…), for the Device batteries widget.
 app.MapGet("/api/batteries", (BatteryMonitor b) => Results.Json(new { devices = b.Snapshot() }));

@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "इस कम्प्यूटर पर कोई LAN या Tailscale पता नहीं मिला, अतः फोन में कनेक्ट करने के लिए कुछ भी नहीं है.",
       "s.pair.copy": "जोड़ी लिंक की नक़ल लें",
       "s.pair.expired": "मियाद ख़त्म. बंद करें तथा फिर से प्रारंभ करें.",
-      "s.pair.expires": "में ख़त्म होता है {time}."
+      "s.pair.expires": "में ख़त्म होता है {time}.",
+      "w.steamlib.title": "Steam लाइब्रेरी",
+      "w.steamlib.off": "लाइब्रेरी पढ़ने के लिए इस विजेट को किसी चालू पेज पर रखें",
+      "w.steamlib.notFound": "इस कंप्यूटर पर Steam नहीं मिला",
+      "w.steamlib.unreadable": "Steam लाइब्रेरी पढ़ी नहीं जा सकी",
+      "w.steamlib.empty": "कोई इंस्टॉल किया हुआ गेम नहीं मिला",
+      "w.steamlib.noFavorites": "पसंदीदा गेम में से कोई भी इंस्टॉल नहीं है",
+      "w.steamlib.playing": "अभी खेला जा रहा है",
+      "w.steamlib.updating": "अपडेट हो रहा है",
+      "w.steamlib.updatingPct": "अपडेट हो रहा है {n}%",
+      "w.steamlib.paused": "अपडेट रुका हुआ है",
+      "w.steamlib.pausedPct": "{n}% पर रुका",
+      "w.steamlib.queued": "अपडेट कतार में है",
+      "w.steamlib.tapAgain": "खेलने के लिए फिर से टैप करें",
+      "w.steamlib.starting": "{game} शुरू हो रहा है",
+      "w.steamlib.startFailed": "{game} शुरू नहीं हो सका",
+      "w.steamlib.alreadyRunning": "{game} पहले से चल रहा है",
+      "w.steamlib.notInstalled": "{game} अब इंस्टॉल नहीं है",
+      "w.steamlib.launchOff": "इस विजेट के विकल्पों में “फ़ोन को गेम शुरू करने दें” चालू करें"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "केवल यह श्रेणी (सेटिंग्स में इसकी श्रेणी; खाली = सभी)",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "सूचना",
       "🔥 CPU busy → notification": "🔥 CPU व्यस्त → अधिसूचना",
       "🔴 On air while the mic is on": "🔴 जब तक माइक चालू है तब तक एयर पर",
-      "🕙 Evenings → calm page": "अमेज़न पर गूगल पे"
+      "🕙 Evenings → calm page": "अमेज़न पर गूगल पे",
+      "Steam library": "Steam लाइब्रेरी",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "आपके इंस्टॉल किए हुए Steam गेम: पहले पसंदीदा, फिर हाल में खेले गए, कवर और अपडेट की प्रगति के साथ। इस कंप्यूटर पर Steam की अपनी फ़ाइलों से पढ़े जाते हैं: न API कुंजी चाहिए, न साइन-इन।",
+      "Favorite games (shown first, in the order you tick them)": "पसंदीदा गेम (जिस क्रम में आप चुनें, उसी क्रम में सबसे पहले दिखेंगे)",
+      "Show only the favorite games": "केवल पसंदीदा गेम दिखाएँ",
+      "Games shown": "दिखाए जाने वाले गेम",
+      "Let the phone start games (off: the library is only shown)": "फ़ोन को गेम शुरू करने दें (बंद: लाइब्रेरी सिर्फ़ दिखाई जाती है)",
+      "Ask before starting (tap a game twice)": "शुरू करने से पहले पूछें (गेम पर दो बार टैप करें)"
     },
     "panel": {
       "% load": "लोड%",

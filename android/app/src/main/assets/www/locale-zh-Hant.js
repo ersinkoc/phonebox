@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "沒有在電腦上找到 LAN 或 Tailscale 地址，所以手機無法連接。",
       "s.pair.copy": "複製配對連結",
       "s.pair.expired": "過期。關閉並重新開始。",
-      "s.pair.expires": "過期 {time}."
+      "s.pair.expires": "過期 {time}.",
+      "w.steamlib.title": "Steam 遊戲庫",
+      "w.steamlib.off": "將此小工具放到已啟用的頁面上即可讀取遊戲庫",
+      "w.steamlib.notFound": "在這台電腦上找不到 Steam",
+      "w.steamlib.unreadable": "無法讀取 Steam 遊戲庫",
+      "w.steamlib.empty": "找不到已安裝的遊戲",
+      "w.steamlib.noFavorites": "收藏的遊戲都未安裝",
+      "w.steamlib.playing": "正在遊玩",
+      "w.steamlib.updating": "正在更新",
+      "w.steamlib.updatingPct": "正在更新 {n}%",
+      "w.steamlib.paused": "更新已暫停",
+      "w.steamlib.pausedPct": "暫停於 {n}%",
+      "w.steamlib.queued": "更新排隊中",
+      "w.steamlib.tapAgain": "再點一次開始遊戲",
+      "w.steamlib.starting": "正在啟動 {game}",
+      "w.steamlib.startFailed": "無法啟動 {game}",
+      "w.steamlib.alreadyRunning": "{game} 已在執行",
+      "w.steamlib.notInstalled": "{game} 已不再安裝",
+      "w.steamlib.launchOff": "請在此小工具的選項中開啟「允許手機啟動遊戲」"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "僅此分類（設定中的分類；留空 = 全部）",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "門鈴",
       "🔥 CPU busy → notification": "🔥 CPU 忙",
       "🔴 On air while the mic is on": "🔴 在麥克風開啟時播放",
-      "🕙 Evenings → calm page": "晚上 → 平靜的頁面"
+      "🕙 Evenings → calm page": "晚上 → 平靜的頁面",
+      "Steam library": "Steam 遊戲庫",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "已安裝的 Steam 遊戲：先顯示收藏的遊戲，再依最近遊玩排序，附上封面和更新進度。從這台電腦上 Steam 本身的檔案讀取：不需要 API 金鑰或登入。",
+      "Favorite games (shown first, in the order you tick them)": "收藏的遊戲（依勾選順序最先顯示）",
+      "Show only the favorite games": "只顯示收藏的遊戲",
+      "Games shown": "顯示的遊戲數量",
+      "Let the phone start games (off: the library is only shown)": "允許手機啟動遊戲（關閉時只顯示遊戲庫）",
+      "Ask before starting (tap a game twice)": "啟動前確認（點兩次遊戲）"
     },
     "panel": {
       "% load": "負載",

@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Tidak ada alamat LAN atau Tailscale ditemukan pada komputer ini, jadi telepon tidak memiliki apa-apa untuk terhubung.",
       "s.pair.copy": "Salin tautan pasangan",
       "s.pair.expired": "Luput. Tutup dan mulai lagi.",
-      "s.pair.expires": "Berakhir dalam {time} ."
+      "s.pair.expires": "Berakhir dalam {time} .",
+      "w.steamlib.title": "Pustaka Steam",
+      "w.steamlib.off": "Taruh widget ini di halaman yang aktif untuk membaca pustaka",
+      "w.steamlib.notFound": "Steam tidak ditemukan di komputer ini",
+      "w.steamlib.unreadable": "Pustaka Steam tidak dapat dibaca",
+      "w.steamlib.empty": "Tidak ada game terpasang",
+      "w.steamlib.noFavorites": "Tidak ada game favorit yang terpasang",
+      "w.steamlib.playing": "Sedang dimainkan",
+      "w.steamlib.updating": "Memperbarui",
+      "w.steamlib.updatingPct": "Memperbarui {n}%",
+      "w.steamlib.paused": "Pembaruan dijeda",
+      "w.steamlib.pausedPct": "Dijeda di {n}%",
+      "w.steamlib.queued": "Pembaruan dalam antrean",
+      "w.steamlib.tapAgain": "Ketuk lagi untuk bermain",
+      "w.steamlib.starting": "Memulai {game}",
+      "w.steamlib.startFailed": "Tidak dapat memulai {game}",
+      "w.steamlib.alreadyRunning": "{game} sudah berjalan",
+      "w.steamlib.notInstalled": "{game} tidak lagi terpasang",
+      "w.steamlib.launchOff": "Aktifkan “Izinkan ponsel memulai game” di opsi widget ini"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Hanya kategori ini (kategorinya di Pengaturan; kosong = semua)",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Doorbell → notification",
       "🔥 CPU busy → notification": "🔥 CPU sibuk → notifikasi",
       "🔴 On air while the mic is on": "🔴 Di udara saat mikrofon menyala",
-      "🕙 Evenings → calm page": ". Malam → halaman tenang"
+      "🕙 Evenings → calm page": ". Malam → halaman tenang",
+      "Steam library": "Pustaka Steam",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "Game Steam yang terpasang: favoritmu lebih dulu, lalu yang terakhir dimainkan, lengkap dengan sampul dan kemajuan pembaruan. Dibaca dari berkas Steam sendiri di komputer ini: tanpa kunci API atau login.",
+      "Favorite games (shown first, in the order you tick them)": "Game favorit (ditampilkan lebih dulu, sesuai urutan dicentang)",
+      "Show only the favorite games": "Tampilkan hanya game favorit",
+      "Games shown": "Jumlah game yang ditampilkan",
+      "Let the phone start games (off: the library is only shown)": "Izinkan ponsel memulai game (mati: pustaka hanya ditampilkan)",
+      "Ask before starting (tap a game twice)": "Tanya sebelum memulai (ketuk game dua kali)"
     },
     "panel": {
       "% load": "% muatan",

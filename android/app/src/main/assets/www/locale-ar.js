@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "لم يتم العثور على عنوان LAN أو Tailscale في هذا الحاسوب، لذا ليس للهاتف أي شيء يرتبط به.",
       "s.pair.copy": "نسخ رابط الإتصال",
       "s.pair.expired": "انتهى أجله، أغلق وبدأ من جديد",
-      "s.pair.expires": "تنتهي صلاحيتها في {time}"
+      "s.pair.expires": "تنتهي صلاحيتها في {time}",
+      "w.steamlib.title": "مكتبة Steam",
+      "w.steamlib.off": "ضع هذه الأداة في صفحة مفعّلة لقراءة المكتبة",
+      "w.steamlib.notFound": "لم يُعثر على Steam في هذا الكمبيوتر",
+      "w.steamlib.unreadable": "تعذّرت قراءة مكتبة Steam",
+      "w.steamlib.empty": "لم يُعثر على ألعاب مثبّتة",
+      "w.steamlib.noFavorites": "لا توجد أي لعبة مفضّلة مثبّتة",
+      "w.steamlib.playing": "قيد اللعب الآن",
+      "w.steamlib.updating": "جارٍ التحديث",
+      "w.steamlib.updatingPct": "جارٍ التحديث {n}%",
+      "w.steamlib.paused": "التحديث متوقف مؤقتًا",
+      "w.steamlib.pausedPct": "متوقف مؤقتًا عند {n}%",
+      "w.steamlib.queued": "التحديث في قائمة الانتظار",
+      "w.steamlib.tapAgain": "انقر مرة أخرى للعب",
+      "w.steamlib.starting": "جارٍ تشغيل {game}",
+      "w.steamlib.startFailed": "تعذّر تشغيل {game}",
+      "w.steamlib.alreadyRunning": "{game} قيد التشغيل بالفعل",
+      "w.steamlib.notInstalled": "{game} لم تعد مثبّتة",
+      "w.steamlib.launchOff": "فعّل «السماح للهاتف بتشغيل الألعاب» في خيارات هذه الأداة"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "هذه الفئة فقط (فئتها في الإعدادات؛ فارغ = الكل)",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "إخطار",
       "🔥 CPU busy → notification": "🔥 CPU مشغول → إخطار",
       "🔴 On air while the mic is on": "🔴 على الهواء بينما الميكروفون يعمل",
-      "🕙 Evenings → calm page": "مساءً → صفحة هادئة"
+      "🕙 Evenings → calm page": "مساءً → صفحة هادئة",
+      "Steam library": "مكتبة Steam",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "ألعاب Steam المثبّتة لديك: المفضّلة أولًا، ثم الأحدث لعبًا، مع الأغلفة وتقدّم التحديثات. تُقرأ من ملفات Steam نفسها على هذا الكمبيوتر: لا حاجة إلى مفتاح API أو تسجيل الدخول.",
+      "Favorite games (shown first, in the order you tick them)": "الألعاب المفضّلة (تظهر أولًا بترتيب تحديدها)",
+      "Show only the favorite games": "إظهار الألعاب المفضّلة فقط",
+      "Games shown": "عدد الألعاب المعروضة",
+      "Let the phone start games (off: the library is only shown)": "السماح للهاتف بتشغيل الألعاب (عند الإيقاف: تُعرض المكتبة فقط)",
+      "Ask before starting (tap a game twice)": "السؤال قبل التشغيل (النقر على اللعبة مرتين)"
     },
     "panel": {
       "% load": "النسبة المئوية للحمولة",

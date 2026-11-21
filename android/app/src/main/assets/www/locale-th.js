@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "ไม่มีที่อยู่ LAN หรือ Tailscale ที่พบบนคอมพิวเตอร์นี้ โทรศัพท์จึงไม่สามารถเชื่อมต่อได้",
       "s.pair.copy": "คัดลอกลิงก์การจับคู่",
       "s.pair.expired": "หมดอายุแล้ว ปิดและเริ่มใหม่",
-      "s.pair.expires": "หมดอายุใน {time}"
+      "s.pair.expires": "หมดอายุใน {time}",
+      "w.steamlib.title": "คลัง Steam",
+      "w.steamlib.off": "วางวิดเจ็ตนี้บนหน้าที่เปิดใช้งานเพื่ออ่านคลังเกม",
+      "w.steamlib.notFound": "ไม่พบ Steam ในคอมพิวเตอร์เครื่องนี้",
+      "w.steamlib.unreadable": "อ่านคลัง Steam ไม่ได้",
+      "w.steamlib.empty": "ไม่พบเกมที่ติดตั้งไว้",
+      "w.steamlib.noFavorites": "ไม่มีเกมโปรดเกมใดติดตั้งอยู่",
+      "w.steamlib.playing": "กำลังเล่นอยู่",
+      "w.steamlib.updating": "กำลังอัปเดต",
+      "w.steamlib.updatingPct": "กำลังอัปเดต {n}%",
+      "w.steamlib.paused": "หยุดอัปเดตชั่วคราว",
+      "w.steamlib.pausedPct": "หยุดชั่วคราวที่ {n}%",
+      "w.steamlib.queued": "รอคิวอัปเดต",
+      "w.steamlib.tapAgain": "แตะอีกครั้งเพื่อเล่น",
+      "w.steamlib.starting": "กำลังเริ่ม {game}",
+      "w.steamlib.startFailed": "เริ่ม {game} ไม่ได้",
+      "w.steamlib.alreadyRunning": "{game} กำลังทำงานอยู่แล้ว",
+      "w.steamlib.notInstalled": "{game} ไม่ได้ติดตั้งแล้ว",
+      "w.steamlib.launchOff": "เปิด “ให้โทรศัพท์เริ่มเกมได้” ในตัวเลือกของวิดเจ็ตนี้"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "เฉพาะหมวดหมู่นี้ (หมวดหมู่ในการตั้งค่า; ว่าง = ทั้งหมด)",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "แจ้งเตือน",
       "🔥 CPU busy → notification": "🔥 CPU กำลังทำงาน",
       "🔴 On air while the mic is on": "🔴 ออกอากาศในขณะที่ไมโครโฟนเปิด",
-      "🕙 Evenings → calm page": "ตอนเย็น"
+      "🕙 Evenings → calm page": "ตอนเย็น",
+      "Steam library": "คลัง Steam",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "เกม Steam ที่ติดตั้งไว้: แสดงเกมโปรดก่อน แล้วตามด้วยเกมที่เล่นล่าสุด พร้อมภาพปกและความคืบหน้าการอัปเดต อ่านจากไฟล์ของ Steam เองในคอมพิวเตอร์เครื่องนี้ ไม่ต้องใช้คีย์ API หรือลงชื่อเข้าใช้",
+      "Favorite games (shown first, in the order you tick them)": "เกมโปรด (แสดงก่อนตามลำดับที่ติ๊กเลือก)",
+      "Show only the favorite games": "แสดงเฉพาะเกมโปรด",
+      "Games shown": "จำนวนเกมที่แสดง",
+      "Let the phone start games (off: the library is only shown)": "ให้โทรศัพท์เริ่มเกมได้ (ปิด: แสดงคลังเกมอย่างเดียว)",
+      "Ask before starting (tap a game twice)": "ถามก่อนเริ่ม (แตะเกมสองครั้ง)"
     },
     "panel": {
       "% load": "ค่า",

@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "V tomto počítači nebyla nalezena žádná adresa LAN nebo Tailscale, takže telefon nemá k čemu se připojit.",
       "s.pair.copy": "Zkopírujte párovací odkaz",
       "s.pair.expired": "Zavřete a zkuste to znovu.",
-      "s.pair.expires": "Expires in 10 dny {time}."
+      "s.pair.expires": "Expires in 10 dny {time}.",
+      "w.steamlib.title": "Knihovna Steam",
+      "w.steamlib.off": "Umístěte tento widget na zapnutou stránku, aby se knihovna načetla",
+      "w.steamlib.notFound": "Steam na tomto počítači nebyl nalezen",
+      "w.steamlib.unreadable": "Knihovnu Steam se nepodařilo načíst",
+      "w.steamlib.empty": "Nenalezeny žádné nainstalované hry",
+      "w.steamlib.noFavorites": "Žádná z oblíbených her není nainstalována",
+      "w.steamlib.playing": "Právě se hraje",
+      "w.steamlib.updating": "Aktualizuje se",
+      "w.steamlib.updatingPct": "Aktualizace {n} %",
+      "w.steamlib.paused": "Aktualizace pozastavena",
+      "w.steamlib.pausedPct": "Pozastaveno na {n} %",
+      "w.steamlib.queued": "Aktualizace ve frontě",
+      "w.steamlib.tapAgain": "Klepněte znovu a hrajte",
+      "w.steamlib.starting": "Spouští se {game}",
+      "w.steamlib.startFailed": "{game} se nepodařilo spustit",
+      "w.steamlib.alreadyRunning": "{game} už běží",
+      "w.steamlib.notInstalled": "{game} už není nainstalována",
+      "w.steamlib.launchOff": "V možnostech tohoto widgetu zapněte „Telefon smí spouštět hry“"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Jen tato kategorie (její kategorie v Nastavení; prázdné = všechny)",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Zvonek → oznámení",
       "🔥 CPU busy → notification": "🔥 CPU zaneprázdněn → upozornění",
       "🔴 On air while the mic is on": "🔴 Na vzduchu, zatímco mikrofon je zapnutý",
-      "🕙 Evenings → calm page": "ut Večery → klidná stránka"
+      "🕙 Evenings → calm page": "ut Večery → klidná stránka",
+      "Steam library": "Knihovna Steam",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "Vaše nainstalované hry ze Steamu: nejdřív oblíbené, potom naposledy hrané, s obaly a průběhem aktualizací. Čte se ze souborů samotného Steamu na tomto počítači: bez klíče API i přihlášení.",
+      "Favorite games (shown first, in the order you tick them)": "Oblíbené hry (zobrazí se první, v pořadí zaškrtnutí)",
+      "Show only the favorite games": "Zobrazit jen oblíbené hry",
+      "Games shown": "Počet zobrazených her",
+      "Let the phone start games (off: the library is only shown)": "Telefon smí spouštět hry (vypnuto: knihovna se jen zobrazuje)",
+      "Ask before starting (tap a game twice)": "Před spuštěním se zeptat (klepnout na hru dvakrát)"
     },
     "panel": {
       "% load": "% zatížení",

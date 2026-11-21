@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "このコンピュータには LAN または Tailscale アドレスが見つかりません。 だから、電話は接続できません。",
       "s.pair.copy": "ペアリングリンクをコピー",
       "s.pair.expired": "期限切れです。閉じて再起動してください。",
-      "s.pair.expires": "期限は {time} です。"
+      "s.pair.expires": "期限は {time} です。",
+      "w.steamlib.title": "Steam ライブラリ",
+      "w.steamlib.off": "ライブラリを読み込むには、このウィジェットを有効なページに置いてください",
+      "w.steamlib.notFound": "このコンピューターで Steam が見つかりません",
+      "w.steamlib.unreadable": "Steam ライブラリを読み込めませんでした",
+      "w.steamlib.empty": "インストール済みのゲームが見つかりません",
+      "w.steamlib.noFavorites": "お気に入りのゲームはどれもインストールされていません",
+      "w.steamlib.playing": "プレイ中",
+      "w.steamlib.updating": "更新中",
+      "w.steamlib.updatingPct": "更新中 {n}%",
+      "w.steamlib.paused": "更新を一時停止中",
+      "w.steamlib.pausedPct": "{n}% で一時停止",
+      "w.steamlib.queued": "更新待ち",
+      "w.steamlib.tapAgain": "もう一度タップしてプレイ",
+      "w.steamlib.starting": "{game} を起動しています",
+      "w.steamlib.startFailed": "{game} を起動できませんでした",
+      "w.steamlib.alreadyRunning": "{game} はすでに起動しています",
+      "w.steamlib.notInstalled": "{game} はインストールされていません",
+      "w.steamlib.launchOff": "このウィジェットのオプションで「スマホからゲームを起動できるようにする」をオンにしてください"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "このカテゴリのみ（設定でのカテゴリ。空欄 = すべて）",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "ドアベル→通知",
       "🔥 CPU busy → notification": "🔥 CPU ビジー→通知",
       "🔴 On air while the mic is on": "マイクがオンのまま放送中",
-      "🕙 Evenings → calm page": "夕方→静かなページ"
+      "🕙 Evenings → calm page": "夕方→静かなページ",
+      "Steam library": "Steam ライブラリ",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "インストール済みの Steam ゲーム：お気に入りを先頭に、続いて最近プレイした順で、カバー画像と更新の進捗を表示します。このコンピューター上の Steam 自身のファイルから読み込むため、API キーもサインインも不要です。",
+      "Favorite games (shown first, in the order you tick them)": "お気に入りのゲーム（チェックした順に先頭に表示）",
+      "Show only the favorite games": "お気に入りのゲームだけを表示",
+      "Games shown": "表示するゲーム数",
+      "Let the phone start games (off: the library is only shown)": "スマホからゲームを起動できるようにする（オフ：ライブラリの表示のみ）",
+      "Ask before starting (tap a game twice)": "起動前に確認する（ゲームを 2 回タップ）"
     },
     "panel": {
       "% load": "負荷の %",

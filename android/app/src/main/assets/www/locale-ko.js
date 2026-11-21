@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "이 컴퓨터에서 LAN 또는 Tailscale 주소를 찾을 수 없으므로 전화기가 연결할 수 있는 곳이 없습니다.",
       "s.pair.copy": "페어링 링크 복사",
       "s.pair.expired": "닫고 다시 시작하세요.",
-      "s.pair.expires": "만료일 {time}."
+      "s.pair.expires": "만료일 {time}.",
+      "w.steamlib.title": "Steam 라이브러리",
+      "w.steamlib.off": "라이브러리를 읽으려면 이 위젯을 사용 중인 페이지에 두세요",
+      "w.steamlib.notFound": "이 컴퓨터에서 Steam을 찾을 수 없습니다",
+      "w.steamlib.unreadable": "Steam 라이브러리를 읽을 수 없습니다",
+      "w.steamlib.empty": "설치된 게임이 없습니다",
+      "w.steamlib.noFavorites": "즐겨찾는 게임이 하나도 설치되어 있지 않습니다",
+      "w.steamlib.playing": "지금 플레이 중",
+      "w.steamlib.updating": "업데이트 중",
+      "w.steamlib.updatingPct": "업데이트 중 {n}%",
+      "w.steamlib.paused": "업데이트 일시 중지됨",
+      "w.steamlib.pausedPct": "{n}%에서 일시 중지됨",
+      "w.steamlib.queued": "업데이트 대기 중",
+      "w.steamlib.tapAgain": "플레이하려면 다시 탭하세요",
+      "w.steamlib.starting": "{game} 실행 중",
+      "w.steamlib.startFailed": "{game}을(를) 실행할 수 없습니다",
+      "w.steamlib.alreadyRunning": "{game}은(는) 이미 실행 중입니다",
+      "w.steamlib.notInstalled": "{game}은(는) 더 이상 설치되어 있지 않습니다",
+      "w.steamlib.launchOff": "이 위젯의 옵션에서 “휴대폰에서 게임 실행 허용”을 켜세요"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "이 분류만 (설정의 분류, 비우면 전체)",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 도어벨 → 알림",
       "🔥 CPU busy → notification": "🔥 CPU 바쁜 → 알림",
       "🔴 On air while the mic is on": "마이크가 켜져 있는 동안 공기에",
-      "🕙 Evenings → calm page": "에어비앤비 호텔 → calm page"
+      "🕙 Evenings → calm page": "에어비앤비 호텔 → calm page",
+      "Steam library": "Steam 라이브러리",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "설치된 Steam 게임: 즐겨찾는 게임을 먼저, 그다음 최근에 플레이한 순서로 표지와 업데이트 진행률과 함께 보여 줍니다. 이 컴퓨터에 있는 Steam 자체 파일에서 읽으므로 API 키나 로그인이 필요 없습니다.",
+      "Favorite games (shown first, in the order you tick them)": "즐겨찾는 게임(체크한 순서대로 먼저 표시)",
+      "Show only the favorite games": "즐겨찾는 게임만 표시",
+      "Games shown": "표시할 게임 수",
+      "Let the phone start games (off: the library is only shown)": "휴대폰에서 게임 실행 허용(끄면 라이브러리만 표시)",
+      "Ask before starting (tap a game twice)": "실행 전에 확인(게임을 두 번 탭)"
     },
     "panel": {
       "% load": "부하%",

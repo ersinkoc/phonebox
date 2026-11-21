@@ -878,7 +878,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "На цьому комп’ ютері не знайдено адрес LAN або Tailscale, отже телефону немає з чим з' єднатися.",
       "s.pair.copy": "Скопіювати посилання на парування",
       "s.pair.expired": "Застаріло. Закрити і запустити знову.",
-      "s.pair.expires": "Закінчується через {time} ."
+      "s.pair.expires": "Закінчується через {time} .",
+      "w.steamlib.title": "Бібліотека Steam",
+      "w.steamlib.off": "Розмістіть цей віджет на ввімкненій сторінці, щоб читати бібліотеку",
+      "w.steamlib.notFound": "Steam не знайдено на цьому комп’ютері",
+      "w.steamlib.unreadable": "Не вдалося прочитати бібліотеку Steam",
+      "w.steamlib.empty": "Встановлених ігор не знайдено",
+      "w.steamlib.noFavorites": "Жодна з улюблених ігор не встановлена",
+      "w.steamlib.playing": "Зараз запущена",
+      "w.steamlib.updating": "Оновлюється",
+      "w.steamlib.updatingPct": "Оновлення {n}%",
+      "w.steamlib.paused": "Оновлення призупинено",
+      "w.steamlib.pausedPct": "Призупинено на {n}%",
+      "w.steamlib.queued": "Оновлення в черзі",
+      "w.steamlib.tapAgain": "Торкніться ще раз, щоб грати",
+      "w.steamlib.starting": "Запуск {game}",
+      "w.steamlib.startFailed": "Не вдалося запустити {game}",
+      "w.steamlib.alreadyRunning": "{game} уже запущена",
+      "w.steamlib.notInstalled": "{game} більше не встановлена",
+      "w.steamlib.launchOff": "Увімкніть «Телефон може запускати ігри» в параметрах цього віджета"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Лише ця категорія (її категорія в налаштуваннях; порожньо = усі)",
@@ -1572,7 +1590,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Дзвінок → сповіщення",
       "🔥 CPU busy → notification": "🔥 CPU зайнятий → сповіщення",
       "🔴 On air while the mic is on": "🔴 В ефірі, коли мікрофон ввімкнено",
-      "🕙 Evenings → calm page": "Вечірні → спокійна сторінка"
+      "🕙 Evenings → calm page": "Вечірні → спокійна сторінка",
+      "Steam library": "Бібліотека Steam",
+      "Your installed Steam games: your favorites first, then the most recently played, with covers and update progress. Read from Steam's own files on this computer: no API key or sign-in needed.": "Встановлені ігри Steam: спершу улюблені, потім нещодавно запущені, з обкладинками та перебігом оновлень. Читається з файлів самого Steam на цьому комп’ютері: ключ API та вхід не потрібні.",
+      "Favorite games (shown first, in the order you tick them)": "Улюблені ігри (показуються першими, у порядку позначення)",
+      "Show only the favorite games": "Показувати лише улюблені ігри",
+      "Games shown": "Скільки ігор показувати",
+      "Let the phone start games (off: the library is only shown)": "Телефон може запускати ігри (вимк.: бібліотека лише показується)",
+      "Ask before starting (tap a game twice)": "Питати перед запуском (торкнутися гри двічі)"
     },
     "panel": {
       "% load": "% завантаження",

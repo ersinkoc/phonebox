@@ -8,6 +8,11 @@
   const realFetch = window.fetch.bind(window);
   const bc = new BroadcastChannel('phonebox-demo');
   const START = Date.now();
+  // made-up Steam games for the Steam library widget: [app id, name, played hours ago (null = never), state, progress, hue]
+  const DEMO_GAMES = [['900010', 'Harbor Lights', 0, 'ready', null, 12], ['900020', 'Starfall Tactics', 26, 'ready', null, 42],
+    ['900030', 'Moss Garden', 74, 'updating', 0.42, 120], ['900040', 'Deep Circuit', 300, 'ready', null, 210], ['900050', 'Paper Comet', 900, 'update', null, 190],
+    ['900060', 'Lantern Keep', 1200, 'ready', null, 280], ['900070', 'Glass Orchard', 1500, 'paused', 0.7, 330], ['900080', 'Tidal Forge', 2000, 'ready', null, 160],
+    ['900090', 'Quiet Summit', 2600, 'ready', null, 60], ['900100', 'Iron Meadow', null, 'ready', null, 95]];
   const now = () => Date.now();
   const rnd = (a, b) => a + Math.random() * (b - a);
   const wave = (period, lo, hi, phase = 0, noise = 0) =>
@@ -601,6 +606,21 @@
       ],
       activity: [{ id: '76561198000000001', name: 'Ada', hasAvatar: true, kind: 'playing', game: 'Hades II', at: now() - 180000 }],
     } });
+    // the Steam library as the agent reads it from Steam's files: made-up games, covers drawn below
+    if (path === '/api/steam/library') {
+      const c = await config();
+      const mine = shownWidgets(c).filter((w) => w.type === 'steam-library');
+      return json({ enabled: mine.length > 0, found: true, error: null, running: '900010', canLaunch: mine.some((w) => w.options?.allowLaunch === true),
+        games: DEMO_GAMES.map(([id, name, hoursAgo, state, progress]) => ({ id, name, lastPlayed: hoursAgo == null ? 0 : Math.floor(now() / 1000) - hoursAgo * 3600,
+          sizeGb: 12.5, state, progress, cover: true })) });
+    }
+    if (path === '/api/steam/games') return json(DEMO_GAMES.map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
+    if (path === '/api/steam/launch' && method === 'POST') {
+      if (!shownWidgets(await config()).some((w) => w.type === 'steam-library' && w.options?.allowLaunch === true)) {
+        return json({ error: 'Turn on "Let the phone start games" in a Steam library widget on an enabled page', code: 'off' }, 400);
+      }
+      return DEMO_GAMES.some((g) => g[0] === q.get('id')) ? json({ ok: true }) : json({ error: 'That game is not installed', code: 'notinstalled' }, 400);
+    }
     if (path === '/api/steam/avatar') {
       const ada = q.get('id') === '76561198000000001';
       const letter = ada ? 'A' : 'L', fill = ada ? '#7c3aed' : '#2563eb';
@@ -808,11 +828,19 @@
     return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect x="6" y="6" width="84" height="84" rx="20" fill="hsl(${a.hue} 65% 52%)"/>`
       + `<text x="48" y="62" font-family="system-ui,sans-serif" font-size="42" font-weight="700" text-anchor="middle" fill="#fff">${a.name.slice(0, 1)}</text></svg>`);
   };
+  // a portrait capsule for a made-up game: its colour and its name
+  const gameCover = (id) => {
+    const [, name = '?', , , , hue = 210] = DEMO_GAMES.find((g) => g[0] === id) || [];
+    const words = name.split(' ').map((w, i) => `<text x="100" y="${190 + i * 34}" font-family="system-ui,sans-serif" font-size="30" font-weight="800" text-anchor="middle" fill="#fff">${w}</text>`).join('');
+    return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">`
+      + `<stop offset="0" stop-color="hsl(${hue} 70% 45%)"/><stop offset="1" stop-color="hsl(${hue + 40} 60% 14%)"/></linearGradient></defs><rect width="200" height="300" fill="url(#g)"/>${words}</svg>`);
+  };
   const swapDemoImg = (img) => {
     if (img.tagName !== 'IMG') return;
     const src = img.getAttribute('src') || '';
     if (/\/api\/(art|controls\/radio-logo)|^https:\/\/i\.scdn\.co\/image\/demo\d+$/.test(src)) img.src = ART;
     else if (/\/api\/apps\/icon/.test(src)) img.src = appIcon(new URL(src, location.href).searchParams.get('id'));
+    else if (/\/api\/steam\/cover/.test(src)) img.src = gameCover(new URL(src, location.href).searchParams.get('id'));
   };
   new MutationObserver((list) => {
     for (const m of list) {
