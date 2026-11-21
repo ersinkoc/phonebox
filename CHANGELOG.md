@@ -10,6 +10,15 @@
   events count only once both of the channel's subscriptions are in place (#354,
   [M00n-of-saturn](https://github.com/M00n-of-saturn)).
 
+**Panel**
+- The Spectrum bars and App console widgets stop asking the PC while nobody can see the panel (screen off, another
+  app in front): the spectrum no longer keeps the PC capturing its sound, polling every 40 ms once the live stream was
+  closed, and the console no longer asks which app is in front.
+
+**Tools**
+- `tools/demo-server.py` refuses a chunked request body (411) and closes the connection, instead of answering without
+  the body and reading it as the next request.
+
 ## 0.9.27 — 2026-11-21
 
 The Discord login works again, nine new languages (23 in all, Arabic right to left), Discord shows who is speaking,
