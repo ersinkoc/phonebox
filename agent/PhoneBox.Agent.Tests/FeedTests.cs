@@ -501,17 +501,44 @@ public sealed class FeedMonitorTests : IDisposable
     [Fact]
     public void TheLinkNeverReachesThePhone()
     {
-        var json = System.Text.Json.JsonSerializer.Serialize(new FeedItem("id", "t", "s", 1, "https://secret.example/?token=abc"),
+        var json = System.Text.Json.JsonSerializer.Serialize(new FeedItem("id", "t", "s", 1, "https://secret.example/?token=abc", "Tech"),
             new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
         Assert.DoesNotContain("secret", json);
         Assert.Contains("\"openable\":true", json);
+        Assert.Contains("\"category\":\"Tech\"", json);
+    }
+
+    [Fact]
+    public async Task FeedCategoriesAreAttachedToItems()
+    {
+        var cfg = Config(feeds: """[{"name":"TechBlog","url":"https://feeds.example/rss","category":"Technology"}]""");
+        var handler = new FeedHttpTests.Fake(_ => FeedHttpTests.Ok(Rss));
+        using var m = Monitor(cfg, handler);
+        await m.TickAsync(CancellationToken.None);
+        var items = m.Snapshot().Items;
+        Assert.NotEmpty(items);
+        Assert.All(items, i =>
+        {
+            Assert.Equal("TechBlog", i.Source);
+            Assert.Equal("Technology", i.Category);
+        });
     }
 
     [Fact]
     public void FeedAddressesStayOffThePhone()
     {
-        var cfg = Config(feeds: """[{"name":"Private","url":"https://feeds.example/rss?key=s3cret"}]""");
+        var cfg = Config(feeds: """[{"name":"Private","url":"https://feeds.example/rss?key=s3cret","category":"Personal"}]""");
         var pub = System.Text.Json.JsonSerializer.Serialize(cfg.Get().ToPublic());
         Assert.DoesNotContain("s3cret", pub);
+    }
+
+    [Fact]
+    public void FeedCategoryIsNormalizedInConfig()
+    {
+        var longCat = new string('x', 50);
+        var cfg = Config(feeds: $$"""[{"name":"Blog","url":"https://feeds.example/rss","category":"  {{longCat}}  "}]""");
+        var feed = Assert.Single(cfg.Get().Feeds);
+        Assert.Equal(40, feed.Category.Length);
+        Assert.Equal(new string('x', 40), feed.Category);
     }
 }
