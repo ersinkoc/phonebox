@@ -190,6 +190,8 @@ public sealed class DisplayConfig
     public bool AutoBrightness { get; set; }
     /// <summary>Show the night screen whenever the room is dark, not only at night.</summary>
     public bool NightWhenDark { get; set; }
+    /// <summary>Show the night screen when the computer has been away for 2 minutes (shut down, asleep, the agent closed).</summary>
+    public bool NightWhenAway { get; set; } = true;
     /// <summary>A hand near the phone (proximity sensor) wakes the night screen.</summary>
     public bool ProximityWake { get; set; } = true;
     /// <summary>OLED burn-in protection: every 2 minutes the panel moves by a few pixels and the night clock drifts.</summary>

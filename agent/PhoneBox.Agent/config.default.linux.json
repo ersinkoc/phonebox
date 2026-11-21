@@ -39,7 +39,7 @@
 
   // Clock seconds, return to the first page after N idle seconds (0 = never), vibrate on session events, a message when a session finishes,
   // switch pages with the phone's volume keys
-  "display": { "showSeconds": true, "idleReturnSec": 90, "vibrate": true, "finishToast": true, "volumeKeys": true, "pixelShift": false, "controlsTop": false, "idleDimMin": 0, "language": "auto" },
+  "display": { "showSeconds": true, "idleReturnSec": 90, "vibrate": true, "finishToast": true, "volumeKeys": true, "nightWhenAway": true, "pixelShift": false, "controlsTop": false, "idleDimMin": 0, "language": "auto" },
 
   // Photo frame widget: "source" is "folder" or "immich". A folder source shows "folder" (empty = off) and whether subfolders count;
   // an Immich source shows one album ("immichAlbum" is its id) of the server at "immichUrl", read with the API key "immichKey". None of these go to the phone.

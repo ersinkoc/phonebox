@@ -94,6 +94,14 @@ public class ConfigTests
     }
 
     [Fact]
+    public void NightWhenAwayIsOnByDefaultAndCanBeTurnedOff()
+    {
+        Assert.True(new AgentConfig().Display.NightWhenAway);
+        Assert.True(Load("""{ "display": { } }""").Display.NightWhenAway);
+        Assert.False(Load("""{ "display": { "nightWhenAway": false } }""").Display.NightWhenAway);
+    }
+
+    [Fact]
     public void TemplatesExpandIntoWidgets()
     {
         var c = Load("""{ "pages": [ { "template": "music" }, { "template": "music" } ] }""");
