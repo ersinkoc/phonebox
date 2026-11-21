@@ -467,7 +467,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "wx.partlyCloudy": "局部多雲",
       "wx.overcast": "陰天",
       "wx.fog": "霧",
-      "wx.rimeFog": "霧凇",
+      "wx.rimeFog": "凍霧",
       "wx.lightDrizzle": "小毛毛雨",
       "wx.drizzle": "毛毛雨",
       "wx.heavyDrizzle": "大毛毛雨",

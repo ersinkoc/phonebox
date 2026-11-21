@@ -83,15 +83,22 @@ def check_languages():
         english.setdefault(m.group(1), m.group(2))
     leftovers = re.compile(r'weather (?:condition|forecast)|<0x[0-9A-Fa-f]{2}>'
                            r'|[Ѐ-ӿऀ-ॿ฀-๿가-힯][a-z]{3,}')
+    parsed = {}
     for name in sorted(packs):
         text = (www / name).read_text(encoding='utf-8')
         start = text.index('{', text.index('{', text.index('Object.assign')) + 1)
-        for code, pack in json.loads(text[start:text.rindex('}') + 1]).items():
-            for section in pack.values():
+        parsed[name] = json.loads(text[start:text.rindex('}') + 1])
+        english.update(parsed[name].get('en', {}).get('strings', {}))  # some English strings live in a pack
+    for name, languages in parsed.items():
+        for code, pack in languages.items():
+            for section_name, section in pack.items():
                 for key, value in (section.items() if isinstance(section, dict) else []):
                     if isinstance(value, str):
                         assert not leftovers.search(value), (name, code, key, value)
-                        assert value or not english.get(key), (name, code, key, 'empty')
+                        # catalog and panel entries are keyed by their English text, and an empty translation
+                        # is shown as is, without falling back to English
+                        source_text = english.get(key) if section_name == 'strings' else key
+                        assert value or not source_text, (name, code, key, 'empty')
 
     readmes = {'en': root / 'README.md'}
     readmes.update({code: root / f'docs/README.{code}.md' for code in codes - {'en'}})
