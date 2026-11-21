@@ -24,6 +24,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private readonly HashSet<string> _oldApp = [];              // phones already told that their app is too old
     private readonly HashSet<string> _reverseSet = [];          // phones whose reverse rule this agent set (read only for Android 5 and 6)
     private readonly Dictionary<string, int> _sdk = [];         // serial -> Android API level, asked once per connection
+    private readonly Dictionary<string, string> _transport = []; // serial -> adb transport id its remembered rule was set on
     internal const long KeyRetryMs = 30_000;
     // asked again now and then even when known: an app whose data was cleared has a new key and no pin, and can't say so
     internal const long KeyRefreshMs = 120_000;
@@ -147,6 +148,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // A phone that did not answer "reverse --list" sits out the rest of this round (home screen, keep awake): one
         // more failure there would end the round before the phones after it. The next round tries it again.
         var unreachable = new HashSet<string>();
+        Dictionary<string, string>? transports = null; // read at most once a round, only for Android 5 and 6
         foreach (var d in devices)
         {
             // adbd on Android 5 and 6 (API 21-23) answers "reverse --list" with "protocol fault", and adb then drops and
@@ -178,6 +180,14 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                     continue;
                 }
             }
+            if (!listable)
+            {
+                // A phone unplugged and plugged in again between two rounds keeps its serial but loses its rule (adb binds
+                // reverse rules to the connection). adb gives each connection a new transport id: a new one means set it again.
+                transports ??= await Transports(adb, ct);
+                if (transports.TryGetValue(d, out var now) && _transport.TryGetValue(d, out var then) && now != then)
+                    _reverseSet.Remove(d);
+            }
             var ruled = listable ? HasOwnRule(list) : _reverseSet.Contains(d);
             var keyed = usb is null || KeyAskedRecently(d, usb.HasKey(d) && !refreshKeys ? KeyRefreshMs : KeyRetryMs);
             if (ruled && keyed && !_missingApp.Contains(d)) continue;
@@ -191,6 +201,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             var moved = HasAnyRule(list);
             await Adb(adb, $"-s {d} reverse {Rule} {TargetRule}", ct);
             _reverseSet.Add(d);
+            if (transports?.TryGetValue(d, out var transport) == true) _transport[d] = transport;
             if (moved) { log.LogInformation("{Device}: adb reverse moved to this agent", d); continue; }
             // A newly plugged-in phone must not light up while the computer is locked.
             if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
@@ -285,6 +296,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         _awakeSet.IntersectWith(devices);
         _reverseSet.IntersectWith(devices); // plugged in again: the rule has to be set again
         foreach (var gone in _sdk.Keys.Except(devices).ToList()) _sdk.Remove(gone);
+        foreach (var gone in _transport.Keys.Except(devices).ToList()) _transport.Remove(gone);
         var changed = string.Join(",", devices) != string.Join(",", _devices);
         _devices = devices;
         if (changed) StateChanged?.Invoke();
@@ -319,6 +331,23 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             candidates.AddRange(Directory.GetDirectories(winget, "Google.PlatformTools*")
                 .Select(d => Path.Combine(d, "platform-tools", "adb.exe")));
         return candidates.FirstOrDefault(File.Exists);
+    }
+
+    /// <summary>serial -> transport id from "adb devices -l" (adb 1.0.40 and later); empty when adb does not say.</summary>
+    private static async Task<Dictionary<string, string>> Transports(string adb, CancellationToken ct)
+    {
+        var map = new Dictionary<string, string>();
+        try
+        {
+            foreach (var line in (await Adb(adb, "devices -l", ct)).Split('\n').Skip(1))
+            {
+                var parts = line.Split((char[])[' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length > 1 && parts.FirstOrDefault(x => x.StartsWith("transport_id:", StringComparison.Ordinal)) is { } id)
+                    map[parts[0]] = id["transport_id:".Length..];
+            }
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException) { }
+        return map;
     }
 
     internal static async Task<string> Adb(string adb, string args, CancellationToken ct, bool anyExit = false)
