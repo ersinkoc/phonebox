@@ -16,6 +16,7 @@ public sealed partial class SessionMonitor
     private const int AgyMaxReadBytes = 2 * 1024 * 1024;
     private const int AgyMaxProjectChars = 100;
     private const int AgyMaxMetaChars = 80;
+    private static ReadOnlySpan<byte> Utf8Bom => [0xEF, 0xBB, 0xBF];
 
     private sealed record AgyCandidate(string TranscriptPath, string RootPath, string ConvId, bool IsCli);
     private sealed record AgyHeader(bool IsUser, long? StartedAtMs);
@@ -230,7 +231,7 @@ public sealed partial class SessionMonitor
             }
 
             var line = buf.AsMemory(0, nl);
-            if (line.Span.StartsWith("\xEF\xBB\xBF"u8)) line = line[3..];
+            if (line.Span.StartsWith(Utf8Bom)) line = line[3..];
             if (line.IsEmpty) return null;
 
             using var doc = JsonDocument.Parse(line);
@@ -376,7 +377,10 @@ public sealed partial class SessionMonitor
                     }
                     continue;
                 }
-                if (decode) AppendUtf8Char(ms!, ch);
+                if (!decode) continue;
+                // an emoji is two chars (a surrogate pair): encode them together, or both halves become U+FFFD
+                if (char.IsHighSurrogate(ch) && idx < s.Length && char.IsLowSurrogate(s[idx])) AppendUtf8Pair(ms!, ch, s[idx++]);
+                else AppendUtf8Char(ms!, ch);
             }
             return decode ? Encoding.UTF8.GetString(ms!.ToArray()) : null;
         }
@@ -445,6 +449,14 @@ public sealed partial class SessionMonitor
         ms.Write(utf8[..written]);
     }
 
+    private static void AppendUtf8Pair(MemoryStream ms, char high, char low)
+    {
+        Span<char> chars = [high, low];
+        Span<byte> utf8 = stackalloc byte[4];
+        var written = Encoding.UTF8.GetBytes(chars, utf8);
+        ms.Write(utf8[..written]);
+    }
+
     private Dictionary<string, string> ReadAntigravityCliProjects(string cliRoot)
     {
         var historyPath = Path.Combine(cliRoot, "history.jsonl");
@@ -496,7 +508,7 @@ public sealed partial class SessionMonitor
                         try
                         {
                             var line = buf.AsMemory(pos, end - pos);
-                            if (pos == 0 && line.Span.StartsWith("\xEF\xBB\xBF"u8)) line = line[3..];
+                            if (pos == 0 && line.Span.StartsWith(Utf8Bom)) line = line[3..];
                             using var doc = JsonDocument.Parse(line);
                             var root = doc.RootElement;
                             var convId = Str(root, "conversationId");
@@ -614,7 +626,7 @@ public sealed partial class SessionMonitor
                 try
                 {
                     var slice = buf.AsMemory(pos, end - pos);
-                    if (pos == 0 && start == 0 && slice.Span.StartsWith("\xEF\xBB\xBF"u8)) slice = slice[3..];
+                    if (pos == 0 && start == 0 && slice.Span.StartsWith(Utf8Bom)) slice = slice[3..];
                     if (!slice.IsEmpty)
                     {
                         using var doc = JsonDocument.Parse(slice);
@@ -660,15 +672,15 @@ public sealed partial class SessionMonitor
                             }
 
                             var stepStatus = Str(rec, "status");
-                            if (stepStatus == "RUNNING" || hasToolCalls)
-                            {
-                                inFlight = true;
-                                outcome = null;
-                            }
-                            else if (stepStatus == "ERROR")
+                            if (stepStatus == "ERROR") // a failed response ends the turn, even with tool calls in it
                             {
                                 inFlight = false;
                                 outcome = "failed";
+                            }
+                            else if (stepStatus == "RUNNING" || hasToolCalls)
+                            {
+                                inFlight = true;
+                                outcome = null;
                             }
                             else
                             {

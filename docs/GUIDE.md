@@ -269,7 +269,7 @@ from the conversation, so they stay off the phone until you share them, like Cla
 
 Antigravity sessions (opt-in: **Settings › General › Antigravity sessions**, off by default) show recent local
 Antigravity IDE and CLI chats with their model, tool and token metadata (prompts, replies and tool arguments are never
-read or sent). Chat titles reach the phone only when **Show Antigravity chat titles on the phone** is also on.
+retained or sent). Chat titles reach the phone only when **Show Antigravity chat titles on the phone** is also on.
 
 OpenCode's agent questions work the same way: when the agent asks "route A, B or C, or type your own", the phone
 shows the choices as buttons (and a text field when a custom answer is allowed) and sends the pick back. Questions

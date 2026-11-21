@@ -43,6 +43,7 @@ test('AI sessions widget renders Antigravity glyph, title and token note', async
   await page.reload();
   await page.evaluate(async () => {
     const { D, emit } = await import('/panel/main.js');
+    window.onAppPause(true); // stop the work poll, or the demo's sessions can replace the fixture
     D.work = {
       sessions: [{
         id: 'antigravity:conv-1', tool: 'antigravity', name: 'phonebox-conv', project: 'phonebox',

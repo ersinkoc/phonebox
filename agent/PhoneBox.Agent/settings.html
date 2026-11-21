@@ -775,7 +775,7 @@ nav a.on::before { color: var(--accent); }
       <div class="card">
         <h3 data-i18n="s.antigravity.title">Antigravity sessions</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.antigravity.hint">Show recent Antigravity chats on the AI sessions widget (off by default). Only step metadata and token counters are kept; prompts, replies and tool arguments are never shown, stored or sent.</p>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="antigravity.sessions"><span></span></label> <span data-i18n="s.antigravity.sessions">Show Antigravity sessions</span></div>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="antigravity.sessions" aria-labelledby="antigravitySessionsLabel"><span></span></label> <span id="antigravitySessionsLabel" data-i18n="s.antigravity.sessions">Show Antigravity sessions</span></div>
         <label class="check"><input type="checkbox" data-bind="antigravity.shareSessionTitles"> <span data-i18n="s.antigravity.shareSessionTitles">Show Antigravity chat titles on the phone (Antigravity draws them from the conversation)</span></label>
       </div>
 

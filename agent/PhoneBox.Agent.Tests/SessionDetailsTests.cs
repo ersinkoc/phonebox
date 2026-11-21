@@ -402,6 +402,30 @@ public sealed class SessionDetailsTests : IDisposable
     }
 
     [Fact]
+    public void Antigravity_BomEmojiTitleAndFailedResponseWithToolCalls()
+    {
+        var monitor = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
+        var id = "44444444-aaaa-bbbb-cccc-dddddddddddd";
+        var t0 = DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O");
+        var t1 = DateTimeOffset.UtcNow.AddSeconds(-10).ToString("O");
+        var file = WriteAntigravityTranscript(id,
+            $$$"""{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT","status":"DONE","created_at":"{{{t0}}}"}""" + "\n" +
+            $$$"""{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE","status":"ERROR","created_at":"{{{t1}}}","model":"gemini-4-carbon-medium","tool_calls":[{"name":"run_command"}]}""" + "\n");
+        // a transcript that starts with a UTF-8 byte order mark is still read
+        File.WriteAllBytes(file, [0xEF, 0xBB, 0xBF, .. File.ReadAllBytes(file)]);
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddSeconds(-10));
+        var annDir = Path.Combine(_root, ".gemini", "antigravity", "annotations");
+        Directory.CreateDirectory(annDir);
+        File.WriteAllText(Path.Combine(annDir, id + ".pbtxt"), "title:\"Release \U0001F680 notes\"\n");
+
+        var s = Assert.Single(monitor.ReadAntigravity(_root, titles: true));
+        Assert.Equal("idle", s.Status);       // the failed response ended the turn although it carried a tool call
+        Assert.Equal("failed", s.Outcome);
+        Assert.Equal("run_command", s.LastTool);
+        Assert.Equal("Release \U0001F680 notes", s.Title); // the emoji is a surrogate pair and survives whole
+    }
+
+    [Fact]
     public void Antigravity_SubagentAndArchivedAreIgnored_QuotedArchivedInTitleIsNotArchived()
     {
         var monitor = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
