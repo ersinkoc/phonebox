@@ -76,6 +76,23 @@ def check_languages():
         loaded = re.findall(r'<script src="(?:\.\./panel/)?(locale-[\w-]+\.js)">', page.read_text(encoding='utf-8'))
         assert len(loaded) == len(set(loaded)) and set(loaded) == packs, page
 
+    # Machine-translated packs once carried English left-overs and raw bytes (#358): "ясне" + "weather condition",
+    # "冰<0xE9><0x9B><0xB9>", "синій" + "color", and empty values where English has text.
+    english = {}
+    for m in re.finditer(r"^\s*'([\w.\-]+)':\s*'((?:[^'\\]|\\.)*)',?\s*$", source, re.M):
+        english.setdefault(m.group(1), m.group(2))
+    leftovers = re.compile(r'weather (?:condition|forecast)|<0x[0-9A-Fa-f]{2}>'
+                           r'|[Ѐ-ӿऀ-ॿ฀-๿가-힯][a-z]{3,}')
+    for name in sorted(packs):
+        text = (www / name).read_text(encoding='utf-8')
+        start = text.index('{', text.index('{', text.index('Object.assign')) + 1)
+        for code, pack in json.loads(text[start:text.rindex('}') + 1]).items():
+            for section in pack.values():
+                for key, value in (section.items() if isinstance(section, dict) else []):
+                    if isinstance(value, str):
+                        assert not leftovers.search(value), (name, code, key, value)
+                        assert value or not english.get(key), (name, code, key, 'empty')
+
     readmes = {'en': root / 'README.md'}
     readmes.update({code: root / f'docs/README.{code}.md' for code in codes - {'en'}})
     assert set((root / 'docs').glob('README.*.md')) == set(readmes.values()) - {readmes['en']}

@@ -19,6 +19,13 @@
 - `tools/demo-server.py` refuses a chunked request body (411) and closes the connection, instead of answering without
   the body and reading it as the next request.
 
+**Languages**
+- The weather line no longer shows stray English ("weather condition", "weather forecast") after the condition, and
+  the weather conditions read right in Arabic, Czech, Hindi, Indonesian, Japanese, Korean, Thai, Traditional Chinese
+  and Ukrainian ("Clear" no longer reads as "Delete", "Showers" as a bathroom shower). A few other broken strings in
+  Hindi, Japanese, Korean, Russian, Thai and Ukrainian are fixed, and the release check now catches English left-overs,
+  raw bytes and empty translations (#358, [Yura-Kondratiuk](https://github.com/Yura-Kondratiuk)).
+
 ## 0.9.27 — 2026-11-21
 
 The Discord login works again, nine new languages (23 in all, Arabic right to left), Discord shows who is speaking,
