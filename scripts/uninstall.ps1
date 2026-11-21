@@ -9,6 +9,7 @@ param([switch]$Purge, [switch]$Apk)
 
 Get-Process PhoneBoxAgent -ErrorAction SilentlyContinue | Stop-Process -Force
 Remove-Item (Join-Path ([Environment]::GetFolderPath('Startup')) 'PhoneBox.lnk') -ErrorAction SilentlyContinue
+Remove-Item (Join-Path ([Environment]::GetFolderPath('Programs')) 'PhoneBox.lnk') -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500
 Remove-Item (Join-Path $env:LOCALAPPDATA 'PhoneBox') -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host 'Agent removed.'

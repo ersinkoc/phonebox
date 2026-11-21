@@ -16,7 +16,7 @@
     2. Downloads the agent and checks its SHA-256 checksum (and its build provenance when the GitHub CLI is signed in).
     3. Installs adb (Android platform tools) when it is missing: with winget, or from Google's download.
     4. Installs the agent to %LOCALAPPDATA%\PhoneBox\app. Settings in %APPDATA%\PhoneBox are kept.
-    5. Starts PhoneBox with Windows, puts the app on a phone connected over USB, starts the agent and opens its settings.
+    5. Adds a Start Menu shortcut, optionally starts PhoneBox with Windows, puts the app on a phone connected over USB, starts the agent and opens its settings.
 
   Running it again updates PhoneBox or repairs the installation.
 
@@ -381,6 +381,7 @@ function Install-PhoneBox {
         if ($DryRun) {
             Write-Step 'Dry run finished'
             Write-Info "Would stop the running agent and install PhoneBox $ver to $app (settings in $env:APPDATA\PhoneBox stay)."
+            Write-Info 'Would add a PhoneBox shortcut to the Start Menu.'
             if (-not $NoAutostart) { Write-Info 'Would ask to start PhoneBox with Windows.' }
             if (-not $NoPhone) { Write-Info 'Would offer to install the app on a phone connected over USB.' }
             Write-Info 'Nothing was changed.'
@@ -408,6 +409,21 @@ function Install-PhoneBox {
         }
         Remove-Item $old -Recurse -Force -ErrorAction SilentlyContinue
         Write-Ok "PhoneBox $ver installed; settings are in $env:APPDATA\PhoneBox"
+
+        $programs = [Environment]::GetFolderPath('Programs')
+        if ($programs -and (Test-Path $programs)) {
+            try {
+                $shell = New-Object -ComObject WScript.Shell
+                $startLink = $shell.CreateShortcut((Join-Path $programs 'PhoneBox.lnk'))
+                $startLink.TargetPath = $exe
+                $startLink.WorkingDirectory = $app
+                $startLink.Description = 'PhoneBox agent'
+                $startLink.Save()
+                Write-Ok 'Added to the Start Menu (search "PhoneBox" to start it anytime)'
+            } catch {
+                Write-Caution "Could not create Start Menu shortcut: $($_.Exception.Message)"
+            }
+        }
 
         $startup = [Environment]::GetFolderPath('Startup')
         Remove-Item (Join-Path $startup 'DeskAgent.lnk') -ErrorAction SilentlyContinue   # the pre-PhoneBox prototype

@@ -53,6 +53,17 @@ try {
 $startup = [Environment]::GetFolderPath('Startup')
 Remove-Item (Join-Path $startup 'DeskAgent.lnk') -ErrorAction SilentlyContinue
 
+$programs = [Environment]::GetFolderPath('Programs')
+if ($programs -and (Test-Path $programs)) {
+    Write-Host '==> Adding Start Menu shortcut'
+    $shell = New-Object -ComObject WScript.Shell
+    $lnk = $shell.CreateShortcut((Join-Path $programs 'PhoneBox.lnk'))
+    $lnk.TargetPath = $exe
+    $lnk.WorkingDirectory = $app
+    $lnk.Description = 'PhoneBox agent'
+    $lnk.Save()
+}
+
 if ($Autostart) {
     Write-Host '==> Adding Start-with-Windows shortcut'
     $shell = New-Object -ComObject WScript.Shell

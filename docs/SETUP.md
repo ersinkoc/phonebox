@@ -38,7 +38,7 @@ Setup installs the [latest release](https://github.com/ersinkoc/phonebox/release
    | Linux | `~/.local/share/PhoneBox/app` | `~/.config/PhoneBox` |
    | macOS | `~/Library/Application Support/PhoneBox/app` | `~/Library/Application Support/PhoneBox` |
 
-   Then it asks whether to start PhoneBox at login: a Startup-folder shortcut on Windows, a systemd user service
+   It adds a Start Menu shortcut on Windows, and asks whether to start PhoneBox at login: a Startup-folder shortcut on Windows, a systemd user service
    on Linux, a launchd agent on macOS.
 6. **Puts the app on the phone over USB**, if you want. It shows how to turn on USB debugging and waits for the phone.
 7. **Starts the agent** and opens its settings at <http://127.0.0.1:8765>.
@@ -158,7 +158,7 @@ The settings are at <http://127.0.0.1:8765>, on Windows also from the tray icon.
 
 ### Stop and start the agent
 
-On Windows, use **Quit** in the tray menu; with **Start with Windows** on, it starts again at the next sign-in.
+On Windows, use **Quit** in the tray menu. Start it again anytime from the Start Menu (search for **PhoneBox**); with **Start with Windows** on, it also starts automatically at sign-in.
 On Linux, setup installs a systemd user service named `phonebox` (no sudo needed):
 
 ```sh
