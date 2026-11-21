@@ -28,7 +28,17 @@ public sealed class ControlDeckBrightnessTests
             Release?.Wait(TimeSpan.FromSeconds(10));
             return [new DeckMonitor(Display, Display + " (primary)", level, 1920, 1080, 60)];
         }
-        public bool Brightness(string id, int value) { if (id != Display) return false; Level = value; return true; }
+        /// <summary>When set, Brightness(HoldValue) applies the level, signals Setting and waits for HoldSet before it returns.</summary>
+        public ManualResetEventSlim? HoldSet;
+        public int HoldValue = -1;
+        public readonly ManualResetEventSlim Setting = new();
+        public bool Brightness(string id, int value)
+        {
+            if (id != Display) return false;
+            Level = value;
+            if (value == HoldValue) { Setting.Set(); HoldSet?.Wait(TimeSpan.FromSeconds(10)); }
+            return true;
+        }
         public IReadOnlyList<DeckItem> PowerPlans() => [];
         public Task<bool> PlatformAction(string kind, string target, string? argument, int value, CancellationToken ct) => Task.FromResult(true);
         public Task<IReadOnlyList<DeckMedia>> Media(CancellationToken ct) => Task.FromResult<IReadOnlyList<DeckMedia>>([]);
@@ -64,7 +74,7 @@ public sealed class ControlDeckBrightnessTests
             var monitors = (IReadOnlyList<DeckMonitor>)state.GetType().GetProperty("monitors")!.GetValue(state)!;
             return monitors.Single(m => m.Id == Display).Brightness;
         }
-        public void Dispose() { Native.Release?.Set(); Deck.Dispose(); Directory.Delete(_directory, true); }
+        public void Dispose() { Native.Release?.Set(); Native.HoldSet?.Set(); Deck.Dispose(); Directory.Delete(_directory, true); }
     }
 
     [Fact]
@@ -97,6 +107,30 @@ public sealed class ControlDeckBrightnessTests
         f.Native.Release.Set();
         await f.HardwareRead.WaitAsync(TimeSpan.FromSeconds(10));
 
+        Assert.Equal(70, await f.ShownLevel());
+    }
+
+    [Fact]
+    public async Task Two_sets_at_once_show_the_level_the_monitor_ended_on()
+    {
+        using var f = new Fixture();
+        await f.Deck.Snapshot(default);
+        await f.HardwareRead.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // a drag sends 50 and then 70; 50 is already on the monitor but its call has not returned yet
+        f.Native.HoldValue = 50;
+        f.Native.HoldSet = new ManualResetEventSlim();
+        var first = Task.Run(() => f.Deck.Act("brightness", Display, null, 50, null, null, default));
+        Assert.True(f.Native.Setting.Wait(TimeSpan.FromSeconds(10)));
+        var second = Task.Run(() => f.Deck.Act("brightness", Display, null, 70, null, null, default));
+        // Gives the second set time to finish if it can run past the first one. The result does not depend on it:
+        // a set that waits for the one before it passes however long this is.
+        await Task.WhenAny(second, Task.Delay(TimeSpan.FromSeconds(1)));
+        f.Native.HoldSet.Set();
+        Assert.True((await first).Ok);
+        Assert.True((await second).Ok);
+
+        Assert.Equal(70, f.Native.Level);
         Assert.Equal(70, await f.ShownLevel());
     }
 

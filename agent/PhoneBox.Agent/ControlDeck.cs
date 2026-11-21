@@ -42,6 +42,7 @@ public sealed partial class ControlDeck : BackgroundService
     // Brightness levels set since the running monitor read began (guarded by _state): that read may have seen the monitor
     // before the set, and must not bring the old level back for the next 30 s (#360).
     private readonly Dictionary<string, int> _brightnessSet = new(StringComparer.Ordinal);
+    private readonly object _brightnessGate = new();
     private IReadOnlyList<DeckItem> _plans = [], _midi = [];
 
     private readonly PushStore? _push;
@@ -287,9 +288,13 @@ public sealed partial class ControlDeck : BackgroundService
                     ok = true; break;
                 case "action": return await Action(id, op, value, ct);
                 case "brightness":
-                    ok = value is >= 0 and <= 100 && _native.Brightness(id, value.Value);
-                    // shown at once: the next monitor read can be up to 30 s away (#360)
-                    if (ok) lock (_state) { _brightnessSet[id] = value!.Value; _monitors = WithBrightnessSet(_monitors); }
+                    // one set at a time, so the level shown is the one the monitor got last when a drag sends sets at once
+                    lock (_brightnessGate)
+                    {
+                        ok = value is >= 0 and <= 100 && _native.Brightness(id, value.Value);
+                        // shown at once: the next monitor read can be up to 30 s away (#360)
+                        if (ok) lock (_state) { _brightnessSet[id] = value!.Value; _monitors = WithBrightnessSet(_monitors); }
+                    }
                     break;
                 case "desktop": ok = value is -1 or 1 && await _native.PlatformAction("desktop", "", null, value.Value, ct); break;
                 case "power-plan": ok = _native.PowerPlans().Any(p => p.Id == id) && await _native.PlatformAction("power-plan", id, null, 0, ct); break;
