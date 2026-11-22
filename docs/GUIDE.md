@@ -171,6 +171,21 @@ failures retain the last measurements with an error.
 Tap an AI session to see its model, timing and token details. Token counters describe the local session rather than
 the account allowance. Prompt/response text and tool arguments are not included in this panel data.
 
+## Synced lyrics
+
+The **Synced lyrics** widget shows the words of the song playing on the computer, the sung line lit and kept in the
+middle, from [LRCLIB](https://lrclib.net), a free and open lyrics database. It isn't tied to Spotify: it uses the track
+the agent shows in Now playing (title, artist, album, length and position), whichever player reports it.
+
+Nothing is looked up until you turn on the widget's **Look up lyrics on LRCLIB** (off by default); each widget has its
+own switch. Then the agent (never the phone) asks LRCLIB once per song, only for a widget with the option on while it
+is on an enabled page, and sends the title, artist, album and length, nothing about you. Answers stay in memory, never on disk; after a failure the agent
+leaves LRCLIB alone for a while (1 minute, doubling up to 30, or as long as LRCLIB asks).
+
+Songs without timed lyrics show their plain lyrics, unless you turn that off. A player that reports no position (no
+timeline in Now playing) gets the words as a page, with a note that the lines can't follow the song. *Timing offset*
+moves the lines earlier (positive) or later when a song's timing is off.
+
 ## Layout editor & settings
 
 Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):

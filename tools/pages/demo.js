@@ -352,6 +352,12 @@
     ['f5', 'Ten keyboard shortcuts that save an hour a week', 'Tech news', 240],
     ['f6', 'Inside the factory that still makes film cameras', 'Hackaday', 420],
   ].map(([id, title, source, min]) => ({ id, title, source, published: now() - min * 60_000, openable: true }));
+  // made-up words for the made-up first song, one line every few seconds (the Synced lyrics widget)
+  const DEMO_LYRICS = [[0, ''], [8, 'Wires hum beneath the city glow'], [14, 'Every signal finds the way back home'], [21, 'Midnight circuit, keep me running'],
+    [28, 'Static lights are slowly coming'], [36, ''], [44, 'Tracing streets in amber and in blue'], [51, 'Every window flickers into view'],
+    [58, 'Midnight circuit, hold the current'], [65, 'Hearts in phase and nothing distant'], [73, 'Ooh, the line is open'], [80, 'Ooh, the night is spoken'],
+    [88, ''], [96, 'Low tide lights across the harbour wall'], [103, 'Echoes answer every time I call'], [110, 'Midnight circuit, keep me running'],
+    [117, 'Static lights are slowly coming'], [125, 'Midnight circuit'], [132, 'Keep me running'], [140, '']];
   // "pageId/widgetId", or "pageId/stackId:cardId" for a Smart Stack card (PanelWidgets.Find)
   const panelWidget = (c, key, type) => (c.pages || []).filter((p) => p.enabled !== false).flatMap((p) => (p.widgets || []).flatMap((w) =>
     // card-<i> counts every card, disabled ones too, like StackWidgets.Children and stack.js
@@ -622,6 +628,16 @@
         return json({ error: 'Turn on "Let the phone start games" in this Steam library widget\'s settings', code: 'off' }, 400);
       }
       return DEMO_GAMES.some((g) => g[0] === q.get('id')) ? json({ ok: true }) : json({ error: 'That game is not installed', code: 'notinstalled' }, 400);
+    }
+    // timed lyrics for the first made-up song, plain ones for the second, none for the third (LRCLIB is not asked)
+    if (path === '/api/lyrics') {
+      // the asking widget's own lookup option, like the agent (PanelWidgets.Find): another widget's does not count
+      if (panelWidget(await config(), q.get('widget'), 'lyrics')?.options?.lookup !== true) return json({ status: 'off' });
+      const [title, artist] = TRACKS[player.track];
+      const stamp = (s) => `[${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}.00]`;
+      if (player.track === 0) return json({ status: 'ok', title, artist, synced: DEMO_LYRICS.map(([s, l]) => `${stamp(s)} ${l}`).join('\n'), plain: DEMO_LYRICS.map((x) => x[1]).join('\n'), instrumental: false });
+      if (player.track === 1) return json({ status: 'ok', title, artist, synced: null, plain: DEMO_LYRICS.slice(1, 7).map((x) => x[1]).join('\n'), instrumental: false });
+      return json({ status: 'notfound', title, artist });
     }
     if (path === '/api/steam/avatar') {
       const ada = q.get('id') === '76561198000000001';

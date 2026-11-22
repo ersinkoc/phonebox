@@ -1393,3 +1393,19 @@ body.controls-top .ap-foot { order: -1; margin-bottom: 4px; }
   .sl-tile.armed .sl-status { display: block; position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 9px;
     white-space: normal; background: rgba(0, 0, 0, .7); padding: 2px; }
 }
+/* Lyrics (widgets/lyrics.js): timed lines follow the song, the current one lit in the middle */
+.w-lyrics { padding: 9px 12px 6px; display: flex; flex-direction: column; gap: 6px; }
+.w-lyrics .w-title { color: rgb(var(--ambient)); }
+.ly-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; scroll-behavior: smooth;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
+.ly-list::-webkit-scrollbar { display: none; }
+.w-lyrics.timed .ly-list { padding: 40cqh 0; }
+.ly-line { font-size: clamp(13px, 9cqh, 26px); font-weight: 700; line-height: 1.35; padding: 3px 0; color: rgba(255, 255, 255, .32); transition: color .35s, transform .35s; transform-origin: left center; }
+.ly-line.past { color: rgba(255, 255, 255, .2); }
+.ly-line.now { color: var(--text); transform: scale(1.04); }
+.ly-line.gap { color: rgba(255, 255, 255, .18); }
+.w-lyrics.plain .ly-line { color: var(--text); font-weight: 500; font-size: clamp(12px, 6.5cqh, 18px); }
+.ly-note { font-size: 12px; color: var(--muted); text-align: center; }
+.ly-note[hidden] { display: none; }
+.w-lyrics:not(.timed):not(.plain) .ly-note { margin: auto; }
+.ly-credit { position: absolute; right: 10px; top: 9px; font-size: 9px; letter-spacing: .1em; color: var(--dim); }
