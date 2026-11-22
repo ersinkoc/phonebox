@@ -14,6 +14,9 @@
   sung lit as it plays. The lookup is off by default per widget; with it on, the agent asks LRCLIB (free, no account)
   with the track's title, artist, album and length, once per song, and keeps the answers in memory only (#339, #378,
   [1Cellu](https://github.com/1Cellu)).
+- Discord: star servers and voice channels on the phone to keep them at the top, and see who is in your favourite
+  voice channels. The agent reads only the starred channels (at most 20), and only while a Discord widget with
+  **Channels** on is on an enabled page (#356, #364, [AlberBM](https://github.com/AlberBM)).
 
 **Agent**
 - Phone app updates: a phone that cannot take a streamed install (`splice failed: EINVAL`, seen with Android 15 on a
@@ -30,6 +33,9 @@
 - Discord: when Discord refuses the login with `Missing "redirect_uri"`, the message says where to add the redirect
   (`http://127.0.0.1` under **OAuth2 › Redirects** in the Discord application) and that the switch needs **Save** off
   and on again (#316, #380, [DushyantRajpurohit](https://github.com/DushyantRajpurohit)).
+- Quotas: a CodexBar poll that fails for a moment (Cursor's session can't be read from the background on macOS) no
+  longer blanks the Cursor ring; the last good reading stays for up to 6 hours, without limits that have reset since,
+  and a refresh polls CodexBar again at once (#398, [ajaybali9](https://github.com/ajaybali9)).
 
 **Android app**
 - A request to the agent that fails (a timeout, a dropped cable) now closes its connection at once instead of
@@ -52,6 +58,8 @@
 **Tools**
 - `tools/demo-server.py` refuses a chunked request body (411) and closes the connection, instead of answering without
   the body and reading it as the next request.
+- The UI tests' web server accepts many connections at once, so the suite no longer fails with refused connections
+  when it runs with several workers on Windows (#405, [DushyantRajpurohit](https://github.com/DushyantRajpurohit)).
 
 **Languages**
 - The weather line no longer shows stray English ("weather condition", "weather forecast") after the condition, and
