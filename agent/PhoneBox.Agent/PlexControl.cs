@@ -256,6 +256,8 @@ public sealed class PlexControl : IDisposable
                 if (!Digits(id)) return new(false, "That queue item is no longer available");
                 var entry = await Latest(ct);
                 if (entry.Value["connected"]?.GetValue<bool>() != true) return new(false, entry.Value["error"]?.GetValue<string>() ?? ServerDown);
+                // the queue was read with settings that changed after this call began: its keys may belong to another server
+                if (entry.Settings != s) return new(false, "The Plex settings changed; try again");
                 if (!entry.Keys.TryGetValue(id!, out var key)) return new(false, "That queue item is no longer available");
                 return await Command(s, $"skipTo?type=music&key={Uri.EscapeDataString(key)}&playQueueItemID={id}", ct);
             }

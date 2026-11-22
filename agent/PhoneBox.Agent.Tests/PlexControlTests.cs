@@ -334,6 +334,24 @@ public sealed class PlexControlTests
     }
 
     [Fact]
+    public async Task ATapIsRefusedWhenTheSettingsChangedWhileItsQueueWasRead()
+    {
+        using var fixture = new Fixture();
+        var changed = false;
+        // the server address changes once, during the read that the tap starts: the queue then comes from the new server
+        fixture.Override = r =>
+        {
+            if (!changed && r.RequestUri!.AbsolutePath == "/player/timeline/poll") { changed = true; fixture.Write("https://other.example.test", Token); }
+            return null;
+        };
+        using var plex = fixture.Create();
+        var result = await plex.Act("play-queued", "9002", default);
+        Assert.True(changed);
+        Assert.False(result.Ok); Assert.Equal("The Plex settings changed; try again", result.Error);
+        Assert.DoesNotContain(fixture.ToPlayer, c => c.Uri.AbsolutePath.StartsWith("/player/playback"));
+    }
+
+    [Fact]
     public async Task ASettingsChangeThatSettlesGivesTheNewResult()
     {
         using var fixture = new Fixture();

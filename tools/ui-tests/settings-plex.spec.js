@@ -33,6 +33,8 @@ const answer = (page, index, body) => page.evaluate(([i, body]) => window.__held
 async function open(page) {
   await page.goto('/settings/#general');
   await applyJson(page, connection('https://plex.example.test', 'token-a'));
+  // the agent checks the saved settings, so the connection is saved before any check
+  expect(await page.evaluate(() => save())).toBe(true);
   const block = page.locator('#controlSettings details', { hasText: 'Plex music control' }).first();
   await block.locator('summary').first().click();
   return {
@@ -94,3 +96,23 @@ test('only the newest of two Check clicks writes the status', async ({ page }) =
   await expect(ui.status).toHaveText('Check the Plex token in desktop settings');
 });
 
+test('Check with unsaved Plex fields asks to save first and sends nothing', async ({ page }) => {
+  const ui = await open(page);
+  await holdPlexRequests(page);
+  await ui.url.fill('https://other.example.test');
+  await ui.check.click();
+  await expect(ui.status).toHaveText('Save your changes first');
+  expect(await page.evaluate(() => window.__held.length)).toBe(0);
+});
+
+test('a Check answer that arrives after an unsaved edit does not overwrite the save-first message', async ({ page }) => {
+  const ui = await open(page);
+  await holdPlexRequests(page);
+  await ui.check.click();
+  await expect(ui.status).toHaveText('Checking…');
+  await ui.token.fill('token-b');
+  await ui.check.click();
+  await expect(ui.status).toHaveText('Save your changes first');
+  await answer(page, 0, { connected: true, playing: false, current: null, queue: [] });
+  await expect(ui.status).toHaveText('Save your changes first');
+});

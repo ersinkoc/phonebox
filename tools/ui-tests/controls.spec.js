@@ -91,6 +91,15 @@ test('Plex queue shows the track and what is next without covers, and starts an 
   expect(await page.evaluate(async()=>(await(await fetch('/agent/api/controls/plex/state')).json()).queue.every(t=>/^\d{1,12}$/.test(t.id)))).toBe(true);
 });
 
+test('Plex queue shows the reason when the player plays from another server',async({page})=>{
+  await show(page,'plex-queue');
+  await expect(page.locator('.sq-head')).toHaveText('Up next');
+  await page.evaluate(()=>{const orig=window.fetch.bind(window);window.fetch=(url,init)=>String(url).includes('/controls/plex/state')
+    ?Promise.resolve(Response.json({connected:true,playing:true,current:null,queue:[],error:'The player is playing from another Plex server'})):orig(url,init);});
+  await expect(page.locator('.deck-empty')).toHaveText('The player is playing from another Plex server',{timeout:15000});
+  await expect(page.locator('.sq-head')).toHaveCount(0);
+});
+
 // #65's idea: the queue shows what plays now and what comes next, with covers from Spotify's image server only.
 test('Spotify queue shows now playing and up next with covers, and covers can be turned off',async({page})=>{
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==','base64');

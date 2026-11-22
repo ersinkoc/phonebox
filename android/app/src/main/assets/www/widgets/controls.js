@@ -734,7 +734,8 @@ integrationWidget('plex-queue', 'Plex queue', 'plex/state', (root,data,send)=>{
   root.append(h('div','sq-now' + (data.playing ? ' playing' : ''),
     h('div','sq-txt', h('div','sq-label', t(cur ? 'w.nowPlaying' : 'w.nothingPlaying')),
       cur ? h('div','sq-name',cur.name || '') : null, cur?.artist ? h('div','sq-artist',cur.artist) : null)));
-  if (!data.queue?.length) { root.append(h('div','deck-empty',t('w.queueEmpty'))); return; }
+  // a connected answer can still carry a reason for an empty queue (the player is playing from another server)
+  if (!data.queue?.length) { root.append(h('div','deck-empty',(data.error ? plexText(data.error) : '') || t('w.queueEmpty'))); return; }
   root.append(h('div','sq-head',t('w.upNext')));
   for (const item of data.queue) {
     const b = h('button','sq-item', text(item.name, item.artist));
