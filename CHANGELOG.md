@@ -17,6 +17,8 @@
   leaving it for the garbage collector. On Android 6 each one also held two pipes until then, and the system's TLS
   code stops the app once 1024 are open; this may be behind the crashes in #389
   ([d3j4n](https://github.com/d3j4n)).
+- A phone whose system can't start the Android System WebView (seen on an OPPO with ColorOS 3.0 on Android 5.1) now
+  shows a message saying so instead of crashing at every launch (#385, [w364439](https://github.com/w364439)).
 
 **Panel**
 - The Spectrum bars and App console widgets stop asking the PC while nobody can see the panel (screen off, another

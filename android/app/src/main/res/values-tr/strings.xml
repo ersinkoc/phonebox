@@ -12,4 +12,5 @@
     <string name="pair_failed_answer">%1$s, %2$d yanıt kodunu döndürdü.</string>
     <string name="pair_failed_certificate">Bilgisayarın sertifikası QR kodundaki sertifikayla eşleşmiyor. Eşleştirmeyi yeniden başlatın.</string>
     <string name="ok">Tamam</string>
+    <string name="webview_failed">Panel bu telefonda çalışamıyor: Android, WebView\'i başlatamadı. Bazı Android 5 telefonlar PhoneBox\'ın ihtiyaç duyduğu WebView sürümlerini çalıştıramıyor.</string>
 </resources>

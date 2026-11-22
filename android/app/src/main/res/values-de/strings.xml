@@ -12,4 +12,5 @@
     <string name="pair_failed_answer">%1$s antwortete auf %2$d .</string>
     <string name="pair_failed_certificate">Der Computer verfügt über ein anderes Zertifikat als den Code QR. Starten Sie die Kopplung erneut.</string>
     <string name="ok">OK</string>
+    <string name="webview_failed">Das Panel läuft auf diesem Telefon nicht: Android konnte sein WebView nicht starten. Manche Android-5-Telefone können die WebView-Versionen, die PhoneBox braucht, nicht ausführen.</string>
 </resources>

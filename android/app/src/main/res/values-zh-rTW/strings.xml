@@ -12,4 +12,5 @@
     <string name="pair_failed_answer">%1$s 傳回回應代碼 %2$d。</string>
     <string name="pair_failed_certificate">電腦的憑證與 QR 碼中的憑證不符。請重新開始配對。</string>
     <string name="ok">確定</string>
+    <string name="webview_failed">面板無法在這支手機上執行：Android 無法啟動 WebView。部分 Android 5 手機無法執行 PhoneBox 需要的 WebView 版本。</string>
 </resources>

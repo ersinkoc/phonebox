@@ -12,4 +12,5 @@
     <string name="pair_failed_answer">%1$s mengembalikan respons %2$d.</string>
     <string name="pair_failed_certificate">Sertifikat komputer berbeda dari yang tercantum pada kode QR. Mulai lagi penyandingan.</string>
     <string name="ok">OK</string>
+    <string name="webview_failed">Panel tidak bisa berjalan di ponsel ini: Android tidak dapat memulai WebView. Beberapa ponsel Android 5 tidak dapat menjalankan versi WebView yang dibutuhkan PhoneBox.</string>
 </resources>

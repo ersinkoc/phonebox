@@ -12,4 +12,5 @@
     <string name="pair_failed_answer">%1$s ha risposto a %2$d .</string>
     <string name="pair_failed_certificate">Il computer dispone di un certificato diverso da quello indicato dal codice QR.</string>
     <string name="ok">OK</string>
+    <string name="webview_failed">Il pannello non può funzionare su questo telefono: Android non è riuscito ad avviare la sua WebView. Alcuni telefoni Android 5 non possono eseguire le versioni di WebView di cui PhoneBox ha bisogno.</string>
 </resources>

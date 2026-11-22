@@ -14,4 +14,5 @@
     <string name="pair_failed_answer">Ο %1$s απάντησε %2$d.</string>
     <string name="pair_failed_certificate">Ο υπολογιστής έχει διαφορετικό πιστοποιητικό από τον κωδικό QR. Ξεκινήστε ξανά τη σύζευξη.</string>
     <string name="ok">OK</string>
+    <string name="webview_failed">Ο πίνακας δεν μπορεί να λειτουργήσει σε αυτό το τηλέφωνο: το Android δεν μπόρεσε να ξεκινήσει το WebView. Ορισμένα τηλέφωνα με Android 5 δεν μπορούν να τρέξουν τις εκδόσεις WebView που χρειάζεται το PhoneBox.</string>
 </resources>

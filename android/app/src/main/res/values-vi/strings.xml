@@ -14,4 +14,5 @@
     <string name="pair_failed_answer">%1$s trả lời mã %2$d.</string>
     <string name="pair_failed_certificate">Máy tính này có chứng chỉ khác với mã QR. Hãy bắt đầu ghép nối lại.</string>
     <string name="ok">OK</string>
+    <string name="webview_failed">Bảng điều khiển không thể chạy trên điện thoại này: Android không khởi động được WebView. Một số điện thoại Android 5 không chạy được các phiên bản WebView mà PhoneBox cần.</string>
 </resources>

@@ -23,12 +23,14 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.text.format.DateFormat
 import android.util.Log
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.widget.TextView
 import android.widget.Toast
 import android.webkit.JavascriptInterface
 import android.webkit.ConsoleMessage
@@ -54,6 +56,8 @@ import java.util.Locale
 class MainActivity : Activity(), SensorEventListener {
 
     private lateinit var web: WebView
+    /** False when Android could not start its WebView (#385): the activity then only shows why. */
+    private val hasWeb get() = ::web.isInitialized
     private val panelLanguageTag = Regex("auto|[a-z]{2}(-[A-Za-z]{2,4})?")
     private val panelPreferences by lazy { getSharedPreferences("panel-ui", MODE_PRIVATE) }
 
@@ -91,7 +95,20 @@ class MainActivity : Activity(), SensorEventListener {
             runOnUiThread { if (!destroyed) web.evaluateJavascript(js, null) }
         }
 
-        web = WebView(this)
+        web = try { WebView(this) } catch (e: Exception) {
+            // Some Android 5.1 vendor systems cannot start any WebView update ("Invalid reflection", #385): say so
+            // instead of crashing at every launch.
+            Log.e("PhoneBox", "WebView failed to start", e)
+            setContentView(TextView(this).apply {
+                text = getString(R.string.webview_failed)
+                setTextColor(0xFFFFFFFF.toInt())
+                setBackgroundColor(0xFF000000.toInt())
+                textSize = 20f
+                gravity = Gravity.CENTER
+                setPadding(48, 48, 48, 48)
+            })
+            return
+        }
         web.setBackgroundColor(0xFF000000.toInt())
         setContentView(web)
 
@@ -173,7 +190,7 @@ class MainActivity : Activity(), SensorEventListener {
                 if (isFinishing || isDestroyed) return@runOnUiThread // the pairing is stored; there is no window to show it in
                 if (problem == null) {
                     Toast.makeText(context, context.getString(R.string.pair_done, pairing.pc), Toast.LENGTH_LONG).show()
-                    stream.stop(); if (resumed) stream.start(); web.reload()
+                    stream.stop(); if (resumed) stream.start(); if (hasWeb) web.reload()
                 } else {
                     AlertDialog.Builder(this).setTitle(context.getString(R.string.pair_failed_title)).setMessage(problem.message(context))
                         .setPositiveButton(context.getString(R.string.ok), null).setOnDismissListener { hideSystemUi() }.show().pairingButtons(context)
@@ -230,7 +247,7 @@ class MainActivity : Activity(), SensorEventListener {
             KeyEvent.KEYCODE_VOLUME_DOWN -> "next"
             else -> null
         }
-        if (key == null || !volumeKeysFlipPages) return super.dispatchKeyEvent(event)
+        if (key == null || !volumeKeysFlipPages || !hasWeb) return super.dispatchKeyEvent(event)
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0)
             web.evaluateJavascript("window.onAndroidKey && window.onAndroidKey('$key')", null)
         return true
@@ -239,11 +256,13 @@ class MainActivity : Activity(), SensorEventListener {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         // Kiosk behaviour: Back does not leave the app, it returns to the first page.
+        if (!hasWeb) return super.onBackPressed() // nothing to return to without the panel
         web.evaluateJavascript("window.onAndroidBack && window.onAndroidBack()", null)
     }
 
     override fun onResume() {
         super.onResume()
+        if (!hasWeb) return
         resumed = true
         web.onResume()
         web.evaluateJavascript("window.onAppPause && window.onAppPause(false)", null) // the panel catches up at once
@@ -265,8 +284,10 @@ class MainActivity : Activity(), SensorEventListener {
         sensors?.unregisterListener(this)
         stream.stop()
         // WebView.onPause() leaves JavaScript running: tell the panel to stop polling and refreshing while nobody sees it
-        web.evaluateJavascript("window.onAppPause && window.onAppPause(true)", null)
-        web.onPause()
+        if (hasWeb) {
+            web.evaluateJavascript("window.onAppPause && window.onAppPause(true)", null)
+            web.onPause()
+        }
         super.onPause()
     }
 
@@ -278,8 +299,10 @@ class MainActivity : Activity(), SensorEventListener {
         stream.stop()
         link.trackpadSocket.close()
         link.close()
-        (web.parent as? ViewGroup)?.removeView(web) // a WebView must be detached before destroy()
-        web.destroy()
+        if (hasWeb) {
+            (web.parent as? ViewGroup)?.removeView(web) // a WebView must be detached before destroy()
+            web.destroy()
+        }
         super.onDestroy()
     }
 
@@ -477,7 +500,7 @@ class MainActivity : Activity(), SensorEventListener {
             if (!ok(key) || !link.select(id)) return
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                stream.stop(); if (resumed) stream.start(); web.reload()
+                stream.stop(); if (resumed) stream.start(); if (hasWeb) web.reload()
             }
         }
 

@@ -12,4 +12,5 @@
     <string name="pair_failed_answer">%1$s からエラー %2$d が返されました。</string>
     <string name="pair_failed_certificate">このコンピュータは QR コードと異なる証明書を持っています。ペアリングを再開してください。</string>
     <string name="ok">OK</string>
+    <string name="webview_failed">このスマートフォンではパネルを実行できません。Android が WebView を起動できませんでした。一部の Android 5 端末では、PhoneBox に必要な WebView のバージョンを実行できません。</string>
 </resources>

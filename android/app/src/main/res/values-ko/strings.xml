@@ -12,4 +12,5 @@
     <string name="pair_failed_answer">%1$s에서 응답 코드 %2$d을(를) 반환했습니다.</string>
     <string name="pair_failed_certificate">컴퓨터의 인증서가 QR 코드의 인증서와 다릅니다. 페어링을 다시 시작하세요.</string>
     <string name="ok">확인</string>
+    <string name="webview_failed">이 휴대폰에서는 패널을 실행할 수 없습니다. Android가 WebView를 시작하지 못했습니다. 일부 Android 5 휴대폰은 PhoneBox에 필요한 WebView 버전을 실행할 수 없습니다.</string>
 </resources>

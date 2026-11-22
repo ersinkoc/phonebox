@@ -12,4 +12,5 @@
     <string name="pair_failed_answer">%1$s ने प्रतिक्रिया कोड %2$d लौटाया।</string>
     <string name="pair_failed_certificate">कंप्यूटर का सर्टिफ़िकेट QR कोड में दिए गए सर्टिफ़िकेट से अलग है। फिर से पेयरिंग शुरू करें।</string>
     <string name="ok">ठीक है</string>
+    <string name="webview_failed">इस फ़ोन पर पैनल नहीं चल सकता: Android अपना WebView शुरू नहीं कर सका। कुछ Android 5 फ़ोन वे WebView संस्करण नहीं चला सकते जिनकी PhoneBox को ज़रूरत है।</string>
 </resources>
