@@ -1108,7 +1108,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 Mikrofon açıkken yayında",
       "🕙 Evenings → calm page": "🕙 Akşamlar → sakin sayfa",
       "Plex queue": "Plex kuyruğu",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp gibi bir Plex oynatıcısında şu an çalanı ve sıradakileri gösterir; çalmak için bir parçaya dokunun."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp gibi bir Plex oynatıcısında şu an çalanı ve sıradakileri gösterir; çalmak için bir parçaya dokunun.",
+      "Page buttons": "Sayfa düğmeleri",
+      "Buttons that open your pages; the page you are on is highlighted.": "Sayfalarınızı açan düğmeler; bulunduğunuz sayfa vurgulanır.",
+      "Pages (none ticked = all)": "Sayfalar (hiçbiri işaretli değilse = tümü)"
     },
     "panel": {
       "% load": "% yükleme",

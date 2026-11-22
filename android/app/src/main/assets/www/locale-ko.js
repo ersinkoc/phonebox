@@ -1652,7 +1652,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Let the phone start games (off: the library is only shown)": "휴대폰에서 게임 실행 허용(끄면 라이브러리만 표시)",
       "Ask before starting (tap a game twice)": "실행 전에 확인(게임을 두 번 탭)",
       "Plex queue": "Plex 대기열",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp 같은 Plex 플레이어에서 재생 중인 곡과 다음 곡을 표시합니다. 곡을 탭하면 재생합니다."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp 같은 Plex 플레이어에서 재생 중인 곡과 다음 곡을 표시합니다. 곡을 탭하면 재생합니다.",
+      "Page buttons": "페이지 버튼",
+      "Buttons that open your pages; the page you are on is highlighted.": "페이지를 여는 버튼입니다. 현재 페이지가 강조 표시됩니다.",
+      "Pages (none ticked = all)": "페이지(선택 안 함 = 전체)"
     },
     "panel": {
       "% load": "부하%",

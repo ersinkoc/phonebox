@@ -1652,7 +1652,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Let the phone start games (off: the library is only shown)": "允許手機啟動遊戲（關閉時只顯示遊戲庫）",
       "Ask before starting (tap a game twice)": "啟動前確認（點兩次遊戲）",
       "Plex queue": "Plex 佇列",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上顯示正在播放的內容和接下來的曲目；點一下曲目即可播放。"
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上顯示正在播放的內容和接下來的曲目；點一下曲目即可播放。",
+      "Page buttons": "頁面按鈕",
+      "Buttons that open your pages; the page you are on is highlighted.": "開啟各個頁面的按鈕；目前所在的頁面會醒目顯示。",
+      "Pages (none ticked = all)": "頁面（未勾選 = 全部）"
     },
     "panel": {
       "% load": "負載",

@@ -1687,7 +1687,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Ask before starting (tap a game twice)": "السؤال قبل التشغيل (النقر على اللعبة مرتين)",
       "🕙 Evenings → calm page": "مساءً → صفحة هادئة",
       "Plex queue": "قائمة انتظار Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ما يُشغَّل الآن وما يليه على مشغّل Plex مثل Caldera Amp؛ المس مقطعًا لتشغيله."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ما يُشغَّل الآن وما يليه على مشغّل Plex مثل Caldera Amp؛ المس مقطعًا لتشغيله.",
+      "Page buttons": "أزرار الصفحات",
+      "Buttons that open your pages; the page you are on is highlighted.": "أزرار تفتح صفحاتك؛ الصفحة الحالية مميّزة.",
+      "Pages (none ticked = all)": "الصفحات (عدم تحديد أي منها = الكل)"
     },
     "panel": {
       "% load": "النسبة المئوية للحمولة",
