@@ -536,3 +536,13 @@ test('saving a new Plex connection with the checklist open loads its playlists',
   await answer(page, (await page.evaluate(() => window.__held.length)) - 1, [{ id: '13', name: 'Focus' }]);
   await expect(ui.boxes).toHaveCount(1);
 });
+
+test('a list loaded in the widget options also fills a Control Deck picker that is already shown', async ({ page }) => {
+  const ui = await inspector(page, { actions: [{ id: 'pl1', label: 'Mine', kind: 'plex-playlist', target: '', enabled: true }] });
+  const options = () => page.evaluate(() => [...document.querySelector('#controlSettings select[aria-label="Choose a Plex playlist…"]').options].map((o) => o.textContent));
+  expect(await options()).toEqual(['Choose a Plex playlist…']);
+  await answer(page, 0, PLAYLISTS);
+  await expect(ui.boxes).toHaveCount(2);
+  expect(await options()).toEqual(['Choose a Plex playlist…', 'Chill', 'Focus']);
+  expect(await page.evaluate(() => window.__held.length)).toBe(1);
+});

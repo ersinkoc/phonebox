@@ -3109,8 +3109,10 @@ const plexKey = () => plexKeyOf(cfg.controls);
 // the agent checks the saved settings, so a check is only asked for when the fields hold what is saved
 const plexSaved = () => { try { return plexKeyOf(JSON.parse(saved || '{}').controls) === plexKey(); } catch (_) { return false; } };
 let plexList = null, plexListKey = null; // the loaded playlists and the connection they belong to
+// everything that shows the loaded list: the widget checklists and the Control Deck pickers; every loader notifies both
 const plexListeners = new Set();
-const plexListChanged = () => plexListeners.forEach((f) => f());
+const plexPickers = new Set();
+const plexListChanged = () => { plexPickers.forEach((f) => f()); plexListeners.forEach((f) => f()); };
 // every load that writes plexList shares one counter, so an older list can never replace a newer one
 const plexListSeq = { n: 0 };
 // a checklist drawn while a load() was still running saw the old baseline and asked to save first: it retries once the new one is set
@@ -3165,8 +3167,8 @@ function renderControlSettings() {
   // Plex: the server address and token stay on this computer; the token goes to the server only, never to the player
   const plexStatus=h('p',{class:'hint'});
   // The connection key is read from the current config (cfg, not the captured c), so Apply JSON counts as a change.
-  const plexCheckSeq={n:0}, plexPickers=new Set();
-  const plexRefresh=()=>{plexPickers.forEach(f=>f()); plexListChanged();};
+  const plexCheckSeq={n:0};
+  const plexRefresh=plexListChanged;
   const plex=h('details',{},h('summary',{},t('s.cd.plexConn')),h('p',{class:'hint'},t('s.cd.plexHint')),
     ...[['plexUrl','s.cd.plexUrl'],['plexToken','s.cd.plexToken','password'],['plexPlayerUrl','s.cd.plexPlayer']].map(([key,label,type])=>{
       // autocomplete off, like the Immich and Discord fields: a browser's password autofill otherwise treats the address
