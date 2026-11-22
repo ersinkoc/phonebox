@@ -471,10 +471,16 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     await Adb(adb, ["-s", device, "shell", "am", "start", "-n", PanelActivity], ct);
     log.LogInformation("{Device}: {Why}, panel opened", device, why);
 }
-    /// <summary>Lights a phone only the first time this agent process sees it (see the re-plug note in Ensure).</summary>
+    /// <summary>
+    /// Lights a phone only the first time this agent process sees it, and only while standby is on. With
+    /// standby off nothing here touches the phone; it is still remembered, so turning standby on later does
+    /// not wake a panel that is already running.
+    /// </summary>
+
     private async Task LightIfNew(string device, string adb, string why, CancellationToken ct)
     {
-        if (_seen.Add(device)) await LightPanel(device, adb, why, ct);
+        if (_seen.Add(device) && cfg.Get().Display.Standby != "off")
+            await LightPanel(device, adb, why, ct);
     }
     private async Task ApplyScreenAsync(string device, bool locked, CancellationToken ct)
     {
@@ -698,7 +704,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // stay_on, and sharing one key would let that half-apply silence the screen-saver writes later
         if (keepAwake)
         {
-        foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:off") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
+        foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:on") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
             {
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_enabled 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_dock 0", ct);
@@ -716,7 +722,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             // phone reports plugged, that system flag outvotes the app releasing its own hold even though
             // the app was never the one holding the screen on. The standby override therefore lands
             // independently of KeepAwake; the screen-saver writes stay the optional part.
-            foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:off") && !_missingApp.Contains(d)))
+            foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:off") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
             {
                 await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
                 _awakeSet.Add($"{d}:{stayOn}:off");
