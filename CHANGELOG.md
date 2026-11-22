@@ -7,6 +7,9 @@
   delay and sensitivity. When push to talk is on but Discord has no key set (so nobody hears you), the widget says so.
   It follows the widget's **Control** option like the other buttons and uses the voice scope PhoneBox already asks
   for (#356, [AlberBM](https://github.com/AlberBM)).
+- Steam library: your installed Steam games with covers, favourites first, then the most recently played, and update
+  progress, read from Steam's own files with no API key, sign-in or network. Starting a game from the phone is a
+  per-widget option, off by default and asking first (#344, #361, [1Cellu](https://github.com/1Cellu)).
 
 **Agent**
 - Phone app updates: a phone that cannot take a streamed install (`splice failed: EINVAL`, seen with Android 15 on a
