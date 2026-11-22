@@ -81,6 +81,16 @@ test('Spotify queue starts the selected item through an ID-only request',async({
   await expect.poll(()=>page.evaluate(async()=>(await(await fetch('/agent/api/controls/spotify/state')).json()).current.name)).toBe('Paper Lanterns');
 });
 
+test('Plex queue shows the track and what is next without covers, and starts an item by id',async({page})=>{
+  await show(page,'plex-queue');
+  await expect(page.locator('.sq-now .sq-label')).toHaveText('Now playing');
+  await expect(page.locator('.sq-head')).toHaveText('Up next');
+  await expect(page.locator('.w img')).toHaveCount(0);
+  await page.getByRole('button',{name:'Paper Lanterns · Neon Harbor',exact:true}).click();
+  await expect.poll(()=>page.evaluate(async()=>(await(await fetch('/agent/api/controls/plex/state')).json()).current.name)).toBe('Paper Lanterns');
+  expect(await page.evaluate(async()=>(await(await fetch('/agent/api/controls/plex/state')).json()).queue.every(t=>/^\d{1,12}$/.test(t.id)))).toBe(true);
+});
+
 // #65's idea: the queue shows what plays now and what comes next, with covers from Spotify's image server only.
 test('Spotify queue shows now playing and up next with covers, and covers can be turned off',async({page})=>{
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==','base64');

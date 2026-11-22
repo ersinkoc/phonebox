@@ -13,6 +13,9 @@ public sealed class ControlDeckConfig
     public string? MixerLibrary { get; set; }
     public string? SpotifyClientId { get; set; }
     public string? SpotifyRefreshToken { get; set; }
+    public string? PlexUrl { get; set; }
+    public string? PlexToken { get; set; }
+    public string? PlexPlayerUrl { get; set; } = PlexControl.DefaultPlayerUrl;
 }
 
 /// <summary>Computer-side bindings. Only Id/Label/Kind are sent to a phone.</summary>

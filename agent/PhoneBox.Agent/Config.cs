@@ -631,6 +631,11 @@ public sealed partial class ConfigStore(string path)
         foreach (var action in c.Controls.Actions) { action.Target ??= ""; action.Kind ??= "shortcut"; action.Label ??= action.Id; }
         c.Controls.Profiles = c.Controls.Profiles.Where(p => p is not null && !string.IsNullOrWhiteSpace(p.Id)).DistinctBy(p => p.Id).Take(128).ToList();
         foreach (var profile in c.Controls.Profiles) { profile.Levels = (profile.Levels ?? []).Where(l => l is not null).Take(512).ToList(); profile.Defaults ??= []; profile.Actions = (profile.Actions ?? []).Where(a => !string.IsNullOrEmpty(a)).Take(64).ToList(); profile.Label ??= profile.Id; }
+        c.Controls.PlexUrl = PlexControl.NormalizeUrl(c.Controls.PlexUrl);
+        c.Controls.PlexPlayerUrl = PlexControl.NormalizeUrl(c.Controls.PlexPlayerUrl) ?? PlexControl.DefaultPlayerUrl;
+        // a control character (a stray newline from a paste) can't be part of a token, and would break the request header
+        c.Controls.PlexToken = new string((c.Controls.PlexToken ?? "").Where(ch => !char.IsControl(ch)).ToArray()).Trim() is { Length: > 0 } plexToken
+            ? Cap(plexToken, 256) : null;
         c.Display ??= new();
         c.Display.Appearance?.Normalize();
         c.Display.Hour12 = Hour12JsonConverter.Normalize(c.Display.Hour12);

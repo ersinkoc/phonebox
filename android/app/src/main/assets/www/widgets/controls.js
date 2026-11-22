@@ -639,7 +639,7 @@ W['meeting-status'] = { needs: ['state', 'push'], create: (box, ctx) => W.onair.
 
 async function integrationCommand(path, values = {}) {
   const result = await api('/controls/' + path + '?' + new URLSearchParams(values), 'POST', 20000);
-  if (!result.ok) throw new Error(result.error || tp('Integration refused this control'));
+  if (!result.ok) throw new Error((path.startsWith('plex/') ? plexText(result.error) : result.error) || tp('Integration refused this control'));
   return result;
 }
 function integrationWidget(type, title, endpoint, create) {
@@ -653,9 +653,9 @@ function integrationWidget(type, title, endpoint, create) {
         data = await api('/controls/' + endpoint, 'GET', 20000); if (!alive) return;
         if (root.contains(document.activeElement) && document.activeElement.matches('input,textarea,select') || root.matches(':active') || root.querySelector(':active')) return;
         const key = JSON.stringify(data); if (key === signature) return; signature = key;
-        if (!data.connected) { empty(root, data.error || tp('Connect this integration in desktop settings')); return; }
+        if (!data.connected) { empty(root, (endpoint.startsWith('plex/') ? plexText(data.error) : data.error) || tp('Connect this integration in desktop settings')); return; }
         root.replaceChildren();
-        create(root, data, (action, args) => integrationCommand(endpoint === 'obs' ? 'obs/' + action : 'spotify/action/' + action, args).then(()=>{signature='';}), o);
+        create(root, data, (action, args) => integrationCommand(endpoint === 'obs' ? 'obs/' + action : endpoint.startsWith('plex/') ? 'plex/action/' + action : 'spotify/action/' + action, args).then(()=>{signature='';}), o);
       } catch (error) { if (alive) empty(root, error.message || tp('Integration is unavailable')); }
       finally { busy = false; }
     }, destroy() { alive = false; } };
@@ -718,6 +718,26 @@ integrationWidget('media-queue', 'Spotify queue', 'spotify/state', (root,data,se
   root.append(h('div','sq-head',t('w.upNext')));
   for (const item of data.queue) {
     const b = h('button','sq-item', cover(item.image), text(item.name, item.artist));
+    b.type = 'button';
+    b.setAttribute('aria-label', item.name + (item.artist ? ' · ' + item.artist : ''));
+    b.onclick = () => { haptic(); send('play-queued',{id:item.id}).catch(fail); };
+    root.append(b);
+  }
+});
+// Agent error text for the Plex widgets: the page-gate message is translated; any other text is shown as the agent sent it.
+const plexText = text => text === 'Add a Plex widget to an enabled page' ? tp('Add a Plex widget to an enabled page') : text;
+// Plex music (Caldera Amp): the same queue as above without covers. The agent passes on only an id, a name and an artist.
+integrationWidget('plex-queue', 'Plex queue', 'plex/state', (root,data,send)=>{
+  const text = (name, artist) => h('div','sq-txt', h('div','sq-name',name || ''), artist ? h('div','sq-artist',artist) : null);
+  const cur = data.current;
+  root.classList.add('sq');
+  root.append(h('div','sq-now' + (data.playing ? ' playing' : ''),
+    h('div','sq-txt', h('div','sq-label', t(cur ? 'w.nowPlaying' : 'w.nothingPlaying')),
+      cur ? h('div','sq-name',cur.name || '') : null, cur?.artist ? h('div','sq-artist',cur.artist) : null)));
+  if (!data.queue?.length) { root.append(h('div','deck-empty',t('w.queueEmpty'))); return; }
+  root.append(h('div','sq-head',t('w.upNext')));
+  for (const item of data.queue) {
+    const b = h('button','sq-item', text(item.name, item.artist));
     b.type = 'button';
     b.setAttribute('aria-label', item.name + (item.artist ? ' · ' + item.artist : ''));
     b.onclick = () => { haptic(); send('play-queued',{id:item.id}).catch(fail); };

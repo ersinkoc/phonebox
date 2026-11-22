@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "تعذّر تشغيل {game}",
       "w.steamlib.alreadyRunning": "{game} قيد التشغيل بالفعل",
       "w.steamlib.notInstalled": "{game} لم تعد مثبّتة",
-      "w.steamlib.launchOff": "فعّل «السماح للهاتف بتشغيل الألعاب» في خيارات هذه الأداة"
+      "w.steamlib.launchOff": "فعّل «السماح للهاتف بتشغيل الألعاب» في خيارات هذه الأداة",
+      "s.cd.plexConn": "التحكم في موسيقى Plex",
+      "s.cd.plexUrl": "عنوان خادم Plex",
+      "s.cd.plexToken": "رمز Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "عنوان مشغّل Plex",
+      "s.cd.plexCheck": "فحص اتصال Plex",
+      "s.cd.plexHint": "يتطلب التحكم في Plex مشغّل Plex Companion مثل Caldera Amp على هذا الكمبيوتر. شغّل Caldera Amp مرة واحدة وسجّل الدخول؛ يبقى يعمل في الخلفية وليست له نافذة يجب إبقاؤها مفتوحة. أما Plexamp على هذا الكمبيوتر فيعمل مع أدوات الوسائط المعتادة. الصق عنوان خادم Plex ورمز X-Plex-Token الخاص بك.",
+      "s.cd.plexChecking": "جارٍ الفحص…"
     },
     "catalog": {
       "and": "و",
@@ -1660,7 +1667,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "إظهار الألعاب المفضّلة فقط",
       "Games shown": "عدد الألعاب المعروضة",
       "Let the phone start games (off: the library is only shown)": "السماح للهاتف بتشغيل الألعاب (عند الإيقاف: تُعرض المكتبة فقط)",
-      "Ask before starting (tap a game twice)": "السؤال قبل التشغيل (النقر على اللعبة مرتين)"
+      "Ask before starting (tap a game twice)": "السؤال قبل التشغيل (النقر على اللعبة مرتين)",
+      "🕙 Evenings → calm page": "مساءً → صفحة هادئة",
+      "Plex queue": "قائمة انتظار Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ما يُشغَّل الآن وما يليه على مشغّل Plex مثل Caldera Amp؛ المس مقطعًا لتشغيله."
     },
     "panel": {
       "% load": "النسبة المئوية للحمولة",
@@ -1937,7 +1947,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}النسبة المئوية للحد",
       "{n}% power": "{n}النسبة المئوية للقوة",
       "{n}-day": "{n}يوم",
-      "{n}-hour": "{n}-ساعة"
+      "{n}-hour": "{n}-ساعة",
+      "Add a Plex widget to an enabled page": "أضف أداة Plex إلى صفحة مفعّلة"
     }
   }
 });

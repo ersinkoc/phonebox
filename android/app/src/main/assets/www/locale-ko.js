@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "{game}을(를) 실행할 수 없습니다",
       "w.steamlib.alreadyRunning": "{game}은(는) 이미 실행 중입니다",
       "w.steamlib.notInstalled": "{game}은(는) 더 이상 설치되어 있지 않습니다",
-      "w.steamlib.launchOff": "이 위젯의 옵션에서 “휴대폰에서 게임 실행 허용”을 켜세요"
+      "w.steamlib.launchOff": "이 위젯의 옵션에서 “휴대폰에서 게임 실행 허용”을 켜세요",
+      "s.cd.plexConn": "Plex 음악 제어",
+      "s.cd.plexUrl": "Plex 서버 주소",
+      "s.cd.plexToken": "Plex 토큰 (X-Plex-Token)",
+      "s.cd.plexPlayer": "Plex 플레이어 주소",
+      "s.cd.plexCheck": "Plex 연결 확인",
+      "s.cd.plexHint": "Plex 제어에는 이 컴퓨터에 Caldera Amp 같은 Plex Companion 플레이어가 필요합니다. Caldera Amp를 한 번 실행해 로그인하세요. 백그라운드에서 계속 실행되며 열어 둘 창이 없습니다. 이 컴퓨터의 Plexamp는 일반 미디어 위젯으로 제어할 수 있습니다. Plex 서버 주소와 X-Plex-Token을 붙여넣으세요.",
+      "s.cd.plexChecking": "확인 중…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "이 분류만 (설정의 분류, 비우면 전체)",
@@ -1626,7 +1633,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "즐겨찾는 게임만 표시",
       "Games shown": "표시할 게임 수",
       "Let the phone start games (off: the library is only shown)": "휴대폰에서 게임 실행 허용(끄면 라이브러리만 표시)",
-      "Ask before starting (tap a game twice)": "실행 전에 확인(게임을 두 번 탭)"
+      "Ask before starting (tap a game twice)": "실행 전에 확인(게임을 두 번 탭)",
+      "Plex queue": "Plex 대기열",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp 같은 Plex 플레이어에서 재생 중인 곡과 다음 곡을 표시합니다. 곡을 탭하면 재생합니다."
     },
     "panel": {
       "% load": "부하%",
@@ -1903,7 +1912,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}한계의 %",
       "{n}% power": "{n}전원%",
       "{n}-day": "{n}- 하루",
-      "{n}-hour": "{n}- 시간"
+      "{n}-hour": "{n}- 시간",
+      "Add a Plex widget to an enabled page": "활성화된 페이지에 Plex 위젯을 추가하세요"
     }
   }
 });

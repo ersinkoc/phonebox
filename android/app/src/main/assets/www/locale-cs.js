@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "{game} se nepodařilo spustit",
       "w.steamlib.alreadyRunning": "{game} už běží",
       "w.steamlib.notInstalled": "{game} už není nainstalována",
-      "w.steamlib.launchOff": "V možnostech tohoto widgetu zapněte „Telefon smí spouštět hry“"
+      "w.steamlib.launchOff": "V možnostech tohoto widgetu zapněte „Telefon smí spouštět hry“",
+      "s.cd.plexConn": "Ovládání hudby Plex",
+      "s.cd.plexUrl": "Adresa serveru Plex",
+      "s.cd.plexToken": "Token Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Adresa přehrávače Plex",
+      "s.cd.plexCheck": "Zkontrolovat připojení k Plexu",
+      "s.cd.plexHint": "Ovládání Plexu vyžaduje na tomto počítači přehrávač Plex Companion, například Caldera Amp. Spusťte Caldera Amp jednou a přihlaste se; běží dál na pozadí a nemá žádné okno, které by muselo zůstat otevřené. Plexamp na tomto počítači místo toho funguje s běžnými widgety médií. Vložte adresu svého serveru Plex a svůj X-Plex-Token.",
+      "s.cd.plexChecking": "Kontroluje se…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Jen tato kategorie (její kategorie v Nastavení; prázdné = všechny)",
@@ -1626,7 +1633,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "Zobrazit jen oblíbené hry",
       "Games shown": "Počet zobrazených her",
       "Let the phone start games (off: the library is only shown)": "Telefon smí spouštět hry (vypnuto: knihovna se jen zobrazuje)",
-      "Ask before starting (tap a game twice)": "Před spuštěním se zeptat (klepnout na hru dvakrát)"
+      "Ask before starting (tap a game twice)": "Před spuštěním se zeptat (klepnout na hru dvakrát)",
+      "Plex queue": "Fronta Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co hraje a co bude následovat v přehrávači Plex, například Caldera Amp; klepnutím na skladbu ji přehrajete."
     },
     "panel": {
       "% load": "% zatížení",
@@ -1903,7 +1912,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n} % limitu",
       "{n}% power": "{n} % výkonu",
       "{n}-day": "{n} -day",
-      "{n}-hour": "{n} - hodina"
+      "{n}-hour": "{n} - hodina",
+      "Add a Plex widget to an enabled page": "Přidejte widget Plex na povolenou stránku"
     }
   }
 });

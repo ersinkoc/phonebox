@@ -11088,6 +11088,7 @@
       'DDC/CI unavailable': 'DDC/CI indisponível',
       'Integration refused this control': 'A integração recusou este controle',
       'Connect this integration in desktop settings': 'Conecte esta integração nas configurações do computador',
+      'Add a Plex widget to an enabled page': 'Adicione um widget do Plex a uma página ativada',
       'Integration is unavailable': 'Integração indisponível',
       'Unmute': 'Ativar som',
       'Mute': 'Silenciar',

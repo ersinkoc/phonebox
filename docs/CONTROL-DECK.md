@@ -85,6 +85,19 @@ manifests on Windows, not playlist webpages.
 | Services | Configure the actual Windows service name and start/stop/restart | Reads real service state; restart waits for stop/start state transitions. Permission failures are reported. |
 | Docker / Home Assistant | Configure their existing integrations and widget control permissions | Existing container and entity/scene controls remain available; no duplicate daemon or account is introduced. |
 
+### Plex (Caldera Amp)
+
+The Plex queue widget shows what is playing on a Plex Companion player and what comes next; tap a track to play it.
+
+Plex control needs a Plex Companion player such as Caldera Amp on this computer. Start Caldera Amp once and sign in; it keeps running in the background and has no window to keep open. Plexamp on this computer works with the regular media widgets instead. Paste your Plex server address and your X-Plex-Token.
+
+- Settings: open **Control Deck** in desktop settings, then **Plex music control**. Enter the server address and the token, keep the player address at `http://127.0.0.1:32500` unless your player listens elsewhere, then use **Check Plex connection**.
+- The server address can be a computer on the internet behind a reverse proxy, not only one on your network. The token is sent to that server only, never to the player. Neither the address nor the token goes to the phone, and the phone sends only an id.
+- The agent talks to the server you entered and to the player address. It does not use `plex.tv` and does not start any program.
+- PhoneBox reads and controls Plex only while an enabled page shows a Plex queue widget, or while you use the Plex section of the settings page. Hide the page and it stops on the next poll. The settings page sends a request only when you press **Check Plex connection**, and it checks the settings you saved, so save before you check.
+- Caldera Amp listens on all network interfaces and accepts Plex Companion commands without a token. That is Caldera's own behavior, not PhoneBox's: anyone on your local network can control it. PhoneBox opens no port and does not pass the player's address on.
+- The queue widget shows the current track and the next 30. Playlists, covers, the rating button and a generic music source are not part of this step.
+
 Tasks and development servers use executable shortcut IDs. Only processes launched by that binding are stopped;
 output is bounded to the latest 64 KiB and readable only from desktop settings. Task timeout is thirty minutes;
 development-server timeout is twenty-four hours. Foreground shortcuts type/send keys to the current application;

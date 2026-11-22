@@ -405,7 +405,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Bu bilgisayarda LAN veya Tailscale adresi bulunmadı, bu yüzden telefonun bağlanacak bir şeyi yok.",
       "s.pair.copy": "Çiftleştirme bağlantısını kopyala",
       "s.pair.expired": "Süre doldu.",
-      "s.pair.expires": "{time}'de sona erer."
+      "s.pair.expires": "{time}'de sona erer.",
+      "s.cd.plexConn": "Plex müzik kontrolü",
+      "s.cd.plexUrl": "Plex sunucu adresi",
+      "s.cd.plexToken": "Plex jetonu (X-Plex-Token)",
+      "s.cd.plexPlayer": "Plex oynatıcı adresi",
+      "s.cd.plexCheck": "Plex bağlantısını denetle",
+      "s.cd.plexHint": "Plex kontrolü için bu bilgisayarda Caldera Amp gibi bir Plex Companion oynatıcısı gerekir. Caldera Amp'i bir kez başlatıp oturum açın; arka planda çalışmaya devam eder ve açık tutulacak bir penceresi yoktur. Bu bilgisayardaki Plexamp ise normal medya widget'larıyla çalışır. Plex sunucunuzun adresini ve X-Plex-Token'ınızı yapıştırın.",
+      "s.cd.plexChecking": "Denetleniyor…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Yalnızca bu kategori (Ayarlar'daki kategorisi; boş = tümü)",
@@ -1099,7 +1106,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "- Kapı zilli.",
       "🔥 CPU busy → notification": "🔥 CPU meşgul → bildirim",
       "🔴 On air while the mic is on": "🔴 Mikrofon açıkken yayında",
-      "🕙 Evenings → calm page": "1986.  Resmî site"
+      "🕙 Evenings → calm page": "1986.  Resmî site",
+      "Plex queue": "Plex kuyruğu",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp gibi bir Plex oynatıcısında şu an çalanı ve sıradakileri gösterir; çalmak için bir parçaya dokunun."
     },
     "panel": {
       "% load": "% yükleme",
@@ -1376,7 +1385,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}Limitin %'si",
       "{n}% power": "{n}% güç",
       "{n}-day": "{n} - gün",
-      "{n}-hour": "{n} - saat"
+      "{n}-hour": "{n} - saat",
+      "Add a Plex widget to an enabled page": "Etkin bir sayfaya Plex widget'ı ekleyin"
     }
   }
 });

@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "เริ่ม {game} ไม่ได้",
       "w.steamlib.alreadyRunning": "{game} กำลังทำงานอยู่แล้ว",
       "w.steamlib.notInstalled": "{game} ไม่ได้ติดตั้งแล้ว",
-      "w.steamlib.launchOff": "เปิด “ให้โทรศัพท์เริ่มเกมได้” ในตัวเลือกของวิดเจ็ตนี้"
+      "w.steamlib.launchOff": "เปิด “ให้โทรศัพท์เริ่มเกมได้” ในตัวเลือกของวิดเจ็ตนี้",
+      "s.cd.plexConn": "ควบคุมเพลง Plex",
+      "s.cd.plexUrl": "ที่อยู่เซิร์ฟเวอร์ Plex",
+      "s.cd.plexToken": "โทเค็น Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "ที่อยู่เครื่องเล่น Plex",
+      "s.cd.plexCheck": "ตรวจสอบการเชื่อมต่อ Plex",
+      "s.cd.plexHint": "การควบคุม Plex ต้องมีเครื่องเล่น Plex Companion เช่น Caldera Amp บนคอมพิวเตอร์เครื่องนี้ เปิด Caldera Amp หนึ่งครั้งแล้วลงชื่อเข้าใช้ โปรแกรมจะทำงานอยู่เบื้องหลังและไม่มีหน้าต่างที่ต้องเปิดค้างไว้ ส่วน Plexamp บนคอมพิวเตอร์เครื่องนี้ใช้งานได้กับวิดเจ็ตสื่อทั่วไป วางที่อยู่เซิร์ฟเวอร์ Plex และ X-Plex-Token ของคุณ",
+      "s.cd.plexChecking": "กำลังตรวจสอบ…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "เฉพาะหมวดหมู่นี้ (หมวดหมู่ในการตั้งค่า; ว่าง = ทั้งหมด)",
@@ -1626,7 +1633,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "แสดงเฉพาะเกมโปรด",
       "Games shown": "จำนวนเกมที่แสดง",
       "Let the phone start games (off: the library is only shown)": "ให้โทรศัพท์เริ่มเกมได้ (ปิด: แสดงคลังเกมอย่างเดียว)",
-      "Ask before starting (tap a game twice)": "ถามก่อนเริ่ม (แตะเกมสองครั้ง)"
+      "Ask before starting (tap a game twice)": "ถามก่อนเริ่ม (แตะเกมสองครั้ง)",
+      "Plex queue": "คิว Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ดูว่ากำลังเล่นอะไรและเพลงถัดไปบนเครื่องเล่น Plex เช่น Caldera Amp แตะเพลงเพื่อเล่น"
     },
     "panel": {
       "% load": "ค่า",
@@ -1903,7 +1912,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}% ของขอบเขต",
       "{n}% power": "{n}กำลัง%",
       "{n}-day": "{n}วันนี้",
-      "{n}-hour": "{n}ชั่วโมง"
+      "{n}-hour": "{n}ชั่วโมง",
+      "Add a Plex widget to an enabled page": "เพิ่มวิดเจ็ต Plex ในหน้าที่เปิดใช้งาน"
     }
   }
 });

@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "無法啟動 {game}",
       "w.steamlib.alreadyRunning": "{game} 已在執行",
       "w.steamlib.notInstalled": "{game} 已不再安裝",
-      "w.steamlib.launchOff": "請在此小工具的選項中開啟「允許手機啟動遊戲」"
+      "w.steamlib.launchOff": "請在此小工具的選項中開啟「允許手機啟動遊戲」",
+      "s.cd.plexConn": "Plex 音樂控制",
+      "s.cd.plexUrl": "Plex 伺服器位址",
+      "s.cd.plexToken": "Plex 權杖 (X-Plex-Token)",
+      "s.cd.plexPlayer": "Plex 播放器位址",
+      "s.cd.plexCheck": "檢查 Plex 連線",
+      "s.cd.plexHint": "Plex 控制需要這台電腦上有 Plex Companion 播放器，例如 Caldera Amp。請啟動一次 Caldera Amp 並登入；它會在背景持續執行，沒有需要保持開啟的視窗。這台電腦上的 Plexamp 則透過一般的媒體小工具控制。請貼上你的 Plex 伺服器位址和 X-Plex-Token。",
+      "s.cd.plexChecking": "正在檢查…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "僅此分類（設定中的分類；留空 = 全部）",
@@ -1626,7 +1633,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "只顯示收藏的遊戲",
       "Games shown": "顯示的遊戲數量",
       "Let the phone start games (off: the library is only shown)": "允許手機啟動遊戲（關閉時只顯示遊戲庫）",
-      "Ask before starting (tap a game twice)": "啟動前確認（點兩次遊戲）"
+      "Ask before starting (tap a game twice)": "啟動前確認（點兩次遊戲）",
+      "Plex queue": "Plex 佇列",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上顯示正在播放的內容和接下來的曲目；點一下曲目即可播放。"
     },
     "panel": {
       "% load": "負載",
@@ -1903,7 +1912,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}限制的百分比",
       "{n}% power": "{n}電力",
       "{n}-day": "{n}日",
-      "{n}-hour": "{n}時間"
+      "{n}-hour": "{n}時間",
+      "Add a Plex widget to an enabled page": "請將 Plex 小工具新增到已啟用的頁面"
     }
   }
 });

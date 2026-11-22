@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "Tidak dapat memulai {game}",
       "w.steamlib.alreadyRunning": "{game} sudah berjalan",
       "w.steamlib.notInstalled": "{game} tidak lagi terpasang",
-      "w.steamlib.launchOff": "Aktifkan “Izinkan ponsel memulai game” di opsi widget ini"
+      "w.steamlib.launchOff": "Aktifkan “Izinkan ponsel memulai game” di opsi widget ini",
+      "s.cd.plexConn": "Kontrol musik Plex",
+      "s.cd.plexUrl": "Alamat server Plex",
+      "s.cd.plexToken": "Token Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Alamat pemutar Plex",
+      "s.cd.plexCheck": "Periksa koneksi Plex",
+      "s.cd.plexHint": "Kontrol Plex memerlukan pemutar Plex Companion seperti Caldera Amp di komputer ini. Jalankan Caldera Amp sekali lalu masuk; aplikasi ini terus berjalan di latar belakang dan tidak punya jendela yang harus dibiarkan terbuka. Plexamp di komputer ini bekerja dengan widget media biasa. Tempel alamat server Plex dan X-Plex-Token Anda.",
+      "s.cd.plexChecking": "Memeriksa…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Hanya kategori ini (kategorinya di Pengaturan; kosong = semua)",
@@ -1626,7 +1633,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "Tampilkan hanya game favorit",
       "Games shown": "Jumlah game yang ditampilkan",
       "Let the phone start games (off: the library is only shown)": "Izinkan ponsel memulai game (mati: pustaka hanya ditampilkan)",
-      "Ask before starting (tap a game twice)": "Tanya sebelum memulai (ketuk game dua kali)"
+      "Ask before starting (tap a game twice)": "Tanya sebelum memulai (ketuk game dua kali)",
+      "Plex queue": "Antrean Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Apa yang sedang diputar dan berikutnya pada pemutar Plex seperti Caldera Amp; ketuk lagu untuk memutarnya."
     },
     "panel": {
       "% load": "% muatan",
@@ -1903,7 +1912,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n} % dari batas",
       "{n}% power": "{n}% power",
       "{n}-day": "{n} -day",
-      "{n}-hour": "{n} - jam"
+      "{n}-hour": "{n} - jam",
+      "Add a Plex widget to an enabled page": "Tambahkan widget Plex ke halaman yang aktif"
     }
   }
 });

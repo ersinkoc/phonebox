@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "{game} शुरू नहीं हो सका",
       "w.steamlib.alreadyRunning": "{game} पहले से चल रहा है",
       "w.steamlib.notInstalled": "{game} अब इंस्टॉल नहीं है",
-      "w.steamlib.launchOff": "इस विजेट के विकल्पों में “फ़ोन को गेम शुरू करने दें” चालू करें"
+      "w.steamlib.launchOff": "इस विजेट के विकल्पों में “फ़ोन को गेम शुरू करने दें” चालू करें",
+      "s.cd.plexConn": "Plex संगीत नियंत्रण",
+      "s.cd.plexUrl": "Plex सर्वर का पता",
+      "s.cd.plexToken": "Plex टोकन (X-Plex-Token)",
+      "s.cd.plexPlayer": "Plex प्लेयर का पता",
+      "s.cd.plexCheck": "Plex कनेक्शन जाँचें",
+      "s.cd.plexHint": "Plex नियंत्रण के लिए इस कंप्यूटर पर Caldera Amp जैसा Plex Companion प्लेयर चाहिए। Caldera Amp को एक बार शुरू करके साइन इन करें; यह पृष्ठभूमि में चलता रहता है और इसकी कोई विंडो खुली रखने की ज़रूरत नहीं है। इस कंप्यूटर पर Plexamp सामान्य मीडिया विजेट के साथ काम करता है। अपने Plex सर्वर का पता और X-Plex-Token चिपकाएँ।",
+      "s.cd.plexChecking": "जाँच हो रही है…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "केवल यह श्रेणी (सेटिंग्स में इसकी श्रेणी; खाली = सभी)",
@@ -1626,7 +1633,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "केवल पसंदीदा गेम दिखाएँ",
       "Games shown": "दिखाए जाने वाले गेम",
       "Let the phone start games (off: the library is only shown)": "फ़ोन को गेम शुरू करने दें (बंद: लाइब्रेरी सिर्फ़ दिखाई जाती है)",
-      "Ask before starting (tap a game twice)": "शुरू करने से पहले पूछें (गेम पर दो बार टैप करें)"
+      "Ask before starting (tap a game twice)": "शुरू करने से पहले पूछें (गेम पर दो बार टैप करें)",
+      "Plex queue": "Plex कतार",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp जैसे Plex प्लेयर पर क्या चल रहा है और आगे क्या आएगा; गाना चलाने के लिए उस पर टैप करें।"
     },
     "panel": {
       "% load": "लोड%",
@@ -1903,7 +1912,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "सीमा का {n}%",
       "{n}% power": "{n}% पावर",
       "{n}-day": "{n}दिन",
-      "{n}-hour": "{n} - घंटे"
+      "{n}-hour": "{n} - घंटे",
+      "Add a Plex widget to an enabled page": "किसी सक्षम पेज पर Plex विजेट जोड़ें"
     }
   }
 });

@@ -9,7 +9,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "No LAN or Tailscale address was found on this computer, so the phone has nothing to connect to.",
       "s.pair.copy": "Copy the pairing link",
       "s.pair.expired": "Expired. Close and start again.",
-      "s.pair.expires": "Expires in {time}."
+      "s.pair.expires": "Expires in {time}.",
+      "s.cd.plexConn": "Plex music control",
+      "s.cd.plexUrl": "Plex server address",
+      "s.cd.plexToken": "Plex token (X-Plex-Token)",
+      "s.cd.plexPlayer": "Plex player address",
+      "s.cd.plexCheck": "Check Plex connection",
+      "s.cd.plexHint": "Plex control needs a Plex Companion player such as Caldera Amp on this computer. Start Caldera Amp once and sign in; it keeps running in the background and has no window to keep open. Plexamp on this computer works with the regular media widgets instead. Paste your Plex server address and your X-Plex-Token.",
+      "s.cd.plexChecking": "Checking…"
     }
   },
   "de": {
@@ -426,7 +433,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Auf diesem Computer wurde keine LAN- oder Tailscale-Adresse gefunden, sodass das Telefon keine Verbindung herstellen kann.",
       "s.pair.copy": "Kopieren Sie den Pairing-Link",
       "s.pair.expired": "Schließen Sie die Seite und starten Sie erneut.",
-      "s.pair.expires": "Abläuft in 1 Woche {time}."
+      "s.pair.expires": "Abläuft in 1 Woche {time}.",
+      "s.cd.plexConn": "Plex-Musiksteuerung",
+      "s.cd.plexUrl": "Plex-Serveradresse",
+      "s.cd.plexToken": "Plex-Token (X-Plex-Token)",
+      "s.cd.plexPlayer": "Plex-Player-Adresse",
+      "s.cd.plexCheck": "Plex-Verbindung prüfen",
+      "s.cd.plexHint": "Die Plex-Steuerung benötigt auf diesem Computer einen Plex-Companion-Player wie Caldera Amp. Starten Sie Caldera Amp einmal und melden Sie sich an; es läuft danach im Hintergrund weiter und hat kein Fenster, das offen bleiben muss. Plexamp auf diesem Computer funktioniert stattdessen mit den normalen Medien-Widgets. Fügen Sie die Adresse Ihres Plex-Servers und Ihren X-Plex-Token ein.",
+      "s.cd.plexChecking": "Wird geprüft…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Nur diese Kategorie (ihre Kategorie in den Einstellungen; leer = alle)",
@@ -1120,7 +1134,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Türklingel → Benachrichtigung",
       "🔥 CPU busy → notification": "🔥 CPU besetzt → Benachrichtigung",
       "🔴 On air while the mic is on": "🔴 Auf der Luft, während das Mikrofon eingeschaltet ist",
-      "🕙 Evenings → calm page": "et Abende → ruhige Seite"
+      "🕙 Evenings → calm page": "et Abende → ruhige Seite",
+      "Plex queue": "Plex-Warteschlange",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Was gerade läuft und was als Nächstes kommt auf einem Plex-Player wie Caldera Amp; tippen Sie auf einen Titel, um ihn abzuspielen."
     },
     "panel": {
       "% load": "% Last",
@@ -1397,7 +1413,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n} % der Grenze",
       "{n}% power": "{n}% Leistung",
       "{n}-day": "{n} -day",
-      "{n}-hour": "{n} -hour"
+      "{n}-hour": "{n} -hour",
+      "Add a Plex widget to an enabled page": "Plex-Widget zu einer aktiven Seite hinzufügen"
     }
   },
   "fr": {
@@ -1814,7 +1831,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Aucune adresse LAN ou Tailscale n'a été trouvée sur cet ordinateur, le téléphone n'a donc rien à se connecter.",
       "s.pair.copy": "Copier le lien d'appariement",
       "s.pair.expired": "Fermez et recommencez.",
-      "s.pair.expires": "Expire dans {time}."
+      "s.pair.expires": "Expire dans {time}.",
+      "s.cd.plexConn": "Contrôle musical Plex",
+      "s.cd.plexUrl": "Adresse du serveur Plex",
+      "s.cd.plexToken": "Jeton Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Adresse du lecteur Plex",
+      "s.cd.plexCheck": "Vérifier la connexion Plex",
+      "s.cd.plexHint": "Le contrôle Plex nécessite un lecteur Plex Companion tel que Caldera Amp sur cet ordinateur. Lancez Caldera Amp une fois et connectez-vous ; il continue de tourner en arrière-plan et n'a pas de fenêtre à garder ouverte. Plexamp sur cet ordinateur fonctionne plutôt avec les widgets multimédias habituels. Collez l'adresse de votre serveur Plex et votre X-Plex-Token.",
+      "s.cd.plexChecking": "Vérification…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Seulement cette catégorie (sa catégorie dans les réglages ; vide = toutes)",
@@ -2508,7 +2532,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Sonnette → notification",
       "🔥 CPU busy → notification": "🔥 CPU occupé → notification",
       "🔴 On air while the mic is on": "🔴 En direct lorsque le micro est activé",
-      "🕙 Evenings → calm page": "et Soirées → calme page"
+      "🕙 Evenings → calm page": "et Soirées → calme page",
+      "Plex queue": "File d'attente Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Ce qui joue et ce qui suit sur un lecteur Plex comme Caldera Amp ; touchez un titre pour le lire."
     },
     "panel": {
       "% load": "% de charge",
@@ -2785,7 +2811,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n} % de la limite",
       "{n}% power": "{n} % de puissance",
       "{n}-day": "{n} -day",
-      "{n}-hour": "{n} -heure"
+      "{n}-hour": "{n} -heure",
+      "Add a Plex widget to an enabled page": "Ajoutez un widget Plex à une page activée"
     }
   },
   "es": {
@@ -3202,7 +3229,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "No se encontró ninguna dirección LAN o Tailscale en este equipo, por lo que el teléfono no tiene nada a qué conectarse.",
       "s.pair.copy": "Copia el enlace de emparejamiento",
       "s.pair.expired": "Cierra y vuelve a empezar.",
-      "s.pair.expires": "Expira en 1 año {time}."
+      "s.pair.expires": "Expira en 1 año {time}.",
+      "s.cd.plexConn": "Control de música de Plex",
+      "s.cd.plexUrl": "Dirección del servidor Plex",
+      "s.cd.plexToken": "Token de Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Dirección del reproductor Plex",
+      "s.cd.plexCheck": "Comprobar la conexión con Plex",
+      "s.cd.plexHint": "El control de Plex necesita un reproductor Plex Companion como Caldera Amp en este equipo. Inicia Caldera Amp una vez e inicia sesión; sigue ejecutándose en segundo plano y no tiene ninguna ventana que mantener abierta. Plexamp en este equipo funciona con los widgets multimedia normales. Pega la dirección de tu servidor Plex y tu X-Plex-Token.",
+      "s.cd.plexChecking": "Comprobando…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Solo esta categoría (su categoría en Ajustes; vacío = todas)",
@@ -3896,7 +3930,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Timbre → notificación",
       "🔥 CPU busy → notification": "🔥 CPU ocupado → notificación",
       "🔴 On air while the mic is on": "🔴 En el aire mientras el micrófono está encendido",
-      "🕙 Evenings → calm page": "ö Noches → página tranquila"
+      "🕙 Evenings → calm page": "ö Noches → página tranquila",
+      "Plex queue": "Cola de Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Qué suena y qué viene después en un reproductor Plex como Caldera Amp; toca una pista para reproducirla."
     },
     "panel": {
       "% load": "% de carga",
@@ -4173,7 +4209,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n} % del límite",
       "{n}% power": "{n} % de potencia",
       "{n}-day": "{n} -day",
-      "{n}-hour": "{n} -hora"
+      "{n}-hour": "{n} -hora",
+      "Add a Plex widget to an enabled page": "Añade un widget de Plex a una página activada"
     }
   },
   "it": {
@@ -4590,7 +4627,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Nessun indirizzo LAN o Tailscale è stato trovato su questo computer, quindi il telefono non ha nulla a cui connettersi.",
       "s.pair.copy": "Copia il link di abbinamento",
       "s.pair.expired": "Chiudere e ricominciare da capo.",
-      "s.pair.expires": "Scade in 1 giorno {time}."
+      "s.pair.expires": "Scade in 1 giorno {time}.",
+      "s.cd.plexConn": "Controllo musicale Plex",
+      "s.cd.plexUrl": "Indirizzo del server Plex",
+      "s.cd.plexToken": "Token Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Indirizzo del player Plex",
+      "s.cd.plexCheck": "Verifica la connessione Plex",
+      "s.cd.plexHint": "Il controllo Plex richiede un player Plex Companion come Caldera Amp su questo computer. Avvia Caldera Amp una volta e accedi; continua a girare in background e non ha finestre da tenere aperte. Plexamp su questo computer funziona invece con i normali widget multimediali. Incolla l'indirizzo del tuo server Plex e il tuo X-Plex-Token.",
+      "s.cd.plexChecking": "Controllo in corso…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Solo questa categoria (la sua categoria nelle Impostazioni; vuoto = tutte)",
@@ -5284,7 +5328,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Campanello → notifica",
       "🔥 CPU busy → notification": "🔥 CPU occupato → notifica",
       "🔴 On air while the mic is on": "🔴 In onda mentre il microfono è acceso",
-      "🕙 Evenings → calm page": "1 Serate → pagina calma"
+      "🕙 Evenings → calm page": "1 Serate → pagina calma",
+      "Plex queue": "Coda Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Cosa è in riproduzione e cosa viene dopo su un player Plex come Caldera Amp; tocca un brano per riprodurlo."
     },
     "panel": {
       "% load": "% di carico",
@@ -5561,7 +5607,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}% del limite",
       "{n}% power": "{n}% potenza",
       "{n}-day": "{n} -day",
-      "{n}-hour": "{n} -ora"
+      "{n}-hour": "{n} -ora",
+      "Add a Plex widget to an enabled page": "Aggiungi un widget Plex a una pagina attiva"
     }
   },
   "pt": {
@@ -5978,7 +6025,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Nenhum endereço LAN ou Tailscale foi encontrado neste computador, portanto o telefone não tem nada para se conectar.",
       "s.pair.copy": "Copie o link de emparelhamento",
       "s.pair.expired": "Feche e comece novamente.",
-      "s.pair.expires": "Expira em 1 ano {time}."
+      "s.pair.expires": "Expira em 1 ano {time}.",
+      "s.cd.plexConn": "Controlo de música do Plex",
+      "s.cd.plexUrl": "Endereço do servidor Plex",
+      "s.cd.plexToken": "Token do Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Endereço do reprodutor Plex",
+      "s.cd.plexCheck": "Verificar a ligação ao Plex",
+      "s.cd.plexHint": "O controlo do Plex precisa de um reprodutor Plex Companion, como o Caldera Amp, neste computador. Inicie o Caldera Amp uma vez e inicie sessão; continua a funcionar em segundo plano e não tem nenhuma janela para manter aberta. O Plexamp neste computador funciona com os widgets multimédia normais. Cole o endereço do seu servidor Plex e o seu X-Plex-Token.",
+      "s.cd.plexChecking": "A verificar…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Só esta categoria (a sua categoria nas Definições; vazio = todas)",
@@ -6672,7 +6726,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Campanha → notificação",
       "🔥 CPU busy → notification": "🔥 CPU ocupado → notificação",
       "🔴 On air while the mic is on": "🔴 No ar enquanto o microfone está ligado",
-      "🕙 Evenings → calm page": "1 Noites → página calma"
+      "🕙 Evenings → calm page": "1 Noites → página calma",
+      "Plex queue": "Fila do Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está a tocar e o que vem a seguir num reprodutor Plex como o Caldera Amp; toque numa faixa para a reproduzir."
     },
     "panel": {
       "% load": "% de carga",
@@ -6949,7 +7005,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}% do limite",
       "{n}% power": "{n}% de potência",
       "{n}-day": "{n} -day",
-      "{n}-hour": "{n} - hora"
+      "{n}-hour": "{n} - hora",
+      "Add a Plex widget to an enabled page": "Adicione um widget do Plex a uma página ativada"
     }
   },
   "pt-BR": {
@@ -6961,13 +7018,22 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Nenhum endereço LAN ou Tailscale foi encontrado neste computador, portanto o telefone não tem nada para se conectar.",
       "s.pair.copy": "Copie o link de emparelhamento",
       "s.pair.expired": "Feche e comece novamente.",
-      "s.pair.expires": "Expira em 1 ano {time}."
+      "s.pair.expires": "Expira em 1 ano {time}.",
+      "s.cd.plexConn": "Controle de música do Plex",
+      "s.cd.plexUrl": "Endereço do servidor Plex",
+      "s.cd.plexToken": "Token do Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Endereço do player Plex",
+      "s.cd.plexCheck": "Verificar conexão com o Plex",
+      "s.cd.plexHint": "O controle do Plex precisa de um player Plex Companion, como o Caldera Amp, neste computador. Abra o Caldera Amp uma vez e faça login; ele continua rodando em segundo plano e não tem nenhuma janela para manter aberta. O Plexamp neste computador funciona com os widgets de mídia normais. Cole o endereço do seu servidor Plex e o seu X-Plex-Token.",
+      "s.cd.plexChecking": "Verificando…"
     },
     "catalog": {
       "1": "1",
       "2": "2",
       "3": "3",
-      "TRY": "TRY"
+      "TRY": "TRY",
+      "Plex queue": "Fila do Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está tocando e o que vem a seguir em um player Plex como o Caldera Amp; toque em uma faixa para tocá-la."
     }
   },
   "nl": {
@@ -7384,7 +7450,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Er is geen LAN- of Tailscale-adres gevonden op deze computer, dus de telefoon kan geen verbinding maken.",
       "s.pair.copy": "Kopieer de koppelingslink",
       "s.pair.expired": "Sluit de browser en start opnieuw.",
-      "s.pair.expires": "Vervalt in 1 week {time}."
+      "s.pair.expires": "Vervalt in 1 week {time}.",
+      "s.cd.plexConn": "Plex-muziekbediening",
+      "s.cd.plexUrl": "Adres van de Plex-server",
+      "s.cd.plexToken": "Plex-token (X-Plex-Token)",
+      "s.cd.plexPlayer": "Adres van de Plex-speler",
+      "s.cd.plexCheck": "Plex-verbinding controleren",
+      "s.cd.plexHint": "Plex-bediening heeft een Plex Companion-speler zoals Caldera Amp op deze computer nodig. Start Caldera Amp één keer en meld je aan; het blijft op de achtergrond draaien en heeft geen venster dat open moet blijven. Plexamp op deze computer werkt in plaats daarvan met de gewone mediawidgets. Plak het adres van je Plex-server en je X-Plex-Token.",
+      "s.cd.plexChecking": "Controleren…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Alleen deze categorie (de categorie in Instellingen; leeg = alle)",
@@ -8078,7 +8151,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Deurbel → kennisgeving",
       "🔥 CPU busy → notification": "🔥 CPU Bezet → melding",
       "🔴 On air while the mic is on": "🔴 Op de lucht terwijl de microfoon aan staat",
-      "🕙 Evenings → calm page": "ö Avonden → kalme pagina"
+      "🕙 Evenings → calm page": "ö Avonden → kalme pagina",
+      "Plex queue": "Plex-wachtrij",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Wat er speelt en wat er daarna komt op een Plex-speler zoals Caldera Amp; tik op een nummer om het af te spelen."
     },
     "panel": {
       "% load": "% lading",
@@ -8355,7 +8430,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}% van de limiet",
       "{n}% power": "{n}% vermogen",
       "{n}-day": "{n} -dag",
-      "{n}-hour": "{n} -uur"
+      "{n}-hour": "{n} -uur",
+      "Add a Plex widget to an enabled page": "Voeg een Plex-widget toe aan een ingeschakelde pagina"
     }
   },
   "pl": {
@@ -8772,7 +8848,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Na tym komputerze nie znaleziono adresu LAN ani Tailscale, więc telefon nie ma z czym się połączyć.",
       "s.pair.copy": "Skopiuj link do parowania",
       "s.pair.expired": "Zamknij i zacznij od nowa.",
-      "s.pair.expires": "Wygasa w ciągu {time}."
+      "s.pair.expires": "Wygasa w ciągu {time}.",
+      "s.cd.plexConn": "Sterowanie muzyką Plex",
+      "s.cd.plexUrl": "Adres serwera Plex",
+      "s.cd.plexToken": "Token Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Adres odtwarzacza Plex",
+      "s.cd.plexCheck": "Sprawdź połączenie z Plex",
+      "s.cd.plexHint": "Sterowanie Plex wymaga na tym komputerze odtwarzacza Plex Companion, takiego jak Caldera Amp. Uruchom Caldera Amp raz i zaloguj się; działa dalej w tle i nie ma okna, które trzeba trzymać otwarte. Plexamp na tym komputerze działa za to ze zwykłymi widżetami multimediów. Wklej adres swojego serwera Plex i swój X-Plex-Token.",
+      "s.cd.plexChecking": "Sprawdzanie…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Tylko ta kategoria (jej kategoria w Ustawieniach; puste = wszystkie)",
@@ -9466,7 +9549,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Dzwonek → powiadomienie",
       "🔥 CPU busy → notification": "🔥 CPU zajęty → powiadomienie",
       "🔴 On air while the mic is on": "🔴 Na powietrzu, gdy mikrofon jest włączony",
-      "🕙 Evenings → calm page": "ę Wieczory → spokojna strona"
+      "🕙 Evenings → calm page": "ę Wieczory → spokojna strona",
+      "Plex queue": "Kolejka Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co teraz gra i co będzie dalej w odtwarzaczu Plex, takim jak Caldera Amp; dotknij utworu, aby go odtworzyć."
     },
     "panel": {
       "% load": "% obciążenia",
@@ -9743,7 +9828,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n} % limitu",
       "{n}% power": "{n}% mocy",
       "{n}-day": "{n} -day",
-      "{n}-hour": "{n} - godzina"
+      "{n}-hour": "{n} - godzina",
+      "Add a Plex widget to an enabled page": "Dodaj widżet Plex do włączonej strony"
     }
   },
   "ru": {
@@ -10160,7 +10246,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "На этом компьютере не было найдено адресов LAN или Tailscale, поэтому телефону не к чему подключаться.",
       "s.pair.copy": "Копировать ссылку на парирование",
       "s.pair.expired": "Истек срок действия. Закройте и начните заново.",
-      "s.pair.expires": "Истечение в {time} ."
+      "s.pair.expires": "Истечение в {time} .",
+      "s.cd.plexConn": "Управление музыкой Plex",
+      "s.cd.plexUrl": "Адрес сервера Plex",
+      "s.cd.plexToken": "Токен Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Адрес плеера Plex",
+      "s.cd.plexCheck": "Проверить подключение к Plex",
+      "s.cd.plexHint": "Для управления Plex на этом компьютере нужен плеер Plex Companion, например Caldera Amp. Запустите Caldera Amp один раз и войдите в аккаунт; он продолжит работать в фоне, и окно держать открытым не нужно. Plexamp на этом компьютере работает с обычными медиавиджетами. Вставьте адрес вашего сервера Plex и ваш X-Plex-Token.",
+      "s.cd.plexChecking": "Проверка…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Только эта категория (её категория в настройках; пусто = все)",
@@ -10854,7 +10947,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "🔔 Дверной звонок → уведомление",
       "🔥 CPU busy → notification": "🔥 CPU занят → уведомление",
       "🔴 On air while the mic is on": "🔴 На воздухе, пока микрофон включен",
-      "🕙 Evenings → calm page": "Вечер → тишина страница"
+      "🕙 Evenings → calm page": "Вечер → тишина страница",
+      "Plex queue": "Очередь Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Что играет и что дальше в плеере Plex, например Caldera Amp; коснитесь трека, чтобы воспроизвести его."
     },
     "panel": {
       "% load": "% нагрузки",
@@ -11131,7 +11226,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n} % от предела",
       "{n}% power": "{n} % мощность",
       "{n}-day": "{n} - день",
-      "{n}-hour": "{n} -час"
+      "{n}-hour": "{n} -час",
+      "Add a Plex widget to an enabled page": "Добавьте виджет Plex на включённую страницу"
     }
   },
   "el": {
@@ -11143,7 +11239,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Όχι. LAN ή Tailscale Δεν βρέθηκε διεύθυνση σε αυτόν τον υπολογιστή, επομένως το τηλέφωνο δεν έχει τίποτα να συνδεθεί.",
       "s.pair.copy": "Αντιγράψτε τον σύνδεσμο αντιστοίχισης",
       "s.pair.expired": "Κλείστε και ξεκινήστε ξανά.",
-      "s.pair.expires": "Λήγει σε 1 ημέρα {time}."
+      "s.pair.expires": "Λήγει σε 1 ημέρα {time}.",
+      "s.cd.plexConn": "Έλεγχος μουσικής Plex",
+      "s.cd.plexUrl": "Διεύθυνση διακομιστή Plex",
+      "s.cd.plexToken": "Διακριτικό Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Διεύθυνση αναπαραγωγέα Plex",
+      "s.cd.plexCheck": "Έλεγχος σύνδεσης Plex",
+      "s.cd.plexHint": "Ο έλεγχος Plex χρειάζεται έναν αναπαραγωγέα Plex Companion, όπως το Caldera Amp, σε αυτόν τον υπολογιστή. Ξεκίνα το Caldera Amp μία φορά και συνδέσου· συνεχίζει να τρέχει στο παρασκήνιο και δεν έχει παράθυρο που πρέπει να μένει ανοιχτό. Το Plexamp σε αυτόν τον υπολογιστή λειτουργεί με τα κανονικά widget πολυμέσων. Επικόλλησε τη διεύθυνση του διακομιστή Plex και το X-Plex-Token σου.",
+      "s.cd.plexChecking": "Έλεγχος…"
     },
     "catalog": {
       "1": "1",
@@ -11152,7 +11255,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Control the PC cursor, tap to click, hold to drag, edge scroll bar, two fingers to right-click and scroll (Windows and Linux).": "Ελέγξτε τον δρομέα του υπολογιστή, πατήστε για να κάνετε κλικ, κρατήστε πατημένο για να σύρετε, γραμμή κύλισης άκρης, δύο δάχτυλα για δεξί κλικ και κύλιση (Windows και Linux).",
       "Lights up while the microphone or camera is in use (Windows, Linux), OBS records or streams, or a pushed value is on.": "Ανάβει όταν το μικρόφωνο ή η κάμερα είναι σε χρήση (Windows , Linux), OBS καταγράφει ή ρέει, ή μια τιμή που έχει ωθηθεί είναι ενεργοποιημένη.",
       "Sound volume (%)": "Ήχος όγκου (%)",
-      "TRY": "ΤΡΙ"
+      "TRY": "ΤΡΙ",
+      "Plex queue": "Ουρά Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Τι παίζει και τι ακολουθεί σε έναν αναπαραγωγέα Plex όπως το Caldera Amp· πάτα ένα κομμάτι για να παίξει."
     },
     "panel": {
       "% load": "% φορτίου",
@@ -11429,7 +11534,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}% του ορίου",
       "{n}% power": "{n}% δύναμη",
       "{n}-day": "{n}-Μέρα",
-      "{n}-hour": "{n}- ώρα"
+      "{n}-hour": "{n}- ώρα",
+      "Add a Plex widget to an enabled page": "Πρόσθεσε ένα γραφικό στοιχείο Plex σε μια ενεργή σελίδα"
     }
   },
   "vi": {
@@ -11441,7 +11547,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "Không có địa chỉ LAN hay Tailscale được tìm thấy trên máy tính này, vì vậy điện thoại không có gì để kết nối.",
       "s.pair.copy": "Sao chép liên kết cặp",
       "s.pair.expired": "Đóng và bắt đầu lại.",
-      "s.pair.expires": "Hết hạn trong {time} ."
+      "s.pair.expires": "Hết hạn trong {time} .",
+      "s.cd.plexConn": "Điều khiển nhạc Plex",
+      "s.cd.plexUrl": "Địa chỉ máy chủ Plex",
+      "s.cd.plexToken": "Mã thông báo Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Địa chỉ trình phát Plex",
+      "s.cd.plexCheck": "Kiểm tra kết nối Plex",
+      "s.cd.plexHint": "Điều khiển Plex cần một trình phát Plex Companion như Caldera Amp trên máy tính này. Hãy mở Caldera Amp một lần và đăng nhập; nó tiếp tục chạy nền và không có cửa sổ nào cần giữ mở. Plexamp trên máy tính này hoạt động với các widget phương tiện thông thường. Dán địa chỉ máy chủ Plex và X-Plex-Token của bạn.",
+      "s.cd.plexChecking": "Đang kiểm tra…"
     },
     "catalog": {
       "1": "1",
@@ -11450,7 +11563,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Control the PC cursor, tap to click, hold to drag, edge scroll bar, two fingers to right-click and scroll (Windows and Linux).": "Kiểm soát con trỏ PC, nhấn để click, giữ để kéo, thanh cuộn cạnh, hai ngón tay để click phải và cuộn (Windows và Linux).",
       "Lights up while the microphone or camera is in use (Windows, Linux), OBS records or streams, or a pushed value is on.": "Đèn sáng khi microphone hoặc camera đang được sử dụng (Windows, Linux), OBS ghi lại hoặc truyền đi, hoặc một giá trị đẩy được bật.",
       "Sound volume (%)": "Độ lớn âm thanh (%)",
-      "TRY": "TRY"
+      "TRY": "TRY",
+      "Plex queue": "Hàng đợi Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Đang phát gì và tiếp theo là gì trên trình phát Plex như Caldera Amp; chạm một bài để phát."
     },
     "panel": {
       "% load": "% tải",
@@ -11727,7 +11842,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}% của giới hạn",
       "{n}% power": "{n}% năng lượng",
       "{n}-day": "{n} - ngày",
-      "{n}-hour": "{n} - giờ"
+      "{n}-hour": "{n} - giờ",
+      "Add a Plex widget to an enabled page": "Hãy thêm tiện ích Plex vào một trang đang bật"
     }
   },
   "zh": {
@@ -12144,7 +12260,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "此计算机上没有找到 LAN 或 Tailscale 地址,因此手机无法连接。",
       "s.pair.copy": "复制配对链接",
       "s.pair.expired": "请关闭浏览器并重新开始。",
-      "s.pair.expires": "届满日期 {time}."
+      "s.pair.expires": "届满日期 {time}.",
+      "s.cd.plexConn": "Plex 音乐控制",
+      "s.cd.plexUrl": "Plex 服务器地址",
+      "s.cd.plexToken": "Plex 令牌 (X-Plex-Token)",
+      "s.cd.plexPlayer": "Plex 播放器地址",
+      "s.cd.plexCheck": "检查 Plex 连接",
+      "s.cd.plexHint": "Plex 控制需要这台电脑上有 Plex Companion 播放器，例如 Caldera Amp。请启动一次 Caldera Amp 并登录；它会在后台持续运行，没有需要保持打开的窗口。这台电脑上的 Plexamp 则通过常规的媒体小组件控制。请粘贴你的 Plex 服务器地址和 X-Plex-Token。",
+      "s.cd.plexChecking": "正在检查…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "仅此分类（设置中的分类；留空 = 全部）",
@@ -12838,7 +12961,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔔 Doorbell → notification": "门铃 → 通知",
       "🔥 CPU busy → notification": "🔥 CPU 忙碌 → 通知",
       "🔴 On air while the mic is on": "🔴 在麦克风打开时在空中",
-      "🕙 Evenings → calm page": "晚上 → 平静的页面"
+      "🕙 Evenings → calm page": "晚上 → 平静的页面",
+      "Plex queue": "Plex 队列",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上显示正在播放的内容和接下来的曲目；点按曲目即可播放。"
     },
     "panel": {
       "% load": "负载%",
@@ -13115,7 +13240,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}限额的%",
       "{n}% power": "{n}电力%",
       "{n}-day": "{n}日",
-      "{n}-hour": "{n}时间"
+      "{n}-hour": "{n}时间",
+      "Add a Plex widget to an enabled page": "请将 Plex 小组件添加到已启用的页面"
     }
   }
 });

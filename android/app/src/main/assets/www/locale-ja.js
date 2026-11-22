@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "{game} を起動できませんでした",
       "w.steamlib.alreadyRunning": "{game} はすでに起動しています",
       "w.steamlib.notInstalled": "{game} はインストールされていません",
-      "w.steamlib.launchOff": "このウィジェットのオプションで「スマホからゲームを起動できるようにする」をオンにしてください"
+      "w.steamlib.launchOff": "このウィジェットのオプションで「スマホからゲームを起動できるようにする」をオンにしてください",
+      "s.cd.plexConn": "Plex 音楽コントロール",
+      "s.cd.plexUrl": "Plex サーバーのアドレス",
+      "s.cd.plexToken": "Plex トークン (X-Plex-Token)",
+      "s.cd.plexPlayer": "Plex プレーヤーのアドレス",
+      "s.cd.plexCheck": "Plex の接続を確認",
+      "s.cd.plexHint": "Plex コントロールには、このコンピューター上の Caldera Amp などの Plex Companion プレーヤーが必要です。Caldera Amp を一度起動してサインインしてください。バックグラウンドで動作し続けるため、開いたままにするウィンドウはありません。このコンピューター上の Plexamp は、通常のメディアウィジェットで操作できます。Plex サーバーのアドレスと X-Plex-Token を貼り付けてください。",
+      "s.cd.plexChecking": "確認中…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "このカテゴリのみ（設定でのカテゴリ。空欄 = すべて）",
@@ -1626,7 +1633,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "お気に入りのゲームだけを表示",
       "Games shown": "表示するゲーム数",
       "Let the phone start games (off: the library is only shown)": "スマホからゲームを起動できるようにする（オフ：ライブラリの表示のみ）",
-      "Ask before starting (tap a game twice)": "起動前に確認する（ゲームを 2 回タップ）"
+      "Ask before starting (tap a game twice)": "起動前に確認する（ゲームを 2 回タップ）",
+      "Plex queue": "Plex キュー",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp などの Plex プレーヤーで再生中の曲と次の曲を表示します。曲をタップすると再生します。"
     },
     "panel": {
       "% load": "負荷の %",
@@ -1903,7 +1912,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}制限の %",
       "{n}% power": "{n}電力の%",
       "{n}-day": "{n}あっ あの...。",
-      "{n}-hour": "{n}1時間"
+      "{n}-hour": "{n}1時間",
+      "Add a Plex widget to an enabled page": "有効なページに Plex ウィジェットを追加してください"
     }
   }
 });

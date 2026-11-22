@@ -920,7 +920,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.steamlib.startFailed": "Не вдалося запустити {game}",
       "w.steamlib.alreadyRunning": "{game} уже запущена",
       "w.steamlib.notInstalled": "{game} більше не встановлена",
-      "w.steamlib.launchOff": "Увімкніть «Телефон може запускати ігри» в параметрах цього віджета"
+      "w.steamlib.launchOff": "Увімкніть «Телефон може запускати ігри» в параметрах цього віджета",
+      "s.cd.plexConn": "Керування музикою Plex",
+      "s.cd.plexUrl": "Адреса сервера Plex",
+      "s.cd.plexToken": "Токен Plex (X-Plex-Token)",
+      "s.cd.plexPlayer": "Адреса програвача Plex",
+      "s.cd.plexCheck": "Перевірити підключення до Plex",
+      "s.cd.plexHint": "Для керування Plex на цьому комп'ютері потрібен програвач Plex Companion, наприклад Caldera Amp. Запустіть Caldera Amp один раз і увійдіть; він працює у фоні, і вікно тримати відкритим не потрібно. Plexamp на цьому комп'ютері працює зі звичайними медіавіджетами. Вставте адресу свого сервера Plex і свій X-Plex-Token.",
+      "s.cd.plexChecking": "Перевірка…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Лише ця категорія (її категорія в налаштуваннях; порожньо = усі)",
@@ -1626,7 +1633,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "Показувати лише улюблені ігри",
       "Games shown": "Скільки ігор показувати",
       "Let the phone start games (off: the library is only shown)": "Телефон може запускати ігри (вимк.: бібліотека лише показується)",
-      "Ask before starting (tap a game twice)": "Питати перед запуском (торкнутися гри двічі)"
+      "Ask before starting (tap a game twice)": "Питати перед запуском (торкнутися гри двічі)",
+      "Plex queue": "Черга Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Що грає і що далі в програвачі Plex, наприклад Caldera Amp; торкніться треку, щоб відтворити його."
     },
     "panel": {
       "% load": "% завантаження",
@@ -1903,7 +1912,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}% від межі",
       "{n}% power": "{n}% потужності",
       "{n}-day": "{n}- день",
-      "{n}-hour": "{n}- годин"
+      "{n}-hour": "{n}- годин",
+      "Add a Plex widget to an enabled page": "Додайте віджет Plex на увімкнену сторінку"
     }
   }
 });

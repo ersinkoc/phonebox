@@ -60,7 +60,8 @@
         action('chime', 'Chime', 'sound', 'chime.wav', 75), action('applause', 'Applause', 'sound', 'applause.wav', 75),
       ], profiles: [{ id: 'meeting', label: 'Meeting', levels: [], actions: [], output: null, input: null, defaults: {} },
         { id: 'music', label: 'Music', levels: [], actions: [], output: null, input: null, defaults: {} }],
-        spotifyToken: null, spotifyDevice: null, mixerExecutable: null, mixerLibrary: null, spotifyClientId: null, spotifyRefreshToken: null },
+        spotifyToken: null, spotifyDevice: null, mixerExecutable: null, mixerLibrary: null, spotifyClientId: null, spotifyRefreshToken: null,
+        plexUrl: null, plexToken: null, plexPlayerUrl: 'http://127.0.0.1:32500' },
       deviceSerial: null, adbPath: null,
       weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
       night: { enabled: false, start: '00:30', end: '07:30', brightness: 0.02 },
@@ -427,6 +428,11 @@
   const spotifyTrack = (i) => ({ id: spotifyId(i), name: TRACKS[i][0], artist: TRACKS[i][1], image: 'https://i.scdn.co/image/demo' + i });
   const deckSpotify = () => ({ connected: true, current: spotifyTrack(player.track), playing: player.playing,
     queue: TRACKS.map((_, i) => i).filter((i) => i !== player.track).map(spotifyTrack) });
+  // Plex: queue item ids are digit strings, and a track carries no cover
+  const plexId = (i) => String(9000 + i);
+  const plexTrack = (i) => ({ id: plexId(i), name: TRACKS[i][0], artist: TRACKS[i][1] });
+  const deckPlex = () => ({ connected: true, current: plexTrack(player.track), playing: player.playing,
+    queue: TRACKS.map((_, i) => i).filter((i) => i !== player.track).map(plexTrack) });
   async function controlCommand(kind, q) {
     const id = q.get('id'), op = q.get('op'), value = q.has('value') ? +q.get('value') : null;
     const c = await config();
@@ -506,6 +512,17 @@
       else if (action === 'save-replay') { if (!x.replayActive) return refused; }
       else if (action === 'camera') x.cameraActive = !x.cameraActive;
       else return refused;
+      return json({ ok: true });
+    }
+    if (path === '/api/controls/plex/state') return json(deckPlex());
+    if (path === '/api/controls/plex/check') return json(deckPlex());
+    if (path.startsWith('/api/controls/plex/action/') && method === 'POST') {
+      const action = path.split('/').pop();
+      if (action === 'play-queued') {
+        const i = TRACKS.findIndex((_, n) => plexId(n) === q.get('id'));
+        if (i < 0 || i === player.track) return json({ ok: false, error: 'That queue item is no longer available' });
+        Object.assign(player, { track: i, posMs: 0, at: now(), playing: true });
+      } else return json({ ok: false, error: 'Unknown Plex control' });
       return json({ ok: true });
     }
     if (path === '/api/controls/spotify/state') return json(deckSpotify());
