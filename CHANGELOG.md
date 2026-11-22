@@ -23,6 +23,9 @@
 - macOS: the CPU and RAM process lists show kernel_task and system processes such as WindowServer, locked against
   ending them like other protected processes. kernel_task's memory is the system's wired memory, an estimate rather
   than its own measurement (#388, [ajaybali9](https://github.com/ajaybali9)).
+- Discord: when Discord refuses the login with `Missing "redirect_uri"`, the message says where to add the redirect
+  (`http://127.0.0.1` under **OAuth2 › Redirects** in the Discord application) and that the switch needs **Save** off
+  and on again (#316, #380, [DushyantRajpurohit](https://github.com/DushyantRajpurohit)).
 
 **Android app**
 - A request to the agent that fails (a timeout, a dropped cable) now closes its connection at once instead of
