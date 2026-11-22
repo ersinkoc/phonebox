@@ -80,3 +80,20 @@ test('a press that leaves the bar without sliding along it names nothing afterwa
   await expect(page.locator('#dots .dot.aim')).toHaveCount(0);
   expect(await activeDot(page)).toBe(0);
 });
+
+test('a slide that wanders far off the bar is called off', async ({ page }) => {
+  await show(page);
+  const [x0, y] = await center(page.locator('#dots .dot').nth(0));
+  const [x1] = await center(page.locator('#dots .dot').nth(1));
+  const [x3] = await center(page.locator('#dots .dot').nth(3));
+  await page.mouse.move(x0, y);
+  await page.mouse.down();
+  await page.mouse.move(x1, y, { steps: 4 });         // a slide, aimed at page 2
+  await expect(page.locator('#dots .dot').nth(1)).toHaveClass(/\baim\b/);
+  await page.mouse.move(x1, y - 150, { steps: 4 });   // far up, off the bar
+  await page.mouse.move(x3, y - 150, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.locator('#dots .dot.aim')).toHaveCount(0);
+  await expect(page.locator('#overview')).toBeHidden();
+  expect(await activeDot(page)).toBe(0);
+});

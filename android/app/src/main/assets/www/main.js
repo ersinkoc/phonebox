@@ -1616,6 +1616,7 @@ export function buildDots() {
     e.stopPropagation();
     openOverview();
   });
+  dots.style.setProperty('--n', pages.length);
   dots.replaceChildren(...pages.map(dot), pageAllBtn, pagePauseBtn);
   dots.hidden = false;
   syncPagePauseUi();
@@ -1985,6 +1986,7 @@ function clearDotsHold() {
 }
 $('dots').addEventListener('pointerdown', (e) => {
   heldDots = false;
+  scrubbed = false;
   clearDotsHold();
   if (pages.length < 2 || dimmed || document.body.classList.contains('waking')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -2009,6 +2011,8 @@ $('dots').addEventListener('pointermove', (e) => {
     if (Math.abs(e.clientX - scrubFrom.x) <= 10) return;
     try { $('dots').setPointerCapture(e.pointerId); } catch (_) {}
   }
+  // a slide that wanders far up or down off the bar is called off: nothing opens when the finger lifts
+  if (Math.abs(e.clientY - scrubFrom.y) > 60) { endScrub(); scrubbed = true; return; }
   const at = dotAt(e.clientX);
   if (at === scrubFrom.at) return;
   scrubFrom.at = at;

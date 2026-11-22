@@ -113,7 +113,8 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 }
 /* the dot stays small; the button around it is the size of a fingertip, and shrinks when there are many pages */
 #dots .dot {
-  display: inline-flex; align-items: center; justify-content: center; flex: 0 1 24px; min-width: 10px; height: 22px;
+  /* --n is the number of pages: 24 px each while they fit, narrower when there are many */
+  display: inline-flex; align-items: center; justify-content: center; flex: none; width: clamp(10px, calc((100vw - 96px) / var(--n, 8)), 24px); height: 22px;
   padding: 0; border: none; background: transparent; cursor: pointer; outline: none; touch-action: none;
 }
 #dots .dot:focus-visible i { box-shadow: 0 0 0 1.5px var(--accent, #fff); }
