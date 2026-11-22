@@ -1396,7 +1396,7 @@ body.controls-top .ap-foot { order: -1; margin-bottom: 4px; }
 /* Lyrics (widgets/lyrics.js): timed lines follow the song, the current one lit in the middle */
 .w-lyrics { padding: 9px 12px 6px; display: flex; flex-direction: column; gap: 6px; }
 .w-lyrics .w-title { color: rgb(var(--ambient)); }
-.ly-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; scroll-behavior: smooth;
+.ly-list { position: relative; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; scroll-behavior: smooth;
   -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
 .ly-list::-webkit-scrollbar { display: none; }
 .w-lyrics.timed .ly-list { padding: 40cqh 0; }
