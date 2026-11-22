@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>لم يكن من الممكن تغيير اختصار البدء: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>تشغيل كاميرا الهاتف</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>إيقاف كاميرا الهاتف</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>أكّد على الهاتف: «Allow this session».</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>صِل الهاتف بكابل USB وافتح PhoneBox عليه.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>ثبّت PhoneBox Camera من الإعدادات أولًا.</value>
+    </data>
 </root>

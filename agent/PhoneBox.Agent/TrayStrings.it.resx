@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>Impossibile modificare il collegamento di avvio: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>Avvia la fotocamera del telefono</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>Ferma la fotocamera del telefono</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>Conferma sul telefono: «Allow this session».</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>Collega il telefono con un cavo USB e apri PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>Prima installa PhoneBox Camera nelle impostazioni.</value>
+    </data>
 </root>

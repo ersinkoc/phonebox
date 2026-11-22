@@ -107,6 +107,7 @@ class AgentLink(private val context: Context) {
         fun call(action: String, id: String = "", session: String = "", bytes: ByteArray? = null, rotation: Int = 0): String {
             if (action != "end" && !current()) throw java.io.IOException("Camera destination changed")
             val c = URL("$base/api/phone-camera/phone").openConnection() as HttpsURLConnection
+            var kept = false
             synchronized(cameraLock) {
                 if (action != "end" && cancelled) { c.disconnect(); throw java.io.IOException("Camera stopped") }
                 connection = c
@@ -131,17 +132,19 @@ class AgentLink(private val context: Context) {
                 c.setFixedLengthStreamingMode(bytes?.size ?: 0)
                 c.outputStream.use { if (bytes != null) it.write(bytes) }
                 if (c.responseCode != 200) throw java.io.IOException("Camera session ended")
-                return c.inputStream.bufferedReader().use { it.readText() }
-            } finally { c.disconnect(); if (connection === c) connection = null }
+                val reply = c.inputStream.bufferedReader().use { it.readText() }
+                // Frames keep the TLS connection to the USB tunnel alive: a handshake per frame cannot reach 30 fps.
+                kept = action == "frame"
+                return reply
+            } finally { if (!kept) c.disconnect(); if (connection === c) connection = null }
         }
         fun cancel() { synchronized(cameraLock) { cancelled = true; connection?.disconnect() } }
     }
 
+    /** The phone camera goes over the USB cable only: 1080p at 30 fps needs its bandwidth, and Wi-Fi is never used. */
     internal fun cameraTarget(): CameraTarget? = when (route) {
         Route.USB -> UsbKey.pin(context)?.let { pin -> CameraTarget(pin,
             pcs.firstOrNull { it.id == pin }?.name ?: "USB computer", USB_BASE, UsbKey.get(context), Route.USB) }
-        Route.WIFI -> activePc()?.let { pc -> pc.hosts.getOrNull(preferredHost)?.let { host ->
-            CameraTarget(pc.id, pc.name, "https://$host:${pc.port}", pc.token, Route.WIFI) } }
         else -> null
     }
 

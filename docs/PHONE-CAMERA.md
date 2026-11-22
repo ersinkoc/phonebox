@@ -3,7 +3,9 @@
 PhoneBox can expose the phone as **PhoneBox Camera** on Windows 11 x64, without OBS. It uses Windows Media
 Foundation's virtual camera API, not a kernel driver. Windows 10, Linux and macOS can use the optional OBS output.
 
-1. Update both the desktop agent and Android app. Connect the phone over USB or paired Wi-Fi and keep PhoneBox open.
+1. Update both the desktop agent and Android app. Connect the phone with a **USB cable** and keep PhoneBox open.
+   The camera works over USB only: the agent refuses a request for a phone on Wi-Fi, and the phone never sends
+   video over Wi-Fi.
 2. In desktop Settings → General → Phone as webcam, click **Install component**. Windows asks for administrator
    approval to copy the COM source to `%ProgramFiles%\PhoneBox\Camera` and register its class under HKLM.
    This is a one-time component installation. The agent itself continues to run as your normal user.
@@ -12,7 +14,13 @@ Foundation's virtual camera API, not a kernel driver. Windows 10, Linux and macO
 4. Select the connected phone and click **Request camera**.
 5. On the phone choose the front or rear camera and **Allow this session**. On first use Android also asks for the
    camera permission; after that dialog, confirm the session again. Pending requests expire after 30 seconds.
-6. Stop video using **Stop sharing** on the phone or **Stop** in desktop settings. **Disable virtual camera** also
+6. While sharing, a small preview floats over the panel. The panel stays usable: swipe between pages as usual.
+   Drag the preview to move it; tap it to switch between small and large. It keeps the camera's aspect ratio.
+**Shortcut:** right-click the PhoneBox tray icon and choose **Start phone camera**. It enables PhoneBox Camera if it
+is off and asks the phone on the USB cable; approve on the phone as in step 5. While a request waits or video is live,
+the same item reads **Stop phone camera**. Installing the component stays a click in the settings (administrator approval).
+
+7. Stop video using **Stop** on the phone's preview or **Stop** in desktop settings. **Disable virtual camera** also
    stops the phone session and removes the virtual device. Close and reopen the calling app's device picker if needed.
 
 The virtual device exists only while enabled in the current agent process, and is visible only to that Windows user.
@@ -24,14 +32,17 @@ If Windows refuses to enable it with access denied, check Settings → Privacy &
 for desktop applications. Native support requires build 22000 or later and the x64 Windows agent. It is not available
 in the cross-platform `net10.0` agent package unless its native component is bundled separately.
 
-The first version sends JPEG frames at up to 10 fps, with a preview size no larger than 1280 × 720. Actual resolution
-and frame rate depend on the camera and connection. The native output is 1280 × 720 NV12 at up to 10 fps; portrait video
-is letterboxed and its orientation is preserved. There is no audio.
+The phone sends JPEG frames at up to 30 fps, using the largest camera preview size up to 1920 × 1080 (16:9 first).
+Two threads encode and one kept-alive connection uploads the newest frame, so a slow moment drops frames rather
+than adding delay. Actual resolution and frame rate depend on the camera; at 1080p expect roughly 5–8 MB/s over the
+cable. The native output is 1920 × 1080 NV12 at 30 fps; a smaller or portrait picture is scaled and letterboxed, and
+its orientation is preserved. When no new frame has arrived it repeats the last one without decoding it again.
+There is no audio.
 
 ## Optional OBS output
 
 Expand **Optional OBS output** in settings. In OBS add a **Browser** source using the address shown there, normally
-`http://127.0.0.1:8765/phone-camera`. Set it to 1280 × 720, then click **Start Virtual Camera**. Select **OBS Virtual Camera**
+`http://127.0.0.1:8765/phone-camera`. Set it to 1920 × 1080, then click **Start Virtual Camera**. Select **OBS Virtual Camera**
 in the calling app. Leave OBS's “Shutdown source when not visible” off if the virtual camera needs that source.
 
 ## Consent and privacy
@@ -39,7 +50,7 @@ in the calling app. Leave OBS's “Shutdown source when not visible” off if th
 - Pairing and Android camera permission do not grant permission to stream. Every session needs native confirmation
   on the phone. The prompt shows the destination name and a prefix of its pinned certificate fingerprint.
 - Camera capture is native, with no JavaScript method to start or approve it. Closing the app, locking the phone,
-  changing destination/transport or rotating the phone ends sharing. Rotation requires a fresh request.
+  unplugging the cable, changing destination/transport or rotating the phone ends sharing. Rotation requires a fresh request.
 - The session captures one pinned HTTPS destination and credential. Frames never fall back to another PC or route.
   A fresh random session capability is needed in addition to pairing credentials. Consent is not saved.
 - A missing upload expires consent and clears the agent's frame after 3 seconds (5 seconds to deliver the first frame).

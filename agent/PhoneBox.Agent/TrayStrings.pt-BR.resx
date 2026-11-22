@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>Não foi possível alterar o atalho de inicialização: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>Iniciar a câmera do celular</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>Parar a câmera do celular</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>Confirme no celular: “Allow this session”.</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>Conecte o celular com um cabo USB e abra o PhoneBox nele.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>Instale primeiro o PhoneBox Camera nas configurações.</value>
+    </data>
 </root>

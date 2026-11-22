@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>起動ショートカットを変更できませんでした: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>スマホのカメラを開始</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>スマホのカメラを停止</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>スマホで「Allow this session」を押して確認してください。</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>スマホを USB ケーブルでつなぎ、PhoneBox を開いてください。</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>先に設定で PhoneBox Camera をインストールしてください。</value>
+    </data>
 </root>

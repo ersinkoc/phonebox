@@ -31,18 +31,33 @@
         <value>Вийти</value>
     </data>
     <data xml:space="preserve" name="connected">
-        <value>Телефон з' єднано ({0}) Name</value>
+        <value>Телефон з’єднано ({0})</value>
     </data>
     <data xml:space="preserve" name="disconnected">
-        <value>Телефон не з' єднано</value>
+        <value>Телефон не з’єднано</value>
     </data>
     <data xml:space="preserve" name="tooltipConnected">
-        <value>PhoneBox — телефон з’ єднано</value>
+        <value>PhoneBox — телефон з’єднано</value>
     </data>
     <data xml:space="preserve" name="tooltipWaiting">
         <value>PhoneBox — очікування на телефон</value>
     </data>
     <data xml:space="preserve" name="autostartError">
         <value>Не вдалося змінити скорочення для запуску: {0}</value>
+    </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>Увімкнути камеру телефона</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>Вимкнути камеру телефона</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>Підтвердьте на телефоні: «Allow this session».</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>Підключіть телефон USB-кабелем і відкрийте на ньому PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>Спочатку встановіть PhoneBox Camera в налаштуваннях.</value>
     </data>
 </root>

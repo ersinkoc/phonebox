@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>Не удалось изменить ярлык запуска: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>Включить камеру телефона</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>Выключить камеру телефона</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>Подтвердите на телефоне: «Allow this session».</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>Подключите телефон USB-кабелем и откройте на нём PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>Сначала установите PhoneBox Camera в настройках.</value>
+    </data>
 </root>

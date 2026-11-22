@@ -5,7 +5,7 @@ namespace PhoneBox.Agent;
 /// <summary>One explicitly approved camera session; never persists frames or consent.</summary>
 public sealed class PhoneCamera : IDisposable
 {
-    public const int MaxFrameBytes = 512 * 1024;
+    public const int MaxFrameBytes = 1536 * 1024; // a 1920 × 1080 JPEG with headroom
     private readonly object gate = new();
     private readonly Func<long> now;
     private readonly System.Threading.Timer? timer;
@@ -13,6 +13,7 @@ public sealed class PhoneCamera : IDisposable
     private long deadline;
     private byte[]? frame;
     private int rotation;
+    private long sequence;
 
     public PhoneCamera() : this(() => Environment.TickCount64, true) { }
     internal PhoneCamera(Func<long> clock, bool automaticExpiry = false)
@@ -38,6 +39,19 @@ public sealed class PhoneCamera : IDisposable
             return true;
         }
     }
+
+    /// <summary>A request is waiting for the phone, or video is live.</summary>
+    public bool Active { get { lock (gate) { Expire(); return request != null; } } }
+
+    /// <summary>
+    /// The phone to ask for video: the one most recently heard from over the USB cable (video never goes over Wi-Fi),
+    /// or null when no phone was on USB in the last 15 seconds.
+    /// </summary>
+    public static string? UsbPhone(IEnumerable<PhoneSeen> phones, long nowMs) =>
+        phones.Where(p => p.Via == "USB" && nowMs - p.LastSeen < 15_000).MaxBy(p => p.LastSeen)?.Id;
+
+    public static bool IsUsbPhone(IEnumerable<PhoneSeen> phones, string id, long nowMs) =>
+        phones.Any(p => p.Id == id && p.Via == "USB" && nowMs - p.LastSeen < 15_000);
 
     public object Status()
     {
@@ -77,6 +91,7 @@ public sealed class PhoneCamera : IDisposable
                 jpeg[0] != 0xff || jpeg[1] != 0xd8 || jpeg[^2] != 0xff || jpeg[^1] != 0xd9 || angle is not (0 or 90 or 180 or 270)) return false;
             frame = jpeg;
             rotation = angle;
+            sequence++;
             deadline = now() + 3_000;
             return true;
         }
@@ -93,9 +108,10 @@ public sealed class PhoneCamera : IDisposable
         }
     }
 
-    public (byte[]? Jpeg, int Rotation) Frame()
+    /// <summary>The current frame. Sequence changes with every accepted upload, so a reader can skip an unchanged one.</summary>
+    public (byte[]? Jpeg, int Rotation, long Sequence) Frame()
     {
-        lock (gate) { Expire(); return (frame, rotation); }
+        lock (gate) { Expire(); return (frame, rotation, frame == null ? 0 : sequence); }
     }
 
     public void Dispose() { timer?.Dispose(); Stop(); }

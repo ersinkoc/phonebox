@@ -159,7 +159,7 @@ int wmain(int argc,wchar_t** argv) {
         }
         Require(FAILED(DecodeFrame({1,2,3,4},0,output)),"malformed JPEG rejected");Require(output[Width*(Height/2)+Width/2]==16,"failed decode clears image");
         Require(FAILED(DecodeFrame(jpeg,45,output)),"invalid rotation rejected");
-        ReadFrame(0,output);Require(output.size()==FrameBytes && output[0]==16 && output[Width*Height]==128,"disconnected source black");
+        {uint64_t sequence=7;ReadFrame(0,output,sequence);Require(sequence==0 && output.size()==FrameBytes && output[0]==16 && output[Width*Height]==128,"disconnected source black");}
         HMODULE dll=LoadLibraryExW(argv[1],nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_SYSTEM32);Require(dll!=nullptr,"load source DLL");
         SourceTest(dll);
         if(argc==3)DeviceTest(dll);

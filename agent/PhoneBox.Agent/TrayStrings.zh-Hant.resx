@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>未能更改啟動快捷方式: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>啟動手機相機</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>停止手機相機</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>請在手機上確認：「Allow this session」。</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>請用 USB 傳輸線連接手機，並在手機上開啟 PhoneBox。</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>請先在設定中安裝 PhoneBox Camera。</value>
+    </data>
 </root>

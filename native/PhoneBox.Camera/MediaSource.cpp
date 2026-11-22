@@ -48,6 +48,8 @@ class MediaStream : public winrt::implements<MediaStream,IMFMediaStream2> {
     void Run() noexcept {
         const HRESULT apartment=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
         auto next=std::chrono::steady_clock::now();
+        std::vector<BYTE> frame; // the last decoded picture, reused while the agent reports the same frame
+        uint64_t sequence=0;
         try {
             for(;;) {
                 ComPtr<IUnknown> token;
@@ -62,8 +64,8 @@ class MediaStream : public winrt::implements<MediaStream,IMFMediaStream2> {
                     if(gen!=generation || state!=MF_STREAM_STATE_RUNNING)continue;
                     token=tokens.front();tokens.pop_front();
                 }
-                std::vector<BYTE> frame;
-                ReadFrame(port,frame);
+                const auto started=std::chrono::steady_clock::now();
+                ReadFrame(port,frame,sequence);
                 ComPtr<IMFSample> sample;
                 // Capture timestamps use the system's MF clock; relative-to-start times are discarded by Frame Server.
                 HRESULT hr=Sample(frame,token.Get(),MFGetSystemTime(),&sample);
@@ -73,7 +75,8 @@ class MediaStream : public winrt::implements<MediaStream,IMFMediaStream2> {
                     if(SUCCEEDED(hr))events.Object(MEMediaSample,sample.Get());
                     else events.Put(MEError,GUID_NULL,hr,nullptr);
                 }
-                next=std::chrono::steady_clock::now()+std::chrono::milliseconds(1000/Fps);
+                // Paced from the start of the read, so decoding time does not lower the frame rate.
+                next=started+std::chrono::microseconds(1000000/Fps);
             }
         }catch(...) { events.Put(MEError,GUID_NULL,winrt::to_hresult(),nullptr); }
         if(SUCCEEDED(apartment))CoUninitialize();

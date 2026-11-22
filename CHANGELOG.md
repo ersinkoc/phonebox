@@ -2,7 +2,22 @@
 
 ## Unreleased
 
+**Phone as webcam**
+- 1080p at 30 fps instead of 720p at 10: the phone encodes on two threads and keeps one connection open for frames,
+  and the PhoneBox Camera output is 1920 × 1080 at 30 fps, converting each new frame faster and not decoding a
+  repeated one again.
+- USB cable only: the agent asks only a phone connected by cable, and the phone never sends video over Wi-Fi.
+- The phone shows a small preview over the panel instead of a full-screen one, so you can keep using the panel and
+  swipe between pages while sharing. The preview keeps the camera's aspect ratio (it was stretched); drag it to
+  move it, tap it to make it larger or smaller.
+- Tray menu: **Start phone camera** enables PhoneBox Camera when it is off and asks the phone on the cable in one
+  click (the phone still asks you to allow it); **Stop phone camera** ends the session. The Ukrainian tray menu also
+  lost a stray "Name" and its broken apostrophes.
+
 **Agent**
+- USB: the adb server the agent starts no longer hangs when another program listens on an emulator port (Native
+  Instruments' NTKDaemon takes 5563, shown as `emulator-5562 offline`), which left the phone "not connected". It now
+  checks only port 5555 for emulators, unless `ADB_LOCAL_TRANSPORT_MAX_PORT` is already set.
 - Phone app updates: a phone that cannot take a streamed install (`splice failed: EINVAL`, seen with Android 15 on a
   3.10 kernel) is tried once more without streaming, and a phone whose app was updated another way no longer keeps
   "Update available" on until the agent restarts (#353, [MU74NTLabs](https://github.com/MU74NTLabs)).

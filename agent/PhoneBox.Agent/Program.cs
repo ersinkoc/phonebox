@@ -270,7 +270,7 @@ app.Use(async (ctx, next) =>
 });
 
 app.Map("/api/trackpad", TrackpadHandler.HandleEndpoint);
-app.MapPhoneCamera(Port);
+app.MapPhoneCamera(Port, usb.Port);
 
 // ---------------------------------------------------------------- Wi-Fi pairing (local / USB only)
 // The phone calls this through the USB tunnel and stores everything it needs to connect over Wi-Fi.

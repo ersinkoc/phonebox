@@ -640,10 +640,10 @@ nav a.on::before { color: var(--accent); }
           <button class="btn sm danger" type="button" id="phoneCameraStop">Stop</button>
           <span class="hint" id="phoneCameraStatus" role="status">Camera off</span>
         </div>
-        <p class="hint">Video only · up to 720p / 10 fps. Keep PhoneBox open on the phone. Enable PhoneBox Camera again after restarting the desktop agent.</p>
+        <p class="hint">Video only · up to 1080p / 30 fps · <b>USB cable only</b> (a phone on Wi-Fi gets no request). Keep PhoneBox open on the phone; the panel stays usable with a small preview on top. Enable PhoneBox Camera again after restarting the desktop agent.</p>
         <a href="/phone-camera" target="_blank" rel="noopener">Open camera preview</a>
         <details id="phoneCameraObs"><summary>Optional OBS output (Windows 10, Linux and macOS)</summary>
-        <p class="hint">In OBS add a Browser source with this address (1280 × 720), then Start Virtual Camera. Select OBS Virtual Camera in your calling app.</p>
+        <p class="hint">In OBS add a Browser source with this address (1920 × 1080), then Start Virtual Camera. Select OBS Virtual Camera in your calling app.</p>
         <input id="phoneCameraUrl" type="text" readonly aria-label="OBS Browser source address" style="width:100%">
         </details>
       </div>
@@ -2551,7 +2551,7 @@ async function phoneCameraRefresh() {
 $('phoneCameraRequest').onclick = async () => {
   try {
     const r = await fetch(`/api/phone-camera/request?device=${encodeURIComponent($('phoneCameraDevice').value)}`, { method: 'POST' });
-    if (!r.ok) toast('Phone unavailable or camera already requested');
+    if (!r.ok) toast('Connect the phone with a USB cable (the camera does not use Wi-Fi), or a camera request is already open');
   } catch (_) { toast('Cannot reach the agent'); }
   await phoneCameraRefresh();
 };

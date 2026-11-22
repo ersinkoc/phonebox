@@ -455,4 +455,14 @@ public sealed class AdbReverseTests : IDisposable
         var target = typeof(AdbReverse).GetProperty("TargetRule", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
         Assert.Equal("tcp:45678", target.GetValue(adb));
     }
+
+    [Fact]
+    public void AdbStartedByTheAgentChecksOnlyTheFirstEmulatorPort()
+    {
+        var psi = AdbReverse.LimitEmulatorScan(new System.Diagnostics.ProcessStartInfo("adb"));
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ADB_LOCAL_TRANSPORT_MAX_PORT")))
+            Assert.Equal("5555", psi.Environment["ADB_LOCAL_TRANSPORT_MAX_PORT"]);
+        else
+            Assert.Equal(Environment.GetEnvironmentVariable("ADB_LOCAL_TRANSPORT_MAX_PORT"), psi.Environment["ADB_LOCAL_TRANSPORT_MAX_PORT"]);
+    }
 }

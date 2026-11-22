@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>Başlatma kısayolunu değiştirilemedi: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>Telefon kamerasını başlat</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>Telefon kamerasını durdur</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>Telefonda onaylayın: “Allow this session”.</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>Telefonu USB kablosuyla bağlayın ve PhoneBox’ı açın.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>Önce ayarlardan PhoneBox Camera’yı yükleyin.</value>
+    </data>
 </root>

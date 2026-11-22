@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace PhoneBox.Agent;
 
-/// <summary>System tray icon: status, settings, logs, start with Windows, quit.</summary>
+/// <summary>System tray icon: status, settings, phone camera, logs, start with Windows, quit.</summary>
 public sealed class Tray : IHostedService
 {
     private readonly string SettingsUrl;
@@ -14,15 +14,21 @@ public sealed class Tray : IHostedService
     private readonly IHostApplicationLifetime _life;
     private readonly AdbReverse _adb;
     private readonly ConfigStore _config;
+    private readonly PhoneCamera _camera;
+    private readonly NativeCamera _native;
+    private readonly int _port;
     private static readonly ResourceManager Strings = new("PhoneBox.Agent.TrayStrings", typeof(Tray).Assembly);
     private Thread? _thread;
     private ApplicationContext? _ctx;
     private Control? _invoker;
     private NotifyIcon? _icon;
 
-    public Tray(IHostApplicationLifetime life, AdbReverse adb, AgentEndpoint endpoint, ConfigStore config)
+    public Tray(IHostApplicationLifetime life, AdbReverse adb, AgentEndpoint endpoint, ConfigStore config, PhoneCamera camera, NativeCamera native)
     {
         SettingsUrl = endpoint.SettingsUrl;
+        _port = endpoint.Port;
+        _camera = camera;
+        _native = native;
         _life = life;
         _adb = adb;
         _config = config;
@@ -77,6 +83,8 @@ public sealed class Tray : IHostedService
         menu.Items.Add(settings);
         // cancelled while Windows is ending the session (no adb is started then, for at most a minute): nothing to show
         var openPanel = menu.Items.Add("", null, async (_, _) => { try { await _adb.OpenPanelAsync(); } catch (OperationCanceledException) { } });
+        // One click: enable PhoneBox Camera if needed and ask the USB phone. The phone still has to approve the session.
+        var camera = menu.Items.Add("", null, async (_, _) => await ToggleCameraAsync(UiCulture()));
         menu.Items.Add(new ToolStripSeparator());
         var editConfig = menu.Items.Add("", null, (_, _) => Open("notepad.exe", AppPaths.ConfigPath));
         var openLog = menu.Items.Add("", null, (_, _) => Open("notepad.exe", AppPaths.LogPath));
@@ -90,6 +98,7 @@ public sealed class Tray : IHostedService
             menu.RightToLeft = culture.TextInfo.IsRightToLeft ? RightToLeft.Yes : RightToLeft.No;
             settings.Text = Text("settings", culture);
             openPanel.Text = Text("openPanel", culture);
+            camera.Text = Text(_camera.Active ? "cameraStop" : "cameraStart", culture);
             editConfig.Text = Text("editConfig", culture);
             openLog.Text = Text("openLog", culture);
             autostart.Text = Text("autostart", culture);
@@ -117,6 +126,40 @@ public sealed class Tray : IHostedService
         Application.Run(_ctx);
         _icon.Visible = false;
         _icon.Dispose();
+    }
+
+    private bool _cameraBusy;
+
+    /// <summary>Runs on the tray's UI thread; awaits resume there.</summary>
+    private async Task ToggleCameraAsync(CultureInfo culture)
+    {
+        if (_cameraBusy) return;
+        if (_camera.Active) { _camera.Stop(); return; }
+        _cameraBusy = true;
+        try
+        {
+            var phone = PhoneCamera.UsbPhone(PhoneRegistry.All(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            if (phone is null) { Notify(Text("cameraNoPhone", culture), ToolTipIcon.Warning); return; }
+            if (NativeCamera.Supported)
+            {
+                var state = _native.Status();
+                if (!state.Installed)
+                {
+                    // Installing asks for administrator approval: that stays an explicit click in the settings.
+                    Notify(Text("cameraInstall", culture), ToolTipIcon.Warning);
+                    OpenUrl(SettingsUrl + "#general");
+                    return;
+                }
+                if (!state.Running && await _native.Enable(_port) is { } error) { Notify(error, ToolTipIcon.Error); return; }
+            }
+            if (_camera.Request(phone)) Notify(Text("cameraAsk", culture), ToolTipIcon.Info);
+        }
+        finally { _cameraBusy = false; }
+    }
+
+    private void Notify(string text, ToolTipIcon icon)
+    {
+        try { _icon?.ShowBalloonTip(5000, "PhoneBox", text, icon); } catch { }
     }
 
     private static void OpenUrl(string url)

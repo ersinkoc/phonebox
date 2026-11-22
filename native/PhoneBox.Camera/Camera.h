@@ -28,10 +28,10 @@ namespace winrt {
 inline constexpr GUID CameraClassId = {0x4f412bc4,0x5e9d,0x463c,{0xa8,0xca,0x6c,0x13,0x7a,0xf6,0x70,0x17}};
 inline constexpr wchar_t CameraClsid[] = L"{4F412BC4-5E9D-463C-A8CA-6C137AF67017}";
 inline constexpr GUID CameraPortAttribute = {0x7aff225c,0x411a,0x468d,{0x88,0x54,0x55,0x4d,0xb5,0x01,0x71,0xe0}};
-inline constexpr UINT32 Width = 1280, Height = 720, Fps = 10;
+inline constexpr UINT32 Width = 1920, Height = 1080, Fps = 30;
 inline constexpr DWORD FrameBytes = Width * Height * 3 / 2;
 inline constexpr LONGLONG FrameDuration = 10'000'000 / Fps;
-inline constexpr DWORD MaxJpeg = 512 * 1024;
+inline constexpr DWORD MaxJpeg = 1536 * 1024; // matches the agent's PhoneCamera.MaxFrameBytes
 
 #define CHECK_HR(expression) do { HRESULT checkResult = (expression); if (FAILED(checkResult)) return checkResult; } while (false)
 
@@ -58,5 +58,7 @@ public:
 void BlankFrame(std::vector<BYTE>& frame);
 HRESULT DecodeFrame(const std::vector<BYTE>& jpeg, int rotation, std::vector<BYTE>& frame);
 // Only fixed loopback HTTP is used. No phone keys, arbitrary URLs, proxy, redirect or disk access.
-void ReadFrame(UINT32 port, std::vector<BYTE>& frame) noexcept;
+// sequence is the agent's number of the frame already decoded in `frame`. While the agent still holds that frame,
+// `frame` is kept as is. Anything else (no frame, timeout, malformed) blanks it and resets sequence to 0.
+void ReadFrame(UINT32 port, std::vector<BYTE>& frame, uint64_t& sequence) noexcept;
 HRESULT CreateCameraActivate(REFIID iid, void** result) noexcept;

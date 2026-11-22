@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>ไม่สามารถเปลี่ยนปุ่มพิมพ์ลัดในการเริ่มการทำงานได้: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>เริ่มกล้องโทรศัพท์</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>หยุดกล้องโทรศัพท์</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>ยืนยันบนโทรศัพท์: “Allow this session”</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>เชื่อมต่อโทรศัพท์ด้วยสาย USB แล้วเปิด PhoneBox บนโทรศัพท์</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>ติดตั้ง PhoneBox Camera ในการตั้งค่าก่อน</value>
+    </data>
 </root>

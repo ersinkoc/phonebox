@@ -2,7 +2,7 @@ namespace PhoneBox.Agent;
 
 public static class PhoneCameraEndpoints
 {
-    public static void MapPhoneCamera(this WebApplication app, int localPort)
+    public static void MapPhoneCamera(this WebApplication app, int localPort, int usbPort)
     {
         // The LAN allow-list contains only /phone. Receiver, control and OBS output stay on the local settings port.
         app.MapGet("/api/phone-camera/status", (PhoneCamera camera) => Results.Json(camera.Status()));
@@ -21,13 +21,14 @@ public static class PhoneCameraEndpoints
             camera.Stop();
             return await native.Install(true) is { } error ? Results.BadRequest(new { error }) : Results.Ok();
         });
+        // Video is USB-only: 1080p30 needs the cable's bandwidth, and the phone never sends it over Wi-Fi.
         app.MapPost("/api/phone-camera/request", (string device, PhoneCamera camera) =>
-            PhoneRegistry.All().Any(p => p.Id == device && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - p.LastSeen < 15_000)
+            PhoneCamera.IsUsbPhone(PhoneRegistry.All(), device, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
                 && camera.Request(device) ? Results.Ok() : Results.Conflict());
         app.MapPost("/api/phone-camera/stop", (PhoneCamera camera) => { camera.Stop(); return Results.Ok(); });
         app.MapPost("/api/phone-camera/phone", async (HttpContext ctx, PhoneCamera camera) =>
         {
-            if (ctx.Connection.LocalPort == localPort) return Results.StatusCode(403);
+            if (ctx.Connection.LocalPort != usbPort) return Results.StatusCode(403);
             var phone = ctx.Request.Headers["X-PhoneBox-Device"].ToString();
             var credential = ctx.Request.Headers.Authorization.ToString();
             var id = ctx.Request.Headers["X-Camera-Request"].ToString();
@@ -52,11 +53,14 @@ public static class PhoneCameraEndpoints
                 default: return Results.BadRequest();
             }
         });
-        app.MapGet("/api/phone-camera/frame", (PhoneCamera camera, HttpResponse response) =>
+        app.MapGet("/api/phone-camera/frame", (PhoneCamera camera, HttpRequest request, HttpResponse response) =>
         {
-            var (jpeg, rotation) = camera.Frame();
+            var (jpeg, rotation, sequence) = camera.Frame();
             response.Headers["X-Camera-Rotation"] = rotation.ToString();
-            return jpeg == null ? Results.NoContent() : Results.Bytes(jpeg, "image/jpeg");
+            response.Headers["X-Camera-Frame"] = sequence.ToString();
+            if (jpeg == null) return Results.NoContent();
+            // The native camera already holds this frame decoded: answer without the JPEG (it repeats frames at 30 fps).
+            return request.Headers["X-Camera-Known"] == sequence.ToString() ? Results.StatusCode(304) : Results.Bytes(jpeg, "image/jpeg");
         });
         app.MapGet("/phone-camera", () => Results.Text(Page, "text/html"));
     }
@@ -65,7 +69,7 @@ public static class PhoneCameraEndpoints
     internal const string Page = """
         <!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
         <title>PhoneBox Camera</title><style>html,body{margin:0;background:#111;color:white;width:100%;height:100%;overflow:hidden}canvas{width:100%;height:100%;object-fit:contain}</style>
-        <canvas width="1280" height="720"></canvas><script>
+        <canvas width="1920" height="1080"></canvas><script>
         const canvas=document.querySelector('canvas'),c=canvas.getContext('2d');
         function blank(){c.fillStyle='#111';c.fillRect(0,0,canvas.width,canvas.height);c.fillStyle='#ddd';c.font='32px sans-serif';c.textAlign='center';c.fillText('Camera off',canvas.width/2,canvas.height/2);}
         blank(); let last=0;
@@ -77,7 +81,7 @@ public static class PhoneCameraEndpoints
             const bitmap=await createImageBitmap(await r.blob()),angle=Number(r.headers.get('X-Camera-Rotation'))||0;
             const w=angle%180?bitmap.height:bitmap.width,h=angle%180?bitmap.width:bitmap.height;
             canvas.width=w;canvas.height=h;c.save();c.translate(w/2,h/2);c.rotate(angle*Math.PI/180);c.drawImage(bitmap,-bitmap.width/2,-bitmap.height/2);c.restore();bitmap.close();last=performance.now();
-          }catch(_){blank();}finally{setTimeout(update,100);}
+          }catch(_){blank();}finally{setTimeout(update,33);}
         }update();
         </script></html>
         """;

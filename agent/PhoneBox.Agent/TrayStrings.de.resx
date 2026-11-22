@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>Die Startverknüpfung konnte nicht geändert werden: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>Handykamera starten</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>Handykamera beenden</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>Am Handy bestätigen: „Allow this session“.</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>Verbinde das Handy per USB-Kabel und öffne PhoneBox darauf.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>Installiere zuerst PhoneBox Camera in den Einstellungen.</value>
+    </data>
 </root>

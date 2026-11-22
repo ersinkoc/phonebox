@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>प्रारंभिक शॉर्टकट को बदल नहीं सका: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>फ़ोन कैमरा शुरू करें</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>फ़ोन कैमरा बंद करें</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>फ़ोन पर पुष्टि करें: “Allow this session”।</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>फ़ोन को USB केबल से जोड़ें और उस पर PhoneBox खोलें।</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>पहले सेटिंग में PhoneBox Camera इंस्टॉल करें।</value>
+    </data>
 </root>

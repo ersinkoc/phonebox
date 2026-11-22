@@ -105,4 +105,58 @@ public class PhoneCameraTests
         Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(config, "POST", "/api/phone-camera/phone", "", "Bearer webhook-key", null));
         Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(config, "POST", "/api/phone-camera/phone", "https://evil.example", "Bearer phone-key", null));
     }
+
+    [Fact]
+    public void FrameSequenceChangesWithEachUploadAndResetsWhenCleared()
+    {
+        using var camera = new PhoneCamera(() => 0);
+        Assert.Equal(0, camera.Frame().Sequence);
+        camera.Request("phone1");
+        var id = RequestId(camera)!;
+        var key = camera.Approve("phone1", id, "paired")!;
+        Assert.True(camera.Upload("phone1", id, key, "paired", Jpeg, 0));
+        var first = camera.Frame().Sequence;
+        Assert.NotEqual(0, first);
+        Assert.Equal(first, camera.Frame().Sequence);
+        Assert.True(camera.Upload("phone1", id, key, "paired", Jpeg, 0));
+        Assert.NotEqual(first, camera.Frame().Sequence);
+        camera.Stop();
+        Assert.Equal(0, camera.Frame().Sequence);
+    }
+
+    [Fact]
+    public void AcceptsAFullHdSizedFrame()
+    {
+        using var camera = new PhoneCamera(() => 0);
+        camera.Request("phone1");
+        var id = RequestId(camera)!;
+        var key = camera.Approve("phone1", id, "paired")!;
+        var big = new byte[PhoneCamera.MaxFrameBytes];
+        big[0] = 0xff; big[1] = 0xd8; big[^2] = 0xff; big[^1] = 0xd9;
+        Assert.True(camera.Upload("phone1", id, key, "paired", big, 0));
+        Assert.True(PhoneCamera.MaxFrameBytes >= 1024 * 1024);
+    }
+
+    [Fact]
+    public void AsksOnlyAPhoneRecentlySeenOverUsb()
+    {
+        PhoneSeen[] phones = [new("wifi1", "A", 10_000, "Wi-Fi"), new("usbOld", "B", 1_000, "USB"), new("usb1", "C", 9_000, "USB")];
+        Assert.Equal("usb1", PhoneCamera.UsbPhone(phones, 10_000));
+        Assert.Null(PhoneCamera.UsbPhone(phones, 30_000));
+        Assert.Null(PhoneCamera.UsbPhone([new("wifi1", "A", 10_000, "Wi-Fi")], 10_000));
+        Assert.True(PhoneCamera.IsUsbPhone(phones, "usb1", 10_000));
+        Assert.False(PhoneCamera.IsUsbPhone(phones, "wifi1", 10_000));
+        Assert.False(PhoneCamera.IsUsbPhone(phones, "usbOld", 16_001));
+    }
+
+    [Fact]
+    public void ActiveWhileARequestWaitsOrVideoIsLive()
+    {
+        using var camera = new PhoneCamera(() => 0);
+        Assert.False(camera.Active);
+        camera.Request("phone1");
+        Assert.True(camera.Active);
+        camera.Stop();
+        Assert.False(camera.Active);
+    }
 }

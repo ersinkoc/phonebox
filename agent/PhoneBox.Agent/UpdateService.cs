@@ -430,6 +430,7 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
     {
         var start = new ProcessStartInfo(file);
         foreach (var arg in args) start.ArgumentList.Add(arg);
+        if (Path.GetFileNameWithoutExtension(file).Equals("adb", StringComparison.OrdinalIgnoreCase)) AdbReverse.LimitEmulatorScan(start);
         var result = await ToolProcess.RunAsync(start, timeout ?? TimeSpan.FromMinutes(3), ct);
         return result.Output + result.Error;
     }

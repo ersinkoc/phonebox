@@ -351,14 +351,26 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         return map;
     }
 
+    /// <summary>
+    /// The adb server looks for emulators on every odd port from 5555 to 5585 and hangs, with every adb command after it,
+    /// when another program listens on one of them (Native Instruments' NTKDaemon takes 5563: "emulator-5562 offline").
+    /// PhoneBox needs the phone on USB only, so the server it starts checks 5555 alone. A value the user set is kept.
+    /// </summary>
+    internal static ProcessStartInfo LimitEmulatorScan(ProcessStartInfo psi)
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ADB_LOCAL_TRANSPORT_MAX_PORT")))
+            psi.Environment["ADB_LOCAL_TRANSPORT_MAX_PORT"] = "5555";
+        return psi;
+    }
+
     internal static async Task<string> Adb(string adb, string args, CancellationToken ct, bool anyExit = false)
     {
         if (SessionEnding) throw new OperationCanceledException("the session is ending");
-        var psi = new ProcessStartInfo(adb, args)
+        var psi = LimitEmulatorScan(new ProcessStartInfo(adb, args)
         {
             RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
             WorkingDirectory = AppPaths.NeutralCwd,
-        };
+        });
         var result = await ToolProcess.RunAsync(psi, TimeSpan.FromSeconds(8), ct);
         if (result.ExitCode != 0 && !anyExit) throw new IOException($"ADB exited with code {result.ExitCode}");
         return result.Output;

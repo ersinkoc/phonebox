@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>Nie można zmienić skrótu uruchamiania: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>Włącz kamerę telefonu</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>Wyłącz kamerę telefonu</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>Potwierdź na telefonie: „Allow this session”.</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>Podłącz telefon kablem USB i otwórz na nim PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>Najpierw zainstaluj PhoneBox Camera w ustawieniach.</value>
+    </data>
 </root>

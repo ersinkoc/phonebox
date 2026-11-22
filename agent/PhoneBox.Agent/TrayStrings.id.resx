@@ -45,4 +45,19 @@
     <data xml:space="preserve" name="autostartError">
         <value>Tak dapat mengubah jalan pintas startup: {0}</value>
     </data>
+    <data xml:space="preserve" name="cameraStart">
+        <value>Mulai kamera ponsel</value>
+    </data>
+    <data xml:space="preserve" name="cameraStop">
+        <value>Hentikan kamera ponsel</value>
+    </data>
+    <data xml:space="preserve" name="cameraAsk">
+        <value>Konfirmasi di ponsel: “Allow this session”.</value>
+    </data>
+    <data xml:space="preserve" name="cameraNoPhone">
+        <value>Hubungkan ponsel dengan kabel USB dan buka PhoneBox di ponsel.</value>
+    </data>
+    <data xml:space="preserve" name="cameraInstall">
+        <value>Pasang PhoneBox Camera di pengaturan terlebih dahulu.</value>
+    </data>
 </root>
