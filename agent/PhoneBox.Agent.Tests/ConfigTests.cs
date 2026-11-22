@@ -633,3 +633,29 @@ public class Hour12ConfigTests
         }
     }
 }
+
+public class PageBarConfigTests
+{
+    [Theory]
+    [InlineData("{}", "dots", "bottom")]
+    [InlineData("""{"display":{"pageBar":"bar","pageBarSide":"left"}}""", "bar", "left")]
+    [InlineData("""{"display":{"pageBar":"auto","pageBarSide":"right"}}""", "auto", "right")]
+    [InlineData("""{"display":{"pageBar":"sideways","pageBarSide":"top"}}""", "dots", "bottom")]
+    [InlineData("""{"display":{"pageBar":null,"pageBarSide":null}}""", "dots", "bottom")]
+    public void APageBarSettingThePanelDoesNotKnowIsSavedAsTheDefault(string inputJson, string bar, string side)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"phonebox-pagebar-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, "{}");
+            var store = new ConfigStore(path);
+            Assert.Null(store.Save(inputJson));
+            Assert.Equal((bar, side), (store.Get().Display.PageBar, store.Get().Display.PageBarSide));
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(path + ".bak");
+        }
+    }
+}

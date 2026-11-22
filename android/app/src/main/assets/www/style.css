@@ -135,10 +135,10 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 #dots.pagebar .dot-ic svg { width: 18px; height: 18px; }
 #dots.pagebar .dot-nm { display: block; min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #dots.pagebar .dot.on { color: var(--text); background: color-mix(in srgb, var(--accent, #2dd4bf) 22%, transparent); }
-#dots.pagebar .dot.aim { box-shadow: inset 0 0 0 1.5px var(--accent, #fff); }
+#dots.pagebar .dot.aim, #dots.pagebar .dot:focus-visible { box-shadow: inset 0 0 0 1.5px var(--accent, #fff); }
 #dots.pagebar .page-all, #dots.pagebar .page-pause { min-width: 32px; min-height: 40px; margin: 0; }
 #dots.pagebar .page-all svg, #dots.pagebar .page-pause svg { width: 13px; height: 13px; }
-body.controls-top #dots.pagebar { bottom: auto; top: 6px; }
+body.controls-top #dots.pagebar:not(.pb-vertical) { bottom: auto; top: 6px; }
 /* down the left or right edge: icon above a short name */
 #dots.pagebar.pb-vertical {
   flex-direction: column; top: 50%; bottom: auto; left: 6px; right: auto; transform: translateY(-50%);

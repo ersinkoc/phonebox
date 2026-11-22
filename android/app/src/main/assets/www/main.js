@@ -1598,6 +1598,7 @@ export function buildDots() {
   pagePauseBtn.type = 'button';
   pagePauseBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (scrubbed) { scrubbed = false; return; } // the touch that opened the page bar
     togglePagePaused();
   });
   // each dot is a finger-sized button that goes to its page; the dot itself stays the small <i> inside
@@ -1614,6 +1615,7 @@ export function buildDots() {
   pageAllBtn.setAttribute('aria-label', t('panel.allPages'));
   pageAllBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (scrubbed) { scrubbed = false; return; } // the touch that opened the page bar
     openOverview();
   });
   dots.style.setProperty('--n', pages.length);
@@ -2066,6 +2068,7 @@ $('dots').addEventListener('pointermove', (e) => {
   if (at === scrubFrom.at) return;
   scrubFrom.at = at;
   $('dots').querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('aim', i === at));
+  $('dots').querySelectorAll('.dot')[at]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); // a bar with more pages than fit
   showPageName(at, true);
   haptic();
 });

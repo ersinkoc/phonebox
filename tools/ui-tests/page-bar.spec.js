@@ -60,3 +60,21 @@ test('shown when the dots are touched: the first touch opens the bar, it closes 
   for (let i = 0; i < 6; i++) await page.clock.fastForward(1000);
   await expect(page.locator('#dots')).not.toHaveClass(/\bpagebar\b/);
 });
+
+test('the touch that opens the bar presses neither the overview nor the pause button', async ({ page }) => {
+  await show(page, { pageBar: 'auto' });
+  await page.locator('#dots .page-all').click();
+  await expect(page.locator('#dots')).toHaveClass(/pagebar/);
+  await expect(page.locator('#overview')).toBeHidden();
+  await page.locator('#dots .page-all').click();
+  await expect(page.locator('#overview')).toBeVisible();
+});
+
+test('a side bar shown by a touch stays centred with the controls at the top', async ({ page }) => {
+  await show(page, { pageBar: 'auto', pageBarSide: 'left', controlsTop: true });
+  await page.locator('#dots .dot').first().click();
+  await expect(page.locator('#dots')).toHaveClass(/pb-vertical/);
+  const bar = await page.locator('#dots').boundingBox();
+  expect(bar.y).toBeGreaterThanOrEqual(0);
+  expect(Math.abs(bar.y + bar.height / 2 - 200)).toBeLessThan(2);
+});
