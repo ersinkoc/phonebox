@@ -497,7 +497,7 @@ nav a.on::before { color: var(--accent); }
       <h2 data-i18n="s.nav.pages">Pages</h2>
       <p class="lead" data-i18n="s.pages.lead">Each page is a 12 × 6 grid of widgets. Pick a page on the left, arrange its widgets on the phone below and set their options.
         Drag pages to reorder them; the first one is the home page the panel returns to when idle. On the phone, swipe, use the volume keys,
-        or tap a dot to go to its page (or slide along the dots to pick one); tap the current dot or the grid button next to the dots, or long-press a page, for an overview of all pages.</p>
+        or tap a dot to go to its page (or slide along the dots to pick one); tap the current dot or the grid button next to the dots, or long-press an empty part of a page, for an overview of all pages.</p>
       <div class="pages-layout">
         <div id="pageTabs"></div>
         <div id="pageEditor">
@@ -723,6 +723,13 @@ nav a.on::before { color: var(--accent); }
         <div class="field" style="max-width:420px"><label data-i18n="s.display.unreachableNightDelay">Minutes before the night screen comes on</label><input type="number" min="1" max="30" data-bind="display.unreachableNightDelayMin" data-type="int"></div>
         <label class="check"><input type="checkbox" data-bind="display.proximityWake"> <span data-i18n="s.display.proximityWake">A hand near the phone wakes the night screen</span></label>
         <label class="check"><input type="checkbox" data-bind="display.controlsTop"> <span data-i18n="s.display.controlsTop">Page dots and the Allow / Deny buttons at the top of the screen</span></label>
+        <div class="row" style="gap:16px;margin-top:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="field" style="margin:0"><label data-i18n="s.display.pageBar">Page navigation</label>
+            <select data-bind="display.pageBar"><option value="dots" data-i18n="s.display.pageBar.dots">Dots</option><option value="auto" data-i18n="s.display.pageBar.auto">Page bar when you touch the dots</option><option value="bar" data-i18n="s.display.pageBar.bar">Page bar, always shown</option></select></div>
+          <div class="field" style="margin:0"><label data-i18n="s.display.pageBarSide">Page bar position</label>
+            <select data-bind="display.pageBarSide"><option value="bottom" data-i18n="s.display.pageBarSide.bottom">Bottom</option><option value="left" data-i18n="s.display.pageBarSide.left">Left</option><option value="right" data-i18n="s.display.pageBarSide.right">Right</option></select></div>
+        </div>
+        <span class="hint" data-i18n="s.display.pageBarHint">The page bar shows each page's icon and name; tap one to go there. Always shown, it takes a strip of the screen and the pages get a little smaller.</span>
       </div>
 
       <div class="card">

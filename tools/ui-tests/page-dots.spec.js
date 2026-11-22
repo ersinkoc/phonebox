@@ -16,6 +16,7 @@ async function show(page, n = 5) {
   }, pagesOf(n));
   await page.goto('/panel/');
   await expect(page.locator('#dots .dot')).toHaveCount(n);
+  await expect(page.locator('body')).not.toHaveClass(/night/); // the default night hours apply until the stored settings do
 }
 
 const activeDot = (page) => page.locator('#dots i').evaluateAll((d) => d.findIndex((x) => x.classList.contains('on')));

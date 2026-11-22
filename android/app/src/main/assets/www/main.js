@@ -76,7 +76,7 @@ export const FALLBACK_PAGES = [{
 export const DEFAULT_CFG = {
   weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
-  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5 },
+  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, pageBar: 'dots', pageBarSide: 'bottom' },
   opencode: { alwaysCountdownSec: 10 },
   pages: FALLBACK_PAGES,
   shortcuts: [],
@@ -1602,7 +1602,7 @@ export function buildDots() {
   });
   // each dot is a finger-sized button that goes to its page; the dot itself stays the small <i> inside
   const dot = (p, i) => {
-    const b = h('button', 'dot', h('i'));
+    const b = h('button', 'dot', h('i'), p.icon ? h('span', 'dot-ic', rich(p.icon)) : null, h('span', 'dot-nm', p.title || `${i + 1}`));
     b.type = 'button';
     b.dataset.i = i;
     b.setAttribute('aria-label', `${i + 1} · ${`${p.icon || ''} ${p.title || ''}`.trim()}`);
@@ -1624,16 +1624,19 @@ export function buildDots() {
 
 export function updateDots() {
   $('dots').querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', i === curPage));
+  $('dots').querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === curPage));
 }
 
 export let snapTimer = 0;
+/** The width of one page: the pager's, which a docked side page bar makes narrower than the window. */
+const pageWidth = () => pager.clientWidth || window.innerWidth;
 export function goPage(i, instant = false) {
   i = Math.max(0, Math.min(pages.length - 1, i));
   if (curPage >= 0 && i !== curPage && pagePaused) setPagePaused(false, { feedback: false, resume: false });
-  if (!instant) { pager.scrollTo({ left: i * window.innerWidth, behavior: 'smooth' }); return; }
+  if (!instant) { pager.scrollTo({ left: i * pageWidth(), behavior: 'smooth' }); return; }
   // scroll-snap-stop: always would stop a programmatic jump at the next page, so snapping is paused for the jump.
   pager.style.scrollSnapType = 'none';
-  pager.scrollLeft = i * window.innerWidth;
+  pager.scrollLeft = i * pageWidth();
   onScroll();
   clearTimeout(snapTimer);
   snapTimer = setTimeout(() => (pager.style.scrollSnapType = ''), 120);
@@ -1906,7 +1909,7 @@ export function flashTitle() {
 }
 
 export function onScroll() {
-  const p = Math.round(pager.scrollLeft / window.innerWidth);
+  const p = Math.round(pager.scrollLeft / pageWidth());
   if (p === curPage) return;
   const prev = curPage;
   curPage = p;
@@ -1961,12 +1964,53 @@ $('overview').addEventListener('click', closeOverview);
 $('ovRules').addEventListener('click', (e) => { e.stopPropagation(); toggleRulesPause(); });
 
 let dotsHoldTimer = 0, dotsHoldStart = null, heldDots = false;
-/** The page whose dot is nearest to x on screen. */
-function dotAt(x) {
+// ---- the page bar: the dots shown as buttons with each page's icon and name (Settings › Display › Page navigation)
+/** dots (default), auto (a bar while the dots are being used) or bar (always, with its own space). */
+export const pageBarMode = () => (['auto', 'bar'].includes(cfg.display?.pageBar) ? cfg.display.pageBar : 'dots');
+const pageBarSide = () => (['left', 'right'].includes(cfg.display?.pageBarSide) ? cfg.display.pageBarSide : 'bottom');
+let pageBarKey = '', pageBarTimer = 0, pageBarOpen = false;
+/** In "auto" mode, opens the bar and closes it again 5 s after the last touch on it. */
+function showPageBar() {
+  pageBarOpen = true;
+  applyPageBar();
+  clearTimeout(pageBarTimer);
+  const close = () => {
+    if (scrubFrom) { pageBarTimer = setTimeout(close, 1000); return; } // not while a finger slides along it
+    pageBarOpen = false;
+    applyPageBar();
+  };
+  pageBarTimer = setTimeout(close, 5000);
+}
+export function applyPageBar() {
+  const mode = pageBarMode(), side = pageBarSide();
+  const docked = mode === 'bar' && pages.length > 1;
+  const shown = docked || (mode === 'auto' && pageBarOpen);
+  const key = `${mode}|${side}|${docked}|${shown}`;
+  if (key === pageBarKey) return;
+  const [wasMode, wasSide, wasDocked] = pageBarKey.split('|');
+  const reflow = (wasDocked === 'true') !== docked || (docked && (wasMode !== mode || wasSide !== side));
+  pageBarKey = key;
+  const b = document.body.classList;
+  b.toggle('pagebar-docked', docked);
+  b.toggle('pagebar-left', side === 'left');
+  b.toggle('pagebar-right', side === 'right');
+  $('dots').classList.toggle('pagebar', shown);
+  $('dots').classList.toggle('pb-vertical', shown && side !== 'bottom');
+  // a docked bar changes the size of the pages: keep the current one in place
+  if (reflow) requestAnimationFrame(() => goPage(curPage, true));
+}
+/** Whether the dots show as a page bar down the left or right edge (slides then go up and down). */
+const barVertical = () => $('dots').classList.contains('pagebar') && $('dots').classList.contains('pb-vertical');
+/** Where a pointer is along the bar, and across it. */
+const along = (e) => (barVertical() ? e.clientY : e.clientX);
+const across = (e) => (barVertical() ? e.clientX : e.clientY);
+/** The page whose dot is nearest to position a along the bar. */
+function dotAt(a) {
+  const v = barVertical();
   let best = 0, gap = Infinity;
   $('dots').querySelectorAll('.dot').forEach((d, i) => {
     const r = d.getBoundingClientRect();
-    const dist = Math.abs(x - (r.left + r.width / 2));
+    const dist = v ? Math.abs(a - (r.top + r.height / 2)) : Math.abs(a - (r.left + r.width / 2));
     if (dist < gap) { gap = dist; best = i; }
   });
   return best;
@@ -1989,10 +2033,15 @@ $('dots').addEventListener('pointerdown', (e) => {
   scrubbed = false;
   clearDotsHold();
   if (pages.length < 2 || dimmed || document.body.classList.contains('waking')) return;
+  if (pageBarMode() === 'auto') {
+    const opening = !$('dots').classList.contains('pagebar');
+    showPageBar();
+    if (opening) { scrubbed = true; return; } // this touch only opens the bar
+  }
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (e.target.closest('.page-pause, .page-all')) return;
   dotsHoldStart = [e.clientX, e.clientY];
-  scrubFrom = { x: e.clientX, y: e.clientY, id: e.pointerId, at: null };
+  scrubFrom = { a: along(e), c: across(e), id: e.pointerId, at: null };
   dotsHoldTimer = setTimeout(() => {
     dotsHoldTimer = 0;
     dotsHoldStart = null;
@@ -2007,13 +2056,13 @@ $('dots').addEventListener('pointermove', (e) => {
   if (e.pointerType === 'mouse' && e.buttons === 0) { endScrub(); return; } // released outside the bar
   if (scrubFrom.at === null) {
     // a touch keeps its target while it moves, so a press that went up or down off the bar is ended here
-    if (Math.abs(e.clientY - scrubFrom.y) > 24) { scrubFrom = null; return; }
-    if (Math.abs(e.clientX - scrubFrom.x) <= 10) return;
+    if (Math.abs(across(e) - scrubFrom.c) > 24) { scrubFrom = null; return; }
+    if (Math.abs(along(e) - scrubFrom.a) <= 10) return;
     try { $('dots').setPointerCapture(e.pointerId); } catch (_) {}
   }
   // a slide that wanders far up or down off the bar is called off: nothing opens when the finger lifts
-  if (Math.abs(e.clientY - scrubFrom.y) > 60) { endScrub(); scrubbed = true; return; }
-  const at = dotAt(e.clientX);
+  if (Math.abs(across(e) - scrubFrom.c) > 60) { endScrub(); scrubbed = true; return; }
+  const at = dotAt(along(e));
   if (at === scrubFrom.at) return;
   scrubFrom.at = at;
   $('dots').querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('aim', i === at));
@@ -2293,6 +2342,7 @@ export function tick() {
   }
   applyBurnIn();
   document.body.classList.toggle('controls-top', cfg.display?.controlsTop === true);
+  applyPageBar();
   if (!nightOn) emit('tick');
   setTimeout(tick, 1000 - (Date.now() % 1000) + 5);
 }

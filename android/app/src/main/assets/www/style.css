@@ -120,6 +120,52 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 #dots .dot:focus-visible i { box-shadow: 0 0 0 1.5px var(--accent, #fff); }
 #dots .dot.aim i { background: rgba(255, 255, 255, 0.9); transform: scale(1.5); }
 #dots i { transition: width .25s, background .25s, transform .15s; }
+/* the page bar (Settings › Display › Page navigation): the same buttons with the page's icon and name */
+#dots .dot-ic, #dots .dot-nm { display: none; }
+#dots.pagebar {
+  gap: 4px; padding: 4px; border-color: var(--line); background: rgba(14, 17, 22, 0.94);
+  border-radius: 16px; bottom: 6px; max-width: calc(100vw - 12px); overflow: hidden;
+}
+#dots.pagebar .dot {
+  width: auto; height: 40px; min-width: 0; max-width: 140px; flex: 0 1 auto; gap: 6px; padding: 0 12px;
+  border-radius: 12px; color: var(--muted); font: inherit;
+}
+#dots.pagebar .dot i { display: none; }
+#dots.pagebar .dot-ic { display: inline-flex; align-items: center; font-size: 18px; line-height: 1; }
+#dots.pagebar .dot-ic svg { width: 18px; height: 18px; }
+#dots.pagebar .dot-nm { display: block; min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dots.pagebar .dot.on { color: var(--text); background: color-mix(in srgb, var(--accent, #2dd4bf) 22%, transparent); }
+#dots.pagebar .dot.aim { box-shadow: inset 0 0 0 1.5px var(--accent, #fff); }
+#dots.pagebar .page-all, #dots.pagebar .page-pause { min-width: 32px; min-height: 40px; margin: 0; }
+#dots.pagebar .page-all svg, #dots.pagebar .page-pause svg { width: 13px; height: 13px; }
+body.controls-top #dots.pagebar { bottom: auto; top: 6px; }
+/* down the left or right edge: icon above a short name */
+#dots.pagebar.pb-vertical {
+  flex-direction: column; top: 50%; bottom: auto; left: 6px; right: auto; transform: translateY(-50%);
+  max-width: none; max-height: calc(100vh - 12px);
+}
+body.pagebar-right #dots.pagebar.pb-vertical { left: auto; right: 6px; }
+#dots.pagebar.pb-vertical .dot { flex-direction: column; justify-content: center; width: 64px; height: auto; min-height: 40px; padding: 6px 4px; gap: 3px; flex: 0 1 auto; }
+#dots.pagebar.pb-vertical .dot-nm { max-width: 58px; font-size: 10.5px; }
+/* always shown: the bar gets its own strip of the screen and the pages the rest */
+body.pagebar-docked { --pb-h: 52px; --pb-w: 76px; }
+body.pagebar-docked:not(.pagebar-left):not(.pagebar-right) #pager,
+body.pagebar-docked:not(.pagebar-left):not(.pagebar-right) .page { height: calc(100vh - var(--pb-h)); }
+body.pagebar-docked:not(.pagebar-left):not(.pagebar-right) .page { padding-bottom: 10px; }
+body.pagebar-docked.controls-top:not(.pagebar-left):not(.pagebar-right) #pager { margin-top: var(--pb-h); }
+body.pagebar-docked #dots.pagebar:not(.pb-vertical) {
+  left: 0; right: 0; bottom: 0; transform: none; max-width: none; height: var(--pb-h); justify-content: center;
+  border-radius: 0; border-width: 1px 0 0; padding: 0 8px;
+}
+body.pagebar-docked.controls-top #dots.pagebar:not(.pb-vertical) { top: 0; bottom: auto; border-width: 0 0 1px; }
+body.pagebar-docked.pagebar-left #pager { margin-left: var(--pb-w); }
+body.pagebar-docked.pagebar-left #pager, body.pagebar-docked.pagebar-right #pager { width: calc(100vw - var(--pb-w)); }
+body.pagebar-docked.pagebar-left .page, body.pagebar-docked.pagebar-right .page { flex-basis: calc(100vw - var(--pb-w)); padding-bottom: 10px; }
+body.pagebar-docked #dots.pagebar.pb-vertical {
+  top: 0; bottom: 0; transform: none; max-height: none; width: var(--pb-w); justify-content: center; overflow-y: auto;
+  border-radius: 0; left: 0; border-width: 0 1px 0 0;
+}
+body.pagebar-docked.pagebar-right #dots.pagebar.pb-vertical { left: auto; right: 0; border-width: 0 0 0 1px; }
 .page-all {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
   border: none; background: transparent; color: rgba(255, 255, 255, 0.5);
