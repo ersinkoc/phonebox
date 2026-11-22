@@ -12,6 +12,12 @@
 - Display brightness: the slider keeps the level it was set to. It used to jump back to the old level for up to
   30 s, until the agent read the monitor again (#360, [andrii-pavlykivskyi](https://github.com/andrii-pavlykivskyi)).
 
+**Android app**
+- A request to the agent that fails (a timeout, a dropped cable) now closes its connection at once instead of
+  leaving it for the garbage collector. On Android 6 each one also held two pipes until then, and the system's TLS
+  code stops the app once 1024 are open; this may be behind the crashes in #389
+  ([d3j4n](https://github.com/d3j4n)).
+
 **Panel**
 - The Spectrum bars and App console widgets stop asking the PC while nobody can see the panel (screen off, another
   app in front): the spectrum no longer keeps the PC capturing its sound, polling every 40 ms once the live stream was

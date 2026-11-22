@@ -283,7 +283,16 @@ class AgentLink(private val context: Context) {
     private fun send(c: HttpURLConnection, method: String, readTimeout: Int = 4000): Reply =
         send(c, method, readTimeout, null, null)
 
-    private fun send(c: HttpURLConnection, method: String, readTimeout: Int, body: ByteArray?, contentType: String?): Reply {
+    private fun send(c: HttpURLConnection, method: String, readTimeout: Int, body: ByteArray?, contentType: String?): Reply = try {
+        exchange(c, method, readTimeout, body, contentType)
+    } catch (e: Exception) {
+        // A failed request frees its socket now instead of when the garbage collector gets to it: on Android 6 each
+        // TLS socket also holds two pipe descriptors, and the system's TLS code aborts the app once 1024 are open (#389).
+        c.disconnect()
+        throw e
+    }
+
+    private fun exchange(c: HttpURLConnection, method: String, readTimeout: Int, body: ByteArray?, contentType: String?): Reply {
         // every POST acts on the computer (a container restart, a Home Assistant switch, a macro): none may run twice
         val controlPost = method == "POST"
         c.instanceFollowRedirects = false
