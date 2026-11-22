@@ -49,6 +49,9 @@
   and Ukrainian ("Clear" no longer reads as "Delete", "Showers" as a bathroom shower). A few other broken strings in
   Hindi, Japanese, Korean, Russian, Thai and Ukrainian are fixed, and the release check now catches English left-overs,
   raw bytes and empty translations (#358, [Yura-Kondratiuk](https://github.com/Yura-Kondratiuk)).
+- Arabic: a native speaker went over the whole translation, and the calendar's weekday headings now follow the
+  panel's language in every language instead of always being English (#376,
+  [ahmedalnimr](https://github.com/ahmedalnimr)).
 
 ## 0.9.27 — 2026-11-21
 
