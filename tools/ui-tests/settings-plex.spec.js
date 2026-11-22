@@ -197,15 +197,19 @@ test('only the newest of two Load clicks writes the list', async ({ page }) => {
 // The page starts with a plex-playlists widget selected and every Plex request held until the test answers it.
 async function inspector(page, { actions = [], ids, controls = connection('https://plex.example.test', 'token-a') } = {}) {
   await page.goto('/settings/#pages');
-  await page.waitForFunction(() => cfg && cfg.pages);
+  await page.waitForFunction(() => typeof saved === 'string' && saved !== '' && cfg && cfg.pages);
   await holdPlexRequests(page);
-  await page.evaluate(([actions, ids, controls]) => {
+  // the playlists are loaded only for the saved connection, so the connection is saved first
+  expect(await page.evaluate(async ([actions, controls]) => {
     cfg.controls = { ...(cfg.controls || {}), ...controls, actions, profiles: [] };
+    return save();
+  }, [actions, controls])).toBe(true);
+  await page.evaluate(([ids]) => {
     const p = curPage();
     p.widgets.push({ id: 'pp-test', type: 'plex-playlists', x: 0, y: 0, w: 6, h: 4, options: ids ? { ids } : {} });
     selWidget = p.widgets.length - 1;
     renderInspector();
-  }, [actions, ids, controls]);
+  }, [ids]);
   const field = page.locator('#inspector .field', { hasText: 'Plex playlists (none ticked = all)' });
   return { field, boxes: field.locator('label.check'), status: field.locator('p.hint'), refresh: field.getByRole('button', { name: 'Refresh' }) };
 }
@@ -446,16 +450,19 @@ test('a live playlist with two controls on its target is not shown as unavailabl
 
 test('edge 15: a Plex playlists widget inside a stack writes its ids to the stack item', async ({ page }) => {
   await page.goto('/settings/#pages');
-  await page.waitForFunction(() => cfg && cfg.pages);
+  await page.waitForFunction(() => typeof saved === 'string' && saved !== '' && cfg && cfg.pages);
   await holdPlexRequests(page);
-  await page.evaluate((controls) => {
+  expect(await page.evaluate(async (controls) => {
     cfg.controls = { ...(cfg.controls || {}), ...controls, actions: [], profiles: [] };
+    return save();
+  }, connection('https://plex.example.test', 'token-a'))).toBe(true);
+  await page.evaluate(() => {
     const p = curPage();
     p.widgets.push({ id: 'st-test', type: 'stack', x: 0, y: 0, w: 6, h: 4, options: { widgets: [{ id: 'pp-in', type: 'plex-playlists', enabled: true, options: {} }] } });
     selWidget = p.widgets.length - 1;
     activeStackSubIdx = 0;
     renderInspector();
-  }, connection('https://plex.example.test', 'token-a'));
+  });
   const field = page.locator('#inspector .stack-sub-config .field', { hasText: 'Plex playlists (none ticked = all)' });
   await expect(field).toBeVisible();
   await answer(page, 0, PLAYLISTS);
@@ -463,4 +470,41 @@ test('edge 15: a Plex playlists widget inside a stack writes its ids to the stac
   const s = await page.evaluate(() => ({ ids: curPage().widgets.at(-1).options.widgets[0].options.ids, actions: cfg.controls.actions.map((a) => a.id) }));
   expect(s.ids).toEqual(['plex-12']);
   expect(s.actions).toEqual(['plex-12']);
+});
+
+test('the checklist asks to save first when the Plex fields are not saved, and loads nothing', async ({ page }) => {
+  const ui = await inspector(page);
+  await answer(page, 0, PLAYLISTS);
+  await expect(ui.boxes).toHaveCount(2);
+  await page.evaluate(() => { cfg.controls.plexToken = 'token-unsaved'; });
+  await ui.refresh.click();
+  await expect(ui.status).toHaveText('Save your changes first');
+  expect(await page.evaluate(() => window.__held.length)).toBe(1);
+});
+
+test('Load Plex playlists asks to save first when the Plex fields are not saved, and sends nothing', async ({ page }) => {
+  const ui = await open(page);
+  await holdPlexRequests(page);
+  await ui.token.fill('token-unsaved');
+  await ui.load.click();
+  await expect(ui.loadStatus).toHaveText('Save your changes first');
+  expect(await page.evaluate(() => window.__held.length)).toBe(0);
+  await expect(ui.picker.locator('option')).toHaveText(['Choose a Plex playlist…']);
+});
+
+test('a failed playlist read shows its reason in the checklist and stores no list', async ({ page }) => {
+  const ui = await inspector(page);
+  await answer(page, 0, { error: 'Check the Plex token in desktop settings' });
+  await expect(ui.status).toHaveText('Check the Plex token in desktop settings');
+  await expect(ui.boxes).toHaveCount(0);
+  expect(await page.evaluate(() => plexList)).toBe(null);
+});
+
+test('a failed playlist read shows its reason under Load Plex playlists', async ({ page }) => {
+  const ui = await open(page);
+  await holdPlexRequests(page);
+  await ui.load.click();
+  await answer(page, 0, { error: 'The Plex server is unavailable' });
+  await expect(ui.loadStatus).toHaveText('The Plex server is unavailable');
+  await expect(ui.picker.locator('option')).toHaveText(['Choose a Plex playlist…']);
 });

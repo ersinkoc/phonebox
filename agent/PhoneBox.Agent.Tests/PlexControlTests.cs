@@ -355,6 +355,27 @@ public sealed class PlexControlTests
         Assert.DoesNotContain(fixture.ToPlayer, c => c.Uri.AbsolutePath.StartsWith("/player/playback"));
     }
 
+    [Theory]
+    [InlineData("/identity")]   // before the play queue is made: nothing more is sent
+    [InlineData("/playQueues")] // after: the queue is left on the old server, and the player gets no command
+    public async Task APlaylistStartStopsWhenTheSettingsChangeDuringIt(string during)
+    {
+        using var fixture = new Fixture(extra: Actions(PlaylistAction));
+        var changed = false;
+        fixture.Override = r =>
+        {
+            if (!changed && r.RequestUri!.AbsolutePath == during) { changed = true; fixture.Write("https://other.example.test", Token, Actions(PlaylistAction)); }
+            return null;
+        };
+        using var plex = fixture.Create();
+        var result = await plex.Act("playlist", "pl1", default);
+        Assert.True(changed);
+        Assert.False(result.Ok); Assert.Equal("The Plex settings changed; try again", result.Error);
+        Assert.Equal(during == "/playQueues" ? 1 : 0, fixture.ToServer.Count(c => c.Uri.AbsolutePath == "/playQueues"));
+        Assert.DoesNotContain(fixture.Calls, c => c.Uri.Host == "other.example.test");
+        Assert.DoesNotContain(fixture.ToPlayer, c => c.Uri.AbsolutePath.StartsWith("/player/playback"));
+    }
+
     [Fact]
     public async Task ASettingsChangeThatSettlesGivesTheNewResult()
     {
@@ -506,7 +527,7 @@ public sealed class PlexControlTests
     {
         using var fixture = new Fixture();
         using var plex = fixture.Create();
-        var list = await plex.Playlists(default);
+        var list = (await plex.Playlists(default)).AsArray();
         Assert.Equal(new[] { "12", "13" }, list.Select(p => p!["id"]!.GetValue<string>()));
         Assert.Equal("Chill", list[0]!["name"]!.GetValue<string>());
         Assert.Contains(fixture.ToServer, c => c.Uri.AbsolutePath == "/playlists" && c.Uri.Query == "?playlistType=audio" && c.HasToken);
@@ -518,8 +539,21 @@ public sealed class PlexControlTests
     {
         using var fixture = new Fixture(null, null);
         using var plex = fixture.Create();
-        Assert.Empty(await plex.Playlists(default));
+        Assert.Empty((await plex.Playlists(default)).AsArray());
         Assert.Empty(fixture.Calls);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, "Check the Plex token in desktop settings")]
+    [InlineData(HttpStatusCode.InternalServerError, "The Plex server is unavailable")]
+    public async Task APlaylistReadThatFailsGivesTheReasonNotAnEmptyList(HttpStatusCode status, string error)
+    {
+        using var fixture = new Fixture();
+        fixture.Override = r => r.RequestUri!.AbsolutePath == "/playlists" ? new HttpResponseMessage(status) : null;
+        using var plex = fixture.Create();
+        var answer = await plex.Playlists(default);
+        Assert.IsType<JsonObject>(answer);
+        Assert.Equal(error, answer["error"]!.GetValue<string>());
     }
 
     [Theory]
@@ -666,7 +700,7 @@ public sealed class PlexControlTests
         using var plex = fixture.Create();
         var result = await plex.Act("playlist", "pl1", default);
         Assert.False(result.Ok); Assert.Equal("Plex sent an answer that could not be read", result.Error);
-        Assert.Empty(await plex.Playlists(default));
+        Assert.Equal("Plex sent an answer that could not be read", (await plex.Playlists(default))["error"]!.GetValue<string>());
     }
 
     [Fact]
@@ -962,7 +996,7 @@ public sealed class PlexControlTests
         using var fixture = new Fixture(pages: $$"""[{"id":"p1","title":"P","enabled":true,"widgets":[{{ClockWidget}}]}]""");
         using var plex = fixture.Create();
         Assert.True((await plex.Check(default))["connected"]!.GetValue<bool>());
-        Assert.NotEmpty(await plex.Playlists(default));
+        Assert.NotEmpty((await plex.Playlists(default)).AsArray());
         Assert.NotEmpty(fixture.ToPlayer); Assert.NotEmpty(fixture.ToServer);
     }
 
@@ -1094,7 +1128,7 @@ public sealed class PlexControlTests
         Assert.Equal("Plex sent an answer that could not be read", snap["error"]!.GetValue<string>());
         var result = await plex.Act("playlist", "pl1", default);
         Assert.False(result.Ok); Assert.Equal("Plex sent an answer that could not be read", result.Error);
-        Assert.Empty(await plex.Playlists(default));
+        Assert.Equal("Plex sent an answer that could not be read", (await plex.Playlists(default))["error"]!.GetValue<string>());
     }
 
     [Fact]

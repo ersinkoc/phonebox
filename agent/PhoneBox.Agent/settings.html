@@ -2093,7 +2093,9 @@ function plexPlaylistsEditor(w, o, set) {
     }
     box.replaceChildren(...rows);
   };
-  const load = () => plexGet('plex/playlists', plexInspectorSeq, status, t('s.cd.plexLoading'), (data, key) => {
+  // the agent reads the saved server: with unsaved Plex fields its list would be filed under the wrong connection
+  const load = () => !plexSaved() ? (plexInspectorSeq.n++, status.textContent = t('s.js.saveFirst')) : plexGet('plex/playlists', plexInspectorSeq, status, t('s.cd.plexLoading'), (data, key) => {
+    if (plexError(data)) { status.textContent = plexError(data); return; }
     plexList = Array.isArray(data) ? data : []; plexListKey = key;
     status.textContent = (loaded() || []).length ? '' : t('s.cd.plexNone');
     plexListChanged();
@@ -3108,6 +3110,8 @@ let plexList = null, plexListKey = null; // the loaded playlists and the connect
 const plexListeners = new Set();
 const plexListChanged = () => plexListeners.forEach((f) => f());
 const plexInspectorSeq = { n: 0 };
+// a failed playlist read answers { error } (a refused token, an unreachable server): it is shown, and no list is stored
+const plexError = (j) => (j && typeof j === 'object' && !Array.isArray(j) && typeof j.error === 'string' && j.error) || null;
 // One local GET to a Plex route: a 30 s limit (the agent can make three requests of 8 s for one check), only the newest
 // request of its control may write, and an answer is dropped when the connection settings changed while it was out.
 const plexGet = async (path, seq, status, busy, done) => {
@@ -3276,7 +3280,8 @@ function renderControlSettings() {
       plexPickers.add(fillPick); fillPick();
       const plexLoadStatus = h('p', { class: 'hint' }), plexLoadSeq = { n: 0 };
       // the button is not held until the answer comes, so a second press starts a newer request
-      const plexLoad = btn(t('s.cd.plexLoadLists'), () => { plexGet('plex/playlists', plexLoadSeq, plexLoadStatus, t('s.cd.plexLoading'), (list, key) => {
+      const plexLoad = btn(t('s.cd.plexLoadLists'), () => { if (!plexSaved()) { plexLoadSeq.n++; plexLoadStatus.textContent = t('s.js.saveFirst'); return; } plexGet('plex/playlists', plexLoadSeq, plexLoadStatus, t('s.cd.plexLoading'), (list, key) => {
+        if (plexError(list)) { plexLoadStatus.textContent = plexError(list); return; }
         plexList = Array.isArray(list) ? list : []; plexListKey = key; plexLoadStatus.textContent = ''; plexRefresh();
       }); });
       const plexBox = h('div', { class: 'field' }, plexLoad, plexPick, plexLoadStatus);

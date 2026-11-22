@@ -23,6 +23,7 @@ public sealed class PlexControl : IDisposable
     private const string Unreadable = "Plex sent an answer that could not be read";
     private const string NoWidget = "Add a Plex widget to an enabled page";
     private const string NoPlaylistWidget = "Add a Plex playlists widget to an enabled page";
+    private const string SettingsChanged = "The Plex settings changed; try again";
     private const int MaxBody = 1_000_000;
 
     /// <summary>An error whose text is safe to show on the phone.</summary>
@@ -237,7 +238,7 @@ public sealed class PlexControl : IDisposable
                 if (Cached(s) is { } cached) return cached;
                 var entry = await Read(s, ct);
                 if (Current() == s) return _snapshot = Keep(entry);
-                if (attempt > 0) return new(new() { ["connected"] = false, ["error"] = "The Plex settings changed; try again" }, s, new Dictionary<string, string>(), _now());
+                if (attempt > 0) return new(new() { ["connected"] = false, ["error"] = SettingsChanged }, s, new Dictionary<string, string>(), _now());
             }
         }
         finally { _readGate.Release(); }
@@ -250,11 +251,14 @@ public sealed class PlexControl : IDisposable
     /// <summary>The same read for the settings page's Check connection. Not gated: the user can check before a Plex widget is on a page. Local only.</summary>
     public async Task<JsonObject> Check(CancellationToken ct) => (await Latest(ct)).Value;
 
-    /// <summary>The audio playlists of the server, for the settings page picker: { id, name }. Not gated; local only.</summary>
-    public async Task<JsonArray> Playlists(CancellationToken ct)
+    /// <summary>
+    /// The audio playlists of the server, for the settings page picker: [{ id, name }]. A failed read is { error } with the
+    /// same text Check shows, so a refused token is not mistaken for a server without playlists. Not gated; local only.
+    /// </summary>
+    public async Task<JsonNode> Playlists(CancellationToken ct)
     {
         var s = Current();
-        if (s.Url.Length == 0 || s.Token.Length == 0) return [];
+        if (s.Url.Length == 0 || s.Token.Length == 0) return new JsonArray();
         try
         {
             var (_, body) = await Send(HttpMethod.Get, s.Url + "/playlists?playlistType=audio", true, s.Token, ct);
@@ -267,7 +271,8 @@ public sealed class PlexControl : IDisposable
             return list;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception ex) when (ex is PlexError or JsonException or InvalidOperationException or FormatException or ArgumentException) { return []; }
+        catch (Exception ex) when (ex is PlexError or JsonException or InvalidOperationException or FormatException or ArgumentException)
+        { return new JsonObject { ["error"] = ex is PlexError ? ex.Message : Unreadable }; }
     }
 
     public async Task<DeckResult> Act(string action, string? id, CancellationToken ct)
@@ -284,7 +289,7 @@ public sealed class PlexControl : IDisposable
                 var entry = await Latest(ct);
                 if (entry.Value["connected"]?.GetValue<bool>() != true) return new(false, entry.Value["error"]?.GetValue<string>() ?? ServerDown);
                 // the queue was read with settings that changed after this call began: its keys may belong to another server
-                if (entry.Settings != s) return new(false, "The Plex settings changed; try again");
+                if (entry.Settings != s) return new(false, SettingsChanged);
                 if (!entry.Keys.TryGetValue(id!, out var key)) return new(false, "That queue item is no longer available");
                 return await Command(s, $"skipTo?type=music&key={Uri.EscapeDataString(key)}&playQueueItemID={id}", ct);
             }
@@ -296,6 +301,8 @@ public sealed class PlexControl : IDisposable
                 if (!Digits(configured.Target)) return new(false, "Choose a Plex playlist in desktop settings");
                 if (s.Url.Length == 0 || s.Token.Length == 0) return new(false, NotConfigured);
                 var machine = await Identity(s, fresh: false, ct);
+                // a settings change during a wait stops the start: the next request would go out with the old address or token
+                if (Current() != s) return new(false, SettingsChanged);
                 var (_, body) = await Send(HttpMethod.Post,
                     $"{s.Url}/playQueues?type=audio&playlistID={configured.Target}&shuffle=0&continuous=0&repeat=0", true, s.Token, ct);
                 var container = Container(body);
@@ -303,6 +310,8 @@ public sealed class PlexControl : IDisposable
                 var selected = Text(container["playQueueSelectedMetadataItemID"]);
                 var key = Digits(selected) ? "/library/metadata/" + selected : Text(Items(container).FirstOrDefault()?["key"]);
                 if (!Digits(queueId) || key is null || !MetadataKey.IsMatch(key)) throw new PlexError(Unreadable);
+                // the queue already made on the old server is left as it is, not started against another connection
+                if (Current() != s) return new(false, SettingsChanged);
                 // the address fields come from the configured server, never from the player or the phone
                 var server = new Uri(s.Url);
                 return await Command(s, "playMedia?type=music&machineIdentifier=" + Uri.EscapeDataString(machine)
