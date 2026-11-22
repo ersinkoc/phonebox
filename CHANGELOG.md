@@ -15,8 +15,9 @@
   with the track's title, artist, album and length, once per song, and keeps the answers in memory only (#339, #378,
   [1Cellu](https://github.com/1Cellu)).
 - Discord: star servers and voice channels on the phone to keep them at the top, and see who is in your favourite
-  voice channels. The agent reads only the starred channels (at most 20), and only while a Discord widget with
-  **Channels** on is on an enabled page (#356, #364, [AlberBM](https://github.com/AlberBM)).
+  voice channels. The agent reads the starred channels first, then those of favourite servers without starred ones,
+  at most 20 in all, and only while a Discord widget with **Channels** on is on an enabled page (#356, #364,
+  [AlberBM](https://github.com/AlberBM)).
 
 **Agent**
 - Phone app updates: a phone that cannot take a streamed install (`splice failed: EINVAL`, seen with Android 15 on a
