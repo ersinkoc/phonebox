@@ -69,6 +69,10 @@
 - Translations: about 110 machine-translated labels that said something else entirely are corrected in 20 languages.
   For example, the Turkish rule template "🌅 Workday mornings → daily page" named a volleyball player, "Box 4-4-4-4"
   breathing read 4-4-4-3 in most languages, and Russian "🔇 Mute" said "Lock".
+- Translations: the Power controls, Push to talk, virtual desktop, Lock and Display off buttons, the panic button, the
+  trackpad hint, the Stop buttons, the Sun & moon, Moon and Battery care titles and the GPU chips were English in every
+  language; they are translated now, and in Portuguese (Brazil) also the moon phases and the Control Deck states (#415,
+  [rsiqueira01](https://github.com/rsiqueira01)).
 
 **Tools**
 - `tools/demo-server.py` refuses a chunked request body (411) and closes the connection, instead of answering without
