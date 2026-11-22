@@ -19,10 +19,10 @@
   at most 20 in all, and only while a Discord widget with **Channels** on is on an enabled page (#356, #364,
   [AlberBM](https://github.com/AlberBM)).
 - Plex queue: a widget shows what a Plex Companion player such as Caldera Amp is playing and what comes next; tap a
-  track to play it. Set it up in **Settings › Control Deck › Plex music control** (server address, token and player
-  address, with **Check Plex connection**). Off until a server and a token are entered; the token goes only to your
-  Plex server, and requests are made only while an enabled page shows the widget (#379, #409,
-  [snachodog](https://github.com/snachodog)).
+  track to play it. Set it up in **Settings › General › Control Deck › Plex music control** (server address, token
+  and player address, with **Check Plex connection**). Off until a server and a token are entered; the token goes
+  only to your Plex server. The widget's requests are made only while an enabled page shows it; **Check Plex
+  connection** sends one check each time you press it (#379, #409, [snachodog](https://github.com/snachodog)).
 
 **Agent**
 - Phone app updates: a phone that cannot take a streamed install (`splice failed: EINVAL`, seen with Android 15 on a
