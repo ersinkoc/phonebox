@@ -50,9 +50,9 @@ people who proposed or prototyped something are credited in the [changelog](../C
   an opt-in quota source, off by default, that runs `ai-usagebar usage --json` as a fixed command without a shell,
   with a timeout and an output cap, and shows accounts such as `claude@personal` and `claude@work` as separate cards.
   When it fails, the card says so; it never falls back to the built-in readers.
-- **Plex queue and playlists** ([#379](https://github.com/ersinkoc/phonebox/issues/379)) for a Plex Companion player
-  such as Caldera Amp, off by default, in two pull requests: first the settings, the connection and a queue widget,
-  then playlists. The token goes only to the Plex server, and the phone sends ids only.
+- **Plex playlists** ([#379](https://github.com/ersinkoc/phonebox/issues/379)), the second of the two pull requests:
+  a playlist action, a playlist picker and a Plex playlists widget, on top of the Plex queue widget (#409). The token
+  goes only to the Plex server, and the phone sends ids only.
 - **A white theme and an e-ink option** ([#383](https://github.com/ersinkoc/phonebox/issues/383)), in two pull
   requests: a pure white theme, then an "E-ink screen" option, off by default, with no pulsing or animations and a
   slower refresh for fast widgets.
