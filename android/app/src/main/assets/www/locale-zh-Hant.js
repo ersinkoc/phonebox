@@ -1001,7 +1001,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Big clock and date; optional status line and current weather.": "大型時鐘和日期;可選狀態行和當前天氣。",
       "Big now-playing card with clock and forecast.": "帶有時鐘和預報的大型即時遊戲卡片 。",
       "Big value": "很有價值",
-      "Box 4-4-4-4": "4-4-4-3的盒子",
+      "Box 4-4-4-4": "箱式 4-4-4-4",
       "Break minutes": "休息一分鐘",
       "Breathe": "呼吸",
       "Breathing exercise, a clock face and a quote.": "呼吸訓練 ， 表盤和一句話 。",

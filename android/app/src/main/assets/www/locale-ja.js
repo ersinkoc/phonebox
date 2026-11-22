@@ -1143,7 +1143,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "ボタンをショートカットのアップロードした画像で埋める",
       "Fill the widget (crop)": "ウィジェットを埋め込む (切り取り)",
       "Fire (red · orange · yellow)": "火（赤・オレンジ・黄色）",
-      "First (5-hour session / weekly)": "初級（5時間／週1回）",
+      "First (5-hour session / weekly)": "1番目（5時間セッション／週間）",
       "Fit": "フィット",
       "Flat surfaces": "平面",
       "Focus": "フォーカス",
@@ -1390,7 +1390,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Scroll speed": "スクロール速度",
       "Scrolling": "スクロール",
       "Seamless panel": "シームレスパネル",
-      "Second (weekly)": "週2回",
+      "Second (weekly)": "2番目（週間）",
       "Second GPU (e.g. integrated)": "第二 GPU 統合",
       "Second hand": "セカンドハンド",
       "See friends' avatars, online state, last seen time and current game (needs a Steam Web API key; see docs/STEAM.md).": "友達のアバター、オンライン状態、最後に見た時間、現在のゲームを表示します。 Steam Web API キー; 参照 docs/STEAM.md).",
@@ -1500,9 +1500,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "The latest messages sent with POST /api/notify.": "POST /api/notify で送られた最近のメッセージ。",
       "The phone's battery with the band Battery care keeps it in (Settings › General).": "バッテリーケアバンドを持つ携帯電話のバッテリーは、そのままにします（設定 › 一般）。",
       "The time in words, the moon, tomorrow's weather and the phone's battery.": "時間を言葉で表す 月 明日の天気 電話のバッテリー",
-      "The time in words, to the nearest five minutes: \"quarter past ten\".": "時間は言葉で、最も近い５分に：「10時45分」。",
+      "The time in words, to the nearest five minutes: \"quarter past ten\".": "時刻を言葉で、5分単位で表示：「10時15分」。",
       "The voice channel or call you are in with who is there, mute / deafen / leave, a list of voice channels to join, and recent notifications (needs the Discord app on the PC).": "音声チャンネルまたは通話中の人との会話、ミュート/デファン/離脱、加入する音声チャンネルのリスト、最近の通知（PC上の Discord アプリケーションが必要）。",
-      "Third (weekly · model)": "3（週刊・モデル）",
+      "Third (weekly · model)": "3番目（週間・モデル）",
       "Third GPU": "サード・GPU",
       "This month with today highlighted.": "今日をハイライトしたこの月",
       "Tick things off; optionally starts fresh every day.": "チェックを外す;オプションは毎日新しいものから始めます。",
@@ -1912,7 +1912,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% of limit": "{n}制限の %",
       "{n}% power": "{n}電力の%",
       "{n}-day": "{n}あっ あの...。",
-      "{n}-hour": "{n}1時間",
+      "{n}-hour": "{n}時間",
       "Add a Plex widget to an enabled page": "有効なページに Plex ウィジェットを追加してください"
     }
   }

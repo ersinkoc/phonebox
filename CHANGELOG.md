@@ -60,6 +60,9 @@
   example the computer is off or asleep). It ends when the agent answers again, unless the scheduled night screen is
   on anyway. The **Wake the PC** button stays reachable over it (#347, #357,
   [CrippledHelix](https://github.com/CrippledHelix)).
+- Translations: about 110 machine-translated labels that said something else entirely are corrected in 20 languages.
+  For example, the Turkish rule template "🌅 Workday mornings → daily page" named a volleyball player, "Box 4-4-4-4"
+  breathing read 4-4-4-3 in most languages, and Russian "🔇 Mute" said "Lock".
 
 **Tools**
 - `tools/demo-server.py` refuses a chunked request body (411) and closes the connection, instead of answering without
