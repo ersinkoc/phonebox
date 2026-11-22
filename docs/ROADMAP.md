@@ -37,11 +37,6 @@ people who proposed or prototyped something are credited in the [changelog](../C
   General, all on by default, that the Clock's status line, Quotas and the Quota ring's picker follow unless a widget
   sets its own providers.
 
-- **More of Discord on the panel** ([#356](https://github.com/ersinkoc/phonebox/issues/356)), in separate pull
-  requests: a Voice Activity / Push-to-Talk toggle; favourite servers and channels picked on the phone; who is in each
-  voice channel; a global **Allow Discord control** setting (off by default) for custom widgets and shortcuts. Later,
-  each behind its own switch, off by default and kept in memory only: a read-only chat tab and unread dots
-  (`messages.read`), and screen sharing (`rpc.screenshare.*`).
 - **Phone flashlight from the night screen** ([#369](https://github.com/ersinkoc/phonebox/issues/369)): a torch icon,
   off by default, that turns on the phone's flash through Android's `CameraManager.setTorchMode` (no camera
   permission) or fills the screen with white at full brightness; it turns off with a tap, after a set time, or when
@@ -64,6 +59,11 @@ people who proposed or prototyped something are credited in the [changelog](../C
 
 Agreed in principle, not being built in-house. Say so on the issue before starting.
 
+- **Read-only Discord chat on the phone** ([#356](https://github.com/ersinkoc/phonebox/issues/356)): the text chat of
+  the voice channel you're in or a picked channel, with new-message dots, behind its own switch (off by default,
+  `messages.read`, message text in memory only). The code is written and reviewed in
+  [#368](https://github.com/ersinkoc/phonebox/pull/368) (by AlberBM), but was never tried against the real Discord
+  app: it needs someone who can test it there, then a rebase onto the screen-share scope code from #416.
 - **Typing from the phone's keyboard**: a text field and a row of keys (Enter, Backspace, Esc, Tab, arrows, optionally
   Ctrl / Alt / Shift) on the Dictation widget, behind its **Type the text on the computer** switch and through
   `/api/dictate`; nothing logged or stored ([#320](https://github.com/ersinkoc/phonebox/issues/320)).
