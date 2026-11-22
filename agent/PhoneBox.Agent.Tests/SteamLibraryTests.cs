@@ -508,6 +508,37 @@ public sealed class SteamLibraryTests : IDisposable
     }
 
     [Fact]
+    public async Task TurningStartingOffWhileTheFilesAreReadStopsTheStart()
+    {
+        var slow = Path.Combine(_dir, "Slow");
+        File.WriteAllText(Path.Combine(Root, "steamapps", "libraryfolders.vdf"), $$"""
+            "libraryfolders" { "0" { "path" "{{Quote(Root)}}" } "1" { "path" "{{Quote(slow)}}" } }
+            """);
+        Manifest(Root, "570", "Dota 2");
+        var store = Config();
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var library = new SteamLibrary(store, NullLogger<SteamLibrary>.Instance)
+        {
+            FindRoot = () => Root, RunningAppId = _ => 0, StartProcess = _started.Add,
+            FolderExists = path =>
+            {
+                if (path.StartsWith(slow, StringComparison.OrdinalIgnoreCase)) { entered.Set(); release.Wait(TimeSpan.FromSeconds(10)); }
+                return Directory.Exists(path);
+            },
+        };
+
+        // the start reads the installed list again; while a slow drive holds that up, the option is turned off
+        var start = Task.Run(() => library.Launch(null, "p/w", "570"));
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
+        Assert.Null(store.Save("""{"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{"id":"w","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":{"allowLaunch":false}}]}]}"""));
+        release.Set();
+
+        Assert.Equal("off", (await start.WaitAsync(TimeSpan.FromSeconds(10)))?.Code);
+        Assert.Empty(_started);
+    }
+
+    [Fact]
     public void AnInstalledGameIsHandedToSteamsUrlHandlerByItsOwnNumber()
     {
         Manifest(Root, "570", "Dota 2");
