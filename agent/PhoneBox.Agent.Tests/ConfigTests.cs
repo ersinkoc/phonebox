@@ -374,6 +374,17 @@ public class ConfigTests
         Assert.Equal(1440, c.Rules[0].Value);
         Assert.Equal("info", c.Rules[0].Level);
     }
+
+    [Theory]
+    [InlineData("""{"display":{"standby":"power"}}""", "off")]                          // no phone named: the phone is told off
+    [InlineData("""{"deviceSerial":"FAKE1","display":{"standby":"power"}}""", "power")]
+    public void StandbyReachesThePhoneOnlyWithANamedPhone(string json, string expected)
+    {
+        var c = Load(json);
+        var display = JsonSerializer.SerializeToElement(c.ToPublic(), ConfigStore.WriteOpts).GetProperty("display");
+        Assert.Equal(expected, display.GetProperty("standby").GetString());
+        Assert.Equal("power", c.Display.Standby); // the saved value is unchanged
+    }
 }
 
 public class LanTests

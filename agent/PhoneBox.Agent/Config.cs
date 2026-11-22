@@ -82,7 +82,7 @@ public sealed class AgentConfig
         weather = Weather,
         codexBar = CodexBar,
         night = Night,
-        display = Display,
+        display = Display.ForPhone(DeviceSerial),
         // this device's own home page (Settings › Phones), when it has one among the pages it shows
         homePage = HomePageFor(deviceId),
         wallpaperRev = wallpaperRev?.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -109,6 +109,7 @@ public sealed class AgentConfig
         // OpenCode prompts: how long the Allow always button waits before it can be pressed (it saves a pattern)
         opencode = new { OpenCode.AlwaysCountdownSec },
     };
+
 
     /// <summary>Ending processes is allowed when an enabled page has a processes widget that allows it.</summary>
     public IEnumerable<WidgetConfig> Widgets(bool enabledPagesOnly = false) => Pages.Where(p => !enabledPagesOnly || p.Enabled)
@@ -218,6 +219,18 @@ public sealed class DisplayConfig
     /// <summary>Seconds the computer may be absent before the hold is released. Debounces a host reboot and a
     /// network hiccup; the system's own screen-off timeout is what actually sleeps the display.</summary>
     public int StandbyGraceSec { get; set; } = 30;
+        /// <summary>
+    /// The display settings as the phone should see them. Standby only works with a phone named in Settings
+    /// (deviceSerial), so without one the phone is told "off": the app must not release its keep-awake hold
+    /// when the agent will not write the matching system setting. The saved value is left alone.
+    /// </summary>
+    public DisplayConfig ForPhone(string? deviceSerial)
+    {
+        if (Standby == "off" || !string.IsNullOrEmpty(deviceSerial)) return this;
+        var copy = (DisplayConfig)MemberwiseClone();
+        copy.Standby = "off";
+        return copy;
+    }
     /// <summary>landscape, portrait or auto (follow the phone). In portrait the widgets are arranged automatically.</summary>
     public string Orientation { get; set; } = "landscape";
     /// <summary>

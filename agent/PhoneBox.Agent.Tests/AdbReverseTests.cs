@@ -584,6 +584,30 @@ public sealed class AdbReverseTests : IDisposable
         Assert.Equal(secondPhone ? 1 : 0, calls.Count(call => call == "-s FAKE2 " + awake));
     }
 
+    [Theory]
+    [InlineData("", "7")]       // no phone named: standby does nothing, today's value stays
+    [InlineData("FAKE1", "0")]  // the named phone gets the standby value
+    public async Task StandbyOnlyActsOnTheNamedPhone(string deviceSerial, string stayOn)
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";
+        var fake = FakeAdb(["FAKE1", "FAKE2"], rule, null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, deviceSerial, display = new { homeScreen = false, keepAwake = true, standby = "power" } }));
+        var store = new ConfigStore(path);
+        using var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+
+        var calls = Calls();
+        Assert.Contains("-s FAKE1 shell settings put global stay_on_while_plugged_in " + stayOn, calls);
+        if (deviceSerial == "")
+        {
+            Assert.DoesNotContain(calls, c => c.Contains("stay_on_while_plugged_in 0"));
+            Assert.DoesNotContain(calls, c => c.Contains("dismiss-keyguard"));
+        }
+        else Assert.DoesNotContain(calls, c => c.StartsWith("-s FAKE2 "));
+    }
+
     [Fact]
     public async Task FailedReverseQueryDoesNotBlockNextPhone()
     {

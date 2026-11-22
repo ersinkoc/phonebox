@@ -448,29 +448,42 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// its own keyguard while the display is off, and Android 10+ may refuse the sleeping app's request to
     /// come forward ("Background activity start" is logged and blocked) - shell commands via adb are neither.
     /// </summary>
+    
     private async Task LightPanel(string device, string adb, string why, CancellationToken ct)
-{
-    // A newly plugged-in phone must not light up while the computer is locked.
-    if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
     {
-        await SyncSessionAsync(ct, force: true);
-        return;
+        // A newly plugged-in phone must not light up while the computer is locked.
+        if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
+        {
+            await SyncSessionAsync(ct, force: true);
+            return;
+        }
+
+        await Adb(adb, ["-s", device, "shell", "input", "keyevent", "KEYCODE_WAKEUP"], ct);
+
+        // Settings › Display › wake and unlock: the keyguard is dismissed only when the phone reports it is
+        // showing one. A PIN, pattern or password is not passed: "wm dismiss-keyguard" only steps over
+        // swipe-to-unlock screens.
+        if (cfg.Get().Display.WakeOnUnlock && await KeyguardShowingAsync(adb, device, ct))
+        {
+            // Optional: a dismiss that fails must not keep the panel from opening.
+            try
+            {
+                await Adb(adb, ["-s", device, "shell", "wm", "dismiss-keyguard"], ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
+            {
+                log.LogInformation("{Device}: the lock screen could not be stepped over ({Why})", device, ex.Message);
+            }
+        }
+
+        await Adb(adb, ["-s", device, "shell", "am", "start", "-n", PanelActivity], ct);
+        log.LogInformation("{Device}: {Why}, panel opened", device, why);
     }
-    await Adb(adb, ["-s", device, "shell", "input", "keyevent", "KEYCODE_WAKEUP"], ct);
-    // Settings › Display › wake and unlock: the keyguard is dismissed only when the phone reports it is
-    // showing one. A PIN, pattern or password is not passed: "wm dismiss-keyguard" only steps over
-    // swipe-to-unlock screens.
-    if (cfg.Get().Display.WakeOnUnlock && await KeyguardShowingAsync(adb, device, ct))
-    {
-        // optional: a dismiss that fails must not keep the panel from opening
-        try { await Adb(adb, ["-s", device, "shell", "wm", "dismiss-keyguard"], ct); }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
-        { log.LogInformation("{Device}: the lock screen could not be stepped over ({Why})", device, ex.Message); }
-    }
-    await Adb(adb, ["-s", device, "shell", "am", "start", "-n", PanelActivity], ct);
-    log.LogInformation("{Device}: {Why}, panel opened", device, why);
-}
+
     /// <summary>
     /// Lights a phone only the first time this agent process sees it, and only while standby is on. With
     /// standby off nothing here touches the phone; it is still remembered, so turning standby on later does
@@ -479,9 +492,21 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
     private async Task LightIfNew(string device, string adb, string why, CancellationToken ct)
     {
-        if (_seen.Add(device) && cfg.Get().Display.Standby != "off")
+        if (_seen.Add(device) && StandbyOn(device))
             await LightPanel(device, adb, why, ct);
     }
+
+    private bool _standbyNoSerialLogged;
+    /// <summary>
+    /// Standby changes a phone's system power setting and dismisses its keyguard, so it only ever acts on the
+    /// phone the user named in Settings (deviceSerial). With no phone named it does nothing at all.
+    /// </summary>
+    private bool StandbyOn(string device)
+    {
+        var c = cfg.Get();
+        return c.Display.Standby != "off" && !string.IsNullOrEmpty(c.DeviceSerial) && c.DeviceSerial == device;
+    }
+
     private async Task ApplyScreenAsync(string device, bool locked, CancellationToken ct)
     {
         var adb = FindAdb(cfg.Get().AdbPath);
@@ -699,7 +724,17 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // today's behaviour, unchanged - and 0 the moment standby is on. The value rides in the key, so flipping
         // the setting re-applies it without restarting the agent.
         var keepAwake = cfg.Get().Display.KeepAwake;
-        var stayOn = cfg.Get().Display.Standby == "off" ? "7" : "0";
+        // Standby only acts on a phone the user named. devices was filtered by deviceSerial above, so with a
+        // serial set it holds exactly that phone, and with none set standby stays off for everyone.
+        var standby = cfg.Get().Display.Standby != "off" && !string.IsNullOrEmpty(serial);
+        if (cfg.Get().Display.Standby != "off" && string.IsNullOrEmpty(serial))
+        {
+            if (!_standbyNoSerialLogged)
+                log.LogWarning("Standby is on but no phone is chosen (deviceSerial): standby does nothing until one is");
+            _standbyNoSerialLogged = true;
+        }
+        else _standbyNoSerialLogged = false;
+        var stayOn = standby ? "0" : "7";
         // the applied-state key carries which branch applied it: the keep-awake-off branch writes only
         // stay_on, and sharing one key would let that half-apply silence the screen-saver writes later
         if (keepAwake)
@@ -714,7 +749,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                 log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
             }
         }
-        else if (cfg.Get().Display.Standby != "off")
+        else if (standby)
         {
             // "keep awake off" used to mean "never touch the phone's power settings" - but one stale value
             // still breaks standby with that off: stay_on_while_plugged_in survives reboots, an earlier
