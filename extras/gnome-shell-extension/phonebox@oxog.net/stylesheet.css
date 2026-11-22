@@ -1,0 +1,7 @@
+.phonebox-indicator-label {
+  font-feature-settings: "tnum";
+}
+
+.phonebox-indicator-offline {
+  color: rgba(255, 255, 255, 0.45);
+}

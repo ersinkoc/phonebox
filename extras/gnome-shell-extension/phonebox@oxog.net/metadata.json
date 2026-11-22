@@ -1,0 +1,7 @@
+{
+  "uuid": "phonebox@oxog.net",
+  "name": "PhoneBox",
+  "description": "PhoneBox in the top bar: CPU and Claude quota at a glance, and the full panel one click away. Needs a running PhoneBox agent and the PhoneBox desktop widget (extras/gnome-widget).",
+  "shell-version": ["45", "46", "47", "48"],
+  "url": "https://github.com/ersinkoc/phonebox"
+}
