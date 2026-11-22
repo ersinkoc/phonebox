@@ -40,7 +40,7 @@ public sealed partial class LyricsService : IDisposable
         _config = config;
         _log = log;
         _clock = clock ?? (() => Environment.TickCount64);
-        _http = new HttpClient(handler ?? new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(10) })
+        _http = new HttpClient(handler ?? new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(10), AllowAutoRedirect = false })
         {
             BaseAddress = new Uri(Host),
             Timeout = TimeSpan.FromSeconds(10),
@@ -104,7 +104,7 @@ public sealed partial class LyricsService : IDisposable
         try
         {
             result = await Fetch(title, artist, album, seconds);
-            keep = result.Status == "ok" ? 6 * 3600_000L : 30 * 60_000L;
+            keep = result.Status switch { "ok" => 6 * 3600_000L, "off" => 0, _ => 30 * 60_000L };
             lock (_gate) _failures = 0;
         }
         catch (LrclibPausedException paused)
@@ -170,7 +170,7 @@ public sealed partial class LyricsService : IDisposable
     private async Task<LyricsResult> Fetch(string title, string artist, string album, int seconds)
     {
         // the exact match first (it needs the album and the length), then a search by title and artist
-        if (album.Length > 0 && seconds > 0 && artist.Length > 0)
+        if (album.Length > 0 && seconds is > 0 and <= 3600 && artist.Length > 0)
         {
             var url = $"/api/get?track_name={Uri.EscapeDataString(title)}&artist_name={Uri.EscapeDataString(artist)}"
                 + $"&album_name={Uri.EscapeDataString(album)}&duration={seconds}";
@@ -184,12 +184,15 @@ public sealed partial class LyricsService : IDisposable
         }
         // a failure of another lookup may have started a back-off meanwhile: no second request during it
         if (PausedFor() is > 0 and var left) throw new LrclibPausedException(left);
+        // no widget wants lyrics any more (its option was turned off while the exact lookup ran): no second request
+        if (!_config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "lyrics" && w.Bool("lookup") == true))
+            return new LyricsResult("off");
         var search = $"/api/search?track_name={Uri.EscapeDataString(title)}" + (artist.Length > 0 ? $"&artist_name={Uri.EscapeDataString(artist)}" : "");
         using (var res = await _http.GetAsync(search))
         {
             if (!res.IsSuccessStatusCode) throw Refused(res);
             using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-            return Best(doc.RootElement, seconds) ?? new LyricsResult("notfound");
+            return Best(doc.RootElement, seconds, title, artist) ?? new LyricsResult("notfound");
         }
     }
 
@@ -201,14 +204,24 @@ public sealed partial class LyricsService : IDisposable
         return new LrclibRefusedException((int)res.StatusCode, wait is { Ticks: > 0 } ? wait : null);
     }
 
-    /// <summary>Of LRCLIB's search results: timed lyrics before plain ones, and within those the length closest to the track's.</summary>
-    internal static LyricsResult? Best(JsonElement results, int seconds)
+    /// <summary>
+    /// Of LRCLIB's search results: the same title and artist first (the search matches keywords, so "Home" also finds
+    /// "Coming Home"), then timed lyrics before plain ones, then the length closest to the track's.
+    /// </summary>
+    internal static LyricsResult? Best(JsonElement results, int seconds, string title = "", string artist = "")
     {
         if (results.ValueKind != JsonValueKind.Array) return null;
+        static string Field(JsonElement e, string name) =>
+            e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? (v.GetString() ?? "").Trim() : "";
+        int Same(JsonElement e) =>
+            (title.Length > 0 && string.Equals(Field(e, "trackName"), title, StringComparison.OrdinalIgnoreCase) ? 2 : 0)
+            + (artist.Length > 0 && string.Equals(Field(e, "artistName"), artist, StringComparison.OrdinalIgnoreCase) ? 1 : 0);
         return results.EnumerateArray()
+            .Where(e => e.ValueKind == JsonValueKind.Object)
             .Select(e => (Entry: e, Result: FromEntry(e), Off: e.TryGetProperty("duration", out var d) && d.ValueKind == JsonValueKind.Number ? Math.Abs(d.GetDouble() - seconds) : 999))
             .Where(x => x.Result is not null && (seconds <= 0 || x.Off <= 5))
-            .OrderByDescending(x => x.Result!.Synced is not null)
+            .OrderByDescending(x => Same(x.Entry))
+            .ThenByDescending(x => x.Result!.Synced is not null)
             .ThenBy(x => seconds > 0 ? x.Off : 0)
             .Select(x => x.Result)
             .FirstOrDefault();

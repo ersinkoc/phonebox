@@ -21,13 +21,13 @@ test('LRC lyrics are read in time order and the sung line is found by position',
   await page.goto('/panel/');
   const out = await page.evaluate(async () => {
     const { parseLrc, lyricAt } = await import('./widgets/lyrics.js');
-    const lines = parseLrc('[ar: Someone]\n[00:10.50] second\n[00:01.00][01:02.00] chorus\nno time\n[00:20] third\n[00:30:25] colon');
+    const lines = parseLrc('[ar: Someone]\n[00:10.50] second\n[00:01.00][01:02.00] chorus\nno time\n[00:20] third\n[00:30:25] colon\n[00:40.00] sing [with me]');
     return { lines, at: [lyricAt(lines, 0), lyricAt(lines, 1000), lyricAt(lines, 10_499), lyricAt(lines, 10_500), lyricAt(lines, 99_000)] };
   });
   expect(out.lines).toEqual([
-    { ms: 1000, text: 'chorus' }, { ms: 10500, text: 'second' }, { ms: 20000, text: 'third' }, { ms: 30250, text: 'colon' }, { ms: 62000, text: 'chorus' },
+    { ms: 1000, text: 'chorus' }, { ms: 10500, text: 'second' }, { ms: 20000, text: 'third' }, { ms: 30250, text: 'colon' }, { ms: 40000, text: 'sing [with me]' }, { ms: 62000, text: 'chorus' },
   ]);
-  expect(out.at).toEqual([-1, 0, 0, 1, 4]);
+  expect(out.at).toEqual([-1, 0, 0, 1, 5]);
 });
 
 test('the Synced lyrics widget follows the song, shows plain lyrics and says when there are none', async ({ page }) => {

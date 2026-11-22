@@ -7,9 +7,10 @@ import { W } from '../registry.js';
 export function parseLrc(text) {
   const lines = [];
   for (const raw of String(text || '').split(/\r?\n/)) {
-    const stamps = [...raw.matchAll(/\[(\d{1,3}):(\d{1,2}(?:[.:]\d{1,3})?)\]/g)];
-    if (!stamps.length) continue;
-    const words = raw.replace(/\[[^\]]*\]/g, '').trim();
+    const lead = raw.match(/^\s*(?:\[\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?\]\s*)+/);
+    if (!lead) continue;
+    const stamps = [...lead[0].matchAll(/\[(\d{1,3}):(\d{1,2}(?:[.:]\d{1,3})?)\]/g)];
+    const words = raw.slice(lead[0].length).trim();
     // a line sung twice carries two times: "[00:10.00][01:20.00] chorus"
     for (const m of stamps) lines.push({ ms: Math.round((+m[1] * 60 + parseFloat(m[2].replace(':', '.'))) * 1000), text: words });
   }
@@ -37,10 +38,10 @@ W.lyrics = {
     const list = h('div', 'ly-list');
     const note = h('div', 'ly-note');
     box.append(h('div', 'w-title', o.title || t('w.lyrics.title')), list, note, h('div', 'ly-credit', 'LRCLIB'));
-    const offset = Number(o.offset) || 0; // ms: a positive value shows the lines earlier
+    const offset = Math.max(-5000, Math.min(5000, Number(o.offset) || 0)); // ms: a positive value shows the lines earlier
     const plainToo = o.plain !== false;
     let track = '', result = null, lines = [], rows = [], shown = -2, loading = false, retryAt = 0, timedShown = null, requestGen = 0;
-    const trackKey = (m) => (m?.title ? [m.app, m.title, m.artist, m.durMs].join('\n') : '');
+    const trackKey = (m) => (m?.title ? [m.app, m.title, m.artist, m.album, m.durMs].join('\n') : '');
     // a player that reports no timeline (no length) gives no position to follow
     const hasPosition = () => Number(media?.durMs) > 0;
     const say = (text) => { note.textContent = text; note.hidden = !text; };
@@ -108,6 +109,7 @@ W.lyrics = {
       lines = result.synced ? parseLrc(result.synced) : [];
       paint();
     };
+    paint(); // nothing playing yet: the idle note until the first update brings a track
     return {
       update(kind) {
         const key = trackKey(D.state?.media);

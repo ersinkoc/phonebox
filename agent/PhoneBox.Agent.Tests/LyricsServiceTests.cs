@@ -139,6 +139,30 @@ public sealed class LyricsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ARecordingLongerThanAnHourGoesStraightToTheSearch()
+    {
+        // /api/get takes 1-3600 s: a longer one would be refused there and start a back-off for every song
+        var lrclib = new Lrclib(_ => Json("[]"));
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib);
+        Assert.Equal("notfound", (await Ask(lyrics, Track("Live Set", "Artist", "Album", 3_700_000))).Status);
+        Assert.StartsWith("/api/search?", Assert.Single(lrclib.Asked));
+    }
+
+    [Fact]
+    public void TheSearchPrefersTheSameSongToABetterFormatAndSkipsNonObjects()
+    {
+        // the search matches keywords: a timed "Coming Home" must not beat a plain "Home" by the same artist
+        using var doc = JsonDocument.Parse("""
+            [null, 7,
+             {"trackName":"Coming Home","artistName":"Example Band","duration":200,"syncedLyrics":"[00:01.00] other song"},
+             {"trackName":"Home","artistName":"Example Band","duration":201,"plainLyrics":"this song"}]
+            """);
+        var best = LyricsService.Best(doc.RootElement, 200, "Home", "Example Band");
+        Assert.Equal("this song", best?.Plain);
+        Assert.Null(best?.Synced);
+    }
+
+    [Fact]
     public async Task AnErrorIsReportedAndNotRememberedForLong()
     {
         long now = 0;
