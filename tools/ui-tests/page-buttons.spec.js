@@ -47,3 +47,15 @@ test('only the ticked pages get a button; if none of them is left, every page do
   await show(p, [page('home', 'Home', '', [buttons(['gone'])]), page('two', 'Two', '')]);
   await expect(p.locator('.pgb-b')).toHaveCount(2);
 });
+
+test('narrow buttons keep only their icon; a page without an icon keeps its name', async ({ page: p }) => {
+  await p.setViewportSize({ width: 800, height: 400 });
+  await show(p, [
+    page('home', 'Home', '🏠', [{ id: 'pb', type: 'pagebuttons', x: 0, y: 0, w: 2, h: 2, options: {} }]),
+    page('music', 'Music', '🎵'), page('stats', 'Stats', ''), page('games', 'Games', '🎮'),
+    page('ai', 'AI', '🤖'), page('cal', 'Agenda', '📅'),
+  ]);
+  await expect(p.locator('.pgb-b')).toHaveCount(6);
+  await expect(p.locator('.pgb-b').nth(1).locator('.pgb-t')).toBeHidden();
+  await expect(p.locator('.pgb-b').nth(2).locator('.pgb-t')).toBeVisible();
+});

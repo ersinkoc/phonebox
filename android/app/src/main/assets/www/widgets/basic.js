@@ -1307,9 +1307,26 @@ W.pagebuttons = {
         }));
       }
       list.querySelectorAll('.pgb-b').forEach((b) => b.classList.toggle('on', +b.dataset.i === curPage));
+      fit();
     };
+    // columns for the widget's shape: buttons about twice as wide as tall, with few empty cells
+    let fitted = '';
+    const fit = () => {
+      const n = list.children.length, W = list.clientWidth, H = list.clientHeight;
+      if (!n || !W || !H) return;
+      let best = 1, score = Infinity;
+      for (let cols = 1; cols <= n; cols++) {
+        const rows = Math.ceil(n / cols);
+        const s = Math.abs(Math.log((W / cols) / (H / rows) / 2)) + 0.15 * (cols * rows - n);
+        if (s < score) { score = s; best = cols; }
+      }
+      const value = `repeat(${best}, minmax(0, 1fr))`;
+      if (value !== fitted) { fitted = value; list.style.gridTemplateColumns = value; }
+    };
+    const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    watch?.observe(list);
     render();
-    return { update: render };
+    return { update: render, destroy() { watch?.disconnect(); } };
   },
 };
 

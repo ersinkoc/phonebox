@@ -1918,10 +1918,11 @@ function optionField(w, o, onValChange) {
         ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, plain(`${s.icon} ${s.label}`) || s.id))),
         h('span', { class: 'hint' }, t('s.js.newShortcutsId')));
     case 'pages': {
-      // the pages to show, in page order; none ticked shows every page
-      const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
-      return field(h('div', { class: 'opts' }, ...cfg.pages.map((p) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(p.id), onchange: (e) => {
-        set(o.key, cfg.pages.map((x) => x.id).filter((id) => (id === p.id ? e.target.checked : cur().includes(id))));
+      // the pages to show, in page order; none ticked shows every page. A page not saved yet has no id to keep.
+      const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x.filter(Boolean) : []; };
+      return field(h('div', { class: 'opts' }, ...cfg.pages.map((p) => h('label', { class: 'check' }, h('input', { type: 'checkbox', disabled: !p.id, checked: !!p.id && cur().includes(p.id), onchange: (e) => {
+        if (!p.id) return;
+        set(o.key, cfg.pages.map((x) => x.id).filter((id) => id && (id === p.id ? e.target.checked : cur().includes(id))));
       } }), rich(`${p.icon || ''} ${p.title || p.id}`.trim())))));
     }
     case 'ha-items': return haItemsEditor(w, o, set);
