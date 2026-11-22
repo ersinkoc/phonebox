@@ -10,6 +10,10 @@
 - Steam library: your installed Steam games with covers, favourites first, then the most recently played, and update
   progress, read from Steam's own files with no API key, sign-in or network. Starting a game from the phone is a
   per-widget option, off by default and asking first (#344, #361, [1Cellu](https://github.com/1Cellu)).
+- Synced lyrics: a widget next to Now playing shows the words of the song playing on the computer, the line being
+  sung lit as it plays. The lookup is off by default per widget; with it on, the agent asks LRCLIB (free, no account)
+  with the track's title, artist, album and length, once per song, and keeps the answers in memory only (#339, #378,
+  [1Cellu](https://github.com/1Cellu)).
 
 **Agent**
 - Phone app updates: a phone that cannot take a streamed install (`splice failed: EINVAL`, seen with Android 15 on a
