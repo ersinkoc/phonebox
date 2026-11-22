@@ -238,8 +238,8 @@ function actionsView(box, options, type) {
       const b = button('', async () => { await deckCommand(item.kind === 'profile' ? 'profile' : 'action', { id: item.id, op: item.kind === 'radio' ? 'toggle' : (type === 'app-dock' ? 'focus' : '') }); signature = ''; });
       b.disabled = item.available === false;
       b.append(label, state);
-      if (type === 'dev-servers') return h('div', 'deck-task', b, button(tp('Stop'), () => deckCommand('action', { id: item.id, op: 'stop' }), 'Stop ' + item.name));
-      if (type === 'soundboard') return h('div', 'deck-task', b, button(tp('Stop'), () => deckCommand('sound-stop', { id: item.id }), 'Stop ' + item.name));
+      if (type === 'dev-servers') return h('div', 'deck-task', b, button(tp('Stop'), () => deckCommand('action', { id: item.id, op: 'stop' }), tp('Stop') + ' ' + item.name));
+      if (type === 'soundboard') return h('div', 'deck-task', b, button(tp('Stop'), () => deckCommand('sound-stop', { id: item.id }), tp('Stop') + ' ' + item.name));
       return b;
     }));
   };
