@@ -508,3 +508,31 @@ test('a failed playlist read shows its reason under Load Plex playlists', async 
   await expect(ui.loadStatus).toHaveText('The Plex server is unavailable');
   await expect(ui.picker.locator('option')).toHaveText(['Choose a Plex playlist…']);
 });
+
+test('an older playlist list never replaces a newer one, whichever control loaded it', async ({ page }) => {
+  const ui = await inspector(page, { actions: [{ id: 'pl1', label: 'Mine', kind: 'plex-playlist', target: '', enabled: true }] });
+  await answer(page, 0, PLAYLISTS);
+  await expect(ui.boxes).toHaveCount(2);
+  await ui.refresh.click(); // request 1: the checklist
+  await expect.poll(() => page.evaluate(() => window.__held.length)).toBe(2);
+  // request 2: Load Plex playlists on the control (the Control Deck section is in the page, on another tab)
+  await page.evaluate(() => [...document.querySelectorAll('#controlSettings button')].find((b) => b.textContent === 'Load Plex playlists').click());
+  await expect.poll(() => page.evaluate(() => window.__held.length)).toBe(3);
+  await answer(page, 2, [{ id: '13', name: 'Focus' }]);
+  await expect.poll(() => page.evaluate(() => plexList.map((p) => p.id))).toEqual(['13']);
+  await answer(page, 1, PLAYLISTS);
+  await expect(ui.status).toHaveText('');
+  expect(await page.evaluate(() => plexList.map((p) => p.id))).toEqual(['13']);
+  await expect(ui.boxes).toHaveCount(1);
+});
+
+test('saving a new Plex connection with the checklist open loads its playlists', async ({ page }) => {
+  const ui = await inspector(page);
+  await answer(page, 0, PLAYLISTS);
+  await expect(ui.boxes).toHaveCount(2);
+  expect(await page.evaluate(async () => { cfg.controls.plexToken = 'token-b'; return save(); })).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__held.length)).toBeGreaterThan(1);
+  await expect(ui.status).not.toHaveText('Save your changes first');
+  await answer(page, (await page.evaluate(() => window.__held.length)) - 1, [{ id: '13', name: 'Focus' }]);
+  await expect(ui.boxes).toHaveCount(1);
+});

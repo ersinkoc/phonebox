@@ -356,6 +356,20 @@ public sealed class PlexControlTests
     }
 
     [Theory]
+    [InlineData("https://plex.example.test/base")]
+    [InlineData("https://plex.example.test:8443/a/b")]
+    public async Task APlaylistIsRefusedWhenTheServerAddressHasAPath(string url)
+    {
+        // playMedia has no field for a path, so the player would ask for the queue at the server's root
+        using var fixture = new Fixture(url, extra: Actions(PlaylistAction));
+        using var plex = fixture.Create();
+        var result = await plex.Act("playlist", "pl1", default);
+        Assert.False(result.Ok);
+        Assert.Equal("Plex playlists need a server address without a path, such as https://plex.example.com", result.Error);
+        Assert.Empty(fixture.Calls);
+    }
+
+    [Theory]
     [InlineData("/identity")]   // before the play queue is made: nothing more is sent
     [InlineData("/playQueues")] // after: the queue is left on the old server, and the player gets no command
     public async Task APlaylistStartStopsWhenTheSettingsChangeDuringIt(string during)

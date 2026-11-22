@@ -2094,7 +2094,7 @@ function plexPlaylistsEditor(w, o, set) {
     box.replaceChildren(...rows);
   };
   // the agent reads the saved server: with unsaved Plex fields its list would be filed under the wrong connection
-  const load = () => !plexSaved() ? (plexInspectorSeq.n++, status.textContent = t('s.js.saveFirst')) : plexGet('plex/playlists', plexInspectorSeq, status, t('s.cd.plexLoading'), (data, key) => {
+  const load = () => !plexSaved() ? (plexListSeq.n++, plexStatusOwner.delete(status), status.textContent = t('s.js.saveFirst')) : plexGet('plex/playlists', plexListSeq, status, t('s.cd.plexLoading'), (data, key) => {
     if (plexError(data)) { status.textContent = plexError(data); return; }
     plexList = Array.isArray(data) ? data : []; plexListKey = key;
     status.textContent = (loaded() || []).length ? '' : t('s.cd.plexNone');
@@ -2103,6 +2103,8 @@ function plexPlaylistsEditor(w, o, set) {
   let rendered = false;
   render(); rendered = true;
   plexListeners.add(render);
+  const retry = () => { if (!root.isConnected) { plexBaselineListeners.delete(retry); return; } if (plexListKey !== plexKey() && plexSaved()) load(); };
+  plexBaselineListeners.add(retry);
   if (plexListKey !== plexKey()) load();
   return root;
 }
@@ -3109,21 +3111,27 @@ const plexSaved = () => { try { return plexKeyOf(JSON.parse(saved || '{}').contr
 let plexList = null, plexListKey = null; // the loaded playlists and the connection they belong to
 const plexListeners = new Set();
 const plexListChanged = () => plexListeners.forEach((f) => f());
-const plexInspectorSeq = { n: 0 };
+// every load that writes plexList shares one counter, so an older list can never replace a newer one
+const plexListSeq = { n: 0 };
+// a checklist drawn while a load() was still running saw the old baseline and asked to save first: it retries once the new one is set
+const plexBaselineListeners = new Set();
 // a failed playlist read answers { error } (a refused token, an unreachable server): it is shown, and no list is stored
 const plexError = (j) => (j && typeof j === 'object' && !Array.isArray(j) && typeof j.error === 'string' && j.error) || null;
 // One local GET to a Plex route: a 30 s limit (the agent can make three requests of 8 s for one check), only the newest
-// request of its control may write, and an answer is dropped when the connection settings changed while it was out.
+// request of its sequence may write, and an answer is dropped when the connection settings changed while it was out.
+// A request that a newer one replaced clears its own "Loading" text, unless something newer already wrote that status.
+const plexStatusOwner = new WeakMap();
 const plexGet = async (path, seq, status, busy, done) => {
-  const mine = ++seq.n, key = plexKey(); status.textContent = busy;
+  const mine = ++seq.n, key = plexKey(), owner = {}; plexStatusOwner.set(status, owner); status.textContent = busy;
+  const mineStatus = () => plexStatusOwner.get(status) === owner;
   const abort = new AbortController(), timer = setTimeout(() => abort.abort(), 30000);
   try {
     const r = await fetch('/api/controls/' + path, { signal: abort.signal }); const j = await r.json().catch(() => null);
-    if (mine !== seq.n) return;
+    if (mine !== seq.n) { if (mineStatus()) status.textContent = ''; return; }
     if (key !== plexKey()) { status.textContent = ''; return; }
     if (!r.ok || j === null) throw new Error('failed');
     done(j, key);
-  } catch (_) { if (mine === seq.n) status.textContent = key === plexKey() ? t('s.cd.requestFailed') : ''; }
+  } catch (_) { if (mine === seq.n) status.textContent = key === plexKey() ? t('s.cd.requestFailed') : ''; else if (mineStatus()) status.textContent = ''; }
   finally { clearTimeout(timer); }
 };
 function renderControlSettings() {
@@ -3166,8 +3174,8 @@ function renderControlSettings() {
       const f=field(t(label),c,key,type); const input=f.querySelector('input'); input.autocomplete='off'; input.spellcheck=false;
       // a Check result belongs to the values it was checked with: an edit clears it and drops an answer still on its way,
       // and a loaded playlist list no longer applies
-      input.addEventListener('input',()=>{plexCheckSeq.n++;plexStatus.textContent='';plexRefresh();}); return f; }),
-    btn(t('s.cd.plexCheck'),()=>{if(!plexSaved()){plexCheckSeq.n++;plexStatus.textContent=t('s.js.saveFirst');return;}plexGet('plex/check',plexCheckSeq,plexStatus,t('s.cd.plexChecking'),j=>{plexStatus.textContent=j.connected?(j.error||t('s.cd.connected')):j.error||t('s.cd.notConnected');});}),plexStatus);
+      input.addEventListener('input',()=>{plexCheckSeq.n++;plexStatusOwner.delete(plexStatus);plexStatus.textContent='';plexRefresh();}); return f; }),
+    btn(t('s.cd.plexCheck'),()=>{if(!plexSaved()){plexCheckSeq.n++;plexStatusOwner.delete(plexStatus);plexStatus.textContent=t('s.js.saveFirst');return;}plexGet('plex/check',plexCheckSeq,plexStatus,t('s.cd.plexChecking'),j=>{plexStatus.textContent=j.connected?(j.error||t('s.cd.connected')):j.error||t('s.cd.notConnected');});}),plexStatus);
   root.append(plex);
   const integration=h('details',{},h('summary',{},t('s.cd.audioInt')),field(t('s.cd.mixerExe'),c,'mixerExecutable'),field(t('s.cd.mixerDll'),c,'mixerLibrary'));root.append(integration);
   const hintsRaw={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream or Windows-only HLS (.m3u8) URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
@@ -3278,9 +3286,9 @@ function renderControlSettings() {
         plexPick.replaceChildren(h('option', { value: '' }, list && !list.length ? t('s.cd.plexNone') : t('s.cd.plexChoose')), ...(list || []).map((p) => h('option', { value: p.id, selected: p.id === a.target }, p.name)));
       };
       plexPickers.add(fillPick); fillPick();
-      const plexLoadStatus = h('p', { class: 'hint' }), plexLoadSeq = { n: 0 };
+      const plexLoadStatus = h('p', { class: 'hint' });
       // the button is not held until the answer comes, so a second press starts a newer request
-      const plexLoad = btn(t('s.cd.plexLoadLists'), () => { if (!plexSaved()) { plexLoadSeq.n++; plexLoadStatus.textContent = t('s.js.saveFirst'); return; } plexGet('plex/playlists', plexLoadSeq, plexLoadStatus, t('s.cd.plexLoading'), (list, key) => {
+      const plexLoad = btn(t('s.cd.plexLoadLists'), () => { if (!plexSaved()) { plexListSeq.n++; plexStatusOwner.delete(plexLoadStatus); plexLoadStatus.textContent = t('s.js.saveFirst'); return; } plexGet('plex/playlists', plexListSeq, plexLoadStatus, t('s.cd.plexLoading'), (list, key) => {
         if (plexError(list)) { plexLoadStatus.textContent = plexError(list); return; }
         plexList = Array.isArray(list) ? list : []; plexListKey = key; plexLoadStatus.textContent = ''; plexRefresh();
       }); });
@@ -3732,6 +3740,7 @@ async function load() {
   // baseline is taken after they ran: otherwise a freshly loaded page already counts as unsaved, and Revert can never
   // get back to a clean state
   saved = JSON.stringify(cfg);
+  plexBaselineListeners.forEach((f) => f());
   changed(); loadInfo(); loadPhones();
 }
 

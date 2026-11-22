@@ -24,6 +24,7 @@ public sealed class PlexControl : IDisposable
     private const string NoWidget = "Add a Plex widget to an enabled page";
     private const string NoPlaylistWidget = "Add a Plex playlists widget to an enabled page";
     private const string SettingsChanged = "The Plex settings changed; try again";
+    private const string NoPathForPlaylists = "Plex playlists need a server address without a path, such as https://plex.example.com";
     private const int MaxBody = 1_000_000;
 
     /// <summary>An error whose text is safe to show on the phone.</summary>
@@ -300,6 +301,9 @@ public sealed class PlexControl : IDisposable
                 if (!configured.Enabled) return new(false, "Control is disabled");
                 if (!Digits(configured.Target)) return new(false, "Choose a Plex playlist in desktop settings");
                 if (s.Url.Length == 0 || s.Token.Length == 0) return new(false, NotConfigured);
+                // playMedia carries only the server's protocol, host and port, and the player asks for /playQueues/… at its
+                // root: behind a reverse-proxy path the player could not reach the queue, so nothing is sent
+                if (new Uri(s.Url).AbsolutePath != "/") return new(false, NoPathForPlaylists);
                 var machine = await Identity(s, fresh: false, ct);
                 // a settings change during a wait stops the start: the next request would go out with the old address or token
                 if (Current() != s) return new(false, SettingsChanged);
