@@ -2843,7 +2843,7 @@ function renderEditor() {
     h('div', { class: 'grid2' },
       h('div', {},
         text('label', t('s.k.label'), t('s.k.labelHint')),
-        h('div', { class: 'field' }, h('label', {}, tc('Emoji')), h('div', { class: 'row' }, iconIn),
+        h('div', { class: 'field' }, h('label', {}, t('s.z.iconEmoji')), h('div', { class: 'row' }, iconIn),
           h('div', { class: 'emojis' }, ...EMOJIS.map((em) => h('button', { 'data-emoji': em, title: em, 'aria-label': em, onclick: () => { iconIn.value = em; upd('icon', em); } }, rich(em))))),
         customIconField(s),
         h('div', { class: 'field' }, h('label', {}, t('s.z.colour')), h('div', { class: 'row' }, colorIn), sw)),
@@ -3720,7 +3720,7 @@ $('applyJson').onclick = () => {
     $('jsonErr').textContent = '';
     renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); toast(t('s.jsonLoaded'));
   }
-  catch (e) { $('jsonErr').textContent = e instanceof SyntaxError && window.PhoneBoxI18n.getLang() === 'ar' ? tc('Invalid settings JSON.') : e.message; }
+  catch (e) { $('jsonErr').textContent = e instanceof SyntaxError ? tc('Invalid settings JSON.') : e.message; }
 };
 $('save').title = (/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+') + 'S';
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('modal').hidden) closeModal(); });
