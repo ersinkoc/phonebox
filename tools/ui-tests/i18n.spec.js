@@ -2,16 +2,16 @@
 // that compared a localized label against the English word. Against the web demo, in German.
 const { test, expect } = require('@playwright/test');
 
-async function show(page, widgets) {
+async function show(page, widgets, display = { language: 'de' }) {
   await page.goto('/panel/');
-  await page.evaluate((widgets) => {
+  await page.evaluate(({ widgets, display }) => {
     localStorage.clear();
     localStorage.setItem('pb-demo-config', JSON.stringify({
       night: { enabled: false }, rules: [], shortcuts: [],
-      display: { language: 'de' },
+      display,
       pages: [{ id: 'one', title: 'One', widgets }],
     }));
-  }, widgets);
+  }, { widgets, display });
   await page.reload();
 }
 
@@ -348,3 +348,59 @@ test('follow system distinguishes Traditional Chinese and the legacy Indonesian 
   });
   expect(resolved).toEqual(['zh-Hant', 'zh-Hant', 'zh', 'id', 'en', 'en']);
 });
+
+
+test('the idle media widget uses the Arabic no-audio label', async ({ page }) => {
+  await show(page, [{ id: 'media', type: 'media', x: 0, y: 0, w: 8, h: 4, options: {} }], { language: 'ar' });
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('.w-media')).toBeVisible();
+  const label = await page.evaluate(async () => {
+    const main = await import('/panel/main.js');
+    main.D.state = { ...main.D.state, media: null };
+    main.emit('state');
+    return document.querySelector('.w-media .m-title').textContent;
+  });
+  expect(label).toBe('لا يوجد صوت');
+});
+
+test('the Arabic template dialog inserts the saved page title literally', async ({ page }) => {
+  const title = 'Budget $& <2026> "Q4"';
+  await page.addInitScript((title) => {
+    localStorage.setItem('pb-demo-config', JSON.stringify({
+      display: { language: 'ar' },
+      pages: [{ id: 'home', title, widgets: [] }],
+    }));
+  }, title);
+  await page.goto('/settings/#pages');
+  await expect(page.locator('#peHead input[type="text"]').nth(1)).toHaveValue(title);
+  await page.locator('#peHead').getByRole('button', { name: 'استبدال بقالب…' }).click();
+  await expect(page.locator('#modalBody h3')).toHaveText(`استبدال عناصر صفحة «${title}»`);
+});
+
+test('the shortcut delete button is localized in Arabic without changing its English label', async ({ page }) => {
+  await page.goto('/settings/#shortcuts');
+  await page.locator('#deck .key:not(.add)').first().click();
+  const deleteButton = page.locator('#editor button.danger');
+  await expect(deleteButton).toHaveAccessibleName('Delete');
+  const shortcut = page.locator('#deck .key:not(.add) .kl').first();
+  const label = await shortcut.textContent();
+  await page.locator('#langSel').selectOption('ar');
+  await expect(deleteButton).toHaveAccessibleName('حذف');
+  await expect(shortcut).toHaveText(label);
+  await page.evaluate(() => { location.hash = '#webhooks'; });
+  const pushedDelete = page.locator('#whItems button').first();
+  await expect(pushedDelete).toHaveAccessibleName('حذف');
+  await page.locator('#langSel').selectOption('en');
+  await expect(pushedDelete).toHaveAccessibleName('Delete');
+});
+
+for (const language of ['ar', 'de']) {
+  test(`the calendar uses localized Monday-first weekday headings (${language})`, async ({ page }) => {
+    await show(page, [{ id: 'calendar', type: 'calendar', x: 0, y: 0, w: 4, h: 4 }], { language });
+    const headings = await page.evaluate(() => {
+      const formatter = new Intl.DateTimeFormat(window.PhoneBoxI18n.getLocale(), { weekday: 'narrow' });
+      return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2024, 0, i + 1)));
+    });
+    await expect(page.locator('.w-calendar .cal-h')).toHaveText(headings);
+  });
+}

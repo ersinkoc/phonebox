@@ -19,30 +19,30 @@
         <value>فتح اللوحة على الهاتف</value>
     </data>
     <data xml:space="preserve" name="editConfig">
-        <value>تحرير config.json</value>
+        <value>تحرير ⁦config.json⁩</value>
     </data>
     <data xml:space="preserve" name="openLog">
         <value>فتح السجل</value>
     </data>
     <data xml:space="preserve" name="autostart">
-        <value>التشغيل مع Windows</value>
+        <value>التشغيل عند بدء ⁦Windows⁩</value>
     </data>
     <data xml:space="preserve" name="quit">
         <value>خروج</value>
     </data>
     <data xml:space="preserve" name="connected">
-        <value>هاتف متصل ({0})</value>
+        <value>هاتف متصل (⁨{0}⁩)</value>
     </data>
     <data xml:space="preserve" name="disconnected">
         <value>لا يوجد هاتف متصل</value>
     </data>
     <data xml:space="preserve" name="tooltipConnected">
-        <value>PhoneBox - وصل الهاتف</value>
+        <value>⁦PhoneBox⁩ — الهاتف متصل</value>
     </data>
     <data xml:space="preserve" name="tooltipWaiting">
-        <value>PhoneBox - انتظار الهاتف</value>
+        <value>⁦PhoneBox⁩ — بانتظار اتصال الهاتف</value>
     </data>
     <data xml:space="preserve" name="autostartError">
-        <value>لم يكن من الممكن تغيير اختصار البدء: {0}</value>
+        <value>تعذّر تغيير اختصار بدء التشغيل: ⁨{0}⁩</value>
     </data>
 </root>

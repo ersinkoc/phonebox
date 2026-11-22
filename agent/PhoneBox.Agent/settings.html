@@ -762,7 +762,7 @@ nav a.on::before { color: var(--accent); }
           <span data-i18n-html="s.battery.leadTail">where it comes from: a <b>smart plug in Home Assistant</b> (the phone on its own charger), or two <b>shortcuts</b>, for example
           <code>uhubctl</code> for a USB hub with switchable ports. Without USB power the panel keeps running over Wi-Fi.</span></p>
         <div class="row" style="margin-bottom:12px"><label class="switch"><input type="checkbox" data-bind="charge.enabled"><span></span></label> <span data-i18n="s.battery.keepBetween">Keep the battery between</span>
-          <input type="number" min="5" max="95" data-bind="charge.min" data-type="int" style="width:70px"> % and
+          <input type="number" min="5" max="95" data-bind="charge.min" data-type="int" style="width:70px"> % <span id="chargeRangeAnd">and</span>
           <input type="number" min="10" max="100" data-bind="charge.max" data-type="int" style="width:70px"> %</div>
         <div class="grid2">
           <div class="field"><label data-i18n="s.battery.method">Switch the power with</label><select data-bind="charge.method"><option value="ha" data-i18n="s.battery.methodHa">a Home Assistant switch (smart plug)</option><option value="shortcuts" data-i18n="s.battery.methodShortcuts">two shortcuts (power on / power off)</option></select></div>
@@ -1381,7 +1381,7 @@ function renderPageEditor() {
           icon('home', 'm'), isHome(p) ? t('s.js.homePage') : t('s.js.makeHome')),
         h('label', { class: 'hint', title: t('s.js.backHomeAfterHint') }, t('s.js.backHomeAfter'),
           h('select', { onchange: (e) => { p.idleSec = e.target.value === '' ? null : +e.target.value; changed(); } },
-            ...[['', `default (${fmtIdle(cfg.display.idleReturnSec ?? 90)})`], ['0', 'never'], ['30', '30 s'], ['60', '1 min'], ['120', '2 min'], ['300', '5 min'], ['900', '15 min'], ['3600', '1 hour']]
+            ...[['', `${tc('default')} (${fmtIdle(cfg.display.idleReturnSec ?? 90)})`], ['0', tc('never')], ['30', '30 s'], ['60', '1 min'], ['120', '2 min'], ['300', '5 min'], ['900', '15 min'], ['3600', '1 hour']]
               .map(([v, l]) => h('option', { value: v, selected: String(p.idleSec ?? '') === v }, l)))),
         h('button', { class: 'btn sm danger', disabled: cfg.pages.length === 1, onclick: () => {
           if (!confirm(t('s.js.deletePageConfirm', { title: p.title }))) return;
@@ -1415,17 +1415,24 @@ function setStage(mode) {
   $('canvas').hidden = live;
   $('previewBox').hidden = !live;
   $('pageEditor').classList.toggle('live', live);
-  $('stageHint').textContent = live
-    ? 'The real panel with your unsaved changes and live data: tap and swipe it like the phone. Switch back to Layout to move widgets.'
-    : '';
+  updateStageText();
   if (live && !previewFrame) {
-    previewFrame = h('iframe', { src: '../panel/?preview=1', title: 'Live preview of the panel' });
+    previewFrame = h('iframe', { src: '../panel/?preview=1' });
+    updateStageText();
     $('previewBox').appendChild(previewFrame);
     const fit = () => { previewFrame.style.transform = `scale(${$('previewBox').clientWidth / 780})`; };
     new ResizeObserver(fit).observe($('previewBox'));
     fit();
   }
   if (live) queuePreview();
+}
+
+function updateStageText() {
+  const translate = window.PhoneBoxI18n.tc;
+  $('stageHint').textContent = stageMode === 'live'
+    ? translate('The real panel with your unsaved changes and live data: tap and swipe it like the phone. Switch back to Layout to move widgets.')
+    : '';
+  if (previewFrame) previewFrame.title = translate('Live preview of the panel');
 }
 
 function sendPreview() {
@@ -2035,7 +2042,7 @@ function openTemplates(index) {
     closeModal(); renderPages(); changed();
   };
   $('modalBody').replaceChildren(
-    h('h3', {}, index == null ? 'New page' : `Replace the widgets of "${cfg.pages[index].title}"`),
+    h('h3', {}, index == null ? tc('New page') : tc('Replace the widgets of "{title}"').replace('{title}', () => cfg.pages[index].title)),
     h('div', { class: 'tpl-grid' },
       h('button', { class: 'tpl', onclick: () => pick(null) }, h('div', { class: 'mini empty-mini' }, icon('plus')), h('b', {}, t('s.js.blankPage')), h('small', {}, t('s.js.blankPageHint'))),
       ...catalog.templates.map((t) => h('button', { class: 'tpl', onclick: () => pick(t) }, miniMap(t.widgets), h('b', {}, rich(`${t.icon} ${t.title}`)), h('small', {}, t.desc)))));
@@ -2608,9 +2615,9 @@ function ruleCard(r, i) {
       }
       set('op', v === 'on' ? null : v, true);
     }),
-    r.op === 'stale' ? h('input', { type: 'number', min: 1, max: 86400, style: 'width:90px', value: r.arg ?? '60', oninput: (e) => set('arg', e.target.value || null) }) : r.op ? text('arg', 'value', '') : null,
+    r.op === 'stale' ? h('input', { type: 'number', min: 1, max: 86400, style: 'width:90px', value: r.arg ?? '60', oninput: (e) => set('arg', e.target.value || null) }) : r.op ? text('arg', tl('value'), '') : null,
     r.op === 'stale' ? h('span', { class: 'hint' }, tl('seconds')) : null);
-  if (trig.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? trig.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, trig.value));
+  if (trig.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? trig.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, tl(trig.value)));
 
   const act = [];
   if (r.then === 'goto') act.push(h('select', { onchange: (e) => set('page', e.target.value) },
@@ -2630,7 +2637,7 @@ function ruleCard(r, i) {
       const cur = days.length ? days : DAYS.map(([x]) => x);
       const next = cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d];
       set('days', next.length === 7 || !next.length ? null : DAYS.map(([x]) => x).filter((x) => next.includes(x)).join(','), true);
-    } }, l)));
+    } }, tl(l))));
   const opts = h('details', { class: 'ropts', open: !!(r.days || r.during || r.forSec || r.cooldownMin || (r.priority ?? 5) !== 5 || r.countdownSec != null) },
     h('summary', {}, t('s.r.options'), h('span', { class: 'hint' }, ' ' + ruleSummary(r))),
     h('div', { class: 'line' }, h('b', {}, t('s.r.only')), dayBtns, h('span', { class: 'hint' }, t('s.r.between')), text('during', t('s.r.allDay'))),
@@ -2660,7 +2667,7 @@ function ruleCard(r, i) {
 
 function ruleSummary(r) {
   const parts = [];
-  if (r.days) parts.push(r.days.split(',').map((d) => d[0].toUpperCase() + d.slice(1, 2)).join(' '));
+  if (r.days) parts.push(r.days.split(',').map(d => tl(DAYS.find(([id]) => id === d)?.[1] || d)).join(' '));
   if (r.during) parts.push(r.during);
   if (r.forSec) parts.push(t('s.r.afterSec', { n: r.forSec }));
   if (r.cooldownMin) parts.push(t('s.r.restMin', { n: r.cooldownMin }));
@@ -2712,7 +2719,7 @@ async function pollCharge() {
     const age = p ? Math.round((Date.now() - p.at) / 1000) : null;
     $('chargeState').replaceChildren(...(p
       ? [`Phone: ${p.level}% `, ...(p.plugged ? [icon('zap', 'm'), 'charging'] : ['on battery']), ` (${age < 90 ? 'just now' : Math.round(age / 60) + ' min ago'})`]
-      : ['No report from the phone yet']),
+      : [tc('No report from the phone yet')]),
       s.power ? ` · power ${s.power}` : '', s.error ? ` · ${s.error}` : '');
   } catch (_) {}
 }
@@ -2737,12 +2744,12 @@ function renderWebhooks(lan) {
   $('whExamples').replaceChildren(...ex.map(([label, c]) => h('div', { class: 'ex' }, h('span', {}, label), h('code', { class: 'cmdline', title: t('s.wh.clickToCopy'), onclick: () => { navigator.clipboard?.writeText(c); toast(t('s.wh.copied')); } }, c))));
   $('whLan').replaceChildren(host
     ? h('div', {}, h('p', { class: 'hint', style: { marginTop: 0 } }, t('s.wh.lanHint')),
-      h('div', { class: 'row', style: { gap: '8px', margin: '0 0 8px' } }, h('code', {}, token ? token.slice(0, 6) + '…' : '(generated on save)'),
+      h('div', { class: 'row', style: { gap: '8px', margin: '0 0 8px' } }, h('code', {}, token ? token.slice(0, 6) + '…' : tc('(generated on save)')),
         h('button', { class: 'btn sm', disabled: !token, onclick: () => { navigator.clipboard?.writeText(token); toast(t('s.js.webhookKeyCopied')); } }, t('s.wh.copyKey')),
         h('button', { class: 'btn sm', onclick: () => { cfg.lan = { ...(cfg.lan || {}), webhookToken: '' }; changed(); toast(t('s.js.webhookKeyOnSave')); } }, t('s.k.newKey'))),
-      h('code', { class: 'cmdline', onclick: () => { navigator.clipboard?.writeText(`curl -k -X POST ${host}/api/push/temperature -H "Authorization: Bearer ${token}" -d 21.5`); toast('Copied'); } },
+      h('code', { class: 'cmdline', onclick: () => { navigator.clipboard?.writeText(`curl -k -X POST ${host}/api/push/temperature -H "Authorization: Bearer ${token}" -d 21.5`); toast(t('s.wh.copied')); } },
         `curl -k -X POST ${host}/api/push/temperature -H "Authorization: Bearer ${token.slice(0, 6)}…" -d 21.5`))
-    : h('p', { class: 'hint', style: { margin: 0 } }, 'Turn on "Wi-Fi & Tailscale" in General to accept webhooks from other machines too. From this PC no token is needed.'));
+    : h('p', { class: 'hint', style: { margin: 0 } }, tc('Turn on "Wi-Fi & Tailscale" in General to accept webhooks from other machines too. From this PC no token is needed.')));
 }
 
 async function loadPushed() {
@@ -2752,7 +2759,7 @@ async function loadPushed() {
     const items = Object.entries(r.items || {}).sort((a, b) => b[1].at - a[1].at);
     $('whItems').replaceChildren(...(items.length ? items.map(([k, v]) => h('tr', {},
       h('td', {}, h('code', {}, k)), h('td', { class: 'val' }, JSON.stringify(v.data)), h('td', { class: 'hint' }, new Date(v.at).toLocaleString()),
-      h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, 'Delete'))))
+      h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, t('s.r.del')))))
       : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, t('s.wh.nothingPushed')))]));
   } catch (_) {}
 }
@@ -2831,17 +2838,17 @@ function renderEditor() {
       h('div', { class: 'row', style: { gap: '6px' } },
         h('button', { class: 'btn sm', onclick: () => moveKey(-1), disabled: selKey === 0 }, t('s.js.earlier')),
         h('button', { class: 'btn sm', onclick: () => moveKey(1), disabled: selKey === cfg.shortcuts.length - 1 }, t('s.js.later')),
-        h('button', { class: 'btn sm', onclick: testKey }, icon('play', 'm'), 'Test'),
-        h('button', { class: 'btn sm danger', onclick: delKey }, 'Delete'))),
+        h('button', { class: 'btn sm', onclick: testKey }, icon('play', 'm'), t('s.test')),
+        h('button', { class: 'btn sm danger', onclick: delKey }, t('s.r.del')))),
     h('div', { class: 'grid2' },
       h('div', {},
         text('label', t('s.k.label'), t('s.k.labelHint')),
-        h('div', { class: 'field' }, h('label', {}, t('s.z.iconEmoji')), h('div', { class: 'row' }, iconIn),
+        h('div', { class: 'field' }, h('label', {}, tc('Emoji')), h('div', { class: 'row' }, iconIn),
           h('div', { class: 'emojis' }, ...EMOJIS.map((em) => h('button', { 'data-emoji': em, title: em, 'aria-label': em, onclick: () => { iconIn.value = em; upd('icon', em); } }, rich(em))))),
         customIconField(s),
         h('div', { class: 'field' }, h('label', {}, t('s.z.colour')), h('div', { class: 'row' }, colorIn), sw)),
       h('div', {}, ...actionFields(s, upd, text, cmdIn, preset),
-        h('div', { class: 'field' }, h('label', {}, 'Id'), h('code', {}, s.id || t('s.k.genOnSave'))))));
+        h('div', { class: 'field' }, h('label', {}, tc('Id')), s.id ? h('code', {}, s.id) : h('span', { class: 'hint' }, t('s.k.genOnSave'))))));
 }
 
 // A custom icon image (PNG, WEBP or SVG) overrides both the emoji and the auto-detected program icon on the phone.
@@ -2929,9 +2936,9 @@ function actionFields(s, upd, text, cmdIn, preset) {
       text('args', t('s.k.arguments'), osName === 'windows' ? t('s.k.argsPlaceholderWindows') : t('s.k.argsPlaceholderUnix')),
       text('cwd', t('s.k.workingFolder'), t('s.k.optional')));
   } else if (kind === 'keys') {
-    fields.push(text('args', t('s.k.keys'), 'e.g. ctrl+shift+m', 'Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, numpad0–numpad9, numpadenter, numpadadd, numpadsubtract, numpadmultiply, numpaddivide, numpaddecimal, playpause, next, prev, mute, volumeup, volumedown.'));
+    fields.push(text('args', t('s.k.keys'), 'e.g. ctrl+shift+m', tc('Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, numpad0–numpad9, numpadenter, numpadadd, numpadsubtract, numpadmultiply, numpaddivide, numpaddecimal, playpause, next, prev, mute, volumeup, volumedown.')));
   } else if (kind === 'text') {
-    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.textToType')), area(s.args || '', 'Typed into whatever window has the focus', 3, (e) => upd('args', e.target.value, false)),
+    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.textToType')), area(s.args || '', tc('Typed into whatever window has the focus'), 3, (e) => upd('args', e.target.value, false)),
       h('span', { class: 'hint' }, t('s.k.textHint')), h('span', { class: 'hint' }, t('s.k.clipboardWarn'))));
   } else if (kind === 'cycle') {
     // each tap runs the next key of the list; the key on the phone shows the one that ran last
@@ -2959,7 +2966,7 @@ function actionFields(s, upd, text, cmdIn, preset) {
     isMute ? t('s.k.toggleLabelMute') : t('s.k.toggleLabel')));
   if (s.toggle && !isMute) {
     fields.push(text('stateKey', t('s.k.stateKey'), 'e.g. teams-muted',
-      'A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.'));
+      tc('A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.')));
     if (kind === 'run') fields.push(text('offCmd', t('s.cd.offCmdPlaceholder'), t('s.cd.offCmdHint')), text('offArgs', t('s.k.offArgs'), ''));
   }
   // holding the key on the phone runs another key (a key that was never saved has no id to point at yet)
@@ -3384,6 +3391,10 @@ function applyLanguageUi(langPref) {
   if ($('langSel')) $('langSel').value = I18n.getPref();
   if ($('displayLangSel')) $('displayLangSel').value = I18n.getPref();
   I18n.applyDom();
+  updateStageText();
+  $('chargeRangeAnd').textContent = tc('and');
+  if ($('advancedVersionLabel')) $('advancedVersionLabel').textContent = tc('Version');
+  document.querySelector('[data-bind="adbPath"]').placeholder = tc('auto-detected');
   fitLeads(); // translated intros can be shorter or longer than the old text
 }
 
@@ -3538,7 +3549,7 @@ async function loadInfo() {
     }
     $('codexHookTrust').style.display = codexHook.installed ? '' : 'none';
     $('info').replaceChildren(
-      h('dt', {}, 'Version'), h('dd', {}, i.version),
+      h('dt', { id: 'advancedVersionLabel' }, tc('Version')), h('dd', {}, i.version),
       h('dt', {}, t('s.adv.settingsFile')), h('dd', {}, h('code', {}, i.configPath)),
       h('dt', {}, t('s.adv.log')), h('dd', {}, h('code', {}, i.logPath)),
       h('dt', {}, 'adb'), h('dd', {}, i.adb || '—'));
@@ -3692,9 +3703,9 @@ for (const name of ['codex', 'claude']) $(`${name}HookBtn`).onclick = async () =
 $('modalClose').onclick = closeModal;
 $('lanPair').onclick = pairOverWifi;
 $('modal').onclick = (e) => { if (e.target.id === 'modal') closeModal(); };
-const whTry = (fn, ok) => async () => { try { await fn(); toast(ok); loadPushed(); } catch (e) { toast(e.message, true); } };
-$('whNotify').onclick = whTry(() => postJson('/api/notify', { title: 'PhoneBox', text: 'Hello from the settings page', level: 'ok' }), 'Sent — look at the phone');
-$('whPush').onclick = whTry(() => postJson('/api/push/demo', { value: Math.round(Math.random() * 100), unit: '%', sub: 'sent ' + new Date().toLocaleTimeString() }), 'Pushed "demo"');
+const whTry = (fn, ok) => async () => { try { await fn(); toast(tc(ok)); loadPushed(); } catch (e) { toast(e.message, true); } };
+$('whNotify').onclick = whTry(() => postJson('/api/notify', { title: 'PhoneBox', text: tc('Hello from the settings page'), level: 'ok' }), 'Sent — look at the phone');
+$('whPush').onclick = whTry(() => postJson('/api/push/demo', { value: Math.round(Math.random() * 100), unit: '%', sub: tc('sent ') + new Date().toLocaleTimeString() }), 'Pushed "demo"');
 $('whRefresh').onclick = whTry(() => postJson('/api/refresh'), 'The panel refreshes');
 $('whReload').onclick = whTry(() => postJson('/api/refresh?reload=1'), 'The panel reloads');
 $('whClear').onclick = async () => { if (!confirm(t('s.js.deletePushed'))) return; await fetch('/api/push', { method: 'DELETE' }); loadPushed(); };
@@ -3703,13 +3714,13 @@ $('citySearch').onkeydown = (e) => { if (e.key === 'Enter') searchCity(); };
 $('applyJson').onclick = () => {
   try {
     const c = JSON.parse($('json').value);
-    if (typeof c !== 'object' || c === null || Array.isArray(c)) throw new Error('settings JSON must be an object');
+    if (typeof c !== 'object' || c === null || Array.isArray(c)) throw new Error(tc('Settings JSON must be an object.'));
     cfg = c;
     fillDefaults();
     $('jsonErr').textContent = '';
     renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); toast(t('s.jsonLoaded'));
   }
-  catch (e) { $('jsonErr').textContent = e.message; }
+  catch (e) { $('jsonErr').textContent = e instanceof SyntaxError && window.PhoneBoxI18n.getLang() === 'ar' ? tc('Invalid settings JSON.') : e.message; }
 };
 $('save').title = (/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+') + 'S';
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('modal').hidden) closeModal(); });
