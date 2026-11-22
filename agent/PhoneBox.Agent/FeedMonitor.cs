@@ -181,7 +181,7 @@ public sealed class FeedMonitor(ConfigStore config, ILogger<FeedMonitor> log) : 
     /// <summary>The launcher and its arguments for an article address (no side effects; tested).</summary>
     internal static ProcessStartInfo BrowserStart(Uri uri, bool windows, bool mac)
     {
-        // explorer.exe opens File Explorer instead of the browser for a long address (#386); url.dll hands the address
+        // explorer.exe opens File Explorer instead of the browser for some addresses (#386, #411); url.dll hands the address
         // to the http(s) handler and rundll32 exits, like explorer did
         var psi = new ProcessStartInfo(windows ? Path.Combine(Environment.SystemDirectory, "rundll32.exe") : mac ? "/usr/bin/open" : "xdg-open")
             { UseShellExecute = false, CreateNoWindow = true };

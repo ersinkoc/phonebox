@@ -18,7 +18,8 @@ public sealed class FeedParserTests
     public void TheLaunchedAddressHasNoRawBracketsAfterTheHost(string link, string expected) =>
         Assert.Equal(expected, FeedParser.LaunchAddress(FeedParser.SafeLink(link)!));
 
-    // #386: explorer.exe opens File Explorer instead of the browser for a long address (reporter's repro: 473 chars)
+    // #386, #411: explorer.exe opens File Explorer instead of the browser for some addresses (a 473-character one, a short
+    // one with a query string), so the address goes to url.dll instead
     [Fact]
     public void ALongArticleAddressIsNotHandedToExplorerOnWindows()
     {
