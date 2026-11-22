@@ -3068,7 +3068,8 @@ function renderControlSettings() {
       // autocomplete off, like the Immich and Discord fields: a browser's password autofill otherwise treats the address
       // before the token field as a user name and blanks or replaces it
       const f=field(t(label),c,key,type); const input=f.querySelector('input'); input.autocomplete='off'; input.spellcheck=false;
-      return f; }),
+      // a result belongs to the values it was checked with: an edit clears it and drops an answer still on its way
+      input.addEventListener('input',()=>{plexCheckSeq.n++;plexStatus.textContent='';}); return f; }),
     btn(t('s.cd.plexCheck'),()=>{if(!plexSaved()){plexCheckSeq.n++;plexStatus.textContent=t('s.js.saveFirst');return;}plexGet('plex/check',plexCheckSeq,plexStatus,t('s.cd.plexChecking'),j=>{plexStatus.textContent=j.connected?(j.error||t('s.cd.connected')):j.error||t('s.cd.notConnected');});}),plexStatus);
   root.append(plex);
   const integration=h('details',{},h('summary',{},t('s.cd.audioInt')),field(t('s.cd.mixerExe'),c,'mixerExecutable'),field(t('s.cd.mixerDll'),c,'mixerLibrary'));root.append(integration);

@@ -116,3 +116,13 @@ test('a Check answer that arrives after an unsaved edit does not overwrite the s
   await answer(page, 0, { connected: true, playing: false, current: null, queue: [] });
   await expect(ui.status).toHaveText('Save your changes first');
 });
+
+test('editing a Plex field after a completed check clears the result', async ({ page }) => {
+  const ui = await open(page);
+  await holdPlexRequests(page);
+  await ui.check.click();
+  await answer(page, 0, { connected: true, playing: false, current: null, queue: [] });
+  await expect(ui.status).toHaveText('Connected');
+  await ui.url.fill('https://other.example.test');
+  await expect(ui.status).toHaveText('');
+});
