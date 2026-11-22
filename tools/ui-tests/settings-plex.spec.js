@@ -35,6 +35,8 @@ const answerRaw = (page, index, status, text) => page.evaluate(([i, status, text
 
 async function open(page) {
   await page.goto('/settings/#general');
+  // the page's own first load sets the saved baseline last; settings applied before it ends would be overwritten
+  await page.waitForFunction(() => typeof saved === 'string' && saved !== '');
   await applyJson(page, {
     ...connection('https://plex.example.test', 'token-a'),
     actions: [{ id: 'pl1', label: 'Mine', kind: 'plex-playlist', target: '', enabled: true }],
