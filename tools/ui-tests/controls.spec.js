@@ -100,6 +100,22 @@ test('Plex queue shows the reason when the player plays from another server',asy
   await expect(page.locator('.sq-head')).toHaveCount(0);
 });
 
+test('Plex playlists lists the configured Plex playlists',async({page})=>{
+  await page.goto('/panel/style.css');
+  await page.evaluate(()=>{
+    localStorage.clear();
+    localStorage.setItem('pb-demo-config',JSON.stringify({night:{enabled:false},shortcuts:[],
+      controls:{actions:[{id:'plex-chill',label:'Chill',kind:'plex-playlist',target:'12',enabled:true},{id:'plex-focus',label:'Focus',kind:'plex-playlist',target:'13',enabled:true},
+        {id:'spotify-one',label:'Spotify one',kind:'playlist',target:'spotify:playlist:37i9dQZF1DX4WYpdgoIcn6',enabled:true}],profiles:[]},
+      pages:[{id:'controls',title:'Controls',widgets:[{id:'control',type:'plex-playlists',x:0,y:0,w:12,h:6,options:{}}]}]}));
+  });
+  await page.goto('/panel/');
+  await expect(page.getByRole('button',{name:/Spotify one/})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:/Chill/})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Focus/})).toBeVisible();
+  await page.getByRole('button',{name:/Chill/}).click();
+});
+
 // #65's idea: the queue shows what plays now and what comes next, with covers from Spotify's image server only.
 test('Spotify queue shows now playing and up next with covers, and covers can be turned off',async({page})=>{
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==','base64');

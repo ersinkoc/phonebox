@@ -16,7 +16,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Plex player address",
       "s.cd.plexCheck": "Check Plex connection",
       "s.cd.plexHint": "Plex control needs a Plex Companion player such as Caldera Amp on this computer. Start Caldera Amp once and sign in; it keeps running in the background and has no window to keep open. Plexamp on this computer works with the regular media widgets instead. Paste your Plex server address and your X-Plex-Token.",
-      "s.cd.plexChecking": "Checking…"
+      "s.cd.plexPlaylistHint": "Target: a Plex playlist ID. Choose one with the list below.",
+      "s.cd.plexLoadLists": "Load Plex playlists",
+      "s.cd.plexFull": "Control Deck is full (512 controls). Remove a control before you add a playlist.",
+      "s.cd.plexChoose": "Choose a Plex playlist…",
+      "s.cd.plexNone": "No Plex playlists found. Save the server address and token first.",
+      "s.cd.plexChecking": "Checking…",
+      "s.cd.plexLoading": "Loading…"
     }
   },
   "de": {
@@ -440,7 +446,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Plex-Player-Adresse",
       "s.cd.plexCheck": "Plex-Verbindung prüfen",
       "s.cd.plexHint": "Die Plex-Steuerung benötigt auf diesem Computer einen Plex-Companion-Player wie Caldera Amp. Starten Sie Caldera Amp einmal und melden Sie sich an; es läuft danach im Hintergrund weiter und hat kein Fenster, das offen bleiben muss. Plexamp auf diesem Computer funktioniert stattdessen mit den normalen Medien-Widgets. Fügen Sie die Adresse Ihres Plex-Servers und Ihren X-Plex-Token ein.",
-      "s.cd.plexChecking": "Wird geprüft…"
+      "s.cd.plexPlaylistHint": "Ziel: eine Plex-Playlist-ID. Wählen Sie sie mit der Liste unten.",
+      "s.cd.plexLoadLists": "Plex-Playlists laden",
+      "s.cd.plexFull": "Das Control Deck ist voll (512 Steuerelemente). Entferne ein Steuerelement, bevor du eine Playlist hinzufügst.",
+      "s.cd.plexChoose": "Plex-Playlist wählen…",
+      "s.cd.plexNone": "Keine Plex-Playlists gefunden. Speichern Sie zuerst Serveradresse und Token.",
+      "s.cd.plexChecking": "Wird geprüft…",
+      "s.cd.plexLoading": "Wird geladen…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Nur diese Kategorie (ihre Kategorie in den Einstellungen; leer = alle)",
@@ -1139,7 +1151,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Was gerade läuft und was als Nächstes kommt auf einem Plex-Player wie Caldera Amp; tippen Sie auf einen Titel, um ihn abzuspielen.",
       "Page buttons": "Seitentasten",
       "Buttons that open your pages; the page you are on is highlighted.": "Tasten, die Ihre Seiten öffnen; die aktuelle Seite ist hervorgehoben.",
-      "Pages (none ticked = all)": "Seiten (keine angehakt = alle)"
+      "Pages (none ticked = all)": "Seiten (keine angehakt = alle)",
+      "Plex playlists": "Plex-Playlists",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Was gerade läuft und was als Nächstes kommt auf einem Plex-Player wie Caldera Amp; tippen Sie auf einen Titel, um ihn abzuspielen.",
+      "Start configured Plex playlists on a Plex player.": "Startet konfigurierte Plex-Playlists auf einem Plex-Player.",
+      "Plex playlists (none ticked = all)": "Plex-Playlists (keine angekreuzt = alle)"
     },
     "panel": {
       "% load": "% Last",
@@ -1435,7 +1451,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Mond",
       "{n}% lit": "{n}% beleuchtet",
       "Core {n} MHz": "Kern {n} MHz",
-      "Battery care": "Akkupflege"
+      "Battery care": "Akkupflege",
+      "Add a Plex playlists widget to an enabled page": "Plex-Playlists-Widget zu einer aktiven Seite hinzufügen"
     }
   },
   "fr": {
@@ -1859,7 +1876,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Adresse du lecteur Plex",
       "s.cd.plexCheck": "Vérifier la connexion Plex",
       "s.cd.plexHint": "Le contrôle Plex nécessite un lecteur Plex Companion tel que Caldera Amp sur cet ordinateur. Lancez Caldera Amp une fois et connectez-vous ; il continue de tourner en arrière-plan et n'a pas de fenêtre à garder ouverte. Plexamp sur cet ordinateur fonctionne plutôt avec les widgets multimédias habituels. Collez l'adresse de votre serveur Plex et votre X-Plex-Token.",
-      "s.cd.plexChecking": "Vérification…"
+      "s.cd.plexPlaylistHint": "Cible : un ID de playlist Plex. Choisissez-le avec la liste ci-dessous.",
+      "s.cd.plexLoadLists": "Charger les playlists Plex",
+      "s.cd.plexFull": "Le Control Deck est plein (512 commandes). Supprime une commande avant d'ajouter une playlist.",
+      "s.cd.plexChoose": "Choisir une playlist Plex…",
+      "s.cd.plexNone": "Aucune playlist Plex trouvée. Enregistrez d'abord l'adresse du serveur et le jeton.",
+      "s.cd.plexChecking": "Vérification…",
+      "s.cd.plexLoading": "Chargement…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Seulement cette catégorie (sa catégorie dans les réglages ; vide = toutes)",
@@ -2558,7 +2581,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Ce qui joue et ce qui suit sur un lecteur Plex comme Caldera Amp ; touchez un titre pour le lire.",
       "Page buttons": "Boutons de pages",
       "Buttons that open your pages; the page you are on is highlighted.": "Des boutons qui ouvrent vos pages ; la page affichée est mise en évidence.",
-      "Pages (none ticked = all)": "Pages (aucune cochée = toutes)"
+      "Pages (none ticked = all)": "Pages (aucune cochée = toutes)",
+      "Plex playlists": "Playlists Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Ce qui joue et ce qui suit sur un lecteur Plex comme Caldera Amp ; touchez un titre pour le lire.",
+      "Start configured Plex playlists on a Plex player.": "Lance les playlists Plex configurées sur un lecteur Plex.",
+      "Plex playlists (none ticked = all)": "Playlists Plex (aucune cochée = toutes)"
     },
     "panel": {
       "% load": "% de charge",
@@ -2854,7 +2881,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Lune",
       "{n}% lit": "{n} % éclairée",
       "Core {n} MHz": "Cœur {n} MHz",
-      "Battery care": "Soin de la batterie"
+      "Battery care": "Soin de la batterie",
+      "Add a Plex playlists widget to an enabled page": "Ajoutez un widget Playlists Plex à une page activée"
     }
   },
   "es": {
@@ -3278,7 +3306,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Dirección del reproductor Plex",
       "s.cd.plexCheck": "Comprobar la conexión con Plex",
       "s.cd.plexHint": "El control de Plex necesita un reproductor Plex Companion como Caldera Amp en este equipo. Inicia Caldera Amp una vez e inicia sesión; sigue ejecutándose en segundo plano y no tiene ninguna ventana que mantener abierta. Plexamp en este equipo funciona con los widgets multimedia normales. Pega la dirección de tu servidor Plex y tu X-Plex-Token.",
-      "s.cd.plexChecking": "Comprobando…"
+      "s.cd.plexPlaylistHint": "Destino: un ID de lista de Plex. Elígelo con la lista de abajo.",
+      "s.cd.plexLoadLists": "Cargar listas de Plex",
+      "s.cd.plexFull": "El Control Deck está lleno (512 controles). Elimina un control antes de añadir una lista.",
+      "s.cd.plexChoose": "Elegir una lista de Plex…",
+      "s.cd.plexNone": "No se encontraron listas de Plex. Guarda primero la dirección del servidor y el token.",
+      "s.cd.plexChecking": "Comprobando…",
+      "s.cd.plexLoading": "Cargando…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Solo esta categoría (su categoría en Ajustes; vacío = todas)",
@@ -3977,7 +4011,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Qué suena y qué viene después en un reproductor Plex como Caldera Amp; toca una pista para reproducirla.",
       "Page buttons": "Botones de páginas",
       "Buttons that open your pages; the page you are on is highlighted.": "Botones que abren tus páginas; la página en la que estás aparece resaltada.",
-      "Pages (none ticked = all)": "Páginas (ninguna marcada = todas)"
+      "Pages (none ticked = all)": "Páginas (ninguna marcada = todas)",
+      "Plex playlists": "Listas de Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Qué suena y qué viene después en un reproductor Plex como Caldera Amp; toca una pista para reproducirla.",
+      "Start configured Plex playlists on a Plex player.": "Inicia las listas de Plex configuradas en un reproductor Plex.",
+      "Plex playlists (none ticked = all)": "Listas de Plex (ninguna marcada = todas)"
     },
     "panel": {
       "% load": "% de carga",
@@ -4273,7 +4311,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Luna",
       "{n}% lit": "{n} % iluminada",
       "Core {n} MHz": "Núcleo {n} MHz",
-      "Battery care": "Cuidado de la batería"
+      "Battery care": "Cuidado de la batería",
+      "Add a Plex playlists widget to an enabled page": "Añade un widget de listas de Plex a una página activada"
     }
   },
   "it": {
@@ -4697,7 +4736,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Indirizzo del player Plex",
       "s.cd.plexCheck": "Verifica la connessione Plex",
       "s.cd.plexHint": "Il controllo Plex richiede un player Plex Companion come Caldera Amp su questo computer. Avvia Caldera Amp una volta e accedi; continua a girare in background e non ha finestre da tenere aperte. Plexamp su questo computer funziona invece con i normali widget multimediali. Incolla l'indirizzo del tuo server Plex e il tuo X-Plex-Token.",
-      "s.cd.plexChecking": "Controllo in corso…"
+      "s.cd.plexPlaylistHint": "Destinazione: un ID di playlist Plex. Sceglilo con l'elenco qui sotto.",
+      "s.cd.plexLoadLists": "Carica le playlist Plex",
+      "s.cd.plexFull": "Il Control Deck è pieno (512 controlli). Rimuovi un controllo prima di aggiungere una playlist.",
+      "s.cd.plexChoose": "Scegli una playlist Plex…",
+      "s.cd.plexNone": "Nessuna playlist Plex trovata. Salva prima l'indirizzo del server e il token.",
+      "s.cd.plexChecking": "Controllo in corso…",
+      "s.cd.plexLoading": "Caricamento…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Solo questa categoria (la sua categoria nelle Impostazioni; vuoto = tutte)",
@@ -5396,7 +5441,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Cosa è in riproduzione e cosa viene dopo su un player Plex come Caldera Amp; tocca un brano per riprodurlo.",
       "Page buttons": "Pulsanti pagine",
       "Buttons that open your pages; the page you are on is highlighted.": "Pulsanti che aprono le tue pagine; la pagina in cui ti trovi è evidenziata.",
-      "Pages (none ticked = all)": "Pagine (nessuna spuntata = tutte)"
+      "Pages (none ticked = all)": "Pagine (nessuna spuntata = tutte)",
+      "Plex playlists": "Playlist Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Cosa è in riproduzione e cosa viene dopo su un player Plex come Caldera Amp; tocca un brano per riprodurlo.",
+      "Start configured Plex playlists on a Plex player.": "Avvia le playlist Plex configurate su un player Plex.",
+      "Plex playlists (none ticked = all)": "Playlist Plex (nessuna selezionata = tutte)"
     },
     "panel": {
       "% load": "% di carico",
@@ -5692,7 +5741,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Luna",
       "{n}% lit": "{n}% illuminata",
       "Core {n} MHz": "Core {n} MHz",
-      "Battery care": "Cura della batteria"
+      "Battery care": "Cura della batteria",
+      "Add a Plex playlists widget to an enabled page": "Aggiungi un widget Playlist Plex a una pagina attiva"
     }
   },
   "pt": {
@@ -6116,7 +6166,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Endereço do reprodutor Plex",
       "s.cd.plexCheck": "Verificar a ligação ao Plex",
       "s.cd.plexHint": "O controlo do Plex precisa de um reprodutor Plex Companion, como o Caldera Amp, neste computador. Inicie o Caldera Amp uma vez e inicie sessão; continua a funcionar em segundo plano e não tem nenhuma janela para manter aberta. O Plexamp neste computador funciona com os widgets multimédia normais. Cole o endereço do seu servidor Plex e o seu X-Plex-Token.",
-      "s.cd.plexChecking": "A verificar…"
+      "s.cd.plexPlaylistHint": "Destino: um ID de lista de reprodução do Plex. Escolha um na lista abaixo.",
+      "s.cd.plexLoadLists": "Carregar listas do Plex",
+      "s.cd.plexFull": "O Control Deck está cheio (512 controlos). Remove um controlo antes de adicionar uma lista.",
+      "s.cd.plexChoose": "Escolher uma lista do Plex…",
+      "s.cd.plexNone": "Nenhuma lista do Plex encontrada. Guarde primeiro o endereço do servidor e o token.",
+      "s.cd.plexChecking": "A verificar…",
+      "s.cd.plexLoading": "A carregar…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Só esta categoria (a sua categoria nas Definições; vazio = todas)",
@@ -6815,7 +6871,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está a tocar e o que vem a seguir num reprodutor Plex como o Caldera Amp; toque numa faixa para a reproduzir.",
       "Page buttons": "Botões de páginas",
       "Buttons that open your pages; the page you are on is highlighted.": "Botões que abrem as suas páginas; a página atual fica destacada.",
-      "Pages (none ticked = all)": "Páginas (nenhuma marcada = todas)"
+      "Pages (none ticked = all)": "Páginas (nenhuma marcada = todas)",
+      "Plex playlists": "Listas do Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está a tocar e o que vem a seguir num reprodutor Plex como o Caldera Amp; toque numa faixa para a reproduzir.",
+      "Start configured Plex playlists on a Plex player.": "Inicia as listas do Plex configuradas num reprodutor Plex.",
+      "Plex playlists (none ticked = all)": "Listas do Plex (nenhuma marcada = todas)"
     },
     "panel": {
       "% load": "% de carga",
@@ -7111,7 +7171,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Lua",
       "{n}% lit": "{n}% iluminada",
       "Core {n} MHz": "Núcleo {n} MHz",
-      "Battery care": "Cuidados com a bateria"
+      "Battery care": "Cuidados com a bateria",
+      "Add a Plex playlists widget to an enabled page": "Adicione um widget de listas do Plex a uma página ativada"
     }
   },
   "pt-BR": {
@@ -7130,7 +7191,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Endereço do player Plex",
       "s.cd.plexCheck": "Verificar conexão com o Plex",
       "s.cd.plexHint": "O controle do Plex precisa de um player Plex Companion, como o Caldera Amp, neste computador. Abra o Caldera Amp uma vez e faça login; ele continua rodando em segundo plano e não tem nenhuma janela para manter aberta. O Plexamp neste computador funciona com os widgets de mídia normais. Cole o endereço do seu servidor Plex e o seu X-Plex-Token.",
-      "s.cd.plexChecking": "Verificando…"
+      "s.cd.plexPlaylistHint": "Destino: um ID de playlist do Plex. Escolha um na lista abaixo.",
+      "s.cd.plexLoadLists": "Carregar playlists do Plex",
+      "s.cd.plexFull": "O Control Deck está cheio (512 controles). Remova um controle antes de adicionar uma playlist.",
+      "s.cd.plexChoose": "Escolher uma playlist do Plex…",
+      "s.cd.plexNone": "Nenhuma playlist do Plex encontrada. Salve primeiro o endereço do servidor e o token.",
+      "s.cd.plexChecking": "Verificando…",
+      "s.cd.plexLoading": "Carregando…"
     },
     "catalog": {
       "1": "1",
@@ -7141,7 +7208,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está tocando e o que vem a seguir em um player Plex como o Caldera Amp; toque em uma faixa para tocá-la.",
       "Page buttons": "Botões de páginas",
       "Buttons that open your pages; the page you are on is highlighted.": "Botões que abrem suas páginas; a página atual fica destacada.",
-      "Pages (none ticked = all)": "Páginas (nenhuma marcada = todas)"
+      "Pages (none ticked = all)": "Páginas (nenhuma marcada = todas)",
+      "Plex playlists": "Playlists do Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está tocando e o que vem a seguir em um player Plex como o Caldera Amp; toque em uma faixa para tocá-la.",
+      "Start configured Plex playlists on a Plex player.": "Inicia as playlists do Plex configuradas em um player Plex.",
+      "Plex playlists (none ticked = all)": "Playlists do Plex (nenhuma marcada = todas)"
     }
   },
   "nl": {
@@ -7565,7 +7636,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Adres van de Plex-speler",
       "s.cd.plexCheck": "Plex-verbinding controleren",
       "s.cd.plexHint": "Plex-bediening heeft een Plex Companion-speler zoals Caldera Amp op deze computer nodig. Start Caldera Amp één keer en meld je aan; het blijft op de achtergrond draaien en heeft geen venster dat open moet blijven. Plexamp op deze computer werkt in plaats daarvan met de gewone mediawidgets. Plak het adres van je Plex-server en je X-Plex-Token.",
-      "s.cd.plexChecking": "Controleren…"
+      "s.cd.plexPlaylistHint": "Doel: een Plex-afspeellijst-ID. Kies er een met de lijst hieronder.",
+      "s.cd.plexLoadLists": "Plex-afspeellijsten laden",
+      "s.cd.plexFull": "Het Control Deck is vol (512 bedieningen). Verwijder een bediening voordat je een afspeellijst toevoegt.",
+      "s.cd.plexChoose": "Kies een Plex-afspeellijst…",
+      "s.cd.plexNone": "Geen Plex-afspeellijsten gevonden. Sla eerst het serveradres en het token op.",
+      "s.cd.plexChecking": "Controleren…",
+      "s.cd.plexLoading": "Laden…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Alleen deze categorie (de categorie in Instellingen; leeg = alle)",
@@ -8264,7 +8341,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Wat er speelt en wat er daarna komt op een Plex-speler zoals Caldera Amp; tik op een nummer om het af te spelen.",
       "Page buttons": "Paginaknoppen",
       "Buttons that open your pages; the page you are on is highlighted.": "Knoppen die je pagina's openen; de pagina waarop je bent is gemarkeerd.",
-      "Pages (none ticked = all)": "Pagina's (niets aangevinkt = alle)"
+      "Pages (none ticked = all)": "Pagina's (niets aangevinkt = alle)",
+      "Plex playlists": "Plex-afspeellijsten",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Wat er speelt en wat er daarna komt op een Plex-speler zoals Caldera Amp; tik op een nummer om het af te spelen.",
+      "Start configured Plex playlists on a Plex player.": "Start ingestelde Plex-afspeellijsten op een Plex-speler.",
+      "Plex playlists (none ticked = all)": "Plex-afspeellijsten (geen aangevinkt = alle)"
     },
     "panel": {
       "% load": "% lading",
@@ -8560,7 +8641,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Maan",
       "{n}% lit": "{n}% verlicht",
       "Core {n} MHz": "Kern {n} MHz",
-      "Battery care": "Accuverzorging"
+      "Battery care": "Accuverzorging",
+      "Add a Plex playlists widget to an enabled page": "Voeg een Plex-afspeellijstenwidget toe aan een ingeschakelde pagina"
     }
   },
   "pl": {
@@ -8984,7 +9066,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Adres odtwarzacza Plex",
       "s.cd.plexCheck": "Sprawdź połączenie z Plex",
       "s.cd.plexHint": "Sterowanie Plex wymaga na tym komputerze odtwarzacza Plex Companion, takiego jak Caldera Amp. Uruchom Caldera Amp raz i zaloguj się; działa dalej w tle i nie ma okna, które trzeba trzymać otwarte. Plexamp na tym komputerze działa za to ze zwykłymi widżetami multimediów. Wklej adres swojego serwera Plex i swój X-Plex-Token.",
-      "s.cd.plexChecking": "Sprawdzanie…"
+      "s.cd.plexPlaylistHint": "Cel: identyfikator playlisty Plex. Wybierz go z listy poniżej.",
+      "s.cd.plexLoadLists": "Wczytaj playlisty Plex",
+      "s.cd.plexFull": "Control Deck jest pełny (512 kontrolek). Usuń kontrolkę, zanim dodasz playlistę.",
+      "s.cd.plexChoose": "Wybierz playlistę Plex…",
+      "s.cd.plexNone": "Nie znaleziono playlist Plex. Najpierw zapisz adres serwera i token.",
+      "s.cd.plexChecking": "Sprawdzanie…",
+      "s.cd.plexLoading": "Wczytywanie…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Tylko ta kategoria (jej kategoria w Ustawieniach; puste = wszystkie)",
@@ -9683,7 +9771,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co teraz gra i co będzie dalej w odtwarzaczu Plex, takim jak Caldera Amp; dotknij utworu, aby go odtworzyć.",
       "Page buttons": "Przyciski stron",
       "Buttons that open your pages; the page you are on is highlighted.": "Przyciski otwierające Twoje strony; bieżąca strona jest wyróżniona.",
-      "Pages (none ticked = all)": "Strony (żadna nie zaznaczona = wszystkie)"
+      "Pages (none ticked = all)": "Strony (żadna nie zaznaczona = wszystkie)",
+      "Plex playlists": "Playlisty Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co teraz gra i co będzie dalej w odtwarzaczu Plex, takim jak Caldera Amp; dotknij utworu, aby go odtworzyć.",
+      "Start configured Plex playlists on a Plex player.": "Uruchamia skonfigurowane playlisty Plex w odtwarzaczu Plex.",
+      "Plex playlists (none ticked = all)": "Playlisty Plex (żadna zaznaczona = wszystkie)"
     },
     "panel": {
       "% load": "% obciążenia",
@@ -9979,7 +10071,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Księżyc",
       "{n}% lit": "Oświetlenie {n}%",
       "Core {n} MHz": "Rdzeń {n} MHz",
-      "Battery care": "Dbanie o baterię"
+      "Battery care": "Dbanie o baterię",
+      "Add a Plex playlists widget to an enabled page": "Dodaj widżet playlist Plex do włączonej strony"
     }
   },
   "ru": {
@@ -10403,7 +10496,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Адрес плеера Plex",
       "s.cd.plexCheck": "Проверить подключение к Plex",
       "s.cd.plexHint": "Для управления Plex на этом компьютере нужен плеер Plex Companion, например Caldera Amp. Запустите Caldera Amp один раз и войдите в аккаунт; он продолжит работать в фоне, и окно держать открытым не нужно. Plexamp на этом компьютере работает с обычными медиавиджетами. Вставьте адрес вашего сервера Plex и ваш X-Plex-Token.",
-      "s.cd.plexChecking": "Проверка…"
+      "s.cd.plexPlaylistHint": "Цель: ID плейлиста Plex. Выберите его в списке ниже.",
+      "s.cd.plexLoadLists": "Загрузить плейлисты Plex",
+      "s.cd.plexFull": "Control Deck заполнен (512 элементов). Удалите элемент, прежде чем добавлять плейлист.",
+      "s.cd.plexChoose": "Выберите плейлист Plex…",
+      "s.cd.plexNone": "Плейлисты Plex не найдены. Сначала сохраните адрес сервера и токен.",
+      "s.cd.plexChecking": "Проверка…",
+      "s.cd.plexLoading": "Загрузка…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Только эта категория (её категория в настройках; пусто = все)",
@@ -11102,7 +11201,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Что играет и что дальше в плеере Plex, например Caldera Amp; коснитесь трека, чтобы воспроизвести его.",
       "Page buttons": "Кнопки страниц",
       "Buttons that open your pages; the page you are on is highlighted.": "Кнопки, открывающие ваши страницы; текущая страница выделена.",
-      "Pages (none ticked = all)": "Страницы (ничего не отмечено = все)"
+      "Pages (none ticked = all)": "Страницы (ничего не отмечено = все)",
+      "Plex playlists": "Плейлисты Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Что играет и что дальше в плеере Plex, например Caldera Amp; коснитесь трека, чтобы воспроизвести его.",
+      "Start configured Plex playlists on a Plex player.": "Запускает настроенные плейлисты Plex в плеере Plex.",
+      "Plex playlists (none ticked = all)": "Плейлисты Plex (ничего не отмечено = все)"
     },
     "panel": {
       "% load": "% нагрузки",
@@ -11398,7 +11501,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Луна",
       "{n}% lit": "Освещено {n}%",
       "Core {n} MHz": "Ядро {n} МГц",
-      "Battery care": "Забота о батарее"
+      "Battery care": "Забота о батарее",
+      "Add a Plex playlists widget to an enabled page": "Добавьте виджет плейлистов Plex на включённую страницу"
     }
   },
   "el": {
@@ -11417,7 +11521,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Διεύθυνση αναπαραγωγέα Plex",
       "s.cd.plexCheck": "Έλεγχος σύνδεσης Plex",
       "s.cd.plexHint": "Ο έλεγχος Plex χρειάζεται έναν αναπαραγωγέα Plex Companion, όπως το Caldera Amp, σε αυτόν τον υπολογιστή. Ξεκίνα το Caldera Amp μία φορά και συνδέσου· συνεχίζει να τρέχει στο παρασκήνιο και δεν έχει παράθυρο που πρέπει να μένει ανοιχτό. Το Plexamp σε αυτόν τον υπολογιστή λειτουργεί με τα κανονικά widget πολυμέσων. Επικόλλησε τη διεύθυνση του διακομιστή Plex και το X-Plex-Token σου.",
-      "s.cd.plexChecking": "Έλεγχος…"
+      "s.cd.plexPlaylistHint": "Στόχος: ένα ID λίστας αναπαραγωγής Plex. Διάλεξε ένα από τη λίστα παρακάτω.",
+      "s.cd.plexLoadLists": "Φόρτωση λιστών Plex",
+      "s.cd.plexFull": "Το Control Deck είναι γεμάτο (512 στοιχεία ελέγχου). Αφαίρεσε ένα στοιχείο πριν προσθέσεις λίστα.",
+      "s.cd.plexChoose": "Επιλογή λίστας Plex…",
+      "s.cd.plexNone": "Δεν βρέθηκαν λίστες Plex. Αποθήκευσε πρώτα τη διεύθυνση διακομιστή και το διακριτικό.",
+      "s.cd.plexChecking": "Έλεγχος…",
+      "s.cd.plexLoading": "Φόρτωση…"
     },
     "catalog": {
       "1": "1",
@@ -11431,7 +11541,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Τι παίζει και τι ακολουθεί σε έναν αναπαραγωγέα Plex όπως το Caldera Amp· πάτα ένα κομμάτι για να παίξει.",
       "Page buttons": "Κουμπιά σελίδων",
       "Buttons that open your pages; the page you are on is highlighted.": "Κουμπιά που ανοίγουν τις σελίδες σου· η σελίδα όπου βρίσκεσαι είναι επισημασμένη.",
-      "Pages (none ticked = all)": "Σελίδες (καμία επιλεγμένη = όλες)"
+      "Pages (none ticked = all)": "Σελίδες (καμία επιλεγμένη = όλες)",
+      "Plex playlists": "Λίστες Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Τι παίζει και τι ακολουθεί σε έναν αναπαραγωγέα Plex όπως το Caldera Amp· πάτα ένα κομμάτι για να παίξει.",
+      "Start configured Plex playlists on a Plex player.": "Ξεκινά τις λίστες αναπαραγωγής Plex που έχεις ρυθμίσει σε έναν αναπαραγωγέα Plex.",
+      "Plex playlists (none ticked = all)": "Λίστες Plex (καμία επιλεγμένη = όλες)"
     },
     "panel": {
       "% load": "% φορτίου",
@@ -11727,7 +11841,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Φεγγάρι",
       "{n}% lit": "{n}% φωτισμένο",
       "Core {n} MHz": "Πυρήνας {n} MHz",
-      "Battery care": "Φροντίδα μπαταρίας"
+      "Battery care": "Φροντίδα μπαταρίας",
+      "Add a Plex playlists widget to an enabled page": "Πρόσθεσε ένα γραφικό στοιχείο λιστών Plex σε μια ενεργή σελίδα"
     }
   },
   "vi": {
@@ -11746,7 +11861,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Địa chỉ trình phát Plex",
       "s.cd.plexCheck": "Kiểm tra kết nối Plex",
       "s.cd.plexHint": "Điều khiển Plex cần một trình phát Plex Companion như Caldera Amp trên máy tính này. Hãy mở Caldera Amp một lần và đăng nhập; nó tiếp tục chạy nền và không có cửa sổ nào cần giữ mở. Plexamp trên máy tính này hoạt động với các widget phương tiện thông thường. Dán địa chỉ máy chủ Plex và X-Plex-Token của bạn.",
-      "s.cd.plexChecking": "Đang kiểm tra…"
+      "s.cd.plexPlaylistHint": "Đích: ID danh sách phát Plex. Chọn một mục trong danh sách bên dưới.",
+      "s.cd.plexLoadLists": "Tải danh sách phát Plex",
+      "s.cd.plexFull": "Control Deck đã đầy (512 điều khiển). Hãy xóa một điều khiển trước khi thêm danh sách phát.",
+      "s.cd.plexChoose": "Chọn danh sách phát Plex…",
+      "s.cd.plexNone": "Không tìm thấy danh sách phát Plex. Hãy lưu địa chỉ máy chủ và mã thông báo trước.",
+      "s.cd.plexChecking": "Đang kiểm tra…",
+      "s.cd.plexLoading": "Đang tải…"
     },
     "catalog": {
       "1": "1",
@@ -11760,7 +11881,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Đang phát gì và tiếp theo là gì trên trình phát Plex như Caldera Amp; chạm một bài để phát.",
       "Page buttons": "Nút trang",
       "Buttons that open your pages; the page you are on is highlighted.": "Các nút mở trang của bạn; trang đang xem được làm nổi bật.",
-      "Pages (none ticked = all)": "Trang (không chọn = tất cả)"
+      "Pages (none ticked = all)": "Trang (không chọn = tất cả)",
+      "Plex playlists": "Danh sách phát Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Đang phát gì và tiếp theo là gì trên trình phát Plex như Caldera Amp; chạm một bài để phát.",
+      "Start configured Plex playlists on a Plex player.": "Phát các danh sách phát Plex đã cấu hình trên trình phát Plex.",
+      "Plex playlists (none ticked = all)": "Danh sách phát Plex (không chọn = tất cả)"
     },
     "panel": {
       "% load": "% tải",
@@ -12056,7 +12181,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Mặt trăng",
       "{n}% lit": "Sáng {n}%",
       "Core {n} MHz": "Lõi {n} MHz",
-      "Battery care": "Bảo vệ pin"
+      "Battery care": "Bảo vệ pin",
+      "Add a Plex playlists widget to an enabled page": "Hãy thêm tiện ích danh sách phát Plex vào một trang đang bật"
     }
   },
   "zh": {
@@ -12480,7 +12606,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Plex 播放器地址",
       "s.cd.plexCheck": "检查 Plex 连接",
       "s.cd.plexHint": "Plex 控制需要这台电脑上有 Plex Companion 播放器，例如 Caldera Amp。请启动一次 Caldera Amp 并登录；它会在后台持续运行，没有需要保持打开的窗口。这台电脑上的 Plexamp 则通过常规的媒体小组件控制。请粘贴你的 Plex 服务器地址和 X-Plex-Token。",
-      "s.cd.plexChecking": "正在检查…"
+      "s.cd.plexPlaylistHint": "目标：Plex 播放列表 ID。请从下方列表中选择。",
+      "s.cd.plexLoadLists": "加载 Plex 播放列表",
+      "s.cd.plexFull": "Control Deck 已满（512 个控件）。请先移除一个控件，再添加播放列表。",
+      "s.cd.plexChoose": "选择 Plex 播放列表…",
+      "s.cd.plexNone": "未找到 Plex 播放列表。请先保存服务器地址和令牌。",
+      "s.cd.plexChecking": "正在检查…",
+      "s.cd.plexLoading": "正在加载…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "仅此分类（设置中的分类；留空 = 全部）",
@@ -13179,7 +13311,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上显示正在播放的内容和接下来的曲目；点按曲目即可播放。",
       "Page buttons": "页面按钮",
       "Buttons that open your pages; the page you are on is highlighted.": "打开各个页面的按钮；当前页面会高亮显示。",
-      "Pages (none ticked = all)": "页面（不勾选 = 全部）"
+      "Pages (none ticked = all)": "页面（不勾选 = 全部）",
+      "Plex playlists": "Plex 播放列表",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上显示正在播放的内容和接下来的曲目；点按曲目即可播放。",
+      "Start configured Plex playlists on a Plex player.": "在 Plex 播放器上启动已配置的 Plex 播放列表。",
+      "Plex playlists (none ticked = all)": "Plex 播放列表（未勾选 = 全部）"
     },
     "panel": {
       "% load": "负载%",
@@ -13475,7 +13611,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "月亮",
       "{n}% lit": "照亮 {n}%",
       "Core {n} MHz": "核心 {n} MHz",
-      "Battery care": "电池保养"
+      "Battery care": "电池保养",
+      "Add a Plex playlists widget to an enabled page": "请将 Plex 播放列表小组件添加到已启用的页面"
     }
   }
 });

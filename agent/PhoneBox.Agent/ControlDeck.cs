@@ -14,6 +14,7 @@ public sealed partial class ControlDeck : BackgroundService
     private readonly IDeckNative _native;
     private readonly Func<long> _now;
     private readonly SpotifyControl? _spotify;
+    private readonly PlexControl? _plex;
     private readonly ControlTasks _tasks;
     private readonly MicrophoneLeases _ptt;
     // Serializes push-to-talk with panic, so a hold cannot begin between panic dropping the leases and muting.
@@ -47,8 +48,8 @@ public sealed partial class ControlDeck : BackgroundService
 
     private readonly PushStore? _push;
     private readonly AudioControl? _master;
-    public ControlDeck(ConfigStore config, AudioControl audio, MediaMonitor media, ILogger<ControlDeck> log, SpotifyControl spotify, PushStore push)
-        : this(config, CreateNative(audio, media, log), log, null, push, audio, spotify) { }
+    public ControlDeck(ConfigStore config, AudioControl audio, MediaMonitor media, ILogger<ControlDeck> log, SpotifyControl spotify, PlexControl plex, PushStore push)
+        : this(config, CreateNative(audio, media, log), log, null, push, audio, spotify, plex: plex) { }
 
     private static IDeckNative CreateNative(AudioControl audio, MediaMonitor media, ILogger log)
     {
@@ -58,9 +59,9 @@ public sealed partial class ControlDeck : BackgroundService
         return new PortableDeckNative(audio, media);
 #endif
     }
-    internal ControlDeck(ConfigStore config, IDeckNative native, ILogger<ControlDeck> log, Func<long>? now = null, PushStore? push = null, AudioControl? master = null, SpotifyControl? spotify = null, RadioLogoCache? logos = null)
+    internal ControlDeck(ConfigStore config, IDeckNative native, ILogger<ControlDeck> log, Func<long>? now = null, PushStore? push = null, AudioControl? master = null, SpotifyControl? spotify = null, RadioLogoCache? logos = null, PlexControl? plex = null)
     {
-        _config = config; _log = log; _push = push; _master = master; _spotify = spotify;
+        _config = config; _log = log; _push = push; _master = master; _spotify = spotify; _plex = plex;
         _now = now ?? (() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         _tasks = new(config, log);
         _native = native;
@@ -423,6 +424,14 @@ public sealed partial class ControlDeck : BackgroundService
                 return await RunWithMediaFocusAsync(async token =>
                 {
                     var res = await _spotify.Act("playlist", action.Id, token);
+                    if (res.Ok) StopAllRadios(clearLast: true);
+                    return res;
+                }, ct);
+            case "plex-playlist":
+                if (_plex is null) return new(false, "Plex is unavailable");
+                return await RunWithMediaFocusAsync(async token =>
+                {
+                    var res = await _plex.Act("playlist", action.Id, token);
                     if (res.Ok) StopAllRadios(clearLast: true);
                     return res;
                 }, ct);

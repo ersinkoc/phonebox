@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Adresa přehrávače Plex",
       "s.cd.plexCheck": "Zkontrolovat připojení k Plexu",
       "s.cd.plexHint": "Ovládání Plexu vyžaduje na tomto počítači přehrávač Plex Companion, například Caldera Amp. Spusťte Caldera Amp jednou a přihlaste se; běží dál na pozadí a nemá žádné okno, které by muselo zůstat otevřené. Plexamp na tomto počítači místo toho funguje s běžnými widgety médií. Vložte adresu svého serveru Plex a svůj X-Plex-Token.",
-      "s.cd.plexChecking": "Kontroluje se…"
+      "s.cd.plexPlaylistHint": "Cíl: ID playlistu Plex. Vyberte ho ze seznamu níže.",
+      "s.cd.plexLoadLists": "Načíst playlisty Plex",
+      "s.cd.plexFull": "Control Deck je plný (512 ovládacích prvků). Před přidáním playlistu některý prvek odeberte.",
+      "s.cd.plexChoose": "Vyberte playlist Plex…",
+      "s.cd.plexNone": "Nebyly nalezeny žádné playlisty Plex. Nejprve uložte adresu serveru a token.",
+      "s.cd.plexChecking": "Kontroluje se…",
+      "s.cd.plexLoading": "Načítá se…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Jen tato kategorie (její kategorie v Nastavení; prázdné = všechny)",
@@ -1664,7 +1670,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co hraje a co bude následovat v přehrávači Plex, například Caldera Amp; klepnutím na skladbu ji přehrajete.",
       "Page buttons": "Tlačítka stránek",
       "Buttons that open your pages; the page you are on is highlighted.": "Tlačítka, která otevírají vaše stránky; aktuální stránka je zvýrazněná.",
-      "Pages (none ticked = all)": "Stránky (nic nezaškrtnuto = všechny)"
+      "Pages (none ticked = all)": "Stránky (nic nezaškrtnuto = všechny)",
+      "Plex playlists": "Playlisty Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co hraje a co bude následovat v přehrávači Plex, například Caldera Amp; klepnutím na skladbu ji přehrajete.",
+      "Start configured Plex playlists on a Plex player.": "Spustí nakonfigurované playlisty Plex v přehrávači Plex.",
+      "Plex playlists (none ticked = all)": "Playlisty Plex (nic nezaškrtnuto = všechny)"
     },
     "panel": {
       "% load": "% zatížení",
@@ -1960,7 +1970,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Měsíc",
       "{n}% lit": "Osvětleno {n} %",
       "Core {n} MHz": "Jádro {n} MHz",
-      "Battery care": "Péče o baterii"
+      "Battery care": "Péče o baterii",
+      "Add a Plex playlists widget to an enabled page": "Přidejte widget playlistů Plex na povolenou stránku"
     }
   }
 });

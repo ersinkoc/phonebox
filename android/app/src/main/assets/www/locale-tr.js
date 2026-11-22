@@ -412,7 +412,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Plex oynatıcı adresi",
       "s.cd.plexCheck": "Plex bağlantısını denetle",
       "s.cd.plexHint": "Plex kontrolü için bu bilgisayarda Caldera Amp gibi bir Plex Companion oynatıcısı gerekir. Caldera Amp'i bir kez başlatıp oturum açın; arka planda çalışmaya devam eder ve açık tutulacak bir penceresi yoktur. Bu bilgisayardaki Plexamp ise normal medya widget'larıyla çalışır. Plex sunucunuzun adresini ve X-Plex-Token'ınızı yapıştırın.",
-      "s.cd.plexChecking": "Denetleniyor…"
+      "s.cd.plexPlaylistHint": "Hedef: bir Plex çalma listesi kimliği. Aşağıdaki listeden seçin.",
+      "s.cd.plexLoadLists": "Plex çalma listelerini yükle",
+      "s.cd.plexFull": "Control Deck dolu (512 denetim). Çalma listesi eklemeden önce bir denetimi kaldır.",
+      "s.cd.plexChoose": "Bir Plex çalma listesi seçin…",
+      "s.cd.plexNone": "Plex çalma listesi bulunamadı. Önce sunucu adresini ve jetonu kaydedin.",
+      "s.cd.plexChecking": "Denetleniyor…",
+      "s.cd.plexLoading": "Yükleniyor…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Yalnızca bu kategori (Ayarlar'daki kategorisi; boş = tümü)",
@@ -1111,7 +1117,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp gibi bir Plex oynatıcısında şu an çalanı ve sıradakileri gösterir; çalmak için bir parçaya dokunun.",
       "Page buttons": "Sayfa düğmeleri",
       "Buttons that open your pages; the page you are on is highlighted.": "Sayfalarınızı açan düğmeler; bulunduğunuz sayfa vurgulanır.",
-      "Pages (none ticked = all)": "Sayfalar (hiçbiri işaretli değilse = tümü)"
+      "Pages (none ticked = all)": "Sayfalar (hiçbiri işaretli değilse = tümü)",
+      "Plex playlists": "Plex çalma listeleri",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp gibi bir Plex oynatıcısında şu an çalanı ve sıradakileri gösterir; çalmak için bir parçaya dokunun.",
+      "Start configured Plex playlists on a Plex player.": "Yapılandırılmış Plex çalma listelerini bir Plex oynatıcısında başlatır.",
+      "Plex playlists (none ticked = all)": "Plex çalma listeleri (hiçbiri işaretli değil = hepsi)"
     },
     "panel": {
       "% load": "% yükleme",
@@ -1407,7 +1417,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Ay",
       "{n}% lit": "%{n} aydınlık",
       "Core {n} MHz": "Çekirdek {n} MHz",
-      "Battery care": "Batarya bakımı"
+      "Battery care": "Batarya bakımı",
+      "Add a Plex playlists widget to an enabled page": "Etkin bir sayfaya Plex çalma listeleri widget'ı ekleyin"
     }
   }
 });

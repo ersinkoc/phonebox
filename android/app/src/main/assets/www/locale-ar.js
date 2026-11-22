@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "عنوان مشغّل Plex",
       "s.cd.plexCheck": "فحص اتصال Plex",
       "s.cd.plexHint": "يتطلب التحكم في Plex مشغّل Plex Companion مثل Caldera Amp على هذا الكمبيوتر. شغّل Caldera Amp مرة واحدة وسجّل الدخول؛ يبقى يعمل في الخلفية وليست له نافذة يجب إبقاؤها مفتوحة. أما Plexamp على هذا الكمبيوتر فيعمل مع أدوات الوسائط المعتادة. الصق عنوان خادم Plex ورمز X-Plex-Token الخاص بك.",
-      "s.cd.plexChecking": "جارٍ الفحص…"
+      "s.cd.plexPlaylistHint": "الهدف: معرّف قائمة تشغيل Plex. اختر واحدة من القائمة أدناه.",
+      "s.cd.plexLoadLists": "تحميل قوائم تشغيل Plex",
+      "s.cd.plexFull": "Control Deck ممتلئ (512 عنصر تحكم). أزل عنصر تحكم قبل إضافة قائمة تشغيل.",
+      "s.cd.plexChoose": "اختر قائمة تشغيل Plex…",
+      "s.cd.plexNone": "لم يتم العثور على قوائم تشغيل Plex. احفظ عنوان الخادم والرمز أولاً.",
+      "s.cd.plexChecking": "جارٍ الفحص…",
+      "s.cd.plexLoading": "جارٍ التحميل…"
     },
     "catalog": {
       "and": "و",
@@ -1699,7 +1705,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ما يُشغَّل الآن وما يليه على مشغّل Plex مثل Caldera Amp؛ المس مقطعًا لتشغيله.",
       "Page buttons": "أزرار الصفحات",
       "Buttons that open your pages; the page you are on is highlighted.": "أزرار تفتح صفحاتك؛ الصفحة الحالية مميّزة.",
-      "Pages (none ticked = all)": "الصفحات (عدم تحديد أي منها = الكل)"
+      "Pages (none ticked = all)": "الصفحات (عدم تحديد أي منها = الكل)",
+      "Plex playlists": "قوائم تشغيل Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ما يُشغَّل الآن وما يليه على مشغّل Plex مثل Caldera Amp؛ المس مقطعًا لتشغيله.",
+      "Start configured Plex playlists on a Plex player.": "يبدأ قوائم تشغيل Plex المضبوطة على مشغّل Plex.",
+      "Plex playlists (none ticked = all)": "قوائم تشغيل Plex (دون تحديد = الكل)"
     },
     "panel": {
       "% load": "النسبة المئوية للحمولة",
@@ -1995,7 +2005,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "القمر",
       "{n}% lit": "مضاء بنسبة {n}%",
       "Core {n} MHz": "النواة {n} ميغاهرتز",
-      "Battery care": "العناية بالبطارية"
+      "Battery care": "العناية بالبطارية",
+      "Add a Plex playlists widget to an enabled page": "أضف أداة قوائم تشغيل Plex إلى صفحة مفعّلة"
     }
   }
 });

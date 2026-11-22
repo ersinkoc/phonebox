@@ -119,6 +119,7 @@ public sealed partial class ControlDeck
         }
         if (action.Kind == "workflow" && ToolProcess.Find("gh") is null) { available = false; state = "Install GitHub CLI"; }
         if (action.Kind == "playlist" && string.IsNullOrWhiteSpace(_config.Get().Controls.SpotifyClientId) && string.IsNullOrWhiteSpace(_config.Get().Controls.SpotifyToken)) { available = false; state = "Connect Spotify in desktop settings"; }
+        if (action.Kind == "plex-playlist" && (string.IsNullOrWhiteSpace(_config.Get().Controls.PlexUrl) || string.IsNullOrWhiteSpace(_config.Get().Controls.PlexToken))) { available = false; state = "Connect Plex in desktop settings"; }
         if (action.Kind == "midi" && (!int.TryParse(action.Device, out var midiPort) || !_midi.Any(p => p.Id == midiPort.ToString()))) { available = false; state = "MIDI port unavailable"; }
         if (action.Kind is "app" or "project" or "shortcut" or "focus")
         {

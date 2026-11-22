@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Alamat pemutar Plex",
       "s.cd.plexCheck": "Periksa koneksi Plex",
       "s.cd.plexHint": "Kontrol Plex memerlukan pemutar Plex Companion seperti Caldera Amp di komputer ini. Jalankan Caldera Amp sekali lalu masuk; aplikasi ini terus berjalan di latar belakang dan tidak punya jendela yang harus dibiarkan terbuka. Plexamp di komputer ini bekerja dengan widget media biasa. Tempel alamat server Plex dan X-Plex-Token Anda.",
-      "s.cd.plexChecking": "Memeriksa…"
+      "s.cd.plexPlaylistHint": "Target: ID daftar putar Plex. Pilih dari daftar di bawah.",
+      "s.cd.plexLoadLists": "Muat daftar putar Plex",
+      "s.cd.plexFull": "Control Deck penuh (512 kontrol). Hapus satu kontrol sebelum menambahkan daftar putar.",
+      "s.cd.plexChoose": "Pilih daftar putar Plex…",
+      "s.cd.plexNone": "Daftar putar Plex tidak ditemukan. Simpan dulu alamat server dan token.",
+      "s.cd.plexChecking": "Memeriksa…",
+      "s.cd.plexLoading": "Memuat…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Hanya kategori ini (kategorinya di Pengaturan; kosong = semua)",
@@ -1664,7 +1670,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Apa yang sedang diputar dan berikutnya pada pemutar Plex seperti Caldera Amp; ketuk lagu untuk memutarnya.",
       "Page buttons": "Tombol halaman",
       "Buttons that open your pages; the page you are on is highlighted.": "Tombol yang membuka halaman Anda; halaman yang sedang dibuka disorot.",
-      "Pages (none ticked = all)": "Halaman (tidak ada yang dicentang = semua)"
+      "Pages (none ticked = all)": "Halaman (tidak ada yang dicentang = semua)",
+      "Plex playlists": "Daftar putar Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Apa yang sedang diputar dan berikutnya pada pemutar Plex seperti Caldera Amp; ketuk lagu untuk memutarnya.",
+      "Start configured Plex playlists on a Plex player.": "Memulai daftar putar Plex yang dikonfigurasi pada pemutar Plex.",
+      "Plex playlists (none ticked = all)": "Daftar putar Plex (tidak ada yang dicentang = semua)"
     },
     "panel": {
       "% load": "% muatan",
@@ -1960,7 +1970,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Bulan",
       "{n}% lit": "{n}% terang",
       "Core {n} MHz": "Inti {n} MHz",
-      "Battery care": "Perawatan baterai"
+      "Battery care": "Perawatan baterai",
+      "Add a Plex playlists widget to an enabled page": "Tambahkan widget daftar putar Plex ke halaman yang aktif"
     }
   }
 });

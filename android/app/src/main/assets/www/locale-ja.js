@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Plex プレーヤーのアドレス",
       "s.cd.plexCheck": "Plex の接続を確認",
       "s.cd.plexHint": "Plex コントロールには、このコンピューター上の Caldera Amp などの Plex Companion プレーヤーが必要です。Caldera Amp を一度起動してサインインしてください。バックグラウンドで動作し続けるため、開いたままにするウィンドウはありません。このコンピューター上の Plexamp は、通常のメディアウィジェットで操作できます。Plex サーバーのアドレスと X-Plex-Token を貼り付けてください。",
-      "s.cd.plexChecking": "確認中…"
+      "s.cd.plexPlaylistHint": "ターゲット: Plex プレイリスト ID。下のリストから選択してください。",
+      "s.cd.plexLoadLists": "Plex プレイリストを読み込む",
+      "s.cd.plexFull": "Control Deck がいっぱいです（コントロール 512 個）。プレイリストを追加する前にコントロールを 1 つ削除してください。",
+      "s.cd.plexChoose": "Plex プレイリストを選択…",
+      "s.cd.plexNone": "Plex プレイリストが見つかりません。先にサーバーのアドレスとトークンを保存してください。",
+      "s.cd.plexChecking": "確認中…",
+      "s.cd.plexLoading": "読み込み中…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "このカテゴリのみ（設定でのカテゴリ。空欄 = すべて）",
@@ -1664,7 +1670,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp などの Plex プレーヤーで再生中の曲と次の曲を表示します。曲をタップすると再生します。",
       "Page buttons": "ページボタン",
       "Buttons that open your pages; the page you are on is highlighted.": "ページを開くボタン。表示中のページは強調されます。",
-      "Pages (none ticked = all)": "ページ（未選択 = すべて）"
+      "Pages (none ticked = all)": "ページ（未選択 = すべて）",
+      "Plex playlists": "Plex プレイリスト",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp などの Plex プレーヤーで再生中の曲と次の曲を表示します。曲をタップすると再生します。",
+      "Start configured Plex playlists on a Plex player.": "設定済みの Plex プレイリストを Plex プレーヤーで再生します。",
+      "Plex playlists (none ticked = all)": "Plex プレイリスト（未選択 = すべて）"
     },
     "panel": {
       "% load": "負荷の %",
@@ -1960,7 +1970,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "月",
       "{n}% lit": "輝面 {n}%",
       "Core {n} MHz": "コア {n} MHz",
-      "Battery care": "バッテリーケア"
+      "Battery care": "バッテリーケア",
+      "Add a Plex playlists widget to an enabled page": "有効なページに Plex プレイリストウィジェットを追加してください"
     }
   }
 });

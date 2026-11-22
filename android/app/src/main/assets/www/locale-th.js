@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "ที่อยู่เครื่องเล่น Plex",
       "s.cd.plexCheck": "ตรวจสอบการเชื่อมต่อ Plex",
       "s.cd.plexHint": "การควบคุม Plex ต้องมีเครื่องเล่น Plex Companion เช่น Caldera Amp บนคอมพิวเตอร์เครื่องนี้ เปิด Caldera Amp หนึ่งครั้งแล้วลงชื่อเข้าใช้ โปรแกรมจะทำงานอยู่เบื้องหลังและไม่มีหน้าต่างที่ต้องเปิดค้างไว้ ส่วน Plexamp บนคอมพิวเตอร์เครื่องนี้ใช้งานได้กับวิดเจ็ตสื่อทั่วไป วางที่อยู่เซิร์ฟเวอร์ Plex และ X-Plex-Token ของคุณ",
-      "s.cd.plexChecking": "กำลังตรวจสอบ…"
+      "s.cd.plexPlaylistHint": "เป้าหมาย: ID เพลย์ลิสต์ Plex เลือกจากรายการด้านล่าง",
+      "s.cd.plexLoadLists": "โหลดเพลย์ลิสต์ Plex",
+      "s.cd.plexFull": "Control Deck เต็มแล้ว (512 การควบคุม) ลบการควบคุมออกหนึ่งรายการก่อนเพิ่มเพลย์ลิสต์",
+      "s.cd.plexChoose": "เลือกเพลย์ลิสต์ Plex…",
+      "s.cd.plexNone": "ไม่พบเพลย์ลิสต์ Plex บันทึกที่อยู่เซิร์ฟเวอร์และโทเค็นก่อน",
+      "s.cd.plexChecking": "กำลังตรวจสอบ…",
+      "s.cd.plexLoading": "กำลังโหลด…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "เฉพาะหมวดหมู่นี้ (หมวดหมู่ในการตั้งค่า; ว่าง = ทั้งหมด)",
@@ -1664,7 +1670,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ดูว่ากำลังเล่นอะไรและเพลงถัดไปบนเครื่องเล่น Plex เช่น Caldera Amp แตะเพลงเพื่อเล่น",
       "Page buttons": "ปุ่มหน้า",
       "Buttons that open your pages; the page you are on is highlighted.": "ปุ่มสำหรับเปิดหน้าต่าง ๆ ของคุณ หน้าที่กำลังแสดงจะถูกไฮไลต์",
-      "Pages (none ticked = all)": "หน้า (ไม่เลือกเลย = ทั้งหมด)"
+      "Pages (none ticked = all)": "หน้า (ไม่เลือกเลย = ทั้งหมด)",
+      "Plex playlists": "เพลย์ลิสต์ Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ดูว่ากำลังเล่นอะไรและเพลงถัดไปบนเครื่องเล่น Plex เช่น Caldera Amp แตะเพลงเพื่อเล่น",
+      "Start configured Plex playlists on a Plex player.": "เริ่มเพลย์ลิสต์ Plex ที่กำหนดไว้บนเครื่องเล่น Plex",
+      "Plex playlists (none ticked = all)": "เพลย์ลิสต์ Plex (ไม่เลือกเลย = ทั้งหมด)"
     },
     "panel": {
       "% load": "ค่า",
@@ -1960,7 +1970,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "ดวงจันทร์",
       "{n}% lit": "สว่าง {n}%",
       "Core {n} MHz": "คอร์ {n} MHz",
-      "Battery care": "ดูแลแบตเตอรี่"
+      "Battery care": "ดูแลแบตเตอรี่",
+      "Add a Plex playlists widget to an enabled page": "เพิ่มวิดเจ็ตเพลย์ลิสต์ Plex ในหน้าที่เปิดใช้งาน"
     }
   }
 });

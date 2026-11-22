@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Plex 播放器位址",
       "s.cd.plexCheck": "檢查 Plex 連線",
       "s.cd.plexHint": "Plex 控制需要這台電腦上有 Plex Companion 播放器，例如 Caldera Amp。請啟動一次 Caldera Amp 並登入；它會在背景持續執行，沒有需要保持開啟的視窗。這台電腦上的 Plexamp 則透過一般的媒體小工具控制。請貼上你的 Plex 伺服器位址和 X-Plex-Token。",
-      "s.cd.plexChecking": "正在檢查…"
+      "s.cd.plexPlaylistHint": "目標：Plex 播放清單 ID。請從下方清單中選擇。",
+      "s.cd.plexLoadLists": "載入 Plex 播放清單",
+      "s.cd.plexFull": "Control Deck 已滿（512 個控制項）。請先移除一個控制項，再新增播放清單。",
+      "s.cd.plexChoose": "選擇 Plex 播放清單…",
+      "s.cd.plexNone": "找不到 Plex 播放清單。請先儲存伺服器位址和權杖。",
+      "s.cd.plexChecking": "正在檢查…",
+      "s.cd.plexLoading": "正在載入…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "僅此分類（設定中的分類；留空 = 全部）",
@@ -1664,7 +1670,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上顯示正在播放的內容和接下來的曲目；點一下曲目即可播放。",
       "Page buttons": "頁面按鈕",
       "Buttons that open your pages; the page you are on is highlighted.": "開啟各個頁面的按鈕；目前所在的頁面會醒目顯示。",
-      "Pages (none ticked = all)": "頁面（未勾選 = 全部）"
+      "Pages (none ticked = all)": "頁面（未勾選 = 全部）",
+      "Plex playlists": "Plex 播放清單",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上顯示正在播放的內容和接下來的曲目；點一下曲目即可播放。",
+      "Start configured Plex playlists on a Plex player.": "在 Plex 播放器上啟動已設定的 Plex 播放清單。",
+      "Plex playlists (none ticked = all)": "Plex 播放清單（未勾選 = 全部）"
     },
     "panel": {
       "% load": "負載",
@@ -1960,7 +1970,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "月亮",
       "{n}% lit": "照亮 {n}%",
       "Core {n} MHz": "核心 {n} MHz",
-      "Battery care": "電池保養"
+      "Battery care": "電池保養",
+      "Add a Plex playlists widget to an enabled page": "請將 Plex 播放清單小工具新增到已啟用的頁面"
     }
   }
 });

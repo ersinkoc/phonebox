@@ -1934,6 +1934,7 @@ function optionField(w, o, onValChange) {
     }
     case 'ha-items': return haItemsEditor(w, o, set);
     case 'steam-games': return steamGamesEditor(w, o, set);
+    case 'plex-playlists': return plexPlaylistsEditor(w, o, set);
     case 'shortcuts': {
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
       return field(h('div', { class: 'opts' }, ...cfg.shortcuts.map((s) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(s.id), onchange: (e) => {
@@ -2035,6 +2036,73 @@ function haItemsEditor(w, o, set) {
   return h('div', { class: 'field' }, h('label', {}, o.label), box, list,
     h('button', { class: 'btn sm', onclick: () => { if (rows.length >= HA_MAX) return; rows.push({ id: '' }); render(); box.querySelector('.ha-row:last-child input')?.focus(); } }, '＋ ' + t('s.ha.add')),
     h('span', { class: 'hint', style: { display: 'block', marginTop: '6px' } }, t('s.ha.hint')));
+}
+
+// Plex playlists widget: tick playlists loaded from the Plex server. A tick creates (or reuses) a plex-playlist control in the
+// Control Deck list; the widget stores the ids of those controls, and the phone sends a control id only. None ticked = all.
+function plexPlaylistsEditor(w, o, set) {
+  const MAX_ACTIONS = 512; // the same cap as Config.cs
+  const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x.filter((i) => typeof i === 'string') : []; };
+  const actions = () => { cfg.controls ??= { actions: [], profiles: [] }; cfg.controls.actions ??= []; return cfg.controls.actions; };
+  const controlFor = (key) => {
+    const own = actions().filter((a) => a && a.kind === 'plex-playlist' && String(a.target ?? '').trim() === key);
+    const ids = cur();
+    return own.find((a) => ids.includes(a.id)) || own.find((a) => a.enabled !== false) || own[0] || null;
+  };
+  const box = h('div', { class: 'opts' });
+  const status = h('p', { class: 'hint' });
+  const root = h('div', { class: 'field' }, h('label', {}, o.label), box,
+    h('div', { class: 'row', style: { gap: '8px' } }, h('button', { class: 'btn sm', onclick: () => load() }, t('s.js.refresh'))), status);
+  const loaded = () => {
+    if (!Array.isArray(plexList) || plexListKey !== plexKey()) return null;
+    return plexList.filter((p) => p && typeof p === 'object' && typeof p.id === 'string' && /^\d{1,12}$/.test(p.id));
+  };
+  const render = () => {
+    if (!root.isConnected && rendered) { plexListeners.delete(render); return; }
+    const list = loaded(), ids = cur(), shown = new Set();
+    const rows = [];
+    for (const p of list || []) {
+      const name = (typeof p.name === 'string' ? p.name.trim() : '') || p.id;
+      const ctl = controlFor(p.id), on = !!ctl && ids.includes(ctl.id);
+      if (on) for (const a of actions()) if (a && a.kind === 'plex-playlist' && String(a.target ?? '').trim() === p.id) shown.add(a.id);
+      rows.push(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: on, onchange: (e) => {
+        if (!e.target.checked) { const gone = actions().filter((a) => a && a.kind === 'plex-playlist' && String(a.target ?? '').trim() === p.id).map((a) => a.id);
+          set(o.key, cur().filter((x) => !gone.includes(x))); return; }
+        let a = controlFor(p.id);
+        if (!a) {
+          const all = actions();
+          if (all.length >= MAX_ACTIONS) { e.target.checked = false; toast(t('s.cd.plexFull'), true); return; }
+          const taken = new Set(all.map((x) => x && x.id));
+          let id = 'plex-' + p.id, n = 2;
+          while (taken.has(id)) id = 'plex-' + p.id + '-' + (n++);
+          a = { id, label: name || p.id, kind: 'plex-playlist', target: p.id, value: 75, enabled: true };
+          all.push(a);
+        }
+        if (a.enabled === false) a.enabled = true;
+        const picked = new Set([...cur(), a.id]), next = [];
+        for (const q of loaded() || []) { const c = controlFor(q.id); if (c && picked.has(c.id) && !next.includes(c.id)) next.push(c.id); }
+        for (const x of picked) if (!next.includes(x)) next.push(x);
+        set(o.key, next); changed(); renderControlSettings();
+      } }), name));
+    }
+    for (const id of ids) {
+      if (shown.has(id)) continue;
+      const a = actions().find((x) => x && x.id === id), label = (a && a.label) || id;
+      rows.push(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: true, onchange: () => set(o.key, cur().filter((x) => x !== id)) }),
+        list ? t('s.js.unavailable') + ' ' + label : label));
+    }
+    box.replaceChildren(...rows);
+  };
+  const load = () => plexGet('plex/playlists', plexInspectorSeq, status, t('s.cd.plexLoading'), (data, key) => {
+    plexList = Array.isArray(data) ? data : []; plexListKey = key;
+    status.textContent = (loaded() || []).length ? '' : t('s.cd.plexNone');
+    plexListChanged();
+  });
+  let rendered = false;
+  render(); rendered = true;
+  plexListeners.add(render);
+  if (plexListKey !== plexKey()) load();
+  return root;
 }
 
 // ---- template picker: new page (index null) or replace the widgets of page <index>
@@ -3030,11 +3098,16 @@ async function testKey() {
 }
 
 // ---------------------------------------------------------------- general
-// Plex connection key. It is read from the current config (cfg, not a captured copy), so Apply JSON counts as a change.
+// Plex helpers shared by the Control Deck settings and the Plex playlists widget inspector.
+// The connection key is read from the current config (cfg, not a captured copy), so Apply JSON counts as a change.
 const plexKeyOf = (k) => [k?.plexUrl, k?.plexToken, k?.plexPlayerUrl].map((v) => v || '').join('\n');
 const plexKey = () => plexKeyOf(cfg.controls);
 // the agent checks the saved settings, so a check is only asked for when the fields hold what is saved
 const plexSaved = () => { try { return plexKeyOf(JSON.parse(saved || '{}').controls) === plexKey(); } catch (_) { return false; } };
+let plexList = null, plexListKey = null; // the loaded playlists and the connection they belong to
+const plexListeners = new Set();
+const plexListChanged = () => plexListeners.forEach((f) => f());
+const plexInspectorSeq = { n: 0 };
 // One local GET to a Plex route: a 30 s limit (the agent can make three requests of 8 s for one check), only the newest
 // request of its control may write, and an answer is dropped when the connection settings changed while it was out.
 const plexGet = async (path, seq, status, busy, done) => {
@@ -3079,19 +3152,23 @@ function renderControlSettings() {
   root.append(spotify);
   // Plex: the server address and token stay on this computer; the token goes to the server only, never to the player
   const plexStatus=h('p',{class:'hint'});
-  const plexCheckSeq={n:0};
+  // The connection key is read from the current config (cfg, not the captured c), so Apply JSON counts as a change.
+  const plexCheckSeq={n:0}, plexPickers=new Set();
+  const plexRefresh=()=>{plexPickers.forEach(f=>f()); plexListChanged();};
   const plex=h('details',{},h('summary',{},t('s.cd.plexConn')),h('p',{class:'hint'},t('s.cd.plexHint')),
     ...[['plexUrl','s.cd.plexUrl'],['plexToken','s.cd.plexToken','password'],['plexPlayerUrl','s.cd.plexPlayer']].map(([key,label,type])=>{
       // autocomplete off, like the Immich and Discord fields: a browser's password autofill otherwise treats the address
       // before the token field as a user name and blanks or replaces it
       const f=field(t(label),c,key,type); const input=f.querySelector('input'); input.autocomplete='off'; input.spellcheck=false;
-      // a result belongs to the values it was checked with: an edit clears it and drops an answer still on its way
-      input.addEventListener('input',()=>{plexCheckSeq.n++;plexStatus.textContent='';}); return f; }),
+      // a Check result belongs to the values it was checked with: an edit clears it and drops an answer still on its way,
+      // and a loaded playlist list no longer applies
+      input.addEventListener('input',()=>{plexCheckSeq.n++;plexStatus.textContent='';plexRefresh();}); return f; }),
     btn(t('s.cd.plexCheck'),()=>{if(!plexSaved()){plexCheckSeq.n++;plexStatus.textContent=t('s.js.saveFirst');return;}plexGet('plex/check',plexCheckSeq,plexStatus,t('s.cd.plexChecking'),j=>{plexStatus.textContent=j.connected?(j.error||t('s.cd.connected')):j.error||t('s.cd.notConnected');});}),plexStatus);
   root.append(plex);
   const integration=h('details',{},h('summary',{},t('s.cd.audioInt')),field(t('s.cd.mixerExe'),c,'mixerExecutable'),field(t('s.cd.mixerDll'),c,'mixerLibrary'));root.append(integration);
   const hintsRaw={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream or Windows-only HLS (.m3u8) URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
   const hints = Object.fromEntries(Object.entries(hintsRaw).map(([k, v]) => [k, tl(v)]));
+  hints['plex-playlist'] = t('s.cd.plexPlaylistHint');
   const stationFilter = h('input', { type: 'search', placeholder: t('s.cd.filterStations'), style: { marginBottom: '6px' } });
   const stationList = h('div', { class: 'stack-list' });
   const radioDetails = h('details', {}, h('summary', {}, t('s.cd.stations')),
@@ -3180,6 +3257,7 @@ function renderControlSettings() {
   stationFilter.oninput = () => renderStations();
 
   const renderActions = () => {
+    plexPickers.clear();
     actions.replaceChildren(...c.actions.map((a) => {
       if (a.enabled === undefined) a.enabled = true;
       const box = h('details', {}, h('summary', {}, a.label || a.id));
@@ -3187,12 +3265,28 @@ function renderControlSettings() {
       const hint = h('p', { class: 'hint' }, hints[a.kind] || t('s.cd.selectKind'));
       const iconField = field(t('s.cd.iconUrl'), a, 'icon');
       iconField.hidden = a.kind !== 'radio';
-      kind.onchange = () => { a.kind = kind.value; hint.textContent = hints[a.kind]; iconField.hidden = a.kind !== 'radio'; changed(); renderStations(); };
+      // the playlist picker fills Target with the id of a playlist on the Plex server
+      const targetField = field(t('s.cd.target'), a, 'target');
+      const plexPick = h('select', { 'aria-label': t('s.cd.plexChoose'), onchange: (e) => { if (!e.target.value) return; a.target = e.target.value; targetField.querySelector('input').value = a.target; changed(); } }, h('option', { value: '' }, t('s.cd.plexChoose')));
+      // the list belongs to the connection it was loaded with: when that changes, the picker goes back to "Choose"
+      const fillPick = () => {
+        const list = plexList && plexListKey === plexKey() ? plexList : null;
+        plexPick.replaceChildren(h('option', { value: '' }, list && !list.length ? t('s.cd.plexNone') : t('s.cd.plexChoose')), ...(list || []).map((p) => h('option', { value: p.id, selected: p.id === a.target }, p.name)));
+      };
+      plexPickers.add(fillPick); fillPick();
+      const plexLoadStatus = h('p', { class: 'hint' }), plexLoadSeq = { n: 0 };
+      // the button is not held until the answer comes, so a second press starts a newer request
+      const plexLoad = btn(t('s.cd.plexLoadLists'), () => { plexGet('plex/playlists', plexLoadSeq, plexLoadStatus, t('s.cd.plexLoading'), (list, key) => {
+        plexList = Array.isArray(list) ? list : []; plexListKey = key; plexLoadStatus.textContent = ''; plexRefresh();
+      }); });
+      const plexBox = h('div', { class: 'field' }, plexLoad, plexPick, plexLoadStatus);
+      plexBox.hidden = a.kind !== 'plex-playlist';
+      kind.onchange = () => { a.kind = kind.value; hint.textContent = hints[a.kind]; iconField.hidden = a.kind !== 'radio'; plexBox.hidden = a.kind !== 'plex-playlist'; changed(); renderStations(); };
       const enField = field(t('s.cd.enabled'), a, 'enabled', 'checkbox');
       enField.querySelector('input').addEventListener('change', () => renderStations());
       const lblField = field(t('s.cd.controlLabel'), a, 'label');
       lblField.querySelector('input').addEventListener('change', () => renderStations());
-      box.append(enField, field(t('s.cd.controlId'), a, 'id'), lblField, h('label', {}, 'Kind'), kind, hint, field(t('s.cd.target'), a, 'target'), iconField, field(t('s.cd.argument'), a, 'argument'), field(t('s.cd.device'), a, 'device'), field(t('s.cd.value'), a, 'value', 'number'));
+      box.append(enField, field(t('s.cd.controlId'), a, 'id'), lblField, h('label', {}, 'Kind'), kind, hint, targetField, plexBox, iconField, field(t('s.cd.argument'), a, 'argument'), field(t('s.cd.device'), a, 'device'), field(t('s.cd.value'), a, 'value', 'number'));
       const output = h('pre', { style: { maxHeight: '240px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
       box.append(btn(t('s.cd.showOutput'), async () => { const r = await fetch('/api/controls/task-output/' + encodeURIComponent(a.id)); if (!r.ok) throw new Error(t('s.cd.outputUnavailable')); output.textContent = await r.text(); }), btn(t('s.cd.removeControl'), () => { c.actions = c.actions.filter((x) => x !== a); changed(); renderActions(); }), output);
       return box;

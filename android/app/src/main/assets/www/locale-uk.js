@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Адреса програвача Plex",
       "s.cd.plexCheck": "Перевірити підключення до Plex",
       "s.cd.plexHint": "Для керування Plex на цьому комп'ютері потрібен програвач Plex Companion, наприклад Caldera Amp. Запустіть Caldera Amp один раз і увійдіть; він працює у фоні, і вікно тримати відкритим не потрібно. Plexamp на цьому комп'ютері працює зі звичайними медіавіджетами. Вставте адресу свого сервера Plex і свій X-Plex-Token.",
-      "s.cd.plexChecking": "Перевірка…"
+      "s.cd.plexPlaylistHint": "Ціль: ID плейлиста Plex. Виберіть його зі списку нижче.",
+      "s.cd.plexLoadLists": "Завантажити плейлисти Plex",
+      "s.cd.plexFull": "Control Deck заповнений (512 елементів керування). Видаліть елемент, перш ніж додавати плейлист.",
+      "s.cd.plexChoose": "Виберіть плейлист Plex…",
+      "s.cd.plexNone": "Плейлисти Plex не знайдено. Спершу збережіть адресу сервера й токен.",
+      "s.cd.plexChecking": "Перевірка…",
+      "s.cd.plexLoading": "Завантаження…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "Лише ця категорія (її категорія в налаштуваннях; порожньо = усі)",
@@ -1664,7 +1670,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Що грає і що далі в програвачі Plex, наприклад Caldera Amp; торкніться треку, щоб відтворити його.",
       "Page buttons": "Кнопки сторінок",
       "Buttons that open your pages; the page you are on is highlighted.": "Кнопки, що відкривають ваші сторінки; поточна сторінка виділена.",
-      "Pages (none ticked = all)": "Сторінки (нічого не позначено = усі)"
+      "Pages (none ticked = all)": "Сторінки (нічого не позначено = усі)",
+      "Plex playlists": "Плейлисти Plex",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Що грає і що далі в програвачі Plex, наприклад Caldera Amp; торкніться треку, щоб відтворити його.",
+      "Start configured Plex playlists on a Plex player.": "Запускає налаштовані плейлисти Plex у програвачі Plex.",
+      "Plex playlists (none ticked = all)": "Плейлисти Plex (нічого не позначено = усі)"
     },
     "panel": {
       "% load": "% завантаження",
@@ -1960,7 +1970,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "Місяць",
       "{n}% lit": "Освітлено {n}%",
       "Core {n} MHz": "Ядро {n} МГц",
-      "Battery care": "Догляд за батареєю"
+      "Battery care": "Догляд за батареєю",
+      "Add a Plex playlists widget to an enabled page": "Додайте віджет плейлистів Plex на увімкнену сторінку"
     }
   }
 });

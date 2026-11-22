@@ -139,7 +139,7 @@ app.MapPost("/api/controls/spotify/action/{action}", async (string action, strin
 app.MapGet("/api/controls/plex/state", async (PlexControl plex, CancellationToken ct) => Results.Json(await plex.Snapshot(ct)));
 app.MapPost("/api/controls/plex/action/{action}", async (string action, string? id, PlexControl plex, ControlDeck deck, CancellationToken ct) =>
 {
-    var res = action == "play-queued"
+    var res = action is "play-queued" or "playlist"
         ? await deck.RunWithMediaFocusAsync(async token =>
         {
             var result = await plex.Act(action, id, token);
@@ -149,8 +149,9 @@ app.MapPost("/api/controls/plex/action/{action}", async (string action, string? 
         : await plex.Act(action, id, ct);
     return Results.Json(res);
 });
-// settings page only (not in Lan.AllowedOverLan, not gated): Check connection
+// settings page only (not in Lan.AllowedOverLan, not gated): Check connection and the playlist picker
 app.MapGet("/api/controls/plex/check", async (PlexControl plex, CancellationToken ct) => Results.Json(await plex.Check(ct)));
+app.MapGet("/api/controls/plex/playlists", async (PlexControl plex, CancellationToken ct) => Results.Json(await plex.Playlists(ct)));
 app.MapGet("/api/controls/spotify/connect", (SpotifyControl spotify) =>
 { try { return Results.Json(new { url = spotify.Begin(), redirectUri = spotify.RedirectUri }); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
 app.MapPost("/api/controls/spotify/disconnect", async (SpotifyControl spotify, CancellationToken ct) => { await spotify.Disconnect(ct); return Results.Ok(); });

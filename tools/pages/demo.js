@@ -58,6 +58,7 @@
         action('web', 'Web dev server', 'server', 'npm run dev'), action('api', 'API dev server', 'server', 'dotnet watch'),
         action('meet-mic', 'Mute in meeting', 'meeting', 'Ctrl+D'), action('meet-cam', 'Camera', 'meeting', 'Ctrl+E'), action('meet-hand', 'Raise hand', 'meeting', 'Ctrl+Alt+H'),
         action('chime', 'Chime', 'sound', 'chime.wav', 75), action('applause', 'Applause', 'sound', 'applause.wav', 75),
+        action('plex-chill', 'Chill', 'plex-playlist', '12'), action('plex-focus', 'Focus', 'plex-playlist', '13'),
       ], profiles: [{ id: 'meeting', label: 'Meeting', levels: [], actions: [], output: null, input: null, defaults: {} },
         { id: 'music', label: 'Music', levels: [], actions: [], output: null, input: null, defaults: {} }],
         spotifyToken: null, spotifyDevice: null, mixerExecutable: null, mixerLibrary: null, spotifyClientId: null, spotifyRefreshToken: null,
@@ -518,13 +519,14 @@
     }
     if (path === '/api/controls/plex/state') return json(deckPlex());
     if (path === '/api/controls/plex/check') return json(deckPlex());
+    if (path === '/api/controls/plex/playlists') return json([{ id: '12', name: 'Chill' }, { id: '13', name: 'Focus' }]);
     if (path.startsWith('/api/controls/plex/action/') && method === 'POST') {
       const action = path.split('/').pop();
       if (action === 'play-queued') {
         const i = TRACKS.findIndex((_, n) => plexId(n) === q.get('id'));
         if (i < 0 || i === player.track) return json({ ok: false, error: 'That queue item is no longer available' });
         Object.assign(player, { track: i, posMs: 0, at: now(), playing: true });
-      } else return json({ ok: false, error: 'Unknown Plex control' });
+      } else if (action !== 'playlist') return json({ ok: false, error: 'Unknown Plex control' });
       return json({ ok: true });
     }
     if (path === '/api/controls/spotify/state') return json(deckSpotify());

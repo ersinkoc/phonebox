@@ -11,7 +11,7 @@ namespace PhoneBox.Agent;
 
 /// <summary>
 /// Plex music control. The queue is read from a Plex Companion player (Caldera Amp, by default on this computer) and
-/// the user's own Plex server; a queue item is started on that player. The token goes to the server only,
+/// the user's own Plex server; a playlist or a queue item is started on that player. The token goes to the server only,
 /// never to the player, and the phone sends ids only.
 /// </summary>
 public sealed class PlexControl : IDisposable
@@ -22,6 +22,7 @@ public sealed class PlexControl : IDisposable
     private const string ServerDown = "The Plex server is unavailable";
     private const string Unreadable = "Plex sent an answer that could not be read";
     private const string NoWidget = "Add a Plex widget to an enabled page";
+    private const string NoPlaylistWidget = "Add a Plex playlists widget to an enabled page";
     private const int MaxBody = 1_000_000;
 
     /// <summary>An error whose text is safe to show on the phone.</summary>
@@ -53,7 +54,12 @@ public sealed class PlexControl : IDisposable
     internal static SocketsHttpHandler NewPlexHandler() => new() { AllowAutoRedirect = false, PooledConnectionLifetime = TimeSpan.FromMinutes(5) };
 
     /// <summary>Whether an enabled page shows a Plex widget. Read from the current config on every call.</summary>
-    internal static bool Shown(AgentConfig cfg) => cfg.Widgets(enabledPagesOnly: true).Any(w => w.Type == "plex-queue");
+    internal static bool Shown(AgentConfig cfg) => cfg.Widgets(enabledPagesOnly: true).Any(w => w.Type is "plex-queue" or "plex-playlists");
+
+    /// <summary>Whether an enabled page shows a plex-playlists widget that shows this action. A widget with a non-empty "ids" list shows only those; any other "ids" counts as absent.</summary>
+    internal static bool PlaylistShown(AgentConfig cfg, string? id) => cfg.Widgets(enabledPagesOnly: true).Where(w => w.Type == "plex-playlists").Any(w =>
+        w.Opt("ids") is not { ValueKind: JsonValueKind.Array } ids || ids.GetArrayLength() == 0
+        || ids.EnumerateArray().Any(e => e.ValueKind == JsonValueKind.String && e.GetString() == id));
 
     /// <summary>A server or player base address: absolute http or https, no user info, query or fragment. Anything else is null.</summary>
     public static string? NormalizeUrl(string? value)
@@ -244,6 +250,26 @@ public sealed class PlexControl : IDisposable
     /// <summary>The same read for the settings page's Check connection. Not gated: the user can check before a Plex widget is on a page. Local only.</summary>
     public async Task<JsonObject> Check(CancellationToken ct) => (await Latest(ct)).Value;
 
+    /// <summary>The audio playlists of the server, for the settings page picker: { id, name }. Not gated; local only.</summary>
+    public async Task<JsonArray> Playlists(CancellationToken ct)
+    {
+        var s = Current();
+        if (s.Url.Length == 0 || s.Token.Length == 0) return [];
+        try
+        {
+            var (_, body) = await Send(HttpMethod.Get, s.Url + "/playlists?playlistType=audio", true, s.Token, ct);
+            var list = new JsonArray();
+            foreach (var node in Items(Container(body)))
+            {
+                var id = Text(node["ratingKey"]);
+                if (Digits(id) && list.Count < 500) list.Add(new JsonObject { ["id"] = id, ["name"] = Cap(Text(node["title"]), 200) });
+            }
+            return list;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) when (ex is PlexError or JsonException or InvalidOperationException or FormatException or ArgumentException) { return []; }
+    }
+
     public async Task<DeckResult> Act(string action, string? id, CancellationToken ct)
     {
         try
@@ -251,6 +277,7 @@ public sealed class PlexControl : IDisposable
             var s = Current();
             // the gate comes first: with no Plex widget on an enabled page nothing is sent
             if (action == "play-queued" && !Shown(_config.Get())) return new(false, NoWidget);
+            if (action == "playlist" && !PlaylistShown(_config.Get(), id)) return new(false, NoPlaylistWidget);
             if (action == "play-queued")
             {
                 if (!Digits(id)) return new(false, "That queue item is no longer available");
@@ -260,6 +287,27 @@ public sealed class PlexControl : IDisposable
                 if (entry.Settings != s) return new(false, "The Plex settings changed; try again");
                 if (!entry.Keys.TryGetValue(id!, out var key)) return new(false, "That queue item is no longer available");
                 return await Command(s, $"skipTo?type=music&key={Uri.EscapeDataString(key)}&playQueueItemID={id}", ct);
+            }
+            if (action == "playlist")
+            {
+                var configured = _config.Get().Controls.Actions.FirstOrDefault(a => a.Id == id && a.Kind == "plex-playlist");
+                if (configured is null) return new(false, "Choose a Plex playlist in desktop settings");
+                if (!configured.Enabled) return new(false, "Control is disabled");
+                if (!Digits(configured.Target)) return new(false, "Choose a Plex playlist in desktop settings");
+                if (s.Url.Length == 0 || s.Token.Length == 0) return new(false, NotConfigured);
+                var machine = await Identity(s, fresh: false, ct);
+                var (_, body) = await Send(HttpMethod.Post,
+                    $"{s.Url}/playQueues?type=audio&playlistID={configured.Target}&shuffle=0&continuous=0&repeat=0", true, s.Token, ct);
+                var container = Container(body);
+                var queueId = Text(container["playQueueID"]);
+                var selected = Text(container["playQueueSelectedMetadataItemID"]);
+                var key = Digits(selected) ? "/library/metadata/" + selected : Text(Items(container).FirstOrDefault()?["key"]);
+                if (!Digits(queueId) || key is null || !MetadataKey.IsMatch(key)) throw new PlexError(Unreadable);
+                // the address fields come from the configured server, never from the player or the phone
+                var server = new Uri(s.Url);
+                return await Command(s, "playMedia?type=music&machineIdentifier=" + Uri.EscapeDataString(machine)
+                    + "&protocol=" + server.Scheme + "&address=" + Uri.EscapeDataString(server.Host) + "&port=" + server.Port
+                    + "&key=" + Uri.EscapeDataString(key) + "&containerKey=" + Uri.EscapeDataString($"/playQueues/{queueId}?own=1") + "&offset=0", ct);
             }
             return new(false, "Unknown Plex control");
         }

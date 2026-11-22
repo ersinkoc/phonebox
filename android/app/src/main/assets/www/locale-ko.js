@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Plex 플레이어 주소",
       "s.cd.plexCheck": "Plex 연결 확인",
       "s.cd.plexHint": "Plex 제어에는 이 컴퓨터에 Caldera Amp 같은 Plex Companion 플레이어가 필요합니다. Caldera Amp를 한 번 실행해 로그인하세요. 백그라운드에서 계속 실행되며 열어 둘 창이 없습니다. 이 컴퓨터의 Plexamp는 일반 미디어 위젯으로 제어할 수 있습니다. Plex 서버 주소와 X-Plex-Token을 붙여넣으세요.",
-      "s.cd.plexChecking": "확인 중…"
+      "s.cd.plexPlaylistHint": "대상: Plex 재생목록 ID. 아래 목록에서 선택하세요.",
+      "s.cd.plexLoadLists": "Plex 재생목록 불러오기",
+      "s.cd.plexFull": "Control Deck가 가득 찼습니다(컨트롤 512개). 재생목록을 추가하기 전에 컨트롤을 하나 삭제하세요.",
+      "s.cd.plexChoose": "Plex 재생목록 선택…",
+      "s.cd.plexNone": "Plex 재생목록을 찾을 수 없습니다. 먼저 서버 주소와 토큰을 저장하세요.",
+      "s.cd.plexChecking": "확인 중…",
+      "s.cd.plexLoading": "불러오는 중…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "이 분류만 (설정의 분류, 비우면 전체)",
@@ -1664,7 +1670,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp 같은 Plex 플레이어에서 재생 중인 곡과 다음 곡을 표시합니다. 곡을 탭하면 재생합니다.",
       "Page buttons": "페이지 버튼",
       "Buttons that open your pages; the page you are on is highlighted.": "페이지를 여는 버튼입니다. 현재 페이지가 강조 표시됩니다.",
-      "Pages (none ticked = all)": "페이지(선택 안 함 = 전체)"
+      "Pages (none ticked = all)": "페이지(선택 안 함 = 전체)",
+      "Plex playlists": "Plex 재생목록",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp 같은 Plex 플레이어에서 재생 중인 곡과 다음 곡을 표시합니다. 곡을 탭하면 재생합니다.",
+      "Start configured Plex playlists on a Plex player.": "설정한 Plex 재생목록을 Plex 플레이어에서 시작합니다.",
+      "Plex playlists (none ticked = all)": "Plex 재생목록 (선택 안 함 = 전체)"
     },
     "panel": {
       "% load": "부하%",
@@ -1960,7 +1970,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "달",
       "{n}% lit": "{n}% 밝음",
       "Core {n} MHz": "코어 {n} MHz",
-      "Battery care": "배터리 관리"
+      "Battery care": "배터리 관리",
+      "Add a Plex playlists widget to an enabled page": "활성화된 페이지에 Plex 재생목록 위젯을 추가하세요"
     }
   }
 });

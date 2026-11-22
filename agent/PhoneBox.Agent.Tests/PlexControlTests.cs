@@ -30,8 +30,8 @@ public sealed class PlexControlTests
         public Func<HttpRequestMessage, HttpResponseMessage?>? Override;
         public string QueueJson = QueueOf("9001", "9002", "9003");
         public HttpStatusCode PlayerCommandStatus = HttpStatusCode.OK;
-        /// <summary>One enabled page that shows a Plex queue widget (the page gate lets everything through).</summary>
-        public const string QueueWidget = """[{"id":"p1","title":"P","enabled":true,"widgets":[{"id":"w1","type":"plex-queue","x":0,"y":0,"w":4,"h":4}]}]""";
+        /// <summary>One enabled page that shows both Plex widgets (the page gate lets everything through).</summary>
+        public const string BothWidgets = """[{"id":"p1","title":"P","enabled":true,"widgets":[{"id":"w1","type":"plex-queue","x":0,"y":0,"w":4,"h":4},{"id":"w2","type":"plex-playlists","x":4,"y":0,"w":4,"h":4}]}]""";
         public Fixture(string? url = "https://plex.example.test:8443", string? token = Token, string? extra = null, string? pages = null)
         {
             Directory.CreateDirectory(Dir);
@@ -40,7 +40,7 @@ public sealed class PlexControlTests
         }
         public void Write(string? url, string? token, string? extra = null, string? pages = null)
         {
-            File.WriteAllText(ConfigPath, "{\"controls\":" + JsonSerializer.Serialize(new { plexUrl = url, plexToken = token }).TrimEnd('}') + (extra ?? "") + "},\"pages\":" + (pages ?? QueueWidget) + "}");
+            File.WriteAllText(ConfigPath, "{\"controls\":" + JsonSerializer.Serialize(new { plexUrl = url, plexToken = token }).TrimEnd('}') + (extra ?? "") + "},\"pages\":" + (pages ?? BothWidgets) + "}");
             File.SetLastWriteTimeUtc(ConfigPath, DateTime.UtcNow.AddSeconds(Interlocked.Increment(ref _writes)));
         }
         private static int _writes;
@@ -60,6 +60,10 @@ public sealed class PlexControlTests
             }
             if (path == "/identity") return Task.FromResult(Json("{\"MediaContainer\":{\"size\":0,\"machineIdentifier\":\"" + Machine + "\"}}"));
             if (path.StartsWith("/playQueues/")) return Task.FromResult(Json(QueueJson));
+            if (path == "/playQueues" && r.Method == HttpMethod.Post)
+                return Task.FromResult(Json("""{"MediaContainer":{"playQueueID":5555,"playQueueSelectedMetadataItemID":777,"Metadata":[{"key":"/library/metadata/777"}]}}"""));
+            if (path == "/playlists")
+                return Task.FromResult(Json("""{"MediaContainer":{"size":3,"Metadata":[{"ratingKey":"12","title":"Chill"},{"ratingKey":"../x","title":"Bad"},{"ratingKey":13,"title":"Run"}]}}"""));
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
         public void Dispose() => Directory.Delete(Dir, true);
@@ -414,18 +418,73 @@ public sealed class PlexControlTests
         Assert.Empty(fixture.Calls);
     }
 
+    private static string Actions(params string[] actions) => ",\"actions\":[" + string.Join(',', actions) + "]";
+
+    [Fact]
+    public async Task AConfiguredPlaylistStartsOnThePlayer_WithAddressFieldsFromTheConfiguredServer()
+    {
+        using var fixture = new Fixture(extra: Actions("""{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}"""));
+        using var plex = fixture.Create();
+        var result = await plex.Act("playlist", "pl1", default);
+        Assert.True(result.Ok, result.Error);
+        var create = fixture.ToServer.Single(c => c.Uri.AbsolutePath == "/playQueues");
+        Assert.Equal(HttpMethod.Post, create.Method); Assert.True(create.HasToken);
+        var createQuery = QueryHelpers.ParseQuery(create.Uri.Query);
+        Assert.Equal("12", createQuery["playlistID"]); Assert.Equal("audio", createQuery["type"]); Assert.Equal("0", createQuery["shuffle"]);
+        var play = fixture.ToPlayer.Single(c => c.Uri.AbsolutePath == "/player/playback/playMedia");
+        Assert.False(play.HasToken);
+        var q = QueryHelpers.ParseQuery(play.Uri.Query);
+        Assert.Equal("music", q["type"]); Assert.Equal(Machine, q["machineIdentifier"]);
+        Assert.Equal("https", q["protocol"]); Assert.Equal("plex.example.test", q["address"]); Assert.Equal("8443", q["port"]);
+        Assert.Equal("/library/metadata/777", q["key"]); Assert.Equal("/playQueues/5555?own=1", q["containerKey"]);
+        Assert.Equal("0", q["offset"]);
+        Assert.DoesNotContain("evil.example", play.Uri.ToString());
+        Assert.DoesNotContain(Token, play.Uri.ToString());
+    }
+
+    [Theory]
+    [InlineData("http://plex.lan:32400", "http", "plex.lan", "32400")]
+    [InlineData("https://plex.example.test", "https", "plex.example.test", "443")]
+    [InlineData("http://plex.lan", "http", "plex.lan", "80")]
+    public async Task ThePortOfAnAddressWithoutOneIsTheSchemeDefault(string url, string scheme, string host, string port)
+    {
+        using var fixture = new Fixture(url, extra: Actions("""{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}"""));
+        using var plex = fixture.Create();
+        await plex.Act("playlist", "pl1", default);
+        var q = QueryHelpers.ParseQuery(fixture.ToPlayer.Single(c => c.Uri.AbsolutePath == "/player/playback/playMedia").Uri.Query);
+        Assert.Equal(scheme, q["protocol"]); Assert.Equal(host, q["address"]); Assert.Equal(port, q["port"]);
+    }
+
+    [Theory]
+    [InlineData("unknown", "plex-playlist", "12", true, "Choose a Plex playlist in desktop settings")]
+    [InlineData("pl1", "playlist", "12", true, "Choose a Plex playlist in desktop settings")]
+    [InlineData("pl1", "plex-playlist", "12", false, "Control is disabled")]
+    [InlineData("pl1", "plex-playlist", "spotify:playlist:x", true, "Choose a Plex playlist in desktop settings")]
+    [InlineData("pl1", "plex-playlist", "12/../x", true, "Choose a Plex playlist in desktop settings")]
+    [InlineData("pl1", "plex-playlist", "", true, "Choose a Plex playlist in desktop settings")]
+    public async Task APlaylistThatIsNotAConfiguredEnabledPlexPlaylistIsRefused(string id, string kind, string target, bool enabled, string error)
+    {
+        using var fixture = new Fixture(extra: Actions($$"""{"id":"pl1","label":"Chill","kind":"{{kind}}","target":"{{target}}","enabled":{{(enabled ? "true" : "false")}}}"""));
+        using var plex = fixture.Create();
+        var result = await plex.Act("playlist", id, default);
+        Assert.False(result.Ok); Assert.Equal(error, result.Error);
+        Assert.Empty(fixture.Calls);
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.InternalServerError)]
     [InlineData(HttpStatusCode.NotFound)]
     [InlineData(HttpStatusCode.Redirect)]
     public async Task APlayerThatRefusesACommandIsReported_AndTheCacheIsCleared(HttpStatusCode status)
     {
-        using var fixture = new Fixture();
+        using var fixture = new Fixture(extra: Actions("""{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}"""));
         using var plex = fixture.Create();
         await plex.Snapshot(default);
         fixture.PlayerCommandStatus = status;
-        var result = await plex.Act("play-queued", "9002", default);
-        Assert.False(result.Ok); Assert.Equal("The Plex player refused the command", result.Error);
+        foreach (var result in new[] { await plex.Act("play-queued", "9002", default), await plex.Act("playlist", "pl1", default) })
+        {
+            Assert.False(result.Ok); Assert.Equal("The Plex player refused the command", result.Error);
+        }
         var before = fixture.ToPlayer.Count(c => c.Uri.AbsolutePath == "/player/timeline/poll");
         await plex.Snapshot(default);
         Assert.Equal(before + 1, fixture.ToPlayer.Count(c => c.Uri.AbsolutePath == "/player/timeline/poll"));
@@ -440,6 +499,27 @@ public sealed class PlexControlTests
         fixture.Override = r => r.RequestUri!.AbsolutePath.StartsWith("/player/playback") ? throw Refused() : null;
         var result = await plex.Act("play-queued", "9002", default);
         Assert.False(result.Ok); Assert.StartsWith("Start Caldera Amp", result.Error);
+    }
+
+    [Fact]
+    public async Task ThePlaylistPickerListsAudioPlaylistsWithNumericIds()
+    {
+        using var fixture = new Fixture();
+        using var plex = fixture.Create();
+        var list = await plex.Playlists(default);
+        Assert.Equal(new[] { "12", "13" }, list.Select(p => p!["id"]!.GetValue<string>()));
+        Assert.Equal("Chill", list[0]!["name"]!.GetValue<string>());
+        Assert.Contains(fixture.ToServer, c => c.Uri.AbsolutePath == "/playlists" && c.Uri.Query == "?playlistType=audio" && c.HasToken);
+        Assert.Empty(fixture.ToPlayer);
+    }
+
+    [Fact]
+    public async Task ThePlaylistPickerIsEmptyWithoutSettings()
+    {
+        using var fixture = new Fixture(null, null);
+        using var plex = fixture.Create();
+        Assert.Empty(await plex.Playlists(default));
+        Assert.Empty(fixture.Calls);
     }
 
     [Theory]
@@ -503,10 +583,12 @@ public sealed class PlexControlTests
     }
 
     [Fact]
-    public void ThePhoneMayReadTheQueueAndSendAnId_ButNotCheck()
+    public void ThePhoneMayReadTheQueueAndSendAnIdButNotListPlaylists()
     {
         Assert.True(Lan.AllowedOverLan(new PathString("/api/controls/plex/state")));
         Assert.True(Lan.AllowedOverLan(new PathString("/api/controls/plex/action/play-queued")));
+        Assert.True(Lan.AllowedOverLan(new PathString("/api/controls/plex/action/playlist")));
+        Assert.False(Lan.AllowedOverLan(new PathString("/api/controls/plex/playlists")));
         Assert.False(Lan.AllowedOverLan(new PathString("/api/controls/plex/check")));
         Assert.False(Lan.AllowedOverLan(new PathString("/api/controls/plex/state/x")));
         Assert.False(Lan.AllowedOverLan(new PathString("/api/controls/plex")));
@@ -536,6 +618,33 @@ public sealed class PlexControlTests
     }
 
     [Fact]
+    public async Task KeysThatDifferOnlyInCaseInTheCreatedQueueAreReadAsWritten()
+    {
+        using var fixture = new Fixture(extra: Actions("""{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}"""));
+        fixture.Override = r => r.Method == HttpMethod.Post && r.RequestUri!.AbsolutePath == "/playQueues"
+            ? Json("""{"MediaContainer":{"playQueueID":5555,"guid":"x","Guid":[],"Metadata":[{"guid":"g","Guid":[{"id":"mbid://z"}],"key":"/library/metadata/777"}]}}""")
+            : null;
+        using var plex = fixture.Create();
+        var result = await plex.Act("playlist", "pl1", default);
+        Assert.True(result.Ok, result.Error);
+        var q = QueryHelpers.ParseQuery(fixture.ToPlayer.Single(c => c.Uri.AbsolutePath == "/player/playback/playMedia").Uri.Query);
+        Assert.Equal("/library/metadata/777", q["key"]); Assert.Equal("/playQueues/5555?own=1", q["containerKey"]);
+    }
+
+    [Fact]
+    public async Task APlaylistCreatedWithoutASelectedItemUsesTheFirstKey()
+    {
+        using var fixture = new Fixture(extra: Actions("""{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}"""));
+        fixture.Override = r => r.Method == HttpMethod.Post && r.RequestUri!.AbsolutePath == "/playQueues"
+            ? Json("""{"MediaContainer":{"playQueueID":5556,"Metadata":[{"key":"/library/metadata/778"},{"key":"/library/metadata/779"}]}}""")
+            : null;
+        using var plex = fixture.Create();
+        Assert.True((await plex.Act("playlist", "pl1", default)).Ok);
+        var q = QueryHelpers.ParseQuery(fixture.ToPlayer.Single(c => c.Uri.AbsolutePath == "/player/playback/playMedia").Uri.Query);
+        Assert.Equal("/library/metadata/778", q["key"]);
+    }
+
+    [Fact]
     public async Task ADuplicateKeyInAnAnswerDoesNotCrash()
     {
         using var fixture = new Fixture
@@ -546,6 +655,18 @@ public sealed class PlexControlTests
         var snap = await plex.Snapshot(default);
         Assert.False(snap["connected"]!.GetValue<bool>());
         Assert.Equal("Plex sent an answer that could not be read", snap["error"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task ADuplicateKeyInAServerAnswerIsUnreadableForActAndPlaylistsToo()
+    {
+        using var fixture = new Fixture(extra: Actions("""{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}"""));
+        fixture.Override = r => r.RequestUri!.AbsolutePath is "/playQueues" or "/playlists"
+            ? Json("""{"MediaContainer":{"playQueueID":1,"playQueueID":2,"Metadata":[{"ratingKey":"1","ratingKey":"2"}]}}""") : null;
+        using var plex = fixture.Create();
+        var result = await plex.Act("playlist", "pl1", default);
+        Assert.False(result.Ok); Assert.Equal("Plex sent an answer that could not be read", result.Error);
+        Assert.Empty(await plex.Playlists(default));
     }
 
     [Fact]
@@ -687,6 +808,24 @@ public sealed class PlexControlTests
     }
 
     [Fact]
+    public async Task AnUnknownOrOtherKindPlaylistIdOnAShownWidgetIsAChoosePlaylistError_R46()
+    {
+        using var fixture = new Fixture(pages: PlaylistsPage("{}"), extra: Actions(PlaylistAction, """{"id":"x1","label":"Other","kind":"playlist","target":"spotify:playlist:1"}"""));
+        using var plex = fixture.Create();
+        foreach (var id in new[] { "nope", "x1" })
+        {
+            var result = await plex.Act("playlist", id, default);
+            Assert.False(result.Ok); Assert.Equal("Choose a Plex playlist in desktop settings", result.Error);
+        }
+        Assert.Empty(fixture.Calls);
+        using var hidden = new Fixture(pages: PlaylistsPage("""{"ids":["pl1"]}"""), extra: Actions(PlaylistAction));
+        using var plex2 = hidden.Create();
+        var gated = await plex2.Act("playlist", "nope", default);
+        Assert.Equal("Add a Plex playlists widget to an enabled page", gated.Error);
+        Assert.Empty(hidden.Calls);
+    }
+
+    [Fact]
     public async Task ThePlayerIsAskedWithNoAcceptHeader_AndTheServerForJson()
     {
         // round 3, decision 2: the hand checks sent no Accept header to the player and Caldera answered XML
@@ -705,31 +844,74 @@ public sealed class PlexControlTests
         Assert.All(serverAccept, a => Assert.Equal("application/json", a));
     }
 
+    [Fact]
+    public async Task ThePlexPlaylistActionRunsThroughTheDeck()
+    {
+        using var fixture = new Fixture(extra: Actions("""{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}"""));
+        File.WriteAllText(fixture.ConfigPath, JsonSerializer.Serialize(new
+        {
+            controls = new { plexUrl = "https://plex.example.test:8443", plexToken = Token, actions = new[] { new { id = "pl1", label = "Chill", kind = "plex-playlist", target = "12", enabled = true } } },
+            pages = new[] { new { id = "p1", enabled = true, widgets = new[] { new { id = "w1", type = "plex-playlists", x = 0, y = 0, w = 2, h = 2 } } } },
+        }));
+        File.SetLastWriteTimeUtc(fixture.ConfigPath, DateTime.UtcNow.AddMinutes(1));
+        using var plex = fixture.Create();
+        using var deck = new PhoneBox.Agent.ControlDeck(fixture.Config, new NoNative(), Microsoft.Extensions.Logging.Abstractions.NullLogger<PhoneBox.Agent.ControlDeck>.Instance,
+            () => 1_000_000, null, null, null, null, plex);
+        var result = await deck.Act("action", "pl1", null, null, null, null, default);
+        Assert.True(result.Ok, result.Error);
+        Assert.Single(fixture.ToPlayer.Where(c => c.Uri.AbsolutePath == "/player/playback/playMedia"));
+    }
+
+    [Fact]
+    public async Task ThePlexPlaylistActionIsRefusedWhenNoEnabledPageShowsAPlexWidget_SpecEdgeSeventeen()
+    {
+        // round 3, decision 3: the gate is inside PlexControl.Act, so the deck path is gated too
+        using var fixture = new Fixture(extra: Actions("""{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}"""));
+        File.WriteAllText(fixture.ConfigPath, JsonSerializer.Serialize(new
+        {
+            controls = new { plexUrl = "https://plex.example.test:8443", plexToken = Token, actions = new[] { new { id = "pl1", label = "Chill", kind = "plex-playlist", target = "12", enabled = true } } },
+            pages = Array.Empty<object>(),
+        }));
+        File.SetLastWriteTimeUtc(fixture.ConfigPath, DateTime.UtcNow.AddMinutes(2));
+        using var plex = fixture.Create();
+        using var deck = new PhoneBox.Agent.ControlDeck(fixture.Config, new NoNative(), Microsoft.Extensions.Logging.Abstractions.NullLogger<PhoneBox.Agent.ControlDeck>.Instance,
+            () => 1_000_000, null, null, null, null, plex);
+        var result = await deck.Act("action", "pl1", null, null, null, null, default);
+        Assert.False(result.Ok);
+        Assert.Empty(fixture.ToPlayer);
+    }
+
     // ---- round 3: page gate (edge 17) ----
 
+    private const string PlaylistAction = """{"id":"pl1","label":"Chill","kind":"plex-playlist","target":"12"}""";
     private const string ClockWidget = """{"id":"wc","type":"clock","x":0,"y":0,"w":2,"h":2}""";
+    private const string QueueOnly = """[{"id":"p1","title":"P","enabled":true,"widgets":[{"id":"w1","type":"plex-queue","x":0,"y":0,"w":4,"h":4}]}]""";
+    private static string PlaylistsPage(string options) =>
+        """[{"id":"p1","title":"P","enabled":true,"widgets":[{"id":"w2","type":"plex-playlists","x":0,"y":0,"w":4,"h":4,"options":""" + options + "}]}]";
 
     public static TheoryData<string> NoWidgetPages => new()
     {
         // no Plex widget at all
         $$"""[{"id":"p1","title":"P","enabled":true,"widgets":[{{ClockWidget}}]}]""",
-        // the Plex queue widget, on a disabled page
-        $$"""[{"id":"p1","title":"P","enabled":false,"widgets":[{"id":"w1","type":"plex-queue","x":0,"y":0,"w":4,"h":4}]},{"id":"p2","title":"Q","enabled":true,"widgets":[{{ClockWidget}}]}]""",
+        // both Plex widgets, on a disabled page
+        $$"""[{"id":"p1","title":"P","enabled":false,"widgets":[{"id":"w1","type":"plex-queue","x":0,"y":0,"w":4,"h":4},{"id":"w2","type":"plex-playlists","x":4,"y":0,"w":4,"h":4}]},{"id":"p2","title":"Q","enabled":true,"widgets":[{{ClockWidget}}]}]""",
         // a Smart Stack child that is switched off
-        """[{"id":"p1","title":"P","enabled":true,"widgets":[{"id":"s","type":"stack","x":0,"y":0,"w":4,"h":4,"options":{"widgets":[{"id":"c1","type":"plex-queue","enabled":false},{"id":"c2","type":"plex-queue","active":false}]}}]}]""",
+        """[{"id":"p1","title":"P","enabled":true,"widgets":[{"id":"s","type":"stack","x":0,"y":0,"w":4,"h":4,"options":{"widgets":[{"id":"c1","type":"plex-queue","enabled":false},{"id":"c2","type":"plex-playlists","active":false}]}}]}]""",
     };
 
     [Theory]
     [MemberData(nameof(NoWidgetPages))]
     public async Task WithNoPlexWidgetOnAnEnabledPageNothingIsSentAndNothingIsCached(string pages)
     {
-        using var fixture = new Fixture(pages: pages);
+        using var fixture = new Fixture(pages: pages, extra: Actions(PlaylistAction));
         using var plex = fixture.Create();
         var snap = await plex.Snapshot(default);
         Assert.False(snap["connected"]!.GetValue<bool>());
         Assert.Equal("Add a Plex widget to an enabled page", snap["error"]!.GetValue<string>());
         var queued = await plex.Act("play-queued", "9002", default);
         Assert.False(queued.Ok); Assert.Equal("Add a Plex widget to an enabled page", queued.Error);
+        var playlist = await plex.Act("playlist", "pl1", default);
+        Assert.False(playlist.Ok); Assert.Equal("Add a Plex playlists widget to an enabled page", playlist.Error);
         Assert.Empty(fixture.Calls);
     }
 
@@ -756,12 +938,31 @@ public sealed class PlexControlTests
         Assert.Equal(before, fixture.Calls.Count);
     }
 
+    [Theory]
+    [InlineData(QueueOnly, false)]                                  // a queue widget alone does not allow a playlist
+    [InlineData("""{"ids":["other"]}""", false)]                    // the widget does not show this action
+    [InlineData("""{"ids":["pl1"]}""", true)]
+    [InlineData("""{"ids":[]}""", true)]                            // an empty list shows every action
+    [InlineData("""{"ids":"other"}""", true)]                       // any other kind counts as absent
+    [InlineData("""{}""", true)]
+    public async Task APlaylistNeedsAPlaylistsWidgetThatShowsIt(string pagesOrOptions, bool allowed)
+    {
+        var pages = pagesOrOptions == QueueOnly ? QueueOnly : PlaylistsPage(pagesOrOptions);
+        using var fixture = new Fixture(pages: pages, extra: Actions(PlaylistAction));
+        using var plex = fixture.Create();
+        var result = await plex.Act("playlist", "pl1", default);
+        if (allowed) { Assert.True(result.Ok, result.Error); return; }
+        Assert.False(result.Ok); Assert.Equal("Add a Plex playlists widget to an enabled page", result.Error);
+        Assert.Empty(fixture.Calls);
+    }
+
     [Fact]
-    public async Task CheckIsNotGated()
+    public async Task CheckAndThePlaylistListAreNotGated()
     {
         using var fixture = new Fixture(pages: $$"""[{"id":"p1","title":"P","enabled":true,"widgets":[{{ClockWidget}}]}]""");
         using var plex = fixture.Create();
         Assert.True((await plex.Check(default))["connected"]!.GetValue<bool>());
+        Assert.NotEmpty(await plex.Playlists(default));
         Assert.NotEmpty(fixture.ToPlayer); Assert.NotEmpty(fixture.ToServer);
     }
 
@@ -885,12 +1086,15 @@ public sealed class PlexControlTests
     [InlineData("""{"MediaContainer":{"Metadata":["x"]}}""")]
     public async Task OddJsonKindsAreUnreadableNotACrash(string json)
     {
-        using var fixture = new Fixture();
-        fixture.Override = r => r.RequestUri!.AbsolutePath.StartsWith("/playQueues/") ? Json(json) : null;
+        using var fixture = new Fixture(extra: Actions(PlaylistAction));
+        fixture.Override = r => r.RequestUri!.AbsolutePath is "/playlists" or "/playQueues" || r.RequestUri.AbsolutePath.StartsWith("/playQueues/") ? Json(json) : null;
         using var plex = fixture.Create();
         var snap = await plex.Snapshot(default);
         Assert.False(snap["connected"]!.GetValue<bool>());
         Assert.Equal("Plex sent an answer that could not be read", snap["error"]!.GetValue<string>());
+        var result = await plex.Act("playlist", "pl1", default);
+        Assert.False(result.Ok); Assert.Equal("Plex sent an answer that could not be read", result.Error);
+        Assert.Empty(await plex.Playlists(default));
     }
 
     [Fact]
@@ -1067,4 +1271,24 @@ public sealed class PlexControlTests
         Assert.DoesNotContain("CancellationToken.None", program[from..to]);
     }
 
+    /// <summary>A computer with no media, audio or MIDI; only the calls the Plex path can reach are needed.</summary>
+    private sealed class NoNative : PhoneBox.Agent.IDeckNative
+    {
+        public PhoneBox.Agent.DeckAudio Audio() => null!;
+        public bool Device(string id, int? volume, bool? muted, int? channel = null) => false;
+        public bool Session(string id, int? volume, bool? muted) => false;
+        public bool DefaultDevice(string id, int? role = null) => false;
+        public IReadOnlyList<PhoneBox.Agent.DeckMonitor> Monitors() => [];
+        public bool Brightness(string id, int value) => false;
+        public IReadOnlyList<PhoneBox.Agent.DeckItem> PowerPlans() => [];
+        public Task<bool> PlatformAction(string kind, string target, string? argument, int value, CancellationToken ct) => Task.FromResult(false);
+        public Task<IReadOnlyList<PhoneBox.Agent.DeckMedia>> Media(CancellationToken ct) => Task.FromResult<IReadOnlyList<PhoneBox.Agent.DeckMedia>>([]);
+        public Task<bool> MediaAction(string id, string action, long value, CancellationToken ct) => Task.FromResult(false);
+        public void Play(string id, string file, string? device, int volume) { }
+        public void StopSound(string? id) { }
+        public IReadOnlyList<PhoneBox.Agent.DeckItem> MidiPorts() => [];
+        public void Midi(int port, string message, int value) { }
+        public async IAsyncEnumerable<PhoneBox.Agent.DeckAudioPacket> Listen([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct) { yield break; }
+        public void Dispose() { }
+    }
 }

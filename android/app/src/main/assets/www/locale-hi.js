@@ -953,7 +953,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexPlayer": "Plex प्लेयर का पता",
       "s.cd.plexCheck": "Plex कनेक्शन जाँचें",
       "s.cd.plexHint": "Plex नियंत्रण के लिए इस कंप्यूटर पर Caldera Amp जैसा Plex Companion प्लेयर चाहिए। Caldera Amp को एक बार शुरू करके साइन इन करें; यह पृष्ठभूमि में चलता रहता है और इसकी कोई विंडो खुली रखने की ज़रूरत नहीं है। इस कंप्यूटर पर Plexamp सामान्य मीडिया विजेट के साथ काम करता है। अपने Plex सर्वर का पता और X-Plex-Token चिपकाएँ।",
-      "s.cd.plexChecking": "जाँच हो रही है…"
+      "s.cd.plexPlaylistHint": "लक्ष्य: Plex प्लेलिस्ट ID। नीचे दी गई सूची से चुनें।",
+      "s.cd.plexLoadLists": "Plex प्लेलिस्ट लोड करें",
+      "s.cd.plexFull": "Control Deck भर गया है (512 कंट्रोल)। प्लेलिस्ट जोड़ने से पहले कोई कंट्रोल हटाएँ।",
+      "s.cd.plexChoose": "Plex प्लेलिस्ट चुनें…",
+      "s.cd.plexNone": "कोई Plex प्लेलिस्ट नहीं मिली। पहले सर्वर का पता और टोकन सहेजें।",
+      "s.cd.plexChecking": "जाँच हो रही है…",
+      "s.cd.plexLoading": "लोड हो रहा है…"
     },
     "catalog": {
       "Only this category (its category in Settings; empty = all)": "केवल यह श्रेणी (सेटिंग्स में इसकी श्रेणी; खाली = सभी)",
@@ -1664,7 +1670,11 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp जैसे Plex प्लेयर पर क्या चल रहा है और आगे क्या आएगा; गाना चलाने के लिए उस पर टैप करें।",
       "Page buttons": "पृष्ठ बटन",
       "Buttons that open your pages; the page you are on is highlighted.": "बटन जो आपके पृष्ठ खोलते हैं; जिस पृष्ठ पर आप हैं वह हाइलाइट रहता है.",
-      "Pages (none ticked = all)": "पृष्ठ (कोई न चुना हो = सभी)"
+      "Pages (none ticked = all)": "पृष्ठ (कोई न चुना हो = सभी)",
+      "Plex playlists": "Plex प्लेलिस्ट",
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Caldera Amp जैसे Plex प्लेयर पर क्या चल रहा है और आगे क्या आएगा; गाना चलाने के लिए उस पर टैप करें।",
+      "Start configured Plex playlists on a Plex player.": "Plex प्लेयर पर कॉन्फ़िगर की गई Plex प्लेलिस्ट शुरू करें।",
+      "Plex playlists (none ticked = all)": "Plex प्लेलिस्ट (कोई चयनित नहीं = सभी)"
     },
     "panel": {
       "% load": "लोड%",
@@ -1960,7 +1970,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Moon": "चंद्रमा",
       "{n}% lit": "{n}% प्रकाशित",
       "Core {n} MHz": "कोर {n} MHz",
-      "Battery care": "बैटरी देखभाल"
+      "Battery care": "बैटरी देखभाल",
+      "Add a Plex playlists widget to an enabled page": "किसी सक्षम पेज पर Plex प्लेलिस्ट विजेट जोड़ें"
     }
   }
 });
