@@ -2002,6 +2002,7 @@ $('dots').addEventListener('pointermove', (e) => {
   if (dotsHoldStart && Math.hypot(e.clientX - dotsHoldStart[0], e.clientY - dotsHoldStart[1]) > 10) clearDotsHold();
   // sliding along the dots scrubs through the pages: the page under the finger is named, and opened on release
   if (!scrubFrom || e.pointerId !== scrubFrom.id) return;
+  if (e.pointerType === 'mouse' && e.buttons === 0) { endScrub(); return; } // released outside the bar
   if (scrubFrom.at === null) {
     if (Math.abs(e.clientX - scrubFrom.x) <= 10) return;
     try { $('dots').setPointerCapture(e.pointerId); } catch (_) {}
@@ -2024,6 +2025,8 @@ $('dots').addEventListener('pointerup', (e) => {
   else flashTitle();
 });
 $('dots').addEventListener('pointercancel', endScrub);
+// a press that leaves the bar before it became a slide is over (its release happens elsewhere)
+$('dots').addEventListener('pointerleave', (e) => { if (scrubFrom && e.pointerId === scrubFrom.id && scrubFrom.at === null) scrubFrom = null; });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('dots').addEventListener(ev, clearDotsHold));
 window.addEventListener('blur', clearDotsHold);
 $('dots').addEventListener('click', (e) => {

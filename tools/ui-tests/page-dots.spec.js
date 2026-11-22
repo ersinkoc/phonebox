@@ -65,3 +65,16 @@ test('many pages still fit on a narrow phone', async ({ page }) => {
   await page.locator('#dots .dot').nth(20).click();
   await expect.poll(() => activeDot(page)).toBe(20);
 });
+
+test('a press that leaves the bar without sliding along it names nothing afterwards', async ({ page }) => {
+  await show(page);
+  const [x0, y] = await center(page.locator('#dots .dot').nth(0));
+  const [x3] = await center(page.locator('#dots .dot').nth(3));
+  await page.mouse.move(x0, y);
+  await page.mouse.down();
+  await page.mouse.move(x0, y - 120, { steps: 4 }); // straight up, off the bar
+  await page.mouse.up();
+  await page.mouse.move(x3, y, { steps: 6 });       // hovering over the dots with no button down
+  await expect(page.locator('#dots .dot.aim')).toHaveCount(0);
+  expect(await activeDot(page)).toBe(0);
+});
