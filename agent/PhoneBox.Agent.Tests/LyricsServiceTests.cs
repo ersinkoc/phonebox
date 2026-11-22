@@ -71,6 +71,15 @@ public sealed class LyricsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AnOversizedAnswerIsAnErrorAndNotParsed()
+    {
+        // a search answer far past the 2 MB cap (a misbehaving server or proxy): refused, not buffered whole
+        var huge = "[" + string.Join(",", Enumerable.Repeat("{\"trackName\":\"" + new string('x', 1000) + "\"}", 3000)) + "]";
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, new Lrclib(_ => Json(huge)));
+        Assert.Equal("error", (await Ask(lyrics, Track("Song", "Artist"))).Status);
+    }
+
+    [Fact]
     public async Task NothingPlayingIsIdle()
     {
         using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, new Lrclib(_ => Json("[]")));

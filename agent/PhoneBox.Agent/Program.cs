@@ -712,10 +712,15 @@ app.MapPost("/api/steam/launch", (string? id, string? widget, HttpRequest req, S
         ? Results.BadRequest(new { error = refused.Error, code = refused.Code })
         : Results.Ok(new { ok = true }));
 // Synced lyrics of the track playing now, from LRCLIB, for the asking widget ("widget=pageId/widgetId"): only when that
-// widget is on an enabled page with "Look up lyrics on LRCLIB" turned on (off by default). The track is the agent's own media
-// snapshot: the phone sends no text that could reach LRCLIB.
-app.MapGet("/api/lyrics", async (string? widget, HttpRequest req, MediaMonitor media, LyricsService lyrics, CancellationToken ct) =>
-    Results.Json(await lyrics.ForAsync(media.Snapshot(), req.Headers["X-PhoneBox-Device"].ToString(), widget, ct)));
+// widget is on an enabled page with "Look up lyrics on LRCLIB" turned on (off by default). The track is the one Now playing
+// shows (the agent's own media snapshot, with PhoneBox's Internet Radio in its place while that plays or is paused, which
+// is never looked up): the phone sends no text that could reach LRCLIB.
+app.MapGet("/api/lyrics", async (string? widget, HttpRequest req, MediaMonitor media, ControlDeck deck, LyricsService lyrics, CancellationToken ct) =>
+{
+    var shown = deck.EffectiveMedia(media.Snapshot());
+    if (shown?.App == "Internet Radio") shown = null;
+    return Results.Json(await lyrics.ForAsync(shown, req.Headers["X-PhoneBox-Device"].ToString(), widget, ct));
+});
 
 // Battery levels of wireless devices (headphones, mice, keyboards…), for the Device batteries widget.
 app.MapGet("/api/batteries", (BatteryMonitor b) => Results.Json(new { devices = b.Snapshot() }));

@@ -33,7 +33,6 @@ export function lyricAt(lines, ms) {
 W.lyrics = {
   needs: ['state', 'fast'],
   create(box, { o, page, w }) {
-    box.classList.add('lyrics');
     const wq = 'widget=' + encodeURIComponent(`${page.id}/${w.id}`);
     const list = h('div', 'ly-list');
     const note = h('div', 'ly-note');
