@@ -1,4 +1,4 @@
-import { $, D, DEFAULT_CFG, LOCALE, cfg, fmtDur, fmtHM, h, en, t, tick } from '../main.js';
+import { $, D, DEFAULT_CFG, LOCALE, cfg, fmtDur, fmtHM, h, en, t, tick, tp, tpv } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every } from './helpers.js';
 
@@ -28,10 +28,11 @@ function moonIcon(m) {
 W.sun = {
   needs: ['weather', 'tick'],
   create(box) {
-    box.innerHTML = '<div class="w-title">Sun &amp; moon<span class="w-sub"></span></div>' +
+    box.innerHTML = '<div class="w-title"><span class="w-sub"></span></div>' +
       '<svg class="sun-arc" viewBox="0 0 200 80" preserveAspectRatio="xMidYMax meet"><path class="sa-bg" d="M10 75 A90 70 0 0 1 190 75"/><path class="sa-fg" d="M10 75 A90 70 0 0 1 190 75"/><line class="sa-h" x1="2" y1="75" x2="198" y2="75"/><circle class="sa-sun" r="7" cx="10" cy="75"/></svg>' +
       '<div class="sun-row"><span class="sr"></span><span class="sl"></span><span class="ss"></span></div><div class="moon"></div>';
     const q = (s) => box.querySelector(s);
+    q('.w-title').prepend(tp('Sun & moon'));
     const fg = q('.sa-fg'), sun = q('.sa-sun');
     const len = fg.getTotalLength();
     fg.style.strokeDasharray = len;
@@ -68,7 +69,7 @@ W.sun = {
         q('.sl').textContent = now < rise ? t('w.risesIn', { dur: fmtDur(rise - now) }) : now > set ? t('w.afterSunset') : t('w.lightLeft', { dur: fmtDur(set - now) });
         q('.w-sub').textContent = t('w.day') + ' ' + fmtDur((d.daylight_duration?.[0] ?? (set - rise) / 1000) * 1000) + (d.uv_index_max?.[0] != null ? ` · UV ${Math.round(d.uv_index_max[0])}` : '');
         const m = moonPhase(now);
-        q('.moon').replaceChildren(moonIcon(m), `${m.name} · ${Math.round(m.illum * 100)}%`);
+        q('.moon').replaceChildren(moonIcon(m), `${tp(m.name)} · ${Math.round(m.illum * 100)}%`);
       },
     };
   },
@@ -132,9 +133,10 @@ W.air = {
 W.moon = {
   needs: ['tick'],
   create(box) {
-    box.innerHTML = '<div class="w-title">Moon</div><div class="mo-body"><svg viewBox="0 0 100 100" class="mo-disc"><circle class="mo-dark" cx="50" cy="50" r="44"/><path class="mo-lit"/></svg>' +
+    box.innerHTML = '<div class="w-title"></div><div class="mo-body"><svg viewBox="0 0 100 100" class="mo-disc"><circle class="mo-dark" cx="50" cy="50" r="44"/><path class="mo-lit"/></svg>' +
       '<div class="mo-text"><b class="mo-name"></b><span class="mo-ill"></span><small class="mo-next"></small></div></div>';
     const q = (s) => box.querySelector(s);
+    q('.w-title').textContent = tp('Moon');
     let shown = -1;
     return {
       update() {
@@ -146,10 +148,13 @@ W.moon = {
         const age = ((((now - Date.UTC(2000, 0, 6, 18, 14)) / 864e5) % syn) + syn) % syn;
         const m = moonPhase(now);
         q('.mo-lit').setAttribute('d', moonLitPath(m));
-        q('.mo-name').textContent = m.name;
-        q('.mo-ill').textContent = `${Math.round(m.illum * 100)}% lit`;
-        const inDays = (target) => { const dd = ((target - age) % syn + syn) % syn; return dd < 0.5 ? 'tonight' : dd < 1.5 ? 'tomorrow' : `in ${Math.round(dd)} days`; };
-        q('.mo-next').textContent = age < syn / 2 ? `Full moon ${inDays(syn / 2)}` : `New moon ${inDays(syn)}`;
+        q('.mo-name').textContent = tp(m.name);
+        q('.mo-ill').textContent = tpv('{n}% lit', { n: Math.round(m.illum * 100) });
+        const next = (target, which) => {
+          const dd = ((target - age) % syn + syn) % syn;
+          return dd < 0.5 ? tp(`${which} tonight`) : dd < 1.5 ? tp(`${which} tomorrow`) : tpv(`${which} in {n} days`, { n: Math.round(dd) });
+        };
+        q('.mo-next').textContent = age < syn / 2 ? next(syn / 2, 'Full moon') : next(syn, 'New moon');
       },
     };
   },

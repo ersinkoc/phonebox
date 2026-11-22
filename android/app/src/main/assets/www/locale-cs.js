@@ -1913,7 +1913,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n} % výkonu",
       "{n}-day": "{n} -day",
       "{n}-hour": "{n} - hodina",
-      "Add a Plex widget to an enabled page": "Přidejte widget Plex na povolenou stránku"
+      "Add a Plex widget to an enabled page": "Přidejte widget Plex na povolenou stránku",
+      "Hold: sleep": "Podržte: režim spánku",
+      "Hold: restart": "Podržte: restartovat",
+      "Hold: shutdown": "Podržte: vypnout",
+      "Hold to talk": "Podržením mluvte",
+      "Mute audio + microphones": "Ztlumit zvuk a mikrofony",
+      "← Desktop": "← Plocha",
+      "Desktop →": "Plocha →",
+      "Lock": "Zamknout",
+      "Display off": "Vypnout displej",
+      "Enable mouse control in widget settings": "Zapněte ovládání myši v nastavení widgetu",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "Tažením posunete · Klepnutím kliknete · Podržením přetáhnete · Lišta nebo 2 prsty pro posouvání",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "Tažením posunete · Klepnutím kliknete · Podržením přetáhnete · Dva prsty pro posouvání",
+      "Stop": "Zastavit",
+      "Sun & moon": "Slunce a měsíc",
+      "Moon": "Měsíc",
+      "{n}% lit": "Osvětleno {n} %",
+      "Core {n} MHz": "Jádro {n} MHz",
+      "Battery care": "Péče o baterii"
     }
   }
 });

@@ -1913,7 +1913,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}กำลัง%",
       "{n}-day": "{n}วันนี้",
       "{n}-hour": "{n}ชั่วโมง",
-      "Add a Plex widget to an enabled page": "เพิ่มวิดเจ็ต Plex ในหน้าที่เปิดใช้งาน"
+      "Add a Plex widget to an enabled page": "เพิ่มวิดเจ็ต Plex ในหน้าที่เปิดใช้งาน",
+      "Hold: sleep": "กดค้าง: พักเครื่อง",
+      "Hold: restart": "กดค้าง: รีสตาร์ท",
+      "Hold: shutdown": "กดค้าง: ปิดเครื่อง",
+      "Hold to talk": "กดค้างเพื่อพูด",
+      "Mute audio + microphones": "ปิดเสียงและไมโครโฟน",
+      "← Desktop": "← เดสก์ท็อป",
+      "Desktop →": "เดสก์ท็อป →",
+      "Lock": "ล็อก",
+      "Display off": "ปิดหน้าจอ",
+      "Enable mouse control in widget settings": "เปิดการควบคุมเมาส์ในการตั้งค่าวิดเจ็ต",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "ลากเพื่อย้าย · แตะเพื่อคลิก · กดค้างเพื่อลาก · แถบหรือ 2 นิ้วเพื่อเลื่อน",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "ลากเพื่อย้าย · แตะเพื่อคลิก · กดค้างเพื่อลาก · สองนิ้วเพื่อเลื่อน",
+      "Stop": "หยุด",
+      "Sun & moon": "ดวงอาทิตย์และดวงจันทร์",
+      "Moon": "ดวงจันทร์",
+      "{n}% lit": "สว่าง {n}%",
+      "Core {n} MHz": "คอร์ {n} MHz",
+      "Battery care": "ดูแลแบตเตอรี่"
     }
   }
 });

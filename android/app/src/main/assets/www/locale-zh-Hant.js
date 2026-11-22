@@ -1913,7 +1913,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}電力",
       "{n}-day": "{n}日",
       "{n}-hour": "{n}時間",
-      "Add a Plex widget to an enabled page": "請將 Plex 小工具新增到已啟用的頁面"
+      "Add a Plex widget to an enabled page": "請將 Plex 小工具新增到已啟用的頁面",
+      "Hold: sleep": "按住：睡眠",
+      "Hold: restart": "按住：重新啟動",
+      "Hold: shutdown": "按住：關機",
+      "Hold to talk": "按住說話",
+      "Mute audio + microphones": "將音訊和麥克風靜音",
+      "← Desktop": "← 桌面",
+      "Desktop →": "桌面 →",
+      "Lock": "鎖定",
+      "Display off": "關閉螢幕",
+      "Enable mouse control in widget settings": "請在小工具設定中啟用滑鼠控制",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "拖曳以移動 · 輕觸以點按 · 按住以拖曳 · 捲軸或雙指捲動",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "拖曳以移動 · 輕觸以點按 · 按住以拖曳 · 雙指捲動",
+      "Stop": "停止",
+      "Sun & moon": "太陽和月亮",
+      "Moon": "月亮",
+      "{n}% lit": "照亮 {n}%",
+      "Core {n} MHz": "核心 {n} MHz",
+      "Battery care": "電池保養"
     }
   }
 });

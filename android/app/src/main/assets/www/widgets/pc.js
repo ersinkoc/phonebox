@@ -1140,10 +1140,11 @@ W.chargecare = {
   needs: ['tick'],
   create(box) {
     const C = 2 * Math.PI * 42;
-    box.innerHTML = '<div class="w-title">Battery care</div><div class="cc-body"><div class="cc-wrap"><svg viewBox="0 0 100 100" class="cc-ring">' +
+    box.innerHTML = '<div class="w-title"></div><div class="cc-body"><div class="cc-wrap"><svg viewBox="0 0 100 100" class="cc-ring">' +
       '<circle class="cc-bg" cx="50" cy="50" r="42"/><circle class="cc-band" cx="50" cy="50" r="42"/><circle class="cc-fg" cx="50" cy="50" r="42"/></svg>' +
       '<b class="cc-pct">—</b></div></div><div class="cc-sub"><span class="cc-state"></span> <span class="cc-text"></span></div>';
     const q = (s) => box.querySelector(s);
+    q('.w-title').textContent = tp('Battery care');
     const load = every(15_000, () => {
       const ch = cfg.charge || {};
       const min = ch.min ?? 50, max = ch.max ?? 80;
@@ -1260,9 +1261,10 @@ W.gpu = {
         rows.replaceChildren(...list);
 
         chips.replaceChildren(...[
-          g.clock != null ? `Core ${Math.round(g.clock)} MHz` : null,
-          g.memClock != null ? `Memory ${Math.round(g.memClock)} MHz` : null,
-          g.fan != null || g.fanRpm != null ? `Fan ${[g.fan != null ? Math.round(g.fan) + '%' : null, g.fanRpm != null ? Math.round(g.fanRpm) + ' rpm' : null].filter(Boolean).join(' · ')}` : null,
+          g.clock != null ? tpv('Core {n} MHz', { n: Math.round(g.clock) }) : null,
+          g.memClock != null ? tpv('Memory {n} MHz', { n: Math.round(g.memClock) }) : null,
+          g.fan != null ? tpv('Fan {n}%', { n: Math.round(g.fan) }) + (g.fanRpm != null ? ` · ${Math.round(g.fanRpm)} rpm` : '')
+            : g.fanRpm != null ? tpv('Fan {n} rpm', { n: Math.round(g.fanRpm) }) : null,
           g.driver ? `Driver ${g.driver}` : null,
           g.source ? g.source.split('+').map((x) => GPU_SOURCE[x] || x).join(' + ') : null,
         ].filter(Boolean).map((t) => h('span', 'chip', t)));

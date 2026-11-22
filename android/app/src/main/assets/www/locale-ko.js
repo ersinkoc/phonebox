@@ -1913,7 +1913,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}전원%",
       "{n}-day": "{n}- 하루",
       "{n}-hour": "{n}- 시간",
-      "Add a Plex widget to an enabled page": "활성화된 페이지에 Plex 위젯을 추가하세요"
+      "Add a Plex widget to an enabled page": "활성화된 페이지에 Plex 위젯을 추가하세요",
+      "Hold: sleep": "길게 누르기: 절전",
+      "Hold: restart": "길게 누르기: 다시 시작",
+      "Hold: shutdown": "길게 누르기: 시스템 종료",
+      "Hold to talk": "길게 눌러 말하기",
+      "Mute audio + microphones": "오디오 및 마이크 음소거",
+      "← Desktop": "← 데스크톱",
+      "Desktop →": "데스크톱 →",
+      "Lock": "잠금",
+      "Display off": "화면 끄기",
+      "Enable mouse control in widget settings": "위젯 설정에서 마우스 제어를 켜세요",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "드래그하여 이동 · 탭하여 클릭 · 길게 눌러 드래그 · 막대 또는 두 손가락으로 스크롤",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "드래그하여 이동 · 탭하여 클릭 · 길게 눌러 드래그 · 두 손가락으로 스크롤",
+      "Stop": "중지",
+      "Sun & moon": "태양과 달",
+      "Moon": "달",
+      "{n}% lit": "{n}% 밝음",
+      "Core {n} MHz": "코어 {n} MHz",
+      "Battery care": "배터리 관리"
     }
   }
 });

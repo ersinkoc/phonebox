@@ -47,7 +47,7 @@ function reconcile(root, nodes) {
   nodes.forEach((node, index) => { if (root.children[index] !== node) root.insertBefore(node, root.children[index] || null); });
   [...root.children].filter(node => !nodes.includes(node)).forEach(node => node.remove());
 }
-function empty(root, text) { root.replaceChildren(h('div', 'deck-empty', text)); }
+function empty(root, text) { root.replaceChildren(h('div', 'deck-empty', tp(text))); }
 function slider(label, send, max = 100) {
   const input = h('input', 'deck-slider'); input.type = 'range'; input.min = 0; input.max = max; input.step = 1;
   input.setAttribute('aria-label', label);
@@ -148,8 +148,10 @@ function chooser(box, options, which) {
   };
 }
 
+const holdLabel = (power) => (power === 'sleep' ? tp('Hold: sleep') : power === 'restart' ? tp('Hold: restart')
+  : power === 'shutdown' ? tp('Hold: shutdown') : tp('Hold to talk'));
 function hold(box, options, power = null) {
-  const b = h('button', 'deck-hold', power ? `Hold: ${power}` : 'Hold to talk'); b.type = 'button';
+  const b = h('button', 'deck-hold', holdLabel(power)); b.type = 'button';
   b.disabled = true;
   const status = h('div', 'deck-caption', power ? tp('Hold for 2 seconds') : tp('Release to restore the microphone')); box.append(b, status);
   let held = false, lease = null, timer = 0, renewal = 0, device = null;
@@ -232,12 +234,12 @@ function actionsView(box, options, type) {
     const key = JSON.stringify(items); if (key === signature) return; signature = key;
     if (!items.length) { empty(grid, 'Assign controls in the computer’s Control Deck settings'); return; }
     grid.replaceChildren(...items.map(item => {
-      const label = h('span', '', item.name), state = h('small', '', item.state || tp('Ready'));
+      const label = h('span', '', item.name), state = h('small', '', tp(item.state || 'Ready'));
       const b = button('', async () => { await deckCommand(item.kind === 'profile' ? 'profile' : 'action', { id: item.id, op: item.kind === 'radio' ? 'toggle' : (type === 'app-dock' ? 'focus' : '') }); signature = ''; });
       b.disabled = item.available === false;
       b.append(label, state);
-      if (type === 'dev-servers') return h('div', 'deck-task', b, button('Stop', () => deckCommand('action', { id: item.id, op: 'stop' }), 'Stop ' + item.name));
-      if (type === 'soundboard') return h('div', 'deck-task', b, button('Stop', () => deckCommand('sound-stop', { id: item.id }), 'Stop ' + item.name));
+      if (type === 'dev-servers') return h('div', 'deck-task', b, button(tp('Stop'), () => deckCommand('action', { id: item.id, op: 'stop' }), 'Stop ' + item.name));
+      if (type === 'soundboard') return h('div', 'deck-task', b, button(tp('Stop'), () => deckCommand('sound-stop', { id: item.id }), 'Stop ' + item.name));
       return b;
     }));
   };
@@ -577,9 +579,9 @@ export function registerDeckWidget(type, title, mode = type) {
       else if (mode === 'ptt') component = hold(box, o);
       else if (mode === 'listen') component = listening(box);
       else if (['remote', 'seek', 'modes'].includes(mode)) render = mediaView(box, o, mode);
-      else if (mode === 'panic') box.append(button('Mute audio + microphones', () => deckCommand('panic')));
-      else if (mode === 'desktops') box.append(button('← Desktop', () => deckCommand('desktop', { value: -1 })), button('Desktop →', () => deckCommand('desktop', { value: 1 })));
-      else if (mode === 'system') box.append(button('Lock', () => deckCommand('lock')), button('Display off', () => deckCommand('monitor-off')));
+      else if (mode === 'panic') box.append(button(tp('Mute audio + microphones'), () => deckCommand('panic')));
+      else if (mode === 'desktops') box.append(button(tp('← Desktop'), () => deckCommand('desktop', { value: -1 })), button(tp('Desktop →'), () => deckCommand('desktop', { value: 1 })));
+      else if (mode === 'system') box.append(button(tp('Lock'), () => deckCommand('lock')), button(tp('Display off'), () => deckCommand('monitor-off')));
       else if (mode === 'power') {
         const group = h('div', 'deck-power-grid'); box.append(group);
         const components = ['sleep', 'restart', 'shutdown'].map(action => { const item = h('div', 'deck-power-item'); group.append(item); return hold(item, o, action); });
@@ -791,10 +793,10 @@ W.trackpad = {
     const surface = h('div', 'deck-trackpad-surface',
       h('div', 'deck-trackpad-icon', icon(controlEnabled ? 'mouse' : 'lock')),
       h('div', 'deck-trackpad-hint', !controlEnabled
-        ? 'Enable mouse control in widget settings'
+        ? tp('Enable mouse control in widget settings')
         : (scrollBar !== 'none'
-          ? 'Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll'
-          : 'Drag to move · Tap to click · Hold to drag · Two fingers to scroll'))
+          ? tp('Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll')
+          : tp('Drag to move · Tap to click · Hold to drag · Two fingers to scroll')))
     );
 
     let scrollBarEl = null;

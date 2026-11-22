@@ -1913,7 +1913,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}% पावर",
       "{n}-day": "{n}दिन",
       "{n}-hour": "{n} - घंटे",
-      "Add a Plex widget to an enabled page": "किसी सक्षम पेज पर Plex विजेट जोड़ें"
+      "Add a Plex widget to an enabled page": "किसी सक्षम पेज पर Plex विजेट जोड़ें",
+      "Hold: sleep": "दबाए रखें: स्लीप",
+      "Hold: restart": "दबाए रखें: रीस्टार्ट",
+      "Hold: shutdown": "दबाए रखें: शट डाउन",
+      "Hold to talk": "बोलने के लिए दबाए रखें",
+      "Mute audio + microphones": "ऑडियो और माइक्रोफ़ोन म्यूट करें",
+      "← Desktop": "← डेस्कटॉप",
+      "Desktop →": "डेस्कटॉप →",
+      "Lock": "लॉक करें",
+      "Display off": "डिस्प्ले बंद करें",
+      "Enable mouse control in widget settings": "विजेट सेटिंग में माउस नियंत्रण चालू करें",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "खिसकाने के लिए खींचें · क्लिक के लिए टैप करें · खींचने के लिए दबाए रखें · स्क्रॉल के लिए बार या 2 उंगलियाँ",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "खिसकाने के लिए खींचें · क्लिक के लिए टैप करें · खींचने के लिए दबाए रखें · स्क्रॉल के लिए दो उंगलियाँ",
+      "Stop": "रोकें",
+      "Sun & moon": "सूर्य और चंद्रमा",
+      "Moon": "चंद्रमा",
+      "{n}% lit": "{n}% प्रकाशित",
+      "Core {n} MHz": "कोर {n} MHz",
+      "Battery care": "बैटरी देखभाल"
     }
   }
 });

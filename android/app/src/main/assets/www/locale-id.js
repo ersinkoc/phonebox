@@ -1913,7 +1913,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}% power",
       "{n}-day": "{n} -day",
       "{n}-hour": "{n} - jam",
-      "Add a Plex widget to an enabled page": "Tambahkan widget Plex ke halaman yang aktif"
+      "Add a Plex widget to an enabled page": "Tambahkan widget Plex ke halaman yang aktif",
+      "Hold: sleep": "Tahan: tidur",
+      "Hold: restart": "Tahan: mulai ulang",
+      "Hold: shutdown": "Tahan: matikan",
+      "Hold to talk": "Tahan untuk bicara",
+      "Mute audio + microphones": "Bisukan audio dan mikrofon",
+      "← Desktop": "← Desktop",
+      "Desktop →": "Desktop →",
+      "Lock": "Kunci",
+      "Display off": "Matikan layar",
+      "Enable mouse control in widget settings": "Aktifkan kontrol mouse di pengaturan widget",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "Seret untuk memindah · Ketuk untuk klik · Tahan untuk menyeret · Bilah atau 2 jari untuk menggulir",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "Seret untuk memindah · Ketuk untuk klik · Tahan untuk menyeret · Dua jari untuk menggulir",
+      "Stop": "Hentikan",
+      "Sun & moon": "Matahari dan bulan",
+      "Moon": "Bulan",
+      "{n}% lit": "{n}% terang",
+      "Core {n} MHz": "Inti {n} MHz",
+      "Battery care": "Perawatan baterai"
     }
   }
 });

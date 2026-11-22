@@ -1913,7 +1913,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}電力の%",
       "{n}-day": "{n}あっ あの...。",
       "{n}-hour": "{n}時間",
-      "Add a Plex widget to an enabled page": "有効なページに Plex ウィジェットを追加してください"
+      "Add a Plex widget to an enabled page": "有効なページに Plex ウィジェットを追加してください",
+      "Hold: sleep": "長押し：スリープ",
+      "Hold: restart": "長押し：再起動",
+      "Hold: shutdown": "長押し：シャットダウン",
+      "Hold to talk": "長押しで話す",
+      "Mute audio + microphones": "音声とマイクをミュート",
+      "← Desktop": "← デスクトップ",
+      "Desktop →": "デスクトップ →",
+      "Lock": "ロック",
+      "Display off": "画面オフ",
+      "Enable mouse control in widget settings": "ウィジェット設定でマウス操作を有効にしてください",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "ドラッグで移動 · タップでクリック · 長押しでドラッグ · バーまたは2本指でスクロール",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "ドラッグで移動 · タップでクリック · 長押しでドラッグ · 2本指でスクロール",
+      "Stop": "停止",
+      "Sun & moon": "太陽と月",
+      "Moon": "月",
+      "{n}% lit": "輝面 {n}%",
+      "Core {n} MHz": "コア {n} MHz",
+      "Battery care": "バッテリーケア"
     }
   }
 });

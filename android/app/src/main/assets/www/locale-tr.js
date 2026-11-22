@@ -1386,7 +1386,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}% güç",
       "{n}-day": "{n} - gün",
       "{n}-hour": "{n} - saat",
-      "Add a Plex widget to an enabled page": "Etkin bir sayfaya Plex widget'ı ekleyin"
+      "Add a Plex widget to an enabled page": "Etkin bir sayfaya Plex widget'ı ekleyin",
+      "Hold: sleep": "Basılı tut: uyku",
+      "Hold: restart": "Basılı tut: yeniden başlat",
+      "Hold: shutdown": "Basılı tut: kapat",
+      "Hold to talk": "Konuşmak için basılı tut",
+      "Mute audio + microphones": "Sesi ve mikrofonları kapat",
+      "← Desktop": "← Masaüstü",
+      "Desktop →": "Masaüstü →",
+      "Lock": "Kilitle",
+      "Display off": "Ekranı kapat",
+      "Enable mouse control in widget settings": "Fare denetimini widget ayarlarından açın",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "Taşımak için sürükle · Tıklamak için dokun · Sürüklemek için basılı tut · Kaydırmak için çubuk ya da 2 parmak",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "Taşımak için sürükle · Tıklamak için dokun · Sürüklemek için basılı tut · Kaydırmak için iki parmak",
+      "Stop": "Durdur",
+      "Sun & moon": "Güneş ve Ay",
+      "Moon": "Ay",
+      "{n}% lit": "%{n} aydınlık",
+      "Core {n} MHz": "Çekirdek {n} MHz",
+      "Battery care": "Batarya bakımı"
     }
   }
 });

@@ -1913,7 +1913,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}% потужності",
       "{n}-day": "{n}- день",
       "{n}-hour": "{n}- годин",
-      "Add a Plex widget to an enabled page": "Додайте віджет Plex на увімкнену сторінку"
+      "Add a Plex widget to an enabled page": "Додайте віджет Plex на увімкнену сторінку",
+      "Hold: sleep": "Утримуйте: сон",
+      "Hold: restart": "Утримуйте: перезапуск",
+      "Hold: shutdown": "Утримуйте: вимкнення",
+      "Hold to talk": "Утримуйте, щоб говорити",
+      "Mute audio + microphones": "Вимкнути звук і мікрофони",
+      "← Desktop": "← Стільниця",
+      "Desktop →": "Стільниця →",
+      "Lock": "Заблокувати",
+      "Display off": "Вимкнути екран",
+      "Enable mouse control in widget settings": "Увімкніть керування мишею в налаштуваннях віджета",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "Ведіть, щоб рухати · Торкніться для клацання · Утримуйте, щоб перетягувати · Смуга або 2 пальці для прокручування",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "Ведіть, щоб рухати · Торкніться для клацання · Утримуйте, щоб перетягувати · Два пальці для прокручування",
+      "Stop": "Зупинити",
+      "Sun & moon": "Сонце і місяць",
+      "Moon": "Місяць",
+      "{n}% lit": "Освітлено {n}%",
+      "Core {n} MHz": "Ядро {n} МГц",
+      "Battery care": "Догляд за батареєю"
     }
   }
 });

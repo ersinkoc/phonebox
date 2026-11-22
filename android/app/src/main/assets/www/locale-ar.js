@@ -1948,7 +1948,25 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n}% power": "{n}النسبة المئوية للقوة",
       "{n}-day": "{n}يوم",
       "{n}-hour": "{n}-ساعة",
-      "Add a Plex widget to an enabled page": "أضف أداة Plex إلى صفحة مفعّلة"
+      "Add a Plex widget to an enabled page": "أضف أداة Plex إلى صفحة مفعّلة",
+      "Hold: sleep": "اضغط مطولًا: سكون",
+      "Hold: restart": "اضغط مطولًا: إعادة التشغيل",
+      "Hold: shutdown": "اضغط مطولًا: إيقاف التشغيل",
+      "Hold to talk": "اضغط مطولًا للتحدث",
+      "Mute audio + microphones": "كتم الصوت والميكروفونات",
+      "← Desktop": "← سطح المكتب",
+      "Desktop →": "سطح المكتب →",
+      "Lock": "قفل",
+      "Display off": "إطفاء الشاشة",
+      "Enable mouse control in widget settings": "فعّل التحكم بالفأرة من إعدادات الأداة",
+      "Drag to move · Tap to click · Hold to drag · Bar or 2 fingers to scroll": "اسحب للتحريك · انقر للنقر · اضغط مطولًا للسحب · الشريط أو إصبعان للتمرير",
+      "Drag to move · Tap to click · Hold to drag · Two fingers to scroll": "اسحب للتحريك · انقر للنقر · اضغط مطولًا للسحب · إصبعان للتمرير",
+      "Stop": "إيقاف",
+      "Sun & moon": "الشمس والقمر",
+      "Moon": "القمر",
+      "{n}% lit": "مضاء بنسبة {n}%",
+      "Core {n} MHz": "النواة {n} ميغاهرتز",
+      "Battery care": "العناية بالبطارية"
     }
   }
 });
