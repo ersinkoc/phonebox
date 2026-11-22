@@ -1513,6 +1513,8 @@ export function setActive(all = false) {
 export let pagePaused = false;
 let pausedPageId = null;
 let pagePauseBtn = null;
+let pageAllBtn = null;
+let scrubFrom = null, scrubbed = false; // { x, id, at }: a press on the dots that may turn into a slide along them
 let pageOverlayTimer = 0;
 
 /** Builds an inline SVG element for the page pause toggle and center overlay. */
@@ -1584,7 +1586,7 @@ export function togglePagePaused() {
 export function buildDots() {
   const dots = $('dots');
   if (pages.length < 2) {
-    pagePauseBtn = null;
+    pagePauseBtn = pageAllBtn = null;
     dots.replaceChildren();
     dots.classList.remove('paused');
     dots.hidden = true;
@@ -1598,7 +1600,23 @@ export function buildDots() {
     e.stopPropagation();
     togglePagePaused();
   });
-  dots.replaceChildren(...pages.map(() => h('i')), pagePauseBtn);
+  // each dot is a finger-sized button that goes to its page; the dot itself stays the small <i> inside
+  const dot = (p, i) => {
+    const b = h('button', 'dot', h('i'));
+    b.type = 'button';
+    b.dataset.i = i;
+    b.setAttribute('aria-label', `${i + 1} · ${`${p.icon || ''} ${p.title || ''}`.trim()}`);
+    return b;
+  };
+  pageAllBtn = h('button', 'page-all', makeSvg('i-all', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'));
+  pageAllBtn.type = 'button';
+  pageAllBtn.title = t('panel.allPages');
+  pageAllBtn.setAttribute('aria-label', t('panel.allPages'));
+  pageAllBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openOverview();
+  });
+  dots.replaceChildren(...pages.map(dot), pageAllBtn, pagePauseBtn);
   dots.hidden = false;
   syncPagePauseUi();
 }
@@ -1871,14 +1889,19 @@ export function renderRulesBtn() {
 }
 
 export let titleTimer = 0;
-export function flashTitle() {
-  const p = pages[curPage];
-  if (!p || pages.length < 2) return;
-  const t = $('ptitle');
-  t.replaceChildren(rich(`${p.icon || ''} ${p.title}`.trim()));
-  t.classList.add('on');
+/** Shows page i's number, icon and title at the top: until hidden (hold) or for 900 ms. -1 hides it. */
+function showPageName(i, hold = false) {
+  const el = $('ptitle');
   clearTimeout(titleTimer);
-  titleTimer = setTimeout(() => t.classList.remove('on'), 900);
+  const p = pages[i];
+  if (!p || pages.length < 2) { el.classList.remove('on'); return; }
+  el.replaceChildren(rich(`${p.icon || ''} ${p.title}`.trim()));
+  el.classList.add('on');
+  if (!hold) titleTimer = setTimeout(() => el.classList.remove('on'), 900);
+}
+export function flashTitle() {
+  if (scrubFrom?.at != null) return; // the slide along the dots names the page under the finger
+  showPageName(curPage);
 }
 
 export function onScroll() {
@@ -1937,6 +1960,24 @@ $('overview').addEventListener('click', closeOverview);
 $('ovRules').addEventListener('click', (e) => { e.stopPropagation(); toggleRulesPause(); });
 
 let dotsHoldTimer = 0, dotsHoldStart = null, heldDots = false;
+/** The page whose dot is nearest to x on screen. */
+function dotAt(x) {
+  let best = 0, gap = Infinity;
+  $('dots').querySelectorAll('.dot').forEach((d, i) => {
+    const r = d.getBoundingClientRect();
+    const dist = Math.abs(x - (r.left + r.width / 2));
+    if (dist < gap) { gap = dist; best = i; }
+  });
+  return best;
+}
+/** Ends a slide along the dots: no dot is aimed at any more, and the page name fades. */
+function endScrub() {
+  if (!scrubFrom) return;
+  const was = scrubFrom.at;
+  scrubFrom = null;
+  $('dots').querySelectorAll('.dot.aim').forEach((d) => d.classList.remove('aim'));
+  if (was !== null) showPageName(-1);
+}
 /** Cancels any pending long-press hold timer on the #dots bar. */
 function clearDotsHold() {
   if (dotsHoldTimer) { clearTimeout(dotsHoldTimer); dotsHoldTimer = 0; }
@@ -1947,8 +1988,9 @@ $('dots').addEventListener('pointerdown', (e) => {
   clearDotsHold();
   if (pages.length < 2 || dimmed || document.body.classList.contains('waking')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
-  if (e.target.closest('.page-pause')) return;
+  if (e.target.closest('.page-pause, .page-all')) return;
   dotsHoldStart = [e.clientX, e.clientY];
+  scrubFrom = { x: e.clientX, id: e.pointerId, at: null };
   dotsHoldTimer = setTimeout(() => {
     dotsHoldTimer = 0;
     dotsHoldStart = null;
@@ -1958,7 +2000,30 @@ $('dots').addEventListener('pointerdown', (e) => {
 });
 $('dots').addEventListener('pointermove', (e) => {
   if (dotsHoldStart && Math.hypot(e.clientX - dotsHoldStart[0], e.clientY - dotsHoldStart[1]) > 10) clearDotsHold();
+  // sliding along the dots scrubs through the pages: the page under the finger is named, and opened on release
+  if (!scrubFrom || e.pointerId !== scrubFrom.id) return;
+  if (scrubFrom.at === null) {
+    if (Math.abs(e.clientX - scrubFrom.x) <= 10) return;
+    try { $('dots').setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  const at = dotAt(e.clientX);
+  if (at === scrubFrom.at) return;
+  scrubFrom.at = at;
+  $('dots').querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('aim', i === at));
+  showPageName(at, true);
+  haptic();
 });
+$('dots').addEventListener('pointerup', (e) => {
+  if (!scrubFrom || e.pointerId !== scrubFrom.id) return;
+  const at = scrubFrom.at;
+  endScrub();
+  if (at === null) return;
+  scrubbed = true; // the click that follows a scrub opens nothing
+  setTimeout(() => { scrubbed = false; }, 0);
+  if (at !== curPage) goPage(at, true);
+  else flashTitle();
+});
+$('dots').addEventListener('pointercancel', endScrub);
 ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('dots').addEventListener(ev, clearDotsHold));
 window.addEventListener('blur', clearDotsHold);
 $('dots').addEventListener('click', (e) => {
@@ -1970,7 +2035,11 @@ $('dots').addEventListener('click', (e) => {
       return;
     }
   }
-  if (e.target.closest('.page-pause')) return;
+  if (scrubbed) { scrubbed = false; e.preventDefault(); e.stopPropagation(); return; }
+  if (e.target.closest('.page-pause, .page-all')) return;
+  const dot = e.target.closest('.dot');
+  const i = dot ? +dot.dataset.i : -1;
+  if (i >= 0 && i !== curPage && i < pages.length) { haptic(); goPage(i, Math.abs(i - curPage) > 1); return; }
   openOverview();
 });
 

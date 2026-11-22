@@ -327,7 +327,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.nav.webhooks": "Webhooks",
       "s.nav.general": "Umum",
       "s.nav.advanced": "Lanjutan",
-      "s.pages.lead": "Setiap halaman adalah grid widget 12 x 6. Pilih sebuah halaman di sebelah kiri, atur widgetnya pada ponsel di bawah dan tetapkan pilihan mereka. Seret halaman untuk menyusun ulang; yang pertama adalah halaman rumah panel kembali ke saat tidak aktif. Di ponsel, selipkan, gunakan tombol volume, atau tekan titik (atau tekan panjang suatu halaman) untuk melihat keseluruhan semua halaman.",
+      "s.pages.lead": "Setiap halaman adalah grid widget 12 x 6. Pilih sebuah halaman di sebelah kiri, atur widgetnya pada ponsel di bawah dan tetapkan pilihan mereka. Seret halaman untuk menyusun ulang; yang pertama adalah halaman rumah panel kembali ke saat tidak aktif. Di ponsel, geser, gunakan tombol volume, atau ketuk sebuah titik untuk membuka halamannya (atau geser jari di sepanjang titik untuk memilih satu); ketuk titik saat ini atau tombol kisi di samping titik, atau tekan lama sebuah halaman, untuk melihat semua halaman.",
       "s.pages.layout": "Tata Letak",
       "s.pages.livePreview": "Pralihat langsung",
       "s.shortcuts.lead": "Kunci yang ditampilkan oleh grid Jalan Pintas dan widget tombol besar. Klik sebuah kunci untuk mengeditnya, seret untuk menyusun ulang. Ponsel hanya mengirim id kunci; perintah tidak pernah meninggalkan komputer ini.",

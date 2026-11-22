@@ -270,7 +270,7 @@ test('the saved Japanese preference reaches the settings and the phone panel', a
   await expect(page.locator('#displayLangSel')).toHaveValue('ja');
   await page.goto('/panel/');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
-  await expect(page.locator('#dots')).toHaveAttribute('title', /[^\x00-\x7f]/);
+  await expect(page.locator('#dots .page-all')).toHaveAttribute('title', /[^\x00-\x7f]/);
 });
 
 test('Arabic pages still turn: the pager keeps scrolling left to right', async ({ page }) => {

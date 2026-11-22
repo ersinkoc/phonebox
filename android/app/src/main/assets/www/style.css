@@ -106,9 +106,28 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 /* ---------- dots, page title, overview ---------- */
 #dots {
   position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 7px; padding: 5px 10px 5px 14px; z-index: 6;
+  display: flex; align-items: center; gap: 0; padding: 0 10px 0 4px; z-index: 6;
+  max-width: calc(100vw - 16px);
   border-radius: 999px; border: 1px solid transparent;
+  touch-action: none; /* a slide along the dots picks a page instead of scrolling */
 }
+/* the dot stays small; the button around it is the size of a fingertip, and shrinks when there are many pages */
+#dots .dot {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 1 24px; min-width: 10px; height: 22px;
+  padding: 0; border: none; background: transparent; cursor: pointer; outline: none; touch-action: none;
+}
+#dots .dot:focus-visible i { box-shadow: 0 0 0 1.5px var(--accent, #fff); }
+#dots .dot.aim i { background: rgba(255, 255, 255, 0.9); transform: scale(1.5); }
+#dots i { transition: width .25s, background .25s, transform .15s; }
+.page-all {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent; color: rgba(255, 255, 255, 0.5);
+  padding: 3px 5px; margin: 0 2px 0 4px; min-width: 22px; min-height: 22px;
+  border-radius: 999px; cursor: pointer; outline: none; touch-action: manipulation;
+}
+.page-all svg { width: 10px; height: 10px; fill: currentColor; pointer-events: none; }
+.page-all:hover { color: rgba(255, 255, 255, 0.9); }
+.page-all:focus-visible { box-shadow: 0 0 0 1.5px var(--accent, #fff); }
 #dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.22); transition: width .25s, background .25s; }
 #dots i.on { width: 16px; background: rgba(255, 255, 255, 0.7); }
 #dots.paused { border-color: rgba(245, 158, 11, 0.55); background: rgba(20, 16, 8, 0.78); }

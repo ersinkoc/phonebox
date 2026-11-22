@@ -73,6 +73,9 @@
   trackpad hint, the Stop buttons, the Sun & moon, Moon and Battery care titles and the GPU chips were English in every
   language; they are translated now, and in Portuguese (Brazil) also the moon phases and the Control Deck states (#415,
   [rsiqueira01](https://github.com/rsiqueira01)).
+- Page dots: a tap on a dot goes straight to its page, and sliding a finger along the dots names the page under it
+  at the top and opens it when you let go. The current dot, or the new grid button next to the dots, opens the
+  overview of all pages; holding the dots still pauses page switching.
 
 **Tools**
 - `tools/demo-server.py` refuses a chunked request body (411) and closes the connection, instead of answering without

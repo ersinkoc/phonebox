@@ -327,7 +327,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.nav.webhooks": "Webhooky",
       "s.nav.general": "Obecné",
       "s.nav.advanced": "Pokročilé",
-      "s.pages.lead": "Každá stránka je mřížkou widgetů o rozměrech 12 × 6. Vyberte si stránku vlevo, uspořádejte její widgety na telefonu níže a nastavte jejich možnosti. Přetáhněte stránky pro změnu jejich pořadí; první z nich je domovská stránka, na kterou se panel vrátí, když je nečinný. Na telefonu přejeďte prstem, použijte klávesy hlasitosti nebo klepněte na tečky (nebo dlouhým stisknutím stránky) pro přehled všech stránek.",
+      "s.pages.lead": "Každá stránka je mřížkou widgetů o rozměrech 12 × 6. Vyberte si stránku vlevo, uspořádejte její widgety na telefonu níže a nastavte jejich možnosti. Přetáhněte stránky pro změnu jejich pořadí; první z nich je domovská stránka, na kterou se panel vrátí, když je nečinný. Na telefonu přejeďte prstem, použijte klávesy hlasitosti nebo klepněte na tečku a přejděte na její stránku (nebo přejeďte prstem po tečkách a jednu vyberte); klepnutím na aktuální tečku nebo na tlačítko mřížky vedle teček, případně dlouhým stisknutím stránky, zobrazíte přehled všech stránek.",
       "s.pages.layout": "Layout",
       "s.pages.livePreview": "Živý náhled",
       "s.shortcuts.lead": "Klávesy zobrazené v mřížce Zkratky a widgetech Velké tlačítko. Kliknutím na klávesu ji upravíte, přetažením změníte její pořadí. Telefon odešle pouze ID klávesy; příkazy nikdy neopustí tento počítač.",
