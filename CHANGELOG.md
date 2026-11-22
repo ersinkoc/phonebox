@@ -17,8 +17,9 @@
   [M00n-of-saturn](https://github.com/M00n-of-saturn)).
 - Display brightness: the slider keeps the level it was set to. It used to jump back to the old level for up to
   30 s, until the agent read the monitor again (#360, [andrii-pavlykivskyi](https://github.com/andrii-pavlykivskyi)).
-- macOS: the CPU and RAM process lists show kernel_task and system processes such as WindowServer with their memory,
-  locked against ending them like other protected processes (#388, [ajaybali9](https://github.com/ajaybali9)).
+- macOS: the CPU and RAM process lists show kernel_task and system processes such as WindowServer, locked against
+  ending them like other protected processes. kernel_task's memory is the system's wired memory, an estimate rather
+  than its own measurement (#388, [ajaybali9](https://github.com/ajaybali9)).
 
 **Android app**
 - A request to the agent that fails (a timeout, a dropped cable) now closes its connection at once instead of
