@@ -1652,7 +1652,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Let the phone start games (off: the library is only shown)": "ให้โทรศัพท์เริ่มเกมได้ (ปิด: แสดงคลังเกมอย่างเดียว)",
       "Ask before starting (tap a game twice)": "ถามก่อนเริ่ม (แตะเกมสองครั้ง)",
       "Plex queue": "คิว Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ดูว่ากำลังเล่นอะไรและเพลงถัดไปบนเครื่องเล่น Plex เช่น Caldera Amp แตะเพลงเพื่อเล่น"
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "ดูว่ากำลังเล่นอะไรและเพลงถัดไปบนเครื่องเล่น Plex เช่น Caldera Amp แตะเพลงเพื่อเล่น",
+      "Page buttons": "ปุ่มหน้า",
+      "Buttons that open your pages; the page you are on is highlighted.": "ปุ่มสำหรับเปิดหน้าต่าง ๆ ของคุณ หน้าที่กำลังแสดงจะถูกไฮไลต์",
+      "Pages (none ticked = all)": "หน้า (ไม่เลือกเลย = ทั้งหมด)"
     },
     "panel": {
       "% load": "ค่า",

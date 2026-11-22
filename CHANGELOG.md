@@ -29,6 +29,8 @@
   phone**), off by default, and needs a Discord widget with **Control** on an enabled page. Discord asks to approve
   PhoneBox again for the screen-share permission; declining it turns off only screen share (#356, #370,
   [AlberBM](https://github.com/AlberBM)).
+- Page buttons: a new widget with one button per page (all of them, or the ones you tick), the page you are on
+  highlighted. Put it on the home page to use it as a launcher for the others.
 
 **Agent**
 - Phone app updates: a phone that cannot take a streamed install (`splice failed: EINVAL`, seen with Android 15 on a

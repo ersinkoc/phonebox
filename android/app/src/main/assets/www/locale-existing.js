@@ -1136,7 +1136,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 Auf der Luft, während das Mikrofon eingeschaltet ist",
       "🕙 Evenings → calm page": "et Abende → ruhige Seite",
       "Plex queue": "Plex-Warteschlange",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Was gerade läuft und was als Nächstes kommt auf einem Plex-Player wie Caldera Amp; tippen Sie auf einen Titel, um ihn abzuspielen."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Was gerade läuft und was als Nächstes kommt auf einem Plex-Player wie Caldera Amp; tippen Sie auf einen Titel, um ihn abzuspielen.",
+      "Page buttons": "Seitentasten",
+      "Buttons that open your pages; the page you are on is highlighted.": "Tasten, die Ihre Seiten öffnen; die aktuelle Seite ist hervorgehoben.",
+      "Pages (none ticked = all)": "Seiten (keine angehakt = alle)"
     },
     "panel": {
       "% load": "% Last",
@@ -2552,7 +2555,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 En direct lorsque le micro est activé",
       "🕙 Evenings → calm page": "et Soirées → calme page",
       "Plex queue": "File d'attente Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Ce qui joue et ce qui suit sur un lecteur Plex comme Caldera Amp ; touchez un titre pour le lire."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Ce qui joue et ce qui suit sur un lecteur Plex comme Caldera Amp ; touchez un titre pour le lire.",
+      "Page buttons": "Boutons de pages",
+      "Buttons that open your pages; the page you are on is highlighted.": "Des boutons qui ouvrent vos pages ; la page affichée est mise en évidence.",
+      "Pages (none ticked = all)": "Pages (aucune cochée = toutes)"
     },
     "panel": {
       "% load": "% de charge",
@@ -3968,7 +3974,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 En el aire mientras el micrófono está encendido",
       "🕙 Evenings → calm page": "ö Noches → página tranquila",
       "Plex queue": "Cola de Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Qué suena y qué viene después en un reproductor Plex como Caldera Amp; toca una pista para reproducirla."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Qué suena y qué viene después en un reproductor Plex como Caldera Amp; toca una pista para reproducirla.",
+      "Page buttons": "Botones de páginas",
+      "Buttons that open your pages; the page you are on is highlighted.": "Botones que abren tus páginas; la página en la que estás aparece resaltada.",
+      "Pages (none ticked = all)": "Páginas (ninguna marcada = todas)"
     },
     "panel": {
       "% load": "% de carga",
@@ -5384,7 +5393,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 In onda mentre il microfono è acceso",
       "🕙 Evenings → calm page": "🕙 Sere → pagina tranquilla",
       "Plex queue": "Coda Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Cosa è in riproduzione e cosa viene dopo su un player Plex come Caldera Amp; tocca un brano per riprodurlo."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Cosa è in riproduzione e cosa viene dopo su un player Plex come Caldera Amp; tocca un brano per riprodurlo.",
+      "Page buttons": "Pulsanti pagine",
+      "Buttons that open your pages; the page you are on is highlighted.": "Pulsanti che aprono le tue pagine; la pagina in cui ti trovi è evidenziata.",
+      "Pages (none ticked = all)": "Pagine (nessuna spuntata = tutte)"
     },
     "panel": {
       "% load": "% di carico",
@@ -6800,7 +6812,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 No ar enquanto o microfone está ligado",
       "🕙 Evenings → calm page": "🕙 Noites → página calma",
       "Plex queue": "Fila do Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está a tocar e o que vem a seguir num reprodutor Plex como o Caldera Amp; toque numa faixa para a reproduzir."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está a tocar e o que vem a seguir num reprodutor Plex como o Caldera Amp; toque numa faixa para a reproduzir.",
+      "Page buttons": "Botões de páginas",
+      "Buttons that open your pages; the page you are on is highlighted.": "Botões que abrem as suas páginas; a página atual fica destacada.",
+      "Pages (none ticked = all)": "Páginas (nenhuma marcada = todas)"
     },
     "panel": {
       "% load": "% de carga",
@@ -7123,7 +7138,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "3": "3",
       "TRY": "TRY",
       "Plex queue": "Fila do Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está tocando e o que vem a seguir em um player Plex como o Caldera Amp; toque em uma faixa para tocá-la."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "O que está tocando e o que vem a seguir em um player Plex como o Caldera Amp; toque em uma faixa para tocá-la.",
+      "Page buttons": "Botões de páginas",
+      "Buttons that open your pages; the page you are on is highlighted.": "Botões que abrem suas páginas; a página atual fica destacada.",
+      "Pages (none ticked = all)": "Páginas (nenhuma marcada = todas)"
     }
   },
   "nl": {
@@ -8243,7 +8261,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 Op de lucht terwijl de microfoon aan staat",
       "🕙 Evenings → calm page": "ö Avonden → kalme pagina",
       "Plex queue": "Plex-wachtrij",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Wat er speelt en wat er daarna komt op een Plex-speler zoals Caldera Amp; tik op een nummer om het af te spelen."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Wat er speelt en wat er daarna komt op een Plex-speler zoals Caldera Amp; tik op een nummer om het af te spelen.",
+      "Page buttons": "Paginaknoppen",
+      "Buttons that open your pages; the page you are on is highlighted.": "Knoppen die je pagina's openen; de pagina waarop je bent is gemarkeerd.",
+      "Pages (none ticked = all)": "Pagina's (niets aangevinkt = alle)"
     },
     "panel": {
       "% load": "% lading",
@@ -9659,7 +9680,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 Na powietrzu, gdy mikrofon jest włączony",
       "🕙 Evenings → calm page": "ę Wieczory → spokojna strona",
       "Plex queue": "Kolejka Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co teraz gra i co będzie dalej w odtwarzaczu Plex, takim jak Caldera Amp; dotknij utworu, aby go odtworzyć."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co teraz gra i co będzie dalej w odtwarzaczu Plex, takim jak Caldera Amp; dotknij utworu, aby go odtworzyć.",
+      "Page buttons": "Przyciski stron",
+      "Buttons that open your pages; the page you are on is highlighted.": "Przyciski otwierające Twoje strony; bieżąca strona jest wyróżniona.",
+      "Pages (none ticked = all)": "Strony (żadna nie zaznaczona = wszystkie)"
     },
     "panel": {
       "% load": "% obciążenia",
@@ -11075,7 +11099,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 На воздухе, пока микрофон включен",
       "🕙 Evenings → calm page": "Вечер → тишина страница",
       "Plex queue": "Очередь Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Что играет и что дальше в плеере Plex, например Caldera Amp; коснитесь трека, чтобы воспроизвести его."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Что играет и что дальше в плеере Plex, например Caldera Amp; коснитесь трека, чтобы воспроизвести его.",
+      "Page buttons": "Кнопки страниц",
+      "Buttons that open your pages; the page you are on is highlighted.": "Кнопки, открывающие ваши страницы; текущая страница выделена.",
+      "Pages (none ticked = all)": "Страницы (ничего не отмечено = все)"
     },
     "panel": {
       "% load": "% нагрузки",
@@ -11401,7 +11428,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Sound volume (%)": "Ήχος όγκου (%)",
       "TRY": "ΤΡΙ",
       "Plex queue": "Ουρά Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Τι παίζει και τι ακολουθεί σε έναν αναπαραγωγέα Plex όπως το Caldera Amp· πάτα ένα κομμάτι για να παίξει."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Τι παίζει και τι ακολουθεί σε έναν αναπαραγωγέα Plex όπως το Caldera Amp· πάτα ένα κομμάτι για να παίξει.",
+      "Page buttons": "Κουμπιά σελίδων",
+      "Buttons that open your pages; the page you are on is highlighted.": "Κουμπιά που ανοίγουν τις σελίδες σου· η σελίδα όπου βρίσκεσαι είναι επισημασμένη.",
+      "Pages (none ticked = all)": "Σελίδες (καμία επιλεγμένη = όλες)"
     },
     "panel": {
       "% load": "% φορτίου",
@@ -11727,7 +11757,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Sound volume (%)": "Độ lớn âm thanh (%)",
       "TRY": "TRY",
       "Plex queue": "Hàng đợi Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Đang phát gì và tiếp theo là gì trên trình phát Plex như Caldera Amp; chạm một bài để phát."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Đang phát gì và tiếp theo là gì trên trình phát Plex như Caldera Amp; chạm một bài để phát.",
+      "Page buttons": "Nút trang",
+      "Buttons that open your pages; the page you are on is highlighted.": "Các nút mở trang của bạn; trang đang xem được làm nổi bật.",
+      "Pages (none ticked = all)": "Trang (không chọn = tất cả)"
     },
     "panel": {
       "% load": "% tải",
@@ -13143,7 +13176,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "🔴 On air while the mic is on": "🔴 在麦克风打开时在空中",
       "🕙 Evenings → calm page": "晚上 → 平静的页面",
       "Plex queue": "Plex 队列",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上显示正在播放的内容和接下来的曲目；点按曲目即可播放。"
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "在 Caldera Amp 等 Plex 播放器上显示正在播放的内容和接下来的曲目；点按曲目即可播放。",
+      "Page buttons": "页面按钮",
+      "Buttons that open your pages; the page you are on is highlighted.": "打开各个页面的按钮；当前页面会高亮显示。",
+      "Pages (none ticked = all)": "页面（不勾选 = 全部）"
     },
     "panel": {
       "% load": "负载%",

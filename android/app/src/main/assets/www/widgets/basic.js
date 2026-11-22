@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, pages, curPage, gotoPageRef } from '../main.js';
 import { W } from '../registry.js';
 import { invalidateDeckState } from './controls.js';
 
@@ -1278,6 +1278,55 @@ W.note = {
       ta.focus();
     });
     return {};
+  },
+};
+
+// Page buttons: one button per page (the ticked ones, or all), the page you are on highlighted. A tap goes there the
+// same way a rule or a webhook does.
+W.pagebuttons = {
+  bare: true, needs: ['tick'],
+  create(box, { o }) {
+    const list = h('div', 'pgb');
+    if (o.title) box.append(h('div', 'w-title', o.title));
+    box.append(list);
+    let shown = '';
+    const render = () => {
+      const ids = Array.isArray(o.ids) ? o.ids : [];
+      let items = pages.map((p, i) => ({ p, i })).filter(({ p }) => !ids.length || ids.includes(p.id));
+      if (!items.length) items = pages.map((p, i) => ({ p, i })); // the ticked pages are gone: show them all
+      const key = items.map(({ p, i }) => `${i}:${p.id}:${p.icon || ''}:${p.title}`).join('|');
+      if (key !== shown) {
+        shown = key;
+        list.replaceChildren(...items.map(({ p, i }) => {
+          const b = h('button', 'pgb-b', p.icon ? h('span', 'pgb-i', rich(p.icon)) : null, h('span', 'pgb-t', p.title || `${i + 1}`));
+          b.type = 'button';
+          b.dataset.i = i;
+          b.setAttribute('aria-label', `${i + 1} · ${p.title || ''}`);
+          b.onclick = (e) => { e.stopPropagation(); haptic(); gotoPageRef(i + 1); };
+          return b;
+        }));
+      }
+      list.querySelectorAll('.pgb-b').forEach((b) => b.classList.toggle('on', +b.dataset.i === curPage));
+      fit();
+    };
+    // columns for the widget's shape: buttons about twice as wide as tall, with few empty cells
+    let fitted = '';
+    const fit = () => {
+      const n = list.children.length, W = list.clientWidth, H = list.clientHeight;
+      if (!n || !W || !H) return;
+      let best = 1, score = Infinity;
+      for (let cols = 1; cols <= n; cols++) {
+        const rows = Math.ceil(n / cols);
+        const s = Math.abs(Math.log((W / cols) / (H / rows) / 2)) + 0.15 * (cols * rows - n);
+        if (s < score) { score = s; best = cols; }
+      }
+      const value = `repeat(${best}, minmax(0, 1fr))`;
+      if (value !== fitted) { fitted = value; list.style.gridTemplateColumns = value; }
+    };
+    const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    watch?.observe(list);
+    render();
+    return { update: render, destroy() { watch?.disconnect(); } };
   },
 };
 

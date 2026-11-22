@@ -1652,7 +1652,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Let the phone start games (off: the library is only shown)": "Telefon smí spouštět hry (vypnuto: knihovna se jen zobrazuje)",
       "Ask before starting (tap a game twice)": "Před spuštěním se zeptat (klepnout na hru dvakrát)",
       "Plex queue": "Fronta Plex",
-      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co hraje a co bude následovat v přehrávači Plex, například Caldera Amp; klepnutím na skladbu ji přehrajete."
+      "What is playing and what comes next on a Plex player such as Caldera Amp; tap a track to play it.": "Co hraje a co bude následovat v přehrávači Plex, například Caldera Amp; klepnutím na skladbu ji přehrajete.",
+      "Page buttons": "Tlačítka stránek",
+      "Buttons that open your pages; the page you are on is highlighted.": "Tlačítka, která otevírají vaše stránky; aktuální stránka je zvýrazněná.",
+      "Pages (none ticked = all)": "Stránky (nic nezaškrtnuto = všechny)"
     },
     "panel": {
       "% load": "% zatížení",

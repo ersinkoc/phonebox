@@ -692,6 +692,19 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 }
 .note-t { white-space: pre-wrap; font-size: clamp(11px, calc(var(--nf) * 1cqmin), 44px); line-height: 1.3; color: color-mix(in srgb, var(--n) 25%, #fff); overflow: hidden; height: 100%; }
 .w-label { display: flex; align-items: center; padding: 0 4px; }
+.w-pagebuttons { display: flex; flex-direction: column; gap: 4px; }
+.pgb { flex: 1; min-height: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 56px), 1fr)); grid-auto-rows: minmax(0, 1fr); container-type: size; }
+.pgb-b {
+  display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 28px; padding: 4px 8px;
+  border-radius: clamp(10px, 7cqmin, 16px); border: 1px solid var(--line); background: var(--card); color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; touch-action: manipulation; container-type: inline-size;
+}
+.pgb-b.on { border-color: color-mix(in srgb, var(--accent, #fff) 70%, transparent); background: color-mix(in srgb, var(--accent, #2dd4bf) 18%, transparent); }
+.pgb-b:active { transform: scale(0.97); }
+.pgb-i { font-size: 18px; line-height: 1; }
+.pgb-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a narrow button keeps its icon only (when it has one) */
+@container (max-width: 84px) { .pgb-i + .pgb-t { display: none; } }
 .lbl-t { font-size: min(55cqh, 12cqw); font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- command ---------- */
