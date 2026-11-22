@@ -73,7 +73,9 @@ test('a press that leaves the bar without sliding along it names nothing afterwa
   await page.mouse.move(x0, y);
   await page.mouse.down();
   await page.mouse.move(x0, y - 120, { steps: 4 }); // straight up, off the bar
+  await page.mouse.move(x3, y - 120, { steps: 4 }); // and sideways up there, as a touch can (it keeps its target)
   await page.mouse.up();
+  expect(await activeDot(page)).toBe(0);
   await page.mouse.move(x3, y, { steps: 6 });       // hovering over the dots with no button down
   await expect(page.locator('#dots .dot.aim')).toHaveCount(0);
   expect(await activeDot(page)).toBe(0);

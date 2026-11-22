@@ -1990,7 +1990,7 @@ $('dots').addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (e.target.closest('.page-pause, .page-all')) return;
   dotsHoldStart = [e.clientX, e.clientY];
-  scrubFrom = { x: e.clientX, id: e.pointerId, at: null };
+  scrubFrom = { x: e.clientX, y: e.clientY, id: e.pointerId, at: null };
   dotsHoldTimer = setTimeout(() => {
     dotsHoldTimer = 0;
     dotsHoldStart = null;
@@ -2004,6 +2004,8 @@ $('dots').addEventListener('pointermove', (e) => {
   if (!scrubFrom || e.pointerId !== scrubFrom.id) return;
   if (e.pointerType === 'mouse' && e.buttons === 0) { endScrub(); return; } // released outside the bar
   if (scrubFrom.at === null) {
+    // a touch keeps its target while it moves, so a press that went up or down off the bar is ended here
+    if (Math.abs(e.clientY - scrubFrom.y) > 24) { scrubFrom = null; return; }
     if (Math.abs(e.clientX - scrubFrom.x) <= 10) return;
     try { $('dots').setPointerCapture(e.pointerId); } catch (_) {}
   }
