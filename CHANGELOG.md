@@ -25,8 +25,9 @@
   app in front): the spectrum no longer keeps the PC capturing its sound, polling every 40 ms once the live stream was
   closed, and the console no longer asks which app is in front.
 - Night screen while the computer is unreachable: an option on the phone, off by default, dims to the night screen
-  after the agent has been out of reach for a set time (1 to 30 minutes, 5 by default; USB unplugged, the computer
-  off or asleep) and wakes when it answers again. The **Wake the PC** button stays reachable over it (#347, #357,
+  after the agent has answered on no route, USB or Wi-Fi, for a set time (1 to 30 minutes, 5 by default; for
+  example the computer is off or asleep). It ends when the agent answers again, unless the scheduled night screen is
+  on anyway. The **Wake the PC** button stays reachable over it (#347, #357,
   [CrippledHelix](https://github.com/CrippledHelix)).
 
 **Tools**
