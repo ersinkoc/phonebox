@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Widgets**
+- AI sessions: the open conversation of a Claude Code session follows new messages while it is read to the end; one
+  scrolled back to an earlier message stays there (#460, [MisteryLiuCode](https://github.com/MisteryLiuCode)).
+
 **Setup**
 - macOS: each release also has a disk image, `PhoneBox-<version>-<rid>.dmg`, with PhoneBox.app (no window; the settings
   are at http://127.0.0.1:8765). It is signed like the zip's agent but not notarized, so macOS asks once in System

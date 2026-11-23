@@ -114,3 +114,31 @@ test('the ages of the steps keep moving while the answers stay the same', async 
   expect(await running.textContent()).not.toBe(before);
   await expect(dialog.locator('.conv-step:not(.on) .cs-a')).toContainText('m ago');
 });
+
+test('the open conversation follows new messages while it is read to the end, and stays put when scrolled back', async ({ page }) => {
+  await open(page, [session()]);
+  await page.evaluate(() => {
+    const real = window.fetch;
+    const long = 'A long answer that wraps over several lines on the phone. '.repeat(6);
+    window.__messages = Array.from({ length: 12 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', text: `message ${i} ${long}`, at: i }));
+    window.fetch = async (...args) => String(args[0]).includes('/work/conversation')
+      ? new Response(JSON.stringify({ enabled: true, messages: window.__messages, steps: [] }), { headers: { 'Content-Type': 'application/json' } })
+      : real(...args);
+  });
+  await page.locator('button.sess').click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: /Show the conversation \(12\)/ }).click();
+  const list = dialog.locator('.conv-list');
+  const gap = () => list.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
+  expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  expect(await gap()).toBeLessThan(2);
+  // a new message while the end is in view: the list moves on to it
+  await page.evaluate(() => window.__messages.push({ role: 'user', text: 'newest one', at: 99 }));
+  await expect(dialog.locator('.conv-list .conv-msg')).toHaveCount(13, { timeout: 6000 });
+  expect(await gap()).toBeLessThan(2);
+  // scrolled back to read: another message does not pull the list away
+  await list.evaluate((el) => { el.scrollTop = 0; });
+  await page.evaluate(() => window.__messages.push({ role: 'assistant', text: 'and another', at: 100 }));
+  await expect(dialog.locator('.conv-list .conv-msg')).toHaveCount(14, { timeout: 6000 });
+  expect(await list.evaluate((el) => el.scrollTop)).toBe(0);
+});

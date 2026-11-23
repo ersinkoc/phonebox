@@ -679,7 +679,9 @@ W.sessions = {
         h('div', full ? 'conv-text' : 'conv-text clamp', full ? m.text : clip(m.text, 500)));
       const render = () => {
         const prevList = box.querySelector('.conv-list');
-        const top = prevList ? prevList.scrollTop : null;
+        // a list read to its end follows the chat as new messages come in; one scrolled back stays where it is (#460)
+        const atEnd = !prevList || prevList.scrollHeight - prevList.scrollTop - prevList.clientHeight < 24;
+        const top = prevList && !atEnd ? prevList.scrollTop : null;
         labels = [];
         if (!data.enabled) {
           box.replaceChildren(h('p', 'session-note', tp('The conversation is off. Turn it on in Settings › Claude Code › Show the conversation on the phone.')));
@@ -711,7 +713,7 @@ W.sessions = {
         }
         box.replaceChildren(...kids);
         const list = box.querySelector('.conv-list');
-        if (list) list.scrollTop = top ?? list.scrollHeight; // a new view starts at the newest message
+        if (list) list.scrollTop = top ?? list.scrollHeight; // a new view starts at the newest message, and keeps up with it
       };
       const load = async () => {
         const mine = ++asked;
