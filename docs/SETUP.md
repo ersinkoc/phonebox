@@ -210,7 +210,7 @@ deletes the settings, and `-Apk` / `--apk` removes the app from the connected ph
 | Tray icon | ✓ | — (settings in the browser) | — |
 | Start at login | Startup folder | systemd user service | launchd agent |
 
-On Windows, Now playing shows the apps that appear in Windows' own media controls (the panel above the volume in Quick Settings): Spotify, browsers, Media Player and most streaming apps. A player that does not report itself there, such as VLC 3, stays blank on the phone. While no other app is in those controls, play / pause still reaches it as the keyboard's media key, but the phone cannot tell whether it plays.
+On Windows, Now playing shows the apps that appear in Windows' own media controls (the panel above the volume in Quick Settings): Spotify, browsers, Media Player and most streaming apps. A player that does not report itself there, such as VLC 3, stays blank on the phone. While no other app is in those controls, play / pause sends the keyboard's media key, which such a player may act on (VLC does when its media keys are global hotkeys or it is in front), but the phone cannot tell whether it plays.
 
 On macOS, `nowplaying-cli` supplies system media metadata and cover art. The agent labels matching Safari or Chrome tabs as YouTube or YouTube Music. The progress bar advances from the last position supplied by macOS; Safari may report an outdated starting position. Volume follows the selected system output. When macOS does not expose its volume, an optional `m1ddc` installation can read it from a compatible display; display volume is read only in PhoneBox. Unsupported outputs show `n/a`. Apple silicon GPU usage comes from IORegistry when macOS exposes it; temperature, power and VRAM figures may remain unavailable.
 
