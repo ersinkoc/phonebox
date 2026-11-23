@@ -44,6 +44,20 @@ retaining meaningful content such as album art, signal-meter colors and circular
 choices take precedence over a preset. Page edge padding always reserves the device safe area and page-navigation
 space. Grid spacing uses CSS grid gap, keeping widget coordinates unchanged.
 
+## Wallpaper
+
+**Settings › Display › Wallpaper** puts a picture of your own (JPEG, PNG or WEBP, up to 4 MB) behind every page.
+**Darken** (0–90 %, default 45) lays black over it and **Blur** (0–20 px) softens it, so the widgets stay readable
+on a busy photo. The picture is saved as soon as you choose it; Darken and Blur are saved with the other settings.
+The widgets' surfaces are translucent, so the wallpaper shows through them; **Content only** or **Flat** lets more of
+it through. While a wallpaper is set, the album-art tint of the background is not drawn.
+
+The picture is kept next to the settings as `wallpaper.<ext>`. The panel asks the agent for it (`/api/wallpaper`) with
+its revision in the address: a browser keeps it until the picture changes, while the Android app loads it again each
+time the panel reloads (over USB or Wi-Fi), so a picture about the size of the phone's screen is the better choice.
+Blur is redrawn by the phone; on older phones keep it at 0. In `config.json` the look is `display.wallpaper`:
+`{ "dim": 45, "blur": 0 }`.
+
 ## Configuration
 
 The same optional object is supported at `display.appearance`, `pages[].appearance` and

@@ -72,7 +72,10 @@ public sealed class AgentConfig
     /// <param name="shortcutIcon">A shortcut's picture: its revision (null when it has none), and whether the user uploaded
     /// it rather than it being the program's own icon; only an upload may fill a Big button (a program icon is small, or on
     /// Linux a theme logo). One lookup gives both, so they always describe the same picture.</param>
-    public object ToPublic(string? deviceId = null, Func<Shortcut, (long? Rev, bool Upload)>? shortcutIcon = null) => new
+    /// <param name="wallpaperRev">The uploaded wallpaper's revision (null without one): the panel loads the picture
+    /// with it in the URL, so a new upload is fetched and an unchanged one comes from the cache. Sent as text: a 64-bit
+    /// value loses its last digits as a JavaScript number, and two pictures could then share a cached URL.</param>
+    public object ToPublic(string? deviceId = null, Func<Shortcut, (long? Rev, bool Upload)>? shortcutIcon = null, long? wallpaperRev = null) => new
     {
         weather = Weather,
         codexBar = CodexBar,
@@ -80,6 +83,7 @@ public sealed class AgentConfig
         display = Display,
         // this device's own home page (Settings › Phones), when it has one among the pages it shows
         homePage = HomePageFor(deviceId),
+        wallpaperRev = wallpaperRev?.ToString(System.Globalization.CultureInfo.InvariantCulture),
         pages = PagesFor(deviceId).Select(p => new
         {
             p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance,
@@ -168,9 +172,20 @@ public sealed class NightConfig
     public double Brightness { get; set; } = 0.02;
 }
 
+/// <summary>The wallpaper's look; the picture itself is <see cref="WallpaperStore"/>'s.</summary>
+public sealed class WallpaperConfig
+{
+    /// <summary>How much the picture is darkened under the widgets, in percent (0–90), so they stay readable.</summary>
+    public int Dim { get; set; } = 45;
+    /// <summary>Blur in pixels (0–20); a little blur keeps a busy picture from competing with the widgets.</summary>
+    public int Blur { get; set; }
+}
+
 public sealed class DisplayConfig
 {
     public AppearanceConfig? Appearance { get; set; }
+    /// <summary>How the uploaded wallpaper (Settings › Display) is drawn behind the pages.</summary>
+    public WallpaperConfig Wallpaper { get; set; } = new();
     /// <summary>UI language code ("auto", "en", "tr", "de", "fr", "es", "it", "pt", "pt-BR", "nl", "pl", "ru", "el", "vi", "zh").</summary>
     public string Language { get; set; } = "auto";
     /// <summary>The codes the panel and the settings page are translated into (i18n.js). Casing matters for pt-BR:
@@ -680,6 +695,9 @@ public sealed partial class ConfigStore(string path)
         c.Display.PageBarSide = c.Display.PageBarSide is "bottom" or "left" or "right" ? c.Display.PageBarSide : "bottom";
         c.Display.IdleReturnSec = Math.Clamp(c.Display.IdleReturnSec, 0, 3600);
         c.Display.IdleDimMin = Math.Clamp(c.Display.IdleDimMin, 0, 1440);
+        c.Display.Wallpaper ??= new();
+        c.Display.Wallpaper.Dim = Math.Clamp(c.Display.Wallpaper.Dim, 0, 90);
+        c.Display.Wallpaper.Blur = Math.Clamp(c.Display.Wallpaper.Blur, 0, 20);
         c.Display.UnreachableNightDelayMin = Math.Clamp(c.Display.UnreachableNightDelayMin, 1, 30);
         // a language the panel does not have falls back to following the phone / browser. Matched case-insensitively
         // so "PT-br" still resolves, but stored in its canonical casing: i18n.js looks pt-BR up by exact code.

@@ -126,6 +126,9 @@
       // homePage: the agent sends a device's own home page (Settings › Phones); the demo has no devices, so a config
       // that sets it stands in for one (see device-panel.spec.js)
       homePage: c.homePage ?? null,
+      // wallpaperRev: the agent sets it while a wallpaper is uploaded; the demo serves no picture, so a config that
+      // sets it also needs /agent/api/wallpaper mocked (see wallpaper.spec.js)
+      wallpaperRev: c.wallpaperRev ?? null,
       pages: (c.pages || []).map((p) => ({ id: p.id, title: p.title, icon: p.icon, enabled: p.enabled !== false, idleSec: p.idleSec ?? null, appearance: p.appearance ?? null,
         widgets: (p.widgets || []).map((w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, appearance: w.appearance ?? null, options: options(w) })) })),
       // iconRev / iconUpload: the agent sets them when a shortcut has a picture (and when the user uploaded it). The demo

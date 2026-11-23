@@ -44,7 +44,10 @@
   to turn pages, and hold an empty spot for the overview of all pages (#475, [bwh](https://github.com/bwh)).
 - A browser can be a device of its own: `http://127.0.0.1:8765/panel/?device=monitor` shows up under Settings › Phones,
   so a monitor gets its own pages there, like a phone. Each device can also have its own home page, the page it goes
-  back to when idle.
+  back to when idle (#491, #492, [lucaskaiut](https://github.com/lucaskaiut)).
+- Wallpaper: Settings › Display › Wallpaper puts a picture of your own (JPEG, PNG or WEBP, up to 4 MB) behind every
+  page, darkened (0–90 %) and optionally blurred so the widgets stay readable. The album-art glow is not drawn while
+  a wallpaper is set (#468, #471, [lucaskaiut](https://github.com/lucaskaiut)).
 
 **Setup**
 - macOS: each release also has a disk image, `PhoneBox-<version>-<rid>.dmg`, with PhoneBox.app (no window; the settings

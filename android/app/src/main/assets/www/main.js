@@ -2401,6 +2401,29 @@ export function tick() {
 }
 
 // ---------------------------------------------------------------- data from the agent
+// The wallpaper (Settings › Display): one picture behind every page, darkened and optionally blurred so the widgets
+// stay readable. Its revision is in the URL, so an unchanged picture comes from the cache and a new one is fetched.
+let wallpaperRev = null;
+function applyWallpaper(w = {}) {
+  const rev = cfg.wallpaperRev ?? null;
+  let el = document.getElementById('wallpaper');
+  document.body.classList.toggle('has-wallpaper', rev != null);
+  if (rev == null) { el?.remove(); wallpaperRev = null; return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'wallpaper';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.prepend(el);
+  }
+  const num = (v, def, max) => (Number.isFinite(+v) && v !== null && v !== '' ? Math.min(max, Math.max(0, +v)) : def);
+  el.style.setProperty('--wp-dim', String(num(w.dim, 45, 90) / 100));
+  el.style.setProperty('--wp-blur', `${num(w.blur, 0, 20)}px`);
+  if (rev !== wallpaperRev) {
+    el.style.backgroundImage = `url("${API}/wallpaper?v=${encodeURIComponent(String(rev))}")`;
+    wallpaperRev = rev;
+  }
+}
+
 export function applyDisplay() {
   const d = cfg.display || {};
   const langChanged = I18n ? I18n.setLang(d.language || 'auto') : false;
@@ -2414,6 +2437,7 @@ export function applyDisplay() {
   document.documentElement.style.setProperty('--accent', `rgb(${DEFAULT_AMBIENT})`);
   artTint = d.artTint !== false;
   if (before !== DEFAULT_AMBIENT || !artTint) setAmbient(artTint ? currentArtColor : null);
+  applyWallpaper(d.wallpaper);
   if (langChanged) { buildLayout(); renderApproval(); }
   renderRulesBtn();
   if (PREVIEW || !bridge) return;

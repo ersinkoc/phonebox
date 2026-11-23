@@ -725,6 +725,16 @@ nav a.on::before { color: var(--accent); }
           <div class="field" style="margin:0"><label data-i18n="s.display.accent">Accent colour</label><input type="color" data-bind="display.accent" style="width:56px;height:36px;padding:2px"></div>
           <label class="check" style="margin-bottom:8px"><input type="checkbox" data-bind="display.artTint"> <span data-i18n="s.display.artTint">Tint the background with the album art</span></label>
         </div>
+        <div class="field" style="max-width:640px"><label data-i18n="s.display.wallpaper">Wallpaper</label>
+          <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+            <img id="wallpaperPreview" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:none">
+            <input type="file" id="wallpaperFile" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" style="display:none">
+            <button class="btn sm" type="button" id="wallpaperUpload" data-i18n="s.display.wallpaperUpload">Choose a picture…</button>
+            <button class="btn sm" type="button" id="wallpaperRemove" data-i18n="s.k.remove" style="display:none">Remove</button>
+            <div class="field" style="margin:0;width:110px"><label data-i18n="s.display.wallpaperDim">Darken (%)</label><input type="number" min="0" max="90" data-bind="display.wallpaper.dim" data-type="int"></div>
+            <div class="field" style="margin:0;width:110px"><label data-i18n="s.display.wallpaperBlur">Blur (px)</label><input type="number" min="0" max="20" data-bind="display.wallpaper.blur" data-type="int"></div>
+          </div>
+          <span class="hint" data-i18n="s.display.wallpaperHint">A JPEG, PNG or WEBP picture (up to 4 MB) behind every page. It is saved at once; Darken and Blur are saved with the other settings.</span></div>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.orientation">Orientation</label>
           <select data-bind="display.orientation"><option value="landscape" data-i18n="s.display.orientation.landscape">Landscape</option><option value="portrait" data-i18n="s.display.orientation.portrait">Portrait</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select>
           <span class="hint" data-i18n="s.display.orientationHint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
@@ -3744,7 +3754,7 @@ async function loadInfo() {
 // The form reads every section it binds and renders, so a config without one — an older export, or a
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
-  cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
+  cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.display.wallpaper ??= { dim: 45, blur: 0 }; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
     showSeconds: true, vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
@@ -3886,6 +3896,53 @@ for (const name of ['codex', 'claude']) $(`${name}HookBtn`).onclick = async () =
     : toast(j.error || t('s.approvals.hookError'), true);
   loadInfo();
 };
+// ---------------------------------------------------------------- wallpaper (Settings › Display)
+// Uploaded and removed on its own, like a shortcut icon: the agent bumps the settings version, which tells the phones.
+// Each refresh is numbered: an older one that answers late (the first load racing an upload) must not undo a newer one.
+let wallpaperRefresh = 0;
+async function refreshWallpaper() {
+  const img = $('wallpaperPreview');
+  const mine = ++wallpaperRefresh;
+  try {
+    const res = await fetch('/api/wallpaper?v=' + Date.now(), { cache: 'no-store' });
+    if (mine !== wallpaperRefresh) return;
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    if (mine !== wallpaperRefresh) return;
+    if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+    img.dataset.url = URL.createObjectURL(blob);
+    img.src = img.dataset.url;
+    img.style.display = '';
+    $('wallpaperRemove').style.display = '';
+  } catch (_) {
+    if (mine !== wallpaperRefresh) return;
+    img.style.display = 'none';
+    $('wallpaperRemove').style.display = 'none';
+  }
+}
+async function sendWallpaper(method, body, type) {
+  const headers = {};
+  if (type) headers['Content-Type'] = type;
+  if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
+  try {
+    const res = await fetch('/api/settings/wallpaper', { method, headers, body });
+    const j = await res.json().catch(() => ({}));
+    // first: a removal that failed still moved the settings version (409 with the new one), and an old one here would
+    // make the next upload or removal fail as a conflict
+    if (j.version) cfgVersion = j.version;
+    if (!res.ok) throw new Error(j.error || t('s.k.uploadFailed'));
+    toast(t(method === 'DELETE' ? 's.display.wallpaperRemoved' : 's.display.wallpaperSaved'));
+  } catch (err) { toast(err.message, true); }
+  refreshWallpaper();
+}
+$('wallpaperUpload').onclick = () => $('wallpaperFile').click();
+$('wallpaperFile').onchange = (e) => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (f) sendWallpaper('POST', f, f.type);
+};
+$('wallpaperRemove').onclick = () => sendWallpaper('DELETE');
+refreshWallpaper();
 $('modalClose').onclick = closeModal;
 $('lanPair').onclick = pairOverWifi;
 $('modal').onclick = (e) => { if (e.target.id === 'modal') closeModal(); };
