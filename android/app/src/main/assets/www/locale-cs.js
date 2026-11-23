@@ -463,6 +463,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.sessions": "Zobrazit relace OpenCode",
       "s.opencode.countdown": "Sekundy před stisknutím tlačítka Povolit vždy (0 = najednou)",
       "s.opencode.watchWsl": "Také sledujte OpenCode ve WSL (zastavené distribuce nejsou nikdy spuštěny pro tento účel)",
+      "s.claude.watchWsl": "Sledovat také Claude Code ve WSL: jeho relace a přihlášení pro kvótu, když Windows žádné nemá (zastavená distribuce se kvůli tomu nikdy nespouští)",
+      "s.cursor.watchWsl": "Sledovat také Cursor ve WSL (projekty otevřené přes Remote - WSL; zastavená distribuce se kvůli tomu nikdy nespouští)",
       "s.opencode.shareSessionTitles": "Zobrazit tituly OpenCode relace na telefonu (OpenCode čerpá je z konverzace)",
       "s.approvals.title": "Výzvy k oprávnění agenta kódování AI",
       "s.approvals.hint": "Pokud Codex nebo Claude Code požádá o povolení, telefon zobrazí požadavek s <b> Povolit </b> a <b> Odmítnout </b> Nainstalujte háček pro každého agenta, který používáte; existující soubory háčku jsou zachovávány a zálohovány.",

@@ -463,6 +463,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.sessions": "แสดงวาระงาน OpenCode",
       "s.opencode.countdown": "จำนวนวินาทีก่อนที่คุณจะสามารถกดปุ่มอนุญาตได้ (0 = ทำซ้ำ)",
       "s.opencode.watchWsl": "ดู OpenCode ใน WSL ด้วย (ดิสโทปที่หยุดทำงานจะไม่เริ่มงานในกรณีนี้)",
+      "s.claude.watchWsl": "ติดตาม Claude Code ใน WSL ด้วย: เซสชันของมัน และการลงชื่อเข้าใช้สำหรับโควตาเมื่อ Windows ไม่มี (จะไม่เริ่มดิสโทรที่หยุดอยู่เพื่อการนี้)",
+      "s.cursor.watchWsl": "ติดตาม Cursor ใน WSL ด้วย (โปรเจกต์ที่เปิดด้วย Remote - WSL; จะไม่เริ่มดิสโทรที่หยุดอยู่เพื่อการนี้)",
       "s.opencode.shareSessionTitles": "แสดงหัวข้อวาระการทำงาน OpenCode ในโทรศัพท์ (OpenCode จะดึงมันมาจากการสนทนา)",
       "s.approvals.title": "ตัวแทน AI ที่เขียนโค้ด ขออนุญาต",
       "s.approvals.hint": "เมื่อ Codex หรือ Claude Code ขออนุญาตให้ใช้โทรศัพท์มือถือ โทรศัพทฺ์จะแสดงคำร้องขอด้วยตัวอักษร <b> อนุญาต </b> และ <b> ปฏิเสธ </b> ติดตั้งฮ็อกสำหรับเอเจนซี่ที่คุณใช้ทุกตัว แฟ้มฮ็อกที่มีอยู่จะถูกเก็บไว้และสำรองข้อมูล",

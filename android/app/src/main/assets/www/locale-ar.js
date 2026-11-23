@@ -463,6 +463,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.sessions": "عرض OpenCode الدورات",
       "s.opencode.countdown": "ثانية قبل الضغط على السماح دائماً (0 = مرة واحدة)",
       "s.opencode.watchWsl": "انظر أيضاً OpenCode في WSL (التوزيع المتوقف لا يبدأ أبداً لهذا الغرض)",
+      "s.claude.watchWsl": "مراقبة Claude Code داخل WSL أيضًا: جلساته، وتسجيل دخوله لحصة الاستخدام عندما لا يوجد تسجيل دخول في Windows (لا يتم تشغيل توزيعة متوقفة لهذا الغرض أبدًا)",
+      "s.cursor.watchWsl": "مراقبة Cursor داخل WSL أيضًا (المشاريع المفتوحة عبر Remote - WSL؛ لا يتم تشغيل توزيعة متوقفة لهذا الغرض أبدًا)",
       "s.opencode.shareSessionTitles": "عرض عناوين الجلسات OpenCode على الهاتف (OpenCode يستخرجها من المحادثة)",
       "s.approvals.title": "طلبات الإذن من وكلاء البرمجة بالذكاء الاصطناعي",
       "s.approvals.hint": "عندما يطلب Codex أو Claude Code الإذن، يظهر الهاتف الطلب مع <b> السماح </b> و <b> رفض </b> . قم بتركيب الحافة لكل عامل تستخدمه؛ يتم حفظ ملفات الحافة الموجودة وتخزينها احتياطيًا.",

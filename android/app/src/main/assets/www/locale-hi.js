@@ -463,6 +463,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.sessions": "OpenCode सत्र दिखाएँ",
       "s.opencode.countdown": "हमेशा स्वीकारें को दबाने से पहले सेकण्ड (0 = एक साथ)",
       "s.opencode.watchWsl": "WSL में OpenCode भी देखें (स्टॉप डिस्ट्रो इस के लिए कभी शुरू नहीं होता है)",
+      "s.claude.watchWsl": "WSL में Claude Code पर भी नज़र रखें: उसके सत्र, और Windows में साइन-इन न होने पर कोटा के लिए वहाँ का साइन-इन (इसके लिए रुका हुआ डिस्ट्रो कभी शुरू नहीं किया जाता)",
+      "s.cursor.watchWsl": "WSL में Cursor पर भी नज़र रखें (Remote - WSL से खोले गए प्रोजेक्ट; इसके लिए रुका हुआ डिस्ट्रो कभी शुरू नहीं किया जाता)",
       "s.opencode.shareSessionTitles": "फोन पर OpenCode सत्र शीर्षक दिखाएँ (OpenCode उन्हें बातचीत से निकालता है)",
       "s.approvals.title": "एआई कोडिंग एजेंट अनुमति प्रोम्प्ट",
       "s.approvals.hint": "जब Codex या Claude Code अनुमति के लिए पूछता है, फोन अनुरोध को <b> Allow </b> और <b> Deny </b> के साथ दिखाता है. प्रत्येक एजेंट के लिए हुक स्थापित करें जो आप उपयोग करते हैं; मौजूदा हुक फ़ाइलें संरक्षित और बैकअप की जाती हैं.",

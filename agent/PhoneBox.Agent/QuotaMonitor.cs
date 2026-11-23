@@ -59,6 +59,34 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     internal string CredentialsPath { get; init; } = DefaultCredentialsPath;
 
     /// <summary>
+    /// The credentials files of Claude Code inside the running WSL distros, when WSL watching is on for Claude Code
+    /// (Windows only). Tests give a finder of their own.
+    /// </summary>
+    internal Func<IEnumerable<string>>? FindWslCredentials { get; init; }
+
+    /// <summary>Whether a credentials file holds a Claude Code sign-in (an access token), not just a plan.</summary>
+    internal static bool HasCliSignIn(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("claudeAiOauth", out var o) && o.ValueKind == JsonValueKind.Object
+                && o.TryGetProperty("accessToken", out var t) && t.ValueKind == JsonValueKind.String && t.GetString() is { Length: > 0 };
+        }
+        catch (JsonException) { return false; }
+    }
+
+    /// <summary>Each running distro's credentials file with its distro (tests give paths without one, and no check).</summary>
+    private IEnumerable<(string? Distro, string Path)> WslCredentialsPaths()
+    {
+        if (FindWslCredentials is not null) return FindWslCredentials().Select(p => ((string?)null, p));
+        if (config?.Get().Claude.WatchWsl != true) return [];
+        return WslHomes.Running().Select(wsl => ((string?)wsl.Distro, Path.Combine(wsl.Home, ".claude", ".credentials.json")));
+    }
+
+    /// <summary>
     /// Reads Claude Code's macOS Keychain item; null uses the `security` tool, and only for the default credentials path
     /// on macOS. Tests give a reader of their own so nothing here touches the real Keychain.
     /// </summary>
@@ -460,6 +488,24 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         string? json = null;
         try { if (File.Exists(CredentialsPath)) json = await File.ReadAllTextAsync(CredentialsPath, ct); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
+        // Claude Code signed in only inside WSL (Also watch Claude Code in WSL): its sign-in there, when Windows has no
+        // file or only Claude Desktop's plan without a token. A Windows sign-in with a token always comes first.
+        if ((CredentialsPath == DefaultCredentialsPath || FindWslCredentials is not null) && !HasCliSignIn(json))
+        {
+            // the first running distro whose file holds a sign-in; one with only a plan (or unreadable) is passed over.
+            // Each distro is asked about again right before its file is read: one that stopped while an earlier file was
+            // read is skipped instead of started by the read.
+            foreach (var (distro, wsl) in WslCredentialsPaths())
+            {
+                if (distro is not null && !WslHomes.IsRunning(distro)) continue;
+                try
+                {
+                    var wslJson = await File.ReadAllTextAsync(wsl, ct);
+                    if (HasCliSignIn(wslJson)) { json = wslJson; break; }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+        }
         // macOS: Claude Code stores the credentials in the login Keychain (read-only access). It is read when there is
         // no file, and when the file's token is missing or expired: a stale file must not hide a renewed Keychain sign-in.
         if (KeychainReader() is { } readKeychain

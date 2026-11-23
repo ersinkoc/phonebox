@@ -481,6 +481,86 @@ public sealed class ClaudeQuotaScheduleTests : IDisposable
         Assert.Null(QuotaMonitor.PickCredentials(null, null));
     }
 
+    [Fact]
+    public async Task WithoutASignInOnWindowsTheOneInsideWslIsUsed()
+    {
+        var wsl = Path.Combine(_dir, "wsl-credentials.json");
+        File.WriteAllText(wsl, SignInJson("wsl-token", _t0 + 3_600_000));
+        _api.Respond(HttpStatusCode.OK, Usage);
+        var agent = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance)
+        {
+            ClaudeCachePath = Path.Combine(_dir, "claude-quota.json"),
+            CredentialsPath = Creds, // not written: Claude Code is signed in only inside WSL
+            HttpHandler = _api,
+            FindWslCredentials = () => [wsl],
+        };
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal("wsl-token", _api.LastToken);
+        Assert.NotEmpty(Claude(agent).Limits);
+    }
+
+    [Fact]
+    public async Task ASignInOnWindowsWinsOverTheOneInsideWsl()
+    {
+        SignIn("windows-token", _t0 + 3_600_000);
+        _api.Respond(HttpStatusCode.OK, Usage);
+        var agent = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance)
+        {
+            ClaudeCachePath = Path.Combine(_dir, "claude-quota.json"),
+            CredentialsPath = Creds,
+            HttpHandler = _api,
+            FindWslCredentials = () => throw new InvalidOperationException("WSL must not be looked at"),
+        };
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal("windows-token", _api.LastToken);
+    }
+
+    [Fact]
+    public async Task ClaudeDesktopsPlanOnlyFileOnWindowsDoesNotHideTheSignInInsideWsl()
+    {
+        // what Claude Desktop leaves in ~/.claude/.credentials.json: the plan, no Claude Code token
+        File.WriteAllText(Creds, """{"claudeAiOauth":{"subscriptionType":"max","rateLimitTier":"default_claude_max_20x"}}""");
+        var wsl = Path.Combine(_dir, "wsl-credentials.json");
+        File.WriteAllText(wsl, SignInJson("wsl-token", _t0 + 3_600_000));
+        _api.Respond(HttpStatusCode.OK, Usage);
+        var agent = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance)
+        {
+            ClaudeCachePath = Path.Combine(_dir, "claude-quota.json"),
+            CredentialsPath = Creds,
+            HttpHandler = _api,
+            FindWslCredentials = () => [wsl],
+        };
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal("wsl-token", _api.LastToken);
+    }
+
+    [Fact]
+    public async Task ADistroWithOnlyAPlanIsPassedOverForTheNextOne()
+    {
+        var planOnly = Path.Combine(_dir, "wsl-a.json");
+        File.WriteAllText(planOnly, """{"claudeAiOauth":{"subscriptionType":"pro"}}""");
+        var signedIn = Path.Combine(_dir, "wsl-b.json");
+        File.WriteAllText(signedIn, SignInJson("second-distro", _t0 + 3_600_000));
+        _api.Respond(HttpStatusCode.OK, Usage);
+        var agent = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance)
+        {
+            ClaudeCachePath = Path.Combine(_dir, "claude-quota.json"),
+            CredentialsPath = Creds,
+            HttpHandler = _api,
+            FindWslCredentials = () => [Path.Combine(_dir, "missing.json"), planOnly, signedIn],
+        };
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal("second-distro", _api.LastToken);
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("not json", false)]
+    [InlineData("""{"claudeAiOauth":{"subscriptionType":"max"}}""", false)]
+    [InlineData("""{"claudeAiOauth":{"accessToken":""}}""", false)]
+    [InlineData("""{"claudeAiOauth":{"accessToken":"t"}}""", true)]
+    public void ASignInNeedsAnAccessToken(string? json, bool expected) => Assert.Equal(expected, QuotaMonitor.HasCliSignIn(json));
+
     private sealed class FakeAnthropic : HttpMessageHandler
     {
         private Func<HttpResponseMessage> _next = () => new HttpResponseMessage(HttpStatusCode.InternalServerError);

@@ -430,6 +430,15 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   arguments. Cursor sessions (opt-in in **Settings › General › Cursor sessions**) come from recent agent transcripts
   under `~/.cursor/projects/*/agent-transcripts`. Only the last message's role is kept; chat text is never shown,
   stored or sent. Project names use the folder basename from Cursor's `workspaceStorage`.
+- **Claude Code and Cursor inside WSL** (Windows, opt-in): **Also watch Claude Code in WSL** (Settings › General, next to the Claude Code options)
+  and **Also watch Cursor in WSL** (Settings › General › Cursor sessions) read the same files in the running distros'
+  default users' homes, through `\\wsl.localhost\<distro>`, like OpenCode in WSL: only distros that are already
+  running (`wsl.exe --list --running` right before each read; a stopped one is never started) and every 5 seconds. A
+  Claude Code session counts as running while its process is alive in the distro's `/proc` with the start time Claude
+  Code wrote. *Show the conversation* reads a WSL session's chat file from the distro too. Without a Claude Code
+  sign-in on Windows (no file, or only Claude Desktop's plan), the Claude quota uses the one in WSL
+  (`~/.claude/.credentials.json`).
+  Cursor chats of projects opened over Remote - WSL are named after their folder.
 - **Native Antigravity quota:** the agent reads the running Antigravity server's port and CSRF token from its
   process arguments and queries its loopback quota/status API, or invokes the signed-in CLI's structured usage
   command. Only measured quota fields reach the panel; CLI conversation identifiers and token counters are omitted.
