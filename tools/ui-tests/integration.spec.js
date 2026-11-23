@@ -222,7 +222,7 @@ for (const hour12 of [false, true]) {
       { id: 'cd', type: 'countdown', x: 0, y: 3, w: 6, h: 3, options: { target: '2026-12-24 09:30' } },
     ], { display: { idleReturnSec: 0, hour12 } });
     await expect(page.locator('.clock .hh')).toHaveText(hour12 ? '2' : '14');
-    await expect(page.locator('.clock .ap')).toHaveText(hour12 ? 'PM' : '');
+    await expect(page.locator('.clock .ap')).toHaveText(hour12 ? /^pm$/i : '');
     await expect(page.locator('.wc-t')).toHaveText(hour12 ? ['2:05 PM', '11:05 PM'] : ['14:05', '23:05']);
     await expect(page.locator('.cd-s')).toContainText(hour12 ? '9:30 AM' : '09:30');
     await page.screenshot({ path: `test-results/hour12-${hour12}.png` });
@@ -255,7 +255,7 @@ test('clock times follow display.hour12 ("auto") via Android.is24Hour bridge and
   ], { display: { idleReturnSec: 0, hour12: 'auto' } });
 
   await expect(page.locator('.clock .hh')).toHaveText('2');
-  await expect(page.locator('.clock .ap')).toHaveText('PM');
+  await expect(page.locator('.clock .ap')).toHaveText(/^pm$/i);
   await expect(page.locator('.wc-t')).toHaveText(['2:05 PM', '11:05 PM']);
   await expect(page.locator('.cd-s')).toContainText('9:30 AM');
 

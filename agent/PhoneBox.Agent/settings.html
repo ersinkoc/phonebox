@@ -65,7 +65,7 @@ input[type=text], input[type=number], input[type=time], select, textarea {
 }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
-.check { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; margin-right: 14px; }
+.check { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; margin-inline-end: 14px; }
 .check input { accent-color: var(--accent); width: 16px; height: 16px; }
 .ha-row { padding: 8px 0; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); }
 .ha-row input[type=text] { min-width: 0; }
@@ -126,6 +126,10 @@ input[type=search] { background: var(--panel-2); border: 1px solid var(--line); 
 .pal-ico { font-size: 20px; width: 28px; text-align: center; }
 .pal b { display: block; font-size: 13px; }
 .pal small { display: block; font-size: 12px; color: var(--muted); line-height: 1.3; }
+[dir="rtl"] :is(.pal, .pal-cat, #palSearch) { text-align: right; }
+[dir="rtl"] .pal-cat { margin-inline: 8px 0; }
+[dir="rtl"] .pal-ico { flex: 0 0 28px; }
+[dir="rtl"] .pal > span:last-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .opts { display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; }
 textarea { width: 100%; resize: vertical; }
 [hidden] { display: none !important; }
@@ -310,6 +314,17 @@ input[type=color] { width: 42px; height: 34px; border: 1px solid var(--line); bo
 .results button:hover { background: var(--panel-2); }
 .results small { color: var(--muted); }
 
+/* Technical editors and sliders keep physical left-to-right navigation in RTL settings. */
+[dir="rtl"] :is(#general, #shortcuts, #rules) input[type="range"],
+[dir="rtl"] :is(#general, #shortcuts, #rules) .technical-input,
+[dir="rtl"] #general :is(input[type="password"], input[data-bind$="url" i], input[data-bind$="path" i],
+                         input[data-bind$="host" i], input[data-bind$="key" i], input[data-bind$="id" i]),
+[dir="rtl"] #general :is(#nbv, #appearanceSettings output),
+[dir="rtl"] #webhooks :is(.cmdline, .items td.val),
+[dir="rtl"] #advanced #info dd { direction: ltr; unicode-bidi: isolate; }
+[dir="rtl"] #controlSettings .field input[type="checkbox"] { align-self: start; }
+[dir="rtl"] #general #adbFound, [dir="rtl"] #advanced #info dd { overflow-wrap: anywhere; min-width: 0; }
+[dir="rtl"] textarea.json { direction: ltr; text-align: left; overflow: auto; white-space: pre; }
 textarea.json { width: 100%; min-height: 420px; font: 12.5px/1.5 Consolas, "Cascadia Mono", monospace; resize: vertical; }
 code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
 dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
@@ -1221,7 +1236,11 @@ function deckCols() {
   return 4;
 }
 
-function optVal(w, o) { return w.options && o.key in w.options ? w.options[o.key] : o.default; }
+function optVal(w, o) {
+  const value = w.options && o.key in w.options ? w.options[o.key] : o.default;
+  // The previous Clock alignment value is an alias for the logical start.
+  return w.type === 'clock' && o.key === 'align' && value === 'left' ? 'start' : value;
+}
 /** An option with showWhen {key, not} is drawn only while the widget's option <key> is not set to <not> (an option that does nothing while another is off is not offered). */
 function optionShown(w, d, o) {
   if (!o.showWhen) return true;
@@ -2703,7 +2722,7 @@ function ruleCard(r, i) {
   const trig = TRIGGERS[r.when] || TRIGGERS['session-waiting'];
   const sel = (value, options, onchange) => h('select', { onchange: (e) => onchange(e.target.value) },
     ...Object.entries(options).map(([k, v]) => h('option', { value: k, selected: k === value }, tl(typeof v === 'string' ? v : v.label))));
-  const text = (key, placeholder, cls = '') => h('input', { type: 'text', class: cls, value: r[key] ?? '', placeholder, oninput: (e) => set(key, e.target.value || null) });
+  const text = (key, placeholder, cls = '') => h('input', { type: 'text', class: ['match', 'key', 'during'].includes(key) ? cls + ' technical-input' : cls, value: r[key] ?? '', placeholder, oninput: (e) => set(key, e.target.value || null) });
 
   const cond = [];
   // the trigger table keeps English as its key, so the example value inside the box is translated too
@@ -2863,7 +2882,7 @@ async function loadPushed() {
     const r = await (await fetch('/api/push')).json();
     const items = Object.entries(r.items || {}).sort((a, b) => b[1].at - a[1].at);
     $('whItems').replaceChildren(...(items.length ? items.map(([k, v]) => h('tr', {},
-      h('td', {}, h('code', {}, k)), h('td', { class: 'val' }, JSON.stringify(v.data)), h('td', { class: 'hint' }, new Date(v.at).toLocaleString()),
+      h('td', {}, h('code', {}, k)), h('td', { class: 'val' }, JSON.stringify(v.data)), h('td', { class: 'hint' }, h('bdi', {}, new Date(v.at).toLocaleString())),
       h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, t('s.r.del')))))
       : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, t('s.wh.nothingPushed')))]));
   } catch (_) {}
@@ -2924,7 +2943,7 @@ function renderEditor() {
 
   const upd = (key, val, rerender = true) => { s[key] = val; if (rerender) renderDeckKeysOnly(); changed(); };
   const text = (key, label, ph = '', hint = '') => h('div', { class: 'field' }, h('label', {}, label),
-    h('input', { type: 'text', value: s[key] ?? '', placeholder: ph, oninput: (e) => upd(key, e.target.value) }),
+    h('input', { type: 'text', class: key === 'label' ? '' : 'technical-input', value: s[key] ?? '', placeholder: ph, oninput: (e) => upd(key, e.target.value) }),
     hint ? h('span', { class: 'hint' }, hint) : null);
 
   const iconIn = h('input', { type: 'text', class: 'icon-input', value: s.icon || '', maxlength: 8, oninput: (e) => upd('icon', e.target.value) });
@@ -2933,7 +2952,7 @@ function renderEditor() {
     onclick: () => { colorIn.value = c; upd('color', c); markSwatch(); } })));
   const markSwatch = () => sw.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === s.color));
   markSwatch();
-  const cmdIn = h('input', { type: 'text', value: s.cmd || '', placeholder: t('s.k.cmdPlaceholder'), oninput: (e) => upd('cmd', e.target.value, false) });
+  const cmdIn = h('input', { type: 'text', class: 'technical-input', value: s.cmd || '', placeholder: t('s.k.cmdPlaceholder'), oninput: (e) => upd('cmd', e.target.value, false) });
   const preset = h('select', { onchange: (e) => { if (e.target.value) { cmdIn.value = e.target.value; upd('cmd', e.target.value, false); cmdIn.focus(); } e.target.value = ''; } },
     ...presets().map(([v, l]) => h('option', { value: v }, tl(l))));
 
@@ -3023,7 +3042,7 @@ const KINDS = () => ({ run: t('s.k.runProgram'), keys: t('s.k.pressKeys'), text:
 const kindOf = (s) => (s.cmd === 'builtin:keys' ? 'keys' : s.cmd === 'builtin:text' ? 'text' : s.cmd === 'builtin:macro' ? 'macro' : s.cmd === 'builtin:cycle' ? 'cycle' : 'run');
 function actionFields(s, upd, text, cmdIn, preset) {
   const kind = kindOf(s);
-  const area = (value, ph, rows, oninput) => h('textarea', { rows, placeholder: ph, spellcheck: 'false', oninput }, value);
+  const area = (value, ph, rows, oninput) => h('textarea', { rows, class: kind === 'macro' ? 'technical-input' : '', placeholder: ph, spellcheck: 'false', oninput }, value);
   const fields = [h('div', { class: 'field' }, h('label', {}, t('s.k.whatItDoes')),
     h('select', { onchange: (e) => {
       const k = e.target.value;
@@ -3146,7 +3165,7 @@ function renderControlSettings() {
   const root = $('controlSettings');
   const c = cfg.controls ??= { actions: [], profiles: [] }; c.actions ??= []; c.profiles ??= [];
   const field = (label, obj, key, type = 'text') => {
-    const input = h('input', {type, value:obj[key] ?? '', 'aria-label':label});
+    const input = h('input', {type, class: /^(cmd|args|cwd|target|device|url|clientId|port|offCmd|offArgs|id)$/i.test(key) ? 'technical-input' : '', value:obj[key] ?? '', 'aria-label':label});
     if (type === 'checkbox') input.checked = !!obj[key];
     const sync = () => { obj[key] = type === 'checkbox' ? input.checked : type === 'number' ? Number(input.value) : input.value; changed(); };
     input.oninput = input.onchange = sync;

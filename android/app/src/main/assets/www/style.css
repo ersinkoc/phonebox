@@ -321,7 +321,9 @@ body.night #navCard, body.night #navChip { display: none; }
 .toast.warn { border-color: rgba(245, 158, 11, .5); color: #fde68a; }
 
 /* ---------- clock ---------- */
-.w-clock { display: flex; flex-direction: column; justify-content: center; padding-left: 2px; }
+.w-clock { display: flex; flex-direction: column; justify-content: center; padding-inline-start: 2px; text-align: start; }
+.w-clock.clock-centered { padding-inline: 2px; text-align: center; }
+.w-clock.clock-centered > .status, .w-clock.clock-centered > .wx { align-self: center; width: fit-content; max-width: 100%; }
 .status { font-size: 11.5px; font-size: clamp(10px, 5cqh, 12.5px); color: var(--muted); display: flex; align-items: center; gap: 5px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; }
 .status .sep { color: var(--dim); }
 .status .qm b { font-weight: 600; }
@@ -334,11 +336,16 @@ body.night #navCard, body.night #navChip { display: none; }
 .clock {
   font-weight: 200;
   font-size: calc(var(--tf, .6) * 24vw);
-  line-height: .95; letter-spacing: -0.04em; margin-left: -.03em;
+  line-height: .95; letter-spacing: -0.04em; margin-inline-start: -.03em;
   display: flex; align-items: flex-start;
 }
+[dir="rtl"] .w-clock > .clock { justify-content: flex-end; margin-inline-start: 0; }
+.w-clock.clock-centered > .clock { justify-content: center; margin-inline-start: 0; }
+/* Keep the time in reading order while the date and labels inherit the interface direction. */
+[dir="rtl"] .clock, [dir="rtl"] #nClock { direction: ltr; unicode-bidi: isolate; }
 @supports (font-size: 1cqh) {
   .clock { font-size: min(calc(var(--tf, .6) * 100cqh), 30cqw); }
+  [dir="rtl"] .clock { font-size: min(calc(var(--tf, .6) * 100cqh), 25cqw); }
 }
 .clock .colon { opacity: .55; margin: 0 .01em; }
 .clock .colon.dim { opacity: .2; }
@@ -438,6 +445,14 @@ body.offline .offline-msg { display: flex; }
 @container (max-height: 110px) { .w-media .m-top { display: none; } .w-media { justify-content: center; } }
 @container (max-width: 250px) { .w-media .vol { display: none; } }
 @container (min-height: 230px) and (min-width: 420px) { .w-media .ic.play { width: 62px; height: 62px; } .w-media .ic { width: 52px; height: 52px; } }
+
+/* Preserve physical transport order and isolate measurements from surrounding RTL labels. */
+[dir="rtl"] :where(.m-controls, .t-val, .g-val, .s-main, .s-main .multi b, .gd-big, .m-row > span:last-child, .wx-temp, .fc-v, .wc-t) {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+[dir="rtl"] :is(.t-val, .gd-temp) { text-align: right; }
+[dir="rtl"] .s-main { justify-content: flex-end; }
 
 /* ---------- metric tile ---------- */
 .w-stat { padding: clamp(5px, 9cqh, 10px) clamp(8px, 6cqw, 12px); }

@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, pages, curPage, gotoPageRef } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, pages, curPage, gotoPageRef } from '../main.js';
 import { W } from '../registry.js';
 import { invalidateDeckState } from './controls.js';
 
@@ -23,6 +23,7 @@ W.clock = {
     const hh = h('span', 'hh', '--'), colon = h('span', 'colon', ':'), mm = h('span', 'mm', '--'), ss = h('span', 'sec'), ap = h('span', 'ap');
     const date = o.date !== false ? h('div', 'date') : null;
     const wx = o.weather !== false ? wxBlock() : null;
+    box.classList.toggle('clock-centered', o.align === 'center');
     box.append(status || '', h('div', 'clock', hh, colon, mm, ss, ap), date || '', wx || '');
     box.style.setProperty('--tf', (0.84 - (status ? 0.1 : 0) - (date ? 0.11 : 0) - (wx ? 0.2 : 0)).toFixed(2));
     return {
@@ -33,7 +34,7 @@ W.clock = {
           const now = new Date();
           const H = now.getHours(), h12 = hour12();
           hh.textContent = h12 ? String(H % 12 || 12) : pad(H);
-          ap.textContent = h12 ? (H < 12 ? 'AM' : 'PM') : '';
+          ap.textContent = h12 ? clockPeriod(now) : '';
           mm.textContent = pad(now.getMinutes());
           ss.textContent = cfg.display?.showSeconds === false ? '' : pad(now.getSeconds());
           // the colon blinks once a second from here, not from a CSS animation: a running animation makes the browser draw a frame
@@ -310,7 +311,7 @@ W.stat = {
         unit.textContent = u;
         const pctVal = m.pct?.(s);
         lbl.textContent = pctVal != null && m.label === 'RAM' ? `RAM (${Math.round(pctVal)}%)` : tp(m.label);
-        sub.textContent = m.sub?.(s) || ' ';
+        sub.replaceChildren(h('bdi', null, m.sub?.(s) || ' '));
         chart(canvas, [{ data: hist[m.hist || o.metric] || hist.cpu, color: c, max: m.max(s) }]);
       },
     };
@@ -340,7 +341,7 @@ W.gauge = {
         svg = dial.firstElementChild;
         const [v, u] = metricText(m, s);
         pct.replaceChildren(v, h('small', null, u));
-        sub.textContent = m.sub?.(s) || '';
+        sub.replaceChildren(h('bdi', null, m.sub?.(s) || ''));
       },
     };
   },
@@ -367,7 +368,7 @@ W.chart = {
         if (!s) return;
         if (single) {
           const [v, u] = metricText(single, s);
-          main.replaceChildren(h('b', null, v), h('small', null, u), h('span', 'chips', single.sub?.(s) ? h('span', 'chip', single.sub(s)) : ''));
+          main.replaceChildren(h('b', null, v), h('small', null, u), h('span', 'chips', single.sub?.(s) ? h('span', 'chip', h('bdi', null, single.sub(s))) : ''));
           head.lastChild.textContent = single.title?.(s) || '';
         } else {
           main.replaceChildren(...keys.map((k) => {
