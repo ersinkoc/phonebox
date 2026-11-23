@@ -45,3 +45,24 @@ test('out-of-range darkening and blur are clamped', async ({ page }) => {
   expect(await layer.evaluate((el) => el.style.getPropertyValue('--wp-dim'))).toBe('0.9');
   expect(await layer.evaluate((el) => el.style.getPropertyValue('--wp-blur'))).toBe('0px');
 });
+
+test('the settings live preview shows the wallpaper with the darkening being edited', async ({ page }) => {
+  // the demo has no picture: the preview's CSS loads it over the network, the settings page through the demo's fetch
+  await page.route('**/api/wallpaper*', (route) => route.fulfill({ body: PNG, contentType: 'image/png' }));
+  await page.goto('/settings/#general');
+  await expect(page.locator('#save')).toBeVisible();
+  await page.evaluate((b64) => {
+    const original = window.fetch;
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    window.fetch = (url, options) => String(url).startsWith('/api/wallpaper')
+      ? Promise.resolve(new Response(bytes, { headers: { 'Content-Type': 'image/png' } })) : original(url, options);
+    return refreshWallpaper();
+  }, PNG.toString('base64'));
+  await expect(page.locator('#wallpaperPreview')).toHaveAttribute('src', /^blob:/);
+  await page.locator('#appearanceSettings').getByRole('button', { name: 'Show live appearance preview', exact: true }).click();
+  const frame = page.frameLocator('iframe[title="Live appearance preview"]');
+  await expect(frame.locator('#wallpaper')).toHaveCount(1);
+  await page.locator('[data-bind="display.wallpaper.dim"]').fill('20');
+  await page.locator('[data-bind="display.wallpaper.dim"]').dispatchEvent('input');
+  await expect.poll(() => frame.locator('#wallpaper').evaluate((el) => el.style.getPropertyValue('--wp-dim'))).toBe('0.2');
+});

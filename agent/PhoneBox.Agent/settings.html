@@ -1484,6 +1484,9 @@ function updateStageText() {
 function sendPreview() {
   if (!cfg) return;
   const config = JSON.parse(JSON.stringify(cfg));
+  // the settings file has no wallpaper revision (the agent adds it for the phone): the preview gets the picture shown
+  // here, so the darkening and blur being edited can be seen on it
+  config.wallpaperRev = wallpaperShown;
   if (previewFrame && previewReady && stageMode === 'live')
     previewFrame.contentWindow.postMessage({ type: 'phonebox-preview', config, page: selPage }, location.origin);
   if (appearancePreviewFrame && appearancePreviewReady)
@@ -3899,7 +3902,7 @@ for (const name of ['codex', 'claude']) $(`${name}HookBtn`).onclick = async () =
 // ---------------------------------------------------------------- wallpaper (Settings › Display)
 // Uploaded and removed on its own, like a shortcut icon: the agent bumps the settings version, which tells the phones.
 // Each refresh is numbered: an older one that answers late (the first load racing an upload) must not undo a newer one.
-let wallpaperRefresh = 0;
+let wallpaperRefresh = 0, wallpaperShown = null;
 async function refreshWallpaper() {
   const img = $('wallpaperPreview');
   const mine = ++wallpaperRefresh;
@@ -3914,11 +3917,14 @@ async function refreshWallpaper() {
     img.src = img.dataset.url;
     img.style.display = '';
     $('wallpaperRemove').style.display = '';
+    wallpaperShown = 'settings-' + mine; // a new address for each picture, which the agent never caches
   } catch (_) {
     if (mine !== wallpaperRefresh) return;
     img.style.display = 'none';
     $('wallpaperRemove').style.display = 'none';
+    wallpaperShown = null;
   }
+  queuePreview();
 }
 async function sendWallpaper(method, body, type) {
   const headers = {};

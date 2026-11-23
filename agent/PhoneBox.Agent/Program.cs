@@ -954,10 +954,15 @@ app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req, ShortcutIconUploads
         s => icons.Revision(s.Id) is { } up ? (up, true) : (ShortcutIcons.Revision(s), false), wallpaper.Revision()) }));
 
 // The panel's wallpaper (Settings › Display). The panel asks with ?v=<revision>, so the picture may be kept for good.
-app.MapGet("/api/wallpaper", (WallpaperStore wallpaper, HttpResponse res) =>
+app.MapGet("/api/wallpaper", (WallpaperStore wallpaper, HttpResponse res, string? v) =>
 {
+    var before = wallpaper.Revision();
     if (wallpaper.Read() is not { } found) return Results.NotFound();
-    res.Headers.CacheControl = "private, max-age=31536000, immutable";
+    // kept for good only when these bytes are the revision asked for: an upload between the config and this request
+    // must not leave the new picture cached under the old revision's address
+    var rev = wallpaper.Revision();
+    res.Headers.CacheControl = rev is { } r && r == before && v == r.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        ? "private, max-age=31536000, immutable" : "no-store";
     res.Headers.XContentTypeOptions = "nosniff";
     return Results.File(found.Bytes, found.ContentType);
 });
