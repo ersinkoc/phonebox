@@ -466,7 +466,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.wallpaperUpload": "Vybrat obrázek…",
       "s.display.wallpaperDim": "Ztmavení (%)",
       "s.display.wallpaperBlur": "Rozmazání (px)",
-      "s.display.wallpaperHint": "Obrázek JPEG, PNG nebo WEBP (až 8 MB) za každou stránkou. Uloží se hned; Ztmavení a Rozmazání se uloží s ostatními nastaveními.",
+      "s.display.wallpaperHint": "Obrázek JPEG, PNG nebo WEBP (až 4 MB) za každou stránkou. Uloží se hned; Ztmavení a Rozmazání se uloží s ostatními nastaveními.",
       "s.display.wallpaperSaved": "Tapeta uložena.",
       "s.display.wallpaperRemoved": "Tapeta odstraněna.",
       "s.opencode.shareSessionTitles": "Zobrazit tituly OpenCode relace na telefonu (OpenCode čerpá je z konverzace)",

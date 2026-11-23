@@ -9,7 +9,9 @@ namespace PhoneBox.Agent;
 /// </summary>
 public sealed class WallpaperStore(string? dir = null)
 {
-    public const int MaxBytes = 8 * 1024 * 1024;
+    /// <summary>4 MB: a phone decodes the whole picture into memory, and the app fetches it again on each panel
+    /// reload, so a smaller picture (a phone screen needs no more than about 2400 px) is kinder to both.</summary>
+    public const int MaxBytes = 4 * 1024 * 1024;
 
     private static readonly Dictionary<string, string> ExtensionByContentType = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -20,21 +22,33 @@ public sealed class WallpaperStore(string? dir = null)
 
     private readonly string _dir = dir ?? AppPaths.ConfigDir;
     private readonly Lock _gate = new();
-    private (bool Known, long? Value) _revision;
+    // the content revision of the file it was computed from: a file replaced or deleted by hand gets a new one
+    private (string Path, long Length, DateTime Written, long Revision)? _revision;
 
     private string PathFor(string ext) => Path.Combine(_dir, "wallpaper" + ext);
 
-    /// <summary>A value that changes with the picture, or null when there is none.</summary>
+    /// <summary>A value that changes with the picture, or null when there is none. Hashed again only when the file
+    /// changed (size or time); a file deleted by hand is noticed at once, and a failed read is not remembered.</summary>
     public long? Revision()
     {
         lock (_gate)
         {
-            if (_revision.Known) return _revision.Value;
-            var rev = Read() is { } found ? ContentRevision(found.Bytes) : (long?)null;
-            _revision = (true, rev);
-            return rev;
+            if (Current() is not { } file) { _revision = null; return null; }
+            try
+            {
+                var info = new FileInfo(file);
+                if (_revision is { } r && r.Path == file && r.Length == info.Length && r.Written == info.LastWriteTimeUtc)
+                    return r.Revision;
+                var rev = ContentRevision(File.ReadAllBytes(file));
+                _revision = (file, info.Length, info.LastWriteTimeUtc, rev);
+                return rev;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
         }
     }
+
+    /// <summary>The wallpaper file, in the order Read looks for it, or null.</summary>
+    private string? Current() => ExtensionByContentType.Values.Select(PathFor).FirstOrDefault(File.Exists);
 
     private static long ContentRevision(byte[] bytes) => BitConverter.ToInt64(SHA256.HashData(bytes));
 
@@ -69,13 +83,14 @@ public sealed class WallpaperStore(string? dir = null)
     }
 
     /// <returns>An error message, or null on success.</returns>
-    public string? Save(string? contentType, byte[]? bytes)
+    /// <remarks>The type comes from the file's own bytes, not from what the browser reports: some send an empty type
+    /// or application/octet-stream for a valid picture.</remarks>
+    public string? Save(byte[]? bytes)
     {
         if (bytes is null) return $"The picture is larger than {MaxBytes / (1024 * 1024)} MB";
         if (bytes.Length == 0) return "The file is empty";
-        var type = contentType?.Split(';')[0].Trim() ?? "";
-        if (!ExtensionByContentType.TryGetValue(type, out var ext)) return "Only JPEG, PNG or WEBP pictures are supported";
-        if (!LooksValid(ext, bytes)) return $"That does not look like a valid {ext[1..].ToUpperInvariant()} file";
+        if (ExtensionByContentType.Values.FirstOrDefault(e => LooksValid(e, bytes)) is not { } ext)
+            return "Only JPEG, PNG or WEBP pictures are supported";
 
         Directory.CreateDirectory(_dir);
         var target = PathFor(ext);
@@ -93,25 +108,25 @@ public sealed class WallpaperStore(string? dir = null)
                 try { File.Delete(tmp); } catch { }
             }
             RemoveLocked(exceptExtension: ext);
+            _revision = null; // hashed again: a same-sized picture can land on the same file time on Windows
             if (ExtensionByContentType.Values.Any(other => other != ext && File.Exists(PathFor(other))))
             {
                 // Read looks in a fixed order: an old file that could not be deleted would still be served
                 try { File.Delete(target); } catch { }
-                _revision = default;
                 return "The previous wallpaper is in use and could not be replaced. Try again in a moment.";
             }
-            _revision = (true, ContentRevision(bytes));
         }
         return null;
     }
 
     /// <summary>Deletes the wallpaper, whichever format it was saved in.</summary>
-    public void Remove()
+    /// <returns>An error message when a file could not be deleted (it would still be served), or null.</returns>
+    public string? Remove()
     {
         lock (_gate)
         {
             RemoveLocked();
-            _revision = default; // a file that could not be deleted is found again by the next Revision()
+            return Current() is null ? null : "The wallpaper is in use and could not be removed. Try again in a moment.";
         }
     }
 

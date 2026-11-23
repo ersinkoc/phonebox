@@ -719,7 +719,7 @@ nav a.on::before { color: var(--accent); }
             <div class="field" style="margin:0;width:110px"><label data-i18n="s.display.wallpaperDim">Darken (%)</label><input type="number" min="0" max="90" data-bind="display.wallpaper.dim" data-type="int"></div>
             <div class="field" style="margin:0;width:110px"><label data-i18n="s.display.wallpaperBlur">Blur (px)</label><input type="number" min="0" max="20" data-bind="display.wallpaper.blur" data-type="int"></div>
           </div>
-          <span class="hint" data-i18n="s.display.wallpaperHint">A JPEG, PNG or WEBP picture (up to 8 MB) behind every page. It is saved at once; Darken and Blur are saved with the other settings.</span></div>
+          <span class="hint" data-i18n="s.display.wallpaperHint">A JPEG, PNG or WEBP picture (up to 4 MB) behind every page. It is saved at once; Darken and Blur are saved with the other settings.</span></div>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.orientation">Orientation</label>
           <select data-bind="display.orientation"><option value="landscape" data-i18n="s.display.orientation.landscape">Landscape</option><option value="portrait" data-i18n="s.display.orientation.portrait">Portrait</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select>
           <span class="hint" data-i18n="s.display.orientationHint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
@@ -3863,17 +3863,24 @@ for (const name of ['codex', 'claude']) $(`${name}HookBtn`).onclick = async () =
 };
 // ---------------------------------------------------------------- wallpaper (Settings › Display)
 // Uploaded and removed on its own, like a shortcut icon: the agent bumps the settings version, which tells the phones.
+// Each refresh is numbered: an older one that answers late (the first load racing an upload) must not undo a newer one.
+let wallpaperRefresh = 0;
 async function refreshWallpaper() {
   const img = $('wallpaperPreview');
+  const mine = ++wallpaperRefresh;
   try {
     const res = await fetch('/api/wallpaper?v=' + Date.now(), { cache: 'no-store' });
+    if (mine !== wallpaperRefresh) return;
     if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    if (mine !== wallpaperRefresh) return;
     if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
-    img.dataset.url = URL.createObjectURL(await res.blob());
+    img.dataset.url = URL.createObjectURL(blob);
     img.src = img.dataset.url;
     img.style.display = '';
     $('wallpaperRemove').style.display = '';
   } catch (_) {
+    if (mine !== wallpaperRefresh) return;
     img.style.display = 'none';
     $('wallpaperRemove').style.display = 'none';
   }

@@ -466,7 +466,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.wallpaperUpload": "Вибрати зображення…",
       "s.display.wallpaperDim": "Затемнення (%)",
       "s.display.wallpaperBlur": "Розмиття (px)",
-      "s.display.wallpaperHint": "Зображення JPEG, PNG або WEBP (до 8 МБ) за кожною сторінкою. Воно зберігається одразу; затемнення та розмиття зберігаються разом з іншими налаштуваннями.",
+      "s.display.wallpaperHint": "Зображення JPEG, PNG або WEBP (до 4 МБ) за кожною сторінкою. Воно зберігається одразу; затемнення та розмиття зберігаються разом з іншими налаштуваннями.",
       "s.display.wallpaperSaved": "Шпалери збережено.",
       "s.display.wallpaperRemoved": "Шпалери видалено.",
       "s.opencode.shareSessionTitles": "Показувати назви сеансів OpenCode на телефоні (OpenCode отримує їх з розмови)",

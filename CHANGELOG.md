@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Panel**
+- Wallpaper: Settings › Display › Wallpaper puts a picture of your own (JPEG, PNG or WEBP, up to 4 MB) behind every
+  page, darkened (0–90 %) and optionally blurred so the widgets stay readable. The album-art glow is not drawn while
+  a wallpaper is set (#468).
+
 **Setup**
 - macOS: each release also has a disk image, `PhoneBox-<version>-<rid>.dmg`, with PhoneBox.app (no window; the settings
   are at http://127.0.0.1:8765). It is signed like the zip's agent but not notarized, so macOS asks once in System

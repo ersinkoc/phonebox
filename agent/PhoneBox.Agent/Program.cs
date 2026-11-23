@@ -963,7 +963,7 @@ app.MapPost("/api/settings/wallpaper", async (HttpRequest req, ConfigStore cfg, 
     lock (IconCommit)
     {
         if (cfg.VersionConflict(configVersion)) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
-        if (wallpaper.Save(req.ContentType, bytes) is { } err) return Results.BadRequest(new { error = err });
+        if (wallpaper.Save(bytes) is { } err) return Results.BadRequest(new { error = err });
         cfg.Touch();
         return Results.Ok(new { version = cfg.VersionText });
     }
@@ -973,9 +973,10 @@ app.MapDelete("/api/settings/wallpaper", (HttpRequest req, ConfigStore cfg, Wall
     lock (IconCommit)
     {
         if (cfg.VersionConflict(req.Headers["X-Config-Version"])) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
-        wallpaper.Remove();
-        cfg.Touch();
-        return Results.Ok(new { version = cfg.VersionText });
+        var error = wallpaper.Remove();
+        cfg.Touch(); // also when a file stayed: the panel must load whatever is there now
+        return error is null ? Results.Ok(new { version = cfg.VersionText })
+            : Results.Json(new { error, version = cfg.VersionText }, statusCode: StatusCodes.Status409Conflict);
     }
 });
 

@@ -18,7 +18,7 @@ public sealed class WallpaperTests : IDisposable
     {
         var store = new WallpaperStore(_dir);
         Assert.Null(store.Revision());
-        Assert.Null(store.Save("image/jpeg", Jpeg));
+        Assert.Null(store.Save(Jpeg));
         var (bytes, type) = store.Read()!.Value;
         Assert.Equal(Jpeg, bytes);
         Assert.Equal("image/jpeg", type);
@@ -26,7 +26,7 @@ public sealed class WallpaperTests : IDisposable
         Assert.NotNull(first);
         Assert.Equal(first, new WallpaperStore(_dir).Revision()); // the same after a restart
 
-        Assert.Null(store.Save("image/png", Png));
+        Assert.Null(store.Save(Png));
         Assert.Equal("image/png", store.Read()!.Value.ContentType);
         Assert.NotEqual(first, store.Revision());
         Assert.False(File.Exists(Path.Combine(_dir, "wallpaper.jpg"))); // the other format went
@@ -36,29 +36,53 @@ public sealed class WallpaperTests : IDisposable
     public void RemovingLeavesNoWallpaper()
     {
         var store = new WallpaperStore(_dir);
-        Assert.Null(store.Save("image/png", Png));
+        Assert.Null(store.Save(Png));
         store.Remove();
         Assert.Null(store.Read());
         Assert.Null(store.Revision());
     }
 
-    [Theory]
-    [InlineData("image/gif", "Only JPEG, PNG or WEBP")]
-    [InlineData("image/svg+xml", "Only JPEG, PNG or WEBP")] // no scripts in a picture the phone loads
-    [InlineData("image/png", "does not look like a valid PNG")] // JPEG bytes sent as a PNG
-    public void OtherFilesAreRefused(string type, string error)
+    [Fact]
+    public void TheTypeComesFromTheBytesNotFromTheBrowser()
     {
         var store = new WallpaperStore(_dir);
-        Assert.Contains(error, store.Save(type, Jpeg));
+        // a PNG whatever the request said (browsers may send no type or application/octet-stream)
+        Assert.Null(store.Save(Png));
+        Assert.Equal("image/png", store.Read()!.Value.ContentType);
+        Assert.True(File.Exists(Path.Combine(_dir, "wallpaper.png")));
+    }
+
+    [Theory]
+    [InlineData(new byte[] { (byte)'G', (byte)'I', (byte)'F', (byte)'8', (byte)'9', (byte)'a' })]                   // GIF
+    [InlineData(new byte[] { (byte)'<', (byte)'s', (byte)'v', (byte)'g', (byte)' ', (byte)'/', (byte)'>' })]         // SVG: nothing scriptable
+    [InlineData(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 })]
+    public void OtherFilesAreRefused(byte[] bytes)
+    {
+        var store = new WallpaperStore(_dir);
+        Assert.Contains("Only JPEG, PNG or WEBP", store.Save(bytes));
         Assert.Null(store.Read());
+    }
+
+    [Fact]
+    public void APictureChangedOrDeletedByHandIsNoticed()
+    {
+        var store = new WallpaperStore(_dir);
+        Assert.Null(store.Save(Jpeg));
+        var first = store.Revision();
+        var file = Path.Combine(_dir, "wallpaper.jpg");
+        File.WriteAllBytes(file, [.. Jpeg, 1, 2, 3]); // replaced by hand
+        Assert.NotEqual(first, store.Revision());
+        File.Delete(file);                             // deleted by hand
+        Assert.Null(store.Revision());
+        Assert.Null(store.Remove());                   // nothing left to remove is not an error
     }
 
     [Fact]
     public void EmptyAndTooLargeUploadsAreRefused()
     {
         var store = new WallpaperStore(_dir);
-        Assert.Contains("empty", store.Save("image/jpeg", []));
-        Assert.Contains("larger than", store.Save("image/jpeg", null));
+        Assert.Contains("empty", store.Save([]));
+        Assert.Contains("larger than 4 MB", store.Save(null));
     }
 
     [Fact]

@@ -466,7 +466,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.wallpaperUpload": "चित्र चुनें…",
       "s.display.wallpaperDim": "गहरा करें (%)",
       "s.display.wallpaperBlur": "धुंधलापन (px)",
-      "s.display.wallpaperHint": "हर पेज के पीछे एक JPEG, PNG या WEBP चित्र (8 MB तक)। यह तुरंत सहेजा जाता है; गहरा करें और धुंधलापन बाकी सेटिंग्स के साथ सहेजे जाते हैं।",
+      "s.display.wallpaperHint": "हर पेज के पीछे एक JPEG, PNG या WEBP चित्र (4 MB तक)। यह तुरंत सहेजा जाता है; गहरा करें और धुंधलापन बाकी सेटिंग्स के साथ सहेजे जाते हैं।",
       "s.display.wallpaperSaved": "वॉलपेपर सहेजा गया।",
       "s.display.wallpaperRemoved": "वॉलपेपर हटाया गया।",
       "s.opencode.shareSessionTitles": "फोन पर OpenCode सत्र शीर्षक दिखाएँ (OpenCode उन्हें बातचीत से निकालता है)",

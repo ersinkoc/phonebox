@@ -466,7 +466,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.wallpaperUpload": "사진 선택…",
       "s.display.wallpaperDim": "어둡게 (%)",
       "s.display.wallpaperBlur": "흐림 (px)",
-      "s.display.wallpaperHint": "모든 페이지 뒤에 표시되는 JPEG, PNG 또는 WEBP 사진(최대 8MB). 사진은 바로 저장되며, 어둡게와 흐림은 다른 설정과 함께 저장됩니다.",
+      "s.display.wallpaperHint": "모든 페이지 뒤에 표시되는 JPEG, PNG 또는 WEBP 사진(최대 4MB). 사진은 바로 저장되며, 어둡게와 흐림은 다른 설정과 함께 저장됩니다.",
       "s.display.wallpaperSaved": "배경화면을 저장했습니다.",
       "s.display.wallpaperRemoved": "배경화면을 삭제했습니다.",
       "s.opencode.shareSessionTitles": "전화에 OpenCode 세션 제목을 표시 (OpenCode 대화에서 그들을 그립니다)",
