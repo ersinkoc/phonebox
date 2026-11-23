@@ -122,11 +122,39 @@ public sealed class CursorHookTests : IDisposable
     }
 
     [Fact]
+    public void AUsersOwnHookPostingToTheSameEndpointIsLeftAlone()
+    {
+        var path = Path.Combine(_dir, "own.json");
+        File.WriteAllText(path, """
+            {"version":1,"hooks":{"beforeShellExecution":[{"command":"./hooks/log.sh && curl -s http://127.0.0.1:18765/api/hooks/cursor/permission -d @-"}]}}
+            """);
+        Assert.False(CursorHook.HasAny(path)); // not reported as PhoneBox's
+        Assert.Null(CursorHook.Configure(true, 18765, 30, path, false));
+        Assert.Null(CursorHook.Configure(false, 18765, 30, path, false));
+        Assert.Contains("./hooks/log.sh", File.ReadAllText(path)); // survives install and removal
+    }
+
+    [Fact]
+    public void APartialInstallIsFoundAndRemoved()
+    {
+        var path = Path.Combine(_dir, "partial.json");
+        Assert.Null(CursorHook.Configure(true, 18765, 30, path, false));
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+        root["hooks"]!.AsObject().Remove("beforeMCPExecution"); // one event removed by hand
+        File.WriteAllText(path, root.ToJsonString());
+        Assert.False(CursorHook.Installed(path));
+        Assert.True(CursorHook.HasAny(path)); // still asks the phone: offered for removal
+        Assert.Null(CursorHook.Configure(false, 18765, 30, path, false));
+        Assert.False(CursorHook.HasAny(path));
+    }
+
+    [Fact]
     public void TheWslHookAlwaysExitsZero()
     {
         var command = CursorHook.HookCommand(18765, windows: false);
         Assert.EndsWith("|| true", command);
-        Assert.True(ClaudeHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = command }, CursorHook.Endpoint));
+        Assert.True(CursorHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = command }));
+        Assert.True(CursorHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = CursorHook.HookCommand(8765, windows: true) }));
     }
 
     [Fact]

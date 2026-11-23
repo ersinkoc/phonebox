@@ -134,8 +134,10 @@ public static class CursorHook
     /// was turned off still shows (and is removed). A distro without the hook is listed only if it has one.</summary>
     public static object Status()
     {
-        var paths = Targets(wsl: true).Where(t => t.Path == HooksPath || Installed(t.Path))
-            .Select(t => new { path = t.Path, installed = Installed(t.Path) }).ToList();
+        // "installed" = any PhoneBox entry is there, also a partial one (one event kept by hand): it still asks the
+        // phone, so the page must offer to remove it
+        var paths = Targets(wsl: true).Where(t => t.Path == HooksPath || HasAny(t.Path))
+            .Select(t => new { path = t.Path, installed = HasAny(t.Path), complete = Installed(t.Path) }).ToList();
         return new { installed = paths.Any(p => p.installed), paths };
     }
 
@@ -157,16 +159,36 @@ public static class CursorHook
         return error;
     }
 
-    internal static bool Installed(string path)
+    /// <summary>Both events carry the PhoneBox hook.</summary>
+    internal static bool Installed(string path) => Count(path) == Events.Length;
+
+    /// <summary>At least one event carries the PhoneBox hook.</summary>
+    internal static bool HasAny(string path) => Count(path) > 0;
+
+    // how many of the events carry the PhoneBox hook
+    private static int Count(string path)
     {
         try
         {
-            if (!File.Exists(path)) return false;
+            if (!File.Exists(path)) return 0;
             var root = JsonNode.Parse(File.ReadAllText(path), documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
             return root is JsonObject obj && obj["hooks"] is JsonObject hooks
-                && Events.All(ev => hooks[ev] is JsonArray list && list.Any(h => ClaudeHook.IsOurs(h, Endpoint)));
+                ? Events.Count(ev => hooks[ev] is JsonArray list && list.Any(IsOurs))
+                : 0;
         }
-        catch { return false; }
+        catch { return 0; }
+    }
+
+    /// <summary>
+    /// A hook PhoneBox wrote: a command posting to its endpoint (any port) in one of the two forms <see cref="HookCommand"/>
+    /// writes. A hook of the user's own that posts to the same endpoint is not ours and is never removed.
+    /// </summary>
+    internal static bool IsOurs(JsonNode? hook)
+    {
+        if (!ClaudeHook.IsOurs(hook, Endpoint) || hook!["command"]?.GetValue<string>() is not { } cmd) return false;
+        var port = System.Text.RegularExpressions.Regex.Match(cmd, @"127\.0\.0\.1:(\d{1,5})" + System.Text.RegularExpressions.Regex.Escape(Endpoint));
+        return port.Success && int.TryParse(port.Groups[1].Value, out var p)
+            && (cmd == HookCommand(p, windows: false) || cmd == HookCommand(p, windows: true));
     }
 
     /// <summary>Adds (or, with install = false, removes) the PhoneBox hooks, keeping everything else and a backup.</summary>
@@ -199,7 +221,7 @@ public static class CursorHook
                 if (hooks[ev] is { } listNode && listNode is not JsonArray)
                     throw new InvalidDataException($"\"hooks.{ev}\" in hooks.json is not a list");
                 var list = hooks[ev] as JsonArray ?? new JsonArray();
-                foreach (var h in list.Where(h => ClaudeHook.IsOurs(h, Endpoint)).ToList()) list.Remove(h);
+                foreach (var h in list.Where(IsOurs).ToList()) list.Remove(h);
                 if (install)
                     list.Add(new JsonObject
                     {
