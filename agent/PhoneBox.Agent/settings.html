@@ -771,13 +771,15 @@ nav a.on::before { color: var(--accent); }
               <option value="power" data-i18n="s.display.standby.power">Sleep when USB charge is cut</option>
               <option value="data" data-i18n="s.display.standby.data">Sleep when the agent stops answering</option>
             </select>
-            <span class="hint" data-i18n="s.display.standbyHint">Off is today's behaviour. A panel wired to one computer can release its keep-awake hold once that computer is gone, then light up by itself when it returns. "Data" also survives a charge-capped port (a charging ceiling, some hubs) and a board that keeps 5&nbsp;V alive after shutdown; "power" is the classic cable check. Any mode but Off clears Android's stay-on-while-charging setting for you (the app could not write it); the panel relights on reconnect - the agent sends it a wake key when ADB sees the phone again, and plugging the cable back in lights it anyway.</span>
+            <span class="hint" data-i18n="s.display.standbyHint">
+              When the computer comes back, PhoneBox wakes the phone and opens the panel. A swipe-only lock screen is dismissed automatically. If the phone is protected by a PIN or pattern, you must still unlock it yourself.
+            </span>
           </div>
 
           <div class="field" style="max-width:170px">
             <label data-i18n="s.display.standbyGrace">Standby grace (s)</label>
             <input type="number" data-bind="display.standbyGraceSec"
-                  data-type="int" min="3" max="600" step="1">
+                   data-type="int" min="3" max="600" step="1">
             <span class="hint" data-i18n="s.display.standbyGraceHint">
               Absorbs a reboot or a network hiccup.
             </span>
