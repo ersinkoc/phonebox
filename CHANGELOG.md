@@ -3,6 +3,9 @@
 ## Unreleased
 
 **Widgets**
+- CPU tile: the CPU's power next to its temperature (`53°C · 4 W`), and CPU power as a choice in the Metric tile,
+  Gauge and Chart. Windows reads it from LibreHardwareMonitor; Linux from RAPL, which most distributions let only
+  root read (#442, #489, [sszxt](https://github.com/sszxt)).
 - AI sessions: the open conversation of a Claude Code session follows new messages while it is read to the end; one
   scrolled back to an earlier message stays there (#460, [MisteryLiuCode](https://github.com/MisteryLiuCode)).
 
