@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+**Android app**
+- A mouse shared from the computer (Input Leaf with Deskflow or Barrier) can click, drag and long-press in the panel.
+  The main button now acts as a finger, so a drag also swipes between pages; the WebView ignored these mice's
+  clicks before. Plugging in or removing a keyboard (Input Leaf adds one each time the mouse arrives) no longer
+  restarts the panel (#425, [nonchita100](https://github.com/nonchita100)).
+
 ## 0.9.28 — 2026-11-23
 
 Faster page switching (tap or slide along the page dots, a page bar with names, a Page buttons widget), Discord
@@ -75,10 +83,6 @@ screen share and a read-only chat, Plex queue and playlists, a Steam library and
   ([d3j4n](https://github.com/d3j4n)).
 - A phone whose system can't start the Android System WebView (seen on an OPPO with ColorOS 3.0 on Android 5.1) now
   shows a message saying so instead of crashing at every launch (#385, [w364439](https://github.com/w364439)).
-- A mouse shared from the computer (Input Leaf with Deskflow or Barrier) can click, drag and long-press in the panel.
-  The main button now acts as a finger, so a drag also swipes between pages; the WebView ignored these mice's
-  clicks before. Plugging in or removing a keyboard (Input Leaf adds one each time the mouse arrives) no longer
-  restarts the panel (#425, [nonchita100](https://github.com/nonchita100)).
 
 **Panel**
 - The Spectrum bars and App console widgets stop asking the PC while nobody can see the panel (screen off, another
