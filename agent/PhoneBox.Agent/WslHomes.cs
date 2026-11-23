@@ -16,9 +16,11 @@ public static class WslHomes
     /// <param name="Home">The default user's home under the share.</param>
     public sealed record Entry(string Distro, string Root, string Home);
 
-    // The default user's home rarely changes; looking it up reads two files and the registry, so it is kept per distro.
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string? Home, long At)> HomeCache = new();
-    private const int HomeCacheMs = 5 * 60_000;
+    // Looking the default user's home up reads two files and the registry, so a found home is kept per distro for a
+    // minute: a default user changed in /etc/wsl.conf takes over within that. A failed lookup (a share still waking
+    // up) is not kept, so the next refresh tries again.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Home, long At)> HomeCache = new();
+    private const int HomeCacheMs = 60_000;
 
     /// <summary>
     /// The running distros' homes, from a `wsl.exe --list --running` query made now (Windows only; elsewhere, and
@@ -38,9 +40,9 @@ public static class WslHomes
             else
             {
                 home = OpenCodeServices.DefaultUserHome(root, name);
+                if (home is null) { HomeCache.TryRemove(root, out _); continue; }
                 HomeCache[root] = (home, now);
             }
-            if (home is null) continue;
             // the home from /etc/passwd is distro-absolute (/home/user, /root): it sits under the share root, written
             // with this system's separators (\\wsl.localhost\<distro>\home\user, not ...\home/user)
             homes.Add(new Entry(name, root, Path.Combine(root, home.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar))));

@@ -432,7 +432,9 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   default users' homes, through `\\wsl.localhost\<distro>`, like OpenCode in WSL: only distros that are already
   running (`wsl.exe --list --running` right before each read; a stopped one is never started) and every 5 seconds. A
   Claude Code session counts as running while its process is alive in the distro's `/proc` with the start time Claude
-  Code wrote. Without a sign-in on Windows, the Claude quota uses the one in WSL (`~/.claude/.credentials.json`).
+  Code wrote. *Show the conversation* reads a WSL session's chat file from the distro too. Without a Claude Code
+  sign-in on Windows (no file, or only Claude Desktop's plan), the Claude quota uses the one in WSL
+  (`~/.claude/.credentials.json`).
   Cursor chats of projects opened over Remote - WSL are named after their folder.
 - **Native Antigravity quota:** the agent reads the running Antigravity server's port and CSRF token from its
   process arguments and queries its loopback quota/status API, or invokes the signed-in CLI's structured usage

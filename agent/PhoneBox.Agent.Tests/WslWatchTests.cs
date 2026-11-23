@@ -110,6 +110,36 @@ public sealed class WslWatchTests : IDisposable
         Assert.Equal("Fix the WSL sessions", s.Title);
     }
 
+    [Fact]
+    public void AFailedHomeLookupIsTriedAgainOnTheNextRefresh()
+    {
+        var root = Path.Combine(_share, "Late");
+        Directory.CreateDirectory(root); // the share answers, but /etc is not readable yet
+        Assert.Empty(WslHomes.Running(["Late"], _share + Path.DirectorySeparatorChar));
+        Distro("Late", "kaiut");
+        Assert.Single(WslHomes.Running(["Late"], _share + Path.DirectorySeparatorChar));
+    }
+
+    [Fact]
+    public void TurningASourceOffHidesItsRowsAtOnceAndWslSessionsKeepTheirHome()
+    {
+        var root = Distro("U");
+        var home = Path.Combine(root, "home", "dev");
+        ClaudeSession(home, 15119, 883762, "aaaa-live", "/home/dev/phonebox");
+        Process(root, 15119, 883762);
+        CursorChat(Path.Combine(home, ".cursor", "projects"), "home-dev-site", "44444444-dddd", "assistant");
+        var monitor = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
+        IReadOnlyList<WslHomes.Entry> Running() => [new WslHomes.Entry("U", root, home)];
+
+        Assert.Equal(["claude", "cursor"], monitor.ReadWsl(true, true, Running).Select(s => s.Tool).Order());
+        // within the 5-second refresh: the Cursor rows must not linger once Cursor is turned off
+        Assert.Equal(["claude"], monitor.ReadWsl(true, false, Running).Select(s => s.Tool));
+        Assert.Equal(home, monitor.HomeOf("claude:aaaa-live")); // its conversation is read from the distro
+        Assert.Null(monitor.HomeOf("claude:native"));
+        Assert.Empty(monitor.ReadWsl(false, false, Running));
+        Assert.Null(monitor.HomeOf("claude:aaaa-live"));
+    }
+
     private static string CursorChat(string projectsRoot, string slug, string id, string lastRole)
     {
         var dir = Path.Combine(projectsRoot, slug, "agent-transcripts", id);

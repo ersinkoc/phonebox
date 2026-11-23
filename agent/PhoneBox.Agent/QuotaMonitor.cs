@@ -64,6 +64,20 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     /// </summary>
     internal Func<string?>? FindWslCredentials { get; init; }
 
+    /// <summary>Whether a credentials file holds a Claude Code sign-in (an access token), not just a plan.</summary>
+    internal static bool HasCliSignIn(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("claudeAiOauth", out var o) && o.ValueKind == JsonValueKind.Object
+                && o.TryGetProperty("accessToken", out var t) && t.ValueKind == JsonValueKind.String && t.GetString() is { Length: > 0 };
+        }
+        catch (JsonException) { return false; }
+    }
+
     private string? WslCredentialsPath()
     {
         if (FindWslCredentials is not null) return FindWslCredentials();
@@ -478,13 +492,20 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
 
         // Claude Code may be rewriting the file right now: try again on the next pass
         string? json = null;
-        var credentialsPath = CredentialsPath;
-        // Claude Code signed in only inside WSL: its sign-in there (Settings › Claude Code › Also watch WSL)
-        if ((credentialsPath == DefaultCredentialsPath || FindWslCredentials is not null) && !File.Exists(credentialsPath)
-            && WslCredentialsPath() is { } wsl)
-            credentialsPath = wsl;
-        try { if (File.Exists(credentialsPath)) json = await File.ReadAllTextAsync(credentialsPath, ct); }
+        try { if (File.Exists(CredentialsPath)) json = await File.ReadAllTextAsync(CredentialsPath, ct); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
+        // Claude Code signed in only inside WSL (Also watch Claude Code in WSL): its sign-in there, when Windows has no
+        // file or only Claude Desktop's plan without a token. A Windows sign-in with a token always comes first.
+        if ((CredentialsPath == DefaultCredentialsPath || FindWslCredentials is not null) && !HasCliSignIn(json)
+            && WslCredentialsPath() is { } wsl)
+        {
+            try
+            {
+                var wslJson = await File.ReadAllTextAsync(wsl, ct);
+                if (HasCliSignIn(wslJson)) json = wslJson;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
         // macOS: Claude Code stores the credentials in the login Keychain (read-only access). It is read when there is
         // no file, and when the file's token is missing or expired: a stale file must not hide a renewed Keychain sign-in.
         if (KeychainReader() is { } readKeychain

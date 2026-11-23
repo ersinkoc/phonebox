@@ -791,7 +791,7 @@ nav a.on::before { color: var(--accent); }
         <h3 data-i18n="s.cursor.title">Cursor sessions</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.cursor.hint">Show recent Cursor agent chats on the AI sessions widget (off by default). Only the last message's role is kept; chat text is never shown, stored or sent. Project names use the folder basename from Cursor's workspaceStorage.</p>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="cursor.sessions"><span></span></label> <span data-i18n="s.cursor.sessions">Show Cursor sessions</span></div>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="cursor.watchWsl"><span></span></label> <span data-i18n="s.cursor.watchWsl">Also watch Cursor in WSL (projects opened with Remote - WSL; a stopped distro is never started for this)</span></div>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="cursor.watchWsl" aria-labelledby="cursorWatchWslLabel"><span></span></label> <span id="cursorWatchWslLabel" data-i18n="s.cursor.watchWsl">Also watch Cursor in WSL (projects opened with Remote - WSL; a stopped distro is never started for this)</span></div>
       </div>
 
       <div class="card">
