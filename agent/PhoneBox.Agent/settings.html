@@ -3892,8 +3892,10 @@ async function sendWallpaper(method, body, type) {
   try {
     const res = await fetch('/api/settings/wallpaper', { method, headers, body });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(j.error || t('s.k.uploadFailed'));
+    // first: a removal that failed still moved the settings version (409 with the new one), and an old one here would
+    // make the next upload or removal fail as a conflict
     if (j.version) cfgVersion = j.version;
+    if (!res.ok) throw new Error(j.error || t('s.k.uploadFailed'));
     toast(t(method === 'DELETE' ? 's.display.wallpaperRemoved' : 's.display.wallpaperSaved'));
   } catch (err) { toast(err.message, true); }
   refreshWallpaper();
