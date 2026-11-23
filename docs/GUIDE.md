@@ -163,9 +163,9 @@ Because it starts the Codex CLI, Codex may refresh its own sign-in in `~/.codex/
 IDE servers (2.32 picks it at start-up, so the agent tries the loopback ports that server process listens
 on and accepts its self-signed certificate only for loopback addresses), or a signed-in
 `agy` CLI (1.1.11 or later). The CLI fallback runs `agy -p /usage --output-format json`, without a model prompt,
-and also finds `agy` when its folder is not on PATH: in `~/.gemini/bin` (`%USERPROFILE%\.gemini\bin` on Windows),
-where the installer and its self-update put it, and in `%LOCALAPPDATA%\agy\bin` from older Windows installers. Run
-`agy` in your terminal to sign in if needed. The agent reads measured session and weekly buckets, plus the plan when the local server provides it;
+and also finds `agy` when its folder is not on PATH: in `%USERPROFILE%\.gemini\bin`, where the current Windows
+installer and its self-update put it, in `%LOCALAPPDATA%\agy\bin` from older Windows installers, and in
+`~/.gemini/bin` on macOS and Linux. Run `agy` in your terminal to sign in if needed. The agent reads measured session and weekly buckets, plus the plan when the local server provides it;
 CLI reports without plan metadata keep the neutral Antigravity title. Older IDE servers can supply model quotas
 through `GetUserStatus`; unavailable measurements are skipped, and weekly limits are never invented. Refresh
 failures retain the last measurements with an error.

@@ -7,8 +7,8 @@
   scrolled back to an earlier message stays there (#460, [MisteryLiuCode](https://github.com/MisteryLiuCode)).
 
 **Agent**
-- AI quotas: Antigravity shows when `agy` is in `~/.gemini/bin` (`%USERPROFILE%\.gemini\bin` on Windows) and that
-  folder is not on PATH; the provider silently went missing (#462, [Lyntter](https://github.com/Lyntter)).
+- AI quotas: Antigravity shows when `agy` is in `%USERPROFILE%\.gemini\bin` (`~/.gemini/bin` on macOS and Linux)
+  and that folder is not on PATH; the provider silently went missing (#462, [Lyntter](https://github.com/Lyntter)).
 
 **Panel**
 - Settings › Display › Page navigation › Hidden takes the page dots off the screen. Swipe or press the volume keys
