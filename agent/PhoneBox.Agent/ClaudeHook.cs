@@ -23,6 +23,10 @@ public static class ClaudeHook
     internal static async Task<object?> HandlePermissionAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
         SessionMonitor sessions, CancellationToken aborted, string source, string? sessionPrefix, bool allowQuestions)
     {
+        // Claude Code's and Codex's own switches (Ask on the phone, Only when I am away); Cursor checks its own
+        var c = cfg.Get().Claude;
+        if (!c.PhoneApprovals) return null;
+        if (c.OnlyWhenAway && Idle.Seconds() < 60) return null;
         var decision = await DecideAsync(input, cfg, approvals, sessions, aborted, source, sessionPrefix, allowQuestions);
         if (decision is null) return null;
         return new
@@ -41,15 +45,14 @@ public static class ClaudeHook
     /// <summary>
     /// Shows one permission request (in the Claude Code PermissionRequest shape: tool_name, tool_input, cwd,
     /// session_id) on the phone and waits for it: "allow", "always" or "deny", or null when there is no answer (no
-    /// phone, turned off, timed out, or an answer the agent has no use for). Each hook turns that into its own output.
+    /// phone, timed out, or an answer the agent has no use for). Each hook turns that into its own output, and checks
+    /// its own on/off switch before calling this; the time to answer (claude.timeoutSec) is shared by all of them.
     /// </summary>
     internal static async Task<string?> DecideAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
         SessionMonitor sessions, CancellationToken aborted, string source, string? sessionPrefix, bool allowQuestions)
     {
         if (input.ValueKind != JsonValueKind.Object) return null;
         var c = cfg.Get().Claude;
-        if (!c.PhoneApprovals) return null;
-        if (c.OnlyWhenAway && Idle.Seconds() < 60) return null;
 
         var tool = Str(input, "tool_name") ?? "a tool";
         var ti = input.TryGetProperty("tool_input", out var t) && t.ValueKind == JsonValueKind.Object ? t : default;

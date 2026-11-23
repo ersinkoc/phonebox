@@ -285,11 +285,14 @@ Cursor has no permission-prompt hook; its `beforeShellExecution` and `beforeMCPE
 shell command and MCP tool call of the agent, also the ones Cursor would run by itself. So Cursor prompts are off until
 you turn on **Ask on the phone for Cursor** and press *Install hook* next to Cursor in **Settings › General › AI coding
 agent permission prompts**: PhoneBox adds both hooks to `~/.cursor/hooks.json` (keeping your own hooks and a backup as
-`hooks.json.phonebox.bak`). While a phone is connected, each command then waits for **Allow** or **Deny** on it; Allow
+`hooks.json.phonebox.bak`). This switch is Cursor's own: Claude Code's *Ask on the phone* and *Only when I am away*
+do not apply to it, while the seconds to answer are shared. While a phone is connected, each command then waits for
+**Allow** or **Deny** on it; Allow
 runs it without Cursor's own prompt, Deny blocks it and tells the agent so. Without a phone, without an answer within
 the timeout, or with the agent not running, the hook prints nothing and Cursor goes on as it would without it.
 Projects opened over Remote - WSL run their hooks inside the distro, from its own `~/.cursor/hooks.json`: with **Also
-watch Cursor in WSL** on, *Install hook* writes there too (in each running distro where Cursor's server has been used).
+watch Cursor in WSL** on, *Install hook* writes there too (in each running distro where Cursor's server has been used);
+removing looks at every running distro, so a hook left there after turning WSL watching off is removed as well.
 That hook reaches the agent on `127.0.0.1`, which works when WSL shares the loopback with Windows
 (`networkingMode=mirrored` in `.wslconfig`); otherwise it fails and Cursor goes on as usual.
 

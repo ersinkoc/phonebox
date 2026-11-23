@@ -93,6 +93,43 @@ public sealed class CursorHookTests : IDisposable
     }
 
     [Fact]
+    public async Task CursorPromptsDoNotDependOnClaudeCodesSwitch()
+    {
+        // Claude Code's Ask on the phone off (and Only when away on): Cursor's own switch alone decides
+        var cfg = Config("""{"claude":{"phoneApprovals":false,"onlyWhenAway":true,"timeoutSec":30},"cursor":{"phoneApprovals":true}}""");
+        using var push = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(_dir, "push.json"));
+        var approvals = new ApprovalStore(push, NullLogger<ApprovalStore>.Instance);
+        Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+        var pending = CursorHook.HandleAsync(Json(Shell), cfg, approvals, new SessionMonitor(NullLogger<SessionMonitor>.Instance), CancellationToken.None);
+        var approval = Assert.Single(approvals.Snapshot(), a => a.Source == "Cursor");
+        Assert.True(approvals.Decide(approval.Id, "allow"));
+        Assert.Contains("\"permission\":\"allow\"", JsonSerializer.Serialize(await pending));
+    }
+
+    [Fact]
+    public void EveryTargetIsTriedAfterOneFails()
+    {
+        var bad = Path.Combine(_dir, "bad.json");
+        File.WriteAllText(bad, """{"version":1,"hooks":"not an object"}""");
+        var good = Path.Combine(_dir, "good.json");
+        IReadOnlyList<(string, bool)> targets = [(bad, false), (good, false)];
+
+        Assert.Contains("bad.json", CursorHook.ConfigureAll(true, 18765, 30, targets));
+        Assert.True(CursorHook.Installed(good)); // installed although the first one failed
+        Assert.Contains("bad.json", CursorHook.ConfigureAll(false, 18765, 30, targets));
+        Assert.False(CursorHook.Installed(good)); // and removed again
+    }
+
+    [Fact]
+    public void TheWslHookAlwaysExitsZero()
+    {
+        var command = CursorHook.HookCommand(18765, windows: false);
+        Assert.EndsWith("|| true", command);
+        Assert.True(ClaudeHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = command }, CursorHook.Endpoint));
+    }
+
+    [Fact]
     public async Task NothingIsAskedUntilCursorApprovalsAreTurnedOn()
     {
         var cfg = Config("""{"claude":{"phoneApprovals":true,"timeoutSec":30}}""");

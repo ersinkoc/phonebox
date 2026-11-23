@@ -101,7 +101,8 @@ public static class CursorHook
     /// Invoke-WebRequest (any PowerShell from 5.1, no curl quoting). Its stdout must be the answer or nothing: Cursor
     /// blocks the command on anything it cannot parse, so the progress stream (which Windows PowerShell writes out as
     /// CLIXML when its output is redirected) is turned off, a failure prints nothing, and the exit code is always 0 —
-    /// all of which leave the decision to Cursor. Inside WSL (Linux, macOS) it is the same curl as the Claude Code hook.
+    /// all of which leave the decision to Cursor. Inside WSL (Linux, macOS) it is the Claude Code hook's curl, which
+    /// also always exits 0.
     /// </summary>
     internal static string HookCommand(int port, bool windows) => windows
         // stdin read as UTF-8 (Cursor sends UTF-8 JSON; [Console]::In would decode it with the console's OEM code page)
@@ -110,7 +111,9 @@ public static class CursorHook
           "try { $r = Invoke-WebRequest -UseBasicParsing -Method Post " +
           $"-Uri 'http://127.0.0.1:{port}{Endpoint}' -ContentType 'application/json; charset=utf-8' " +
           "-Body ([Text.Encoding]::UTF8.GetBytes($b)) -TimeoutSec 3600; [Console]::Out.Write($r.Content) } catch { }; exit 0"
-        : $"curl -s --noproxy 127.0.0.1 --max-time 3600 -X POST http://127.0.0.1:{port}{Endpoint} -H \"Content-Type: application/json\" --data-binary \"@-\"";
+        // `|| true`: with the agent unreachable (WSL without mirrored networking) curl exits 7; Cursor would let the
+        // command run anyway, but log the hook as failed every time
+        : $"curl -s --noproxy 127.0.0.1 --max-time 3600 -X POST http://127.0.0.1:{port}{Endpoint} -H \"Content-Type: application/json\" --data-binary \"@-\" || true";
 
     /// <summary>Where the hook goes: the Windows (or native) profile, and with <paramref name="wsl"/> the running
     /// distros' homes in which Cursor's server has been used (a ~/.cursor folder).</summary>
@@ -127,18 +130,30 @@ public static class CursorHook
         return targets;
     }
 
-    public static object Status(bool wsl)
+    /// <summary>Where the hook is: the WSL distros are always looked at, so a hook installed there before WSL watching
+    /// was turned off still shows (and is removed). A distro without the hook is listed only if it has one.</summary>
+    public static object Status()
     {
-        var paths = Targets(wsl).Select(t => new { path = t.Path, installed = Installed(t.Path) }).ToList();
+        var paths = Targets(wsl: true).Where(t => t.Path == HooksPath || Installed(t.Path))
+            .Select(t => new { path = t.Path, installed = Installed(t.Path) }).ToList();
         return new { installed = paths.Any(p => p.installed), paths };
     }
 
-    /// <summary>Adds or removes the hook everywhere <see cref="Targets"/> names; the first error, or null.</summary>
-    public static string? ConfigureAll(bool install, int port, int timeoutSec, bool wsl)
+    /// <summary>Installs the hook where <see cref="Targets"/> names (the distros only with WSL watching on) or removes
+    /// it from every place it may be; the first error, or null.</summary>
+    public static string? ConfigureAll(bool install, int port, int timeoutSec, bool wsl) =>
+        ConfigureAll(install, port, timeoutSec, Targets(wsl: !install || wsl));
+
+    /// <summary>Every target is tried, also after one failed: one unreadable hooks.json must not leave the others
+    /// installed when removing, or not installed when installing.</summary>
+    internal static string? ConfigureAll(bool install, int port, int timeoutSec, IReadOnlyList<(string Path, bool Windows)> targets)
     {
         string? error = null;
-        foreach (var (path, windows) in Targets(wsl))
-            error ??= Configure(install, port, timeoutSec, path, windows) is { } e ? $"{path}: {e}" : null;
+        foreach (var (path, windows) in targets)
+        {
+            var e = Configure(install, port, timeoutSec, path, windows);
+            if (e is not null) error ??= $"{path}: {e}";
+        }
         return error;
     }
 
@@ -168,7 +183,8 @@ public static class CursorHook
                 {
                     root = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }) as JsonObject
                            ?? throw new InvalidDataException("hooks.json is not a JSON object");
-                    File.WriteAllText(path + ".phonebox.bak", text);
+                    // owner-only like ClaudeHook's: other hooks' commands may carry secrets
+                    AppPaths.WriteAllTextPrivate(path + ".phonebox.bak", text);
                 }
             }
             else if (!install) return null; // nothing to remove
@@ -201,7 +217,7 @@ public static class CursorHook
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var tmp = path + ".tmp";
-            File.WriteAllText(tmp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
+            AppPaths.WriteAllTextPrivate(tmp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
             File.Move(tmp, path, overwrite: true);
             return null;
         }
