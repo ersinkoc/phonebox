@@ -3,6 +3,10 @@
 ## Unreleased
 
 **Widgets**
+- News feeds on Windows: a headline opens the article in the default browser again, not in File Explorer. Links now go
+  to Windows' URL handler instead of explorer.exe, which mistook some links (a long one, or a short one with a query
+  string) for a path (#386, #411, [Exrahn](https://github.com/Exrahn),
+  [dedesoso3366](https://github.com/dedesoso3366)).
 - CPU tile: the CPU's power next to its temperature (`53°C · 4 W`), and CPU power as a choice in the Metric tile,
   Gauge and Chart. Windows reads it from LibreHardwareMonitor; Linux from RAPL, which most distributions let only
   root read (#442, #489, [sszxt](https://github.com/sszxt)).
