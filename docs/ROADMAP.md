@@ -82,6 +82,10 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   the timed lyric of the current track and follows the playback position. The agent looks the track up on LRCLIB
   (title, artist, album, duration) only when the user turns the lookup on and only while such a widget is on an enabled
   page; results stay in memory, and the phone never contacts LRCLIB.
+- **CPU power on the CPU tile** ([#442](https://github.com/ersinkoc/phonebox/issues/442)): the package power next
+  to the CPU temperature (`92°C · 42 W`) and a CPU POWER chart, like the GPU tile has. On Windows it is in the same
+  LibreHardwareMonitor `data.json` the agent already reads; on Linux it could come from RAPL
+  (`/sys/class/powercap/intel-rapl:0/energy_uj`) where readable.
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
 
