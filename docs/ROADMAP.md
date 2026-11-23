@@ -95,6 +95,9 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   the timed lyric of the current track and follows the playback position. The agent looks the track up on LRCLIB
   (title, artist, album, duration) only when the user turns the lookup on and only while such a widget is on an enabled
   page; results stay in memory, and the phone never contacts LRCLIB.
+- **A sound for a new permission prompt** ([#497](https://github.com/ersinkoc/phonebox/issues/497)): an option to
+  play the panel's chime when an approval card appears, not only vibrate, with the same volume setting as a finished
+  session's sound ([#488](https://github.com/ersinkoc/phonebox/pull/488)) once that lands.
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
 
