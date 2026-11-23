@@ -232,7 +232,8 @@ is nothing to turn on in PhoneBox.
    sensors need it).
 2. In its menu choose **Options › Remote Web Server › Run**. The port stays **8085** (PhoneBox only looks there).
 3. Check it in a browser on the PC: <http://127.0.0.1:8085/data.json> should show a long JSON text. Within a few
-   seconds the CPU temperature and power and the extra GPU values appear on the phone.
+   seconds the CPU temperature, the CPU power (when your CPU reports a package power there) and the extra GPU values
+   appear on the phone.
 4. To keep it running: **Options › Start Minimized**, **Minimize To Tray** and **Run On Windows Startup**.
 
 The web server answers on every network the PC is on. If Windows Firewall asks, PhoneBox only needs it on this
