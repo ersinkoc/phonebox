@@ -3799,15 +3799,17 @@ function renderUpdate(u) {
     ...line(t('s.adv.phoneApp'), s.appVersion ? s.appVersion + (s.appUpdate ? ` → ${s.latest} ` + t('s.adv.needsUsb') : ' ' + t('s.adv.upToDate')) : t('s.adv.notSeenYet')),
     ...line(t('s.adv.latestRelease'), s.latest ? s.latest : '—'),
     ...line(t('s.adv.lastCheck'), s.lastCheck ? new Date(s.lastCheck).toLocaleString() : t('s.adv.notYet')));
-  $('updApply').hidden = !(s.agentUpdate || s.appUpdate);
+  // a copy outside the installed folder never updates itself (the line above says so): no button that does nothing (#497)
+  const agentUpdate = s.agentUpdate && u.installed;
+  $('updApply').hidden = !(agentUpdate || s.appUpdate);
   // the same update, in the header: it is the one thing on this page that changes the agent itself
   const top = $('updTop'), busy = !!s.state && s.state !== 'idle' && s.state !== 'checking';
-  top.hidden = !(s.agentUpdate || s.appUpdate);
+  top.hidden = !(agentUpdate || s.appUpdate);
   top.disabled = busy;
   const label = busy ? t('s.updTop.busy') : t('s.updTop', { v: s.latest });
   top.replaceChildren(icon('download', 'm'), h('span', { class: 'lbl' }, label));
   top.setAttribute('aria-label', label);
-  top.title = [s.agentUpdate && `${t('s.adv.agent')}: ${s.agentVersion} → ${s.latest}`,
+  top.title = [agentUpdate && `${t('s.adv.agent')}: ${s.agentVersion} → ${s.latest}`,
     s.appUpdate && `${t('s.adv.phoneApp')}: ${s.appVersion} → ${s.latest}`].filter(Boolean).join('\n');
   $('updState').textContent = s.error ? s.error : s.state !== 'idle' ? s.state + '…' : '';
 }

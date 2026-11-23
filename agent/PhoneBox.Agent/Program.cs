@@ -270,7 +270,9 @@ app.Use(async (ctx, next) =>
             return;
         }
     }
-    if (ctx.Request.Path.StartsWithSegments("/api/state") && ctx.Request.Headers.ContainsKey("X-PhoneBox-App"))
+    // any request from the app shows the phone is there, not only a state poll: an app on the live stream polls
+    // nothing, and a stream that is not yet (or no longer) open must not hide the phone from a permission prompt (#497)
+    if (ctx.Request.Headers.ContainsKey("X-PhoneBox-App"))
         Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
     if (ctx.Request.Headers.TryGetValue("X-PhoneBox-Device", out var device))
     {

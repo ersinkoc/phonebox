@@ -25,8 +25,8 @@ public static class ClaudeHook
     {
         if (input.ValueKind != JsonValueKind.Object) return null;
         var c = cfg.Get().Claude;
-        if (!c.PhoneApprovals) return null;
-        if (c.OnlyWhenAway && Idle.Seconds() < 60) return null;
+        if (!c.PhoneApprovals) { approvals.Skipped(source, "Ask on the phone is off"); return null; }
+        if (c.OnlyWhenAway && Idle.Seconds() < 60) { approvals.Skipped(source, "the computer is in use (Only when I am away)"); return null; }
 
         var tool = Str(input, "tool_name") ?? "a tool";
         var ti = input.TryGetProperty("tool_input", out var t) && t.ValueKind == JsonValueKind.Object ? t : default;

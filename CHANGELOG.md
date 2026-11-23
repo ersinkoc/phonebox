@@ -15,6 +15,10 @@
 - Restarting, updating or quitting the agent with a phone connected takes about a second instead of 30: the live
   stream to the phone now ends as soon as the agent begins to stop (#485,
   [freefakesmile](https://github.com/freefakesmile)).
+- Permission prompts: any request from the phone app now counts as the phone being there, not only a state poll, and
+  a prompt left to the computer says why in `agent.log` (the phone not seen for how long, Ask on the phone off, or
+  the computer in use). Settings no longer offers an agent update to a copy outside the installed folder, which never
+  updates itself (#497, [xxleocoolxx](https://github.com/xxleocoolxx)).
 
 **Panel**
 - A swipe that starts on a key or a card wraps from the last page to the first (and from the first to the last), as

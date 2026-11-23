@@ -49,9 +49,21 @@ public sealed class ApprovalStore(PushStore events, ILogger<ApprovalStore> log)
     }
 
     /// <summary>Shows the request on the phone and waits for "allow" / "deny"; null = no answer (fall back to the terminal).</summary>
+    /// <summary>Notes in the log why a coding agent's prompt was left to its own window instead of the phone.</summary>
+    public void Skipped(string source, string reason) =>
+        log.LogInformation("{Source} permission prompt left to the computer: {Reason}", source, reason);
+
     public async Task<string?> AskAsync(Approval a, CancellationToken aborted)
     {
-        if (!PhoneConnected || a.ExpiresAt <= _clock.GetUtcNow().ToUnixTimeMilliseconds()) return null;
+        if (!PhoneConnected)
+        {
+            // said in the log: a prompt that never reaches the phone is otherwise invisible (#497)
+            var seen = Interlocked.Read(ref PhoneLastSeen);
+            Skipped(a.Source, seen == 0 ? "the phone has not been seen since the agent started"
+                : $"the phone was last seen {Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - seen) / 1000} s ago");
+            return null;
+        }
+        if (a.ExpiresAt <= _clock.GetUtcNow().ToUnixTimeMilliseconds()) return null;
         var pending = new Pending(a, new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously));
         _pending[a.Id] = pending;
         events.Emit("approval", JsonSerializer.SerializeToElement(new { id = a.Id }));
