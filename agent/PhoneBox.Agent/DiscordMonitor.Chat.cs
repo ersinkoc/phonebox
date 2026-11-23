@@ -92,7 +92,8 @@ public sealed partial class DiscordMonitor
         if (msg is null) return;
         lock (_chatLock)
         {
-            if (!_chatFollowed.Contains(channel)) return;
+            // again under the lock: a message that passed the check above as the chat went off must not outlive StopChat
+            if (!ChatOn || !_chatFollowed.Contains(channel)) return;
             if (!_chatMsgs.TryGetValue(channel, out var list)) _chatMsgs[channel] = list = []; // its history is still being read
             if (list.All(x => x.Id != msg.Id))
             {
@@ -247,8 +248,9 @@ public sealed partial class DiscordMonitor
                     list = [.. list.Concat(live.Where(m => !before.Contains(m.Id) && Newer(m.Id, newest))).TakeLast(ChatMessages)];
                 _chatMsgs[channel] = list;
                 _chatReadAt[channel] = Environment.TickCount64;
-                var fromOthers = list.LastOrDefault(m => m.AuthorId != _meId)?.Id;
-                if (Newer(fromOthers, _chatLatest.GetValueOrDefault(channel))) _chatLatest[channel] = fromOthers!;
+                // from the history as it is now: a deleted message must not leave a dot behind
+                if (list.LastOrDefault(m => m.AuthorId != _meId)?.Id is { } fromOthers) _chatLatest[channel] = fromOthers;
+                else _chatLatest.Remove(channel);
                 return [.. list];
             }
         }

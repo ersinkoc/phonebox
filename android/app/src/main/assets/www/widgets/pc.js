@@ -178,17 +178,20 @@ W.discord = {
     let chatOpen = false, chat = null, picking = false, pickGuild = null, chatAsked = 0, chatWaiting = 0;
     const loadChat = async () => {
       const n = ++chatAsked; // only the newest answer counts: an older one may be for another server or channel
+      const forGuild = picking ? pickGuild : null; // the server whose channels the answer lists
       chatWaiting++;
       try {
         const c = await api('/discord/chat' + (picking ? '?picker=true' + (pickGuild ? '&guild=' + encodeURIComponent(pickGuild) : '') : ''), undefined, 8000);
-        if (n === chatAsked) chat = c;
+        if (n === chatAsked) chat = { ...c, forGuild };
       } catch (_) {} finally { chatWaiting--; }
     };
     const chooseChat = async (channel) => {
       haptic();
       picking = false; pickGuild = null;
       try { await api('/discord/chat/choose?channel=' + encodeURIComponent(channel), 'POST', 5000); } catch (_) { toast(t('w.discord.failed'), 'err'); }
-      await loadChat(); render(true);
+      // the share view may have taken its place meanwhile: then the poll reads the chosen chat when it shows again
+      if (chatOpen && visible()) await loadChat();
+      render(true);
     };
     const openInDiscord = async () => {
       haptic();
@@ -231,8 +234,10 @@ W.discord = {
           const back = h('button', 'dc-pickrow back', '‹ ' + ((c.servers || []).find((g) => g.id === pickGuild)?.name || ''));
           back.addEventListener('click', () => { haptic(); pickGuild = null; render(true); });
           rows.push(back);
-          if (!c.channels) rows.push(h('div', 'empty', t('w.loading')));
-          for (const ch of c.channels || []) {
+          // until the answer for this server is in, another server's channels must not show under its name
+          const channels = c.forGuild === pickGuild ? c.channels : null;
+          if (!channels) rows.push(h('div', 'empty', t('w.loading')));
+          for (const ch of channels || []) {
             const b = h('button', 'dc-pickrow' + (!c.voice && c.channel?.id === ch.id ? ' cur' : ''), h('span', 'dc-pname', '# ' + ch.name), dot(ch.unread));
             b.addEventListener('click', () => chooseChat(ch.id));
             rows.push(b);
