@@ -88,7 +88,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
     private ScreenSynchronizer? _screenSync;
     private ScreenSynchronizer ScreenSync => LazyInitializer.EnsureInitialized(ref _screenSync,
-        () => new ScreenSynchronizer(MacSessionLock.IsLocked, ApplyScreenAsync));
+        () => new ScreenSynchronizer(PlatformSessionLock.IsLocked, ApplyScreenAsync));
 
     public Task<bool> SyncSessionAsync(CancellationToken ct, bool force = false) => ScreenSync.ReconcileAsync(_devices, ct, force);
     public Task ResetSessionAsync(CancellationToken ct) => ScreenSync.ResetAsync(ct);
@@ -205,7 +205,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (transports?.TryGetValue(d, out var transport) == true) _transport[d] = transport;
             if (moved) { log.LogInformation("{Device}: adb reverse moved to this agent", d); continue; }
             // A newly plugged-in phone must not light up while the computer is locked.
-            if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
+            if (cfg.Get().Display.FollowComputerLock && SessionLockMonitor.IsSupported)
             {
                 await SyncSessionAsync(ct, force: true);
             }
