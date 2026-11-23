@@ -50,6 +50,11 @@ test('no widget fails to build on any page', async ({ page }) => {
 test('every widget in the catalogue builds and runs without errors', async ({ page }) => {
   test.setTimeout(90_000); // Each catalog page runs its render and polling lifecycle; the catalog now exceeds 100 types.
   const errors = watchErrors(page);
+  // Widgets that read a public service straight from the phone (crypto prices, exchange rates, Hacker News) must not
+  // make this test depend on the internet: a CORS refusal from CI once failed it. They get an error answer that allows
+  // the panel, so they show their own "unavailable" state, which is what this test checks they survive.
+  await page.route((url) => !['127.0.0.1', 'localhost'].includes(url.hostname), (route) => route.fulfill({
+    status: 503, headers: { 'Access-Control-Allow-Origin': '*' }, body: '' }));
   await page.route('**/agent/api/steam/avatar?id=*', (route) => route.fulfill({
     status: 200,
     contentType: 'image/svg+xml',
