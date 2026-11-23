@@ -421,8 +421,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Yükleniyor…"
     },
     "catalog": {
-      "Play sound when a session finishes": "Bir oturum bitti\u011finde ses \u00e7al",
-      "Custom sound (empty = default chime)": "\u00d6zel ses (bo\u015f = varsay\u0131lan zil sesi)",
       "Only this category (its category in Settings; empty = all)": "Yalnızca bu kategori (Ayarlar'daki kategorisi; boş = tümü)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode / Antigravity oturumları: çalışma, bekleme, boş.",
       "1": "1",
@@ -1126,10 +1124,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex çalma listeleri (hiçbiri işaretli değil = hepsi)"
     },
     "panel": {
-      "Sound alerts off \u00b7 Tap to turn on": "Sesli uyar\u0131lar kapal\u0131 \u00b7 A\u00e7mak i\u00e7in dokun",
-      "Sound alerts on \u00b7 Tap to mute": "Sesli uyar\u0131lar a\u00e7\u0131k \u00b7 Susturmak i\u00e7in dokun",
-      "Session finish sound enabled": "Oturum biti\u015f sesi a\u00e7\u0131ld\u0131",
-      "Session finish sound muted": "Oturum biti\u015f sesi kapat\u0131ld\u0131",
       "% load": "% yükleme",
       "5-hour": "5 saat.",
       "5-hour session": "5 saatlik bir oturum.",

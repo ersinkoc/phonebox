@@ -975,8 +975,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Memuat…"
     },
     "catalog": {
-      "Play sound when a session finishes": "Mainkan suara ketika sesi berakhir",
-      "Custom sound (empty = default chime)": "Suara khusus (kosong = dentang default)",
       "Only this category (its category in Settings; empty = all)": "Hanya kategori ini (kategorinya di Pengaturan; kosong = semua)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode / Antigravity sesi: bekerja, menunggu, diam.",
       "1": "1",
@@ -1692,10 +1690,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Daftar putar Plex (tidak ada yang dicentang = semua)"
     },
     "panel": {
-      "Sound alerts off \u00b7 Tap to turn on": "Peringatan suara mati \u00b7 Ketuk untuk menyalakan",
-      "Sound alerts on \u00b7 Tap to mute": "Peringatan suara aktif \u00b7 Ketuk untuk membisukan",
-      "Session finish sound enabled": "Suara selesai sesi diaktifkan",
-      "Session finish sound muted": "Suara selesai sesi dibisukan",
       "% load": "% muatan",
       "5-hour": "5 jam",
       "5-hour session": "Sesi 5 jam",

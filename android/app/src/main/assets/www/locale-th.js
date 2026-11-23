@@ -975,8 +975,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "กำลังโหลด…"
     },
     "catalog": {
-      "Play sound when a session finishes": "\u0e40\u0e25\u0e48\u0e19\u0e40\u0e2a\u0e35\u0e22\u0e07\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e40\u0e0b\u0e2a\u0e0a\u0e31\u0e19\u0e2a\u0e34\u0e49\u0e19\u0e2a\u0e38\u0e14",
-      "Custom sound (empty = default chime)": "\u0e40\u0e2a\u0e35\u0e22\u0e07\u0e17\u0e35\u0e48\u0e01\u0e33\u0e2b\u0e19\u0e14\u0e40\u0e2d\u0e07 (\u0e40\u0e27\u0e49\u0e19\u0e27\u0e48\u0e32\u0e07 = \u0e40\u0e2a\u0e35\u0e22\u0e07\u0e01\u0e23\u0e30\u0e14\u0e34\u0e48\u0e07\u0e40\u0e23\u0e34\u0e48\u0e21\u0e15\u0e49\u0e19)",
       "Only this category (its category in Settings; empty = all)": "เฉพาะหมวดหมู่นี้ (หมวดหมู่ในการตั้งค่า; ว่าง = ทั้งหมด)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "วาระงาน Claude Code / Codex / เคลื่อนเคอร์เซอร์ / OpenCode / Antigravity: ทำงาน, คอย, ไม่มีกิจกรรม",
       "1": "1",
@@ -1692,10 +1690,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "เพลย์ลิสต์ Plex (ไม่เลือกเลย = ทั้งหมด)"
     },
     "panel": {
-      "Sound alerts off \u00b7 Tap to turn on": "\u0e01\u0e32\u0e23\u0e41\u0e08\u0e49\u0e07\u0e40\u0e15\u0e37\u0e2d\u0e19\u0e14\u0e49\u0e27\u0e22\u0e40\u0e2a\u0e35\u0e22\u0e07\u0e1b\u0e34\u0e14\u0e2d\u0e22\u0e39\u0e48 \u00b7 \u0e41\u0e15\u0e30\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e40\u0e1b\u0e34\u0e14",
-      "Sound alerts on \u00b7 Tap to mute": "\u0e01\u0e32\u0e23\u0e41\u0e08\u0e49\u0e07\u0e40\u0e15\u0e37\u0e2d\u0e19\u0e14\u0e49\u0e27\u0e22\u0e40\u0e2a\u0e35\u0e22\u0e07\u0e40\u0e1b\u0e34\u0e14\u0e2d\u0e22\u0e39\u0e48 \u00b7 \u0e41\u0e15\u0e30\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1b\u0e34\u0e14\u0e40\u0e2a\u0e35\u0e22\u0e07",
-      "Session finish sound enabled": "\u0e40\u0e1b\u0e34\u0e14\u0e40\u0e2a\u0e35\u0e22\u0e07\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e40\u0e0b\u0e2a\u0e0a\u0e31\u0e19\u0e2a\u0e34\u0e49\u0e19\u0e2a\u0e38\u0e14\u0e41\u0e25\u0e49\u0e27",
-      "Session finish sound muted": "\u0e1b\u0e34\u0e14\u0e40\u0e2a\u0e35\u0e22\u0e07\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e40\u0e0b\u0e2a\u0e0a\u0e31\u0e19\u0e2a\u0e34\u0e49\u0e19\u0e2a\u0e38\u0e14\u0e41\u0e25\u0e49\u0e27",
       "% load": "ค่า",
       "5-hour": "5 ชั่วโมง",
       "5-hour session": "วาระงาน5ชั่วโมง",

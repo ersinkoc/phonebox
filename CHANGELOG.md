@@ -17,6 +17,9 @@
   [freefakesmile](https://github.com/freefakesmile)).
 
 **Panel**
+- Settings › Display › **Sound when a session finishes**, off by default: the panel plays its chime once when AI
+  sessions finish, at a volume of its own, and never on the night screen (#488,
+  [Prajjwal2404](https://github.com/Prajjwal2404)).
 - A swipe that starts on a key or a card wraps from the last page to the first (and from the first to the last), as
   it turns any other page; it only did from an empty spot (#487, [nonchita100](https://github.com/nonchita100)).
 - Settings › Display › Page navigation › Hidden takes the page dots off the screen. Swipe or press the volume keys

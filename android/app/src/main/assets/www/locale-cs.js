@@ -975,8 +975,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Načítá se…"
     },
     "catalog": {
-      "Play sound when a session finishes": "P\u0159ehr\u00e1t zvuk p\u0159i ukon\u010den\u00ed relace",
-      "Custom sound (empty = default chime)": "Vlastn\u00ed zvuk (pr\u00e1zdn\u00e9 = v\u00fdchoz\u00ed gong)",
       "Only this category (its category in Settings; empty = all)": "Jen tato kategorie (její kategorie v Nastavení; prázdné = všechny)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Relace Claude Code / Codex / Cursor / OpenCode / Antigravity: pracující, čekající, nečinný.",
       "1": "1",
@@ -1692,10 +1690,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlisty Plex (nic nezaškrtnuto = všechny)"
     },
     "panel": {
-      "Sound alerts off \u00b7 Tap to turn on": "Zvukov\u00e1 upozorn\u011bn\u00ed vypnuta \u00b7 Klepnut\u00edm zapnete",
-      "Sound alerts on \u00b7 Tap to mute": "Zvukov\u00e1 upozorn\u011bn\u00ed zapnuta \u00b7 Klepnut\u00edm ztlum\u00edte",
-      "Session finish sound enabled": "Zvuk dokon\u010den\u00ed relace povolen",
-      "Session finish sound muted": "Zvuk dokon\u010den\u00ed relace ztlumen",
       "% load": "% zatížení",
       "5-hour": "5hodinový",
       "5-hour session": "5 hodinový kurz",

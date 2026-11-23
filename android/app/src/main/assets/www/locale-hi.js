@@ -975,8 +975,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "लोड हो रहा है…"
     },
     "catalog": {
-      "Play sound when a session finishes": "\u091c\u092c \u090f\u0915 \u0938\u0924\u094d\u0930 \u0938\u092e\u093e\u092a\u094d\u0924 \u0939\u094b \u0924\u094b \u0927\u094d\u0935\u0928\u093f \u092c\u091c\u093e\u090f\u0901",
-      "Custom sound (empty = default chime)": "\u0915\u0938\u094d\u091f\u092e \u0927\u094d\u0935\u0928\u093f (\u0916\u093e\u0932\u0940 = \u0921\u093f\u092b\u093c\u0949\u0932\u094d\u091f \u0918\u0902\u091f\u0940)",
       "Only this category (its category in Settings; empty = all)": "केवल यह श्रेणी (सेटिंग्स में इसकी श्रेणी; खाली = सभी)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / कर्सर / OpenCode / Antigravity सत्र: कार्यरत, प्रतीक्षारत, निष्क्रिय.",
       "1": "1",
@@ -1692,10 +1690,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex प्लेलिस्ट (कोई चयनित नहीं = सभी)"
     },
     "panel": {
-      "Sound alerts off \u00b7 Tap to turn on": "\u0927\u094d\u0935\u0928\u093f \u0905\u0932\u0930\u094d\u091f \u092c\u0902\u0926 \u00b7 \u091a\u093e\u0932\u0942 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u091f\u0948\u092a \u0915\u0930\u0947\u0902",
-      "Sound alerts on \u00b7 Tap to mute": "\u0927\u094d\u0935\u0928\u093f \u0905\u0932\u0930\u094d\u091f \u091a\u093e\u0932\u0942 \u00b7 \u092e\u094d\u092f\u0942\u091f \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u091f\u0948\u092a \u0915\u0930\u0947\u0902",
-      "Session finish sound enabled": "\u0938\u0924\u094d\u0930 \u0938\u092e\u093e\u092a\u094d\u0924\u093f \u0927\u094d\u0935\u0928\u093f \u0938\u0915\u094d\u0937\u092e",
-      "Session finish sound muted": "\u0938\u0924\u094d\u0930 \u0938\u092e\u093e\u092a\u094d\u0924\u093f \u0927\u094d\u0935\u0928\u093f \u092e\u094d\u092f\u0942\u091f",
       "% load": "लोड%",
       "5-hour": "5 घंटे",
       "5-hour session": "5 घंटे का सत्र",
