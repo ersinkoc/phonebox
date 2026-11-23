@@ -176,6 +176,10 @@ public sealed class DisplayConfig
     public bool Vibrate { get; set; } = true;
     /// <summary>Show a message when a session finishes. The "needs input" message always shows.</summary>
     public bool FinishToast { get; set; } = true;
+    /// <summary>Play a chime when a session finishes.</summary>
+    public bool FinishSound { get; set; }
+    /// <summary>Sound volume (% of the phone's media volume).</summary>
+    public int FinishSoundVolume { get; set; } = 70;
     /// <summary>The phone's volume keys switch pages.</summary>
     public bool VolumeKeys { get; set; } = true;
     /// <summary>landscape, portrait or auto (follow the phone). In portrait the widgets are arranged automatically.</summary>
@@ -667,6 +671,7 @@ public sealed partial class ConfigStore(string path)
         c.Display.TouchGraceSec = Math.Clamp(c.Display.TouchGraceSec, 0, 600);
         c.Display.MinDwellSec = Math.Clamp(c.Display.MinDwellSec, 0, 600);
         c.Display.HoldMaxMin = Math.Clamp(c.Display.HoldMaxMin, 0, 1440);
+        c.Display.FinishSoundVolume = Math.Clamp(c.Display.FinishSoundVolume, 10, 100);
         c.Lan ??= new();
         c.Updates ??= new();
         c.Ping ??= new();

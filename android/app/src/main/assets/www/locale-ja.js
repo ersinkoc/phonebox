@@ -411,6 +411,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.showSeconds": "時計に秒を表示",
       "s.display.vibrate": "セッションが終了したり入力が必要になったときに振動する(S)",
       "s.display.finishToast": "セッションが終了したときにメッセージを表示する(S)",
+      "s.display.finishSound": "セッションが終了したときに音を鳴らす",
+      "s.display.finishSoundVolume": "音量 (携帯電話のメディア音量の %)",
       "s.display.volumeKeys": "電話のボリュームキーでページを切り替えます",
       "s.display.autoBrightness": "明るさは部屋に従う（光センサー）",
       "s.display.nightWhenDark": "部屋が暗いときは夜間スクリーンを表示します",
@@ -973,6 +975,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "読み込み中…"
     },
     "catalog": {
+      "Play sound when a session finishes": "\u30bb\u30c3\u30b7\u30e7\u30f3\u304c\u7d42\u4e86\u3057\u305f\u3068\u304d\u306b\u97f3\u3092\u518d\u751f\u3059\u308b",
+      "Custom sound (empty = default chime)": "\u30ab\u30b9\u30bf\u30e0\u30b5\u30a6\u30f3\u30c9\uff08\u7a7a = \u30c7\u30d5\u30a9\u30eb\u30c8\u306e\u30c1\u30e3\u30a4\u30e0\uff09",
       "Only this category (its category in Settings; empty = all)": "このカテゴリのみ（設定でのカテゴリ。空欄 = すべて）",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / カーソル / OpenCode / Antigravity セッション: 作業中、待機中、無効",
       "1": "1",
@@ -1688,6 +1692,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex プレイリスト（未選択 = すべて）"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "\u30b5\u30a6\u30f3\u30c9\u901a\u77e5\u30aa\u30d5 \u00b7 \u30bf\u30c3\u30d7\u3067\u30aa\u30f3",
+      "Sound alerts on \u00b7 Tap to mute": "\u30b5\u30a6\u30f3\u30c9\u901a\u77e5\u30aa\u30f3 \u00b7 \u30bf\u30c3\u30d7\u3067\u30df\u30e5\u30fc\u30c8",
+      "Session finish sound enabled": "\u30bb\u30c3\u30b7\u30e7\u30f3\u7d42\u4e86\u97f3\u304c\u6709\u52b9\u306b\u306a\u308a\u307e\u3057\u305f",
+      "Session finish sound muted": "\u30bb\u30c3\u30b7\u30e7\u30f3\u7d42\u4e86\u97f3\u304c\u30df\u30e5\u30fc\u30c8\u3055\u308c\u307e\u3057\u305f",
       "% load": "負荷の %",
       "5-hour": "5時間",
       "5-hour session": "5時間セッション",

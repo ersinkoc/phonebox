@@ -411,6 +411,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.showSeconds": "Показувати секунди на годиннику",
       "s.display.vibrate": "Вібрувати, коли сеанс завершується або потребує вводу",
       "s.display.finishToast": "Показувати повідомлення, коли сеанс завершується",
+      "s.display.finishSound": "Звук, коли сеанс завершується",
+      "s.display.finishSoundVolume": "Гучність звуку (% гучності мультимедійного файла телефону)",
       "s.display.volumeKeys": "Клавіша гучності телефону перемикає сторінки",
       "s.display.autoBrightness": "Яскравість відповідає кімнаті (датчик світла)",
       "s.display.nightWhenDark": "Показувати нічний екран, коли кімната темна",
@@ -973,6 +975,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Завантаження…"
     },
     "catalog": {
+      "Play sound when a session finishes": "\u0412\u0456\u0434\u0442\u0432\u043e\u0440\u0438\u0442\u0438 \u0437\u0432\u0443\u043a, \u043a\u043e\u043b\u0438 \u0441\u0435\u0430\u043d\u0441 \u0437\u0430\u043a\u0456\u043d\u0447\u0443\u0454\u0442\u044c\u0441\u044f",
+      "Custom sound (empty = default chime)": "\u0412\u043b\u0430\u0441\u043d\u0438\u0439 \u0437\u0432\u0443\u043a (\u043f\u043e\u0440\u043e\u0436\u043d\u044c\u043e = \u0441\u0442\u0430\u043d\u0434\u0430\u0440\u0442\u043d\u0438\u0439 \u0441\u0438\u0433\u043d\u0430\u043b)",
       "Only this category (its category in Settings; empty = all)": "Лише ця категорія (її категорія в налаштуваннях; порожньо = усі)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Сеанси Claude Code / Codex / Cursor / OpenCode / Antigravity: працює, очікує, неактивний.",
       "1": "1",
@@ -1688,6 +1692,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Плейлисти Plex (нічого не позначено = усі)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "\u0417\u0432\u0443\u043a\u043e\u0432\u0456 \u0441\u043f\u043e\u0432\u0456\u0449\u0435\u043d\u043d\u044f \u0432\u0438\u043c\u043a\u043d\u0435\u043d\u043e \u00b7 \u0422\u043e\u0440\u043a\u043d\u0456\u0442\u044c\u0441\u044f \u0434\u043b\u044f \u0432\u0432\u0456\u043c\u043a\u043d\u0435\u043d\u043d\u044f",
+      "Sound alerts on \u00b7 Tap to mute": "\u0417\u0432\u0443\u043a\u043e\u0432\u0456 \u0441\u043f\u043e\u0432\u0456\u0449\u0435\u043d\u043d\u044f \u0443\u0432\u0456\u043c\u043a\u043d\u0435\u043d\u043e \u00b7 \u0422\u043e\u0440\u043a\u043d\u0456\u0442\u044c\u0441\u044f \u0434\u043b\u044f \u0432\u0438\u043c\u043a\u043d\u0435\u043d\u043d\u044f \u0437\u0432\u0443\u043a\u0443",
+      "Session finish sound enabled": "\u0417\u0432\u0443\u043a \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043d\u044f \u0441\u0435\u0430\u043d\u0441\u0443 \u0443\u0432\u0456\u043c\u043a\u043d\u0435\u043d\u043e",
+      "Session finish sound muted": "\u0417\u0432\u0443\u043a \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043d\u044f \u0441\u0435\u0430\u043d\u0441\u0443 \u0432\u0438\u043c\u043a\u043d\u0435\u043d\u043e",
       "% load": "% завантаження",
       "5-hour": "5 годин",
       "5-hour session": "5- годинний сеанс",

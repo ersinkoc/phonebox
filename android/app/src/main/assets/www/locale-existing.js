@@ -455,6 +455,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Wird geladen…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Einen Sound abspielen, wenn eine Sitzung beendet wird",
+      "Custom sound (empty = default chime)": "Benutzerdefinierter Sound (leer = Standard-Gong)",
       "Only this category (its category in Settings; empty = all)": "Nur diese Kategorie (ihre Kategorie in den Einstellungen; leer = alle)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode / Antigravity-Sitzungen: arbeiten, warten, im Leerlauf.",
       "1": "1",
@@ -1158,6 +1160,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex-Playlists (keine angekreuzt = alle)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "Tonalarm aus \u00b7 Tippen zum Einschalten",
+      "Sound alerts on \u00b7 Tap to mute": "Tonalarm an \u00b7 Tippen zum Stummschalten",
+      "Session finish sound enabled": "Sound bei Sitzungsende aktiviert",
+      "Session finish sound muted": "Sound bei Sitzungsende stummgeschaltet",
       "% load": "% Last",
       "5-hour": "5-Stunden-Zeit",
       "5-hour session": "5-stündige Sitzung",
@@ -1887,6 +1893,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Chargement…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Jouer un son quand une session se termine",
+      "Custom sound (empty = default chime)": "Son personnalis\u00e9 (vide = carillon par d\u00e9faut)",
       "Only this category (its category in Settings; empty = all)": "Seulement cette catégorie (sa catégorie dans les réglages ; vide = toutes)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessions Claude Code / Codex / Cursor / OpenCode / Antigravity: en cours, en attente, inactif.",
       "1": "1",
@@ -2590,6 +2598,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlists Plex (aucune cochée = toutes)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "Alertes sonores d\u00e9sactiv\u00e9es \u00b7 Toucher pour activer",
+      "Sound alerts on \u00b7 Tap to mute": "Alertes sonores activ\u00e9es \u00b7 Toucher pour couper",
+      "Session finish sound enabled": "Son de fin de session activ\u00e9",
+      "Session finish sound muted": "Son de fin de session coup\u00e9",
       "% load": "% de charge",
       "5-hour": "5 heures",
       "5-hour session": "Session de 5 heures",
@@ -3319,6 +3331,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Cargando…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Reproducir un sonido cuando finaliza una sesi\u00f3n",
+      "Custom sound (empty = default chime)": "Sonido personalizado (vac\u00edo = timbre predeterminado)",
       "Only this category (its category in Settings; empty = all)": "Solo esta categoría (su categoría en Ajustes; vacío = todas)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sesiones de Claude Code / Codex / Cursor / OpenCode / Antigravity: en funcionamiento, esperando, inactivo.",
       "1": "1",
@@ -4022,6 +4036,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Listas de Plex (ninguna marcada = todas)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "Alertas de sonido desactivadas \u00b7 Toca para activar",
+      "Sound alerts on \u00b7 Tap to mute": "Alertas de sonido activadas \u00b7 Toca para silenciar",
+      "Session finish sound enabled": "Sonido de fin de sesi\u00f3n activado",
+      "Session finish sound muted": "Sonido de fin de sesi\u00f3n silenciado",
       "% load": "% de carga",
       "5-hour": "5 horas",
       "5-hour session": "Sesión de 5 horas",
@@ -4751,6 +4769,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Caricamento…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Riprodurre un suono quando una sessione termina",
+      "Custom sound (empty = default chime)": "Suono personalizzato (vuoto = cicalino predefinito)",
       "Only this category (its category in Settings; empty = all)": "Solo questa categoria (la sua categoria nelle Impostazioni; vuoto = tutte)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessioni Claude Code / Codex / Cursor / OpenCode / Antigravity: in esecuzione, in attesa, inattivi.",
       "1": "1",
@@ -5454,6 +5474,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlist Plex (nessuna selezionata = tutte)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "Avvisi sonori disattivati \u00b7 Tocca per attivare",
+      "Sound alerts on \u00b7 Tap to mute": "Avvisi sonori attivati \u00b7 Tocca per disattivare",
+      "Session finish sound enabled": "Suono fine sessione attivato",
+      "Session finish sound muted": "Suono fine sessione silenziato",
       "% load": "% di carico",
       "5-hour": "5 ore",
       "5-hour session": "Sessione di 5 ore",
@@ -6183,6 +6207,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "A carregar…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Reproduzir um som quando uma sess\u00e3o termina",
+      "Custom sound (empty = default chime)": "Som personalizado (vazio = toque padr\u00e3o)",
       "Only this category (its category in Settings; empty = all)": "Só esta categoria (a sua categoria nas Definições; vazio = todas)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessões Claude Code / Codex / Cursor / OpenCode / Antigravity: em funcionamento, esperando, ocioso.",
       "1": "1",
@@ -6886,6 +6912,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Listas do Plex (nenhuma marcada = todas)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "Alertas sonoros desativados \u00b7 Toque para ativar",
+      "Sound alerts on \u00b7 Tap to mute": "Alertas sonoros ativados \u00b7 Toque para silenciar",
+      "Session finish sound enabled": "Som de t\u00e9rmino de sess\u00e3o ativado",
+      "Session finish sound muted": "Som de t\u00e9rmino de sess\u00e3o silenciado",
       "% load": "% de carga",
       "5-hour": "5 horas",
       "5-hour session": "Sessão de 5 horas",
@@ -7210,6 +7240,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Carregando…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Tocar um som quando uma sess\u00e3o terminar",
+      "Custom sound (empty = default chime)": "Som personalizado (vazio = toque padr\u00e3o)",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -7654,6 +7686,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Laden…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Een geluid afspelen wanneer een sessie is be\u00ebindigd",
+      "Custom sound (empty = default chime)": "Aangepast geluid (leeg = standaard beltoon)",
       "Only this category (its category in Settings; empty = all)": "Alleen deze categorie (de categorie in Instellingen; leeg = alle)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode / Antigravity sessies: werken, wachten, inactief.",
       "1": "1",
@@ -8357,6 +8391,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex-afspeellijsten (geen aangevinkt = alle)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "Geluidswaarschuwingen uit \u00b7 Tik om in te schakelen",
+      "Sound alerts on \u00b7 Tap to mute": "Geluidswaarschuwingen aan \u00b7 Tik om te dempen",
+      "Session finish sound enabled": "Geluid bij sessie-einde ingeschakeld",
+      "Session finish sound muted": "Geluid bij sessie-einde gedempt",
       "% load": "% lading",
       "5-hour": "5 uur",
       "5-hour session": "5 uur sessie",
@@ -9086,6 +9124,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Wczytywanie…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Odtwarzanie d\u017awi\u0119ku po zako\u0144czeniu sesji",
+      "Custom sound (empty = default chime)": "Niestandardowy d\u017awi\u0119k (puste = domy\u015blny dzwonek)",
       "Only this category (its category in Settings; empty = all)": "Tylko ta kategoria (jej kategoria w Ustawieniach; puste = wszystkie)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sesje Claude Code / Codex / Cursor / OpenCode / Antigravity: praca, oczekiwanie, bezczynność.",
       "1": "1",
@@ -9789,6 +9829,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlisty Plex (żadna zaznaczona = wszystkie)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "Alerty d\u017awi\u0119kowe wy\u0142\u0105czone \u00b7 Dotknij, aby w\u0142\u0105czy\u0107",
+      "Sound alerts on \u00b7 Tap to mute": "Alerty d\u017awi\u0119kowe w\u0142\u0105czone \u00b7 Dotknij, aby wyciszy\u0107",
+      "Session finish sound enabled": "D\u017awi\u0119k zako\u0144czenia sesji w\u0142\u0105czony",
+      "Session finish sound muted": "D\u017awi\u0119k zako\u0144czenia sesji wyciszony",
       "% load": "% obciążenia",
       "5-hour": "5-godzinny",
       "5-hour session": "5-godzinna sesja",
@@ -10518,6 +10562,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Загрузка…"
     },
     "catalog": {
+      "Play sound when a session finishes": "\u041f\u0440\u043e\u0438\u0433\u0440\u044b\u0432\u0430\u0442\u044c \u0437\u0432\u0443\u043a \u043f\u0440\u0438 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u0438 \u0441\u0435\u0441\u0441\u0438\u0438",
+      "Custom sound (empty = default chime)": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c\u0441\u043a\u0438\u0439 \u0437\u0432\u0443\u043a (\u043f\u0443\u0441\u0442\u043e = \u0441\u0438\u0433\u043d\u0430\u043b \u043f\u043e \u0443\u043c\u043e\u043b\u0447\u0430\u043d\u0438\u044e)",
       "Only this category (its category in Settings; empty = all)": "Только эта категория (её категория в настройках; пусто = все)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Сеансы Claude Code / Codex / Cursor / OpenCode / Antigravity: работающие, ожидающие, неактивные.",
       "1": "1",
@@ -11221,6 +11267,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Плейлисты Plex (ничего не отмечено = все)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "\u0417\u0432\u0443\u043a\u043e\u0432\u044b\u0435 \u043e\u043f\u043e\u0432\u0435\u0449\u0435\u043d\u0438\u044f \u0432\u044b\u043a\u043b \u00b7 \u041a\u043e\u0441\u043d\u0438\u0442\u0435\u0441\u044c \u0434\u043b\u044f \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "Sound alerts on \u00b7 Tap to mute": "\u0417\u0432\u0443\u043a\u043e\u0432\u044b\u0435 \u043e\u043f\u043e\u0432\u0435\u0449\u0435\u043d\u0438\u044f \u0432\u043a\u043b \u00b7 \u041a\u043e\u0441\u043d\u0438\u0442\u0435\u0441\u044c \u0434\u043b\u044f \u0437\u0430\u0433\u043b\u0443\u0448\u0435\u043d\u0438\u044f",
+      "Session finish sound enabled": "\u0417\u0432\u0443\u043a \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0441\u0435\u0441\u0441\u0438\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d",
+      "Session finish sound muted": "\u0417\u0432\u0443\u043a \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0441\u0435\u0441\u0441\u0438\u0438 \u0437\u0430\u0433\u043b\u0443\u0448\u0435\u043d",
       "% load": "% нагрузки",
       "5-hour": "5 часов",
       "5-hour session": "5-часовая сессия",
@@ -11545,6 +11595,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Φόρτωση…"
     },
     "catalog": {
+      "Play sound when a session finishes": "\u0391\u03bd\u03b1\u03c0\u03b1\u03c1\u03b1\u03b3\u03c9\u03b3\u03ae \u03ae\u03c7\u03bf\u03c5 \u03cc\u03c4\u03b1\u03bd \u03c4\u03b5\u03bb\u03b5\u03b9\u03ce\u03bd\u03b5\u03b9 \u03bc\u03b9\u03b1 \u03c3\u03c5\u03bd\u03b5\u03b4\u03c1\u03af\u03b1",
+      "Custom sound (empty = default chime)": "\u03a0\u03c1\u03bf\u03c3\u03b1\u03c1\u03bc\u03bf\u03c3\u03bc\u03ad\u03bd\u03bf\u03c2 \u03ae\u03c7\u03bf\u03c2 (\u03ba\u03b5\u03bd\u03cc = \u03c0\u03c1\u03bf\u03b5\u03c0\u03b9\u03bb\u03b5\u03b3\u03bc\u03ad\u03bd\u03bf\u03c2 \u03ae\u03c7\u03bf\u03c2)",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -11562,6 +11614,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Λίστες Plex (καμία επιλεγμένη = όλες)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "\u0397\u03c7\u03b7\u03c4\u03b9\u03ba\u03ad\u03c2 \u03b5\u03b9\u03b4\u03bf\u03c0\u03bf\u03b9\u03ae\u03c3\u03b5\u03b9\u03c2 \u03b1\u03bd\u03b5\u03bd\u03b5\u03c1\u03b3\u03ad\u03c2 \u00b7 \u03a0\u03b1\u03c4\u03ae\u03c3\u03c4\u03b5 \u03b3\u03b9\u03b1 \u03b5\u03bd\u03b5\u03c1\u03b3\u03bf\u03c0\u03bf\u03af\u03b7\u03c3\u03b7",
+      "Sound alerts on \u00b7 Tap to mute": "\u0397\u03c7\u03b7\u03c4\u03b9\u03ba\u03ad\u03c2 \u03b5\u03b9\u03b4\u03bf\u03c0\u03bf\u03b9\u03ae\u03c3\u03b5\u03b9\u03c2 \u03b5\u03bd\u03b5\u03c1\u03b3\u03ad\u03c2 \u00b7 \u03a0\u03b1\u03c4\u03ae\u03c3\u03c4\u03b5 \u03b3\u03b9\u03b1 \u03c3\u03af\u03b3\u03b1\u03c3\u03b7",
+      "Session finish sound enabled": "\u0389\u03c7\u03bf\u03c2 \u03bf\u03bb\u03bf\u03ba\u03bb\u03ae\u03c1\u03c9\u03c3\u03b7\u03c2 \u03c3\u03c5\u03bd\u03b5\u03b4\u03c1\u03af\u03b1\u03c2 \u03b5\u03bd\u03b5\u03c1\u03b3\u03cc\u03c2",
+      "Session finish sound muted": "\u0389\u03c7\u03bf\u03c2 \u03bf\u03bb\u03bf\u03ba\u03bb\u03ae\u03c1\u03c9\u03c3\u03b7\u03c2 \u03c3\u03c5\u03bd\u03b5\u03b4\u03c1\u03af\u03b1\u03c2 \u03c3\u03b5 \u03c3\u03af\u03b3\u03b1\u03c3\u03b7",
       "% load": "% φορτίου",
       "5-hour": "5-ωρη",
       "5-hour session": "5ωρη συνεδρία",
@@ -11886,6 +11942,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Đang tải…"
     },
     "catalog": {
+      "Play sound when a session finishes": "Ph\u00e1t \u00e2m thanh khi m\u1ed9t phi\u00ean k\u1ebft th\u00fac",
+      "Custom sound (empty = default chime)": "\u00c2m thanh t\u00f9y ch\u1ec9nh (tr\u1ed1ng = chu\u00f4ng m\u1eb7c \u0111\u1ecbnh)",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -11903,6 +11961,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Danh sách phát Plex (không chọn = tất cả)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "C\u1ea3nh b\u00e1o \u00e2m thanh t\u1eaft \u00b7 Ch\u1ea1m \u0111\u1ec3 b\u1eadt",
+      "Sound alerts on \u00b7 Tap to mute": "C\u1ea3nh b\u00e1o \u00e2m thanh b\u1eadt \u00b7 Ch\u1ea1m \u0111\u1ec3 t\u1eaft ti\u1ebfng",
+      "Session finish sound enabled": "\u0110\u00e3 b\u1eadt \u00e2m thanh k\u1ebft th\u00fac phi\u00ean",
+      "Session finish sound muted": "\u0110\u00e3 t\u1eaft ti\u1ebfng \u00e2m thanh k\u1ebft th\u00fac phi\u00ean",
       "% load": "% tải",
       "5-hour": "5 giờ",
       "5-hour session": "Giai đoạn 5 giờ",
@@ -12632,6 +12694,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "正在加载…"
     },
     "catalog": {
+      "Play sound when a session finishes": "\u5f53\u4f1a\u8bdd\u7ed3\u675f\u65f6\u64ad\u653e\u58f0\u97f3",
+      "Custom sound (empty = default chime)": "\u81ea\u5b9a\u4e49\u58f0\u97f3\uff08\u7559\u7a7a = \u9ed8\u8ba4\u63d0\u793a\u97f3\uff09",
       "Only this category (its category in Settings; empty = all)": "仅此分类（设置中的分类；留空 = 全部）",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex 光标 OpenCode / Antigravity 会话:工作,等待,闲置。",
       "1": "1",
@@ -13335,6 +13399,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 播放列表（未勾选 = 全部）"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "\u58f0\u97f3\u63d0\u9192\u5df2\u5173\u95ed \u00b7 \u8f7b\u70b9\u4ee5\u5f00\u542f",
+      "Sound alerts on \u00b7 Tap to mute": "\u58f0\u97f3\u63d0\u9192\u5df2\u5f00\u542f \u00b7 \u8f7b\u70b9\u4ee5\u9759\u97f3",
+      "Session finish sound enabled": "\u4f1a\u8bdd\u7ed3\u675f\u63d0\u793a\u97f3\u5df2\u542f\u7528",
+      "Session finish sound muted": "\u4f1a\u8bdd\u7ed3\u675f\u63d0\u793a\u97f3\u5df2\u9759\u97f3",
       "% load": "负载%",
       "5-hour": "5小时",
       "5-hour session": "5小时会议",

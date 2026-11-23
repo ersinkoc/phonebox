@@ -411,6 +411,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.showSeconds": "시계에 초 보이기",
       "s.display.vibrate": "세션이 끝나거나 입력이 필요할 때 진동",
       "s.display.finishToast": "세션이 끝날 때 메시지 보이기",
+      "s.display.finishSound": "세션이 끝날 때 소리 재생",
+      "s.display.finishSoundVolume": "사운드 볼륨(휴대폰 미디어 볼륨의 %)",
       "s.display.volumeKeys": "휴대폰의 볼륨 키로 페이지 전환",
       "s.display.autoBrightness": "밝기가 방을 따라갑니다(광센서)",
       "s.display.nightWhenDark": "방이 어두울 때마다 야간 화면 보기",
@@ -973,6 +975,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "불러오는 중…"
     },
     "catalog": {
+      "Play sound when a session finishes": "\uc138\uc158\uc774 \ub05d\ub0a0 \ub54c \uc18c\ub9ac \uc7ac\uc0dd\ud558\uae30",
+      "Custom sound (empty = default chime)": "\uc0ac\uc6a9\uc790 \uc815\uc758 \uc0ac\uc6b4\ub4dc (\ube44\uc5b4 \uc788\uc74c = \uae30\ubcf8 \ucc28\uc784\ubca8)",
       "Only this category (its category in Settings; empty = all)": "이 분류만 (설정의 분류, 비우면 전체)",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode / Antigravity 세션: 작업, 대기, 유휴.",
       "1": "1",
@@ -1688,6 +1692,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 재생목록 (선택 안 함 = 전체)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "\uc18c\ub9ac \uc54c\ub9bc \uaebc\uc9d0 \u00b7 \ud0ed\ud558\uc5ec \ucf1c\uae30",
+      "Sound alerts on \u00b7 Tap to mute": "\uc18c\ub9ac \uc54c\ub9bc \ucf1c\uc9d0 \u00b7 \ud0ed\ud558\uc5ec \uc74c\uc18c\uac70",
+      "Session finish sound enabled": "\uc138\uc158 \uc644\ub8cc \uc18c\ub9ac \ud65c\uc131\ud654\ub428",
+      "Session finish sound muted": "\uc138\uc158 \uc644\ub8cc \uc18c\ub9ac \uc74c\uc18c\uac70\ub428",
       "% load": "부하%",
       "5-hour": "5시간",
       "5-hour session": "5시간 세션",

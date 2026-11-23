@@ -411,6 +411,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.showSeconds": "顯示時鐘上的秒數",
       "s.display.vibrate": "會話結束或需要輸入時振動",
       "s.display.finishToast": "會話結束時顯示消息",
+      "s.display.finishSound": "會話結束時播放提示音",
+      "s.display.finishSoundVolume": "音量 (占手機媒體音量的百分比)",
       "s.display.volumeKeys": "電話的音量鍵可以切換頁面",
       "s.display.autoBrightness": "亮度跟著房間的變化 ( 光線感應器 )",
       "s.display.nightWhenDark": "當房間黑暗時顯示夜幕屏幕",
@@ -973,6 +975,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "正在載入…"
     },
     "catalog": {
+      "Play sound when a session finishes": "\u6703\u8a71\u7d50\u675f\u6642\u64ad\u653e\u8072\u97f3",
+      "Custom sound (empty = default chime)": "\u81ea\u8a02\u8072\u97f3\uff08\u7559\u7a7a = \u9810\u8a2d\u63d0\u793a\u97f3\uff09",
       "Only this category (its category in Settings; empty = all)": "僅此分類（設定中的分類；留空 = 全部）",
       "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex 光標 OpenCode / Antigravity 會話 ： 工作 ， 等待 ， 空閒 。",
       "1": "1",
@@ -1688,6 +1692,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 播放清單（未勾選 = 全部）"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "\u8072\u97f3\u63d0\u9192\u5df2\u95dc\u9589 \u00b7 \u8f15\u89f8\u4ee5\u958b\u555f",
+      "Sound alerts on \u00b7 Tap to mute": "\u8072\u97f3\u63d0\u9192\u5df2\u958b\u555f \u00b7 \u8f15\u89f8\u4ee5\u975c\u97f3",
+      "Session finish sound enabled": "\u6703\u8a71\u7d50\u675f\u63d0\u793a\u97f3\u5df2\u555f\u7528",
+      "Session finish sound muted": "\u6703\u8a71\u7d50\u675f\u63d0\u793a\u97f3\u5df2\u975c\u97f3",
       "% load": "負載",
       "5-hour": "五小時",
       "5-hour session": "五小時的課程",

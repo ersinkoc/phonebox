@@ -105,6 +105,18 @@ public class ConfigTests
     }
 
     [Fact]
+    public void DisplayFinishSoundVolumeDefaultsAndRange()
+    {
+        var defaults = Load("{}").Display;
+        Assert.False(defaults.FinishSound);
+        Assert.Equal(70, defaults.FinishSoundVolume);
+        Assert.Equal(100, Load("""{ "display": { "finishSoundVolume": 999 } }""").Display.FinishSoundVolume);
+        Assert.Equal(10, Load("""{ "display": { "finishSoundVolume": -5 } }""").Display.FinishSoundVolume);
+        Assert.Equal(10, Load("""{ "display": { "finishSoundVolume": 0 } }""").Display.FinishSoundVolume);
+        Assert.Equal(50, Load("""{ "display": { "finishSoundVolume": 50 } }""").Display.FinishSoundVolume);
+    }
+
+    [Fact]
     public void TemplatesExpandIntoWidgets()
     {
         var c = Load("""{ "pages": [ { "template": "music" }, { "template": "music" } ] }""");

@@ -76,7 +76,7 @@ export const FALLBACK_PAGES = [{
 export const DEFAULT_CFG = {
   weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
-  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, pageBar: 'dots', pageBarSide: 'bottom' },
+  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, pageBar: 'dots', pageBarSide: 'bottom' },
   opencode: { alwaysCountdownSec: 10 },
   pages: FALLBACK_PAGES,
   shortcuts: [],
@@ -957,6 +957,7 @@ export let workLoaded = false;
 
 /** Vibrates and shows a toast when a session finishes or starts waiting for input; the finish toast can be turned off. */
 export function notifyTransitions(sessions) {
+  let finished = 0;
   for (const s of sessions) {
     const before = prevStatus.get(s.id);
     if (workLoaded && before && before !== s.status) {
@@ -966,10 +967,12 @@ export function notifyTransitions(sessions) {
       } else if (s.status === 'idle' && (before === 'busy' || before === 'shell')) {
         buzz('0,70,110,70');
         if (cfg.display?.finishToast !== false) toast(t('panel.sessionFinished', { name: s.name }), 'ok');
+        finished++;
       }
     }
     prevStatus.set(s.id, s.status);
   }
+  if (finished > 0 && cfg.display?.finishSound) chime(cfg.display.finishSoundVolume ?? 70, true);
   workLoaded = true;
 }
 

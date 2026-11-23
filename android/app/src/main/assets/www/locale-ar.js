@@ -411,6 +411,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.showSeconds": "أظهر الثواني على الساعة",
       "s.display.vibrate": "اهتز عندما تنتهي الجلسة أو تحتاج إلى مدخلات",
       "s.display.finishToast": "أظهر رسالة عند انتهاء الجلسة",
+      "s.display.finishSound": "صوت عند انتهاء الجلسة",
+      "s.display.finishSoundVolume": "حجم الصوت (% من حجم الهاتف)",
       "s.display.volumeKeys": "مفاتيح الصوت في الهاتف تنقل الصفحات",
       "s.display.autoBrightness": "السطوع يتبع الغرفة (جهاز استشعار الضوء)",
       "s.display.nightWhenDark": "عرض الشاشة الليلية عندما تكون الغرفة مظلمة",
@@ -973,6 +975,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "جارٍ التحميل…"
     },
     "catalog": {
+      "Play sound when a session finishes": "\u062a\u0634\u063a\u064a\u0644 \u0635\u0648\u062a \u0639\u0646\u062f \u0627\u0646\u062a\u0647\u0627\u0621 \u0627\u0644\u062c\u0644\u0633\u0629",
+      "Custom sound (empty = default chime)": "\u0635\u0648\u062a \u0645\u062e\u0635\u0635 (\u0641\u0627\u0631\u063a = \u0627\u0644\u0646\u063a\u0645\u0629 \u0627\u0644\u0627\u0641\u062a\u0631\u0627\u0636\u064a\u0629)",
       "and": "و",
       "never": "أبدًا",
       "default": "افتراضي",
@@ -1723,6 +1727,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "قوائم تشغيل Plex (دون تحديد = الكل)"
     },
     "panel": {
+      "Sound alerts off \u00b7 Tap to turn on": "\u0627\u0644\u062a\u0646\u0628\u064a\u0647\u0627\u062a \u0627\u0644\u0635\u0648\u062a\u064a\u0629 \u0645\u062a\u0648\u0642\u0641\u0629 \u00b7 \u0627\u0646\u0642\u0631 \u0644\u0644\u062a\u0634\u063a\u064a\u0644",
+      "Sound alerts on \u00b7 Tap to mute": "\u0627\u0644\u062a\u0646\u0628\u064a\u0647\u0627\u062a \u0627\u0644\u0635\u0648\u062a\u064a\u0629 \u0645\u0641\u0639\u0644\u0629 \u00b7 \u0627\u0646\u0642\u0631 \u0644\u0644\u0643\u062a\u0645",
+      "Session finish sound enabled": "\u062a\u0645 \u062a\u0641\u0639\u064a\u0644 \u0635\u0648\u062a \u0627\u0646\u062a\u0647\u0627\u0621 \u0627\u0644\u062c\u0644\u0633\u0629",
+      "Session finish sound muted": "\u062a\u0645 \u0643\u062a\u0645 \u0635\u0648\u062a \u0627\u0646\u062a\u0647\u0627\u0621 \u0627\u0644\u062c\u0644\u0633\u0629",
       "% load": "النسبة المئوية للحمولة",
       "5-hour": "5 ساعات",
       "5-hour session": "جلسة مدتها 5 ساعات",
