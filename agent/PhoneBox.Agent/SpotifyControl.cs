@@ -263,7 +263,9 @@ public sealed class SpotifyControl : IDisposable
                 // Inside the playlist or album playing, so the tracks after it keep coming from there (#441). A track that
                 // isn't part of it (one queued by hand) is refused by Spotify, and then plays on its own as before.
                 var played = false;
-                if (_snapshot?.Context is { } context && id.StartsWith("spotify:track:"))
+                // the context of the same snapshot the queue was checked against, not of one a refresh put in its place
+                var entry = _snapshot;
+                if (ReferenceEquals(entry?.Value, state) && entry.Context is { } context && id.StartsWith("spotify:track:"))
                 {
                     try
                     {
