@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Setup**
+- macOS: each release also has a disk image, `PhoneBox-<version>-<rid>.dmg`, with PhoneBox.app (no window; the settings
+  are at http://127.0.0.1:8765). It is signed like the zip's agent but not notarized, so macOS asks once in System
+  Settings › Privacy & Security › Open Anyway. The app updates itself from the next release's disk image: the image
+  is checked against the release's checksums and must be signed by the same identity, and the old app is kept until
+  the new one is in place. `scripts/build.sh` builds a .dmg on a Mac or a .tar.gz on Linux from a checkout (#436,
+  #437, [Vasilispapg](https://github.com/Vasilispapg)).
+
 ## 0.9.29 — 2026-11-23
 
 A shared mouse (Input Leaf, Deskflow) works in the panel, a sideways swipe on a list turns the page, a large Discord
