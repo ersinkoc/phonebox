@@ -486,6 +486,12 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
         await Adb(adb, ["-s", device, "shell", "am", "start", "-n", PanelActivity], ct);
         log.LogInformation("{Device}: {Why}, panel opened", device, why);
+        await Adb(adb, $"-s {device} shell input keyevent KEYCODE_WAKEUP", ct);
+        var standby = StandbyOn(device);
+        if (standby)
+            await Adb(adb, $"-s {device} shell wm dismiss-keyguard", ct);
+        // the app only dismisses the keyguard after a wake it can tell the agent started
+        await Adb(adb, $"-s {device} shell am start -n {PanelActivity}{(standby ? " --ez agentWake true" : "")}", ct);
     }
 
     /// <summary>

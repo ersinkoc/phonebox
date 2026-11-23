@@ -122,6 +122,8 @@ class MainActivity : Activity(), SensorEventListener {
     @Volatile private var standbyFromAgent = false  // have we read display.standby from the agent yet?
     @Volatile private var standbyLostSince = 0L     // elapsedRealtime of the first absence; 0 while alive
     @Volatile private var standbyDestroyed = false  // onDestroy ran: late callbacks must not reschedule or probe
+    @Volatile private var standbyAgentWakeAt = 0L   // elapsedRealtime of the last panel start the agent marked as its standby wake; 0 = none
+    private val standbyAgentWakeWindowMs = 15_000L  // how long such a mark lets this app dismiss the keyguard
     private val standbyHealthPollMs = 2_000L        // while the computer answers
     private val standbyPollMs = 15_000L             // once it went quiet, until it comes back
     private val standbySilenceMs = 12_000L          // this long with no answer at all => not reachable
@@ -214,15 +216,11 @@ class MainActivity : Activity(), SensorEventListener {
         val screen = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (standbyMode == "off") return
-                // The display just lit - wake key, touch, charger, whatever. A swipe keyguard left standing
-                // would hide a panel that already considers the computer up, and on at least one ROM the
-                // activity is not paused while the screen sleeps, so this broadcast, not onResume, is the
-                // reliable moment. Take the lock screen and look at the criterion right now.
-                try {
-                    (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)?.requestDismissKeyguard(this@MainActivity, null)
-                } catch (e: Exception) {
-                    Unit
-                }
+                // The display just lit - wake key, touch, charger, whatever. On at least one ROM the activity
+                // is not paused while the screen sleeps, so this broadcast, not onResume, is the moment to
+                // look at the criterion. The keyguard is only touched inside a wake the agent started
+                // (standbyDismissKeyguard checks); a power button press with the computer gone leaves it alone.
+                standbyDismissKeyguard()
                 standbyHandler.removeCallbacks(standbyTick)
                 standbyHandler.post(standbyTick)
             }
@@ -357,6 +355,33 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    /** The agent starts the panel with agentWake=true right after the wake key and wm dismiss-keyguard it sends
+     *  when the computer is back (AdbReverse.LightPanel; standby on, named phone only). That mark is the only
+     *  thing that lets this app touch the keyguard: no mark, no dismissal. */
+    private fun standbyNoteAgentWake(i: Intent?) {
+        if (i?.getBooleanExtra("agentWake", false) != true) return
+        standbyAgentWakeAt = SystemClock.elapsedRealtime()
+        standbyDismissKeyguard()   // the display is usually lit already, so no screen-on edge will follow
+    }
+
+    private fun standbyMayDismissKeyguard(): Boolean {
+        val at = standbyAgentWakeAt
+        return standbyMode != "off" && standbyHostAlive && at != 0L &&
+            SystemClock.elapsedRealtime() - at < standbyAgentWakeWindowMs
+    }
+
+    /** Every keyguard dismissal in this file goes through here. The mark is not used up on purpose: a dismissal
+     *  while the display is still off does not take, so the next screen-on or resume inside the window may try
+     *  again. A PIN or pattern lock is never dismissed by this - Android still asks. */
+    private fun standbyDismissKeyguard() {
+        if (!standbyMayDismissKeyguard()) return
+        try {
+            (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)?.requestDismissKeyguard(this, null)
+        } catch (e: Exception) {
+            Log.w("PhoneBox", "keyguard dismiss failed: " + e)
+        }
+    }
+
     /** Put the panel back in front and take whatever swipe keyguard sits on top of it; harmless when it is
      *  already showing. The prompt display wake belongs to the agent (KEYCODE_WAKEUP when the reverse rule is
      *  re-established after the computer returns) and to the plug-in itself. Lighting the display from here
@@ -378,12 +403,8 @@ class MainActivity : Activity(), SensorEventListener {
         startActivity(Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         // A swipe-to-unlock keyguard (the default on several ROMs, isSecure=false) would otherwise keep the woken
-        // panel behind a lock screen nobody is standing there to swipe. DISABLE_KEYGUARD is a normal permission.
-        try {
-            (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)?.requestDismissKeyguard(this, null)
-        } catch (e: Exception) {
-            Log.w("PhoneBox", "keyguard dismiss failed: " + e)
-        }
+        // panel behind a lock screen nobody is standing there to swipe - but only after a wake the agent started.
+        standbyDismissKeyguard()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -456,12 +477,14 @@ class MainActivity : Activity(), SensorEventListener {
 
         web.loadUrl("https://$ASSET_HOST/assets/www/index.html")
         hideSystemUi()
+        if (savedInstanceState == null) standbyNoteAgentWake(intent)   // not again after a configuration change
         handlePairingLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        standbyNoteAgentWake(intent)
         handlePairingLink(intent)
     }
 
@@ -628,16 +651,9 @@ class MainActivity : Activity(), SensorEventListener {
         resumed = true
         standbyHandler.removeCallbacks(standbyTick)
         standbyHandler.post(standbyTick)   // the panel is in front again: look now
-        // A swipe keyguard can still be sitting in front of us when the display lights for a reason other
-        // than our own recovery: the panel may have re-declared the computer alive from inside a doze
-        // maintenance window (measured 11-13 14:17:30), so a wake key that arrives later brings up a lock
-        // screen no hostAlive transition would ever dismiss. Asking on every resume is free - the call is
-        // a no-op while there is no keyguard, and an app cannot dismiss a secure (PIN) one anyway.
-        if (standbyMode != "off") try {
-            (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)?.requestDismissKeyguard(this, null)
-        } catch (e: Exception) {
-            Unit
-        }
+        // The agent's wake can reach us here before the lock screen is gone; dismiss it, but only inside a
+        // wake the agent started (standbyDismissKeyguard checks), never on a plain resume.
+        standbyDismissKeyguard()
         web.onResume()
         web.evaluateJavascript("window.onAppPause && window.onAppPause(false)", null) // the panel catches up at once
         stream.start()
