@@ -23,7 +23,7 @@ public sealed class SpotifyControlTests
             File.WriteAllText(path, JsonSerializer.Serialize(new { controls = new { spotifyClientId = "test-client", spotifyToken = manual ? "manual-token" : null } }));
             Config = new ConfigStore(path);
         }
-        public SpotifyControl Create(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler) => new(Config,new AgentEndpoint(19885),new HttpClient(new Handler(handler)));
+        public SpotifyControl Create(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler) => new(Config,new AgentEndpoint(19885),new HttpClient(new Handler(handler))) { PlayCheckDelay = TimeSpan.Zero };
         public void Dispose() => Directory.Delete(DirectoryPath, true);
     }
     private static HttpResponseMessage Json(string json, HttpStatusCode status = HttpStatusCode.OK) => new(status) {Content=new StringContent(json,Encoding.UTF8,"application/json")};
@@ -134,35 +134,45 @@ public sealed class SpotifyControlTests
     }
 
     [Theory]
-    [InlineData("spotify:playlist:37i9dQZF1DXcBWIGoYBM5M", 204, true)]  // inside the playlist: the rest of it follows
-    [InlineData("spotify:album:4aawyAB9vmqN3uQ7FjRGTy", 404, false)]    // not part of it (queued by hand): on its own
-    [InlineData("spotify:artist:0OdUWJ0sBjDrqHygGUXeCF", 204, false)]   // no offset in an artist context: on its own
-    [InlineData(null, 204, false)]                                      // nothing playing from a context
-    public async Task A_queued_track_plays_inside_the_playlist_or_album_playing(string? context, int contextAnswer, bool inContext)
+    [InlineData("spotify:playlist:37i9dQZF1DXcBWIGoYBM5M", 204, true, true)]   // inside the playlist: the rest of it follows
+    [InlineData("spotify:playlist:37i9dQZF1DXcBWIGoYBM5M", 204, false, false)] // accepted, but nothing plays (a suggested or
+                                                                               // hand-queued track, #441): on its own
+    [InlineData("spotify:album:4aawyAB9vmqN3uQ7FjRGTy", 404, false, false)]    // refused (queued by hand): on its own
+    [InlineData("spotify:artist:0OdUWJ0sBjDrqHygGUXeCF", 204, true, false)]    // no offset in an artist context: on its own
+    [InlineData(null, 204, true, false)]                                       // nothing playing from a context
+    public async Task A_queued_track_plays_inside_the_playlist_or_album_playing(string? context, int contextAnswer, bool contextPlays, bool inContext)
     {
+        const string queued = "spotify:track:abcdefghijklmnopqrstuv";
         using var fixture = new Fixture(manual: true); var plays = new List<string>();
+        var current = "spotify:track:1234567890123456789012";
         using var spotify = fixture.Create(async r =>
         {
             if (r.Method == HttpMethod.Put)
             {
                 var body = await r.Content!.ReadAsStringAsync();
                 plays.Add(body);
-                return new HttpResponseMessage(body.Contains("context_uri") ? (HttpStatusCode)contextAnswer : HttpStatusCode.NoContent);
+                var viaContext = body.Contains("context_uri");
+                if (viaContext && contextAnswer != 204) return new HttpResponseMessage((HttpStatusCode)contextAnswer);
+                // Spotify answers 204 to a context offset it can't find, and then plays nothing
+                current = !viaContext || contextPlays ? queued : "";
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
             return Json(r.RequestUri!.AbsolutePath.EndsWith("queue")
-                ? """{"queue":[{"uri":"spotify:track:abcdefghijklmnopqrstuv","name":"Queued","artists":[]}]}"""
-                : "{\"item\":{\"uri\":\"spotify:track:1234567890123456789012\",\"name\":\"Current\",\"artists\":[]},\"is_playing\":true"
+                ? "{\"queue\":[{\"uri\":\"" + queued + "\",\"name\":\"Queued\",\"artists\":[]}]}"
+                : current.Length == 0 ? "{\"item\":null,\"is_playing\":false}"
+                : "{\"item\":{\"uri\":\"" + current + "\",\"name\":\"Current\",\"artists\":[]},\"is_playing\":true"
                   + (context is null ? "" : ",\"context\":{\"type\":\"x\",\"uri\":\"" + context + "\"}") + "}");
         });
-        Assert.True((await spotify.Act("play-queued", "spotify:track:abcdefghijklmnopqrstuv", default)).Ok);
+        Assert.True((await spotify.Act("play-queued", queued, default)).Ok);
         var last = JsonNode.Parse(plays[^1])!;
         if (inContext)
         {
             Assert.Single(plays);
             Assert.Equal(context, (string?)last["context_uri"]);
-            Assert.Equal("spotify:track:abcdefghijklmnopqrstuv", (string?)last["offset"]!["uri"]);
+            Assert.Equal(queued, (string?)last["offset"]!["uri"]);
         }
-        else Assert.Equal("spotify:track:abcdefghijklmnopqrstuv", (string?)last["uris"]![0]);
+        else Assert.Equal(queued, (string?)last["uris"]![0]);
+        Assert.Equal(queued, current);
         // the context stays on the computer
         Assert.DoesNotContain("context", (await spotify.Snapshot(default)).ToJsonString());
     }

@@ -261,7 +261,8 @@ public sealed class SpotifyControl : IDisposable
                 var state = await Snapshot(ct);
                 if (id is null || !PlaybackUri(id) || (state["queue"] as JsonArray)?.Any(t => t?["id"]?.GetValue<string>() == id) != true) return new(false, "That queue item is no longer available");
                 // Inside the playlist or album playing, so the tracks after it keep coming from there (#441). A track that
-                // isn't part of it (one queued by hand) is refused by Spotify, and then plays on its own as before.
+                // isn't part of it (queued by hand, or one Spotify suggests after the playlist) may be refused, or accepted
+                // without anything playing: either way it then plays on its own as before.
                 var played = false;
                 // the context of the same snapshot the queue was checked against, not of one a refresh put in its place
                 var entry = _snapshot;
@@ -271,7 +272,7 @@ public sealed class SpotifyControl : IDisposable
                     {
                         await Request(HttpMethod.Put, "me/player/play" + DeviceQuery(),
                             new JsonObject { ["context_uri"] = context, ["offset"] = new JsonObject { ["uri"] = id } }, ct);
-                        played = true;
+                        played = await Playing(id, ct);
                     }
                     catch (IOException ex) when (ex.Message.StartsWith("Spotify returned HTTP", StringComparison.Ordinal)) { }
                 }
@@ -294,6 +295,22 @@ public sealed class SpotifyControl : IDisposable
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is IOException or HttpRequestException or JsonException or OperationCanceledException)
         { return new(false, ex is IOException ? ex.Message : "Spotify is unavailable"); }
+    }
+    /// <summary>How long to wait between looks at what plays after a play request.</summary>
+    internal TimeSpan PlayCheckDelay { get; init; } = TimeSpan.FromMilliseconds(300);
+
+    /// <summary>Whether the track started: Spotify answers 204 to a context offset it can't find and then plays nothing
+    /// (#441), so the answer alone doesn't say. A few short looks, about a second in all.</summary>
+    private async Task<bool> Playing(string id, CancellationToken ct)
+    {
+        for (var look = 0; look < 4; look++)
+        {
+            await Task.Delay(PlayCheckDelay, ct);
+            var now = await Request(HttpMethod.Get, "me/player/currently-playing?additional_types=track,episode", null, ct);
+            // a track relinked to another market's copy names the one asked for in linked_from
+            if (now?["item"] is { } item && (item["uri"]?.GetValue<string>() == id || item["linked_from"]?["uri"]?.GetValue<string>() == id)) return true;
+        }
+        return false;
     }
     private string DeviceQuery() => _config.Get().Controls.SpotifyDevice is { Length: > 0 } id ? "?device_id=" + Uri.EscapeDataString(id) : "";
     public void Dispose() { _http.Dispose(); _tokenGate.Dispose(); _readGate.Dispose(); }
