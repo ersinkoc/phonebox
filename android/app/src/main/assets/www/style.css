@@ -636,7 +636,8 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .ps-btn.danger { background: rgba(239, 68, 68, .18); color: #fca5a5; }
 .ps-btn.armed { background: var(--err); color: #fff; }
 .ps-btn:disabled { opacity: .35; }
-.ps-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; touch-action: pan-y; }
+/* lists scroll up and down; a sideways swipe on them goes on to the pager and turns the page (#445) */
+.ps-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; touch-action: pan-x pan-y; }
 .pi { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 11px; background: rgba(255, 255, 255, .04); min-height: 46px; }
 .pi .pid { font-size: 11px; color: var(--muted); flex: 0 0 64px; }
 .pi .lbl { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -774,7 +775,7 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .push-big .track { margin-top: 4px; }
 .push-gauge { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .push-gauge .g-dial { height: min(70cqh, 80cqw); }
-.push-list, .inbox { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 3px; touch-action: pan-y; }
+.push-list, .inbox { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 3px; touch-action: pan-x pan-y; }
 .pl-i { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 4px 8px; border-radius: 8px; background: rgba(255, 255, 255, .035); border-left: 3px solid var(--lc, transparent); }
 .pl-l { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-v { color: var(--lc, var(--muted)); white-space: nowrap; font-weight: 600; }
@@ -838,7 +839,7 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 /* ---------- checklist ---------- */
 .w-checklist { padding: 9px 12px; display: flex; flex-direction: column; gap: 4px; --c: #22c55e; }
 .w-checklist.all .w-sub { color: #22c55e; font-weight: 600; }
-.cl-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; touch-action: pan-y; }
+.cl-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; touch-action: pan-x pan-y; }
 .cl-i { display: flex; align-items: center; gap: 9px; text-align: start; padding: 5px 8px; border-radius: 9px; background: rgba(255, 255, 255, .035); font-size: 13px; }
 .cl-box { width: 18px; height: 18px; flex: 0 0 18px; border-radius: 5px; border: 1.5px solid var(--dim); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #06080b; }
 .cl-i.done .cl-box { background: #22c55e; border-color: #22c55e; }
@@ -1153,7 +1154,7 @@ html.beat-4 .w-onair.on .oa-sign { box-shadow: 0 0 34px rgba(239, 68, 68, .9); }
 .hn-m { font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* a column, so the list gets the height that is left and scrolls within it */
 .w-feeds { display: flex; flex-direction: column; }
-.fd-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; touch-action: pan-y; scrollbar-width: none; }
+.fd-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; touch-action: pan-x pan-y; scrollbar-width: none; }
 .fd-list::-webkit-scrollbar { display: none; }
 .fd-i { flex: none; height: 30px; min-width: 0; border-left: 2px solid transparent; padding-left: 6px; }
 /* the accent bar: an article this phone hasn't opened yet */

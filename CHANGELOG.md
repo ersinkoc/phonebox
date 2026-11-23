@@ -20,6 +20,10 @@
   clicks before. Plugging in or removing a keyboard (Input Leaf adds one each time the mouse arrives) no longer
   restarts the panel (#425, [nonchita100](https://github.com/nonchita100)).
 
+**Panel**
+- A sideways swipe that starts on a News feeds, pushed list, Notifications or checklist widget turns the page, as
+  anywhere else on the page; the lists still scroll up and down (#445, [nonchita100](https://github.com/nonchita100)).
+
 ## 0.9.28 — 2026-11-23
 
 Faster page switching (tap or slide along the page dots, a page bar with names, a Page buttons widget), Discord
