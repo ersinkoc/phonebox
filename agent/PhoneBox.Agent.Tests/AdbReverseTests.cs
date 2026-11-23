@@ -92,6 +92,45 @@ public sealed class AdbReverseTests : IDisposable
         Assert.Equal(["devices"], Calls());
     }
 
+    [Theory]
+    [InlineData("UsbFfs tcp:8765 tcp:8765", true)]   // this agent's rule (no USB port in the test: 8765)
+    [InlineData("UsbFfs tcp:8765 tcp:9999", false)]  // another agent's: it took the phone over, so it stays
+    public async Task StoppingTakesOnlyThisAgentsRuleOffThePhone(string rule, bool removed)
+    {
+        var fake = FakeAdb(["FAKE1"], rule, null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        Assert.True(adb.Connected);
+
+        await adb.RemoveOwnRulesAsync(CancellationToken.None);
+        Assert.Equal(removed, Calls().Contains("-s FAKE1 reverse --remove tcp:8765"));
+    }
+
+    [Fact]
+    public async Task WhenTheAgentBeginsToStopTheRuleComesOffAndTheLoopEnds()
+    {
+        var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
+        var life = new Microsoft.Extensions.Hosting.Internal.ApplicationLifetime(
+            NullLogger<Microsoft.Extensions.Hosting.Internal.ApplicationLifetime>.Instance);
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance, lifetime: life);
+        await adb.StartAsync(CancellationToken.None);
+        for (var i = 0; i < 200 && !adb.Connected; i++) await Task.Delay(50);
+        Assert.True(adb.Connected);
+
+        life.StopApplication(); // before any service is stopped, and before the agent's port closes
+        Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
+        var calls = Calls().Length;
+        await Task.Delay(TimeSpan.FromSeconds(6)); // longer than a round: the loop must not run (or set the rule) again
+        Assert.Equal(calls, Calls().Length);
+        await adb.StopAsync(CancellationToken.None);
+        Assert.Equal(calls, Calls().Length); // and the stop itself doesn't remove it a second time
+    }
+
     [Fact]
     public async Task UnpluggingAllPhonesRemovesMissingAppInstallTargets()
     {

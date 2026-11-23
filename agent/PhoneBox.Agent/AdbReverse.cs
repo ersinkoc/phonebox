@@ -8,7 +8,8 @@ namespace PhoneBox.Agent;
 /// <see cref="UsbLink"/>). When a phone is newly plugged in, wakes it and opens the panel
 /// (unless Settings › Display › open on connect is off).
 /// </summary>
-public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEndpoint? endpoint = null, UsbLink? usb = null) : BackgroundService
+public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEndpoint? endpoint = null, UsbLink? usb = null,
+    IHostApplicationLifetime? lifetime = null) : BackgroundService
 {
     public const string PanelActivity = "net.oxog.phonebox.deskpanel/.MainActivity";
     private const string HomeAlias = "net.oxog.phonebox.deskpanel/.HomeAlias";
@@ -64,15 +65,146 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 #if WINDOWS
         Microsoft.Win32.SystemEvents.SessionEnding += (_, _) => MarkSessionEnding();
 #endif
-        while (!ct.IsCancellationRequested)
+        lifetime?.ApplicationStopping.Register(RemoveBeforeThePortCloses);
+        while (!ct.IsCancellationRequested && !_stopping)
         {
             // while the session is ending nothing is started; the loop goes on, for a shutdown that is cancelled
             if (SessionEnding) { await Task.Delay(TimeSpan.FromSeconds(4), ct); continue; }
-            try { await Ensure(ct); }
+            try { await _round.WaitAsync(ct); }
+            catch (OperationCanceledException) { return; }
+            try { if (!_stopping) await Ensure(ct); }
             catch (OperationCanceledException) { return; }
             catch (Exception ex) { Report($"adb error: {ex.Message}"); }
+            finally { _round.Release(); }
             await Task.Delay(TimeSpan.FromSeconds(4), ct);
         }
+    }
+
+    private volatile bool _stopping;
+    private readonly SemaphoreSlim _round = new(1, 1); // one Ensure round at a time, and none while the rule comes off
+
+    /// <summary>
+    /// A regular stop (Quit in the tray, an update, a restart) takes this agent's rule off the phone. Left behind, it
+    /// points at a port nobody listens on any more; the panel keeps connecting there, and the adb server stops
+    /// answering everyone (the next agent included) until it is restarted. It has to happen when the stop begins:
+    /// the agent's port closes before the services are stopped, and the adb server hung within a second of that.
+    /// </summary>
+    private void RemoveBeforeThePortCloses()
+    {
+        _stopping = true;
+        // a round in progress could put the rule back right after it is removed: wait a little for it to finish
+        var idle = _round.Wait(TimeSpan.FromSeconds(2));
+        try
+        {
+            // on the thread pool: Quit in the tray stops the agent from the UI thread, whose context the awaits
+            // inside would wait for while this blocks it
+            Task.Run(() => RemoveOwnRulesAsync(CancellationToken.None)).Wait(TimeSpan.FromSeconds(4));
+        }
+        catch (AggregateException) { }
+        finally { if (idle) _round.Release(); }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        var removed = _stopping; // already done when the stop began (lifetime above); not in the tests
+        _stopping = true;
+        await base.StopAsync(cancellationToken);
+        if (!removed) await RemoveOwnRulesAsync(cancellationToken);
+    }
+
+    internal async Task RemoveOwnRulesAsync(CancellationToken ct)
+    {
+        if (SessionEnding || _devices.Length == 0 || FindAdb(cfg.Get().AdbPath) is not { } adb) return;
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(TimeSpan.FromSeconds(3)); // the agent is closing: never hold that up for long
+        foreach (var d in _devices)
+        {
+            try
+            {
+                // Android 5 and 6 can't list their rules (see Ensure): the one this agent set is remembered instead.
+                // On the others the rule must still be this agent's: a newer agent may have taken the phone over.
+                var ours = _sdk.TryGetValue(d, out var sdk) && sdk is > 0 and <= 23
+                    ? _reverseSet.Contains(d)
+                    : HasOwnRule(await Adb(adb, $"-s {d} reverse --list", limit.Token));
+                if (!ours) continue;
+                await Adb(adb, $"-s {d} reverse --remove {Rule}", limit.Token);
+                _reverseSet.Remove(d);
+                log.LogInformation("{Device}: adb reverse removed (the agent is stopping)", d);
+            }
+            catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException)
+            {
+                log.LogInformation("{Device}: could not remove adb reverse ({Message})", d, ex.Message);
+            }
+        }
+    }
+
+    private readonly AdbWatchdog _watchdog = new();
+
+    /// <summary>
+    /// The adb server took the "devices" call but never answered it for a minute: it is hung (an agent that was killed
+    /// left its rule behind, for one) and nothing gets through until it is restarted. adb's own kill-server asks the
+    /// server itself, which a hung one may never answer, so its process is ended too; the next round's adb starts a
+    /// fresh server, which also drops every reverse rule.
+    /// </summary>
+    private async Task RestartAdbServerAsync(string adb, CancellationToken ct)
+    {
+        if (AdbServerPort() is not { } port) return; // ADB_SERVER_SOCKET: a server somewhere else, not ours to restart
+        var pid = await AdbServerPidAsync(port, ct);
+        log.LogWarning("adb server has not answered for a minute: restarting it{Pid}", pid is null ? "" : $" (process {pid})");
+        try { await ToolProcess.RunAsync(new ProcessStartInfo(adb) { ArgumentList = { "kill-server" } }, TimeSpan.FromSeconds(3), ct); }
+        catch (Exception ex) when (ex is IOException or TimeoutException or System.ComponentModel.Win32Exception) { }
+        if (pid is not { } id) return;
+        try
+        {
+            using var process = Process.GetProcessById(id);
+            // only adb itself: whatever else may hold the port is left alone
+            if (!process.HasExited && process.ProcessName.Equals("adb", StringComparison.OrdinalIgnoreCase)) process.Kill();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            log.LogInformation("could not end the adb server ({Message})", ex.Message);
+        }
+    }
+
+    /// <summary>The adb server's port as adb itself picks it, or null when ADB_SERVER_SOCKET points adb elsewhere.</summary>
+    internal static int? AdbServerPort()
+    {
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ADB_SERVER_SOCKET"))) return null;
+        return int.TryParse(Environment.GetEnvironmentVariable("ANDROID_ADB_SERVER_PORT"), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out var p) && p is > 0 and < 65536 ? p : 5037;
+    }
+
+    /// <summary>The process listening on the adb server's port, or null when that can't be told.</summary>
+    private static async Task<int?> AdbServerPidAsync(int port, CancellationToken ct)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                var netstat = new ProcessStartInfo("netstat") { ArgumentList = { "-ano", "-p", "TCP" } };
+                return ListenerFromNetstat((await ToolProcess.RunAsync(netstat, TimeSpan.FromSeconds(5), ct)).Output, port);
+            }
+            var lsof = new ProcessStartInfo("lsof") { ArgumentList = { "-nP", $"-iTCP:{port}", "-sTCP:LISTEN", "-t" } };
+            var output = (await ToolProcess.RunAsync(lsof, TimeSpan.FromSeconds(5), ct)).Output;
+            return int.TryParse(output.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim(), out var pid) ? pid : null;
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException or System.ComponentModel.Win32Exception) { return null; }
+    }
+
+    /// <summary>
+    /// The listener on <paramref name="port"/> in "netstat -ano" output. The state column is translated on a Windows
+    /// in another language (ABHÖREN …), so a listener is told by its remote address instead, which is all zeros.
+    /// </summary>
+    internal static int? ListenerFromNetstat(string output, int port)
+    {
+        foreach (var line in output.Split('\n'))
+        {
+            var p = line.Split((char[])[' ', '\t', '\r'], StringSplitOptions.RemoveEmptyEntries);
+            if (p.Length >= 5 && p[0] == "TCP" && p[1].EndsWith(":" + port, StringComparison.Ordinal)
+                && p[2] is "0.0.0.0:0" or "[::]:0" && int.TryParse(p[^1], out var pid) && pid > 0)
+                return pid;
+        }
+        return null;
     }
 
     public async Task OpenPanelAsync()
@@ -120,7 +252,15 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
 
         var serial = cfg.Get().DeviceSerial;
-        var devices = (await Adb(adb, "devices", ct))
+        string listed;
+        try { listed = await Adb(adb, "devices", ct); }
+        catch (TimeoutException)
+        {
+            if (_watchdog.Silent(Environment.TickCount64)) await RestartAdbServerAsync(adb, ct);
+            throw;
+        }
+        _watchdog.Answered();
+        var devices = listed
             .Split('\n').Skip(1)
             .Select(l => l.Trim().Split('\t'))
             .Where(p => p.Length == 2 && p[1] == "device")
@@ -362,5 +502,27 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         var result = await ToolProcess.RunAsync(psi, TimeSpan.FromSeconds(8), ct);
         if (result.ExitCode != 0 && !anyExit) throw new IOException($"ADB exited with code {result.ExitCode}");
         return result.Output;
+    }
+}
+
+/// <summary>
+/// When the adb server counts as hung: its "devices" call has timed out for <paramref name="silentMs"/> in a row. A
+/// restart is not repeated within <paramref name="cooldownMs"/>, so a server that is slow for some other reason is
+/// not restarted over and over.
+/// </summary>
+internal sealed class AdbWatchdog(long silentMs = 60_000, long cooldownMs = 300_000)
+{
+    private long? _silentSince, _restartedAt;
+
+    public void Answered() => _silentSince = null;
+
+    /// <returns>True when the server should be restarted now.</returns>
+    public bool Silent(long now)
+    {
+        _silentSince ??= now;
+        if (now - _silentSince < silentMs || now - _restartedAt < cooldownMs) return false;
+        _restartedAt = now;
+        _silentSince = null; // a fresh minute before the next one
+        return true;
     }
 }
