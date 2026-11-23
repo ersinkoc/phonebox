@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.9.29 — 2026-11-23
+
+A shared mouse (Input Leaf, Deskflow) works in the panel, a sideways swipe on a list turns the page, a large Discord
+widget gets larger buttons and names, and the Windows CPU temperature no longer drops out.
 
 **Widgets**
 - Discord: a large widget has larger mute, deafen and other buttons, member names and avatars, readable and easy to
