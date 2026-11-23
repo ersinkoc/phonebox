@@ -42,6 +42,16 @@ public sealed class DeviceHomePageTests : IDisposable
     }
 
     [Fact]
+    public void ADisabledHomePageFallsBackToTheGlobalOne()
+    {
+        var c = Load("""
+            {"pages":[{"id":"home","title":"Home","widgets":[]},{"id":"monitor","title":"Monitor","enabled":false,"widgets":[]}],
+             "phones":[{"id":"monitor","homePage":"monitor"}]}
+            """);
+        Assert.Null(PublicHomePage(c, "monitor"));
+    }
+
+    [Fact]
     public void AHomePageTheDeviceDoesNotShowIsIgnored()
     {
         // phone1 does not show "monitor": it falls back to the global home page in the panel

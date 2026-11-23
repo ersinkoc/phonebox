@@ -60,11 +60,12 @@ public sealed class AgentConfig
         return chosen.Count > 0 ? chosen : Pages;
     }
 
-    /// <summary>The home page a device chose for itself, if that page is among the ones it shows; null otherwise.</summary>
+    /// <summary>The home page a device chose for itself, if that page is enabled and among the ones it shows; null
+    /// otherwise, so a disabled one falls back to the global home page (the panel drops disabled pages before it looks).</summary>
     public string? HomePageFor(string? deviceId)
     {
         var home = Phones.FirstOrDefault(p => p.Id == deviceId)?.HomePage;
-        return home is not null && PagesFor(deviceId).Any(p => p.Id == home) ? home : null;
+        return home is not null && PagesFor(deviceId).Any(p => p.Id == home && p.Enabled) ? home : null;
     }
 
     /// <summary>The part sent to the phone: commands (shortcut cmd/args/cwd, command widget scripts) are never included.</summary>

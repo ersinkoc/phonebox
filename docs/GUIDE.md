@@ -215,7 +215,7 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   manually). Lock sync needs the agent to run in the macOS GUI session; [battery care](#rules);
   [AI agent permission prompts](#ai-agent-permission-prompts);
   phones (several at once, each with its own pages and home page); Wi-Fi & Tailscale; updates.
-- **The panel on a monitor:** `http://127.0.0.1:8765/panel/?device=monitor` (any name of letters and digits) opens the
+- **The panel on a monitor:** `http://127.0.0.1:8765/panel/?device=monitor` (any name of letters and digits, up to 32 of them) opens the
   panel in a browser as a device of its own. It shows up under **Phones** once it has loaded, so it can get its own
   pages and home page there, like a phone; without `?device=` the browser shows every page and follows the global
   home page.
