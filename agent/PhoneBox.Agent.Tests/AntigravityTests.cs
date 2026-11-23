@@ -276,7 +276,9 @@ public sealed class AntigravityTests
 
         using var http = new HttpClient(new Handler((_, _) => throw new InvalidOperationException("HTTPS went to the shared client")));
         using var https = new HttpClient(QuotaMonitor.NewLoopbackTlsHandler());
-        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [new(port, "loopback-token", "https")], CancellationToken.None, https);
+        // a real TLS handshake: the first one on a busy Windows runner has taken longer than the 3 s a candidate gets
+        var provider = await QuotaMonitor.ReadAntigravityAsync(http, [new(port, "loopback-token", "https")], CancellationToken.None, https,
+            perEndpoint: TimeSpan.FromSeconds(20));
         Assert.NotNull(provider);
         Assert.Equal(75, Assert.Single(provider.Limits).Percent);
 

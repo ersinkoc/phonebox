@@ -138,11 +138,13 @@ public sealed partial class QuotaMonitor
     /// HTTPS candidates go through <paramref name="https"/> (the loopback-only certificate check), the rest through
     /// <paramref name="http"/>; without <paramref name="https"/> both use <paramref name="http"/>.
     /// </summary>
+    /// <param name="perEndpoint">For tests: how long one candidate may take (3 s), on a busy test runner.</param>
     internal static async Task<QuotaProvider?> ReadAntigravityAsync(HttpClient http,
-        IEnumerable<AntigravityEndpoint> endpoints, CancellationToken ct, HttpClient? https = null)
+        IEnumerable<AntigravityEndpoint> endpoints, CancellationToken ct, HttpClient? https = null, TimeSpan? perEndpoint = null)
     {
+        var each = perEndpoint ?? TimeSpan.FromSeconds(3);
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        budget.CancelAfter(TimeSpan.FromSeconds(10));
+        budget.CancelAfter(each > TimeSpan.FromSeconds(3) ? each * 2 : TimeSpan.FromSeconds(10));
         foreach (var ep in endpoints.Distinct().Take(8))
         {
             ct.ThrowIfCancellationRequested();
@@ -150,7 +152,7 @@ public sealed partial class QuotaMonitor
             if (ep.Scheme is not ("http" or "https")) continue;
             var client = ep.Scheme == "https" ? https ?? http : http;
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(budget.Token);
-            deadline.CancelAfter(TimeSpan.FromSeconds(3));
+            deadline.CancelAfter(each);
             using var summary = await Post("RetrieveUserQuotaSummary");
             var limits = summary is not null ? ParseAntigravityLimits(summary.RootElement) : [];
             using var status = await Post("GetUserStatus");
