@@ -303,6 +303,12 @@ QR code or over USB, and allow the agent through the firewall for your private n
 The panel carries on over Wi-Fi when Wi-Fi is on, and **Settings › General › Phone connection** says what the phone
 itself sees: if it is charging but has no USB data connection, the cable or the port only carries power — try another
 cable, or a port straight on the computer instead of a hub or a front-panel port. Updates of the phone app need USB.
+
+On some Samsung phones the USB data link restarts each time charging stops, starts or changes speed, and adb sees
+the phone go away for a few seconds. **Protect battery** (charging stops at 85 % and starts again below it) does
+this every few minutes, and fast charging can too. Turning Protect battery off made the drops rare on a Galaxy A31
+(Android 11), but not gone ([#410](https://github.com/ersinkoc/phonebox/issues/410)); there, Wi-Fi with the phone on
+a charger of its own works without drops.
 </details>
 
 <details><summary><b>Some widgets show "—" or "No data".</b></summary>
