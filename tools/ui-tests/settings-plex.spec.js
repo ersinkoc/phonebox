@@ -249,6 +249,16 @@ test('ticking reuses a playlist control that was set up by hand and enables it',
   expect(s.ids).toEqual(['pl1']);
 });
 
+test('ticking a hand-made control whose target has spaces stores the bare playlist id', async ({ page }) => {
+  const ui = await inspector(page, { actions: [{ id: 'pl1', label: 'Mine', kind: 'plex-playlist', target: ' 13 ', enabled: true }] });
+  await answer(page, 0, PLAYLISTS);
+  await ui.boxes.filter({ hasText: 'Focus' }).locator('input').check();
+  const s = await cfgState(page);
+  expect(s.actions).toHaveLength(1);
+  expect(s.actions[0]).toEqual(expect.objectContaining({ id: 'pl1', target: '13' }));
+  expect(s.ids).toEqual(['pl1']);
+});
+
 test('a new playlist control gets another id when plex-<id> is taken', async ({ page }) => {
   const ui = await inspector(page, { actions: [{ id: 'plex-12', label: 'Other', kind: 'shortcut', target: 'x', enabled: true }] });
   await answer(page, 0, PLAYLISTS);

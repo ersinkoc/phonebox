@@ -2079,6 +2079,7 @@ function plexPlaylistsEditor(w, o, set) {
           all.push(a);
         }
         if (a.enabled === false) a.enabled = true;
+        a.target = p.id; // a hand-made target with spaces matches here but would not start
         const picked = new Set([...cur(), a.id]), next = [];
         for (const q of loaded() || []) { const c = controlFor(q.id); if (c && picked.has(c.id) && !next.includes(c.id)) next.push(c.id); }
         for (const x of picked) if (!next.includes(x)) next.push(x);
