@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Agent**
+- Windows: the CPU temperature from LibreHardwareMonitor no longer drops out on a busy computer. The agent waited
+  only 600 ms for its answer and blanked the temperature for 30 s after each slow one; it now waits 2 s and keeps
+  the last reading through a couple of slow answers (#442, [joaoschlickmann](https://github.com/joaoschlickmann)).
+
 **Android app**
 - A mouse shared from the computer (Input Leaf with Deskflow or Barrier) can click, drag and long-press in the panel.
   The main button now acts as a finger, so a drag also swipes between pages; the WebView ignored these mice's

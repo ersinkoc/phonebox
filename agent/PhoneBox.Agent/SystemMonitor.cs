@@ -28,7 +28,8 @@ public sealed record PcSnapshot(double? Cpu, double? CpuTemp, string CpuName, do
 /// <summary>Samples CPU, RAM, network, disk and GPU metrics once a second.</summary>
 public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStore? config = null) : BackgroundService
 {
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMilliseconds(600) };
+    // LibreHardwareMonitor's web server often takes 600 ms or more to answer on a busy machine (#442)
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(2) };
     private readonly string _cpuName = ReadCpuName();
 
     private volatile PcSnapshot? _snap;
@@ -248,12 +249,14 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         return;
 #else
 #pragma warning disable CS0162
+        var failures = 0;
         while (!ct.IsCancellationRequested)
         {
             var delay = TimeSpan.FromSeconds(2);
             try
             {
                 using var doc = JsonDocument.Parse(await _http.GetStringAsync("http://127.0.0.1:8085/data.json", ct));
+                failures = 0;
                 _cpuTemp = FindCpuTemp(doc.RootElement);
                 try { _lhmGpus = Gpus.ParseLhm(doc.RootElement); }
                 catch (Exception ex)
@@ -265,14 +268,22 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
             catch
             {
-                _cpuTemp = null;
-                _lhmGpus = null;
-                delay = TimeSpan.FromSeconds(30);
+                (var clear, delay) = LhmFailed(ref failures);
+                if (clear) { _cpuTemp = null; _lhmGpus = null; }
             }
             await Task.Delay(delay, ct);
         }
 #endif
     }
+
+    /// <summary>
+    /// After a failed LibreHardwareMonitor read: a slow answer now and then keeps the last values and asks again soon;
+    /// <see cref="LhmKeepFailures"/> failures in a row (it isn't running) clear them and wait 30 s before the next try.
+    /// </summary>
+    internal static (bool Clear, TimeSpan Delay) LhmFailed(ref int failures) =>
+        ++failures >= LhmKeepFailures ? (true, TimeSpan.FromSeconds(30)) : (false, TimeSpan.FromSeconds(2));
+
+    internal const int LhmKeepFailures = 3;
 
     private static readonly string[] CpuTempNames = ["Core (Tctl/Tdie)", "Tctl/Tdie", "CPU Package", "Tdie", "Tctl", "Core (Tdie)"];
 

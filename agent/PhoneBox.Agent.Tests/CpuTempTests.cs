@@ -94,4 +94,18 @@ public sealed class CpuTempTests
         """;
         Assert.Equal(60.0, Temp(json));
     }
+
+    [Fact]
+    public void A_slow_read_now_and_then_keeps_the_temperature()
+    {
+        // #442: LibreHardwareMonitor answered half of the reads in 600-640 ms; each failure blanked the temperature for 30 s
+        var failures = 0;
+        Assert.Equal((false, TimeSpan.FromSeconds(2)), SystemMonitor.LhmFailed(ref failures));
+        failures = 0; // a read that worked in between
+        Assert.Equal((false, TimeSpan.FromSeconds(2)), SystemMonitor.LhmFailed(ref failures));
+        Assert.Equal((false, TimeSpan.FromSeconds(2)), SystemMonitor.LhmFailed(ref failures));
+        // not running at all: cleared after a few tries, then asked again only every 30 s
+        Assert.Equal((true, TimeSpan.FromSeconds(30)), SystemMonitor.LhmFailed(ref failures));
+        Assert.Equal((true, TimeSpan.FromSeconds(30)), SystemMonitor.LhmFailed(ref failures));
+    }
 }
