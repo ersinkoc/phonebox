@@ -110,6 +110,31 @@ public sealed class AdbReverseTests : IDisposable
     }
 
     [Fact]
+    public async Task StoppingAlsoTakesTheRuleOffAPhoneNoLongerSelected()
+    {
+        var fake = FakeAdb(["FAKE1", "FAKE2"], "", null); // no rule yet: the agent sets it on both
+        var path = Path.Combine(_dir, "config.json");
+        object Settings(string? serial) => new { adbPath = fake, deviceSerial = serial, display = new { homeScreen = false, keepAwake = false, openOnConnect = false } };
+        File.WriteAllText(path, JsonSerializer.Serialize(Settings(null)));
+        var store = new ConfigStore(path);
+        using var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Task Pass() => (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        await Pass();
+        Assert.Contains("-s FAKE2 reverse tcp:8765 tcp:8765", Calls());
+
+        // Settings › Phone connection: only FAKE1 from now on; FAKE2 stays plugged in with the agent's rule on it
+        Assert.Null(store.Save(JsonSerializer.Serialize(Settings("FAKE1"))));
+        FakeAdb(["FAKE1", "FAKE2"], "UsbFfs tcp:8765 tcp:8765", null);
+        await Pass();
+        Assert.Equal("FAKE1", adb.Devices);
+
+        await adb.RemoveOwnRulesAsync(CancellationToken.None);
+        Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
+        Assert.Contains("-s FAKE2 reverse --remove tcp:8765", Calls());
+    }
+
+    [Fact]
     public async Task WhenTheAgentBeginsToStopTheRuleComesOffAndTheLoopEnds()
     {
         var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);

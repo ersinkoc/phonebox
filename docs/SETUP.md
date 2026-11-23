@@ -294,7 +294,9 @@ accept the USB debugging prompt on the phone. If several devices are connected, 
 QR code or over USB, and allow the agent through the firewall for your private network.
 
 If `adb devices` itself doesn't answer, the adb server is hung. The agent restarts an adb server that has been hung for
-a minute, which also ends other tools' adb sessions (Android Studio, scrcpy); `adb kill-server` does the same at once.
+a minute, which also ends other tools' adb sessions (Android Studio, scrcpy). It doesn't when `ADB_SERVER_SOCKET` points
+adb at another server, and it restarts the server at most once every 5 minutes. To recover at once, end `adb.exe` in Task
+Manager (`pkill adb` on Linux and macOS): `adb kill-server` asks the server itself, so a hung one may not answer it.
 </details>
 
 <details><summary><b>The phone keeps dropping off USB.</b></summary>
