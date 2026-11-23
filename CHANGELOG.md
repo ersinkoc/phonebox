@@ -50,6 +50,9 @@
 - Quotas: a CodexBar poll that fails for a moment (Cursor's session can't be read from the background on macOS) no
   longer blanks the Cursor ring; the last good reading stays for up to 6 hours, without limits that have reset since,
   and a refresh polls CodexBar again at once (#398, [ajaybali9](https://github.com/ajaybali9)).
+- Linux: the cover art of music playing in Chrome, Brave, Edge or Chromium shows on the phone. These browsers save it
+  to a temporary file with no image extension, which the agent refused (#427, #428,
+  [sanjai4334](https://github.com/sanjai4334)).
 
 **Android app**
 - A request to the agent that fails (a timeout, a dropped cable) now closes its connection at once instead of

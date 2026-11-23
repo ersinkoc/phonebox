@@ -232,16 +232,21 @@ public sealed class MacMediaTests
             Assert.NotNull(loaded);
             Assert.Equal("image/png", loaded.Mime);
 
-            // Chromium / Brave on Linux writes MPRIS temporary artwork without a file extension
-            var extensionlessPng = Path.Combine(dir, ".org.chromium.Chromium.tmp123");
-            File.WriteAllBytes(extensionlessPng, [0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
-            var loadedExtless = await InvokeLoadArt(new Uri(extensionlessPng).AbsoluteUri);
-            Assert.NotNull(loadedExtless);
-            Assert.Equal("image/png", loadedExtless.Mime);
+            // Chromium / Brave on Linux write the art to a temp file whose random suffix looks like an extension
+            var chromiumPng = Path.Combine(dir, ".org.chromium.Chromium.Wa6XAo");
+            File.WriteAllBytes(chromiumPng, [0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+            var loadedChromium = await InvokeLoadArt(new Uri(chromiumPng).AbsoluteUri);
+            Assert.NotNull(loadedChromium);
+            Assert.Equal("image/png", loadedChromium.Mime);
 
-            var extensionlessText = Path.Combine(dir, "extensionless-plain");
-            File.WriteAllText(extensionlessText, "plain text not an image");
-            Assert.Null(await InvokeLoadArt(new Uri(extensionlessText).AbsoluteUri));
+            var chromiumText = Path.Combine(dir, ".org.chromium.Chromium.tmp123");
+            File.WriteAllText(chromiumText, "plain text not an image");
+            Assert.Null(await InvokeLoadArt(new Uri(chromiumText).AbsoluteUri));
+
+            // any other name without an image extension stays refused, even with image bytes
+            var extensionlessPng = Path.Combine(dir, "extensionless-png");
+            File.WriteAllBytes(extensionlessPng, [0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+            Assert.Null(await InvokeLoadArt(new Uri(extensionlessPng).AbsoluteUri));
 
             var secretJson = Path.Combine(dir, "config.json");
             File.WriteAllText(secretJson, "{\"token\":\"secret\"}");

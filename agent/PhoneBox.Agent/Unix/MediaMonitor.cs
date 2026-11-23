@@ -457,13 +457,12 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         return null;
     }
 
-    private static bool HasAllowedArtExtension(string path)
-    {
-        var name = Path.GetFileName(path);
-        if (name.StartsWith(".org.chromium.Chromium.", StringComparison.OrdinalIgnoreCase))
-            return true;
-        return Path.GetExtension(path).ToLowerInvariant() is "" or ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif";
-    }
+    // The extension is what keeps a player from making the agent read any file it names. Chromium-based browsers
+    // write the art to a g_file_open_tmp file (".org.chromium.Chromium.XXXXXX"), whose random suffix only looks
+    // like an extension; that one name is let through. The bytes must still be an image (SniffImageMime).
+    private static bool HasAllowedArtExtension(string path) =>
+        Path.GetFileName(path).StartsWith(".org.chromium.Chromium.", StringComparison.Ordinal)
+        || Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif";
 
     /// <summary>
     /// The body of a cover art URL, or null when the server refuses it or it is larger than <see cref="MaxArtBytes"/>.
