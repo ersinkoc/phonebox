@@ -2221,13 +2221,15 @@ function renderPhones() {
         h('input', { type: 'checkbox', checked: all, onchange: (e) => { entry(ph.id).pages = e.target.checked ? null : cfg.pages.map((p) => p.id).filter(Boolean); changed(); renderPhones(); } }),
         t('s.js.showsAllPages')),
       all ? null : h('div', { class: 'phone-pages' }, ...cfg.pages.filter((p) => p.id).map((p) => h('label', { class: 'check' },
-        h('input', { type: 'checkbox', checked: chosen.includes(p.id), onchange: (e) => {
+        h('input', { type: 'checkbox', checked: chosen.includes(p.id), 'data-phone': ph.id, 'data-page': p.id, onchange: (e) => {
           const e2 = entry(ph.id);
           const set = new Set(e2.pages || []);
           if (e.target.checked) set.add(p.id); else set.delete(p.id);
           e2.pages = cfg.pages.map((x) => x.id).filter((id) => set.has(id));
           changed();
           renderPhones(); // the home page choices follow the pages it shows
+          // the list was rebuilt: keep the keyboard on the box just changed
+          [...$('phoneList').querySelectorAll('input[data-page]')].find((x) => x.dataset.phone === ph.id && x.dataset.page === p.id)?.focus();
         } }), rich(`${p.icon || ''} ${p.title}`.trim())))),
       // this device's own home page: empty follows the global one (Pages › page switching)
       h('div', { class: 'field', style: { maxWidth: '260px', marginTop: '8px' } },

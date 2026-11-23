@@ -51,7 +51,11 @@ test('Settings › Phones: a device home page lists its own pages, and empty fol
   await card.locator('label.check', { hasText: 'Shows all pages' }).locator('input').uncheck();
   const first = card.locator('.phone-pages label.check').first();
   const title = (await first.textContent()).trim();
-  await first.locator('input').uncheck();
+  await first.locator('input').focus();
+  await page.keyboard.press('Space');
+  // the list is rebuilt to update the choices; the keyboard stays on the box just changed
+  await expect(card.locator('.phone-pages input').first()).toBeFocused();
+  await expect(card.locator('.phone-pages input').first()).not.toBeChecked();
   await expect(select.locator('option')).toHaveCount(all - 1);
   expect((await select.locator('option').allTextContents()).map((s) => s.trim())).not.toContain(title);
   await select.selectOption({ index: 1 });
