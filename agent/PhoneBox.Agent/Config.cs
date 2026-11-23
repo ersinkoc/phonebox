@@ -635,6 +635,9 @@ public sealed partial class ConfigStore(string path)
 
     public string Path => path;
 
+    public string DataDir => System.IO.Path.GetDirectoryName(
+    System.IO.Path.GetFullPath(path))!;
+
     /// <summary>Version stamp (file write time) so the phone can notice changes.</summary>
     public long Version { get { Get(); return _seen.Ticks; } }
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace PhoneBox.Agent;
 
@@ -34,6 +35,9 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     // phones a "reverse" command was sent to that has not answered (cancelled by a stop, or timed out): the adb server
     // may have applied it, so a stop removes it too (removing a rule that isn't there does no harm)
     private readonly HashSet<string> _pending = [];
+    private readonly string _originalsPath = Path.Combine(cfg.DataDir, "standby-originals.json");
+    private Dictionary<string, string>? _originals;
+    private Dictionary<string, string> Originals =>_originals ??= LoadOriginals();
     internal const long KeyRetryMs = 30_000;
     // asked again now and then even when known: an app whose data was cleared has a new key and no pin, and can't say so
     internal const long KeyRefreshMs = 120_000;
@@ -556,6 +560,41 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         finally { if (held) _round.Release(); }
     }
     internal TimeSpan SleepRoundWait { get; init; } = TimeSpan.FromSeconds(30);
+    private Dictionary<string, string> LoadOriginals()
+    {
+        try { return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(_originalsPath)) ?? []; }
+        catch { return []; }   // missing or unreadable: nothing recorded
+    }
+
+    private void SaveOriginals()
+    {
+        try { AppPaths.WriteAllTextPrivate(_originalsPath, JsonSerializer.Serialize(Originals)); }
+        catch (IOException ex) { log.LogWarning("could not save standby-originals.json ({Message})", ex.Message); }
+    }
+
+    private async Task RememberStayOn(string adb, string d, CancellationToken ct)
+    {
+        if (Originals.ContainsKey(d)) return;            // never record our own 0
+        var v = (await Adb(adb, $"-s {d} shell settings get global stay_on_while_plugged_in", ct, anyExit: true)).Trim();
+        if (v != "null" && !int.TryParse(v, out _)) return;   // an error text is not a value
+        Originals[d] = v;
+        SaveOriginals();
+    }
+
+    private async Task RestoreStayOn(string adb, string d, CancellationToken ct)
+    {
+        if (!Originals.TryGetValue(d, out var v)) return;
+        try
+        {
+            await Adb(adb, v == "null"
+                ? $"-s {d} shell settings delete global stay_on_while_plugged_in"
+                : $"-s {d} shell settings put global stay_on_while_plugged_in {v}", ct);
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException) { return; }   // keep the entry, try next round
+        Originals.Remove(d);
+        SaveOriginals();
+        log.LogInformation("{Device}: stay_on_while_plugged_in restored", d);
+    }
 
     private async Task Ensure(CancellationToken ct)
     {
@@ -723,6 +762,13 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // setting was 0). The app cannot clear it (WRITE_SETTINGS), so the agent writes 7 while standby is off -
         // today's behaviour, unchanged - and 0 the moment standby is on. The value rides in the key, so flipping
         // the setting re-applies it without restarting the agent.
+        foreach (var d in _all.Where(d =>
+            Originals.ContainsKey(d) &&
+            !StandbyOn(d) &&
+            !unreachable.Contains(d)))
+        {
+            await RestoreStayOn(adb, d, ct);
+        }
         var keepAwake = cfg.Get().Display.KeepAwake;
         // Standby only acts on a phone the user named. devices was filtered by deviceSerial above, so with a
         // serial set it holds exactly that phone, and with none set standby stays off for everyone.
@@ -744,6 +790,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_enabled 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_dock 0", ct);
                 await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_sleep 0", ct);
+                if (standby)
+                    await RememberStayOn(adb, d, ct);
                 await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
                 _awakeSet.Add($"{d}:{stayOn}:on");
                 log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
@@ -759,6 +807,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             // independently of KeepAwake; the screen-saver writes stay the optional part.
             foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:off") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
             {
+                if (standby)
+                    await RememberStayOn(adb, d, ct);
                 await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
                 _awakeSet.Add($"{d}:{stayOn}:off");
                 log.LogInformation("{Device}: standby cleared stay_on_while_plugged_in (keep awake off)", d);

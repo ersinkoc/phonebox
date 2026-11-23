@@ -25,7 +25,7 @@ public sealed class AdbReverseTests : IDisposable
     /// refuses it (an error line, exit code 1).</summary>
     private string FakeAdb(string[] devices, string reverseList, string? homeRefused, bool installed = true,
         string? reverseRefused = null, string? usbKey = null, string? appVersion = null, bool ownsProvider = true, int? sdk = null,
-        string? transportId = null, string? reverseSet = null)
+        string? transportId = null, string? reverseSet = null, string stayOn = "3")
     {
         if (OperatingSystem.IsWindows())
         {
@@ -38,6 +38,7 @@ public sealed class AdbReverseTests : IDisposable
                 "if \"%2\"==\"" + reverseRefused + "\" if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (exit /b 1)",
                 "if \"%3\"==\"reverse\" if \"%4\"==\"tcp:8765\" " + (reverseSet switch { "hang" => "goto hold", "fail" => "(exit /b 1)", _ => "(exit /b 0)" }),
                 "if \"%4\"==\"getprop\" (" + (sdk is null ? "exit /b 0)" : "echo " + sdk + "& exit /b 0)"),
+                "if \"%4\"==\"settings\" if \"%5\"==\"get\" if \"%6\"==\"global\" if \"%7\"==\"stay_on_while_plugged_in\" (echo " + stayOn + "& exit /b 0)",
                 "if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (" + (reverseList.Length == 0 ? "exit /b 0)" : "echo " + reverseList + "& exit /b 0)"),
                 "if \"%4\"==\"pm\" (" + (installed ? "echo package:/data/app/base.apk& exit /b 0)" : "exit /b 1)"),
                 "if \"%4\"==\"content\" (" + (usbKey is null ? "echo No result found.& exit /b 0)" : "echo Row: 0 key=" + usbKey + "& exit /b 0)"),
@@ -65,6 +66,7 @@ public sealed class AdbReverseTests : IDisposable
                 _ => "exit 0; fi",
             }),
             "if [ \"$4\" = getprop ]; then " + (sdk is null ? "" : "echo " + sdk + "; ") + "exit 0; fi",
+            "if [ \"$4\" = settings ] && [ \"$5\" = get ] && [ \"$6\" = global ] && [ \"$7\" = stay_on_while_plugged_in ]; then echo '" + stayOn + "'; exit 0; fi",
             "if [ \"$3\" = reverse ] && [ \"$4\" = --list ]; then " + (reverseList.Length == 0 ? "" : "echo '" + reverseList + "'; ") + "exit 0; fi",
             "if [ \"$4\" = pm ]; then " + (installed ? "echo package:/data/app/base.apk; exit 0; fi" : "exit 1; fi"),
             "if [ \"$4\" = content ]; then " + (usbKey is null ? "echo 'No result found.'; exit 0; fi" : "echo 'Row: 0 key=" + usbKey + "'; exit 0; fi"),
@@ -95,6 +97,16 @@ public sealed class AdbReverseTests : IDisposable
             }
             catch (IOException) when (attempt < 50) { Thread.Sleep(20); }
         }
+    }
+
+    private static async Task Pass(AdbReverse adb)
+    {
+        var ensure = typeof(AdbReverse).GetMethod(
+            "Ensure",
+            System.Reflection.BindingFlags.NonPublic |
+            System.Reflection.BindingFlags.Instance)!;
+
+        await (Task)ensure.Invoke(adb, [CancellationToken.None])!;
     }
 
     [Fact]
@@ -606,6 +618,164 @@ public sealed class AdbReverseTests : IDisposable
             Assert.DoesNotContain(calls, c => c.Contains("dismiss-keyguard"));
         }
         else Assert.DoesNotContain(calls, c => c.StartsWith("-s FAKE2 "));
+    }
+
+    [Fact]
+    public async Task StandbyOffRestoresOriginalStayOnValue()
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";
+
+        var fake = FakeAdb(["FAKE1"], rule, null, stayOn: "3");
+        var path = Path.Combine(_dir, "config.json");
+
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            adbPath = fake,
+            deviceSerial = "FAKE1",
+            display = new
+            {
+                homeScreen = false,
+                keepAwake = true,
+                standby = "power"
+            }
+        }));
+
+        var store = new ConfigStore(path);
+
+        using var adb = new AdbReverse(
+            store,
+            NullLogger<AdbReverse>.Instance);
+
+        await Pass(adb);
+
+        Assert.Contains(
+            "-s FAKE1 shell settings put global stay_on_while_plugged_in 0",
+            Calls());
+
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            adbPath = fake,
+            deviceSerial = "FAKE1",
+            display = new
+            {
+                homeScreen = false,
+                keepAwake = true,
+                standby = "off"
+            }
+        }));
+
+        await Pass(adb);
+
+        Assert.Contains(
+            "-s FAKE1 shell settings put global stay_on_while_plugged_in 3",
+            Calls());
+    }
+
+    [Fact]
+    public async Task ChangingDeviceSerialRestoresPreviousPhone()
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";
+
+        var fake = FakeAdb(["FAKE1", "FAKE2"], rule, null, stayOn: "3");
+        var path = Path.Combine(_dir, "config.json");
+
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            adbPath = fake,
+            deviceSerial = "FAKE1",
+            display = new
+            {
+                homeScreen = false,
+                keepAwake = true,
+                standby = "power"
+            }
+        }));
+
+        var store = new ConfigStore(path);
+
+        using var adb = new AdbReverse(
+            store,
+            NullLogger<AdbReverse>.Instance);
+
+        await Pass(adb);
+
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            adbPath = fake,
+            deviceSerial = "FAKE2",
+            display = new
+            {
+                homeScreen = false,
+                keepAwake = true,
+                standby = "power"
+            }
+        }));
+
+        await Pass(adb);
+
+        var calls = Calls();
+
+        Assert.Contains(
+            "-s FAKE1 shell settings put global stay_on_while_plugged_in 3",
+            calls);
+
+        Assert.Contains(
+            "-s FAKE2 shell settings put global stay_on_while_plugged_in 0",
+            calls);
+    }
+
+    [Fact]
+    public async Task StandbyOriginalSurvivesAgentRestart()
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";
+
+        var fake = FakeAdb(["FAKE1"], rule, null, stayOn: "3");
+        var path = Path.Combine(_dir, "config.json");
+
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            adbPath = fake,
+            deviceSerial = "FAKE1",
+            display = new
+            {
+                homeScreen = false,
+                keepAwake = true,
+                standby = "power"
+            }
+        }));
+
+        var store = new ConfigStore(path);
+
+        using (var firstAgent = new AdbReverse(
+            store,
+            NullLogger<AdbReverse>.Instance))
+        {
+            await Pass(firstAgent);
+        }
+
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            adbPath = fake,
+            deviceSerial = "FAKE1",
+            display = new
+            {
+                homeScreen = false,
+                keepAwake = true,
+                standby = "off"
+            }
+        }));
+
+        var restartedStore = new ConfigStore(path);
+
+        using var restartedAgent = new AdbReverse(
+            restartedStore,
+            NullLogger<AdbReverse>.Instance);
+
+        await Pass(restartedAgent);
+
+        Assert.Contains(
+            "-s FAKE1 shell settings put global stay_on_while_plugged_in 3",
+            Calls());
     }
 
     [Fact]
