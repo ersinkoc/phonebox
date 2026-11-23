@@ -200,7 +200,7 @@ deletes the settings, and `-Apk` / `--apk` removes the app from the connected ph
 | CPU temperature | LibreHardwareMonitor | ✓ (hwmon) | — |
 | CPU power | LibreHardwareMonitor | RAPL, where the agent may read it (most distributions allow only root) | — |
 | GPU load, VRAM, temperature | Any vendor (Windows GPU counters); NVIDIA adds power, fan and clocks (`nvidia-smi`), AMD / Intel add them with LibreHardwareMonitor | NVIDIA (`nvidia-smi`), AMD (`amdgpu` sysfs), Intel (`i915` / `xe`: load and clock) | Apple silicon (`ioreg`) |
-| Now playing + controls | ✓ (any app) | ✓ (MPRIS via `playerctl`) | System media, including browser video, with `nowplaying-cli`; Spotify and Music fallback |
+| Now playing + controls | ✓ (apps in Windows' media controls) | ✓ (MPRIS via `playerctl`) | System media, including browser video, with `nowplaying-cli`; Spotify and Music fallback |
 | Volume | ✓ | ✓ (`wpctl` / `pactl`) | ✓ |
 | Processes, end one / all | ✓ | ✓ (your own) | ✓ (your own) |
 | App icons | ✓ | ✓ (icon theme) | ✓ (app bundles) |
@@ -209,6 +209,8 @@ deletes the settings, and `-Apk` / `--apk` removes the app from the connected ph
 | Claude / Codex quotas & sessions, GitHub, webhooks | ✓ | ✓ | ✓ (Claude token from the Keychain) |
 | Tray icon | ✓ | — (settings in the browser) | — |
 | Start at login | Startup folder | systemd user service | launchd agent |
+
+On Windows, Now playing shows the apps that appear in Windows' own media controls (the panel above the volume in Quick Settings): Spotify, browsers, Media Player and most streaming apps. A player that does not report itself there, such as VLC 3, stays blank on the phone. While no other app is in those controls, play / pause still reaches it as the keyboard's media key, but the phone cannot tell whether it plays.
 
 On macOS, `nowplaying-cli` supplies system media metadata and cover art. The agent labels matching Safari or Chrome tabs as YouTube or YouTube Music. The progress bar advances from the last position supplied by macOS; Safari may report an outdated starting position. Volume follows the selected system output. When macOS does not expose its volume, an optional `m1ddc` installation can read it from a compatible display; display volume is read only in PhoneBox. Unsupported outputs show `n/a`. Apple silicon GPU usage comes from IORegistry when macOS exposes it; temperature, power and VRAM figures may remain unavailable.
 
