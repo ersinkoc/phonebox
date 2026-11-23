@@ -8,6 +8,9 @@
   root read (#442, #489, [sszxt](https://github.com/sszxt)).
 - AI sessions: the open conversation of a Claude Code session follows new messages while it is read to the end; one
   scrolled back to an earlier message stays there (#460, [MisteryLiuCode](https://github.com/MisteryLiuCode)).
+- Spotify queue: a track tapped in the widget plays inside the playlist or album that is playing, so the rest of it
+  follows as in the Spotify app. A track you queued by hand still plays on its own (#441,
+  [HugoDeLannoy5311](https://github.com/HugoDeLannoy5311)).
 
 **Agent**
 - Windows: Claude Code and Cursor running inside WSL can show like the native ones. **Also watch Claude Code in WSL**

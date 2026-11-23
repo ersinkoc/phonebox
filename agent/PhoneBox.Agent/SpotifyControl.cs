@@ -18,7 +18,8 @@ public sealed class SpotifyControl : IDisposable
     private readonly SemaphoreSlim _tokenGate = new(1, 1), _readGate = new(1, 1);
     private readonly Lock _gate = new();
     /// <summary>A published snapshot with the settings and credential generation it was read with.</summary>
-    private sealed record SnapshotEntry(JsonObject Value, (string ClientId, string ManualToken) Auth, long Generation, long ReadAt);
+    // Context: the playlist or album playing, kept on the computer to play a queued track inside it (#441); not sent to the phone
+    private sealed record SnapshotEntry(JsonObject Value, (string ClientId, string ManualToken) Auth, long Generation, long ReadAt, string? Context = null);
     private Pending? _pending;
     private Token? _token;
     private bool _tokenIsManual; // _token came from the manual token in settings, not from the credential file
@@ -190,6 +191,7 @@ public sealed class SpotifyControl : IDisposable
                 if (Cached(auth) is { } cached) return cached;
                 var generation = Interlocked.Read(ref _generation);
                 JsonObject value;
+                string? context = null;
                 try
                 {
                     // episodes too: without additional_types an episode that is playing comes back empty
@@ -197,6 +199,7 @@ public sealed class SpotifyControl : IDisposable
                     var queue = await Request(HttpMethod.Get, "me/player/queue?additional_types=track,episode", null, ct);
                     value = new() { ["connected"] = true, ["current"] = TrackOf(playing?["item"]), ["playing"] = playing?["is_playing"]?.DeepClone(),
                         ["queue"] = new JsonArray((queue?["queue"] as JsonArray ?? []).Take(30).Select(TrackOf).ToArray()) };
+                    context = ContextUri(playing?["context"]?["uri"]);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                 catch (Exception ex) when (ex is IOException or HttpRequestException or JsonException or OperationCanceledException)
@@ -206,7 +209,7 @@ public sealed class SpotifyControl : IDisposable
                 {
                     if (unchanged && Interlocked.Read(ref _generation) == generation)
                     {
-                        _snapshot = new(value, auth, generation, Now);
+                        _snapshot = new(value, auth, generation, Now, context);
                         return value;
                     }
                 }
@@ -237,6 +240,10 @@ public sealed class SpotifyControl : IDisposable
     internal static bool CoverUrl(string? url) => url is not null && url.Length <= 200
         && System.Text.RegularExpressions.Regex.IsMatch(url, @"\Ahttps://i\.scdn\.co/image/[A-Za-z0-9]+\z");
 
+    /// <summary>The playing context when a track can be started inside it: Spotify takes an offset only in a playlist or an album.</summary>
+    internal static string? ContextUri(JsonNode? uri) =>
+        uri is JsonValue v && v.TryGetValue<string>(out var s) && PlaybackUri(s) && (s.StartsWith("spotify:playlist:") || s.StartsWith("spotify:album:")) ? s : null;
+
     internal static bool PlaybackUri(string value) => System.Text.RegularExpressions.Regex.IsMatch(value,
         @"\Aspotify:(?:track|episode|playlist|album):[A-Za-z0-9]{22}\z");
     public async Task<DeckResult> Act(string action, string? id, CancellationToken ct)
@@ -253,7 +260,20 @@ public sealed class SpotifyControl : IDisposable
             {
                 var state = await Snapshot(ct);
                 if (id is null || !PlaybackUri(id) || (state["queue"] as JsonArray)?.Any(t => t?["id"]?.GetValue<string>() == id) != true) return new(false, "That queue item is no longer available");
-                await Request(HttpMethod.Put, "me/player/play" + DeviceQuery(), new JsonObject { ["uris"] = new JsonArray(id) }, ct);
+                // Inside the playlist or album playing, so the tracks after it keep coming from there (#441). A track that
+                // isn't part of it (one queued by hand) is refused by Spotify, and then plays on its own as before.
+                var played = false;
+                if (_snapshot?.Context is { } context && id.StartsWith("spotify:track:"))
+                {
+                    try
+                    {
+                        await Request(HttpMethod.Put, "me/player/play" + DeviceQuery(),
+                            new JsonObject { ["context_uri"] = context, ["offset"] = new JsonObject { ["uri"] = id } }, ct);
+                        played = true;
+                    }
+                    catch (IOException ex) when (ex.Message.StartsWith("Spotify returned HTTP", StringComparison.Ordinal)) { }
+                }
+                if (!played) await Request(HttpMethod.Put, "me/player/play" + DeviceQuery(), new JsonObject { ["uris"] = new JsonArray(id) }, ct);
             }
             else if (action == "playlist")
             {

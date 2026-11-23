@@ -133,6 +133,40 @@ public sealed class SpotifyControlTests
         Assert.Contains(paths,p=>p.StartsWith("PUT /v1/me/library?uris=spotify%3Atrack%3A1234567890123456789012"));
     }
 
+    [Theory]
+    [InlineData("spotify:playlist:37i9dQZF1DXcBWIGoYBM5M", 204, true)]  // inside the playlist: the rest of it follows
+    [InlineData("spotify:album:4aawyAB9vmqN3uQ7FjRGTy", 404, false)]    // not part of it (queued by hand): on its own
+    [InlineData("spotify:artist:0OdUWJ0sBjDrqHygGUXeCF", 204, false)]   // no offset in an artist context: on its own
+    [InlineData(null, 204, false)]                                      // nothing playing from a context
+    public async Task A_queued_track_plays_inside_the_playlist_or_album_playing(string? context, int contextAnswer, bool inContext)
+    {
+        using var fixture = new Fixture(manual: true); var plays = new List<string>();
+        using var spotify = fixture.Create(async r =>
+        {
+            if (r.Method == HttpMethod.Put)
+            {
+                var body = await r.Content!.ReadAsStringAsync();
+                plays.Add(body);
+                return new HttpResponseMessage(body.Contains("context_uri") ? (HttpStatusCode)contextAnswer : HttpStatusCode.NoContent);
+            }
+            return Json(r.RequestUri!.AbsolutePath.EndsWith("queue")
+                ? """{"queue":[{"uri":"spotify:track:abcdefghijklmnopqrstuv","name":"Queued","artists":[]}]}"""
+                : "{\"item\":{\"uri\":\"spotify:track:1234567890123456789012\",\"name\":\"Current\",\"artists\":[]},\"is_playing\":true"
+                  + (context is null ? "" : ",\"context\":{\"type\":\"x\",\"uri\":\"" + context + "\"}") + "}");
+        });
+        Assert.True((await spotify.Act("play-queued", "spotify:track:abcdefghijklmnopqrstuv", default)).Ok);
+        var last = JsonNode.Parse(plays[^1])!;
+        if (inContext)
+        {
+            Assert.Single(plays);
+            Assert.Equal(context, (string?)last["context_uri"]);
+            Assert.Equal("spotify:track:abcdefghijklmnopqrstuv", (string?)last["offset"]!["uri"]);
+        }
+        else Assert.Equal("spotify:track:abcdefghijklmnopqrstuv", (string?)last["uris"]![0]);
+        // the context stays on the computer
+        Assert.DoesNotContain("context", (await spotify.Snapshot(default)).ToJsonString());
+    }
+
     [Fact]
     public async Task RateLimitSuppressesRepeatedHttpRequests()
     {
