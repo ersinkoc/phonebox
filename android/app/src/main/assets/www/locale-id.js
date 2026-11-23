@@ -440,6 +440,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pageSwitch.title": "Perubahan halaman",
       "s.pageSwitch.lead": "Bagaimana aturan, webhooks dan idle return mengubah halaman. Alih-alih melompat, ponsel menunjukkan \"Claude membutuhkanku — beralih ke AI dalam 3...\" dengan Stay and Go now, kemudian menghilang. Tidak pernah menarik sebuah halaman saat Anda menggunakan panel, dan peraturan yang diaktifkan satu demi satu menunggu giliran mereka alih-alih melempar layar ke depan dan ke belakang.",
       "s.pageSwitch.homePage": "Halaman Utama",
+      "s.phones.homeDefault": "Sama seperti semua perangkat",
       "s.pageSwitch.homePageHint": "Dimana kembalian idle dan tombol Back pergi.",
       "s.pageSwitch.backHome": "Kembali ke rumah setelah (detik tanpa sentuh, 0 = tidak pernah)",
       "s.pageSwitch.backHomePerPage": "Setiap halaman dapat mengabaikan ini (page editor › Back home after).",

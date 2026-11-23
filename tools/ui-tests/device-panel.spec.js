@@ -37,3 +37,23 @@ test("the device's own home page wins over the global one", async ({ page }) => 
   await load(page, '/panel/?device=monitor', { homePage: 'b', display: { homePage: 'a' } });
   expect(await homeIndex()).toBe(1);
 });
+
+test('Settings › Phones: a device home page lists its own pages, and empty follows the home page of all devices', async ({ page }) => {
+  await page.goto('/settings/#general');
+  const card = page.locator('#phoneList .phone-row').first();
+  await expect(card).toBeVisible();
+  const select = card.locator('select');
+  // empty is not "the first page": it is whatever Page switching sets for every device
+  await expect(select.locator('option').first()).toHaveText('Same as all devices');
+  await expect(select).toHaveValue('');
+  // the choices follow the pages the device shows: take one page off and it is no longer offered
+  const all = await select.locator('option').count();
+  await card.locator('label.check', { hasText: 'Shows all pages' }).locator('input').uncheck();
+  const first = card.locator('.phone-pages label.check').first();
+  const title = (await first.textContent()).trim();
+  await first.locator('input').uncheck();
+  await expect(select.locator('option')).toHaveCount(all - 1);
+  expect((await select.locator('option').allTextContents()).map((s) => s.trim())).not.toContain(title);
+  await select.selectOption({ index: 1 });
+  await expect(page.locator('#save')).toBeEnabled();
+});

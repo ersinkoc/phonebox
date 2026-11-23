@@ -2233,7 +2233,7 @@ function renderPhones() {
       h('div', { class: 'field', style: { maxWidth: '260px', marginTop: '8px' } },
         h('label', {}, t('s.pageSwitch.homePage')),
         h('select', { onchange: (e) => { entry(ph.id).homePage = e.target.value || null; changed(); } },
-          h('option', { value: '' }, t('s.js.firstPage')),
+          h('option', { value: '' }, t('s.phones.homeDefault')),
           ...cfg.pages.filter((p) => p.id && (all || chosen.includes(p.id))).map((p) =>
             h('option', { value: p.id, selected: p.id === conf?.homePage }, plain(`${p.icon || ''} ${p.title}`))))));
   }));

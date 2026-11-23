@@ -440,6 +440,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pageSwitch.title": "เปลี่ยนหน้า",
       "s.pageSwitch.lead": "วิธีการที่กฎ, webhooks และการกลับไปแบบไม่ทำงานเปลี่ยนหน้าเว็บ แทนที่จะกระโดด โทรศัพท์จะแสดง \"Claude needs me - switching to AI in3...\" โดยใช้คำสั่ง Stay and Go now แล้วก็เฉยๆ มันจะไม่ดึงหน้าเว็บออกมาในขณะที่คุณกำลังใช้งานพาเนล และกฎที่ถูกเรียกใช้อย่างต่อเนื่อง จะรอตารางของมัน แทนที่จะปล่อยให้หน้าจอกระโดดไปมา",
       "s.pageSwitch.homePage": "หน้าแรก",
+      "s.phones.homeDefault": "เหมือนทุกอุปกรณ์",
       "s.pageSwitch.homePageHint": "ที่ที่ปุ่มกลับไปและปุ่มถอยหลังจะอยู่",
       "s.pageSwitch.backHome": "กลับบ้านหลังจาก (วินาทีที่ไม่มีการสัมผัส,0=ไม่เคย)",
       "s.pageSwitch.backHomePerPage": "หน้าแต่ละหน้าสามารถใช้ตัวเลือกนี้ได้ (เครื่องมือแก้ไขหน้า › กลับไปที่บ้านหลังจาก)",

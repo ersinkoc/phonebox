@@ -440,6 +440,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pageSwitch.title": "페이지 전환",
       "s.pageSwitch.lead": "규칙, webhooks 및 유휴 반환이 페이지를 어떻게 변경하는가. 점프 대신에, 전화는 보여줍니다 “Claude 나를 필요로 — AI로 전환 3…” Stay and Go now와 함께, 다음 페이드 오버. 그것은 당신이 패널을 사용하는 동안 페이지 멀리 당기지 않습니다, 그리고 규칙은 발사 하나 후 다른 자신의 차례를 기다리는 대신 화면을 앞뒤로 반송.",
       "s.pageSwitch.homePage": "홈페이지",
+      "s.phones.homeDefault": "모든 기기와 동일",
       "s.pageSwitch.homePageHint": "유휴 상태로 돌아가는 키와 Back 키가 있는 곳입니다.",
       "s.pageSwitch.backHome": "집으로 돌아가기 후(터치 없이 초, 0 = 전혀)",
       "s.pageSwitch.backHomePerPage": "각 페이지는 이것을 재정의할 수 있습니다(페이지 편집기 › 다음에 홈으로 돌아가기).",

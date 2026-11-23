@@ -440,6 +440,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pageSwitch.title": "轉頁",
       "s.pageSwitch.lead": "如何規則, webhook 和空闲返回改變的頁面. 而不是跳躍, 電話顯示 “Claude 需要我 — 在3秒钟内切换到AI ” “ 现在留下来,然后去 。 ” 它从不拉一页远离,而你正在使用面板,并且规则发射一个接一个等待他们的轮次,而不是反弹屏幕前后。",
       "s.pageSwitch.homePage": "主頁",
+      "s.phones.homeDefault": "與所有裝置相同",
       "s.pageSwitch.homePageHint": "空白回轉和 Back 鍵的位置",
       "s.pageSwitch.backHome": "回家後 (秒數不觸碰,0=從來沒有)",
       "s.pageSwitch.backHomePerPage": "每個頁面都可以覆蓋這一點(頁面編輯器 › 後來回到主頁 ) 。",

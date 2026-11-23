@@ -440,6 +440,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pageSwitch.title": "ページ切り替え",
       "s.pageSwitch.lead": "ルール、ウェブフック、アイドルリターンがページを変更する方法。ジャンプする代わりに、携帯電話は「Claude needs me — switching to AI in 3…」と「Stay and Go now」を表示し、その後フェードアウトします。パネルを使っている間はページを引っ張ることはありません。次々に発動するルールはスクリーンを前後にバウンスする代わりに、自分のターンを待ちます。",
       "s.pageSwitch.homePage": "ホームページ",
+      "s.phones.homeDefault": "すべてのデバイスと同じ",
       "s.pageSwitch.homePageHint": "アイドルリターンとバックキーの位置",
       "s.pageSwitch.backHome": "家に帰る時間 (タッチなし秒、0 = いつも)",
       "s.pageSwitch.backHomePerPage": "各ページはこれを上書きできます。",

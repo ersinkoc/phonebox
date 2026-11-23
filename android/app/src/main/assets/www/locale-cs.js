@@ -440,6 +440,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pageSwitch.title": "Přepínání stránek",
       "s.pageSwitch.lead": "Jak pravidla, webhooky a idle return mění stránku. Místo skoku telefon zobrazuje „Claude mě potřebuje – přepnutí na AI za 3…“ s Stay and Go now, poté se ztmaví. Nikdy neodtáhne stránku, když používáte panel, a pravidla, která spustí jedno po druhém, čekají na svou příležitost místo toho, aby odrážela obrazovku tam a zpět.",
       "s.pageSwitch.homePage": "Úvodní stránka",
+      "s.phones.homeDefault": "Stejně jako u všech zařízení",
       "s.pageSwitch.homePageHint": "Kde se nachází volnoběhový návrat a tlačítko Zpět.",
       "s.pageSwitch.backHome": "Po návratu domů (v sekundách bez dotyku, 0 = nikdy)",
       "s.pageSwitch.backHomePerPage": "Každá stránka může tuto možnost přepsat (Editor stránek › Zpět domů po).",
