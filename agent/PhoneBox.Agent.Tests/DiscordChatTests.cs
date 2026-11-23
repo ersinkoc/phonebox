@@ -58,6 +58,14 @@ public sealed class DiscordChatTests : IDisposable
         Assert.Equal(off.Append("messages.read"), Scopes(new() { Chat = true }));
     }
 
+    [Fact]
+    public void Chat_and_screen_share_together_ask_for_both()
+    {
+        static List<string> Scopes(DiscordConfig c) => [.. DiscordMonitor.AuthorizeArgs("1", DiscordMonitor.ExtraScopes(c))["scopes"]!.AsArray().Select(n => (string)n!)];
+        var neither = Scopes(new());
+        Assert.Equal([.. neither, "rpc.screenshare.read", "rpc.screenshare.write", "messages.read"], Scopes(new() { ScreenShare = true, Chat = true }));
+    }
+
     [Theory]
     [InlineData("rpc identify messages.read", true)]
     [InlineData("rpc identify", false)]
