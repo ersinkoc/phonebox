@@ -91,14 +91,20 @@ public sealed partial class QuotaMonitor
         return false;
     }
 
-    /// <summary>Finds the CLI on PATH or in its standard per-user Windows installation.</summary>
-    private static string? FindAntigravityCli()
+    /// <summary>Finds the CLI on PATH or in a standard per-user installation.</summary>
+    private static string? FindAntigravityCli() => ToolProcess.Find("agy") ?? AntigravityCliCandidates(
+        OperatingSystem.IsWindows(),
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)).FirstOrDefault(File.Exists);
+
+    /// <summary>
+    /// Where the installers put agy when its folder is not on PATH: the current installer and the CLI's in-place
+    /// self-update use ~/.gemini/bin (#462), older Windows installers %LOCALAPPDATA%\agy\bin.
+    /// </summary>
+    internal static IEnumerable<string> AntigravityCliCandidates(bool windows, string home, string localAppData)
     {
-        var path = ToolProcess.Find("agy");
-        if (path is not null) return path;
-        if (!OperatingSystem.IsWindows()) return null;
-        path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "agy", "bin", "agy.exe");
-        return File.Exists(path) ? path : null;
+        if (home.Length > 0) yield return Path.Combine(home, ".gemini", "bin", windows ? "agy.exe" : "agy");
+        if (windows && localAppData.Length > 0) yield return Path.Combine(localAppData, "agy", "bin", "agy.exe");
     }
 
     /// <summary>Reads the CLI's structured usage command; older versions must never interpret it as a model prompt.</summary>

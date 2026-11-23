@@ -6,6 +6,10 @@
 - AI sessions: the open conversation of a Claude Code session follows new messages while it is read to the end; one
   scrolled back to an earlier message stays there (#460, [MisteryLiuCode](https://github.com/MisteryLiuCode)).
 
+**Agent**
+- AI quotas: Antigravity shows when `agy` is in `~/.gemini/bin` (`%USERPROFILE%\.gemini\bin` on Windows) and that
+  folder is not on PATH; the provider silently went missing (#462, [Lyntter](https://github.com/Lyntter)).
+
 **Panel**
 - Settings › Display › Page navigation › Hidden takes the page dots off the screen. Swipe or press the volume keys
   to turn pages, and hold an empty spot for the overview of all pages (#475, [bwh](https://github.com/bwh)).

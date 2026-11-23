@@ -16,6 +16,17 @@ using Xunit;
 public sealed class AntigravityTests
 {
     [Fact]
+    public void The_CLI_is_found_where_the_current_installer_puts_it_when_its_folder_is_not_on_PATH()
+    {
+        Assert.Equal(
+            [Path.Combine("C:/Users/u", ".gemini", "bin", "agy.exe"), Path.Combine("C:/Users/u/AppData/Local", "agy", "bin", "agy.exe")],
+            QuotaMonitor.AntigravityCliCandidates(true, "C:/Users/u", "C:/Users/u/AppData/Local"));
+        Assert.Equal([Path.Combine("/home/u", ".gemini", "bin", "agy")],
+            QuotaMonitor.AntigravityCliCandidates(false, "/home/u", ""));
+        Assert.Empty(QuotaMonitor.AntigravityCliCandidates(false, "", ""));
+    }
+
+    [Fact]
     public async Task CliRequiresASuccessfulUsageCommandEnvelope()
     {
         var provider = await QuotaMonitor.ReadAntigravityCliAsync("agy", CancellationToken.None, (start, _, _) =>
