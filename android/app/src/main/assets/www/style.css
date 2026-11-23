@@ -989,6 +989,17 @@ html.beat-4 .obs-pill.on .obs-led { box-shadow: 0 0 34px rgba(239, 68, 68, .9); 
 .dc-note { display: flex; flex-direction: column; font-size: 12px; padding: 4px 8px; border-left: 3px solid #5865f2; background: rgba(255, 255, 255, .04); border-radius: 6px; }
 .dc-note span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .w-discord { padding: 9px 10px; display: flex; flex-direction: column; gap: 8px; }
+/* a large Discord widget grows its buttons, names and avatars with it, for a phone on a stand at desk distance (#420);
+   at the usual sizes each clamp stays at its minimum, the size given above */
+.w-discord .dc-where { font-size: clamp(16px, min(6cqmin, 3.4cqw), 26px); }
+/* the buttons share the top row with the channel name, so the widget's width limits them too */
+.w-discord .dc-btn { font-size: clamp(18px, min(6.5cqmin, 4cqw), 30px); padding: clamp(5px, min(1.6cqmin, 1cqw), 9px) clamp(9px, min(2.8cqmin, 1.7cqw), 15px); border-radius: clamp(10px, 3cqmin, 14px); }
+.w-discord .dc-members { gap: clamp(5px, 1.5cqmin, 10px); }
+.w-discord .dc-member { font-size: clamp(12px, 4.2cqmin, 20px); padding: clamp(3px, 1cqmin, 6px) clamp(8px, 2.4cqmin, 14px); gap: clamp(5px, 1.5cqmin, 9px); }
+.w-discord .dc-member .dc-ico { width: clamp(18px, 6.5cqmin, 34px); height: clamp(18px, 6.5cqmin, 34px); font-size: clamp(10px, 3.2cqmin, 16px); }
+.w-discord .dc-who { font-size: clamp(12px, 3.6cqmin, 17px); }
+.w-discord .dc-msgtext { font-size: clamp(13px, 4cqmin, 19px); }
+.w-discord .dc-msg .dc-ico, .w-discord .dc-msgav { width: clamp(26px, 7cqmin, 40px); height: clamp(26px, 7cqmin, 40px); font-size: clamp(11px, 3cqmin, 16px); }
 .w-steam { padding: 9px 12px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
 .w-steam .w-title { color: #79a9e8; }
 .st-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

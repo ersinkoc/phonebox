@@ -582,3 +582,28 @@ test('the ring moves without redrawing the widget, so avatars and server icons d
   await expect(ada).not.toHaveClass(/speaking/, { timeout: 5000 });
   expect(await page.locator('.w-discord .dc-ico').evaluateAll((icons) => icons.every((i) => i.__kept === true))).toBe(true);
 });
+
+test('a large widget has larger buttons, names and avatars; a usual one keeps its sizes (#420)', async ({ page }) => {
+  const size = async (w, h) => {
+    await page.goto('/panel/');
+    await page.evaluate(([w, h]) => {
+      localStorage.clear();
+      localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, rules: [], shortcuts: [],
+        pages: [{ id: 'dc', title: 'Discord', enabled: true, widgets: [{ id: 'd', type: 'discord', x: 0, y: 0, w, h, options: { control: true } }] }] }));
+    }, [w, h]);
+    await page.reload();
+    await expect(page.locator('.w-discord .dc-member').first()).toBeVisible();
+    const px = (sel, prop) => page.locator(sel).first().evaluate((e, prop) => parseFloat(getComputedStyle(e)[prop]), prop);
+    return { btn: await px('.w-discord .dc-btn', 'fontSize'), name: await px('.w-discord .dc-member', 'fontSize'), avatar: await px('.w-discord .dc-member .dc-ico', 'width') };
+  };
+  await page.setViewportSize({ width: 780, height: 360 });
+  expect(await size(4, 3)).toEqual({ btn: 18, name: 12, avatar: 18 });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const big = await size(12, 6);
+  expect(big.btn).toBeGreaterThanOrEqual(28);
+  expect(big.name).toBeGreaterThanOrEqual(18);
+  expect(big.avatar).toBeGreaterThanOrEqual(30);
+  // the buttons never push the top row wider than the widget
+  const top = await page.locator('.w-discord .dc-top').evaluate((e) => e.scrollWidth - e.clientWidth);
+  expect(top).toBeLessThanOrEqual(0);
+});
