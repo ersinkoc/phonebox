@@ -54,6 +54,19 @@ people who proposed or prototyped something are credited in the [changelog](../C
 - **Mics off, camera off** ([#387](https://github.com/ersinkoc/phonebox/issues/387)): an action next to panic that
   mutes only the microphones and stops the OBS virtual camera. It doesn't touch the physical webcam and says so
   instead of reporting success.
+- **The phone as a computer microphone** ([#465](https://github.com/ersinkoc/phonebox/issues/465), pull request
+  [#472](https://github.com/ersinkoc/phonebox/pull/472)): Windows only, off by default; Set up fetches scrcpy's
+  server (checked by its hash) and plays the phone's mic into a virtual audio cable. Without the adb server watchdog,
+  which needs its own pull request. Keeping a third-party webcam app running was declined.
+- **Claude Code and Cursor inside WSL** ([#466](https://github.com/ersinkoc/phonebox/issues/466), pull request
+  [#469](https://github.com/ersinkoc/phonebox/pull/469)): two Windows settings, off by default, that read the running
+  distros only and never start a stopped one.
+- **Cursor permission prompts on the phone** ([#467](https://github.com/ersinkoc/phonebox/issues/467), pull request
+  [#470](https://github.com/ersinkoc/phonebox/pull/470)), after #469: a Cursor hook, off by default, with the same
+  Allow / Deny flow as Claude Code.
+- **A wallpaper behind the pages** ([#468](https://github.com/ersinkoc/phonebox/issues/468), pull request
+  [#471](https://github.com/ersinkoc/phonebox/pull/471)): a JPEG, PNG or WEBP picture of your own, darkened and
+  optionally blurred.
 
 ## Open for a contributor
 
