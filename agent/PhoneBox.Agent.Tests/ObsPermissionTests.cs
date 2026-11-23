@@ -62,7 +62,15 @@ public sealed class ObsPermissionTests
     {
         await using var fixture = await ObsPermissionFixture.Create();
         fixture.Configure(pageEnabled: true, control: true, obsEnabled: true);
-        Assert.True((await fixture.Monitor.DeckSnapshot(default).WaitAsync(TimeSpan.FromSeconds(10)))["connected"]!.GetValue<bool>());
+        // DeckSnapshot answers "loading" after 1 s while the first discovery runs; a slow runner can take longer
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        var connected = false;
+        while (!connected && DateTime.UtcNow < deadline)
+        {
+            connected = (await fixture.Monitor.DeckSnapshot(default).WaitAsync(TimeSpan.FromSeconds(10)))["connected"]!.GetValue<bool>();
+            if (!connected) await Task.Delay(50);
+        }
+        Assert.True(connected);
         fixture.Configure(pageEnabled: true, control: true, obsEnabled: false);
         Assert.False((await fixture.Monitor.DeckSnapshot(default).WaitAsync(TimeSpan.FromSeconds(10)))["connected"]!.GetValue<bool>());
     }
