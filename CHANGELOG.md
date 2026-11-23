@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.9.28 — 2026-11-23
+
+Faster page switching (tap or slide along the page dots, a page bar with names, a Page buttons widget), Discord
+screen share and a read-only chat, Plex queue and playlists, a Steam library and synced lyrics.
 
 **Widgets**
 - Discord: a button switches Discord between **voice activity** and **push to talk**, keeping your push-to-talk key,

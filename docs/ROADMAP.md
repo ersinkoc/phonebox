@@ -59,11 +59,6 @@ people who proposed or prototyped something are credited in the [changelog](../C
 
 Agreed in principle, not being built in-house. Say so on the issue before starting.
 
-- **Read-only Discord chat on the phone** ([#356](https://github.com/ersinkoc/phonebox/issues/356)): the text chat of
-  the voice channel you're in or a picked channel, with new-message dots, behind its own switch (off by default,
-  `messages.read`, message text in memory only). The code is written and reviewed in
-  [#368](https://github.com/ersinkoc/phonebox/pull/368) (by AlberBM), but was never tried against the real Discord
-  app: it needs someone who can test it there, then a rebase onto the screen-share scope code from #416.
 - **Typing from the phone's keyboard**: a text field and a row of keys (Enter, Backspace, Esc, Tab, arrows, optionally
   Ctrl / Alt / Shift) on the Dictation widget, behind its **Type the text on the computer** switch and through
   `/api/dictate`; nothing logged or stored ([#320](https://github.com/ersinkoc/phonebox/issues/320)).
@@ -100,8 +95,8 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   ([#215](https://github.com/ersinkoc/phonebox/issues/215)): needs a documented Antigravity hook that waits for an
   answer, like the one Claude Code has. A permission gate built on undocumented internals could approve the wrong
   thing after an Antigravity update.
-- **Power standby on Android 8+** ([#30](https://github.com/ersinkoc/phonebox/issues/30)): pull request
-  [#32](https://github.com/ersinkoc/phonebox/pull/32) was closed; a new pull request built on its review is welcome.
+- **Power standby on Android 8+** ([#30](https://github.com/ersinkoc/phonebox/issues/30)): continued from
+  [#32](https://github.com/ersinkoc/phonebox/pull/32) in the draft [#430](https://github.com/ersinkoc/phonebox/pull/430).
 
 ## Waiting on a report
 

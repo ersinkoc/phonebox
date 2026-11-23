@@ -13,7 +13,7 @@
     <Product>PhoneBox</Product>
     <Company>PhoneBox</Company>
     <Description>PhoneBox desktop agent: feeds the PhoneBox Android desk panel over USB or Wi-Fi.</Description>
-    <Version>0.9.27</Version>
+    <Version>0.9.28</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
