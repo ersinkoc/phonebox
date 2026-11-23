@@ -422,6 +422,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.pageBar.dots": "Крапки",
       "s.display.pageBar.auto": "Панель сторінок при дотику до крапок",
       "s.display.pageBar.bar": "Панель сторінок, завжди видима",
+      "s.display.pageBar.hidden": "Прихована",
       "s.display.pageBarSide": "Розташування панелі сторінок",
       "s.display.pageBarSide.bottom": "Знизу",
       "s.display.pageBarSide.left": "Ліворуч",

@@ -422,6 +422,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.pageBar.dots": "Tečky",
       "s.display.pageBar.auto": "Lišta stránek po dotyku teček",
       "s.display.pageBar.bar": "Lišta stránek, vždy zobrazená",
+      "s.display.pageBar.hidden": "Skrytá",
       "s.display.pageBarSide": "Umístění lišty stránek",
       "s.display.pageBarSide.bottom": "Dole",
       "s.display.pageBarSide.left": "Vlevo",

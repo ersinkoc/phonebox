@@ -422,6 +422,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.pageBar.dots": "ドット",
       "s.display.pageBar.auto": "ドットに触れたときにページバー",
       "s.display.pageBar.bar": "ページバーを常に表示",
+      "s.display.pageBar.hidden": "非表示",
       "s.display.pageBarSide": "ページバーの位置",
       "s.display.pageBarSide.bottom": "下",
       "s.display.pageBarSide.left": "左",

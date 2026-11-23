@@ -422,6 +422,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.pageBar.dots": "बिंदु",
       "s.display.pageBar.auto": "बिंदुओं को छूने पर पृष्ठ बार",
       "s.display.pageBar.bar": "पृष्ठ बार, हमेशा दिखे",
+      "s.display.pageBar.hidden": "छिपा हुआ",
       "s.display.pageBarSide": "पृष्ठ बार की जगह",
       "s.display.pageBarSide.bottom": "नीचे",
       "s.display.pageBarSide.left": "बाएँ",

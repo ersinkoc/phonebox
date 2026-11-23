@@ -63,9 +63,10 @@ More templates: **Clock**, **Focus** (pomodoro + note), **Calm** (breathing), **
 
 **Getting around.** Swipe; press the phone's **volume keys** to flip pages; tap the page dots (or long-press an empty
 spot) for an overview of all pages and jump straight to one. Webhooks and rules can switch pages too; they count down
-first (*"switching to AI in 3…"*, with Stay and Go now) and never pull a page away while you are using the panel. The
-panel returns to the home page when idle (each page can stay longer, or for good), can dim to a clock at night and
-keeps the screen on.
+first (*"switching to AI in 3…"*, with Stay and Go now) and never pull a page away while you are using the panel.
+Settings › Display › Page navigation can also show a page bar with each page's name, or hide the dots. The panel
+returns to the home page when idle (each page can stay longer, or for good), can dim to a clock at night and keeps the
+screen on.
 
 <p align="center"><img src="screenshots/overview.png" width="600" alt="Page overview"></p>
 

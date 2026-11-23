@@ -200,7 +200,7 @@ public sealed class DisplayConfig
     public bool PixelShift { get; set; }
     /// <summary>The page dots and the permission prompt's Allow / Deny buttons at the top, for a panel whose bottom edge is hard to reach.</summary>
     public bool ControlsTop { get; set; }
-    /// <summary>How the panel shows its pages: dots, auto (a bar with each page's icon and name while the dots are used) or bar (always, with its own strip of the screen).</summary>
+    /// <summary>How the panel shows its pages: dots, auto (a bar with each page's icon and name while the dots are used), bar (always, with its own strip of the screen) or hidden (no dots: swipe, and hold an empty spot for all pages).</summary>
     public string PageBar { get; set; } = "dots";
     /// <summary>Where the page bar goes: bottom (the top with <see cref="ControlsTop"/>), left or right.</summary>
     public string PageBarSide { get; set; } = "bottom";
@@ -654,7 +654,7 @@ public sealed partial class ConfigStore(string path)
         c.Display ??= new();
         c.Display.Appearance?.Normalize();
         c.Display.Hour12 = Hour12JsonConverter.Normalize(c.Display.Hour12);
-        c.Display.PageBar = c.Display.PageBar is "dots" or "auto" or "bar" ? c.Display.PageBar : "dots";
+        c.Display.PageBar = c.Display.PageBar is "dots" or "auto" or "bar" or "hidden" ? c.Display.PageBar : "dots";
         c.Display.PageBarSide = c.Display.PageBarSide is "bottom" or "left" or "right" ? c.Display.PageBarSide : "bottom";
         c.Display.IdleReturnSec = Math.Clamp(c.Display.IdleReturnSec, 0, 3600);
         c.Display.IdleDimMin = Math.Clamp(c.Display.IdleDimMin, 0, 1440);

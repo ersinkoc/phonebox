@@ -78,3 +78,18 @@ test('a side bar shown by a touch stays centred with the controls at the top', a
   expect(bar.y).toBeGreaterThanOrEqual(0);
   expect(Math.abs(bar.y + bar.height / 2 - 200)).toBeLessThan(2);
 });
+
+test('hidden: no dots on screen, the pages keep the whole screen, and the volume keys and a long press still get around', async ({ page }) => {
+  await show(page, { pageBar: 'hidden' });
+  await expect(page.locator('#dots')).toBeHidden();
+  const box = await pagerBox(page);
+  expect(box.h).toBe(400);
+  await page.evaluate(() => window.onAndroidKey('next'));
+  await expect.poll(() => activeDot(page)).toBe(1);
+  // a long press on an empty spot opens the overview of all pages
+  const empty = await page.locator('.page').nth(1).boundingBox();
+  await page.mouse.move(empty.x + empty.width - 10, empty.y + empty.height - 10);
+  await page.mouse.down();
+  await expect(page.locator('#overview')).toBeVisible({ timeout: 2000 });
+  await page.mouse.up();
+});

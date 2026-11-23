@@ -1967,8 +1967,8 @@ $('ovRules').addEventListener('click', (e) => { e.stopPropagation(); toggleRules
 
 let dotsHoldTimer = 0, dotsHoldStart = null, heldDots = false;
 // ---- the page bar: the dots shown as buttons with each page's icon and name (Settings › Display › Page navigation)
-/** dots (default), auto (a bar while the dots are being used) or bar (always, with its own space). */
-export const pageBarMode = () => (['auto', 'bar'].includes(cfg.display?.pageBar) ? cfg.display.pageBar : 'dots');
+/** dots (default), auto (a bar while the dots are being used), bar (always, with its own space) or hidden (none). */
+export const pageBarMode = () => (['auto', 'bar', 'hidden'].includes(cfg.display?.pageBar) ? cfg.display.pageBar : 'dots');
 const pageBarSide = () => (['left', 'right'].includes(cfg.display?.pageBarSide) ? cfg.display.pageBarSide : 'bottom');
 let pageBarKey = '', pageBarTimer = 0, pageBarOpen = false;
 /** In "auto" mode, opens the bar and closes it again 5 s after the last touch on it. */
@@ -1994,6 +1994,7 @@ export function applyPageBar() {
   pageBarKey = key;
   const b = document.body.classList;
   b.toggle('pagebar-docked', docked);
+  b.toggle('dots-hidden', mode === 'hidden'); // swipes, the volume keys and a long press on an empty spot still work (#475)
   b.toggle('pagebar-left', side === 'left');
   b.toggle('pagebar-right', side === 'right');
   $('dots').classList.toggle('pagebar', shown);

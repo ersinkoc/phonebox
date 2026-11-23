@@ -640,6 +640,7 @@ public class PageBarConfigTests
     [InlineData("{}", "dots", "bottom")]
     [InlineData("""{"display":{"pageBar":"bar","pageBarSide":"left"}}""", "bar", "left")]
     [InlineData("""{"display":{"pageBar":"auto","pageBarSide":"right"}}""", "auto", "right")]
+    [InlineData("""{"display":{"pageBar":"hidden"}}""", "hidden", "bottom")]
     [InlineData("""{"display":{"pageBar":"sideways","pageBarSide":"top"}}""", "dots", "bottom")]
     [InlineData("""{"display":{"pageBar":null,"pageBarSide":null}}""", "dots", "bottom")]
     public void APageBarSettingThePanelDoesNotKnowIsSavedAsTheDefault(string inputJson, string bar, string side)
