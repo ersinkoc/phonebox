@@ -78,12 +78,12 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         catch (JsonException) { return false; }
     }
 
-    private IEnumerable<string> WslCredentialsPaths()
+    /// <summary>Each running distro's credentials file with its distro (tests give paths without one, and no check).</summary>
+    private IEnumerable<(string? Distro, string Path)> WslCredentialsPaths()
     {
-        if (FindWslCredentials is not null) return FindWslCredentials();
+        if (FindWslCredentials is not null) return FindWslCredentials().Select(p => ((string?)null, p));
         if (config?.Get().Claude.WatchWsl != true) return [];
-        // the running-distro query comes right before the reads, so a stopped distro is not started by them
-        return WslHomes.Running().Select(wsl => Path.Combine(wsl.Home, ".claude", ".credentials.json"));
+        return WslHomes.Running().Select(wsl => ((string?)wsl.Distro, Path.Combine(wsl.Home, ".claude", ".credentials.json")));
     }
 
     /// <summary>
@@ -492,9 +492,12 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         // file or only Claude Desktop's plan without a token. A Windows sign-in with a token always comes first.
         if ((CredentialsPath == DefaultCredentialsPath || FindWslCredentials is not null) && !HasCliSignIn(json))
         {
-            // the first running distro whose file holds a sign-in; one with only a plan (or unreadable) is passed over
-            foreach (var wsl in WslCredentialsPaths())
+            // the first running distro whose file holds a sign-in; one with only a plan (or unreadable) is passed over.
+            // Each distro is asked about again right before its file is read: one that stopped while an earlier file was
+            // read is skipped instead of started by the read.
+            foreach (var (distro, wsl) in WslCredentialsPaths())
             {
+                if (distro is not null && !WslHomes.IsRunning(distro)) continue;
                 try
                 {
                     var wslJson = await File.ReadAllTextAsync(wsl, ct);
