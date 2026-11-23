@@ -23,6 +23,29 @@ public static class ClaudeHook
     internal static async Task<object?> HandlePermissionAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
         SessionMonitor sessions, CancellationToken aborted, string source, string? sessionPrefix, bool allowQuestions)
     {
+        var decision = await DecideAsync(input, cfg, approvals, sessions, aborted, source, sessionPrefix, allowQuestions);
+        if (decision is null) return null;
+        return new
+        {
+            hookSpecificOutput = new
+            {
+                hookEventName = "PermissionRequest",
+                // "always" (Allow always, an OpenCode answer) has no Claude Code equivalent and allows once like "allow"
+                decision = decision is "allow" or "always"
+                    ? (object)new { behavior = "allow" }
+                    : new { behavior = "deny", message = "Denied from the PhoneBox panel." },
+            },
+        };
+    }
+
+    /// <summary>
+    /// Shows one permission request (in the Claude Code PermissionRequest shape: tool_name, tool_input, cwd,
+    /// session_id) on the phone and waits for it: "allow", "always" or "deny", or null when there is no answer (no
+    /// phone, turned off, timed out, or an answer the agent has no use for). Each hook turns that into its own output.
+    /// </summary>
+    internal static async Task<string?> DecideAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
+        SessionMonitor sessions, CancellationToken aborted, string source, string? sessionPrefix, bool allowQuestions)
+    {
         if (input.ValueKind != JsonValueKind.Object) return null;
         var c = cfg.Get().Claude;
         if (!c.PhoneApprovals) return null;
@@ -43,19 +66,8 @@ public static class ClaudeHook
             question ? "question" : "permission");
 
         var decision = await approvals.AskAsync(a, aborted);
-        // "skip" and an OpenCode-style typed answer ("answer") have no Claude Code equivalent: no decision here
-        if (decision is not ("allow" or "always" or "deny")) return null;
-        return new
-        {
-            hookSpecificOutput = new
-            {
-                hookEventName = "PermissionRequest",
-                // "always" (Allow always, an OpenCode answer) has no Claude Code equivalent and allows once like "allow"
-                decision = decision is "allow" or "always"
-                    ? (object)new { behavior = "allow" }
-                    : new { behavior = "deny", message = "Denied from the PhoneBox panel." },
-            },
-        };
+        // "skip" and an OpenCode-style typed answer ("answer") have no hook equivalent: no decision here
+        return decision is "allow" or "always" or "deny" ? decision : null;
     }
 
     /// <summary>
@@ -137,7 +149,7 @@ public static class ClaudeHook
     private static string HookCommand(int port, string endpoint) =>
         $"{(OperatingSystem.IsWindows() ? "curl.exe" : "curl")} -s --noproxy 127.0.0.1 --max-time 3600 -X POST http://127.0.0.1:{port}{endpoint} -H \"Content-Type: application/json\" --data-binary \"@-\"";
 
-    private static bool IsOurs(JsonNode? hook, string endpoint)
+    internal static bool IsOurs(JsonNode? hook, string endpoint)
     {
         if (hook is not JsonObject obj || obj["command"] is not JsonValue v || !v.TryGetValue<string>(out var cmd))
             return false;

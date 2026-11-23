@@ -20,8 +20,8 @@
   "ping": { "host": "1.1.1.1", "adapters": [] },
   // Discord widget: talks to the Discord desktop app on this computer. Create an application at discord.com/developers/applications, add the redirect http://127.0.0.1, and enter its client ID and secret (see docs/DISCORD.md). "allowControl" lets shortcuts and custom widgets mute, deafen, leave and join without a Discord widget (off by default). screenShare (off by default) lets the phone start and stop screen shares; it asks Discord for the rpc.screenshare scopes, so Discord asks you to approve PhoneBox again
   "discord": { "enabled": false, "clientId": null, "clientSecret": null, "allowControl": false, "screenShare": false, "chat": false },
-  // Cursor agent chats on the AI sessions widget (off by default). Windows: "watchWsl" also reads the chats of projects opened over Remote - WSL, in the running distros (off by default)
-  "cursor": { "sessions": false, "watchWsl": false },
+  // Cursor agent chats on the AI sessions widget (off by default). Windows: "watchWsl" also reads the chats of projects opened over Remote - WSL, in the running distros (off by default). "phoneApprovals" sends the commands and MCP tool calls of the Cursor agent to the phone for Allow / Deny (needs the hook from Settings › General; off by default)
+  "cursor": { "sessions": false, "watchWsl": false, "phoneApprovals": false },
   // Antigravity chats on the AI sessions widget (off by default)
   "antigravity": { "sessions": false, "shareSessionTitles": false },
   // Live Codex quotas read through the Codex CLI (off by default; Settings › General › AI quotas & CodexBar)
