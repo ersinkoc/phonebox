@@ -33,7 +33,8 @@ export async function deckCommand(kind, values = {}) {
   }
   return result;
 }
-const fail = error => toast(error?.message || tp('The computer did not answer'), 'err');
+// the Plex page-gate messages are translated on every path, also when a deck control (a playlist) is refused
+const fail = error => toast(plexText(error?.message) || tp('The computer did not answer'), 'err');
 const button = (label, click, name = label) => {
   const b = h('button', 'deck-button', label); b.type = 'button'; b.setAttribute('aria-label', name);
   b.onclick = async () => { haptic(); b.disabled = true; try { await click(); } catch (e) { fail(e); } finally { b.disabled = false; } };
