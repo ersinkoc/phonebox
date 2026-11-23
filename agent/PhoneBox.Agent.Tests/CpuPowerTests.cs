@@ -97,6 +97,20 @@ public sealed class RaplPowerTests : IDisposable
     }
 
     [Fact]
+    public void ACounterThatWasResetIsNotTakenForAWrap()
+    {
+        const long range = 262_143_328_850;
+        File.WriteAllText(Path.Combine(_zone.FullName, "max_energy_range_uj"), range + "\n");
+        var rapl = new RaplPower(_zone.FullName);
+        Energy(90_000_000_000);
+        rapl.Read(At(1));
+        Energy(2_000_000); // back near zero, as after a resume: not a wrap of 172 kJ in 1 s
+        Assert.Null(rapl.Read(At(2)));
+        Energy(7_000_000);
+        Assert.Equal(5.0, rapl.Read(At(3))); // and the next read is normal again
+    }
+
+    [Fact]
     public void AnUnreadableCounterGivesNothingAndStartsOver()
     {
         // root-only energy_uj (most distributions since 2020) reads like a missing file

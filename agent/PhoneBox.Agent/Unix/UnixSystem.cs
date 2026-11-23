@@ -103,6 +103,9 @@ internal sealed class RaplPower(string zone = "/sys/class/powercap/intel-rapl:0"
             used += range;
         }
         var seconds = (timestamp - before.Timestamp) / (double)System.Diagnostics.Stopwatch.Frequency;
-        return Math.Round(used / 1e6 / seconds, 1);
+        var watts = used / 1e6 / seconds;
+        // A counter that was reset (after a resume, say) also reads lower than before, and taken for a wrap it gives a
+        // spike of many kilowatts that would flatten the chart for its whole history: no CPU package draws that.
+        return watts is >= 0 and <= 1000 ? Math.Round(watts, 1) : null;
     }
 }
