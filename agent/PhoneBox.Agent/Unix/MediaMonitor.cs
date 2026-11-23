@@ -458,11 +458,22 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
     }
 
     // The extension is what keeps a player from making the agent read any file it names. Chromium-based browsers
-    // write the art to a g_file_open_tmp file (".org.chromium.Chromium.XXXXXX"), whose random suffix only looks
-    // like an extension; that one name is let through. The bytes must still be an image (SniffImageMime).
+    // write the art to a base::CreateTemporaryFile file, ".org.chromium.Chromium.XXXXXX" (".com.google.Chrome.XXXXXX"
+    // in Google Chrome), whose six random letters and digits only look like an extension; exactly that name is let
+    // through. The bytes must still be an image (SniffImageMime).
     private static bool HasAllowedArtExtension(string path) =>
-        Path.GetFileName(path).StartsWith(".org.chromium.Chromium.", StringComparison.Ordinal)
+        IsChromiumTempName(Path.GetFileName(path))
         || Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif";
+
+    private static bool IsChromiumTempName(string name)
+    {
+        var prefix = name.StartsWith(".org.chromium.Chromium.", StringComparison.Ordinal) ? ".org.chromium.Chromium.".Length
+            : name.StartsWith(".com.google.Chrome.", StringComparison.Ordinal) ? ".com.google.Chrome.".Length : -1;
+        return prefix > 0 && name.Length == prefix + 6 && name.AsSpan(prefix).IndexOfAnyExcept(TempNameChars) < 0;
+    }
+
+    private static readonly System.Buffers.SearchValues<char> TempNameChars =
+        System.Buffers.SearchValues.Create("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
 
     /// <summary>
     /// The body of a cover art URL, or null when the server refuses it or it is larger than <see cref="MaxArtBytes"/>.

@@ -239,6 +239,18 @@ public sealed class MacMediaTests
             Assert.NotNull(loadedChromium);
             Assert.Equal("image/png", loadedChromium.Mime);
 
+            var chromePng = Path.Combine(dir, ".com.google.Chrome.x9Q2bZ");
+            File.WriteAllBytes(chromePng, [0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+            Assert.Equal("image/png", (await InvokeLoadArt(new Uri(chromePng).AbsoluteUri))?.Mime);
+
+            // only the temp file name itself: six letters or digits after the prefix, nothing more
+            foreach (var other in new[] { ".org.chromium.Chromium.private", ".org.chromium.Chromium.Wa6XA", ".org.chromium.Chromium.Wa6-Ao" })
+            {
+                var near = Path.Combine(dir, other);
+                File.WriteAllBytes(near, [0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+                Assert.Null(await InvokeLoadArt(new Uri(near).AbsoluteUri));
+            }
+
             var chromiumText = Path.Combine(dir, ".org.chromium.Chromium.tmp123");
             File.WriteAllText(chromiumText, "plain text not an image");
             Assert.Null(await InvokeLoadArt(new Uri(chromiumText).AbsoluteUri));
