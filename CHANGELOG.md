@@ -10,6 +10,10 @@
   scrolled back to an earlier message stays there (#460, [MisteryLiuCode](https://github.com/MisteryLiuCode)).
 
 **Agent**
+- Windows: Claude Code and Cursor running inside WSL can show like the native ones. **Also watch Claude Code in WSL**
+  lists the Claude Code sessions of the running distros and uses the Claude sign-in there for the quota when Windows
+  has none; **Also watch Cursor in WSL** lists the chats of projects opened over Remote - WSL. Both are off by default,
+  and a stopped distro is never started (#469, [lucaskaiut](https://github.com/lucaskaiut)).
 - AI quotas: Antigravity shows when `agy` is in `%USERPROFILE%\.gemini\bin` (`~/.gemini/bin` on macOS and Linux)
   and that folder is not on PATH; the provider silently went missing (#462, [Lyntter](https://github.com/Lyntter)).
 - Restarting, updating or quitting the agent with a phone connected takes about a second instead of 30: the live
