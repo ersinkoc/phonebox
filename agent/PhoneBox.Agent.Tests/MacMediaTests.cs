@@ -232,6 +232,17 @@ public sealed class MacMediaTests
             Assert.NotNull(loaded);
             Assert.Equal("image/png", loaded.Mime);
 
+            // Chromium / Brave on Linux writes MPRIS temporary artwork without a file extension
+            var extensionlessPng = Path.Combine(dir, ".org.chromium.Chromium.tmp123");
+            File.WriteAllBytes(extensionlessPng, [0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+            var loadedExtless = await InvokeLoadArt(new Uri(extensionlessPng).AbsoluteUri);
+            Assert.NotNull(loadedExtless);
+            Assert.Equal("image/png", loadedExtless.Mime);
+
+            var extensionlessText = Path.Combine(dir, "extensionless-plain");
+            File.WriteAllText(extensionlessText, "plain text not an image");
+            Assert.Null(await InvokeLoadArt(new Uri(extensionlessText).AbsoluteUri));
+
             var secretJson = Path.Combine(dir, "config.json");
             File.WriteAllText(secretJson, "{\"token\":\"secret\"}");
             Assert.Null(await InvokeLoadArt(new Uri(secretJson).AbsoluteUri));

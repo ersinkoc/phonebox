@@ -457,8 +457,13 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         return null;
     }
 
-    private static bool HasAllowedArtExtension(string path) =>
-        Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif";
+    private static bool HasAllowedArtExtension(string path)
+    {
+        var name = Path.GetFileName(path);
+        if (name.StartsWith(".org.chromium.Chromium.", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return Path.GetExtension(path).ToLowerInvariant() is "" or ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif";
+    }
 
     /// <summary>
     /// The body of a cover art URL, or null when the server refuses it or it is larger than <see cref="MaxArtBytes"/>.
