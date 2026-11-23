@@ -2124,11 +2124,25 @@ let swipeStartPage = 0;
 let swipeStartTime = 0;
 let swipeTracking = false;
 
+/**
+ * Whether a sideways swipe that starts on el turns the page, as the browser decides it from touch-action: the wrap at
+ * either end follows the same rule as an ordinary page turn. A button or a card turns the page; the page dots, a
+ * slider or anything else that keeps sideways moves for itself does not (#487).
+ */
+function swipeTurnsPage(el) {
+  for (let n = el; n && n !== pager; n = n.parentElement) {
+    const ta = getComputedStyle(n).touchAction;
+    if (ta !== 'auto' && ta !== 'manipulation' && !/pan-(x|left|right)/.test(ta)) return false;
+  }
+  return true;
+}
+
 pager.addEventListener('touchstart', (e) => {
   swipeTracking = false;
   if (e.touches.length !== 1 || pages.length < 2) return;
   // Dragging a slider, the volume bar, a list or the station carousel must never flip (or wrap) the page.
-  if (volDragging || e.target.closest?.('button, input, textarea, select, a, [contenteditable], .s-list, .vb, .bar, .radio-carousel-track, .ac-dial')) return;
+  if (volDragging || e.target.closest?.('input, textarea, select, [contenteditable], .s-list, .vb, .bar, .radio-carousel-track, .ac-dial')
+    || !swipeTurnsPage(e.target)) return;
   swipeStartX = e.touches[0].clientX;
   swipeStartY = e.touches[0].clientY;
   swipeStartPage = curPage;
