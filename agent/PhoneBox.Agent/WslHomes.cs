@@ -50,6 +50,11 @@ public static class WslHomes
         return homes;
     }
 
+    /// <summary>Whether a distro runs right now (a fresh `wsl.exe --list --running` query; false without WSL).</summary>
+    public static bool IsRunning(string distro) =>
+        OperatingSystem.IsWindows()
+        && OpenCodeServices.ParseRunningDistros(OpenCodeServices.RunningListOutput()).Contains(distro, StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Whether Linux process <paramref name="pid"/> runs in the distro behind <paramref name="root"/>, read from its
     /// /proc. With <paramref name="procStart"/> (Claude Code writes the process's start time in clock ticks, field 22 of

@@ -117,12 +117,23 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
     private IReadOnlyList<AgentSession> _wslSessions = [];
     private long _nextWsl;
     private (bool Claude, bool Cursor) _wslSources;
-    // the distro home each WSL Claude Code session was read from, for its conversation (session id -> home)
-    private volatile IReadOnlyDictionary<string, string> _wslHomes = new Dictionary<string, string>();
+    // the distro and home each WSL Claude Code session was read from, for its conversation (session id -> where)
+    private volatile IReadOnlyDictionary<string, (string Distro, string Home)> _wslHomes = new Dictionary<string, (string, string)>();
 
-    /// <summary>The home a Claude Code session's files are under when it runs inside WSL (null for a native one), so
-    /// its conversation is read from the distro.</summary>
-    public string? HomeOf(string sessionId) => _wslHomes.TryGetValue(sessionId, out var home) ? home : null;
+    /// <summary>The distro and home a Claude Code session's files are under when it runs inside WSL (null for a native
+    /// one), so its conversation is read from the distro.</summary>
+    public (string Distro, string Home)? WslOf(string sessionId) => _wslHomes.TryGetValue(sessionId, out var where) ? where : null;
+
+    /// <summary>The home to read a session's conversation from: null for a native session, and for a WSL session only
+    /// while its distro still runs (asked right before the read, so a distro that stopped since is not started by it).</summary>
+    /// <param name="usable">False for a WSL session whose distro has stopped: nothing may be read for it.</param>
+    public string? ConversationHome(string sessionId, out bool usable, Func<string, bool>? isRunning = null)
+    {
+        usable = true;
+        if (WslOf(sessionId) is not { } where) return null;
+        usable = (isRunning ?? WslHomes.IsRunning)(where.Distro);
+        return usable ? where.Home : null;
+    }
 
     /// <summary>
     /// Claude Code sessions and Cursor chats of the running WSL distros' default users, refreshed every
@@ -132,13 +143,13 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
     /// <param name="running">The running distros; tests give their own, production asks wsl.exe.</param>
     internal IReadOnlyList<AgentSession> ReadWsl(bool claude, bool cursor, Func<IReadOnlyList<WslHomes.Entry>>? running = null)
     {
-        if (!claude && !cursor) { _wslSessions = []; _wslHomes = new Dictionary<string, string>(); _nextWsl = 0; _wslSources = default; return []; }
+        if (!claude && !cursor) { _wslSessions = []; _wslHomes = new Dictionary<string, (string, string)>(); _nextWsl = 0; _wslSources = default; return []; }
         // a source turned on or off: the rows read with the other setting must not be shown until the next refresh
         if ((claude, cursor) != _wslSources) { _nextWsl = 0; _wslSources = (claude, cursor); }
         if (Environment.TickCount64 < _nextWsl) return _wslSessions;
         _nextWsl = Environment.TickCount64 + WslRefreshMs;
         var list = new List<AgentSession>();
-        var homes = new Dictionary<string, string>();
+        var homes = new Dictionary<string, (string Distro, string Home)>();
         foreach (var wsl in (running ?? (() => WslHomes.Running()))())
         {
             if (claude)
@@ -148,7 +159,7 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
                     foreach (var s in ReadClaude(wsl.Home, titles: ShareTitles, linuxAlive: (pid, start) => WslHomes.Alive(wsl.Root, pid, start)))
                     {
                         list.Add(s);
-                        homes[s.Id] = wsl.Home;
+                        homes[s.Id] = (wsl.Distro, wsl.Home);
                     }
                 }
                 catch (Exception ex) { log.LogDebug("claude sessions in {Distro}: {Msg}", wsl.Distro, ex.Message); }

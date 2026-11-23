@@ -134,10 +134,15 @@ public sealed class WslWatchTests : IDisposable
         Assert.Equal(["claude", "cursor"], monitor.ReadWsl(true, true, Running).Select(s => s.Tool).Order());
         // within the 5-second refresh: the Cursor rows must not linger once Cursor is turned off
         Assert.Equal(["claude"], monitor.ReadWsl(true, false, Running).Select(s => s.Tool));
-        Assert.Equal(home, monitor.HomeOf("claude:aaaa-live")); // its conversation is read from the distro
-        Assert.Null(monitor.HomeOf("claude:native"));
+        // its conversation is read from the distro while it runs, and not at all once it stopped
+        Assert.Equal(home, monitor.ConversationHome("claude:aaaa-live", out var usable, _ => true));
+        Assert.True(usable);
+        Assert.Null(monitor.ConversationHome("claude:aaaa-live", out usable, _ => false));
+        Assert.False(usable);
+        Assert.Null(monitor.ConversationHome("claude:native", out usable, _ => throw new InvalidOperationException("native: no WSL query")));
+        Assert.True(usable);
         Assert.Empty(monitor.ReadWsl(false, false, Running));
-        Assert.Null(monitor.HomeOf("claude:aaaa-live"));
+        Assert.Null(monitor.WslOf("claude:aaaa-live"));
     }
 
     private static string CursorChat(string projectsRoot, string slug, string id, string lastRole)

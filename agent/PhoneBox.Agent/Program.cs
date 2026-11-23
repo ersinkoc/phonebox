@@ -906,8 +906,9 @@ app.MapDelete("/api/claude/hook", (ConfigStore cfg) => ClaudeHook.Configure(fals
 // turns on Settings › Claude Code › "Show the conversation on the phone"; only a session the monitor currently sees.
 app.MapGet("/api/work/conversation", (string id, ConfigStore cfg, SessionMonitor sessions) =>
 {
-    // a session inside WSL keeps its chat file in the distro's home
-    return Results.Json(ClaudeTranscript.ForPhone(cfg.Get().Claude.ShareConversation, sessions.Snapshot(), id, sessions.HomeOf(id)));
+    // a session inside WSL keeps its chat file in the distro's home; a distro that stopped is not read (that would start it)
+    var home = sessions.ConversationHome(id, out var usable);
+    return Results.Json(ClaudeTranscript.ForPhone(cfg.Get().Claude.ShareConversation, usable ? sessions.Snapshot() : [], id, home));
 });
 
 // Codex uses the same PermissionRequest decision contract, through ~/.codex/hooks.json.
