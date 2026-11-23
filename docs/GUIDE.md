@@ -214,7 +214,11 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   wake it and open PhoneBox on unlock, with an ADB connection; phones secured by a PIN or password must be unlocked
   manually). Lock sync needs the agent to run in the macOS GUI session; [battery care](#rules);
   [AI agent permission prompts](#ai-agent-permission-prompts);
-  phones (several at once, each with its own pages); Wi-Fi & Tailscale; updates.
+  phones (several at once, each with its own pages and home page); Wi-Fi & Tailscale; updates.
+- **The panel on a monitor:** `http://127.0.0.1:8765/panel/?device=monitor` (any name of letters and digits, up to 32 of them) opens the
+  panel in a browser as a device of its own. It shows up under **Phones** once it has loaded, so it can get its own
+  pages and home page there, like a phone; without `?device=` the browser shows every page and follows the global
+  home page.
 - **Photo frame** (in General): the Photo frame widget shows a folder on this computer, or one album of an Immich
   server: enter its address and an API key with the `album.read`, `asset.read` and `asset.view` permissions, press
   **Load albums** and pick one. The Immich source has been tested with Immich 3.4.2 (and earlier with 3.4.1); other versions may work.

@@ -27,7 +27,13 @@ export const API = '/agent/api';
 // The phone's native proxy only forwards requests that carry this header (or image GETs), so script in a sandboxed
 // Custom HTML widget cannot reach the agent: adding the header to a cross-origin request needs a CORS preflight,
 // which the proxy refuses. See MainActivity.fromPanel.
-export const PANEL_HEADERS = { 'X-PhoneBox-Panel': '1' };
+// A panel in a browser can stand for a device of its own (/panel/?device=monitor): the agent then gives it that device's
+// pages and home page from Settings › Phones, as it does for each phone (the app sends its id itself). Same rule as the
+// agent's for device ids: letters and digits, up to 32.
+const DEVICE = (() => {
+  try { const d = new URLSearchParams(location.search).get('device') || ''; return /^[A-Za-z0-9]{1,32}$/.test(d) ? d : ''; } catch (_) { return ''; }
+})();
+export const PANEL_HEADERS = { 'X-PhoneBox-Panel': '1', ...(DEVICE ? { 'X-PhoneBox-Device': DEVICE, 'X-PhoneBox-Model': 'Browser' } : {}) };
 export const I18n = window.PhoneBoxI18n;
 export const t = (key, vars) => (I18n ? I18n.t(key, vars) : key);
 /** A panel literal translated by its English text (i18n.js PANEL); English when the language has no entry. */
@@ -1687,7 +1693,8 @@ export const resolvePage = (ref) => {
   const n = typeof ref === 'number' ? ref - 1 : /^\d+$/.test(String(ref)) ? +ref - 1 : pages.findIndex((p) => p.id === ref || p.title.toLowerCase() === String(ref).toLowerCase());
   return n >= 0 && n < pages.length ? n : -1;
 };
-export const homeIndex = () => { const id = cfg.display?.homePage; const i = id ? pages.findIndex((p) => p.id === id) : -1; return i >= 0 ? i : 0; };
+// this device's own home page (Settings › Phones) comes before the global one
+export const homeIndex = () => { const id = cfg.homePage || cfg.display?.homePage; const i = id ? pages.findIndex((p) => p.id === id) : -1; return i >= 0 ? i : 0; };
 
 // ================================================================= calm page switching
 // Rules, webhooks and the idle return ask for a page instead of jumping to it. A request waits while you are using the

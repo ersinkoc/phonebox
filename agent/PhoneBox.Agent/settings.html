@@ -2206,7 +2206,7 @@ function renderPhones() {
   const ago = (ms) => { if (!ms) return 'not seen since the agent started'; const s = (Date.now() - ms) / 1000; return s < 15 ? 'connected now' : s < 3600 ? `seen ${Math.round(s / 60)} min ago` : `seen ${Math.round(s / 3600)} h ago`; };
   const list = phonesSeen.length ? phonesSeen : [];
   if (!list.length) { $('phoneList').replaceChildren(h('p', { class: 'hint', 'data-i18n': 's.phones.empty' }, t('s.phones.empty'))); return; }
-  const entry = (id) => { let e = cfg.phones.find((x) => x.id === id); if (!e) { e = { id, name: '', pages: null }; cfg.phones.push(e); } return e; };
+  const entry = (id) => { let e = cfg.phones.find((x) => x.id === id); if (!e) { e = { id, name: '', pages: null, homePage: null }; cfg.phones.push(e); } return e; };
   $('phoneList').replaceChildren(...list.map((ph) => {
     const conf = cfg.phones.find((x) => x.id === ph.id);
     const chosen = conf?.pages || null;
@@ -2227,7 +2227,15 @@ function renderPhones() {
           if (e.target.checked) set.add(p.id); else set.delete(p.id);
           e2.pages = cfg.pages.map((x) => x.id).filter((id) => set.has(id));
           changed();
-        } }), rich(`${p.icon || ''} ${p.title}`.trim())))));
+          renderPhones(); // the home page choices follow the pages it shows
+        } }), rich(`${p.icon || ''} ${p.title}`.trim())))),
+      // this device's own home page: empty follows the global one (Pages › page switching)
+      h('div', { class: 'field', style: { maxWidth: '260px', marginTop: '8px' } },
+        h('label', {}, t('s.pageSwitch.homePage')),
+        h('select', { onchange: (e) => { entry(ph.id).homePage = e.target.value || null; changed(); } },
+          h('option', { value: '' }, t('s.js.firstPage')),
+          ...cfg.pages.filter((p) => p.id && (all || chosen.includes(p.id))).map((p) =>
+            h('option', { value: p.id, selected: p.id === conf?.homePage }, plain(`${p.icon || ''} ${p.title}`))))));
   }));
 }
 

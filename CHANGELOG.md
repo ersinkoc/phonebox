@@ -21,6 +21,9 @@
   it turns any other page; it only did from an empty spot (#487, [nonchita100](https://github.com/nonchita100)).
 - Settings › Display › Page navigation › Hidden takes the page dots off the screen. Swipe or press the volume keys
   to turn pages, and hold an empty spot for the overview of all pages (#475, [bwh](https://github.com/bwh)).
+- A browser can be a device of its own: `http://127.0.0.1:8765/panel/?device=monitor` shows up under Settings › Phones,
+  so a monitor gets its own pages there, like a phone. Each device can also have its own home page, the page it goes
+  back to when idle.
 
 **Setup**
 - macOS: each release also has a disk image, `PhoneBox-<version>-<rid>.dmg`, with PhoneBox.app (no window; the settings

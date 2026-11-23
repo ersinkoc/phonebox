@@ -60,6 +60,14 @@ public sealed class AgentConfig
         return chosen.Count > 0 ? chosen : Pages;
     }
 
+    /// <summary>The home page a device chose for itself, if that page is enabled and among the ones it shows; null
+    /// otherwise, so a disabled one falls back to the global home page (the panel drops disabled pages before it looks).</summary>
+    public string? HomePageFor(string? deviceId)
+    {
+        var home = Phones.FirstOrDefault(p => p.Id == deviceId)?.HomePage;
+        return home is not null && PagesFor(deviceId).Any(p => p.Id == home && p.Enabled) ? home : null;
+    }
+
     /// <summary>The part sent to the phone: commands (shortcut cmd/args/cwd, command widget scripts) are never included.</summary>
     /// <param name="shortcutIcon">A shortcut's picture: its revision (null when it has none), and whether the user uploaded
     /// it rather than it being the program's own icon; only an upload may fill a Big button (a program icon is small, or on
@@ -70,6 +78,8 @@ public sealed class AgentConfig
         codexBar = CodexBar,
         night = Night,
         display = Display,
+        // this device's own home page (Settings › Phones), when it has one among the pages it shows
+        homePage = HomePageFor(deviceId),
         pages = PagesFor(deviceId).Select(p => new
         {
             p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance,
@@ -452,6 +462,8 @@ public sealed class PhoneConfig
     public string Name { get; set; } = "";
     /// <summary>Page ids this phone shows, in the usual order; empty or null = all pages.</summary>
     public List<string>? Pages { get; set; }
+    /// <summary>The page this device returns to (idle return, home button); null = the global home page.</summary>
+    public string? HomePage { get; set; }
 }
 
 public sealed class FeedSource
@@ -751,6 +763,7 @@ public sealed partial class ConfigStore(string path)
             ph.Name = ph.Name?.Trim() ?? "";
             ph.Pages = ph.Pages?.Where(id => !string.IsNullOrWhiteSpace(id)).Select(PageId).Distinct().ToList();
             if (ph.Pages is { Count: 0 }) ph.Pages = null;
+            ph.HomePage = string.IsNullOrWhiteSpace(ph.HomePage) ? null : PageId(ph.HomePage).Trim();
         }
         c.Ping ??= new();
         c.Ping.Adapters = (c.Ping.Adapters ?? []).Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(16).ToList();
