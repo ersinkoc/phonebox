@@ -68,6 +68,10 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 #if WINDOWS
         Microsoft.Win32.SystemEvents.SessionEnding += (_, _) => MarkSessionEnding();
 #endif
+        // rounds end on their own token too: a stop cancels the one that is running, so the rule can come off before
+        // the agent's port closes instead of after it (RemoveBeforeThePortCloses)
+        using var rounds = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _rounds = rounds;
         lifetime?.ApplicationStopping.Register(RemoveBeforeThePortCloses);
         while (!ct.IsCancellationRequested && !_stopping)
         {
@@ -75,7 +79,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (SessionEnding) { await Task.Delay(TimeSpan.FromSeconds(4), ct); continue; }
             try { await _round.WaitAsync(ct); }
             catch (OperationCanceledException) { return; }
-            try { if (!_stopping) await Ensure(ct); }
+            try { if (!_stopping) await Ensure(rounds.Token); }
             catch (OperationCanceledException) { return; }
             catch (Exception ex) { Report($"adb error: {ex.Message}"); }
             finally { _round.Release(); }
@@ -84,6 +88,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     }
 
     private volatile bool _stopping;
+    private volatile CancellationTokenSource? _rounds;
     private readonly SemaphoreSlim _round = new(1, 1); // one Ensure round at a time, and none while the rule comes off
 
     /// <summary>
@@ -95,8 +100,12 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private void RemoveBeforeThePortCloses()
     {
         _stopping = true; // a round that is still running sets no rule from here on (see Ensure)
-        // That round also uses _reverseSet and _sdk, which are not shared safely: the rule comes off only once it has
-        // finished. If it doesn't within the (bounded) wait, the rule is tried again in StopAsync, after the loop ended.
+        // That round also uses _reverseSet and _sdk, which are not shared safely, so it is cancelled (its adb calls end
+        // at once) and the rule comes off once it has stopped. The callbacks of the cancel run on the thread pool, not
+        // on this thread (the tray's UI thread on Quit). Should it still not have stopped within the (bounded) wait,
+        // the rule is tried again in StopAsync, after the loop ended.
+        try { _ = _rounds?.CancelAsync(); }
+        catch (ObjectDisposedException) { } // the loop has already ended
         if (!_round.Wait(TimeSpan.FromSeconds(2))) return;
         try
         {

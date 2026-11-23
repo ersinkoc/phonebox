@@ -135,6 +135,50 @@ public sealed class AdbReverseTests : IDisposable
     }
 
     [Fact]
+    public async Task AStopDuringASlowRoundStillTakesTheRuleOffBeforeThePortCloses()
+    {
+        // a fake adb whose Android version read hangs: the round is busy in it when the stop begins
+        string fake;
+        if (OperatingSystem.IsWindows())
+        {
+            fake = Path.Combine(_dir, "adb.cmd");
+            File.WriteAllText(fake, string.Join("\r\n",
+                "@echo off",
+                ">>\"%~dp0calls.log\" echo %*",
+                "if \"%1\"==\"devices\" (echo List of devices attached& echo FAKE1\tdevice& exit /b 0)",
+                "if \"%4\"==\"getprop\" (ping -n 30 127.0.0.1 >nul& exit /b 0)",
+                "if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (echo UsbFfs tcp:8765 tcp:8765& exit /b 0)",
+                "exit /b 0", ""));
+        }
+        else
+        {
+            fake = Path.Combine(_dir, "adb");
+            File.WriteAllText(fake, string.Join("\n",
+                "#!/bin/sh",
+                "echo \"$*\" >> \"$(dirname \"$0\")/calls.log\"",
+                "if [ \"$1\" = devices ]; then printf 'List of devices attached\\nFAKE1\\tdevice\\n'; exit 0; fi",
+                "if [ \"$4\" = getprop ]; then exec sleep 30; fi",
+                "if [ \"$3\" = reverse ] && [ \"$4\" = --list ]; then echo 'UsbFfs tcp:8765 tcp:8765'; exit 0; fi",
+                "exit 0", ""));
+            File.SetUnixFileMode(fake, (UnixFileMode)0b111_101_101);
+        }
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
+        var life = new Microsoft.Extensions.Hosting.Internal.ApplicationLifetime(
+            NullLogger<Microsoft.Extensions.Hosting.Internal.ApplicationLifetime>.Instance);
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance, lifetime: life);
+        await adb.StartAsync(CancellationToken.None);
+        for (var i = 0; i < 200 && !Calls().Any(c => c.Contains("getprop")); i++) await Task.Delay(50);
+        Assert.Contains(Calls(), c => c.Contains("getprop")); // the round is stuck in it now
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        life.StopApplication(); // returns before the services (and the agent's port) are stopped
+        Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(8), $"took {clock.Elapsed.TotalSeconds:0.0} s");
+        await adb.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
     public async Task WhenTheAgentBeginsToStopTheRuleComesOffAndTheLoopEnds()
     {
         var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);
