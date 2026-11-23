@@ -25,6 +25,8 @@ public sealed class WallpaperTests : IDisposable
         var first = store.Revision();
         Assert.NotNull(first);
         Assert.Equal(first, new WallpaperStore(_dir).Revision()); // the same after a restart
+        // the revision is the hash of the bytes: /api/wallpaper caches what it serves only when ?v= is theirs
+        Assert.Equal(first, WallpaperStore.ContentRevision(bytes));
 
         Assert.Null(store.Save(Png));
         Assert.Equal("image/png", store.Read()!.Value.ContentType);

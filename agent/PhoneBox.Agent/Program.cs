@@ -956,12 +956,10 @@ app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req, ShortcutIconUploads
 // The panel's wallpaper (Settings › Display). The panel asks with ?v=<revision>, so the picture may be kept for good.
 app.MapGet("/api/wallpaper", (WallpaperStore wallpaper, HttpResponse res, string? v) =>
 {
-    var before = wallpaper.Revision();
     if (wallpaper.Read() is not { } found) return Results.NotFound();
-    // kept for good only when these bytes are the revision asked for: an upload between the config and this request
-    // must not leave the new picture cached under the old revision's address
-    var rev = wallpaper.Revision();
-    res.Headers.CacheControl = rev is { } r && r == before && v == r.ToString(System.Globalization.CultureInfo.InvariantCulture)
+    // kept for good only when these very bytes are the revision asked for (the revision is their hash): an upload
+    // between the config and this request must not leave the new picture cached under the old revision's address
+    res.Headers.CacheControl = v == WallpaperStore.ContentRevision(found.Bytes).ToString(System.Globalization.CultureInfo.InvariantCulture)
         ? "private, max-age=31536000, immutable" : "no-store";
     res.Headers.XContentTypeOptions = "nosniff";
     return Results.File(found.Bytes, found.ContentType);
@@ -976,7 +974,14 @@ app.MapPost("/api/settings/wallpaper", async (HttpRequest req, ConfigStore cfg, 
     lock (IconCommit)
     {
         if (cfg.VersionConflict(configVersion)) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
-        if (wallpaper.Save(bytes) is { } err) return Results.BadRequest(new { error = err });
+        var before = wallpaper.Revision();
+        if (wallpaper.Save(bytes) is { } err)
+        {
+            // a save that failed halfway can still have changed the picture served: the panels must hear of it
+            if (wallpaper.Revision() == before) return Results.BadRequest(new { error = err });
+            cfg.Touch();
+            return Results.Json(new { error = err, version = cfg.VersionText }, statusCode: StatusCodes.Status409Conflict);
+        }
         cfg.Touch();
         return Results.Ok(new { version = cfg.VersionText });
     }

@@ -50,7 +50,7 @@ public sealed class WallpaperStore(string? dir = null)
     /// <summary>The wallpaper file, in the order Read looks for it, or null.</summary>
     private string? Current() => ExtensionByContentType.Values.Select(PathFor).FirstOrDefault(File.Exists);
 
-    private static long ContentRevision(byte[] bytes) => BitConverter.ToInt64(SHA256.HashData(bytes));
+    internal static long ContentRevision(byte[] bytes) => BitConverter.ToInt64(SHA256.HashData(bytes));
 
     /// <summary>The picture and its content type, or null when none was uploaded.</summary>
     public (byte[] Bytes, string ContentType)? Read()
