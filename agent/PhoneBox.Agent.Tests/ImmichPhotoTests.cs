@@ -427,7 +427,8 @@ public sealed class ImmichPhotoTests : IDisposable
                 }
                 else await StallBody(c, stop.Token, type: "image/webp");
             });
-            var frame = RealFrame(server.Prefixes.Single().TrimEnd('/'), TimeSpan.FromSeconds(1));
+            // 3 s, not 1: the same limit covers the album read, which a busy macOS runner answered in over 1 s (empty list)
+            var frame = RealFrame(server.Prefixes.Single().TrimEnd('/'), TimeSpan.FromSeconds(3));
             frame.ScanNow();
             var id = Assert.Single(frame.List().Ids);
             var photo = await frame.Get(id, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
