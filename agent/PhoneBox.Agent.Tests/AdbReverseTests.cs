@@ -364,6 +364,46 @@ public sealed class AdbReverseTests : IDisposable
         Assert.DoesNotContain("-s FAKE1 reverse --list", Calls());
     }
 
+    /// <summary>A restarted adb server has no rules and can give the phone the same transport id again: an old phone,
+    /// which can't list its rules, must still get its rule back.</summary>
+    [Fact]
+    public async Task AfterTheAgentRestartsTheAdbServerAnOldPhoneGetsItsRuleBack()
+    {
+        var path = Path.Combine(_dir, "config.json");
+        var fake = FakeAdb(["FAKE1"], "", homeRefused: null, reverseRefused: "FAKE1", sdk: 22, transportId: "1");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect = false } }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Task Pass() => (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        const string rule = "-s FAKE1 reverse tcp:8765 tcp:8765";
+
+        await Pass();
+        await Pass();
+        Assert.Equal(1, Calls().Count(c => c == rule)); // same connection: set once
+
+        // the restart itself, without the machine's real adb server or its environment
+        var find = AdbReverse.FindServerPid;
+        var socket = Environment.GetEnvironmentVariable("ADB_SERVER_SOCKET");
+        var port = Environment.GetEnvironmentVariable("ANDROID_ADB_SERVER_PORT");
+        try
+        {
+            AdbReverse.FindServerPid = (_, _) => Task.FromResult<int?>(null);
+            Environment.SetEnvironmentVariable("ADB_SERVER_SOCKET", null);
+            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", null);
+            await adb.RestartAdbServerAsync(fake, CancellationToken.None);
+        }
+        finally
+        {
+            AdbReverse.FindServerPid = find;
+            Environment.SetEnvironmentVariable("ADB_SERVER_SOCKET", socket);
+            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", port);
+        }
+        Assert.Contains("kill-server", Calls());
+
+        await Pass(); // the same transport id "1" as before the restart
+        Assert.Equal(2, Calls().Count(c => c == rule));
+    }
+
     /// <summary>A newer phone that lists no rule for this agent (the adb server restarted, or another agent took tcp:8765)
     /// gets the rule set again: only Android 5 and 6 rely on what the agent remembers.</summary>
     [Fact]
