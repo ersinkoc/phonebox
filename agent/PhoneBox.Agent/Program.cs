@@ -809,9 +809,13 @@ app.MapGet("/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.R
 // One "state" frame for all open streams: they wake on the same second (below), so the state is built and serialized once
 // per tick, not once per phone. Everything State() reads is a singleton, so the root provider will do.
 var stateFrames = new StateFrameCache(() => State(app.Services, null), new JsonSerializerOptions(JsonSerializerDefaults.Web));
-app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, SpectrumAnalyzer spectrum, ILogger<Program> log) =>
+app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, SpectrumAnalyzer spectrum,
+    IHostApplicationLifetime life, ILogger<Program> log) =>
 {
-    var ct = ctx.RequestAborted;
+    // Ends when the agent begins to stop, too: the server otherwise waits up to 30 s for this never-ending response
+    // before it lets a restart, an update or Quit finish.
+    using var linked = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted, life.ApplicationStopping);
+    var ct = linked.Token;
     var isPhone = ctx.Request.Headers.ContainsKey("X-PhoneBox-App");
     var via = ctx.Connection.LocalPort == usb.Port ? "USB" : ctx.Connection.LocalPort == Port ? "local" : "Wi-Fi";
     log.LogInformation("live stream opened ({Who}, {Via})", isPhone ? "phone" : "other client", via);
