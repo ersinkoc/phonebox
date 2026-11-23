@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Widgets**
+- Discord: a large widget has larger mute, deafen and other buttons, member names and avatars, readable and easy to
+  hit on a phone on a stand. Sizes follow the widget's size; at the usual sizes nothing changes (#420,
+  [noswear922](https://github.com/noswear922)).
+
 **Agent**
 - Windows: the CPU temperature from LibreHardwareMonitor no longer drops out on a busy computer. The agent waited
   only 600 ms for its answer and blanked the temperature for 30 s after each slow one; it now waits 2 s and keeps
