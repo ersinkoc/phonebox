@@ -198,6 +198,7 @@ deletes the settings, and `-Apk` / `--apk` removes the app from the connected ph
 |---|---|---|---|
 | CPU, RAM, network, disks, ping | ✓ | ✓ | ✓ |
 | CPU temperature | LibreHardwareMonitor | ✓ (hwmon) | — |
+| CPU power | LibreHardwareMonitor | RAPL, where the agent may read it (most distributions allow only root) | — |
 | GPU load, VRAM, temperature | Any vendor (Windows GPU counters); NVIDIA adds power, fan and clocks (`nvidia-smi`), AMD / Intel add them with LibreHardwareMonitor | NVIDIA (`nvidia-smi`), AMD (`amdgpu` sysfs), Intel (`i915` / `xe`: load and clock) | Apple silicon (`ioreg`) |
 | Now playing + controls | ✓ (any app) | ✓ (MPRIS via `playerctl`) | System media, including browser video, with `nowplaying-cli`; Spotify and Music fallback |
 | Volume | ✓ | ✓ (`wpctl` / `pactl`) | ✓ |
@@ -231,7 +232,7 @@ is nothing to turn on in PhoneBox.
    sensors need it).
 2. In its menu choose **Options › Remote Web Server › Run**. The port stays **8085** (PhoneBox only looks there).
 3. Check it in a browser on the PC: <http://127.0.0.1:8085/data.json> should show a long JSON text. Within a few
-   seconds the CPU temperature and the extra GPU values appear on the phone.
+   seconds the CPU temperature and power and the extra GPU values appear on the phone.
 4. To keep it running: **Options › Start Minimized**, **Minimize To Tray** and **Run On Windows Startup**.
 
 The web server answers on every network the PC is on. If Windows Firewall asks, PhoneBox only needs it on this

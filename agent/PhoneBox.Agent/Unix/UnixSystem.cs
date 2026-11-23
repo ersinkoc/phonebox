@@ -76,3 +76,33 @@ public static partial class UnixSystem
 
     [GeneratedRegex(@"page size of (\d+) bytes")] private static partial Regex PageSizeRe();
 }
+
+/// <summary>
+/// Linux: the CPU package power in watts from RAPL's energy counter, averaged between two reads. Since the 2020 RAPL
+/// fix (CVE-2020-8694) most distributions let only root read energy_uj, so for most agents this stays null.
+/// </summary>
+internal sealed class RaplPower(string zone = "/sys/class/powercap/intel-rapl:0")
+{
+    private (long Microjoules, long Timestamp)? _last;
+
+    /// <summary>The watts since the previous read; null on the first read or when the counter can't be read.</summary>
+    public double? Read(long timestamp)
+    {
+        if (!long.TryParse(Sh.ReadFile(Path.Combine(zone, "energy_uj"))?.Trim(), CultureInfo.InvariantCulture, out var uj))
+        {
+            _last = null;
+            return null;
+        }
+        var last = _last;
+        _last = (uj, timestamp);
+        if (last is not { } before || timestamp <= before.Timestamp) return null;
+        var used = uj - before.Microjoules;
+        if (used < 0) // the counter wrapped around at max_energy_range_uj
+        {
+            if (!long.TryParse(Sh.ReadFile(Path.Combine(zone, "max_energy_range_uj"))?.Trim(), CultureInfo.InvariantCulture, out var range)) return null;
+            used += range;
+        }
+        var seconds = (timestamp - before.Timestamp) / (double)System.Diagnostics.Stopwatch.Frequency;
+        return Math.Round(used / 1e6 / seconds, 1);
+    }
+}

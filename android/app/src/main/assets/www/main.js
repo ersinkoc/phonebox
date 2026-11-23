@@ -126,7 +126,7 @@ export let pushVersion = null;
 export const D = { state: null, quotas: null, work: null, procs: null, push: {}, weather: null, calendar: null, notes: store.get('notes', []) };
 
 export const HIST = 90;
-export const hist = { cpu: [], gpu: [], ram: [], vram: [], down: [], up: [], ping: [], gputemp: [], cputemp: [], hotspot: [], gpupower: [], gpuclock: [] };
+export const hist = { cpu: [], gpu: [], ram: [], vram: [], down: [], up: [], ping: [], gputemp: [], cputemp: [], hotspot: [], gpupower: [], gpuclock: [], cpupower: [] };
 export const pushHist = (k, v) => { const a = hist[k]; a.push(v ?? 0); if (a.length > HIST) a.shift(); };
 
 // ---------------------------------------------------------------- helpers
@@ -546,7 +546,10 @@ export const netMax = () => Math.max(1, ...hist.down, ...hist.up) * 1.15;
 
 export const METRICS = {
   cpu: { label: 'CPU', name: 'Processor', color: '--cpu', unit: '%', max: () => 100, val: (s) => s.pc?.cpu,
-    sub: (s) => (s.pc?.cpuTemp != null ? `${Math.round(s.pc.cpuTemp)}°C` : shortCpu(s.pc?.cpuName)), title: (s) => s.pc?.cpuName },
+    sub: (s) => {
+      const parts = [s.pc?.cpuTemp != null ? `${Math.round(s.pc.cpuTemp)}°C` : null, s.pc?.cpuPower != null ? `${Math.round(s.pc.cpuPower)} W` : null].filter(Boolean);
+      return parts.length ? parts.join(' · ') : shortCpu(s.pc?.cpuName);
+    }, title: (s) => s.pc?.cpuName },
   gpu: { label: 'GPU', name: 'Graphics', color: '--gpu', unit: '%', max: () => 100, val: (s) => gpuOf(s)?.util,
     sub: (s) => {
       const g = gpuOf(s);
@@ -596,6 +599,8 @@ export const METRICS = {
     sub: (s) => { const g = gpuOf(s); return g?.memClock != null ? tpv('Memory {n} MHz', { n: Math.round(g.memClock) }) : g?.clock == null ? tp('No clock data') : ''; } },
   cputemp: { label: 'CPU TEMP', name: 'CPU temperature', color: '#fb7185', unit: '°C', max: () => 100, hot: [75, 85], val: (s) => s.pc?.cpuTemp,
     sub: (s) => (s.pc?.cpuTemp == null ? tp('needs LibreHardwareMonitor') : shortCpu(s.pc?.cpuName)) },
+  cpupower: { label: 'CPU POWER', name: 'CPU power', color: '#a3e635', unit: 'W', max: () => Math.max(...hist.cpupower, 50), val: (s) => s.pc?.cpuPower,
+    sub: (s) => (s.pc?.cpuPower != null ? shortCpu(s.pc?.cpuName) : s.os === 'windows' ? tp('needs LibreHardwareMonitor') : tp('No power data')) },
 };
 
 export function metricText(m, s) {
@@ -2555,6 +2560,7 @@ export function applyState(s, replayGen = null) {
       pushHist('hotspot', pc.gpu?.hotSpot);
       pushHist('gpupower', pc.gpu?.power ?? pc.gpu?.powerPct);
       pushHist('gpuclock', pc.gpu?.clock);
+      pushHist('cpupower', pc.cpuPower);
     }
   }
   emit('state');

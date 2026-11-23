@@ -359,6 +359,42 @@ test('a GPU without sensors (Apple) shows its memory, not 0 degrees', async ({ p
   expect(labels).toEqual({ gpu: '2 / 16 GB memory', temp: 'No GPU data', ram: '9.5 / 16 GB', nvidia: '61°C · 120 W', nvidiaTemp: 'Fan 30% · 1800 MHz' });
 });
 
+test('the CPU tile shows the package power next to the temperature, like the GPU tile (#442)', async ({ page }) => {
+  await page.goto('/panel/');
+  await expect(page.locator('.w').first()).toBeVisible();
+  const labels = await page.evaluate(async () => {
+    const { METRICS, shortCpu } = await import('/panel/main.js');
+    const cpuName = 'AMD Ryzen 5 5500U with Radeon Graphics';
+    const pc = (cpuTemp, cpuPower, os = 'windows') => ({ os, pc: { cpuName, cpuTemp, cpuPower } });
+    return { both: METRICS.cpu.sub(pc(61.6, 14.6)), temp: METRICS.cpu.sub(pc(61.6, null)), power: METRICS.cpu.sub(pc(null, 14.6)),
+      none: METRICS.cpu.sub(pc(null, null)) === shortCpu(cpuName), value: METRICS.cpupower.val(pc(61.6, 14.6)),
+      sub: METRICS.cpupower.sub(pc(61.6, 14.6)), windows: METRICS.cpupower.sub(pc(61.6, null)),
+      linux: METRICS.cpupower.sub(pc(61.6, null, 'linux')), mac: METRICS.cpupower.sub(pc(61.6, null, 'macos')) };
+  });
+  // Windows gets its power from LibreHardwareMonitor, so the empty tile says what to install; elsewhere it can't help
+  expect(labels).toEqual({ both: '62°C · 15 W', temp: '62°C', power: '15 W', none: true, value: 14.6,
+    sub: 'Ryzen 5 5500U with', windows: 'needs LibreHardwareMonitor', linux: 'No power data', mac: 'No power data' });
+});
+
+test('a metric tile and a gauge can show the CPU power', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/panel/');
+  await page.evaluate(() => {
+    const cfg = JSON.parse(localStorage.getItem('pb-demo-config') || 'null');
+    const pages = [{ id: 'power', title: 'Power', icon: '⚡', enabled: true, widgets: [
+      { id: 't', type: 'stat', x: 0, y: 0, w: 3, h: 2, options: { metric: 'cpupower' } },
+      { id: 'g', type: 'gauge', x: 3, y: 0, w: 2, h: 3, options: { metric: 'cpupower' } }] }];
+    localStorage.setItem('pb-demo-config', JSON.stringify({ ...(cfg || {}), pages, shortcuts: cfg?.shortcuts || [] }));
+  });
+  await page.reload();
+  const tile = page.locator('.w-stat');
+  await expect(tile.locator('.t-label')).toHaveText('CPU POWER');
+  await expect(tile.locator('.t-val small')).toHaveText('W');
+  await expect(tile.locator('.t-val b')).toHaveText(/^\d+$/);
+  await expect(page.locator('.w-gauge .g-label')).toHaveText('CPU POWER');
+  expect(errors).toEqual([]);
+});
+
 test('an AMD or Intel GPU without vendor tools shows its temperature, power share and shared memory', async ({ page }) => {
   await page.goto('/panel/');
   await expect(page.locator('.w').first()).toBeVisible();

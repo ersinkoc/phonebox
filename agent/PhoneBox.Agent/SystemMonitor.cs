@@ -23,7 +23,7 @@ public sealed record DiskInfo(string Name, double UsedGb, double TotalGb);
 
 public sealed record PcSnapshot(double? Cpu, double? CpuTemp, string CpuName, double RamUsedGb, double RamTotalGb,
     GpuInfo? Gpu, double NetDownBps, double NetUpBps, IReadOnlyList<DiskInfo> Disks, long UptimeSec,
-    IReadOnlyList<GpuInfo>? Gpus = null);
+    IReadOnlyList<GpuInfo>? Gpus = null, double? CpuPower = null);
 
 /// <summary>Samples CPU, RAM, network, disk and GPU metrics once a second.</summary>
 public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStore? config = null) : BackgroundService
@@ -36,6 +36,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
     // GPU sources, highest priority first: nvidia-smi, LibreHardwareMonitor, the OS (D3DKMT + counters / sysfs / ioreg)
     private volatile IReadOnlyList<GpuInfo>? _nvidia, _lhmGpus, _osGpus;
     private double? _cpuTemp;
+    private double? _cpuPower; // package watts: LibreHardwareMonitor on Windows, RAPL on Linux; none on macOS
     private double? _appleGpuTemp; // macOS: the GPU's temperature from the SMC, added to the ioreg GPU
     private IReadOnlyList<DiskInfo> _disks = [];
 
@@ -83,7 +84,8 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
                 NetUpBps: Math.Round(up),
                 Disks: _disks,
                 UptimeSec: Environment.TickCount64 / 1000,
-                Gpus: gpus);
+                Gpus: gpus,
+                CpuPower: _cpuPower);
         }
     }
 
@@ -241,10 +243,12 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
 #if !WINDOWS
         _lhmGpus = null; // LibreHardwareMonitor is Windows only
         if (OperatingSystem.IsMacOS()) { await AppleTempLoop(ct); return; }
+        var rapl = new RaplPower();
         while (!ct.IsCancellationRequested)
         {
             _cpuTemp = UnixSystem.CpuTemp();
-            await Task.Delay(_cpuTemp is null ? 30_000 : 2000, ct);
+            _cpuPower = rapl.Read(Stopwatch.GetTimestamp());
+            await Task.Delay(_cpuTemp is null && _cpuPower is null ? 30_000 : 2000, ct);
         }
         return;
 #else
@@ -258,6 +262,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
                 using var doc = JsonDocument.Parse(await _http.GetStringAsync("http://127.0.0.1:8085/data.json", ct));
                 failures = 0;
                 _cpuTemp = FindCpuTemp(doc.RootElement);
+                _cpuPower = FindCpuPower(doc.RootElement);
                 try { _lhmGpus = Gpus.ParseLhm(doc.RootElement); }
                 catch (Exception ex)
                 {
@@ -269,7 +274,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             catch
             {
                 (var clear, delay) = LhmFailed(ref failures);
-                if (clear) { _cpuTemp = null; _lhmGpus = null; }
+                if (clear) { _cpuTemp = null; _cpuPower = null; _lhmGpus = null; }
             }
             await Task.Delay(delay, ct);
         }
@@ -309,6 +314,27 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         }
         Visit(root, false);
         return hottest;
+    }
+
+    /// <summary>
+    /// The CPU package power from LibreHardwareMonitor's data.json: "CPU Package" (Intel) or "Package" (AMD) in watts.
+    /// Only a CPU's own node counts, so a GPU's "GPU Package" can't be taken; the unit tells it from the temperature.
+    /// </summary>
+    internal static double? FindCpuPower(JsonElement root)
+    {
+        double? Visit(JsonElement node, bool inCpu)
+        {
+            if (node.ValueKind != JsonValueKind.Object) return null;
+            inCpu = inCpu || IsCpuNode(node);
+            if (inCpu && StrProp(node, "Text") is "CPU Package" or "Package" && StrProp(node, "Value") is { } value
+                && Gpus.ParseLhmValue(value, StrProp(node, "Type")) is { Kind: "power" } power)
+                return power.Value;
+            if (node.TryGetProperty("Children", out var kids) && kids.ValueKind == JsonValueKind.Array)
+                foreach (var k in kids.EnumerateArray())
+                    if (Visit(k, inCpu) is { } watts) return watts;
+            return null;
+        }
+        return Visit(root, false);
     }
 
     /// <summary>A string property of an object node; null when it is missing or not a string.</summary>
