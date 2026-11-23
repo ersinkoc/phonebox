@@ -462,6 +462,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.sessions": "Показати сеанси OpenCode",
       "s.opencode.countdown": "Секунд, після яких можна буде натиснути кнопку Дозволити завжди (0 = одразу)",
       "s.opencode.watchWsl": "Також дивіться OpenCode у WSL (зупинені дистрибутиви ніколи не запускаються для цього)",
+      "s.claude.watchWsl": "Також стежити за Claude Code у WSL: його сеанси та вхід для квоти, коли у Windows входу немає (зупинений дистрибутив для цього ніколи не запускається)",
+      "s.cursor.watchWsl": "Також стежити за Cursor у WSL (проєкти, відкриті через Remote - WSL; зупинений дистрибутив для цього ніколи не запускається)",
       "s.opencode.shareSessionTitles": "Показувати назви сеансів OpenCode на телефоні (OpenCode отримує їх з розмови)",
       "s.approvals.title": "Запит на дозвіл агента кодування ШІ",
       "s.approvals.hint": "Коли Codex або Claude Code запитує на дозвіл, телефон показує запит з повідомленням <b> Дозволити </b> і <b> Відмовити </b> . Встановіть hook для кожного агента, який ви використовуєте; існуючі файли hook буде збережено та створено резервну копію.",

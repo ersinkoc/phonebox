@@ -59,6 +59,26 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     internal string CredentialsPath { get; init; } = DefaultCredentialsPath;
 
     /// <summary>
+    /// The credentials file of Claude Code inside a running WSL distro, when WSL watching is on for Claude Code (Windows
+    /// only), or null. Tests give a finder of their own.
+    /// </summary>
+    internal Func<string?>? FindWslCredentials { get; init; }
+
+    private string? WslCredentialsPath()
+    {
+        if (FindWslCredentials is not null) return FindWslCredentials();
+        if (config?.Get().Claude.WatchWsl != true) return null;
+        // the running-distro query comes right before the read, so a stopped distro is not started by it
+        foreach (var wsl in WslHomes.Running())
+        {
+            var path = Path.Combine(wsl.Home, ".claude", ".credentials.json");
+            try { if (File.Exists(path)) return path; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Reads Claude Code's macOS Keychain item; null uses the `security` tool, and only for the default credentials path
     /// on macOS. Tests give a reader of their own so nothing here touches the real Keychain.
     /// </summary>
@@ -458,7 +478,12 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
 
         // Claude Code may be rewriting the file right now: try again on the next pass
         string? json = null;
-        try { if (File.Exists(CredentialsPath)) json = await File.ReadAllTextAsync(CredentialsPath, ct); }
+        var credentialsPath = CredentialsPath;
+        // Claude Code signed in only inside WSL: its sign-in there (Settings › Claude Code › Also watch WSL)
+        if ((credentialsPath == DefaultCredentialsPath || FindWslCredentials is not null) && !File.Exists(credentialsPath)
+            && WslCredentialsPath() is { } wsl)
+            credentialsPath = wsl;
+        try { if (File.Exists(credentialsPath)) json = await File.ReadAllTextAsync(credentialsPath, ct); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
         // macOS: Claude Code stores the credentials in the login Keychain (read-only access). It is read when there is
         // no file, and when the file's token is missing or expired: a stale file must not hide a renewed Keychain sign-in.

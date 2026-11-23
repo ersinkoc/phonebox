@@ -12,15 +12,16 @@
 
   // Claude Code chats in the sessions widget. Both are off, because they come from your prompts: "shareSessionTitles" shows each
   // chat's title on the phone (without it only the folder name is shown and no title is read); "shareConversation" lets the phone
-  // open a session's recent messages and steps (nothing is read from a chat file and nothing is sent).
-  "claude": { "shareSessionTitles": false, "shareConversation": false },
+  // open a session's recent messages and steps (nothing is read from a chat file and nothing is sent). Windows: "watchWsl" also shows the sessions
+  // of Claude Code inside the running WSL distros, and uses its sign-in there for the quota when Windows has none (off by default).
+  "claude": { "shareSessionTitles": false, "shareConversation": false, "watchWsl": false },
 
   // Ping target for the ping metric and the "ping high" rule, every 5 s (empty = off)
   "ping": { "host": "1.1.1.1", "adapters": [] },
   // Discord widget: talks to the Discord desktop app on this computer. Create an application at discord.com/developers/applications, add the redirect http://127.0.0.1, and enter its client ID and secret (see docs/DISCORD.md). "allowControl" lets shortcuts and custom widgets mute, deafen, leave and join without a Discord widget (off by default). screenShare (off by default) lets the phone start and stop screen shares; it asks Discord for the rpc.screenshare scopes, so Discord asks you to approve PhoneBox again
   "discord": { "enabled": false, "clientId": null, "clientSecret": null, "allowControl": false, "screenShare": false, "chat": false },
-  // Cursor agent chats on the AI sessions widget (off by default)
-  "cursor": { "sessions": false },
+  // Cursor agent chats on the AI sessions widget (off by default). Windows: "watchWsl" also reads the chats of projects opened over Remote - WSL, in the running distros (off by default)
+  "cursor": { "sessions": false, "watchWsl": false },
   // Antigravity chats on the AI sessions widget (off by default)
   "antigravity": { "sessions": false, "shareSessionTitles": false },
   // Live Codex quotas read through the Codex CLI (off by default; Settings › General › AI quotas & CodexBar)

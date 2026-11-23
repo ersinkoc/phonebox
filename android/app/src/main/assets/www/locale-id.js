@@ -462,6 +462,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.sessions": "Tampilkan sesi OpenCode",
       "s.opencode.countdown": "Detik sebelum Allow always dapat ditekan (0 = sekali)",
       "s.opencode.watchWsl": "Juga lihat OpenCode di WSL (distro yang berhenti tidak pernah dimulai untuk ini)",
+      "s.claude.watchWsl": "Pantau juga Claude Code di WSL: sesinya, dan login-nya untuk kuota saat Windows tidak punya (distro yang berhenti tidak pernah dijalankan untuk ini)",
+      "s.cursor.watchWsl": "Pantau juga Cursor di WSL (proyek yang dibuka dengan Remote - WSL; distro yang berhenti tidak pernah dijalankan untuk ini)",
       "s.opencode.shareSessionTitles": "Tampilkan judul sesi OpenCode di telepon (OpenCode menariknya dari percakapan)",
       "s.approvals.title": "Permintaan izin agen pemrograman AI",
       "s.approvals.hint": "Ketika Codex atau Claude Code meminta izin, telepon menampilkan permintaan dengan <b> Allow </b> dan <b> Deny </b> . Pasang hook untuk setiap agen yang Anda gunakan; berkas hook yang ada dipertahankan dan dibackup.",

@@ -481,6 +481,40 @@ public sealed class ClaudeQuotaScheduleTests : IDisposable
         Assert.Null(QuotaMonitor.PickCredentials(null, null));
     }
 
+    [Fact]
+    public async Task WithoutASignInOnWindowsTheOneInsideWslIsUsed()
+    {
+        var wsl = Path.Combine(_dir, "wsl-credentials.json");
+        File.WriteAllText(wsl, SignInJson("wsl-token", _t0 + 3_600_000));
+        _api.Respond(HttpStatusCode.OK, Usage);
+        var agent = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance)
+        {
+            ClaudeCachePath = Path.Combine(_dir, "claude-quota.json"),
+            CredentialsPath = Creds, // not written: Claude Code is signed in only inside WSL
+            HttpHandler = _api,
+            FindWslCredentials = () => wsl,
+        };
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal("wsl-token", _api.LastToken);
+        Assert.NotEmpty(Claude(agent).Limits);
+    }
+
+    [Fact]
+    public async Task ASignInOnWindowsWinsOverTheOneInsideWsl()
+    {
+        SignIn("windows-token", _t0 + 3_600_000);
+        _api.Respond(HttpStatusCode.OK, Usage);
+        var agent = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance)
+        {
+            ClaudeCachePath = Path.Combine(_dir, "claude-quota.json"),
+            CredentialsPath = Creds,
+            HttpHandler = _api,
+            FindWslCredentials = () => throw new InvalidOperationException("WSL must not be looked at"),
+        };
+        await agent.ClaudeTickAsync(_t0, default);
+        Assert.Equal("windows-token", _api.LastToken);
+    }
+
     private sealed class FakeAnthropic : HttpMessageHandler
     {
         private Func<HttpResponseMessage> _next = () => new HttpResponseMessage(HttpStatusCode.InternalServerError);

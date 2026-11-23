@@ -462,6 +462,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.sessions": "OpenCode 세션 보이기",
       "s.opencode.countdown": "항상 허용을 누르기 전의 초 (0 = 한번에)",
       "s.opencode.watchWsl": "또한 보기 OpenCode WSL에서 (중단된 배포판은 이것을 위해 시작되지 않습니다)",
+      "s.claude.watchWsl": "WSL의 Claude Code도 확인: 세션, 그리고 Windows에 로그인이 없을 때 사용량 한도용 로그인 (중지된 배포판은 이를 위해 절대 시작되지 않음)",
+      "s.cursor.watchWsl": "WSL의 Cursor도 확인 (Remote - WSL로 연 프로젝트; 중지된 배포판은 이를 위해 절대 시작되지 않음)",
       "s.opencode.shareSessionTitles": "전화에 OpenCode 세션 제목을 표시 (OpenCode 대화에서 그들을 그립니다)",
       "s.approvals.title": "AI 코딩 에이전트 권한 프롬프트",
       "s.approvals.hint": "언제 Codex 또는 Claude Code 권한을 요청, 전화는 요청을 보여줍니다 <b>허용</b> 그리고 <b>거부</b>. 사용하는 각 에이전트에 대해 Hook을 설치합니다. 기존 Hook 파일은 보존되고 백업됩니다.",

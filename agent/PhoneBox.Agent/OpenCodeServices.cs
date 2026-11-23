@@ -175,7 +175,7 @@ internal static class OpenCodeServices
     /// <summary>stdout of `wsl.exe --list --running --quiet`, or null when the query could not run (no WSL, no
     /// wsl.exe). --quiet prints just the names: no localized header, no " (Default)" marker, no "no distributions"
     /// line that a parser could mistake for a name.</summary>
-    private static string? RunningListOutput()
+    internal static string? RunningListOutput()
     {
         try
         {

@@ -462,6 +462,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.sessions": "顯示 OpenCode 會話",
       "s.opencode.countdown": "按下「總是允許」前的秒數 (0=一次)",
       "s.opencode.watchWsl": "另外看 OpenCode 在 WSL (停止的分佈式系統從來不會為此啟動)",
+      "s.claude.watchWsl": "同時監看 WSL 中的 Claude Code：其工作階段，以及在 Windows 沒有登入時用於額度的登入（絕不會為此啟動已停止的發行版）",
+      "s.cursor.watchWsl": "同時監看 WSL 中的 Cursor（透過 Remote - WSL 開啟的專案；絕不會為此啟動已停止的發行版）",
       "s.opencode.shareSessionTitles": "顯示電話上的 OpenCode 會議標題 (OpenCode 從對話中提取)",
       "s.approvals.title": "人工智慧編碼代理要求許可",
       "s.approvals.hint": "当 Codex 或 Claude Code 要求授权时,手机会显示请求的内容为 <b> Allow </b> 和 <b> Deny </b> 。 安装您使用的每个代理的钩子;现有的钩子文件将被保留和备份。",

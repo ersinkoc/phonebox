@@ -262,12 +262,18 @@ public sealed class ClaudeConfig
     /// <summary>Show each Claude Code chat's title on the phone. The title is the name you gave the chat or the one
     /// Claude Code wrote, which it often draws from your first prompt, so it stays off until you turn it on.</summary>
     public bool ShareSessionTitles { get; set; }
+    /// <summary>Windows: also show the Claude Code sessions (and use the sign-in for the quota, when Windows has none)
+    /// of the running WSL distros' default users. A stopped distro is never started for it (off by default).</summary>
+    public bool WatchWsl { get; set; }
 }
 
 public sealed class CursorConfig
 {
     /// <summary>Show recent Cursor agent chats on the AI sessions widget (off by default).</summary>
     public bool Sessions { get; set; }
+    /// <summary>Windows: also read the agent chats Cursor keeps inside the running WSL distros (projects opened over
+    /// Remote - WSL). A stopped distro is never started for it (off by default).</summary>
+    public bool WatchWsl { get; set; }
 }
 
 public sealed class AntigravityConfig
