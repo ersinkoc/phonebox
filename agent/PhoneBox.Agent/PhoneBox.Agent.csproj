@@ -46,7 +46,7 @@
 
   <ItemGroup>
     <!-- QR codes for pairing a phone over Wi-Fi (settings page) -->
-    <PackageReference Include="QRCoder" Version="1.8.1" />
+    <PackageReference Include="QRCoder" Version="1.9.0" />
   </ItemGroup>
 
   <ItemGroup>
