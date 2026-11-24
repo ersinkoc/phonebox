@@ -192,7 +192,7 @@ leaves LRCLIB alone for a while (1 minute, doubling up to 30, or as long as LRCL
 Songs without timed lyrics show their plain lyrics, unless you turn that off. A player that reports no position (no
 timeline in Now playing) gets the words as a page, with a note that the lines can't follow the song. *Timing offset*
 moves the lines earlier (positive) or later when a song's timing is off.
-*Timing offset per player* does the same for one player only, one `Name=ms` per line, where the name is the one **Now playing** shows for that player (for example `Spotify=-200` or `Apple Music=1000`): a song from that player uses its own value instead of the general offset, so a player that needs a lead does not shift the others. Names are not case sensitive; a player with no line uses the general offset.
+*Timing offset per player* does the same for one player only, one `Name=ms` per line, where the name is the one **Now playing** shows for that player (for example `Spotify=-200` or `Apple Music=1000`): a song from that player uses its own value instead of the general offset, so a player that needs a lead does not shift the others. Names are not case sensitive; a player with no line, or a line without a number, uses the general offset. Values are held to ±5000 ms, like the general offset.
 
 ## Layout editor & settings
 

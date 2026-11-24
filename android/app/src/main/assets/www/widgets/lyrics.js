@@ -32,8 +32,10 @@ export function parsePlayerOffsets(list) {
   const map = new Map();
   for (const raw of Array.isArray(list) ? list : []) {
     const at = String(raw).lastIndexOf('=');
-    const ms = Number(String(raw).slice(at + 1));
-    if (at < 1 || !Number.isFinite(ms)) continue;
+    const value = String(raw).slice(at + 1).trim();
+    const ms = Number(value);
+    // "Spotify=" (no value) is skipped, not read as 0: Number('') is 0 and would replace the general offset
+    if (at < 1 || value === '' || !Number.isFinite(ms)) continue;
     map.set(String(raw).slice(0, at).trim().toLowerCase(), Math.max(-5000, Math.min(5000, Math.round(ms))));
   }
   return map;
