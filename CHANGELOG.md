@@ -49,6 +49,11 @@
   page, darkened (0–90 %) and optionally blurred so the widgets stay readable. The album-art glow is not drawn while
   a wallpaper is set (#468, #471, [lucaskaiut](https://github.com/lucaskaiut)).
 
+**Android app**
+- The app keeps its connections to the computer open and reuses them, instead of opening a new encrypted connection
+  for every request. On Android 6 each one held system resources until the app was stopped, which may be behind the
+  crashes after some idle time in #389 (#508, [wahackr](https://github.com/wahackr)).
+
 **Setup**
 - macOS: each release also has a disk image, `PhoneBox-<version>-<rid>.dmg`, with PhoneBox.app (no window; the settings
   are at http://127.0.0.1:8765). It is signed like the zip's agent but not notarized, so macOS asks once in System
