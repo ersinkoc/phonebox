@@ -3946,6 +3946,9 @@ $('restartBtn').onclick = async () => {
   setTimeout(wait, 1500);
 };
 for (const name of ['codex', 'claude', 'cursor']) $(`${name}HookBtn`).onclick = async () => {
+  // the agent installs with the saved settings (the seconds to answer, Cursor's "Also watch Cursor in WSL"): an
+  // unsaved change would be silently left out
+  if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveFirst'), true); return; }
   const btn = $(`${name}HookBtn`), remove = !!btn.dataset.installed;
   const r = await fetch(`/api/${name}/hook`, { method: remove ? 'DELETE' : 'POST' });
   const j = await r.json().catch(() => ({}));

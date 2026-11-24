@@ -29,6 +29,27 @@ async function saveWithFailedRequest(page, status) {
   }, status);
 }
 
+test('a hook button asks to save first while the settings have unsaved changes', async ({ page }) => {
+  await page.goto('/settings/#general');
+  const wsl = page.locator('[data-bind="cursor.watchWsl"]');
+  await expect(wsl).toBeAttached();
+  await wsl.evaluate(input => { input.checked = !input.checked; input.dispatchEvent(new Event('change', { bubbles: true })); });
+  await expect(page.locator('#save')).toBeEnabled();
+  const sent = await page.evaluate(async () => {
+    const original = window.fetch, requests = [];
+    window.fetch = (url, options) => {
+      if (/\/api\/(cursor|claude|codex)\/hook$/.test(String(url))) { requests.push(`${options?.method || 'GET'} ${url}`); return Promise.resolve(Response.json({})); }
+      return original(url, options);
+    };
+    try {
+      for (const name of ['cursor', 'claude', 'codex']) await document.getElementById(`${name}HookBtn`).onclick();
+    } finally { window.fetch = original; }
+    return requests;
+  });
+  expect(sent, 'the agent would install with the saved "Also watch Cursor in WSL", not the one on the page').toEqual([]);
+  await expect(page.locator('#toast')).toHaveText('Save your changes first');
+});
+
 test('a settings transport failure reports the error and keeps the draft', async ({ page }) => {
   const draft = await editTheme(page);
   const conflict = await saveWithFailedRequest(page, 409);
