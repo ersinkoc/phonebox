@@ -627,7 +627,7 @@ test('the pairing page hands a checked link to the app and clears it from the ad
   // the button stays pinned to the app's package; the plain link is a separate choice for browsers that open a store (#175)
   await expect(page.locator('#plainWrap')).toBeVisible();
   expect(await page.locator('#plain').getAttribute('href')).toBe(`phonebox://pair?v=1&pc=Desk%20PC&fp=${fp}&port=8766&h=192.168.1.10%2C100.64.0.7&c=${'A'.repeat(22)}`);
-  expect(new 网站(page.url()).hash).toBe('');
+  expect(new URL(page.url()).hash).toBe('');
   await page.goto('about:blank'); // a hash-only change would not run the page again
   await page.goto(`/pair/#v=1&pc=x&fp=${fp}&port=8766&h=8.8.8.8&c=${'A'.repeat(22)}`); // not a local address
   await expect(page.locator('#bad')).toBeVisible();
@@ -653,7 +653,7 @@ test('the pairing page hands a checked link to the app and clears it from the ad
   await expect(page.locator('#cannotOpen')).toContainText('This browser could not open the PhoneBox app');
   await expect(page.locator('#bad')).toBeHidden();
   await expect(page.locator('#ok')).toBeHidden();
-  expect(new 网站(page.url()).hash).toBe('');
+  expect(new URL(page.url()).hash).toBe('');
   await ctx.close();
 });
 
