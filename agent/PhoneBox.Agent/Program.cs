@@ -114,6 +114,15 @@ var app = builder.Build();
     PhoneDevices.Mic = app.Services.GetRequiredService<PhoneMic>();
 }
 
+var adbReverse = app.Services.GetRequiredService<AdbReverse>();
+Shortcuts.OnLocked = cfgNow =>
+{
+    if (cfgNow.Display.LockPhoneWithShortcut)
+    {
+        _ = Task.Run(() => adbReverse.SleepPhonesAsync());
+    }
+};
+
 app.MapGet("/api/controls/state", async (ControlDeck deck, CancellationToken ct) => Results.Json(await deck.Snapshot(ct)));
 app.MapPost("/api/controls/command/{kind}", async (string kind, string? id, string? op, int? value, bool? muted,
     string? lease, ControlDeck deck, CancellationToken ct) => Results.Json(await deck.Act(kind, id, op, value, muted, lease, ct)));

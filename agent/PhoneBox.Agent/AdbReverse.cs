@@ -455,6 +455,27 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         log.LogInformation("{Device}: phone screen {State}", device, locked ? "asleep" : "awake");
     }
 
+    /// <summary>Puts connected phone screens to sleep immediately (e.g. when the lock shortcut is triggered).</summary>
+    public async Task SleepPhonesAsync(CancellationToken ct = default)
+    {
+        var adb = FindAdb(cfg.Get().AdbPath);
+        if (adb is null) return;
+        var devices = _devices;
+        if (devices.Length == 0) return;
+        foreach (var d in devices)
+        {
+            try
+            {
+                await Adb(adb, $"-s {d} shell input keyevent KEYCODE_SLEEP", ct);
+                log.LogInformation("{Device}: phone screen asleep (lock shortcut)", d);
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning(ex, "{Device}: failed to sleep phone screen", d);
+            }
+        }
+    }
+
     private async Task Ensure(CancellationToken ct)
     {
         var adb = FindAdb(cfg.Get().AdbPath);

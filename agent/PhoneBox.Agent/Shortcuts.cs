@@ -11,6 +11,12 @@ public static class Shortcuts
 {
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> Remembered = new();
 
+    /// <summary>
+    /// Invoked whenever the builtin:lock shortcut runs. The agent hooks this to sleep connected phones
+    /// when <see cref="DisplayConfig.LockPhoneWithShortcut"/> is enabled.
+    /// </summary>
+    public static Action<AgentConfig>? OnLocked { get; set; }
+
     /// <returns>An error message, or null on success.</returns>
     public static string? Run(AgentConfig cfg, string id, ILogger log, PushStore? push = null, AudioControl? audio = null, bool hold = false)
     {
@@ -265,6 +271,7 @@ public static class Shortcuts
 #if WINDOWS
                 case "builtin:lock":
                     LockWorkStation();
+                    if (cfg is not null) OnLocked?.Invoke(cfg);
                     break;
                 case "builtin:monitor-off":
                     MonitorOff();
@@ -276,6 +283,7 @@ public static class Shortcuts
                 case "builtin:lock":
                     if (OperatingSystem.IsMacOS()) Unix("pmset", "displaysleepnow");
                     else if (Sh.Run("loginctl", "lock-session") is null) Unix("xdg-screensaver", "lock");
+                    if (cfg is not null) OnLocked?.Invoke(cfg);
                     break;
                 case "builtin:monitor-off":
                     if (OperatingSystem.IsMacOS()) Unix("pmset", "displaysleepnow");

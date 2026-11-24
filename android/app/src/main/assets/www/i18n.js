@@ -936,6 +936,7 @@
       's.kiosk.openOnConnect': 'Open PhoneBox when the phone is plugged in: wake the phone and bring the panel to the front whenever it connects over USB (turn off to open it yourself, for a phone you also use for app testing)',
       's.kiosk.followLock': 'Follow the computer lock: turn the phone screen off when macOS locks; wake it and open PhoneBox when macOS unlocks (ADB required; unlock phones secured by a PIN or password manually)',
       's.kiosk.wakeOnUnlock': 'Wake and unlock: when PhoneBox opens over USB, step over a swipe-only lock screen (a PIN, pattern or password is never passed)',
+      's.kiosk.lockPhoneWithShortcut': 'Sleep the phone with the Lock shortcut: also turn the phone screen off whenever the Lock shortcut is run (ADB required)',
       's.claude.shareConversation': 'Show the conversation on the phone (tap a Claude Code session to see its recent messages and steps; these are your prompts and Claude\'s replies, sent only to your phone)',
       's.claude.onlyWhenAway': 'Only when I am away from the PC (no keyboard or mouse for a minute)',
       's.claude.shareSessionTitles': 'Show Claude Code chat titles on the phone (Claude Code often draws them from your first prompt)',

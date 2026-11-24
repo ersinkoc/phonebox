@@ -253,6 +253,8 @@ public sealed class DisplayConfig
     /// step over a swipe-only lock screen. A PIN, pattern or password is never passed. Off: the phone shows its lock
     /// screen. (Follow the computer lock has its own unlock and does not use this.)</summary>
     public bool WakeOnUnlock { get; set; }
+    /// <summary>Also sleep the connected phone screen whenever the Lock shortcut (builtin:lock) is executed.</summary>
+    public bool LockPhoneWithShortcut { get; set; }
     /// <summary>The page the panel returns to (idle return, Back); null = the first page.</summary>
     public string? HomePage { get; set; }
     /// <summary>Seconds the panel counts down ("Switching to … in 3") before a rule or the idle return changes the page; 0 = at once.</summary>
