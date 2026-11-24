@@ -302,6 +302,8 @@ public static class KeySender
         if (!SendCombo(combo)) throw new InvalidOperationException("the computer refused the key press");
     }
 
+    // ydotool sends key positions of a US keyboard: on other layouts some keys differ (AZERTY a/q; UK @ " # ~ \ |).
+    // Keys are not mapped through the active layout; letters and digits match on QWERTY layouts such as US and UK.
     // shortcut: only ydotool 0.1.x (Ubuntu 24.04, tested) is used. 1.x takes numeric key codes and reads escapes in
     // text, so it is skipped until someone can test it; its "type --help" is the one that lists --escape.
     private static readonly Lazy<bool> YdotoolUsable = new(() =>
