@@ -500,6 +500,8 @@ public sealed class AdbReverseTests : IDisposable
         var round = (Task)ensure.Invoke(adb, [stop.Token])!;
         for (var i = 0; i < 400 && !Calls().Contains("-s FAKE1 reverse tcp:8765 tcp:8765"); i++) await Task.Delay(50);
         Assert.Contains("-s FAKE1 reverse tcp:8765 tcp:8765", Calls());
+        // the fake notes the call when it starts: a refusal must reach the agent first, or the stop would cut it short
+        if (reverseSet == "fail") await Assert.ThrowsAnyAsync<IOException>(() => round.WaitAsync(TimeSpan.FromSeconds(60)));
         await stop.CancelAsync(); // the stop begins while the command is out (or after adb refused it)
         await Assert.ThrowsAnyAsync<Exception>(() => round.WaitAsync(TimeSpan.FromSeconds(60)));
 
