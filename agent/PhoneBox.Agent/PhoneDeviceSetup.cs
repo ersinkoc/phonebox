@@ -22,6 +22,10 @@ public static class PhoneDeviceSetup
     /// <summary>Fetches <paramref name="url"/>, refusing an answer larger than <see cref="MaxServerBytes"/>.</summary>
     public static async Task<byte[]> DownloadAsync(HttpClient http, string url, CancellationToken ct)
     {
+        // the client's timeout ends at the headers (ResponseHeadersRead): the body gets the same minute through this token
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(TimeSpan.FromMinutes(1));
+        ct = limit.Token;
         using var res = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
         res.EnsureSuccessStatusCode();
         if (res.Content.Headers.ContentLength > MaxServerBytes) throw new InvalidDataException("the download is larger than scrcpy-server");

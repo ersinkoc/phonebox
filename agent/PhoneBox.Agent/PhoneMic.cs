@@ -323,7 +323,8 @@ public sealed class PhoneMic : BackgroundService
                 {
                     checkedAt = Environment.TickCount64;
                     var now = _cfg.Get().PhoneMic;
-                    if (!now.Enabled || now.Source != c.Source) break;
+                    // and another phone chosen in Settings › Phone connection: this one's stream ends, the loop starts that one
+                    if (!now.Enabled || now.Source != c.Source || _adb?.DeviceList.FirstOrDefault() != serial) break;
                 }
                 if (!await ReadExactly(stream, header, ct, eofOk: true)) { _log.LogInformation("phone mic: the stream ended"); break; }
                 var h = ScrcpyAudio.ParseHeader(header);

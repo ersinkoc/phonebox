@@ -2452,7 +2452,8 @@ for (const id of ['phoneMicSetup']) {
     try {
       const r = await (await fetch(b.dataset.setup, { method: 'POST' })).json();
       out.textContent = r.message;
-      if (r.ok) { await load(); $(id + 'State').textContent = r.message; }
+      // reloaded only when nothing was changed while Set up ran: those edits stay, and saving them reports the conflict
+      if (r.ok && JSON.stringify(cfg) === saved) { await load(); $(id + 'State').textContent = r.message; }
     } catch (_) { out.textContent = t('s.phoneMic.setupFailed'); }
     b.disabled = false;
   };
