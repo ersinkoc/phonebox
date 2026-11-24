@@ -113,16 +113,17 @@ internal static class MacMenuBar
         // Every way of quitting the app goes through the host's own shutdown. Without a delegate AppKit answers a quit from
         // the system (logout, shutdown, `osascript -e 'quit app id ...'`) with -[NSApp terminate:], which calls exit() on this
         // thread at once: the hosted services never stop. So the host is stopped first and waited for (this thread has
-        // nothing else to do, and no service needs it); then AppKit may end the process (NSTerminateNow). A restart that is
-        // under way (it must run Program's tail) and a host that does not stop in time are answered with NSTerminateCancel:
-        // the loop below ends when the host does, and the process leaves through Program.
+        // nothing else to do, and no service needs it); then AppKit may end the process (NSTerminateNow), also when the host
+        // has not stopped within 10 s: cancelling would cancel the user's logout or shutdown, which is worse. Only a restart
+        // that is under way (it must run Program's tail) is answered with NSTerminateCancel: the loop below ends when the
+        // host does, and the process leaves through Program.
         // (NSTerminateLater would be the usual answer for "not yet", but it parks this thread in a loop of AppKit's own.)
         _shouldTerminate = (_, _, _) =>
         {
             Guard(stop);
             var limit = DateTime.UtcNow.AddSeconds(10);
             while (!hostStopped() && DateTime.UtcNow < limit) Thread.Sleep(50);
-            return hostStopped() && !AppRestart.Requested ? 1u : 0u;
+            return AppRestart.Requested ? 0u : 1u;
         };
         // a second double-click on the running app asks it to "reopen"; with no window it opens the settings instead
         _shouldReopen = (_, _, _, _) => { _ = Task.Run(() => Guard(openSettings)); return 0; };
@@ -242,7 +243,8 @@ internal static class MacMenuBar
     {
         var start = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
         start.ArgumentList.Add(target);
-        Process.Start(start);
+        // open hands the target to Launch Services and returns at once; only the handle is kept, and released here
+        using var _ = Process.Start(start);
     }
 
     /// <summary>The menu: what the agent is doing, and what the user can ask of it.</summary>
