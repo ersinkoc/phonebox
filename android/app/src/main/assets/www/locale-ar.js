@@ -479,6 +479,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.watchWsl": "انظر أيضاً OpenCode في WSL (التوزيع المتوقف لا يبدأ أبداً لهذا الغرض)",
       "s.approvals.cursor": "Cursor",
       "s.cursor.askOnPhone": "السؤال على الهاتف بالنسبة إلى Cursor",
+      "s.claude.timeoutReinstall": "يحتفظ كل خطاف بعدد الثواني الذي ثُبّت به: بعد تغييره، أزل الخطاف وثبّته من جديد.",
       "s.cursor.approvalsHint": "يعمل خطاف Cursor قبل كل أمر shell وكل استدعاء لأداة MCP من وكيله، بما في ذلك ما كان سيشغّله من تلقاء نفسه. ما دام الهاتف متصلًا، ينتظر كل منها هناك السماح أو الرفض؛ وبدون هاتف أو بدون رد يتابع Cursor كالمعتاد. عند تفعيل «مراقبة Cursor داخل WSL أيضًا» يُثبَّت الخطاف أيضًا في التوزيعات قيد التشغيل (المشاريع المفتوحة عبر Remote - WSL تشغّل خطافاتها هناك).",
       "s.claude.watchWsl": "مراقبة Claude Code داخل WSL أيضًا: جلساته، وتسجيل دخوله لحصة الاستخدام عندما لا يوجد تسجيل دخول في Windows (لا يتم تشغيل توزيعة متوقفة لهذا الغرض أبدًا)",
       "s.cursor.watchWsl": "مراقبة Cursor داخل WSL أيضًا (المشاريع المفتوحة عبر Remote - WSL؛ لا يتم تشغيل توزيعة متوقفة لهذا الغرض أبدًا)",

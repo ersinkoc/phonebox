@@ -285,7 +285,8 @@ project, tool and the command or file — with **Allow** and **Deny**. Turn it o
 permission prompts** and press *Install hook*: PhoneBox adds a `PermissionRequest` hook to `~/.claude/settings.json`
 (and keeps a backup next to it as `settings.json.phonebox.bak`). If the phone is not connected or nobody answers in
 time, the hook returns no decision and Claude Code asks in the terminal as usual. Optionally only when you have been
-away from the keyboard for a minute.
+away from the keyboard for a minute. Each hook (Claude Code, Codex and Cursor) keeps the seconds to answer it was
+installed with: after changing them, remove the hook and install it again.
 
 WorkBuddy speaks the same hook protocol. Add the same `PermissionRequest` entry to `~/.workbuddy/settings.json` by
 hand: *Install hook* writes to `~/.claude/settings.json` only. WorkBuddy keeps its sessions in `~/.workbuddy`, so the
@@ -303,8 +304,9 @@ runs it without Cursor's own prompt, Deny blocks it and tells the agent so. With
 the timeout, or with the agent not running, the hook prints nothing and Cursor goes on as it would without it.
 Projects opened over Remote - WSL run their hooks inside the distro, from its own `~/.cursor/hooks.json`: with **Also
 watch Cursor in WSL** on, *Install hook* writes there too (in each running distro where Cursor's server has been used);
-removing looks at every running distro, so a hook left there after turning WSL watching off is removed as well.
-That hook reaches the agent on `127.0.0.1`, which works when WSL shares the loopback with Windows
+PhoneBox remembers the distros it installed to, so *Remove hook* still takes it off there after WSL watching is
+turned off (once the distro runs: a stopped distro is never started for it). With WSL watching off and no hook
+installed in a distro, the settings page does not look into WSL at all. That hook reaches the agent on `127.0.0.1`, which works when WSL shares the loopback with Windows
 (`networkingMode=mirrored` in `.wslconfig`); otherwise it fails and Cursor goes on as usual.
 
 OpenCode needs no hook: prompts are off until you turn them on — press the **Ask on the phone** switch under

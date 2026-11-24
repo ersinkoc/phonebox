@@ -479,6 +479,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.watchWsl": "WSL で OpenCode を見てください（このため、停止したディストリビューションは始動しません）",
       "s.approvals.cursor": "Cursor",
       "s.cursor.askOnPhone": "Cursor についてスマホで確認する",
+      "s.claude.timeoutReinstall": "各フックはインストール時の秒数を使い続けます。変更したら、フックを削除してもう一度インストールしてください。",
       "s.cursor.approvalsHint": "Cursor のフックは、エージェントのすべてのシェルコマンドと MCP ツール呼び出しの前に実行されます。自動で実行されるものも含みます。スマホが接続されている間は、それぞれがスマホで「許可」か「拒否」を待ちます。スマホがない場合や応答がない場合、Cursor は通常どおり続行します。「WSL 内の Cursor も監視」がオンの場合、フックは実行中のディストリビューションにもインストールされます（Remote - WSL で開いたプロジェクトはそこでフックを実行します）。",
       "s.claude.watchWsl": "WSL 内の Claude Code も監視：そのセッションと、Windows にサインインがない場合のクォータ用サインイン（停止中のディストリビューションがこのために起動されることはありません）",
       "s.cursor.watchWsl": "WSL 内の Cursor も監視（Remote - WSL で開いたプロジェクト。停止中のディストリビューションがこのために起動されることはありません）",

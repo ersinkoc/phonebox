@@ -479,6 +479,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.watchWsl": "Juga lihat OpenCode di WSL (distro yang berhenti tidak pernah dimulai untuk ini)",
       "s.approvals.cursor": "Cursor",
       "s.cursor.askOnPhone": "Tanya di ponsel untuk Cursor",
+      "s.claude.timeoutReinstall": "Setiap hook memakai detik saat dipasang: setelah mengubahnya, hapus hook lalu pasang lagi.",
       "s.cursor.approvalsHint": "Hook Cursor berjalan sebelum setiap perintah shell dan setiap panggilan alat MCP dari agennya, termasuk yang akan dijalankannya sendiri. Selama ponsel terhubung, masing-masing menunggu Izinkan atau Tolak di sana; tanpa ponsel, atau tanpa jawaban, Cursor berjalan seperti biasa. Dengan \"Pantau juga Cursor di WSL\" aktif, hook juga dipasang di distro yang sedang berjalan (proyek yang dibuka dengan Remote - WSL menjalankan hook di sana).",
       "s.claude.watchWsl": "Pantau juga Claude Code di WSL: sesinya, dan login-nya untuk kuota saat Windows tidak punya (distro yang berhenti tidak pernah dijalankan untuk ini)",
       "s.cursor.watchWsl": "Pantau juga Cursor di WSL (proyek yang dibuka dengan Remote - WSL; distro yang berhenti tidak pernah dijalankan untuk ini)",

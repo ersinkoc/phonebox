@@ -479,6 +479,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.opencode.watchWsl": "Také sledujte OpenCode ve WSL (zastavené distribuce nejsou nikdy spuštěny pro tento účel)",
       "s.approvals.cursor": "Cursor",
       "s.cursor.askOnPhone": "U Cursoru se ptát na telefonu",
+      "s.claude.timeoutReinstall": "Každý hook si ponechá počet sekund z doby instalace: po změně hook odeberte a nainstalujte znovu.",
       "s.cursor.approvalsHint": "Hook Cursoru se spouští před každým příkazem shellu a každým voláním nástroje MCP jeho agenta, i před těmi, které by spustil sám. Dokud je připojen telefon, každý na něm čeká na Povolit nebo Zamítnout; bez telefonu nebo bez odpovědi Cursor pokračuje jako obvykle. Se zapnutým „Sledovat také Cursor ve WSL“ se hook instaluje i do běžících distribucí (projekty otevřené přes Remote - WSL tam spouštějí své hooky).",
       "s.claude.watchWsl": "Sledovat také Claude Code ve WSL: jeho relace a přihlášení pro kvótu, když Windows žádné nemá (zastavená distribuce se kvůli tomu nikdy nespouští)",
       "s.cursor.watchWsl": "Sledovat také Cursor ve WSL (projekty otevřené přes Remote - WSL; zastavená distribuce se kvůli tomu nikdy nespouští)",
