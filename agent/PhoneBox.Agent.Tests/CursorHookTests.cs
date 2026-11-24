@@ -6,6 +6,7 @@ using Xunit;
 namespace PhoneBox.Agent.Tests;
 
 /// <summary>Cursor's beforeShellExecution / beforeMCPExecution hooks, with inputs shaped like the ones Cursor 3.30 sends.</summary>
+[Collection("Approval request expiry")] // shares the static PhoneLastSeen with the other approval tests
 public sealed class CursorHookTests : IDisposable
 {
     private readonly string _dir = Directory.CreateTempSubdirectory("phonebox-cursor-hook-").FullName;
@@ -264,11 +265,19 @@ public sealed class CursorHookTests : IDisposable
         Assert.Null(CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
 
         wsl.Running = false;
-        Assert.Equal([native], StatusPaths(CursorHook.Status(false, native, wsl.List, state)));
         Assert.Contains("not running", CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
         Assert.False(CursorHook.HasAny(native)); // the rest is still removed
         Assert.True(CursorHook.Installed(inDistro));
         Assert.Equal([inDistro], CursorHook.Remembered(state));
+
+        // the page still offers Remove: the recorded hook counts as installed, marked as in a distro that is not running
+        using (var doc = JsonDocument.Parse(JsonSerializer.Serialize(CursorHook.Status(false, native, wsl.List, state))))
+        {
+            Assert.True(doc.RootElement.GetProperty("installed").GetBoolean());
+            var stopped = doc.RootElement.GetProperty("paths").EnumerateArray().Single(p => p.GetProperty("path").GetString() == inDistro);
+            Assert.True(stopped.GetProperty("installed").GetBoolean());
+            Assert.False(stopped.GetProperty("running").GetBoolean());
+        }
 
         // once the distro runs again, the page shows the hook and Remove takes it off
         wsl.Running = true;
@@ -276,6 +285,49 @@ public sealed class CursorHookTests : IDisposable
         Assert.Null(CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
         Assert.False(CursorHook.HasAny(inDistro));
         Assert.Empty(CursorHook.Remembered(state));
+    }
+
+    [Fact]
+    public void AShareThatDoesNotAnswerIsNotTakenForARemovedHook()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+        Assert.Null(CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+        var hidden = Path.Combine(_dir, "share-away");
+        Directory.Move(Path.Combine(_dir, "share"), hidden); // listed as running, but its share cannot be read
+
+        Assert.Contains("cannot be reached", CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.Equal([inDistro], CursorHook.Remembered(state)); // still recorded
+
+        Directory.Move(hidden, Path.Combine(_dir, "share"));
+        Assert.Null(CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.False(CursorHook.HasAny(inDistro));
+        Assert.Empty(CursorHook.Remembered(state));
+    }
+
+    [Fact]
+    public void ADistroIsRecordedBeforeItsHookIsWritten()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+        Directory.CreateDirectory(state); // the record cannot be written
+
+        Assert.Contains(state, CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+        Assert.True(CursorHook.Installed(native));
+        Assert.False(File.Exists(inDistro)); // no hook that Remove would not know about
+
+        // a distro whose write fails stays recorded, and Remove tries it again
+        Directory.Delete(state);
+        File.WriteAllText(inDistro, "[1]");
+        Assert.NotNull(CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+        Assert.Equal([inDistro], CursorHook.Remembered(state));
+    }
+
+    [Fact]
+    public void InstallAndRemoveRunOneAtATime()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+        Parallel.For(0, 40, i => CursorHook.ConfigureAll(i % 2 == 0, 18765, 30, true, (native, false), wsl.List, state));
+        // whatever ran last, the record and the distro's file agree
+        Assert.Equal(CursorHook.HasAny(inDistro), CursorHook.Remembered(state).Count == 1);
     }
 
     [Fact]
@@ -308,6 +360,11 @@ public sealed class CursorHookTests : IDisposable
     {
         var command = CursorHook.HookCommand(18765, windows: false);
         Assert.EndsWith("|| true", command);
+        // no decision (an empty answer, or no agent) prints nothing: "no output" fails open in Cursor, while any text
+        // that is not a valid answer would block the command
+        var windows = CursorHook.HookCommand(18765, windows: true);
+        Assert.EndsWith("catch { }; exit 0", windows);
+        Assert.Contains("$ProgressPreference = 'SilentlyContinue'", windows);
         Assert.True(CursorHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = command }));
         Assert.True(CursorHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = CursorHook.HookCommand(8765, windows: true) }));
     }

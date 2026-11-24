@@ -102,11 +102,19 @@ public static class CursorHook
 
     /// <summary>
     /// The hook's command. Cursor on Windows runs it in PowerShell and pipes the request in, so it posts with
-    /// Invoke-WebRequest (any PowerShell from 5.1, no curl quoting). Its stdout must be the answer or nothing: Cursor
-    /// blocks the command on anything it cannot parse, so the progress stream (which Windows PowerShell writes out as
-    /// CLIXML when its output is redirected) is turned off, a failure prints nothing, and the exit code is always 0 —
-    /// all of which leave the decision to Cursor. Inside WSL (Linux, macOS) it is the Claude Code hook's curl, which
-    /// also always exits 0.
+    /// Invoke-WebRequest (any PowerShell from 5.1, no curl quoting). Inside WSL (Linux, macOS) it is the Claude Code
+    /// hook's curl.
+    /// <para>
+    /// Its stdout must be the answer or nothing. Cursor's hooks reference (https://cursor.com/docs/agent/hooks): for
+    /// beforeShellExecution and beforeMCPExecution "invalid JSON or a response that doesn't match the hook's schema
+    /// blocks the action", while "no output" is a hook failure, which fails open by default ("hook failures (crash,
+    /// timeout, non-zero exit code, no output) block the action instead of allowing it through" only with failClosed,
+    /// which PhoneBox never sets). The schema's permission values are allow, deny and ask, none of which means "no
+    /// opinion" (ask would prompt even for a command Cursor runs by itself), so when there is no decision (the agent
+    /// answers with an empty body, or cannot be reached) the hook prints nothing and Cursor goes on as it would without
+    /// it. Hence the progress stream (which Windows PowerShell writes out as CLIXML when its output is redirected) is
+    /// turned off, a failure prints nothing, and the exit code is always 0.
+    /// </para>
     /// </summary>
     internal static string HookCommand(int port, bool windows) => windows
         // stdin read as UTF-8 (Cursor sends UTF-8 JSON; [Console]::In would decode it with the console's OEM code page)
@@ -129,10 +137,19 @@ public static class CursorHook
     internal static object Status(bool wsl, string native, Func<IReadOnlyList<WslHomes.Entry>> running, string installsPath)
     {
         // "installed" = any PhoneBox entry is there, also a partial one (one event kept by hand): it still asks the
-        // phone, so the page must offer to remove it. A distro's file is listed only if it has one.
-        var paths = new[] { native }.Concat(WslTargets(wsl, running, Remembered(installsPath)).Running)
-            .Select(p => new { path = p, installed = HasAny(p), complete = Installed(p) })
-            .Where(p => p.path == native || p.installed).ToList();
+        // phone, so the page must offer to remove it. A running distro's file is listed only if it has one.
+        var (inWsl, stopped) = WslTargets(wsl, running, Remembered(installsPath));
+        var paths = new[] { native }.Concat(inWsl)
+            .Select(p =>
+            {
+                var n = Count(p); // one read for both flags
+                return new { path = p, installed = n > 0, complete = n == Events.Length, running = true };
+            })
+            .Where(p => p.path == native || p.installed)
+            // a stopped distro's share is not opened (that would start it): its recorded hook counts as installed, so
+            // the page offers Remove, which says the distro must run first
+            .Concat(stopped.Select(p => new { path = p, installed = true, complete = true, running = false }))
+            .ToList();
         return new { installed = paths.Any(p => p.installed), paths };
     }
 
@@ -148,31 +165,55 @@ public static class CursorHook
     internal static string? ConfigureAll(bool install, int port, int timeoutSec, bool wsl, (string Path, bool Windows) native,
         Func<IReadOnlyList<WslHomes.Entry>> running, string installsPath)
     {
-        var remembered = Remembered(installsPath);
-        var (inWsl, stopped) = install && !wsl ? (new List<string>(), new List<string>()) : WslTargets(wsl, running, remembered);
-        var done = new List<string>();
-        var error = ConfigureAll(install, port, timeoutSec, [native, .. inWsl.Select(p => (p, false))], done.Add);
-        // a stopped distro is not started to remove the hook: it stays remembered, and Remove takes it off once the
-        // distro runs (the page lists it again then)
-        if (!install && stopped.Count > 0) error ??= $"{stopped[0]}: not removed, its WSL distro is not running";
-        // only a distro file that was written changes the record: one that failed (a share not answering) keeps its place
-        var written = inWsl.Where(p => done.Contains(p, PathComparer)).ToList();
-        var next = (install ? remembered.Concat(written) : remembered.Where(p => !written.Contains(p, PathComparer)))
-            .Distinct(PathComparer).ToList();
-        if (!next.SequenceEqual(remembered, PathComparer))
+        // one Install or Remove at a time: the record is read, the files written and the record updated as one step
+        lock (ConfigureGate)
         {
-            try
+            var remembered = Remembered(installsPath);
+            var (inWsl, stopped) = install && !wsl ? (new List<string>(), new List<string>()) : WslTargets(wsl, running, remembered);
+            string? error = null;
+            if (install && inWsl.Count > 0)
             {
-                if (next.Count == 0) File.Delete(installsPath);
-                else
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(installsPath)!);
-                    AppPaths.WriteAllTextPrivate(installsPath, JsonSerializer.Serialize(next));
-                }
+                // recorded before it is written, so no distro can get a hook that Remove does not know about; an entry
+                // whose write then fails does no harm (the page lists it only with the hook there, Remove tries it again)
+                error = Record(installsPath, remembered, remembered.Concat(inWsl));
+                if (error is not null) inWsl.Clear(); // not recorded: not written either
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { error ??= $"{installsPath}: {ex.Message}"; }
+            var done = new List<string>();
+            var written = ConfigureAll(install, port, timeoutSec, [native, .. inWsl.Select(p => (p, false))], done.Add,
+                // a distro's file counts as removed only while its home can be read: a share that does not answer may still have it
+                reachable: p => inWsl.Contains(p, PathComparer) ? Path.GetDirectoryName(Path.GetDirectoryName(p)) : null);
+            error ??= written;
+            // a stopped distro is not started to remove the hook: it stays recorded, and Remove takes it off once the
+            // distro runs
+            if (!install && stopped.Count > 0) error ??= $"{stopped[0]}: not removed, its WSL distro is not running";
+            if (!install)
+            {
+                // only the files the hook was removed from leave the record; one that failed is tried again next time
+                var e = Record(installsPath, remembered, remembered.Where(p => !done.Contains(p, PathComparer)));
+                error ??= e;
+            }
+            return error;
         }
-        return error;
+    }
+
+    private static readonly Lock ConfigureGate = new();
+
+    // writes the record when it changed (removes the file when it is empty); an error, or null
+    private static string? Record(string installsPath, IReadOnlyList<string> remembered, IEnumerable<string> next)
+    {
+        var list = next.Distinct(PathComparer).ToList();
+        if (list.SequenceEqual(remembered, PathComparer)) return null;
+        try
+        {
+            if (list.Count == 0) File.Delete(installsPath);
+            else
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(installsPath)!);
+                AppPaths.WriteAllTextPrivate(installsPath, JsonSerializer.Serialize(list));
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return $"{installsPath}: {ex.Message}"; }
     }
 
     /// <summary>
@@ -223,12 +264,12 @@ public static class CursorHook
     /// <summary>Every target is tried, also after one failed: one unreadable hooks.json must not leave the others
     /// installed when removing, or not installed when installing.</summary>
     internal static string? ConfigureAll(bool install, int port, int timeoutSec, IReadOnlyList<(string Path, bool Windows)> targets,
-        Action<string>? done = null)
+        Action<string>? done = null, Func<string, string?>? reachable = null)
     {
         string? error = null;
         foreach (var (path, windows) in targets)
         {
-            var e = Configure(install, port, timeoutSec, path, windows);
+            var e = Configure(install, port, timeoutSec, path, windows, reachable?.Invoke(path));
             if (e is not null) error ??= $"{path}: {e}";
             else done?.Invoke(path);
         }
@@ -262,15 +303,22 @@ public static class CursorHook
     /// </summary>
     internal static bool IsOurs(JsonNode? hook) => ClaudeHook.IsOurs(hook, Endpoint);
 
-    /// <summary>Adds (or, with install = false, removes) the PhoneBox hooks, keeping everything else and a backup.</summary>
-    internal static string? Configure(bool install, int port, int timeoutSec, string path, bool windows)
+    /// <summary>
+    /// Adds (or, with install = false, removes) the PhoneBox hooks, keeping everything else and a backup. With
+    /// <paramref name="reachable"/> (a distro's home), a missing file counts as nothing to remove only while that folder
+    /// can be read: a share that stopped answering could still hold the hook.
+    /// </summary>
+    internal static string? Configure(bool install, int port, int timeoutSec, string path, bool windows, string? reachable = null)
     {
         try
         {
             JsonObject root;
-            if (File.Exists(path))
+            // read directly: File.Exists also answers false when the share or the file cannot be reached
+            string? text;
+            try { text = File.ReadAllText(path); }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException) { text = null; }
+            if (text is not null)
             {
-                var text = File.ReadAllText(path);
                 if (string.IsNullOrWhiteSpace(text)) root = new JsonObject();
                 else
                 {
@@ -280,7 +328,9 @@ public static class CursorHook
                     AppPaths.WriteAllTextPrivate(path + ".phonebox.bak", text);
                 }
             }
-            else if (!install) return null; // nothing to remove
+            else if (!install)
+                // nothing to remove, unless the folder that should hold it cannot be read either
+                return reachable is null || Directory.Exists(reachable) ? null : $"not removed, {reachable} cannot be reached";
             else root = new JsonObject();
 
             // a value of another shape is the user's to fix: replacing or dropping it would lose what they wrote

@@ -922,7 +922,7 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
 app.MapPost(ClaudeHook.Endpoint, async (HttpRequest req, ConfigStore cfg, ApprovalStore approvals, SessionMonitor sessions) =>
 {
     JsonElement input;
-    try { input = (await JsonDocument.ParseAsync(req.Body)).RootElement.Clone(); }
+    try { using var doc = await JsonDocument.ParseAsync(req.Body, cancellationToken: req.HttpContext.RequestAborted); input = doc.RootElement.Clone(); }
     catch (JsonException) { return Results.Text(""); }
     var output = await ClaudeHook.HandleAsync(input, cfg, approvals, sessions, req.HttpContext.RequestAborted);
     return output is null ? Results.Text("") : Results.Json(output);
@@ -944,7 +944,7 @@ app.MapGet("/api/work/conversation", (string id, ConfigStore cfg, SessionMonitor
 app.MapPost(CodexHook.Endpoint, async (HttpRequest req, ConfigStore cfg, ApprovalStore approvals, SessionMonitor sessions) =>
 {
     JsonElement input;
-    try { input = (await JsonDocument.ParseAsync(req.Body)).RootElement.Clone(); }
+    try { using var doc = await JsonDocument.ParseAsync(req.Body, cancellationToken: req.HttpContext.RequestAborted); input = doc.RootElement.Clone(); }
     catch (JsonException) { return Results.Text(""); }
     var output = await CodexHook.HandleAsync(input, cfg, approvals, sessions, req.HttpContext.RequestAborted);
     return output is null ? Results.Text("") : Results.Json(output);
@@ -957,13 +957,13 @@ app.MapDelete("/api/codex/hook", (ConfigStore cfg) => CodexHook.Configure(false,
 app.MapPost(CursorHook.Endpoint, async (HttpRequest req, ConfigStore cfg, ApprovalStore approvals, SessionMonitor sessions) =>
 {
     JsonElement input;
-    try { input = (await JsonDocument.ParseAsync(req.Body)).RootElement.Clone(); }
+    try { using var doc = await JsonDocument.ParseAsync(req.Body, cancellationToken: req.HttpContext.RequestAborted); input = doc.RootElement.Clone(); }
     catch (JsonException) { return Results.Text(""); }
     var output = await CursorHook.HandleAsync(input, cfg, approvals, sessions, req.HttpContext.RequestAborted);
     return output is null ? Results.Text("") : Results.Json(output);
 });
 // installing in the distros (projects opened over Remote - WSL run their hooks there) follows "Also watch Cursor in
-// WSL"; status and removal look at every running distro, so a hook left there after turning it off is still found
+// WSL"; the distros installed to are recorded, so status and removal still find a hook there after turning it off
 app.MapGet("/api/cursor/hook", (ConfigStore cfg) => Results.Json(CursorHook.Status(cfg.Get().Cursor.WatchWsl)));
 app.MapPost("/api/cursor/hook", (ConfigStore cfg) => CursorHook.ConfigureAll(true, Port, cfg.Get().Claude.TimeoutSec, cfg.Get().Cursor.WatchWsl) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
 app.MapDelete("/api/cursor/hook", (ConfigStore cfg) => CursorHook.ConfigureAll(false, Port, cfg.Get().Claude.TimeoutSec, cfg.Get().Cursor.WatchWsl) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
