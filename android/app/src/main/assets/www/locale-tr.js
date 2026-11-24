@@ -296,7 +296,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.textHint": "{clipboard}, klipboard'daki metinle (ilk 10.000 karakter) değiştirilir.",
       "s.k.clipboardWarn": "Yazılan metin sistemin yazım aracı üzerinden geçer, bu yüzden Mac veya Linux'ta kopyalanmış bir şifre yazıldığında süreç listesinde görünebilir. {clipboard} terminale yazıldığında burada kopyalanan her şeyi çalıştıracaktır. yapıştır: metni Windows klipboard geçmişinden ve bulut klipboardından uzak tutar ve sonra kopyalanan metni geri koyar (kopyalanmış resim ya da dosyalar saklanmaz: klipboard boş bırakılır); Mac'te Evrensel Klipboard hala diğer cihazlarınızla senkronize olabilir.",
       "s.k.macosPermission": "macOS, PhoneBoxAgent'e Sistem Seçenekleri › Gizlilik ve Güvenlik › Erişimde izin vermek için bir kez sorar.",
-      "s.k.linuxNeedsXdotool": "xdotool (X11) veya wtype (Wayland) gerektirir.",
+      "s.k.linuxNeedsXdotool": "xdotool (X11) ya da wtype veya ydotool (Wayland; GNOME için ydotool) gerektirir.",
       "s.k.stateKey": "İtilmiş bir değerden durum (izinlidir)",
       "s.k.offArgs": "Kapatılması gereken argümanlar",
       "s.cd.registerRedirect": "Kayıt yeniden yönlendirme adresi:",

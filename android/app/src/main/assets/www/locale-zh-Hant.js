@@ -839,7 +839,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.textHint": "{clipboard} 會被剪貼板上的文本(前10,000個字元)取代。",
       "s.k.clipboardWarn": "輸入的文字會經過系統的輸入工具，因此在 Mac 或 Linux 上，複製的密碼可以在進程列表中顯示。 在終端中輸入 {clipboard} 會執行任何已複製的東西。 paste：將其文本從 Windows 剪貼板歷史和雲剪貼板中移除，然後重新放回被複製的文本（不保留複製的圖片或文件：剪貼板是空的）；在 Mac 上，通用剪貼板仍可同步到其他裝置。",
       "s.k.macosPermission": "macOS要求一次允許PhoneBoxAgent在系統設定 › 隱私與安全 › 輔助功能。",
-      "s.k.linuxNeedsXdotool": "需要 xdotool (X11) 或 wtype (Wayland)。",
+      "s.k.linuxNeedsXdotool": "需要 xdotool (X11)，或 wtype 或 ydotool (Wayland；GNOME 需要 ydotool)。",
       "s.k.stateKey": "推送值的狀態 (可選)",
       "s.k.offArgs": "關閉的參數",
       "s.cd.registerRedirect": "注冊重定向地址：",

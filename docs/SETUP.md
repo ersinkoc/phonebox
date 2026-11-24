@@ -98,11 +98,13 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
   `plugdev` group (`sudo usermod -aG plugdev $USER`, then log out and in). Setup points this out when it happens.
 - **Linux shortcuts that type or press keys** use `xdotool` on X11. On Wayland they use `wtype` (wlroots, KDE) or
   `ydotool` (GNOME, which takes neither of the others). PhoneBox uses ydotool 0.1.x (Ubuntu 24.04's `ydotool`
-  package; 1.x isn't supported yet), which needs no `ydotoold` but needs write access to `/dev/uinput`: add the udev
-  rule `KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"` (for example in
-  `/etc/udev/rules.d/60-uinput.rules`), add yourself to the group (`sudo usermod -aG input $USER`) and restart.
-  ydotool presses the keys of a US layout, so on other layouts some characters come out different, and it types
-  only ASCII.
+  package, `sudo apt install ydotool`; 1.x isn't supported yet), which needs no `ydotoold` but needs write access to
+  `/dev/uinput`. Give that access through a group of its own, not `input`: the `input` group can usually also read
+  the real keyboards (`/dev/input/event*`), and with them every password typed. For example:
+  `sudo groupadd --system uinput`, the udev rule `KERNEL=="uinput", GROUP="uinput", MODE="0660",
+  OPTIONS+="static_node=uinput"` in `/etc/udev/rules.d/60-uinput.rules`, `sudo usermod -aG uinput $USER`, then
+  restart. Any program you run can then send key presses and mouse input, as PhoneBox does. ydotool presses the keys
+  of a US layout, so on other layouts some characters come out different, and it types only ASCII.
 - **On macOS**, the agent is signed with PhoneBox's own certificate, not an Apple Developer ID. The first time,
   macOS may ask whether it may control Music or Spotify (for Now Playing), or accept incoming connections (with Wi-Fi
   on). Shortcuts that press keys, and the Trackpad widget (its mouse events and its gestures), need *System Settings ›

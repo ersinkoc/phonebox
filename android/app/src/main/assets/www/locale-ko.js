@@ -839,7 +839,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.textHint": "{clipboard} 클립보드의 텍스트(첫 10,000자)로 대체됩니다.",
       "s.k.clipboardWarn": "입력된 텍스트는 시스템의 입력 도구를 통해 이동하므로 Mac 또는 Linux에서 입력하는 동안 복사된 암호가 프로세스 목록에 표시될 수 있습니다. 입력 {clipboard} 터미널에 들어가면 거기서 복사한 것을 실행합니다. paste: 텍스트를 터미널에서 제외시킵니다. Windows 클립보드 기록 및 클라우드 클립보트를 복사 한 후 텍스트를 다시 넣습니다 (복사 된 그림 또는 파일은 보관되지 않습니다. 클립보d트가 비어 있습니다). Mac에서 Universal Clipboard는 여전히 다른 장치와 동기화 할 수 있습니다.",
       "s.k.macosPermission": "macOS는 시스템 설정 › 개인 정보 보호 및 보안 › 접근성에서 PhoneBoxAgent를 허용하도록 한 번 요청합니다.",
-      "s.k.linuxNeedsXdotool": "xdotool (X11) 또는 wtype (웨일랜드)가 필요합니다.",
+      "s.k.linuxNeedsXdotool": "xdotool (X11) 또는 wtype이나 ydotool (웨일랜드, GNOME은 ydotool)이 필요합니다.",
       "s.k.stateKey": "푸시된 값에서 상태(선택사항)",
       "s.k.offArgs": "끄려는 인자",
       "s.cd.registerRedirect": "레지스트리 리디렉션 주소:",

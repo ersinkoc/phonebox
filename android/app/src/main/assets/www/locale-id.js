@@ -839,7 +839,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.textHint": "{clipboard} digantikan oleh teks di clipboard (10.000 karakter pertama).",
       "s.k.clipboardWarn": "Teks yang ditiks akan melalui alat mengetik sistem, jadi pada Mac atau Linux sandi yang disalin dapat muncul dalam daftar proses saat ditiks. Memasukkan {clipboard} ke terminal menjalankan apa pun yang telah disalin di sana. paste: menyimpan teksnya dari sejarah papan klip Windows dan papan klip awan dan kemudian meletakkan kembali teks yang telah disalin (gambar atau berkas yang disalin tidak disimpan: papan klip ditinggalkan kosong); pada Mac, Universal Clipboard masih bisa menyensorkannya ke perangkat lain Anda.",
       "s.k.macosPermission": "macOS meminta sekali untuk mengizinkan PhoneBoxAgent di System Settings › Privacy & Security › Accessibility.",
-      "s.k.linuxNeedsXdotool": "Perlu xdotool (X11) atau wtype (Wayland).",
+      "s.k.linuxNeedsXdotool": "Perlu xdotool (X11), atau wtype atau ydotool (Wayland; GNOME perlu ydotool).",
       "s.k.stateKey": "Status dari nilai yang didorong (opsional)",
       "s.k.offArgs": "Argumen untuk dimatikan",
       "s.cd.registerRedirect": "Daftar alamat redirect:",

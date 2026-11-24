@@ -839,7 +839,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.textHint": "{clipboard} je nahrazen textem ve schránce (první 10 000 znaků).",
       "s.k.clipboardWarn": "Zadaný text prochází systémovým nástrojem pro psaní, takže na Macu nebo Linuxu se zkopírované heslo může zobrazit v seznamu procesů při jeho zadávání.Zadání {clipboard} do terminálu spustí vše, co bylo tam zkopírováno.paste: udržuje svůj text mimo historii schránky Windows a cloudovou schránku a poté vloží zpět text, který byl zkopírován (zkopírovaný obrázek nebo soubory nejsou zachovávány: schránka je ponechána prázdná); na Macu může Univerzální schránka stále synchronizovat jej s vašimi dalšími zařízeními.",
       "s.k.macosPermission": "macOS se jednou zeptá, jestli chcete povolit PhoneBoxAgent v Předvolbách systému › Soukromí a zabezpečení › Přístupnost.",
-      "s.k.linuxNeedsXdotool": "Potřebuje xdotool (X11) nebo wtype (Wayland).",
+      "s.k.linuxNeedsXdotool": "Potřebuje xdotool (X11), nebo wtype či ydotool (Wayland; GNOME potřebuje ydotool).",
       "s.k.stateKey": "Stav z hodnoty push (volitelné)",
       "s.k.offArgs": "Argumenty pro vypnutí",
       "s.cd.registerRedirect": "Adresa pro přesměrování:",

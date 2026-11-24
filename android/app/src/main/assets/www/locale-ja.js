@@ -839,7 +839,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.textHint": "クリップボードのテキスト（最初の10,000文字）に {clipboard} を置き換えます。",
       "s.k.clipboardWarn": "タイプされたテキストはシステムのタイプツールを通過します。Mac や Linux では、コピーしたパスワードがタイプ中にプロセスリストに表示されます。ターミナルに {clipboard} を入力すると、そこにコピーされたものを実行します。 paste: Windows クリップボード履歴やクラウドクリップボードからそのテキストを除外し、コピーしたテキストを戻します（コピーした画像やファイルは保存されません：クリップボードは空になります）。Mac では Universal Clipboard は他のデバイスと同期します。",
       "s.k.macosPermission": "macOSは、System Settings › Privacy & Security › Accessibility で PhoneBoxAgent を許可するよう一度だけ要求する。",
-      "s.k.linuxNeedsXdotool": "xdotool (X11) または wtype (Wayland) が必要です。",
+      "s.k.linuxNeedsXdotool": "xdotool (X11)、または wtype か ydotool (Wayland。GNOME では ydotool) が必要です。",
       "s.k.stateKey": "プッシュされた値からの状態 (オプション)",
       "s.k.offArgs": "切り替えの引数",
       "s.cd.registerRedirect": "レジストリのリダイレクトアドレス:",

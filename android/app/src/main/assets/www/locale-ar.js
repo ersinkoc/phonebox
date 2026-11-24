@@ -839,7 +839,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.textHint": "يُستبدل {clipboard} بنص الحافظة (حتى أول 10,000 محرف).",
       "s.k.clipboardWarn": "يمر النص المكتوب عبر أداة الكتابة في النظام، وقد تظهر كلمة مرور منسوخة في قائمة العمليات أثناء كتابتها على macOS أو Linux. إدراج {clipboard} في الطرفية قد يؤدي إلى تشغيل النص المنسوخ فيها. لا تضيف paste: نص اللصق إلى سجل حافظة Windows أو الحافظة السحابية، ثم تعيد النص الذي كان منسوخًا. الصور والملفات المنسوخة لا تُستعاد، وتبقى الحافظة فارغة في هذه الحالة. على Mac، قد تظل Universal Clipboard تزامن النص مع أجهزتك الأخرى.",
       "s.k.macosPermission": "يطلب macOS مرة واحدة للسماح PhoneBoxAgent في إعدادات النظام › الخصوصية والأمن › إمكانية الوصول.",
-      "s.k.linuxNeedsXdotool": "يحتاج إلى xdotool (X11) أو wtype (Wayland).",
+      "s.k.linuxNeedsXdotool": "يحتاج إلى xdotool (X11)، أو wtype أو ydotool (Wayland؛ يحتاج GNOME إلى ydotool).",
       "s.k.stateKey": "مفتاح حالة من قيمة واردة (اختياري)",
       "s.k.offArgs": "وسائط أمر الإيقاف",
       "s.cd.registerRedirect": "عنوان إعادة توجيه السجل:",
