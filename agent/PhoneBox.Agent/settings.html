@@ -3036,9 +3036,23 @@ function renderEditor() {
         h('div', { class: 'field' }, h('label', {}, t('s.z.iconEmoji')), h('div', { class: 'row' }, iconIn),
           h('div', { class: 'emojis' }, ...EMOJIS.map((em) => h('button', { 'data-emoji': em, title: em, 'aria-label': em, onclick: () => { iconIn.value = em; upd('icon', em); } }, rich(em))))),
         customIconField(s),
+        iconSizeField(s, upd),
         h('div', { class: 'field' }, h('label', {}, t('s.z.colour')), h('div', { class: 'row' }, colorIn), sw)),
       h('div', {}, ...actionFields(s, upd, text, cmdIn, preset),
         h('div', { class: 'field' }, h('label', {}, tc('Id')), s.id ? h('code', {}, s.id) : h('span', { class: 'hint' }, t('s.k.genOnSave'))))));
+}
+
+// How big the icon is on the phone's key: default, medium, large, or max (it fills the key). Applies to emoji and pictures.
+function iconSizeField(s, upd) {
+  const sizes = [['', t('s.k.iconSizeDefault')], ['m', t('s.k.iconSizeM')], ['l', t('s.k.iconSizeL')], ['max', t('s.k.iconSizeMax')]];
+  const seg = h('div', { class: 'seg', role: 'group', 'aria-label': t('s.k.iconSize'), style: { flexWrap: 'wrap', maxWidth: '100%' } },
+    ...sizes.map(([v, label]) => h('button', { type: 'button', class: (s.iconSize || '') === v ? 'on' : '', 'aria-pressed': String((s.iconSize || '') === v),
+      onclick: (e) => {
+        upd('iconSize', v || undefined);
+        for (const b of seg.children) { const on = b === e.currentTarget; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+      } }, label)));
+  return h('div', { class: 'field' }, h('label', {}, t('s.k.iconSize')), h('div', { class: 'row' }, seg),
+    h('span', { class: 'hint' }, t('s.k.iconSizeHint')));
 }
 
 // A custom icon image (PNG, WEBP or SVG) overrides both the emoji and the auto-detected program icon on the phone.

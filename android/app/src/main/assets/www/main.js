@@ -791,6 +791,7 @@ export function keyButton(s, { cover = false, label = true } = {}) {
   const name = String(s.label || '').trim();
   if (!label || !name) b.setAttribute('aria-label', name || s.id);
   b.style.setProperty('--k', s.color || '#6b7280');
+  if (s.iconSize) b.classList.add('k-isz-' + s.iconSize);
   b.dataset.id = s.id;
   b._cover = cover;
   if (s.hold) holdToRun(b, s.id);
@@ -826,7 +827,8 @@ function holdToRun(b, id) {
 export function setKeyFace(b, s, cover = false) {
   b.dataset.face = s.id === b.dataset.id ? '' : s.id;
   b.querySelectorAll('.k-bg, .k-shade').forEach((n) => n.remove());
-  b.classList.remove('k-cover');
+  b.classList.remove('k-cover', 'k-isz-m', 'k-isz-l', 'k-isz-max');
+  if (s.iconSize) b.classList.add('k-isz-' + s.iconSize);
   const icon = b.querySelector('.k-icon');
   icon.classList.remove('k-icon-img');
   icon.replaceChildren(s.icon ? rich(s.icon) : '•');

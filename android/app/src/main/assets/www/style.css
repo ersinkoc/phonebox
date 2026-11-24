@@ -695,6 +695,22 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .w-button .key .k-icon { font-size: min(40cqh, 30cqw); }
 .w-button .key .k-icon.k-icon-img img { width: 40px; height: 40px; width: min(40cqh, 30cqw); height: min(40cqh, 30cqw); }
 .w-button .key .k-label { font-size: clamp(10px, 15cqh, 18px); }
+/* Per-shortcut icon size (settings > Shortcuts > Icon size): medium, large, and max (the icon fills the key). The key
+   is its own size container, so every size is measured against the key and not the widget around it: the sizes
+   always grow in that order and never overflow a short key. */
+.key.k-isz-m, .key.k-isz-l, .key.k-isz-max { container-type: size; }
+/* the inline emoji icon carries a trailing margin (.ico.m) meant for text; on a sized key it would push it off-centre */
+.key.k-isz-m .k-icon .ico, .key.k-isz-l .k-icon .ico, .key.k-isz-max .k-icon .ico { margin: 0; }
+.key.k-isz-m .k-icon { font-size: min(46cqh, 50cqw); }
+.key.k-isz-m .k-icon.k-icon-img img { width: min(46cqh, 50cqw); height: min(46cqh, 50cqw); }
+.key.k-isz-l .k-icon { font-size: min(56cqh, 62cqw); }
+.key.k-isz-l .k-icon.k-icon-img img { width: min(56cqh, 62cqw); height: min(56cqh, 62cqw); }
+/* max: the icon takes whatever the label leaves (about 24px of height; the container's size already excludes the padding) */
+.key.k-isz-max { padding: 4px; }
+.key.k-isz-max .k-icon { flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; line-height: 1; font-size: max(16px, min(calc(100cqh - 24px), 100cqw)); }
+.key.k-isz-max .k-icon.k-icon-img img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; }
+.key.k-isz-max .k-label { flex: 0 0 auto; font-size: 12px; }
+.key.k-isz-max.k-cover { padding: 0 0 7cqh; }
 /* Big button with "fill with the picture": the picture covers the key, the label sits on a shade at the bottom. */
 /* padding in % follows the width, so a wide, short key would lose its label: the inset follows the height (cqh) */
 .key.k-cover { justify-content: flex-end; padding-bottom: 4px; padding-bottom: 7cqh; }
