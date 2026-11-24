@@ -192,6 +192,7 @@ public sealed class LyricsServiceTests : IDisposable
     // #551: a VEVO channel writes a multi-word name without spaces
     [InlineData("Tan Bionica - Obsesionario En La Mayor", "TanBionicaVEVO", "Obsesionario En La Mayor", "Tan Bionica")]
     [InlineData("Other Band - Song", "TanBionicaVEVO", "Other Band - Song", "TanBionica")]
+    [InlineData("The Band - Song", "TheBanditVEVO", "The Band - Song", "TheBandit")]
     [InlineData("Artist - Song [Lyrics]", "", "Song", "Artist")]
     [InlineData("Song - Remastered 2011", "The Beatles", "Song - Remastered 2011", "The Beatles")]
     [InlineData("Song (Live)", "Band - Topic", "Song (Live)", "Band")]
