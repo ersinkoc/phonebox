@@ -366,15 +366,28 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
             UpdateService.AppVersion = "0.0.1";
             await svc.CheckAsync();
             Assert.False(adb.InstallRunning);
-            var apply = svc.ApplyAsync();
-            for (var i = 0; i < 600 && !File.Exists(Path.Combine(dir, "installing")); i++) await Task.Delay(50);
-            Assert.True(File.Exists(Path.Combine(dir, "installing")));
-            Assert.True(adb.InstallRunning);
+            using var cancel = new CancellationTokenSource();
+            var apply = svc.ApplyAsync(cancel.Token);
+            try
+            {
+                for (var i = 0; i < 600 && !File.Exists(Path.Combine(dir, "installing")); i++) await Task.Delay(50);
+                Assert.True(File.Exists(Path.Combine(dir, "installing")));
+                Assert.True(adb.InstallRunning);
 
-            File.WriteAllText(Path.Combine(dir, "gate"), "");
-            await apply.WaitAsync(TimeSpan.FromSeconds(60));
-            Assert.Null(svc.Status().Error);
-            Assert.False(adb.InstallRunning);
+                File.WriteAllText(Path.Combine(dir, "gate"), "");
+                await apply.WaitAsync(TimeSpan.FromSeconds(60));
+                Assert.Null(svc.Status().Error);
+                Assert.False(adb.InstallRunning);
+            }
+            finally
+            {
+                // a failed assertion above: the fake install is ended and joined before the folder goes
+                if (!apply.IsCompleted)
+                {
+                    await cancel.CancelAsync();
+                    try { await apply.WaitAsync(TimeSpan.FromSeconds(30)); } catch (Exception) { }
+                }
+            }
         }
         finally
         {

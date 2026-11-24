@@ -305,25 +305,128 @@ public sealed class AdbReverseTests : IDisposable
         Assert.True(adb.RestartDue(210_000));
     }
 
-    /// <summary>Runs <paramref name="restart"/> with the adb server's process lookup replaced and the machine's adb
-    /// server settings out of the way, so it never touches a real adb server.</summary>
-    private static async Task WithoutTheRealAdbServer(int? pid, Func<Task> restart)
+    [Fact]
+    public void SilenceBeforeAnInstallDoesNotCountAfterIt()
     {
-        var find = AdbReverse.FindServerPid;
-        var socket = Environment.GetEnvironmentVariable("ADB_SERVER_SOCKET");
-        var port = Environment.GetEnvironmentVariable("ANDROID_ADB_SERVER_PORT");
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = FakeAdb(["FAKE1"], "", null) }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+
+        Assert.False(adb.RestartDue(0));        // the first timeout: the minute begins
+        using (adb.Installing())
+            Assert.False(adb.RestartDue(10_000));
+        Assert.False(adb.RestartDue(84_000));   // install over at 80 s: not a minute since then, not restarted at once
+        Assert.True(adb.RestartDue(144_000));
+    }
+
+    [Fact]
+    public async Task AnInstallThatStartsDuringTheRestartCallsItOff()
+    {
+        var fake = FakeAdb(["FAKE1"], "", null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake }));
+        var log = new Capture<AdbReverse>();
+        using var adb = new AdbReverse(new ConfigStore(path), log);
+
+        IDisposable? install = null;
         try
         {
-            AdbReverse.FindServerPid = (_, _) => Task.FromResult(pid);
-            Environment.SetEnvironmentVariable("ADB_SERVER_SOCKET", null);
-            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", null);
+            // the install begins while the server's process is being looked up
+            await WithoutTheRealAdbServerFinding(() => { install = adb.Installing(); return Task.FromResult<int?>(Environment.ProcessId); },
+                () => adb.RestartAdbServerAsync(fake, CancellationToken.None));
+        }
+        finally { install?.Dispose(); }
+        Assert.DoesNotContain("kill-server", Calls());
+        Assert.Contains(log.Lines, l => l.Contains("restart is called off"));
+        Assert.DoesNotContain(log.Lines, l => l.Contains("restarting it"));
+    }
+
+    [Theory]
+    [InlineData("192.168.1.20", false)] // another machine's adb server: not this agent's to restart
+    [InlineData("localhost", true)]
+    [InlineData("127.0.0.1", true)]
+    public async Task OnlyALocalAdbServerIsRestarted(string address, bool restarted)
+    {
+        var fake = FakeAdb(["FAKE1"], "", null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake }));
+        var log = new Capture<AdbReverse>();
+        using var adb = new AdbReverse(new ConfigStore(path), log);
+
+        await WithoutTheRealAdbServer(null, async () =>
+        {
+            Assert.Equal(restarted, AdbReverse.AdbServerPort() is not null);
+            await adb.RestartAdbServerAsync(fake, CancellationToken.None);
+            await adb.RestartAdbServerAsync(fake, CancellationToken.None);
+        }, address);
+        Assert.Equal(restarted, Calls().Contains("kill-server"));
+        Assert.Equal(restarted ? 0 : 1, log.Lines.Count(l => l.Contains("it is not a local one"))); // said once
+    }
+
+    [Fact]
+    public async Task AfterARestartOrUpdateTheNextAgentDoesNotWakeThePhone()
+    {
+        var path = Path.Combine(_dir, "config.json");
+        var fake = FakeAdb(["FAKE1"], "", null);
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect = true } }));
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        const string wake = "-s FAKE1 shell input keyevent KEYCODE_WAKEUP";
+
+        using (var first = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance) { StopBudget = TimeSpan.FromSeconds(60) })
+        {
+            await (Task)ensure.Invoke(first, [CancellationToken.None])!;
+            Assert.Equal(1, Calls().Count(c => c == wake)); // plugged in: woken
+            FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);
+            await first.RemoveOwnRulesAsync(CancellationToken.None); // the stop takes the rule off and notes the phone
+            Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
+            Assert.True(File.Exists(first.HandoffPath));
+        }
+
+        // the next agent finds the phone without a rule, and sets it without waking the phone
+        FakeAdb(["FAKE1"], "", null);
+        using var next = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        next.TakeHandoff(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        Assert.False(File.Exists(next.HandoffPath)); // read once
+        await (Task)ensure.Invoke(next, [CancellationToken.None])!;
+        Assert.Equal(2, Calls().Count(c => c == "-s FAKE1 reverse tcp:8765 tcp:8765"));
+        Assert.Equal(1, Calls().Count(c => c == wake));
+
+        // a note that has expired (the agent was started again much later): the phone counts as plugged in
+        using (var stopping = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance) { StopBudget = TimeSpan.FromSeconds(60) })
+        {
+            typeof(AdbReverse).GetField("_devices", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                .SetValue(stopping, new[] { "FAKE1" });
+            FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);
+            await stopping.RemoveOwnRulesAsync(CancellationToken.None);
+        }
+        FakeAdb(["FAKE1"], "", null);
+        using var later = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        later.TakeHandoff(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + AdbReverse.QuietAfterRestartMs + 1);
+        await (Task)ensure.Invoke(later, [CancellationToken.None])!;
+        Assert.Equal(2, Calls().Count(c => c == wake));
+    }
+
+    /// <summary>Runs <paramref name="restart"/> with the adb server's process lookup replaced and the machine's adb
+    /// server settings out of the way, so it never touches a real adb server.</summary>
+    private static Task WithoutTheRealAdbServer(int? pid, Func<Task> restart, string? address = null) =>
+        WithoutTheRealAdbServerFinding(() => Task.FromResult(pid), restart, address);
+
+    private static async Task WithoutTheRealAdbServerFinding(Func<Task<int?>> findPid, Func<Task> restart, string? address = null)
+    {
+        var find = AdbReverse.FindServerPid;
+        string[] names = ["ADB_SERVER_SOCKET", "ANDROID_ADB_SERVER_PORT", "ANDROID_ADB_SERVER_ADDRESS"];
+        var saved = names.ToDictionary(n => n, Environment.GetEnvironmentVariable);
+        try
+        {
+            AdbReverse.FindServerPid = (_, _) => findPid();
+            foreach (var n in names) Environment.SetEnvironmentVariable(n, null);
+            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_ADDRESS", address);
             await restart();
         }
         finally
         {
             AdbReverse.FindServerPid = find;
-            Environment.SetEnvironmentVariable("ADB_SERVER_SOCKET", socket);
-            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", port);
+            foreach (var (n, v) in saved) Environment.SetEnvironmentVariable(n, v);
         }
     }
 
@@ -589,22 +692,7 @@ public sealed class AdbReverseTests : IDisposable
         Assert.Equal(1, Calls().Count(c => c == wake)); // newly plugged in: woken, the panel opened
 
         // the restart itself, without the machine's real adb server or its environment
-        var find = AdbReverse.FindServerPid;
-        var socket = Environment.GetEnvironmentVariable("ADB_SERVER_SOCKET");
-        var port = Environment.GetEnvironmentVariable("ANDROID_ADB_SERVER_PORT");
-        try
-        {
-            AdbReverse.FindServerPid = (_, _) => Task.FromResult<int?>(null);
-            Environment.SetEnvironmentVariable("ADB_SERVER_SOCKET", null);
-            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", null);
-            await adb.RestartAdbServerAsync(fake, CancellationToken.None);
-        }
-        finally
-        {
-            AdbReverse.FindServerPid = find;
-            Environment.SetEnvironmentVariable("ADB_SERVER_SOCKET", socket);
-            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", port);
-        }
+        await WithoutTheRealAdbServer(null, () => adb.RestartAdbServerAsync(fake, CancellationToken.None));
         Assert.Contains("kill-server", Calls());
 
         await Pass(); // the same transport id "1" as before the restart

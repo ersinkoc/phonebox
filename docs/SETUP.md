@@ -311,12 +311,16 @@ accept the USB debugging prompt on the phone. If several devices are connected, 
 **Settings › General › Phone connection**. Over Wi-Fi, check that Wi-Fi is enabled on the agent, pair with the
 QR code or over USB, and allow the agent through the firewall for your private network.
 
-If `adb devices` itself doesn't answer, the adb server is hung. The agent restarts an adb server that has been hung for
-a minute, which also ends other tools' adb sessions (Android Studio, scrcpy). It doesn't when `ADB_SERVER_SOCKET` points
-adb at another server or while the phone app is being installed, and it restarts the server at most once every 5
-minutes. On Linux it finds the server's process with `lsof` or `ss`; without either, `agent.log` says the process
-couldn't be found. To recover at once, end `adb.exe` in Task
-Manager (`pkill adb` on Linux and macOS): `adb kill-server` asks the server itself, so a hung one may not answer it.
+If `adb devices` itself doesn't answer, the adb server is hung. The agent tries to restart a local adb server that has
+been hung for a minute, which also ends other tools' adb sessions (Android Studio, scrcpy). It doesn't while the phone
+app is being installed, or when `ADB_SERVER_SOCKET` or `ANDROID_ADB_SERVER_ADDRESS` points adb at a server on another
+machine, and it tries at most once every 5 minutes. It ends the server's process, found with `netstat` on Windows and
+`lsof` (or `ss` on Linux) elsewhere. When `agent.log` says the process couldn't be found and it is "only asking it to
+stop", the agent could only send `adb kill-server`, which a hung server may ignore: the restart may not have happened.
+
+To recover at once from a local adb server, end `adb.exe` in Task Manager (`pkill adb` on Linux and macOS):
+`adb kill-server` asks the server itself, so a hung one may not answer it. With `ADB_SERVER_SOCKET` or
+`ANDROID_ADB_SERVER_ADDRESS` pointing at another machine, restart the adb server on that machine instead.
 </details>
 
 <details><summary><b>The phone keeps dropping off USB.</b></summary>

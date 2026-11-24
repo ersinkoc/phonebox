@@ -39,10 +39,11 @@
   a prompt left to the computer says why in `agent.log` (the phone not seen for how long, Ask on the phone off, or
   the computer in use). Settings no longer offers an agent update to a copy outside the installed folder, which never
   updates itself (#497, [xxleocoolxx](https://github.com/xxleocoolxx)).
-- USB: quitting, restarting or updating the agent takes its `adb reverse` rule off every connected phone, all at
-  once, before its port closes. Left behind, the rule pointed the panel at a port nobody listened on and could hang
-  the adb server. An adb server that hasn't answered for a minute is restarted, at most once every 5 minutes and
-  never during a phone app install; phones that already had their rule get it back without being woken (#486,
+- USB: quitting, restarting or updating the agent tries to take its `adb reverse` rule off the connected phones, all
+  at once and for at most 3 seconds, before its port closes. Left behind, the rule pointed the panel at a port nobody
+  listened on and could hang the adb server. When a local adb server hasn't answered for a minute, the agent tries to
+  restart it, at most once every 5 minutes and never during a phone app install. After a restart of the agent or of
+  the adb server, phones that already had their rule get it back without being woken (#486,
   [freefakesmile](https://github.com/freefakesmile)).
 
 **Panel**

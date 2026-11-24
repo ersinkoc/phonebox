@@ -75,6 +75,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         using var rounds = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _rounds = rounds;
         lifetime?.ApplicationStopping.Register(RemoveBeforeThePortCloses);
+        TakeHandoff(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         while (!ct.IsCancellationRequested && !_stopping)
         {
             // while the session is ending nothing is started; the loop goes on, for a shutdown that is cancelled
@@ -181,6 +182,46 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             _reverseSet.Remove(d);
             _setHere.Remove(d);
         }
+        if (removed.OfType<string>().ToArray() is { Length: > 0 } handedOver) WriteHandoff(handedOver);
+    }
+
+    /// <summary>
+    /// The phones whose rule a stop took off, for the agent that starts next (a restart, an update): it sets the rule
+    /// again without waking the phone or opening the panel, as it did when the rule was still there. Kept only briefly.
+    /// </summary>
+    internal string HandoffPath => Path.Combine(Path.GetDirectoryName(cfg.Path) ?? AppPaths.ConfigDir, "usb-handoff.json");
+
+    private sealed record Handoff(long Until, string[] Serials);
+
+    private void WriteHandoff(string[] serials)
+    {
+        try
+        {
+            var until = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + QuietAfterRestartMs;
+            AppPaths.WriteAllTextPrivate(HandoffPath, System.Text.Json.JsonSerializer.Serialize(new Handoff(until, serials)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            log.LogInformation("could not note the phones for the next start ({Message})", ex.Message);
+        }
+    }
+
+    /// <summary>Reads (and deletes) what the previous agent left in <see cref="HandoffPath"/>.</summary>
+    internal void TakeHandoff(long nowUnixMs)
+    {
+        Handoff? handoff;
+        try
+        {
+            if (!File.Exists(HandoffPath)) return;
+            handoff = System.Text.Json.JsonSerializer.Deserialize<Handoff>(File.ReadAllText(HandoffPath));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { handoff = null; }
+        try { File.Delete(HandoffPath); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        // expired, or from a clock that has jumped: the phones count as newly plugged in
+        if (handoff?.Serials is not { } serials || handoff.Until - nowUnixMs is not (> 0 and <= QuietAfterRestartMs) || serials.Length == 0) return;
+        _quiet.UnionWith(serials.Where(x => !string.IsNullOrEmpty(x)));
+        _quietUntil = Environment.TickCount64 + (handoff.Until - nowUnixMs);
     }
 
     private readonly AdbWatchdog _watchdog = new();
@@ -193,8 +234,17 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// </summary>
     internal async Task RestartAdbServerAsync(string adb, CancellationToken ct)
     {
-        if (AdbServerPort() is not { } port) return; // ADB_SERVER_SOCKET: a server somewhere else, not ours to restart
+        if (AdbServerPort() is not { } port)
+        {
+            // ADB_SERVER_SOCKET or ANDROID_ADB_SERVER_ADDRESS: a server somewhere else, not ours to restart
+            if (!_remoteLogged) log.LogWarning("adb server has not answered for a minute; it is not a local one (ADB_SERVER_SOCKET or "
+                + "ANDROID_ADB_SERVER_ADDRESS is set), so the agent doesn't restart it");
+            _remoteLogged = true;
+            return;
+        }
         var pid = await FindServerPid(port, ct);
+        // an install may have begun meanwhile (the lookup takes a moment): ending the server would cut it short
+        if (CalledOffForInstall()) return;
         if (pid is null)
             // kill-server is all that is left, and a hung server may not answer it: the log must not claim a restart
             log.LogWarning("adb server has not answered for a minute, and its process on port {Port} could not be found: "
@@ -213,7 +263,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         _restarted = true;
         try { await ToolProcess.RunAsync(new ProcessStartInfo(adb) { ArgumentList = { "kill-server" } }, TimeSpan.FromSeconds(3), ct); }
         catch (Exception ex) when (ex is IOException or TimeoutException or System.ComponentModel.Win32Exception) { }
-        if (pid is not { } id) return;
+        if (pid is not { } id || CalledOffForInstall()) return;
         try
         {
             using var process = Process.GetProcessById(id);
@@ -226,10 +276,25 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
     }
 
-    /// <summary>The adb server's port as adb itself picks it, or null when ADB_SERVER_SOCKET points adb elsewhere.</summary>
+    private bool _remoteLogged;
+
+    /// <summary>An app install started after the restart was decided on: the restart (or what is left of it) is called off.</summary>
+    private bool CalledOffForInstall()
+    {
+        if (!InstallRunning) return false;
+        log.LogInformation("an app install started: the adb server restart is called off");
+        return true;
+    }
+
+    /// <summary>
+    /// The adb server's port as adb itself picks it, or null when ADB_SERVER_SOCKET or a non-local
+    /// ANDROID_ADB_SERVER_ADDRESS points adb at a server elsewhere.
+    /// </summary>
     internal static int? AdbServerPort()
     {
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ADB_SERVER_SOCKET"))) return null;
+        if (Environment.GetEnvironmentVariable("ANDROID_ADB_SERVER_ADDRESS") is { Length: > 0 } address
+            && address.Trim() is not ("localhost" or "127.0.0.1" or "::1" or "[::1]")) return null;
         return int.TryParse(Environment.GetEnvironmentVariable("ANDROID_ADB_SERVER_PORT"), System.Globalization.NumberStyles.None,
             System.Globalization.CultureInfo.InvariantCulture, out var p) && p is > 0 and < 65536 ? p : 5037;
     }
@@ -272,6 +337,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         {
             if (!_heldForInstall) log.LogInformation("adb server does not answer, but an app install is running: not restarting it meanwhile");
             _heldForInstall = true;
+            _watchdog.Answered(); // time spent installing doesn't count: the minute starts again after the install
             return false;
         }
         _heldForInstall = false;
@@ -301,8 +367,13 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (FirstExisting("/usr/sbin/lsof", "/usr/bin/lsof", "/sbin/lsof", "/bin/lsof") is { } lsofPath)
             {
                 var lsof = new ProcessStartInfo(lsofPath) { ArgumentList = { "-nP", $"-iTCP:{port}", "-sTCP:LISTEN", "-t" } };
-                var output = (await ToolProcess.RunAsync(lsof, TimeSpan.FromSeconds(5), ct)).Output;
-                if (int.TryParse(output.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim(), out var pid)) return pid;
+                // lsof that can't start or hangs leaves ss to try (a stop's cancellation still ends the lookup)
+                try
+                {
+                    var output = (await ToolProcess.RunAsync(lsof, TimeSpan.FromSeconds(5), ct)).Output;
+                    if (int.TryParse(output.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim(), out var pid)) return pid;
+                }
+                catch (Exception ex) when (ex is IOException or TimeoutException or System.ComponentModel.Win32Exception) { }
             }
             if (OperatingSystem.IsLinux() && FirstExisting("/usr/bin/ss", "/bin/ss", "/usr/sbin/ss", "/sbin/ss") is { } ssPath)
             {
@@ -672,6 +743,8 @@ internal sealed class AdbWatchdog(long silentMs = 60_000, long cooldownMs = 300_
 {
     private long? _silentSince, _restartedAt;
 
+    /// <summary>The server answered (or the silence doesn't count, as during an install): the minute starts over. The
+    /// cooldown after a restart is kept.</summary>
     public void Answered() => _silentSince = null;
 
     /// <returns>True when the server should be restarted now.</returns>
