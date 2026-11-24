@@ -3,7 +3,7 @@
 ## Unreleased
 
 **Widgets**
-- Control Deck: **Mics off, camera off**, next to Emergency mute. One tap mutes every microphone, leaves the speakers
+- Control Deck: **Mics off, camera off**, next to Emergency mute. One tap mutes every microphone the computer can control, leaves the speakers
   as they are and stops the OBS virtual camera. Like Emergency mute, it drops a held push-to-talk key and keeps
   retrying a microphone that refuses. The phone says what happened to each, and **Camera not turned off** when OBS is
   not connected or did not stop it; a physical webcam is not touched (#387, #476,

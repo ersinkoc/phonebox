@@ -480,6 +480,8 @@
     else if (kind === 'panic') { deck.audio.devices.forEach(d => d.muted = true); audio.muted = true; }
     else if (kind === 'mics-camera-off') {
       // ControlDeck.MicsCameraOff: the microphones only, then the OBS virtual camera (not connected when OBS is off)
+      // like the agent, held push-to-talk leases are dropped first, so ending one can't reopen a microphone
+      deckLeases.clear();
       deck.audio.devices.filter(d => d.direction === 'input').forEach(d => d.muted = true);
       if (c.obs?.enabled === false) return { ok: false, error: 'Microphones muted · Camera not turned off: OBS is not connected', mics: 'muted', camera: 'not-connected' };
       const camera = deckObsExtra.cameraActive ? 'stopped' : 'off'; deckObsExtra.cameraActive = false;
