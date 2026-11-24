@@ -5,7 +5,8 @@
 **Widgets**
 - Discord on Windows: **Choose on PC** (screen share) brings Discord's window to the front. Discord draws its picker
   inside its own window, so with Discord minimized, behind other windows or in the tray the button seemed to do
-  nothing (#539, [DarkusK](https://github.com/DarkusK)).
+  nothing. With more than one Discord build running (stable, PTB, Canary), the stable one comes forward (#539,
+  [DarkusK](https://github.com/DarkusK)).
 - Control Deck: **Mics off, camera off**, next to Emergency mute. One tap mutes every microphone the computer can control, leaves the speakers
   as they are and stops the OBS virtual camera. Like Emergency mute, it drops a held push-to-talk key and keeps
   retrying a microphone that refuses. The phone says what happened to each, and **Camera not turned off** when OBS is
