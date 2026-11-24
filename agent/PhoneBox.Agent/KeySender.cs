@@ -278,9 +278,7 @@ public static class KeySender
     }
 #else
     /// <summary>Presses one parsed combo; false when xdotool, wtype or ydotool failed (macOS throws when it refuses).</summary>
-    public static bool SendCombo(List<string> combo) => Send(combo);
-
-    private static bool Send(List<string> combo)
+    public static bool SendCombo(List<string> combo)
     {
         if (OperatingSystem.IsMacOS()) { MacKeystroke(combo); return true; }
         // X11: xdotool; Wayland: wtype (wlroots/KDE), then ydotool (GNOME, which ignores both wtype and xdotool)
@@ -293,11 +291,34 @@ public static class KeySender
         }));
         if (Sh.Which("xdotool") is not null && Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is null) return Sh.Run("xdotool", "key", "--clearmodifiers", x) is not null;
         if (Sh.Which("wtype") is not null && SendWtype(combo)) return true;
-        if (Sh.Run("ydotool", "key", YdotoolCombo(combo)) is not null) return true;
+        if (YdotoolUsable.Value && YdotoolCombo(combo) is { } y && Sh.Run("ydotool", "key", y) is not null) return true;
         if (Sh.Which("xdotool") is not null) return Sh.Run("xdotool", "key", "--clearmodifiers", x) is not null;
-        if (Sh.Which("wtype") is not null || Sh.Which("ydotool") is not null) return false;
+        if (Sh.Which("wtype") is not null || YdotoolUsable.Value) return false;
         throw new InvalidOperationException("sending keys needs xdotool (X11), or wtype or ydotool (Wayland)");
     }
+
+    private static void Send(List<string> combo)
+    {
+        if (!SendCombo(combo)) throw new InvalidOperationException("the computer refused the key press");
+    }
+
+    // shortcut: only ydotool 0.1.x (Ubuntu 24.04, tested) is used. 1.x takes numeric key codes and reads escapes in
+    // text, so it is skipped until someone can test it; its "type --help" is the one that lists --escape.
+    private static readonly Lazy<bool> YdotoolUsable = new(() =>
+    {
+        if (Sh.Which("ydotool") is not { } path) return false;
+        var psi = new System.Diagnostics.ProcessStartInfo(path) { ArgumentList = { "type", "--help" } };
+        try
+        {
+            var r = ToolProcess.RunAsync(psi, TimeSpan.FromSeconds(3), CancellationToken.None).GetAwaiter().GetResult();
+            var help = r.Output + r.Error;
+            return help.Contains("--key-delay") && !help.Contains("--escape");
+        }
+        catch (Exception e) when (e is TimeoutException or IOException or System.ComponentModel.Win32Exception) { return false; }
+    });
+
+    /// <summary>ydotool 0.1.x types only these: it stops at any other character and still exits 0.</summary>
+    internal static bool YdotoolCanType(string text) => text.All(c => c is '\n' or '\t' or (>= ' ' and <= '~'));
 
     private static bool SendWtype(List<string> combo)
     {
@@ -310,20 +331,31 @@ public static class KeySender
         return Sh.Run("wtype", [.. args]) is not null;
     }
 
-    /// <summary>A combo in ydotool's Linux key names ("leftctrl+c"); ydotool 0.1.8 exits 0 even on a name it does not know.</summary>
-    // shortcut: names are ydotool 0.1.x syntax (Ubuntu 24.04); 1.x wants numeric key codes, so map to KEY_* codes if a distro ships 1.x
-    internal static string YdotoolCombo(List<string> combo) => string.Join("+", combo.Select(k => k switch
+    /// <summary>
+    /// A combo in ydotool 0.1.x's key names ("ctrl+c"), or null when it has no name for one of the keys. ydotool 0.1.x
+    /// reads a name it does not know as its first letter and exits 0, so a wrong name would press the wrong key.
+    /// </summary>
+    internal static string? YdotoolCombo(List<string> combo)
     {
-        "ctrl" => "leftctrl", "shift" => "leftshift", "alt" => "leftalt", "win" => "leftmeta",
-        "printscreen" => "sysrq", "equals" => "equal", "period" => "dot", "bracketleft" => "leftbrace", "bracketright" => "rightbrace",
-        "nexttrack" => "nextsong", "prevtrack" => "previoussong",
-        "numpadmultiply" => "kpasterisk", "numpadadd" => "kpplus", "numpadsubtract" => "kpminus", "numpaddecimal" => "kpdot",
-        "numpaddivide" => "kpslash", "numpadenter" => "kpenter",
-        _ when k.StartsWith("numpad") => "kp" + k[6..], // numpad0-9 -> kp0-9
-        _ => k,
-    }));
+        var names = combo.Select(k => k switch
+        {
+            "ctrl" or "shift" or "alt" => k, "win" => "super",
+            "enter" or "tab" or "esc" or "backspace" or "delete" or "insert" or "home" or "end" or "pageup" or "pagedown"
+                or "up" or "down" or "left" or "right" => k,
+            "printscreen" => "sysrq",
+            "space" => " ", "minus" => "-", "equals" => "=", "comma" => ",", "period" => ".", "slash" => "/", "semicolon" => ";",
+            "bracketleft" => "[", "bracketright" => "]",
+            _ when k.Length == 1 && char.IsAsciiLetterOrDigit(k[0]) => k,
+            _ when k[0] == 'f' && int.TryParse(k[1..], out var n) && n is >= 1 and <= 12 => k,
+            _ => null, // media keys, F13-F24 and the keypad have no name in 0.1.x
+        }).ToList();
+        return names.Contains(null) ? null : string.Join("+", names);
+    }
 
-    public static void TypeText(string text) => TryTypeText(text, CancellationToken.None);
+    public static void TypeText(string text)
+    {
+        if (!TryTypeText(text, CancellationToken.None)) throw new InvalidOperationException("the computer refused the typing");
+    }
 
     /// <summary>
     /// Types the text; false when the tool failed (macOS throws when it refuses). The tool gets time for the whole text
@@ -332,6 +364,7 @@ public static class KeySender
     public static bool TryTypeText(string text, CancellationToken ct)
     {
         var timeout = TimeSpan.FromMilliseconds(3000 + 20L * text.Length);
+        var timedOut = false;
         bool Run(string tool, params string[] args)
         {
             var path = Sh.Which(tool);
@@ -339,7 +372,7 @@ public static class KeySender
             var psi = new System.Diagnostics.ProcessStartInfo(path);
             foreach (var a in args) psi.ArgumentList.Add(a);
             try { return ToolProcess.RunAsync(psi, timeout, ct).GetAwaiter().GetResult().ExitCode == 0; }
-            catch (TimeoutException) { return false; }
+            catch (TimeoutException) { timedOut = true; return false; }
         }
         if (OperatingSystem.IsMacOS())
         {
@@ -348,9 +381,13 @@ public static class KeySender
             return true;
         }
         if (Sh.Which("xdotool") is not null && Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is null) return Run("xdotool", "type", "--delay", "8", "--", text);
-        if (Run("wtype", "--", text) || Run("ydotool", "type", "--", text)) return true;
+        // wtype fails at once where the compositor lacks its protocol (GNOME); after a timeout it may have typed part of
+        // the text, which must not be typed again by the next tool
+        if (Run("wtype", "--", text)) return true;
+        if (timedOut) return false;
+        if (YdotoolUsable.Value && YdotoolCanType(text)) return Run("ydotool", "type", "--", text);
         if (Sh.Which("xdotool") is not null) return Run("xdotool", "type", "--delay", "8", "--", text);
-        if (Sh.Which("wtype") is not null || Sh.Which("ydotool") is not null) return false;
+        if (Sh.Which("wtype") is not null || YdotoolUsable.Value) return false;
         throw new InvalidOperationException("typing needs xdotool (X11), or wtype or ydotool (Wayland)");
     }
 
