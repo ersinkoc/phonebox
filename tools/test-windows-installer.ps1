@@ -18,9 +18,9 @@ $startup = Join-Path ([Environment]::GetFolderPath('Startup')) 'PhoneBox.lnk'
 $uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{F4854D0A-0000-4AB6-A333-D4E0280DCB74}_is1'
 
 function Assert([bool]$ok, [string]$what) { if (-not $ok) { throw "FAILED: $what" } ; Write-Host "ok  $what" }
-function Install([string]$tasks) {
+function Install([string]$tasks, [string]$switch = 'TASKS') {
     $log = Join-Path $env:TEMP 'phonebox-setup.log'
-    $p = Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/TASKS=$tasks", "/LOG=$log" -Wait -PassThru
+    $p = Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/$switch=$tasks", "/LOG=$log" -Wait -PassThru
     # what Setup decided about the autostart task, in the CI log (it is the one thing that depends on Setup's own rules)
     if (Test-Path -LiteralPath $log) { Select-String -Path $log -Pattern 'autostart' | ForEach-Object { Write-Host "    setup log: $($_.Line.Trim())" } }
     Assert ($p.ExitCode -eq 0) "installer exit code $($p.ExitCode) is 0"
@@ -51,6 +51,11 @@ Assert (Test-Path -LiteralPath $startup) 'an upgrade that names no tasks keeps t
 # and explicitly unticking the task turns it off
 Install '!autostart'
 Assert (-not (Test-Path -LiteralPath $startup)) 'unticking the autostart task on an upgrade removes the Start-with-Windows shortcut'
+# the same through /MERGETASKS, which adds to or removes from the default choice
+Install 'autostart'
+Assert (Test-Path -LiteralPath $startup) 'ticking the task again brings the Start-with-Windows shortcut back'
+Install '!autostart' 'MERGETASKS'
+Assert (-not (Test-Path -LiteralPath $startup)) '/MERGETASKS=!autostart on an upgrade removes the Start-with-Windows shortcut'
 
 # another folder is refused (uninstalling deletes the app folder, so /DIR must not be able to point at the settings)
 $other = Join-Path $env:TEMP 'phonebox-other-dir'

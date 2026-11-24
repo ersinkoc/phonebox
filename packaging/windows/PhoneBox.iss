@@ -101,8 +101,9 @@ var
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  { a Start-with-Windows shortcut that is already there (made by the installer or by the tray menu) keeps its box ticked, once }
-  if (CurPageID = wpSelectTasks) and not AutostartPreselected then
+  { a Start-with-Windows shortcut that is already there (made by the installer or by the tray menu) keeps its box ticked, once.
+    Not in a silent run: Setup passes the tasks page there too, and this would undo an explicit /TASKS=!autostart }
+  if (CurPageID = wpSelectTasks) and not AutostartPreselected and not WizardSilent then
   begin
     AutostartPreselected := True;
     if FileExists(ExpandConstant('{userstartup}\PhoneBox.lnk')) then WizardSelectTasks('autostart');
@@ -111,9 +112,9 @@ end;
 
 function KeepAutostart: Boolean;
 begin
-  // A silent install with no /TASKS says nothing about it, so a shortcut that is already there stays. Otherwise the box in the
-  // wizard (ticked from the start when the shortcut exists, see CurPageChanged) or /TASKS decides.
-  if WizardSilent and (ExpandConstant('{param:TASKS|}') = '') then Result := True
+  // A silent install with neither /TASKS nor /MERGETASKS says nothing about it, so a shortcut that is already there stays.
+  // Otherwise the box in the wizard (ticked from the start when the shortcut exists, see CurPageChanged) or the switch decides.
+  if WizardSilent and (ExpandConstant('{param:TASKS|}') = '') and (ExpandConstant('{param:MERGETASKS|}') = '') then Result := True
   else Result := WizardIsTaskSelected('autostart');
 end;
 
