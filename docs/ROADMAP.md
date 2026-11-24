@@ -14,6 +14,10 @@ people who proposed or prototyped something are credited in the [changelog](../C
 
 ## Contributions in progress
 
+- **Several Claude Code accounts** ([#538](https://github.com/ersinkoc/phonebox/issues/538)): an opt-in list of extra
+  Claude Code folders (`claude.extraCredentialDirs`, `{ label, dir }`), each with its own quota card as
+  `claude@<label>`, read-only tokens and no fallback to another account. In three pull requests: the setting and the
+  quota cards, then sessions from those folders, then the permission-prompt hook for them.
 - **Discord login through the desktop app** ([#338](https://github.com/ersinkoc/phonebox/issues/338)): Discord refuses
   `AUTHORIZE` over IPC both without `redirect_uri` (0.9.24) and with it (0.9.25); the working combination is being
   tested against a real Discord client.

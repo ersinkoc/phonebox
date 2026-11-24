@@ -5,7 +5,12 @@
 **Widgets**
 - Discord on Windows: **Choose on PC** (screen share) brings Discord's window to the front. Discord draws its picker
   inside its own window, so with Discord minimized, behind other windows or in the tray the button seemed to do
-  nothing. With more than one Discord build running (stable, PTB, Canary), the stable one comes forward (#539,
+  nothing. With more than one Discord build running (stable, PTB, Canary), the one PhoneBox is connected to comes
+  forward, since that is where the picker opens (#539, #543, [DarkusK](https://github.com/DarkusK)).
+- Discord: a **Side by side** layout, as an option next to the list (the default), for tablets and large widgets. The
+  left side shows the voice channel you are in with who is there, mute, deafen and leave; the right side has tabs for
+  the chosen server's voice channels as big keys, the chat and the screen share. A server switcher keeps the servers
+  you used lately, and outside a voice channel **Back to** returns to the last one (#516,
   [DarkusK](https://github.com/DarkusK)).
 - Control Deck: **Mics off, camera off**, next to Emergency mute. One tap mutes every microphone the computer can control, leaves the speakers
   as they are and stops the OBS virtual camera. Like Emergency mute, it drops a held push-to-talk key and keeps
@@ -73,6 +78,9 @@
   [freefakesmile](https://github.com/freefakesmile)).
 
 **Panel**
+- Traditional Chinese: 160 panel and widget labels that were machine-translated now read right, for example
+  功耗 (power), 時脈 (clock speed), 溫度 (temperature) and 錄影 / 直播 (OBS recording / stream). Units such as MHz,
+  rpm and W stay as they are (#549, [avery02072003-cmyk](https://github.com/avery02072003-cmyk)).
 - Settings › Display › **Sound when a session finishes**, off by default: the panel plays its chime once when AI
   sessions finish, at a volume of its own, and never on the night screen (#488,
   [Prajjwal2404](https://github.com/Prajjwal2404)).
