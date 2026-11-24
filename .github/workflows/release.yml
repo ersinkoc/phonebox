@@ -138,6 +138,17 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive -Path out/* -DestinationPath "dist/PhoneBoxAgent-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip"
+      # The per-user installer (packaging/windows/PhoneBox.iss) around the same signed PhoneBoxAgent.exe as the zip. It is
+      # installed, started, upgraded over and uninstalled on this runner before it is released. Its own file is not
+      # Authenticode-signed (SignPath signs PhoneBoxAgent.exe), so SmartScreen may warn on a downloaded copy.
+      - name: Build and test the Windows installer
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          ./tools/install-inno-setup.ps1
+          $v = '${{ needs.version.outputs.version }}'
+          ./tools/make-windows-installer.ps1 -Exe out/PhoneBoxAgent.exe -Version $v -OutDir dist
+          ./tools/test-windows-installer.ps1 -Setup "dist/PhoneBox-$v-win-x64-setup.exe" -Version $v
       # The same signed agent as in the zip, in PhoneBox.app inside a disk image. The app is signed with the same
       # certificate and identifier, so its designated requirement equals the zip's (checked below) and every release of
       # the app satisfies the same requirement. Not notarized: a downloaded copy is blocked the first time and needs
@@ -185,6 +196,7 @@ jobs:
             dist/*.apk
             dist/*.zip
             dist/*.dmg
+            dist/*.exe
       - name: Save the provenance bundle
         env:
           BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
@@ -192,9 +204,10 @@ jobs:
       - name: Checksums
         working-directory: dist
         run: |
-          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 9
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 10
           test "$(find . -maxdepth 1 -type f -name '*.zip' | wc -l)" -eq 5
           test "$(find . -maxdepth 1 -type f -name '*.dmg' | wc -l)" -eq 2
+          test "$(find . -maxdepth 1 -type f -name '*-setup.exe' | wc -l)" -eq 1
           test "$(find . -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 1
           sha256sum * > "SHA256SUMS-${{ needs.version.outputs.version }}.txt"
           cat "SHA256SUMS-${{ needs.version.outputs.version }}.txt"

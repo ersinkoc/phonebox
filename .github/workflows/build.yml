@@ -168,6 +168,15 @@ jobs:
         run: |
           tools/make-macos-dmg.sh dmg "$RUNNER_TEMP/dmg/PhoneBox.app" "$PHONEBOX_VERSION" "$RUNNER_TEMP/PhoneBox.dmg"
           tools/check-macos-dmg.sh "$RUNNER_TEMP/PhoneBox.dmg" out/PhoneBoxAgent "$PHONEBOX_VERSION"
+      # the installer the release ships (release.yml): built, installed, run, upgraded over and uninstalled
+      - name: Build and test the Windows installer
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          ./tools/install-inno-setup.ps1
+          $version = ([regex]'<Version>([^<]+)</Version>').Match((Get-Content -Raw agent/PhoneBox.Agent/PhoneBox.Agent.csproj)).Groups[1].Value
+          ./tools/make-windows-installer.ps1 -Exe out/PhoneBoxAgent.exe -Version $version -OutDir "$env:RUNNER_TEMP/installer"
+          ./tools/test-windows-installer.ps1 -Setup "$env:RUNNER_TEMP/installer/PhoneBox-$version-win-x64-setup.exe" -Version $version
       - name: Smoke test the single-file agent (Windows)
         if: matrix.rid == 'win-x64'
         shell: pwsh
