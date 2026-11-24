@@ -304,8 +304,8 @@ public sealed class AdbWakeTests : IDisposable
     }
 
     /// <summary>
-    /// The same "wm dismiss-keyguard" the follow-the-computer-lock path has always sent, now asked about first: the
-    /// phone on its keyguard is stepped over, a phone that is not on one is left showing what it was showing.
+    /// With wake and unlock on, a phone just plugged in is asked first: on its keyguard it is stepped over, a phone that
+    /// is not on one (or cannot say) is left showing what it was showing, and the panel opens either way.
     /// </summary>
     [Theory]
     [InlineData(MiuiLocked, true)]      // locked: the swipe-only keyguard is stepped over
@@ -315,27 +315,34 @@ public sealed class AdbWakeTests : IDisposable
     public async Task ThePhoneIsOnlySteppedOverWhenItIsOnItsKeyguard(string windowDump, bool expectDismissed)
     {
         var fake = FakeAdb(windowDump);
+        var calls = await RunUntil(fake, Settings(fake, wakeOnUnlock: true),
+            c => c.Contains("-s FAKE1 shell am start -n net.oxog.phonebox.deskpanel/.MainActivity"));
+        Assert.Contains("-s FAKE1 shell dumpsys window", calls);
+        Assert.Equal(expectDismissed, calls.Contains("-s FAKE1 shell wm dismiss-keyguard"));
+        Assert.Contains("-s FAKE1 shell am start -n net.oxog.phonebox.deskpanel/.MainActivity", calls);
+    }
+
+    /// <summary>
+    /// Following the computer lock keeps the unlock it always had (released behaviour, not changed by this setting):
+    /// coming back from a locked computer, "wm dismiss-keyguard" is sent without asking, as before.
+    /// </summary>
+    [Fact]
+    public async Task FollowingTheComputerLockStillDismissesAsBefore()
+    {
+        var fake = FakeAdb(NoKeyguardStateNamed);
         var cfgPath = Path.Combine(_dir, "config.json");
-        // both switches that could unlock on their own are off, so any swipe in the log came from the path called below
         File.WriteAllText(cfgPath, JsonSerializer.Serialize(Settings(fake, wakeOnUnlock: false, openOnConnect: false, followComputerLock: false)));
-        var store = new ConfigStore(cfgPath);
-        var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        var adb = new AdbReverse(new ConfigStore(cfgPath), NullLogger<AdbReverse>.Instance);
         using var cts = new CancellationTokenSource();
         await adb.StartAsync(cts.Token);
         try
         {
-            for (var round = 0; round < 120; round++)
-            {
-                var calls = Calls();
-                if (calls.Count(c => c == "devices") >= 2) break; // the fake has answered at least one full round
-                await Task.Delay(100);
-            }
-            await ApplyScreenAsync(adb, "FAKE1", locked: false); // the computer is awake: this is the path that wakes and unlocks the phone
+            for (var round = 0; round < 120 && Calls().Count(c => c == "devices") < 2; round++) await Task.Delay(100);
+            await ApplyScreenAsync(adb, "FAKE1", locked: false);
         }
         finally { cts.Cancel(); try { await adb.StopAsync(CancellationToken.None); } catch { } }
-
-        var calls2 = Calls();
-        Assert.Contains("-s FAKE1 shell dumpsys window", calls2);
-        Assert.Equal(expectDismissed, calls2.Contains("-s FAKE1 shell wm dismiss-keyguard"));
+        var calls = Calls();
+        Assert.Contains("-s FAKE1 shell wm dismiss-keyguard", calls);
+        Assert.DoesNotContain("-s FAKE1 shell dumpsys window", calls);
     }
 }

@@ -22,6 +22,10 @@
   [HugoDeLannoy5311](https://github.com/HugoDeLannoy5311)).
 
 **Agent**
+- Settings › Display › **Wake and unlock**, off by default: when the agent opens PhoneBox on a phone just plugged in
+  over USB, it also steps over a swipe-only lock screen, but only when the phone reports its lock screen is showing.
+  A PIN, pattern or password is never passed, nothing else on the screen gets a tap or swipe, and nothing is polled
+  (#419, [Nero-Dark](https://github.com/Nero-Dark)).
 - Settings: two saves within a few milliseconds no longer share one settings version on Windows, where a write's
   time moves in coarse steps; a save from a page that loaded the settings before both is refused as a conflict, as
   it should be.

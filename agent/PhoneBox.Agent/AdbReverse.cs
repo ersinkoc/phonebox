@@ -448,10 +448,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         else
         {
             await Adb(adb, $"-s {device} shell input keyevent KEYCODE_WAKEUP", ct);
-            // A secure PIN/password keyguard still needs the user's unlock. The dismiss runs only when the phone
-            // reports it is showing a keyguard, so nothing else that covers the panel is disturbed.
-            if (KeyguardShowing(await Adb(adb, $"-s {device} shell dumpsys window", ct, anyExit: true)))
-                await Adb(adb, $"-s {device} shell wm dismiss-keyguard", ct);
+            // A secure PIN/password keyguard still needs the user's unlock.
+            await Adb(adb, $"-s {device} shell wm dismiss-keyguard", ct);
             await Adb(adb, $"-s {device} shell am start -n {PanelActivity}", ct);
         }
         log.LogInformation("{Device}: phone screen {State}", device, locked ? "asleep" : "awake");
@@ -590,8 +588,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                 // Settings › Display › wake and unlock: the keyguard is dismissed only when the phone reports it
                 // is showing one — no input goes to whatever else is on screen, and a PIN, pattern or password is
                 // not passed: "wm dismiss-keyguard" only steps over swipe-to-unlock screens.
-                if (cfg.Get().Display.WakeOnUnlock &&
-                    KeyguardShowing(await Adb(adb, $"-s {d} shell dumpsys window", ct, anyExit: true)))
+                if (cfg.Get().Display.WakeOnUnlock && await KeyguardShowingAsync(adb, d, ct))
                     await Adb(adb, $"-s {d} shell wm dismiss-keyguard", ct);
                 await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", ct);
                 log.LogInformation("{Device}: adb reverse set up, panel opened", d);
@@ -670,6 +667,19 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// that names no flag reads false: the unlock is then skipped, which is the safe direction, the phone being left as
     /// it is rather than acted on blindly.
     /// </summary>
+    /// <summary>Whether the phone shows a keyguard; a dump that fails or takes too long reads false, so the unlock is
+    /// skipped and the panel still opens.</summary>
+    private async Task<bool> KeyguardShowingAsync(string adb, string d, CancellationToken ct)
+    {
+        try { return KeyguardShowing(await Adb(adb, $"-s {d} shell dumpsys window", ct, anyExit: true)); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
+        {
+            log.LogInformation("{Device}: could not read the lock screen state ({Why}); not unlocking", d, ex.Message);
+            return false;
+        }
+    }
+
     internal static bool KeyguardShowing(string dumpsysWindow) =>
         dumpsysWindow.Contains("mShowingLockscreen=true", StringComparison.Ordinal) ||
         dumpsysWindow.Contains("isKeyguardShowing=true", StringComparison.Ordinal) ||
