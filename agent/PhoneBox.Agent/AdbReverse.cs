@@ -453,46 +453,59 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// come forward ("Background activity start" is logged and blocked) - shell commands via adb are neither.
     /// </summary>
     
-    private async Task LightPanel(string device, string adb, string why, CancellationToken ct)
+    
+    private async Task LightPanel(
+        string device,
+        string adb,
+        string why,
+        CancellationToken ct)
     {
-        // A newly plugged-in phone must not light up while the computer is locked.
-        if (cfg.Get().Display.FollowComputerLock && OperatingSystem.IsMacOS())
-        {
-            await SyncSessionAsync(ct, force: true);
-            return;
-        }
+        var standby = StandbyOn(device);
 
-        await Adb(adb, ["-s", device, "shell", "input", "keyevent", "KEYCODE_WAKEUP"], ct);
+        // Waking the display is independent of the standby setting.
+        await Adb(adb,
+            ["-s", device, "shell", "input", "keyevent", "KEYCODE_WAKEUP"],
+            ct);
 
-        // Settings › Display › wake and unlock: the keyguard is dismissed only when the phone reports it is
-        // showing one. A PIN, pattern or password is not passed: "wm dismiss-keyguard" only steps over
-        // swipe-to-unlock screens.
-        if (cfg.Get().Display.WakeOnUnlock && await KeyguardShowingAsync(adb, device, ct))
+        // WakeOnUnlock controls whether we check for and dismiss
+        // a swipe-only keyguard.
+        if (cfg.Get().Display.WakeOnUnlock &&
+            await KeyguardShowingAsync(adb, device, ct))
         {
-            // Optional: a dismiss that fails must not keep the panel from opening.
             try
             {
-                await Adb(adb, ["-s", device, "shell", "wm", "dismiss-keyguard"], ct);
+                await Adb(adb,
+                    ["-s", device, "shell", "wm", "dismiss-keyguard"],
+                    ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 throw;
             }
-            catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
+            catch (Exception ex) when (
+                ex is IOException or
+                TimeoutException or
+                OperationCanceledException or
+                System.ComponentModel.Win32Exception)
             {
-                log.LogInformation("{Device}: the lock screen could not be stepped over ({Why})", device, ex.Message);
+                log.LogInformation(
+                    "{Device}: the lock screen could not be stepped over ({Why})",
+                    device,
+                    ex.Message);
             }
         }
 
-        await Adb(adb, ["-s", device, "shell", "am", "start", "-n", PanelActivity], ct);
+        // Only standby wakes carry the marker that allows the app
+        // to dismiss the keyguard.
+        var startArguments =
+            $"-s {device} shell am start -n {PanelActivity}" +
+            (standby ? " --ez agentWake true" : "");
+
+        await Adb(adb, startArguments, ct);
+
         log.LogInformation("{Device}: {Why}, panel opened", device, why);
-        await Adb(adb, $"-s {device} shell input keyevent KEYCODE_WAKEUP", ct);
-        var standby = StandbyOn(device);
-        if (standby)
-            await Adb(adb, $"-s {device} shell wm dismiss-keyguard", ct);
-        // the app only dismisses the keyguard after a wake it can tell the agent started
-        await Adb(adb, $"-s {device} shell am start -n {PanelActivity}{(standby ? " --ez agentWake true" : "")}", ct);
     }
+
 
     /// <summary>
     /// Lights a phone only the first time this agent process sees it, and only while standby is on. With
