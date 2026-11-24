@@ -218,6 +218,8 @@ public sealed class DisplayConfig
     public bool OpenOnConnect { get; set; } = true;
     /// <summary>On macOS, sleep the connected phone when the computer locks; wake it and open PhoneBox after unlock.</summary>
     public bool FollowComputerLock { get; set; }
+    /// <summary>Also sleep the connected phone screen whenever the Lock shortcut (builtin:lock) is executed.</summary>
+    public bool LockPhoneWithShortcut { get; set; }
     /// <summary>The page the panel returns to (idle return, Back); null = the first page.</summary>
     public string? HomePage { get; set; }
     /// <summary>Seconds the panel counts down ("Switching to … in 3") before a rule or the idle return changes the page; 0 = at once.</summary>
