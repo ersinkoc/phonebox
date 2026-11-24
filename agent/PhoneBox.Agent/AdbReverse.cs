@@ -8,7 +8,8 @@ namespace PhoneBox.Agent;
 /// <see cref="UsbLink"/>). When a phone is newly plugged in, wakes it and opens the panel
 /// (unless Settings › Display › open on connect is off).
 /// </summary>
-public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEndpoint? endpoint = null, UsbLink? usb = null) : BackgroundService
+public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEndpoint? endpoint = null, UsbLink? usb = null,
+    IHostApplicationLifetime? lifetime = null) : BackgroundService
 {
     public const string PanelActivity = "net.oxog.phonebox.deskpanel/.MainActivity";
     private const string HomeAlias = "net.oxog.phonebox.deskpanel/.HomeAlias";
@@ -25,6 +26,9 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private readonly HashSet<string> _reverseSet = [];          // phones whose reverse rule this agent set (read only for Android 5 and 6)
     private readonly Dictionary<string, int> _sdk = [];         // serial -> Android API level, asked once per connection
     private readonly Dictionary<string, string> _transport = []; // serial -> adb transport id its remembered rule was set on
+    // serial -> API level of each attached phone this agent set its rule on, kept when Settings › Phone connection
+    // selects another phone (_reverseSet and _sdk follow the selection), so a stop can still take that rule off
+    private readonly Dictionary<string, int> _setHere = [];
     internal const long KeyRetryMs = 30_000;
     // asked again now and then even when known: an app whose data was cleared has a new key and no pin, and can't say so
     internal const long KeyRefreshMs = 120_000;
@@ -66,15 +70,189 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 #if WINDOWS
         Microsoft.Win32.SystemEvents.SessionEnding += (_, _) => MarkSessionEnding();
 #endif
-        while (!ct.IsCancellationRequested)
+        // rounds end on their own token too: a stop cancels the one that is running, so the rule can come off before
+        // the agent's port closes instead of after it (RemoveBeforeThePortCloses)
+        using var rounds = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _rounds = rounds;
+        lifetime?.ApplicationStopping.Register(RemoveBeforeThePortCloses);
+        while (!ct.IsCancellationRequested && !_stopping)
         {
             // while the session is ending nothing is started; the loop goes on, for a shutdown that is cancelled
             if (SessionEnding) { await Task.Delay(TimeSpan.FromSeconds(4), ct); continue; }
-            try { await Ensure(ct); }
+            try { await _round.WaitAsync(ct); }
+            catch (OperationCanceledException) { return; }
+            try { if (!_stopping) await Ensure(rounds.Token); }
             catch (OperationCanceledException) { return; }
             catch (Exception ex) { Report($"adb error: {ex.Message}"); }
+            finally { _round.Release(); }
             await Task.Delay(TimeSpan.FromSeconds(4), ct);
         }
+    }
+
+    private volatile bool _stopping;
+    private volatile CancellationTokenSource? _rounds;
+    private readonly SemaphoreSlim _round = new(1, 1); // one Ensure round at a time, and none while the rule comes off
+
+    /// <summary>
+    /// A regular stop (Quit in the tray, an update, a restart) takes this agent's rule off the phone. Left behind, it
+    /// points at a port nobody listens on any more; the panel keeps connecting there, and the adb server stops
+    /// answering everyone (the next agent included) until it is restarted. It has to happen when the stop begins:
+    /// the agent's port closes before the services are stopped, and the adb server hung within a second of that.
+    /// </summary>
+    private void RemoveBeforeThePortCloses()
+    {
+        _stopping = true; // a round that is still running sets no rule from here on (see Ensure)
+        // That round also uses _reverseSet and _sdk, which are not shared safely, so it is cancelled (its adb calls end
+        // at once) and the rule comes off once it has stopped. The callbacks of the cancel run on the thread pool, not
+        // on this thread (the tray's UI thread on Quit). Should it still not have stopped within the (bounded) wait,
+        // the rule is tried again in StopAsync, after the loop ended.
+        try { _ = _rounds?.CancelAsync(); }
+        catch (ObjectDisposedException) { } // the loop has already ended
+        if (!_round.Wait(TimeSpan.FromSeconds(2))) return;
+        try
+        {
+            // on the thread pool: Quit in the tray stops the agent from the UI thread, whose context the awaits
+            // inside would wait for while this blocks it. Not done within 4 s (a busy thread pool), StopAsync waits
+            // for the rest; no round can start meanwhile, the loop ends on _stopping.
+            _cleanup = Task.Run(() => RemoveOwnRulesAsync(CancellationToken.None));
+            _cleanup.Wait(TimeSpan.FromSeconds(4));
+        }
+        catch (AggregateException) { }
+        finally { _round.Release(); }
+    }
+
+    private volatile Task? _cleanup; // the removal started when the stop began
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _stopping = true;
+        await base.StopAsync(cancellationToken);
+        if (_cleanup is { } started)
+        {
+            try { await started.WaitAsync(cancellationToken); }
+            catch (OperationCanceledException) { } // the host's own shutdown deadline
+        }
+        // no lifetime (the tests), or a round was still running when the stop began: the loop has ended now
+        else await RemoveOwnRulesAsync(cancellationToken);
+    }
+
+    internal async Task RemoveOwnRulesAsync(CancellationToken ct)
+    {
+        // The selected phones, and any other attached phone this agent set its rule on: Settings › Phone connection may
+        // have switched to another phone since, which leaves the earlier one out of _devices with the rule still on it.
+        var attached = _all;
+        var phones = _devices.Union(_setHere.Keys.Where(attached.Contains)).ToArray();
+        if (SessionEnding || phones.Length == 0 || FindAdb(cfg.Get().AdbPath) is not { } adb) return;
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(TimeSpan.FromSeconds(3)); // the agent is closing: never hold that up for long
+        foreach (var d in phones)
+        {
+            try
+            {
+                // Android 5 and 6 can't list their rules (see Ensure; asking even drops the connection): the one this
+                // agent set is remembered instead. On the others the rule must still be this agent's: a newer agent may
+                // have taken the phone over. A phone no longer selected keeps its level in _setHere.
+                var known = _sdk.TryGetValue(d, out var sdk) || _setHere.TryGetValue(d, out sdk);
+                var ours = known && sdk is > 0 and <= 23
+                    ? _reverseSet.Contains(d) || _setHere.ContainsKey(d)
+                    : HasOwnRule(await Adb(adb, ["-s", d, "reverse", "--list"], limit.Token));
+                if (!ours) continue;
+                await Adb(adb, ["-s", d, "reverse", "--remove", Rule], limit.Token);
+                _reverseSet.Remove(d);
+                _setHere.Remove(d);
+                log.LogInformation("{Device}: adb reverse removed (the agent is stopping)", d);
+            }
+            // Win32Exception: adb is there but can't be started; the other phones are still tried
+            catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
+            {
+                log.LogInformation("{Device}: could not remove adb reverse ({Message})", d, ex.Message);
+            }
+        }
+    }
+
+    private readonly AdbWatchdog _watchdog = new();
+
+    /// <summary>
+    /// The adb server took the "devices" call but never answered it for a minute: it is hung (an agent that was killed
+    /// left its rule behind, for one) and nothing gets through until it is restarted. adb's own kill-server asks the
+    /// server itself, which a hung one may never answer, so its process is ended too; the next round's adb starts a
+    /// fresh server, which also drops every reverse rule.
+    /// </summary>
+    internal async Task RestartAdbServerAsync(string adb, CancellationToken ct)
+    {
+        if (AdbServerPort() is not { } port) return; // ADB_SERVER_SOCKET: a server somewhere else, not ours to restart
+        var pid = await FindServerPid(port, ct);
+        log.LogWarning("adb server has not answered for a minute: restarting it{Pid}", pid is null ? "" : $" (process {pid})");
+        // A fresh server has no reverse rules and numbers its transports from 1 again, so with one phone the transport
+        // id can come back unchanged: on Android 5 and 6 nothing else would tell that the remembered rule is gone.
+        _reverseSet.Clear();
+        _transport.Clear();
+        _setHere.Clear();
+        _restarted = true;
+        try { await ToolProcess.RunAsync(new ProcessStartInfo(adb) { ArgumentList = { "kill-server" } }, TimeSpan.FromSeconds(3), ct); }
+        catch (Exception ex) when (ex is IOException or TimeoutException or System.ComponentModel.Win32Exception) { }
+        if (pid is not { } id) return;
+        try
+        {
+            using var process = Process.GetProcessById(id);
+            // only adb itself: whatever else may hold the port is left alone
+            if (!process.HasExited && process.ProcessName.Equals("adb", StringComparison.OrdinalIgnoreCase)) process.Kill();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            log.LogInformation("could not end the adb server ({Message})", ex.Message);
+        }
+    }
+
+    /// <summary>The adb server's port as adb itself picks it, or null when ADB_SERVER_SOCKET points adb elsewhere.</summary>
+    internal static int? AdbServerPort()
+    {
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ADB_SERVER_SOCKET"))) return null;
+        return int.TryParse(Environment.GetEnvironmentVariable("ANDROID_ADB_SERVER_PORT"), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out var p) && p is > 0 and < 65536 ? p : 5037;
+    }
+
+    private bool _restarted; // the next "devices" answer (or its absence) is logged: did the restart help?
+
+    /// <summary>Finds the adb server's process (the tests replace it, so they never touch a real adb server).</summary>
+    internal static Func<int, CancellationToken, Task<int?>> FindServerPid { get; set; } = AdbServerPidAsync;
+
+    /// <summary>The process listening on the adb server's port, or null when that can't be told.</summary>
+    private static async Task<int?> AdbServerPidAsync(int port, CancellationToken ct)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                // by its full path: a lookup on PATH starts in the agent's own folder, where a planted netstat.exe would win
+                var netstat = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "netstat.exe"))
+                {
+                    ArgumentList = { "-ano", "-p", "TCP" },
+                    WorkingDirectory = AppPaths.NeutralCwd,
+                };
+                return ListenerFromNetstat((await ToolProcess.RunAsync(netstat, TimeSpan.FromSeconds(5), ct)).Output, port);
+            }
+            var lsof = new ProcessStartInfo("lsof") { ArgumentList = { "-nP", $"-iTCP:{port}", "-sTCP:LISTEN", "-t" } };
+            var output = (await ToolProcess.RunAsync(lsof, TimeSpan.FromSeconds(5), ct)).Output;
+            return int.TryParse(output.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim(), out var pid) ? pid : null;
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException or System.ComponentModel.Win32Exception) { return null; }
+    }
+
+    /// <summary>
+    /// The listener on <paramref name="port"/> in "netstat -ano" output. The state column is translated on a Windows
+    /// in another language (ABHÖREN …), so a listener is told by its remote address instead, which is all zeros.
+    /// </summary>
+    internal static int? ListenerFromNetstat(string output, int port)
+    {
+        foreach (var line in output.Split('\n'))
+        {
+            var p = line.Split((char[])[' ', '\t', '\r'], StringSplitOptions.RemoveEmptyEntries);
+            if (p.Length >= 5 && p[0] == "TCP" && p[1].EndsWith(":" + port, StringComparison.Ordinal)
+                && p[2] is "0.0.0.0:0" or "[::]:0" && int.TryParse(p[^1], out var pid) && pid > 0)
+                return pid;
+        }
+        return null;
     }
 
     public async Task OpenPanelAsync()
@@ -122,13 +300,24 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
 
         var serial = cfg.Get().DeviceSerial;
-        var devices = (await Adb(adb, "devices", ct))
+        string listed;
+        try { listed = await Adb(adb, "devices", ct); }
+        catch (TimeoutException)
+        {
+            if (_restarted) { _restarted = false; log.LogWarning("adb server still does not answer after the restart"); }
+            if (_watchdog.Silent(Environment.TickCount64)) await RestartAdbServerAsync(adb, ct);
+            throw;
+        }
+        if (_restarted) { _restarted = false; log.LogInformation("adb server answers again after the restart"); }
+        _watchdog.Answered();
+        var devices = listed
             .Split('\n').Skip(1)
             .Select(l => l.Trim().Split('\t'))
             .Where(p => p.Length == 2 && p[1] == "device")
             .Select(p => p[0])
             .ToArray();
         _all = devices;
+        foreach (var gone in _setHere.Keys.Except(devices).ToList()) _setHere.Remove(gone); // unplugged: adb dropped its rule
         devices = devices.Where(s => string.IsNullOrEmpty(serial) || s == serial).ToArray();
 
         SetDevices(devices);
@@ -189,7 +378,10 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                 transports ??= await Transports(adb, ct);
                 // no id on record (adb could not say when the rule was set): set it once more to have one
                 if (transports.TryGetValue(d, out var now) && (!_transport.TryGetValue(d, out var then) || now != then))
+                {
                     _reverseSet.Remove(d);
+                    _setHere.Remove(d);
+                }
             }
             var ruled = listable ? HasOwnRule(list) : _reverseSet.Contains(d);
             var keyed = usb is null || KeyAskedRecently(d, usb.HasKey(d) && !refreshKeys ? KeyRefreshMs : KeyRetryMs);
@@ -202,8 +394,10 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (ruled) continue;
             // the phone had a rule already: this agent restarted (its USB port changed), the phone was not plugged in now
             var moved = HasAnyRule(list);
+            if (_stopping) return; // the agent is closing: a rule set now would be left behind (RemoveBeforeThePortCloses)
             await Adb(adb, $"-s {d} reverse {Rule} {TargetRule}", ct);
             _reverseSet.Add(d);
+            _setHere[d] = sdk;
             if (transports?.TryGetValue(d, out var transport) == true) _transport[d] = transport;
             if (moved) { log.LogInformation("{Device}: adb reverse moved to this agent", d); continue; }
             // A newly plugged-in phone must not light up while the computer is locked.
@@ -353,16 +547,48 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         return map;
     }
 
-    internal static async Task<string> Adb(string adb, string args, CancellationToken ct, bool anyExit = false)
+    internal static Task<string> Adb(string adb, string args, CancellationToken ct, bool anyExit = false) =>
+        RunAdb(new ProcessStartInfo(adb, args), ct, anyExit);
+
+    /// <summary>The same with each argument kept separate (a serial is passed as it is).</summary>
+    internal static Task<string> Adb(string adb, IEnumerable<string> args, CancellationToken ct, bool anyExit = false)
+    {
+        var psi = new ProcessStartInfo(adb);
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        return RunAdb(psi, ct, anyExit);
+    }
+
+    private static async Task<string> RunAdb(ProcessStartInfo psi, CancellationToken ct, bool anyExit)
     {
         if (SessionEnding) throw new OperationCanceledException("the session is ending");
-        var psi = new ProcessStartInfo(adb, args)
-        {
-            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
-            WorkingDirectory = AppPaths.NeutralCwd,
-        };
+        psi.RedirectStandardOutput = psi.RedirectStandardError = true;
+        psi.UseShellExecute = false;
+        psi.CreateNoWindow = true;
+        psi.WorkingDirectory = AppPaths.NeutralCwd;
         var result = await ToolProcess.RunAsync(psi, TimeSpan.FromSeconds(8), ct);
         if (result.ExitCode != 0 && !anyExit) throw new IOException($"ADB exited with code {result.ExitCode}");
         return result.Output;
+    }
+}
+
+/// <summary>
+/// When the adb server counts as hung: its "devices" call has timed out for <paramref name="silentMs"/> in a row. A
+/// restart is not repeated within <paramref name="cooldownMs"/>, so a server that is slow for some other reason is
+/// not restarted over and over.
+/// </summary>
+internal sealed class AdbWatchdog(long silentMs = 60_000, long cooldownMs = 300_000)
+{
+    private long? _silentSince, _restartedAt;
+
+    public void Answered() => _silentSince = null;
+
+    /// <returns>True when the server should be restarted now.</returns>
+    public bool Silent(long now)
+    {
+        _silentSince ??= now;
+        if (now - _silentSince < silentMs || now - _restartedAt < cooldownMs) return false;
+        _restartedAt = now;
+        _silentSince = null; // a fresh minute before the next one
+        return true;
     }
 }

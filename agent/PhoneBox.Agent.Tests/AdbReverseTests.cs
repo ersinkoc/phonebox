@@ -92,6 +92,114 @@ public sealed class AdbReverseTests : IDisposable
         Assert.Equal(["devices"], Calls());
     }
 
+    [Theory]
+    [InlineData("UsbFfs tcp:8765 tcp:8765", true)]   // this agent's rule (no USB port in the test: 8765)
+    [InlineData("UsbFfs tcp:8765 tcp:9999", false)]  // another agent's: it took the phone over, so it stays
+    public async Task StoppingTakesOnlyThisAgentsRuleOffThePhone(string rule, bool removed)
+    {
+        var fake = FakeAdb(["FAKE1"], rule, null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        Assert.True(adb.Connected);
+
+        await adb.RemoveOwnRulesAsync(CancellationToken.None);
+        Assert.Equal(removed, Calls().Contains("-s FAKE1 reverse --remove tcp:8765"));
+    }
+
+    [Fact]
+    public async Task StoppingAlsoTakesTheRuleOffAPhoneNoLongerSelected()
+    {
+        var fake = FakeAdb(["FAKE1", "FAKE2"], "", null); // no rule yet: the agent sets it on both
+        var path = Path.Combine(_dir, "config.json");
+        object Settings(string? serial) => new { adbPath = fake, deviceSerial = serial, display = new { homeScreen = false, keepAwake = false, openOnConnect = false } };
+        File.WriteAllText(path, JsonSerializer.Serialize(Settings(null)));
+        var store = new ConfigStore(path);
+        using var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Task Pass() => (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        await Pass();
+        Assert.Contains("-s FAKE2 reverse tcp:8765 tcp:8765", Calls());
+
+        // Settings › Phone connection: only FAKE1 from now on; FAKE2 stays plugged in with the agent's rule on it
+        Assert.Null(store.Save(JsonSerializer.Serialize(Settings("FAKE1"))));
+        FakeAdb(["FAKE1", "FAKE2"], "UsbFfs tcp:8765 tcp:8765", null);
+        await Pass();
+        Assert.Equal("FAKE1", adb.Devices);
+
+        await adb.RemoveOwnRulesAsync(CancellationToken.None);
+        Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
+        Assert.Contains("-s FAKE2 reverse --remove tcp:8765", Calls());
+    }
+
+    [Fact]
+    public async Task AStopDuringASlowRoundStillTakesTheRuleOffBeforeThePortCloses()
+    {
+        // a fake adb whose Android version read hangs: the round is busy in it when the stop begins
+        string fake;
+        if (OperatingSystem.IsWindows())
+        {
+            fake = Path.Combine(_dir, "adb.cmd");
+            File.WriteAllText(fake, string.Join("\r\n",
+                "@echo off",
+                ">>\"%~dp0calls.log\" echo %*",
+                "if \"%1\"==\"devices\" (echo List of devices attached& echo FAKE1\tdevice& exit /b 0)",
+                "if \"%4\"==\"getprop\" (ping -n 30 127.0.0.1 >nul& exit /b 0)",
+                "if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (echo UsbFfs tcp:8765 tcp:8765& exit /b 0)",
+                "exit /b 0", ""));
+        }
+        else
+        {
+            fake = Path.Combine(_dir, "adb");
+            File.WriteAllText(fake, string.Join("\n",
+                "#!/bin/sh",
+                "echo \"$*\" >> \"$(dirname \"$0\")/calls.log\"",
+                "if [ \"$1\" = devices ]; then printf 'List of devices attached\\nFAKE1\\tdevice\\n'; exit 0; fi",
+                "if [ \"$4\" = getprop ]; then exec sleep 30; fi",
+                "if [ \"$3\" = reverse ] && [ \"$4\" = --list ]; then echo 'UsbFfs tcp:8765 tcp:8765'; exit 0; fi",
+                "exit 0", ""));
+            File.SetUnixFileMode(fake, (UnixFileMode)0b111_101_101);
+        }
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
+        var life = new Microsoft.Extensions.Hosting.Internal.ApplicationLifetime(
+            NullLogger<Microsoft.Extensions.Hosting.Internal.ApplicationLifetime>.Instance);
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance, lifetime: life);
+        await adb.StartAsync(CancellationToken.None);
+        for (var i = 0; i < 200 && !Calls().Any(c => c.Contains("getprop")); i++) await Task.Delay(50);
+        Assert.Contains(Calls(), c => c.Contains("getprop")); // the round is stuck in it now
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        life.StopApplication(); // returns before the services (and the agent's port) are stopped
+        Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(8), $"took {clock.Elapsed.TotalSeconds:0.0} s");
+        await adb.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task WhenTheAgentBeginsToStopTheRuleComesOffAndTheLoopEnds()
+    {
+        var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
+        var life = new Microsoft.Extensions.Hosting.Internal.ApplicationLifetime(
+            NullLogger<Microsoft.Extensions.Hosting.Internal.ApplicationLifetime>.Instance);
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance, lifetime: life);
+        await adb.StartAsync(CancellationToken.None);
+        for (var i = 0; i < 200 && !adb.Connected; i++) await Task.Delay(50);
+        Assert.True(adb.Connected);
+
+        life.StopApplication(); // before any service is stopped, and before the agent's port closes
+        Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
+        var calls = Calls().Length;
+        await Task.Delay(TimeSpan.FromSeconds(6)); // longer than a round: the loop must not run (or set the rule) again
+        Assert.Equal(calls, Calls().Length);
+        await adb.StopAsync(CancellationToken.None);
+        Assert.Equal(calls, Calls().Length); // and the stop itself doesn't remove it a second time
+    }
+
     [Fact]
     public async Task UnpluggingAllPhonesRemovesMissingAppInstallTargets()
     {
@@ -323,6 +431,46 @@ public sealed class AdbReverseTests : IDisposable
         await Pass();
         Assert.Equal(2, Calls().Count(c => c == rule)); // new connection: set again, once
         Assert.DoesNotContain("-s FAKE1 reverse --list", Calls());
+    }
+
+    /// <summary>A restarted adb server has no rules and can give the phone the same transport id again: an old phone,
+    /// which can't list its rules, must still get its rule back.</summary>
+    [Fact]
+    public async Task AfterTheAgentRestartsTheAdbServerAnOldPhoneGetsItsRuleBack()
+    {
+        var path = Path.Combine(_dir, "config.json");
+        var fake = FakeAdb(["FAKE1"], "", homeRefused: null, reverseRefused: "FAKE1", sdk: 22, transportId: "1");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect = false } }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Task Pass() => (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        const string rule = "-s FAKE1 reverse tcp:8765 tcp:8765";
+
+        await Pass();
+        await Pass();
+        Assert.Equal(1, Calls().Count(c => c == rule)); // same connection: set once
+
+        // the restart itself, without the machine's real adb server or its environment
+        var find = AdbReverse.FindServerPid;
+        var socket = Environment.GetEnvironmentVariable("ADB_SERVER_SOCKET");
+        var port = Environment.GetEnvironmentVariable("ANDROID_ADB_SERVER_PORT");
+        try
+        {
+            AdbReverse.FindServerPid = (_, _) => Task.FromResult<int?>(null);
+            Environment.SetEnvironmentVariable("ADB_SERVER_SOCKET", null);
+            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", null);
+            await adb.RestartAdbServerAsync(fake, CancellationToken.None);
+        }
+        finally
+        {
+            AdbReverse.FindServerPid = find;
+            Environment.SetEnvironmentVariable("ADB_SERVER_SOCKET", socket);
+            Environment.SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", port);
+        }
+        Assert.Contains("kill-server", Calls());
+
+        await Pass(); // the same transport id "1" as before the restart
+        Assert.Equal(2, Calls().Count(c => c == rule));
     }
 
     /// <summary>A newer phone that lists no rule for this agent (the adb server restarted, or another agent took tcp:8765)
