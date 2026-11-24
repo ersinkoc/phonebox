@@ -783,6 +783,7 @@ export async function runShortcut(btn, id, hold = false) {
 
 /** A shortcut key. The Big button's options: with `cover`, a picture the user uploaded becomes the key's background
  *  instead of the centred icon; without `label`, the key shows no name (screen readers still get it). */
+const ICON_SIZES = new Set(['m', 'l', 'max']); // the agent only sends these; anything else is ignored, never a bad class token
 export function keyButton(s, { cover = false, label = true } = {}) {
   const icon = h('span', 'k-icon', s.icon ? rich(s.icon) : '•');
   const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (s.cycle ? ' cycle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
@@ -791,7 +792,7 @@ export function keyButton(s, { cover = false, label = true } = {}) {
   const name = String(s.label || '').trim();
   if (!label || !name) b.setAttribute('aria-label', name || s.id);
   b.style.setProperty('--k', s.color || '#6b7280');
-  if (s.iconSize) b.classList.add('k-isz-' + s.iconSize);
+  if (ICON_SIZES.has(s.iconSize)) b.classList.add('k-isz-' + s.iconSize);
   b.dataset.id = s.id;
   b._cover = cover;
   if (s.hold) holdToRun(b, s.id);
@@ -828,7 +829,7 @@ export function setKeyFace(b, s, cover = false) {
   b.dataset.face = s.id === b.dataset.id ? '' : s.id;
   b.querySelectorAll('.k-bg, .k-shade').forEach((n) => n.remove());
   b.classList.remove('k-cover', 'k-isz-m', 'k-isz-l', 'k-isz-max');
-  if (s.iconSize) b.classList.add('k-isz-' + s.iconSize);
+  if (ICON_SIZES.has(s.iconSize)) b.classList.add('k-isz-' + s.iconSize);
   const icon = b.querySelector('.k-icon');
   icon.classList.remove('k-icon-img');
   icon.replaceChildren(s.icon ? rich(s.icon) : '•');

@@ -28,4 +28,24 @@ public sealed class ShortcutIconSizeTests : IDisposable
     [InlineData("\"huge\"")]
     [InlineData("\"100%\"")]
     public void NoPresetOrAnUnknownOneMeansTheDefault(string? json) => Assert.Null(Load(json).IconSize);
+
+    // a hand-edited value of the wrong type must not stop the rest of config.json from loading
+    [Theory]
+    [InlineData("42")]
+    [InlineData("true")]
+    [InlineData("{ \"x\": 1 }")]
+    [InlineData("[\"max\"]")]
+    public void AValueThatIsNotTextIsDroppedAndTheRestOfTheConfigStillLoads(string json)
+    {
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, $$"""
+            { "shortcuts": [
+                { "id": "a", "label": "A", "cmd": "builtin:lock", "iconSize": {{json}} },
+                { "id": "b", "label": "B", "cmd": "builtin:lock", "iconSize": "l" } ] }
+            """);
+        var shortcuts = new ConfigStore(path).Get().Shortcuts;
+        Assert.Equal(["a", "b"], shortcuts.Select(s => s.Id));
+        Assert.Null(shortcuts[0].IconSize);
+        Assert.Equal("l", shortcuts[1].IconSize);
+    }
 }

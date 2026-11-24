@@ -54,3 +54,26 @@ test('the sizes grow in order and stay inside a short, wide key', async ({ page 
   }
   for (let i = 1; i < 4; i++) expect(heights[i]).toBeGreaterThan(heights[i - 1]);
 });
+
+// Even on a very short key (about 50px) "maximum" is never smaller than "large".
+test('the maximum is not smaller than large on a very short key', async ({ page }) => {
+  const sizes = ['l', 'max'];
+  await page.addInitScript((config) => localStorage.setItem('pb-demo-config', config), JSON.stringify({
+    night: { enabled: false }, rules: [],
+    shortcuts: sizes.map((s) => ({ id: 'k' + s, label: 'Key', icon: '🎚️', color: '#6b7280', cmd: 'builtin:keys', iconSize: s })),
+    pages: [{ id: 'size-test', title: 'Keys', widgets: sizes.map((s, i) => ({ id: 'b' + i, type: 'button', x: i * 6, y: 0, w: 6, h: 1, options: { id: 'k' + s } })) }],
+  }));
+  await page.setViewportSize({ width: 1000, height: 330 });
+  await page.goto('/panel/');
+  const keys = page.locator('[data-id="size-test"] .w-button .key');
+  await expect(keys).toHaveCount(2);
+  const [large, max] = await Promise.all([0, 1].map((i) => keys.nth(i).locator('.k-icon svg').boundingBox()));
+  expect(max.height).toBeGreaterThanOrEqual(large.height - 1);
+});
+
+// A size the panel doesn't know (a hand-edited or older config) is ignored instead of breaking the key.
+test('an unknown icon size is ignored', async ({ page }) => {
+  const key = await open(page, 'huge');
+  await expect(key.locator('.k-label')).toHaveText('Key');
+  await expect(key).not.toHaveClass(/k-isz-/);
+});

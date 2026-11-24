@@ -547,6 +547,7 @@ public sealed class Shortcut
     public string Icon { get; set; } = "";
     public string Color { get; set; } = "#6b7280";
     /// <summary>How big the icon (emoji or picture) is on the phone's key: empty = default, "m", "l" or "max" (fills the key).</summary>
+    [JsonConverter(typeof(IconSizeJsonConverter))]
     public string? IconSize { get; set; }
     public static readonly string[] IconSizes = ["m", "l", "max"];
     /// <summary>A program, address or file; or builtin:lock / monitor-off / mute / keys / text / macro, or the phone
