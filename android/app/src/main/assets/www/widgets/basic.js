@@ -105,7 +105,7 @@ W.forecast = {
 };
 
 W.media = {
-  needs: ['state', 'fast'],
+  needs: ['state', 'fast', 'media'], // 'media': the agent reads the players every second while this is on screen
   create(box) {
     box.innerHTML = mediaHtml();
     const q = (s) => box.querySelector(s);

@@ -36,4 +36,16 @@ public sealed class MediaPollingTests
         monitor.Snapshot(); // asked again at once: still one reading due, and the wake does not overflow
         Assert.True(monitor.ReadingDue);
     }
+
+    [Fact]
+    public void ThePanelsStateFrameDoesNotAskForReadings()
+    {
+        // #523: every panel on screen gets the state frame each second; it takes the last reading with Peek,
+        // so only a widget that shows the media (GET /api/media) or a rule keeps the reader at ActivePoll
+        var monitor = new MediaMonitor(NullLogger<MediaMonitor>.Instance);
+        for (var i = 0; i < 3; i++) Assert.Null(monitor.Peek());
+        Assert.False(monitor.ReadingDue);
+        monitor.Snapshot();
+        Assert.True(monitor.ReadingDue);
+    }
 }

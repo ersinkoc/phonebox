@@ -32,7 +32,7 @@ export function lyricAt(lines, ms) {
 // (a note says why). The agent asks LRCLIB (free, no account) once per song, and only for a widget whose own "Look up
 // lyrics on LRCLIB" is turned on (off by default): the phone names the widget, and the agent checks that widget's option.
 W.lyrics = {
-  needs: ['state', 'fast'],
+  needs: ['state', 'fast', 'media'],
   create(box, { o, page, w }) {
     const wq = 'widget=' + encodeURIComponent(`${page.id}/${w.id}`);
     const list = h('div', 'ly-list');

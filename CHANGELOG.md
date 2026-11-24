@@ -24,6 +24,12 @@
 **Agent**
 - Settings › General › **Sleep the phone with the Lock shortcut**, off by default: running the built-in Lock shortcut
   also turns the connected phone's screen off over USB (#520, #521, [sanjai4334](https://github.com/sanjai4334)).
+- macOS and Linux: Now Playing is read every second only while a **Now playing** or **Synced lyrics** widget is on the
+  page on screen (also inside a Smart Stack), or a `media-playing` rule exists. A panel that is merely on screen used
+  to keep it at one reading a second all day, and on macOS each reading starts `nowplaying-cli` (and `osascript`
+  when nothing is playing): about 13 % of a core in the report. Otherwise it is read every 10 seconds. The widgets
+  ask through the new `GET /api/media`, so a phone app older than this agent shows track changes up to 10 seconds
+  late until it is updated (#523, [archiline0805-wq](https://github.com/archiline0805-wq)).
 - Settings › Display › **Wake and unlock**, off by default: when the agent opens PhoneBox on a phone just plugged in
   over USB, it also steps over a swipe-only lock screen, but only when the phone reports its lock screen is showing.
   A PIN, pattern or password is never passed, nothing else on the screen gets a tap or swipe, and nothing is polled

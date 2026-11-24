@@ -615,7 +615,8 @@ object State(IServiceProvider sp, long? ev)
         evSeq = push.Seq,
         events = ev is { } since ? push.Since(since) : [],
         pc = sp.GetRequiredService<SystemMonitor>().Snapshot(),
-        media = sp.GetRequiredService<ControlDeck>().EffectiveMedia(sp.GetRequiredService<MediaMonitor>().Snapshot()),
+        // the last reading only: a widget that shows the media asks for fresh ones through GET /api/media (#523)
+        media = sp.GetRequiredService<ControlDeck>().EffectiveMedia(sp.GetRequiredService<MediaMonitor>().Peek()),
         audio = sp.GetRequiredService<AudioControl>().Snapshot(),
         ping = sp.GetRequiredService<PingMonitor>().Snapshot(),
         rules = sp.GetRequiredService<RuleEngine>().Active(),
@@ -1066,6 +1067,9 @@ app.MapGet("/api/phones", (ConfigStore cfg) =>
 app.MapGet("/api/art", (MediaMonitor media) =>
     media.Art is { } art ? Results.File(art.Bytes, art.Mime) : Results.NotFound());
 
+// A Now playing or Synced lyrics widget on screen asks every few seconds: the agent reads the players every second
+// only while one does (on macOS each reading starts nowplaying-cli, #523)
+app.MapGet("/api/media", (MediaMonitor media, ControlDeck deck) => Results.Json(new { media = deck.EffectiveMedia(media.Snapshot()) }));
 app.MapPost("/api/media/{action}", async (string action, long? ms, MediaMonitor media, ControlDeck deck, CancellationToken ct) =>
 {
     var outcome = await deck.RunWithMediaFocusAsync(async token =>

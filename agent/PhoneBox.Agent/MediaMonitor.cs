@@ -14,6 +14,8 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
 
     public AlbumArt? Art => _art.Current;
     public MediaSnapshot? Snapshot() => _snap;
+    /// <summary>The same as Snapshot here: Windows hears about changes, it does not poll (see Unix/MediaMonitor).</summary>
+    public MediaSnapshot? Peek() => _snap;
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {

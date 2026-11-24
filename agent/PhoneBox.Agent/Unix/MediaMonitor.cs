@@ -55,6 +55,13 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
 
     public AlbumArt? Art { get; private set; }
 
+    /// <summary>
+    /// The last reading, without asking for the next one: the state frame every panel gets each second uses this,
+    /// so a panel on screen does not keep the reader at ActivePoll by itself. A widget that shows the media asks
+    /// through Snapshot (GET /api/media) while it is on screen (#523).
+    /// </summary>
+    public MediaSnapshot? Peek() => _snap;
+
     public MediaSnapshot? Snapshot()
     {
         var now = Environment.TickCount64;

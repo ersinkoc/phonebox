@@ -895,6 +895,19 @@ export const setMediaState = (m) => {
   media = mediaFrom(media, m);
   emit('state');
 };
+// The state frame carries the agent's last media reading; it reads the players every second only while someone asks.
+// A Now playing or Synced lyrics widget on the page on screen asks every few seconds (#523: on macOS each reading
+// starts a process, so a panel that is merely on screen must not keep it reading).
+let mediaAsked = 0;
+async function watchMedia(now = false) {
+  if (!online || idle() || nightOn || !pageOf('media')) return;
+  if (!now && Date.now() - mediaAsked < 4000) return;
+  mediaAsked = Date.now();
+  try {
+    const res = await api('/media');
+    if (res && typeof res === 'object' && 'media' in res) setMediaState(res.media);
+  } catch (_) {}
+}
 // The background glow: the accent colour (Settings › Display), or the album art's colour while music plays.
 export let DEFAULT_AMBIENT = '45, 212, 191';
 export let artTint = true;
@@ -1956,6 +1969,7 @@ export function onScroll() {
   setActive();
   if (sheet) closeSheet();
   if (pageOf('procs')) loadProcs();
+  watchMedia(true);
 }
 pager.addEventListener('scroll', onScroll, { passive: true });
 
@@ -2718,7 +2732,9 @@ setInterval(() => { if (online && !idle() && anyNeeds('calendar')) loadCalendar(
 setInterval(() => { if (online && !idle() && anyNeeds('work') && !streaming()) loadWork(); }, 3000);
 setInterval(() => { if (idle()) return; if (online && pageOf('procs')) loadProcs(); if (online && sheet) loadSheet(); }, 2000);
 setInterval(() => { if (online && !idle()) loadConfig(); }, 60_000);
+setInterval(watchMedia, 5000);
 document.addEventListener('visibilitychange', () => {
+  watchMedia(true);
   if (!document.hidden && lastHour12 !== null && hour12() !== lastHour12) {
     buildLayout();
     renderRulesBtn();

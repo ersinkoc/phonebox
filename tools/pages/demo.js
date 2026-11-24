@@ -604,6 +604,8 @@
       else return json({}, 400);
       return json({ ...audio });
     }
+    // a Now playing or Synced lyrics widget on screen asks for a fresh reading (the agent's GET /api/media, #523)
+    if (path === '/api/media' && method === 'GET') return json({ media: state(null).media });
     if (path.startsWith('/api/media/') && method === 'POST') return json({}, mediaAction(path.slice(11), q.has('ms') ? +q.get('ms') : null) ? 200 : 400);
     if (path === '/api/procs/kill' && method === 'POST') {
       // KillResult; refused unless an enabled page has a processes widget that allows it (AgentConfig.AllowKill)
