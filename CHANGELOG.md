@@ -32,8 +32,17 @@
 - Synced lyrics: a music video from the VEVO channel of an artist with a name of more than one word ("Tan Bionica -
   Song" from `TanBionicaVEVO`) finds its lyrics. The channel name drops the spaces, so the title was not split into
   artist and song (#551).
+- Synced lyrics: **Timing offset per player**, one `Name=ms` per line with the player's name as Now playing shows it
+  (for example `Apple Music=1000`), for a player whose position runs behind the sound while others don't. On Windows,
+  Apple Music now shows as "Apple Music" instead of "AppleInc" (#557,
+  [avery02072003-cmyk](https://github.com/avery02072003-cmyk)).
 
 **Agent**
+- Linux on GNOME Wayland (Ubuntu's default session): shortcuts that type text or press keys work with `ydotool`
+  installed; GNOME takes neither `wtype` nor `xdotool`. A key press or typing that fails now says so instead of
+  reporting success, and `xdotool` is used on Wayland only when neither of the others is installed, since there it
+  exits without an error having typed nothing. Setup is in [docs/SETUP.md](docs/SETUP.md) (#544,
+  [denis-nd](https://github.com/denis-nd)).
 - Settings › General › **Sleep the phone with the Lock shortcut**, off by default: running the built-in Lock shortcut
   also turns the connected phone's screen off over USB (#520, #521, [sanjai4334](https://github.com/sanjai4334)).
 - macOS and Linux: Now Playing is read every second only while a **Now playing** or **Synced lyrics** widget is on the
@@ -84,6 +93,9 @@
 - Traditional Chinese: 160 panel and widget labels that were machine-translated now read right, for example
   功耗 (power), 時脈 (clock speed), 溫度 (temperature) and 錄影 / 直播 (OBS recording / stream). Units such as MHz,
   rpm and W stay as they are (#549, [avery02072003-cmyk](https://github.com/avery02072003-cmyk)).
+- Traditional Chinese: the settings page and the widgets' own texts are rebuilt from the human-written Simplified
+  Chinese, in Taiwan's terms, replacing a machine translation that was often wrong or unreadable (#550,
+  [avery02072003-cmyk](https://github.com/avery02072003-cmyk)).
 - Settings › Display › **Sound when a session finishes**, off by default: the panel plays its chime once when AI
   sessions finish, at a volume of its own, and never on the night screen (#488,
   [Prajjwal2404](https://github.com/Prajjwal2404)).
