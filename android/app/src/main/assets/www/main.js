@@ -1,6 +1,7 @@
 // PhoneBox desk panel: core, pages, navigation and data from the agent. The widgets live in widgets/*.js;
 // they import what they need from here, so this module must not run code that needs them while it loads
 // (the start section at the end runs after every module has loaded).
+import { designGrid, gridForViewport, placeWidget, widgetsOnGrid } from './grid.js';
 import { W } from './registry.js';
 import './appearance.js';
 import { cached } from './widgets/helpers.js';
@@ -19,7 +20,8 @@ import './widgets/spectrum.js';
 import './widgets/steam-library.js';
 import './widgets/lyrics.js';
 
-// PhoneBox desk panel. Pages are 12 × 6 grids of widgets, designed in the agent's settings page.
+// PhoneBox desk panel. Pages are grids of widgets, designed in the agent's settings page.
+// A phone is 12 × 6. A tablet keeps the 12 columns and adds rows, so the page holds more widgets.
 // The panel talks to the PhoneBox agent through "/agent/*", which the Android shell proxies over USB
 // (adb reverse) or Wi-Fi to the computer.
 
@@ -1471,10 +1473,11 @@ let lastHour12 = null;
 
 export const isPortrait = () => window.innerHeight > window.innerWidth * 1.05;
 
-// Portrait: the same widgets packed into a 6-column grid in reading order. Their sizes in cells stay the same
-// (portrait cells are about as square as landscape ones); wider widgets shrink to 6 columns and the rows grow to fit.
-export function portraitLayout(widgets) {
-  const cols = 6, occ = [], pos = new Map();
+// Portrait: the same widgets packed in reading order. Their sizes in cells stay the same (portrait cells are about
+// as square as landscape ones). A phone uses 6 columns, so a widget wider than that shrinks; a tablet uses 12,
+// so more widgets sit next to each other. The rows grow to fit.
+export function portraitLayout(widgets, cols = 6) {
+  const occ = [], pos = new Map();
   const free = (x, y, w, h) => { for (let r = y; r < y + h; r++) for (let c = x; c < x + w; c++) if (occ[r]?.[c]) return false; return true; };
   const take = (x, y, w, h) => { for (let r = y; r < y + h; r++) { occ[r] = occ[r] || []; for (let c = x; c < x + w; c++) occ[r][c] = true; } };
   for (const w of [...widgets].sort((a, b) => a.y - b.y || a.x - b.x)) {
@@ -1484,13 +1487,20 @@ export function portraitLayout(widgets) {
   return { pos, rows: Math.max(12, occ.length) };
 }
 
+// Settings › Display › More rows on a tablet. Off by default, so an arranged tablet keeps its 12 × 6 pages.
+const gridOptions = () => ({ tabletRows: cfg.display?.tabletRows === true });
+
 export function buildLayout() {
   const enabled = (cfg.pages || []).filter((p) => p.enabled !== false && Array.isArray(p.widgets));
   const next = enabled.length ? enabled : FALLBACK_PAGES;
-  const portrait = isPortrait();
+  const viewport = gridForViewport(window.innerWidth, window.innerHeight, gridOptions());
+  const portrait = viewport.portrait;
+  const designed = designGrid(window.innerWidth, window.innerHeight, gridOptions());
+  document.documentElement.style.setProperty('--pb-cols', String(designed.cols));
+  document.documentElement.style.setProperty('--pb-rows', String(designed.rows));
   const h12 = hour12();
   // the active language belongs in the key: the widgets render their texts once, when they are created
-  const key = JSON.stringify([next, cfg.shortcuts, cfg.display?.showSeconds, cfg.display?.hour12, h12, cfg.display?.appearance, portrait, I18n?.getLang()]);
+  const key = JSON.stringify([next, cfg.shortcuts, cfg.display?.showSeconds, cfg.display?.hour12, h12, cfg.display?.appearance, viewport.cols, viewport.rows, designed.cols, designed.rows, portrait, I18n?.getLang()]);
   if (key === layoutKey) return;
   layoutKey = key;
   lastHour12 = h12;
@@ -1503,14 +1513,17 @@ export function buildLayout() {
   pages.forEach((p, pi) => {
     const grid = h('div', 'grid');
     const pageAppearance = PhoneBoxAppearance.resolve(cfg.display?.appearance, p.appearance);
-    const pl = portrait ? portraitLayout(p.widgets) : null;
-    if (pl) { grid.style.gridTemplateColumns = 'repeat(6, minmax(0, 1fr))'; grid.style.gridTemplateRows = `repeat(${pl.rows}, minmax(0, 1fr))`; }
+    // Upright, pack only the widgets this screen's landscape grid shows, so a phone leaves out tablet-only rows
+    // while a tablet held upright keeps them.
+    const pl = portrait ? portraitLayout(widgetsOnGrid(p.widgets, designed.cols, designed.rows), viewport.cols) : null;
+    if (pl) { grid.style.gridTemplateColumns = `repeat(${viewport.cols}, minmax(0, 1fr))`; grid.style.gridTemplateRows = `repeat(${pl.rows}, minmax(0, 1fr))`; }
     for (const w of p.widgets) {
       const def = W[w.type];
       if (!def) continue;
+      const at = pl ? pl.pos.get(w) : placeWidget(w, viewport.cols, viewport.rows);
+      if (!at) continue; // a widget on a tablet-only row stays off a phone
       const box = h('div', `w w-${w.type}${def.bare ? ' bare' : ' card'}`);
       const appearance = PhoneBoxAppearance.resolve(cfg.display?.appearance, p.appearance, w.appearance);
-      const at = pl?.pos.get(w) || w;
       box.style.gridArea = `${at.y + 1} / ${at.x + 1} / span ${at.h} / span ${at.w}`;
       grid.appendChild(box);
       const ctx = { page: p, w, o: w.options || {}, box, appearance };
@@ -1986,11 +1999,17 @@ export function openOverview() {
   haptic();
   const ov = $('overview');
   const tile = (p, i) => {
-    const map = h('div', 'ov-map', p.widgets.map((w) => {
+    const g = designGrid(window.innerWidth, window.innerHeight, gridOptions());
+    const map = h('div', 'ov-map', p.widgets.flatMap((w) => {
+      const at = placeWidget(w, g.cols, g.rows);
+      if (!at) return [];
       const b = h('span', null, emo(WIDGET_ICONS[w.type] || '◻'));
-      b.style.gridArea = `${w.y + 1} / ${w.x + 1} / span ${w.h} / span ${w.w}`;
-      return b;
+      b.style.gridArea = `${at.y + 1} / ${at.x + 1} / span ${at.h} / span ${at.w}`;
+      return [b];
     }));
+    // Tracks follow the same grid as the icons, even when the page layout was not rebuilt after a resize.
+    map.style.gridTemplateColumns = `repeat(${g.cols}, 1fr)`;
+    map.style.gridTemplateRows = `repeat(${g.rows}, 1fr)`;
     const t = h('button', 'ov-tile' + (i === curPage ? ' on' : ''), map, h('div', 'ov-name', h('b', null, `${i + 1}`), rich(` ${p.icon || ''} ${p.title}`)));
     t.addEventListener('click', (e) => { e.stopPropagation(); haptic(); closeOverview(); goPage(i, true); });
     return t;

@@ -93,6 +93,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .pt-n { font-size: 11px; color: var(--muted); background: var(--panel-2); border-radius: 6px; padding: 0 6px; }
 .canvas-wrap { display: flex; justify-content: center; }
 .stage-bar { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; flex-wrap: wrap; }
+#screenHint { flex: 1 0 100%; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .seg button { border: 0; background: var(--panel); padding: 6px 13px; cursor: pointer; font: inherit; font-size: 13px; color: var(--text); }
 .seg button.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
@@ -520,6 +521,12 @@ nav a.on::before { color: var(--accent); }
           <div id="stage">
             <div class="stage-bar">
               <div class="seg" id="stageSeg"><button data-v="layout" class="on" data-i18n="s.pages.layout">Layout</button><button data-v="live" data-i18n="s.pages.livePreview">Live preview</button></div>
+              <div class="seg" id="screenSeg" role="group" aria-label="Screen">
+                <button type="button" data-screen="phone" class="on" data-i18n="s.pages.screen.phone">Phone</button>
+                <button type="button" data-screen="tablet" data-i18n="s.pages.screen.tablet">Tablet</button>
+                <button type="button" data-screen="wide" data-i18n="s.pages.screen.wide">Wide tablet</button>
+              </div>
+              <span class="hint" id="screenHint" data-i18n="s.pages.screenHint">A phone page is 12 × 6. A tablet keeps the 12 columns and adds rows, so the page holds more widgets. Widgets below the top 6 rows stay on the tablet; a phone shows the top 6.</span>
               <span class="hint" id="stageHint"></span>
             </div>
             <div class="canvas-wrap"><div class="phone"><div class="canvas" id="canvas"></div><div class="preview" id="previewBox" hidden></div></div></div>
@@ -748,6 +755,8 @@ nav a.on::before { color: var(--accent); }
         <div class="field" style="max-width:420px"><label data-i18n="s.display.orientation">Orientation</label>
           <select data-bind="display.orientation"><option value="landscape" data-i18n="s.display.orientation.landscape">Landscape</option><option value="portrait" data-i18n="s.display.orientation.portrait">Portrait</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select>
           <span class="hint" data-i18n="s.display.orientationHint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
+        <label class="check"><input type="checkbox" data-bind="display.tabletRows" id="tabletRowsOpt"> <span data-i18n="s.display.tabletRows">More rows on a tablet</span></label>
+        <span class="hint" style="display:block;margin:-4px 0 10px" data-i18n="s.display.tabletRowsHint">A landscape tablet keeps the 12 columns and gets more rows (about 8 to 10, from its screen), so a page holds more widgets; upright, it packs 12 across. Widgets below the top 6 rows show only on a tablet: a phone leaves them out without a sign. Update the PhoneBox app on the tablet first, as an older app squeezes those widgets onto extra rows.</span>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.timeFormat">Time format</label>
           <select data-bind="display.hour12" data-type="hour12"><option value="false" data-i18n="s.display.h24">24-hour (14:05)</option><option value="true" data-i18n="s.display.h12">12-hour (2:05 PM)</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select></div>
         <label class="check"><input type="checkbox" data-bind="display.showSeconds"> <span data-i18n="s.display.showSeconds">Show seconds on the clock</span></label>
@@ -1251,7 +1260,21 @@ function changed() {
 }
 
 // ---------------------------------------------------------------- pages: visual layout editor
-let catalog = { cols: 12, rows: 6, widgets: [], templates: [] };
+let catalog = { cols: 12, rows: 6, maxRows: 18, widgets: [], templates: [] };
+// Keep these in step with grid.js: phone 780×360 → 12×6, Nexus 9 / 4:3 1024×768 → 12×10, 16:10 1280×800 → 12×8.
+const EDITOR_SCREENS = {
+  phone: { cols: 12, rows: 6, aspect: 752 / 333, previewW: 780, previewH: 360 },
+  tablet: { cols: 12, rows: 10, aspect: 4 / 3, previewW: 1024, previewH: 768 },
+  wide: { cols: 12, rows: 8, aspect: 16 / 10, previewW: 1280, previewH: 800 },
+};
+let editorScreenId = 'phone';
+try { editorScreenId = localStorage.getItem('pb-editor-screen') || 'phone'; } catch (_) {}
+if (!EDITOR_SCREENS[editorScreenId]) editorScreenId = 'phone';
+// Without Settings › Display › More rows on a tablet, every screen shows the phone page, so the editor does too.
+const tabletRowsOn = () => cfg?.display?.tabletRows === true;
+const editorScreen = () => EDITOR_SCREENS[tabletRowsOn() ? editorScreenId : 'phone'];
+const gridCols = () => editorScreen().cols;
+const gridRows = () => editorScreen().rows;
 let selPage = 0;
 let selWidget = -1;
 let activeStackSubIdx = -1;
@@ -1362,8 +1385,8 @@ function overlaps(page, w, x, y, ww, hh) {
 function freeSpot(page, ww, hh, minW, minH) {
   for (let h2 = hh; h2 >= Math.min(minH, hh); h2--)
     for (let w2 = ww; w2 >= Math.min(minW, ww); w2--)
-      for (let y = 0; y + h2 <= catalog.rows; y++)
-        for (let x = 0; x + w2 <= catalog.cols; x++)
+      for (let y = 0; y + h2 <= gridRows(); y++)
+        for (let x = 0; x + w2 <= gridCols(); x++)
           if (!overlaps(page, null, x, y, w2, h2)) return { x, y, w: w2, h: h2 };
   return null;
 }
@@ -1379,10 +1402,11 @@ function fitPages(pages) {
     for (const w of p.widgets) {
       if (typeof w.id !== 'string') w.id = '';
       const d = widgetDef(w.type);
-      w.w = gridNum(w.w, Math.min(d.minW, catalog.cols), catalog.cols, d.w);
-      w.h = gridNum(w.h, Math.min(d.minH, catalog.rows), catalog.rows, d.h);
-      w.x = gridNum(w.x, 0, catalog.cols - w.w, 0);
-      w.y = gridNum(w.y, 0, catalog.rows - w.h, 0);
+      const cols = catalog.cols || 12, rows = catalog.maxRows || 18;
+      w.w = gridNum(w.w, Math.min(d.minW, cols), cols, d.w);
+      w.h = gridNum(w.h, Math.min(d.minH, rows), rows, d.h);
+      w.x = gridNum(w.x, 0, cols - w.w, 0);
+      w.y = gridNum(w.y, 0, rows - w.h, 0);
     }
   }
   return list;
@@ -1483,9 +1507,9 @@ function setStage(mode) {
     previewFrame = h('iframe', { src: '../panel/?preview=1' });
     updateStageText();
     $('previewBox').appendChild(previewFrame);
-    const fit = () => { previewFrame.style.transform = `scale(${$('previewBox').clientWidth / 780})`; };
-    new ResizeObserver(fit).observe($('previewBox'));
-    fit();
+    applyEditorScreen();
+    new ResizeObserver(fitPreview).observe($('previewBox'));
+    fitPreview();
   }
   if (live) queuePreview();
 }
@@ -1518,6 +1542,15 @@ window.addEventListener('message', (e) => {
   sendPreview();
 });
 for (const b of $('stageSeg').children) b.onclick = () => setStage(b.dataset.v);
+$('tabletRowsOpt')?.addEventListener('change', () => { if (cfg) { renderCanvas(); if (selWidget >= 0) renderInspector(); } });
+for (const b of $('screenSeg').children) b.onclick = () => {
+  if (!EDITOR_SCREENS[b.dataset.screen]) return;
+  editorScreenId = b.dataset.screen;
+  try { localStorage.setItem('pb-editor-screen', editorScreenId); } catch (_) {}
+  if (!cfg) { applyEditorScreen(); return; }
+  renderCanvas();
+  if (selWidget >= 0) renderInspector();
+};
 setStage(stageMode);
 
 function renderTabsOnly() {
@@ -1531,17 +1564,51 @@ function renderTabsOnly() {
   });
 }
 
+function applyEditorScreen() {
+  const s = editorScreen();
+  const canvas = $('canvas');
+  if (canvas) {
+    canvas.style.aspectRatio = String(s.aspect);
+    canvas.style.gridTemplateColumns = `repeat(${s.cols}, 1fr)`;
+    canvas.style.gridTemplateRows = `repeat(${s.rows}, 1fr)`;
+  }
+  const preview = $('previewBox');
+  if (preview) preview.style.aspectRatio = `${s.previewW} / ${s.previewH}`;
+  if (previewFrame) {
+    previewFrame.style.width = s.previewW + 'px';
+    previewFrame.style.height = s.previewH + 'px';
+    fitPreview();
+  }
+  const seg = $('screenSeg');
+  if (seg) {
+    seg.hidden = !tabletRowsOn();
+    for (const b of seg.children) b.classList.toggle('on', b.dataset.screen === editorScreenId);
+  }
+  const screenHint = $('screenHint');
+  if (screenHint) screenHint.hidden = !tabletRowsOn();
+}
+
+function fitPreview() {
+  if (!previewFrame) return;
+  previewFrame.style.transform = `scale(${$('previewBox').clientWidth / editorScreen().previewW})`;
+}
+
 function renderCanvas() {
   const canvas = $('canvas'), p = curPage();
   if (!canvas || !p) return;
+  applyEditorScreen();
+  const cols = gridCols(), rows = gridRows();
   canvas.replaceChildren();
-  for (let i = 0; i < catalog.cols * catalog.rows; i++) canvas.appendChild(h('div', { class: 'cell' }));
+  for (let i = 0; i < cols * rows; i++) canvas.appendChild(h('div', { class: 'cell' }));
+  let hidden = 0;
   p.widgets.forEach((w, i) => {
+    if (w.x >= cols || w.y >= rows) { hidden++; return; }
+    const ww = Math.min(w.w, cols - w.x), hh = Math.min(w.h, rows - w.y);
     const d = widgetDef(w.type);
-    const el = h('div', { class: 'wb' + (i === selWidget ? ' sel' : ''), title: d.name },
+    const el = h('div', { class: 'wb' + (i === selWidget ? ' sel' : ''), title: d.name, 'data-i': String(i) },
       h('div', { class: 'wb-in' }, h('span', { class: 'wb-ico' }, rich(d.icon)), h('b', {}, d.name), h('small', {}, widgetSummary(w))),
       h('span', { class: 'rz', title: 'Resize' }));
-    el.style.gridArea = `${w.y + 1} / ${w.x + 1} / span ${w.h} / span ${w.w}`;
+    el.style.gridArea = `${w.y + 1} / ${w.x + 1} / span ${hh} / span ${ww}`;
     el.addEventListener('pointerdown', (e) => startDrag(e, w, i, e.target.classList.contains('rz') ? 'resize' : 'move'));
 
     if (w.type === 'stack') {
@@ -1572,26 +1639,39 @@ function renderCanvas() {
 
     canvas.appendChild(el);
   });
+  const hint = $('screenHint');
+  if (hint) hint.hidden = !tabletRowsOn() && !hidden; // widgets left on tablet rows still get counted with the setting off
+  if (hint) hint.textContent = t('s.pages.screenHint') + ' ' + t('s.pages.screenRowsVary') + (hidden ? ' ' + t('s.pages.screenHidden', { n: hidden }) : '');
 }
 
 function startDrag(e, w, i, mode) {
   e.preventDefault();
   const canvas = $('canvas'), p = curPage(), d = widgetDef(w.type);
   const r = canvas.getBoundingClientRect();
-  const cw = r.width / catalog.cols, ch = r.height / catalog.rows;
+  const cols = gridCols(), rows = gridRows();
+  const cw = r.width / cols, ch = r.height / rows;
   const sx = e.clientX, sy = e.clientY, s = { ...w };
   let moved = false;
   if (selWidget !== i) { selWidget = i; renderInspector(); }
-  canvas.querySelectorAll('.wb').forEach((b, j) => b.classList.toggle('sel', j === i));
-  const el = canvas.querySelectorAll('.wb')[i];
+  canvas.querySelectorAll('.wb').forEach((b) => b.classList.toggle('sel', b.dataset.i === String(i)));
+  const el = canvas.querySelector(`.wb[data-i="${i}"]`);
   const onMove = (ev) => {
     const dx = Math.round((ev.clientX - sx) / cw), dy = Math.round((ev.clientY - sy) / ch);
     let { x, y, w: ww, h: hh } = s;
-    if (mode === 'move') { x = Math.max(0, Math.min(catalog.cols - ww, s.x + dx)); y = Math.max(0, Math.min(catalog.rows - hh, s.y + dy)); }
-    else { ww = Math.max(Math.min(d.minW, catalog.cols), Math.min(catalog.cols - s.x, s.w + dx)); hh = Math.max(Math.min(d.minH, catalog.rows), Math.min(catalog.rows - s.y, s.h + dy)); }
+    // Only clamp the axis the pointer moved. A widget that runs onto rows this view does not show is drawn clipped,
+    // and its saved place there belongs to a taller screen: it does not move or resize vertically here, because
+    // clamping it to the visible rows would quietly move or shorten it on the tablet.
+    const clipped = s.y + s.h > rows;
+    if (mode === 'move') {
+      if (dx) x = Math.max(0, Math.min(cols - ww, s.x + dx));
+      if (dy && !clipped) y = Math.max(0, Math.min(rows - hh, s.y + dy));
+    } else {
+      if (dx) ww = Math.max(Math.min(d.minW, cols), Math.min(cols - s.x, s.w + dx));
+      if (dy && !clipped) hh = Math.max(Math.min(d.minH, rows), Math.min(rows - s.y, s.h + dy));
+    }
     if ((x !== w.x || y !== w.y || ww !== w.w || hh !== w.h) && !overlaps(p, w, x, y, ww, hh)) {
       Object.assign(w, { x, y, w: ww, h: hh });
-      el.style.gridArea = `${y + 1} / ${x + 1} / span ${hh} / span ${ww}`;
+      el.style.gridArea = `${y + 1} / ${x + 1} / span ${Math.max(1, Math.min(hh, rows - y))} / span ${Math.max(1, Math.min(ww, cols - x))}`;
       moved = true;
     }
   };
@@ -1644,7 +1724,9 @@ function renderInspector() {
     h('input', { type: 'number', min, max, value: w[key], onchange: (e) => {
       const v = Math.max(min, Math.min(max, parseInt(e.target.value || '0', 10)));
       const n = { x: w.x, y: w.y, w: w.w, h: w.h, [key]: v };
-      if (n.x + n.w > catalog.cols || n.y + n.h > catalog.rows || overlaps(p, w, n.x, n.y, n.w, n.h)) { toast(t('s.js.doesNotFit'), true); e.target.value = w[key]; return; }
+      // Check the axis being edited: a widget clipped by this view (it runs onto tablet rows) can still change its column.
+      const horizontal = key === 'x' || key === 'w';
+      if ((horizontal ? n.x + n.w > gridCols() : n.y + n.h > gridRows()) || overlaps(p, w, n.x, n.y, n.w, n.h)) { toast(t('s.js.doesNotFit'), true); e.target.value = w[key]; return; }
       w[key] = v; changed(); renderCanvas();
     } }));
   box.replaceChildren(
@@ -1660,8 +1742,8 @@ function renderInspector() {
     h('p', { class: 'hint', style: { margin: '0 0 12px' } }, d.desc),
     ...d.options.filter((o) => optionShown(w, d, o)).flatMap((o) => [...(o.section ? [h('h4', { class: 'opt-section' }, o.section)] : []), optionField(w, o)]),
     appearanceEditor(w, () => [cfg.display?.appearance, p.appearance], t('s.js.widgetAppearance'), true),
-    h('div', { class: 'row', style: { gap: '8px' } }, num('x', t('s.js.col'), 0, catalog.cols - 1), num('y', t('s.js.row'), 0, catalog.rows - 1),
-      num('w', t('s.js.width'), d.minW, catalog.cols), num('h', t('s.js.height'), d.minH, catalog.rows)));
+    h('div', { class: 'row', style: { gap: '8px' } }, num('x', t('s.js.col'), 0, gridCols() - 1), num('y', t('s.js.row'), 0, gridRows() - 1),
+      num('w', t('s.js.width'), d.minW, gridCols()), num('h', t('s.js.height'), d.minH, gridRows())));
 }
 
 function renderStackWidgetsOption(w, o) {
@@ -3615,6 +3697,8 @@ let catalogRaw = null;
 function localizeCatalog() {
   if (!catalogRaw) return;
   catalog = JSON.parse(JSON.stringify(catalogRaw));
+  catalog.cols = catalog.cols || 12;
+  catalog.maxRows = catalog.maxRows || 18;
   for (const w of catalog.widgets) {
     w.name = tc(w.name);
     w.desc = tc(w.desc);
@@ -3817,7 +3901,7 @@ function fillDefaults() {
   cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.display.wallpaper ??= { dim: 45, blur: 0 }; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
-    showSeconds: true, vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
+    showSeconds: true, vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', tabletRows: false, theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
   cfg.steam ??= { enabled: false };
 }

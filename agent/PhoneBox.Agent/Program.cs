@@ -558,7 +558,7 @@ app.MapPost("/api/phone-mic/setup", async (ConfigStore cfg, CancellationToken ct
 app.MapPost("/api/phone/open", async (AdbReverse adb) => { await adb.OpenPanelAsync(); return Results.Ok(); });
 
 // Widget types and page templates for the settings page's layout editor.
-app.MapGet("/api/catalog", () => Results.Text($"{{\"cols\":{Catalog.Cols},\"rows\":{Catalog.Rows},\"widgets\":{Catalog.WidgetsJson},\"templates\":{Catalog.TemplatesJson}}}",
+app.MapGet("/api/catalog", () => Results.Text($"{{\"cols\":{Catalog.Cols},\"rows\":{Catalog.Rows},\"maxRows\":{Catalog.MaxRows},\"widgets\":{Catalog.WidgetsJson},\"templates\":{Catalog.TemplatesJson}}}",
     "application/json; charset=utf-8"));
 
 // ---------------------------------------------------------------- webhook API: push data and events into the panel

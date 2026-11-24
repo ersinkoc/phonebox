@@ -211,6 +211,11 @@ public sealed class DisplayConfig
     public bool VolumeKeys { get; set; } = true;
     /// <summary>landscape, portrait or auto (follow the phone). In portrait the widgets are arranged automatically.</summary>
     public string Orientation { get; set; } = "landscape";
+    /// <summary>
+    /// A landscape tablet gets more rows (12 × 8 to 12 × 10, from its shape) and an upright one packs 12 columns, so a
+    /// page holds more widgets. Off by default: turning it on changes how an arranged tablet looks.
+    /// </summary>
+    public bool TabletRows { get; set; }
     /// <summary>default, amoled, midnight, warm or graphite.</summary>
     public string Theme { get; set; } = "default";
     /// <summary>Accent colour (background glow, page dots), e.g. "#2dd4bf".</summary>
@@ -355,7 +360,7 @@ public sealed class PageConfig
     public bool Enabled { get; set; } = true;
     /// <summary>Return home after this many idle seconds on this page; null = the display setting, 0 = stay.</summary>
     public int? IdleSec { get; set; }
-    /// <summary>Widgets on a 12 x 6 grid.</summary>
+    /// <summary>Widgets on a 12-column grid: 6 rows on a phone, more on a tablet (up to <see cref="Catalog.MaxRows"/>).</summary>
     public List<WidgetConfig>? Widgets { get; set; }
 
     /// <summary>Create the page from this template (templates.json) when it has no widgets yet.</summary>
@@ -1005,9 +1010,9 @@ public sealed partial class ConfigStore(string path)
                 w.Appearance?.Normalize(widget: true);
                 var (minW, minH) = Catalog.MinSize(w.Type);
                 w.W = Math.Clamp(w.W, Math.Min(minW, Catalog.Cols), Catalog.Cols);
-                w.H = Math.Clamp(w.H, Math.Min(minH, Catalog.Rows), Catalog.Rows);
+                w.H = Math.Clamp(w.H, Math.Min(minH, Catalog.MaxRows), Catalog.MaxRows);
                 w.X = Math.Clamp(w.X, 0, Catalog.Cols - w.W);
-                w.Y = Math.Clamp(w.Y, 0, Catalog.Rows - w.H);
+                w.Y = Math.Clamp(w.Y, 0, Catalog.MaxRows - w.H);
                 w.Id = reservedWidgets.TryGetValue(w, out var reservedWidget)
                     ? reservedWidget : UniqueLayoutId(LayoutId(w.Type, w.Type), widgetIds);
                 widgets.Add(w);

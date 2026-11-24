@@ -96,8 +96,9 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .grid {
   height: 100%;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: repeat(6, minmax(0, 1fr));
+  /* --pb-cols / --pb-rows come from the screen: 12 × 6 on a phone, more rows on a tablet. */
+  grid-template-columns: repeat(var(--pb-cols, 12), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--pb-rows, 6), minmax(0, 1fr));
   gap: 8px;
 }
 /* Widget coordinates are saved from the left edge in both the panel and the editor. */
@@ -260,7 +261,7 @@ body.night #pagePauseOverlay { display: none; }
 .pcs-sub:empty { display: none; }
 .ov-tile.on { border-color: rgba(var(--ambient), .8); box-shadow: 0 0 0 2px rgba(var(--ambient), .25); }
 .ov-tile:active { transform: scale(.97); }
-.ov-map { flex: 1; min-height: 28px; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(6, 1fr); gap: 2px; }
+.ov-map { flex: 1; min-height: 28px; display: grid; grid-template-columns: repeat(var(--pb-cols, 12), 1fr); grid-template-rows: repeat(var(--pb-rows, 6), 1fr); gap: 2px; }
 .ov-map span { background: rgba(255, 255, 255, .07); border-radius: 4px; display: grid; place-items: center; font-size: 11px; overflow: hidden; }
 .ov-name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-name b { color: var(--muted); font-weight: 600; }

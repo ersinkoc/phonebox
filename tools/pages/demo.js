@@ -31,7 +31,7 @@
   async function loadCatalog() {
     if (catalog) return catalog;
     const [widgets, templates] = await Promise.all([realFetch(ROOT + 'widgets.json').then((r) => r.json()), realFetch(ROOT + 'templates.json').then((r) => r.json())]);
-    return (catalog = { cols: 12, rows: 6, widgets, templates });
+    return (catalog = { cols: 12, rows: 6, maxRows: 18, widgets, templates });
   }
 
   const store = {
