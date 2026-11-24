@@ -448,8 +448,10 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         else
         {
             await Adb(adb, $"-s {device} shell input keyevent KEYCODE_WAKEUP", ct);
-            // A secure PIN/password keyguard still needs the user's unlock.
-            await Adb(adb, $"-s {device} shell wm dismiss-keyguard", ct);
+            // A secure PIN/password keyguard still needs the user's unlock. The dismiss runs only when the phone
+            // reports it is showing a keyguard, so nothing else that covers the panel is disturbed.
+            if (KeyguardShowing(await Adb(adb, $"-s {device} shell dumpsys window", ct, anyExit: true)))
+                await Adb(adb, $"-s {device} shell wm dismiss-keyguard", ct);
             await Adb(adb, $"-s {device} shell am start -n {PanelActivity}", ct);
         }
         log.LogInformation("{Device}: phone screen {State}", device, locked ? "asleep" : "awake");
@@ -585,6 +587,12 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             else if (cfg.Get().Display.OpenOnConnect)
             {
                 await Adb(adb, $"-s {d} shell input keyevent KEYCODE_WAKEUP", ct);
+                // Settings › Display › wake and unlock: the keyguard is dismissed only when the phone reports it
+                // is showing one — no input goes to whatever else is on screen, and a PIN, pattern or password is
+                // not passed: "wm dismiss-keyguard" only steps over swipe-to-unlock screens.
+                if (cfg.Get().Display.WakeOnUnlock &&
+                    KeyguardShowing(await Adb(adb, $"-s {d} shell dumpsys window", ct, anyExit: true)))
+                    await Adb(adb, $"-s {d} shell wm dismiss-keyguard", ct);
                 await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", ct);
                 log.LogInformation("{Device}: adb reverse set up, panel opened", d);
             }
@@ -651,6 +659,21 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
     private bool KeyAskedRecently(string d, long window) =>
         _keyTriedAt.TryGetValue(d, out var at) && Environment.TickCount64 - at < window;
+
+    /// <summary>
+    /// True when a "dumpsys window" dump says a keyguard is on screen. Which flag says so depends on the build:
+    /// "mShowingLockscreen=true" (Android 11 and older), "isKeyguardShowing=true" (Android 12 and newer), or only
+    /// "showing=true" on devices whose window service prints neither — measured on a Redmi Note 7 (MIUI 12.5, Android
+    /// 10), which when locked printed just "showing=true", "showingAndNotOccluded=true", "secure=false" and
+    /// "mDreamingLockscreen=true", and when unlocked printed "showing=false". "showing=" is therefore compared as a
+    /// whole trimmed line, so MIUI's "showingAndNotOccluded=true", which is not a keyguard state, cannot match. A dump
+    /// that names no flag reads false: the unlock is then skipped, which is the safe direction, the phone being left as
+    /// it is rather than acted on blindly.
+    /// </summary>
+    internal static bool KeyguardShowing(string dumpsysWindow) =>
+        dumpsysWindow.Contains("mShowingLockscreen=true", StringComparison.Ordinal) ||
+        dumpsysWindow.Contains("isKeyguardShowing=true", StringComparison.Ordinal) ||
+        dumpsysWindow.Split('\n').Any(line => line.Trim() == "showing=true");
 
     /// <summary>True when "reverse --list" has any rule for the phone's tcp:8765, whatever it points at.</summary>
     internal static bool HasAnyRule(string list) => list.Split('\n')

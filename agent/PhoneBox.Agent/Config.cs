@@ -249,6 +249,9 @@ public sealed class DisplayConfig
     public bool OpenOnConnect { get; set; } = true;
     /// <summary>On macOS, sleep the connected phone when the computer locks; wake it and open PhoneBox after unlock.</summary>
     public bool FollowComputerLock { get; set; }
+    /// <summary>When PhoneBox is opened over USB (plugged in, or unlocked with follow the computer lock), step over a
+    /// swipe-only lock screen. A PIN, pattern or password is never passed. Off: the phone shows its lock screen.</summary>
+    public bool WakeOnUnlock { get; set; }
     /// <summary>The page the panel returns to (idle return, Back); null = the first page.</summary>
     public string? HomePage { get; set; }
     /// <summary>Seconds the panel counts down ("Switching to … in 3") before a rule or the idle return changes the page; 0 = at once.</summary>

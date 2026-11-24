@@ -867,6 +867,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.kiosk.keepAwake": "전화를 깨어있게 유지: Android '의 화면 보호기를 끄십시오 (충전기에서 시작) 및 연결된 동안 화면을 유지 (USB 이상 설정 )",
       "s.kiosk.openOnConnect": "열기 PhoneBox 휴대 전화가 연결되어있을 때: 그것이 연결 할 때마다 전화를 깨우고 패널을 앞으로 가져 USB (앱 테스트에 사용하는 전화를 위해, 자신을 열려면 꺼짐)",
       "s.kiosk.followLock": "컴퓨터 잠금을 따르십시오. macOS가 잠기면 전화 화면을 끄십시오. PhoneBox macOS가 잠금 해제될 때(ADB 필요; PIN 또는 암호로 수동으로 보안된 전화기의 잠금을 해제)",
+      "s.kiosk.wakeOnUnlock": "깨우고 잠금 해제: PhoneBox가 USB로 열릴 때 스와이프만 요구하는 잠금 화면을 통과합니다 (PIN, 패턴 또는 비밀번호는 절대 통과하지 않습니다)",
       "s.claude.shareConversation": "휴대폰에서 대화 보기(최근 메시지 및 단계를 보려면 Claude Code 세션을 탭하세요. 이것은 귀하의 프롬프트와 Claude 의 답변으로, 휴대폰에만 전송됩니다)",
       "s.claude.onlyWhenAway": "PC에서 떨어져 있을 때만 (1분 동안 키보드나 마우스 사용 불가)",
       "s.claude.shareSessionTitles": "보기 Claude Code 휴대폰에 채팅 제목 (Claude Code 종종 당신의 첫번째 프롬프트에서 그들을 그립니다)",
