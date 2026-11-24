@@ -893,7 +893,7 @@
       's.k.textHint': '{clipboard} is replaced by the text on the clipboard (the first 10,000 characters).',
       's.k.clipboardWarn': 'Typed text goes through the system\'s typing tool, so on a Mac or Linux a copied password can show in the process list while it is typed. Typing {clipboard} into a terminal runs whatever was copied there. paste: keeps its text out of Windows clipboard history and the cloud clipboard and afterwards puts back the text that was copied (a copied picture or files are not kept: the clipboard is left empty); on a Mac, Universal Clipboard may still sync it to your other devices.',
       's.k.macosPermission': 'macOS asks once to allow PhoneBoxAgent in System Settings › Privacy & Security › Accessibility.',
-      's.k.linuxNeedsXdotool': 'Needs xdotool (X11) or wtype (Wayland).',
+      's.k.linuxNeedsXdotool': 'Needs xdotool (X11), or wtype or ydotool (Wayland; GNOME needs ydotool).',
       's.k.stateKey': 'State from a pushed value (optional)',
       's.k.offArgs': 'Arguments to switch off',
       's.cd.registerRedirect': 'Register redirect address:',

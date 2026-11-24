@@ -6,7 +6,7 @@ namespace PhoneBox.Agent;
 /// Sends key combinations and text to the computer for shortcut keys and macros: "ctrl+shift+m", "win+d", "f13",
 /// "playpause"; several combos separated by commas are pressed one after another.
 ///  - Windows: SendInput.
-///  - Linux: xdotool (X11), or wtype then ydotool (Wayland; GNOME needs ydotool).
+///  - Linux: xdotool (X11), or wtype then ydotool (Wayland; GNOME needs ydotool), xdotool only when neither is installed.
 ///  - macOS: System Events via osascript (needs the Accessibility permission for the agent). The mouse (Trackpad
 ///    widget) is Quartz events, see Unix/MacMouse.cs.
 /// </summary>
@@ -281,7 +281,6 @@ public static class KeySender
     public static bool SendCombo(List<string> combo)
     {
         if (OperatingSystem.IsMacOS()) { MacKeystroke(combo); return true; }
-        // X11: xdotool; Wayland: wtype (wlroots/KDE), then ydotool (GNOME, which ignores both wtype and xdotool)
         var x = string.Join("+", combo.Select(k => k switch
         {
             "win" => "super", "ctrl" or "shift" or "alt" => k,
@@ -289,12 +288,12 @@ public static class KeySender
             _ when k[0] == 'f' && k.Length > 1 => k.ToUpperInvariant(),
             _ => k,
         }));
-        if (Sh.Which("xdotool") is not null && Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is null) return Sh.Run("xdotool", "key", "--clearmodifiers", x) is not null;
-        if (Sh.Which("wtype") is not null && SendWtype(combo)) return true;
-        if (YdotoolUsable.Value && YdotoolCombo(combo) is { } y && Sh.Run("ydotool", "key", y) is not null) return true;
-        if (Sh.Which("xdotool") is not null) return Sh.Run("xdotool", "key", "--clearmodifiers", x) is not null;
-        if (Sh.Which("wtype") is not null || YdotoolUsable.Value) return false;
-        throw new InvalidOperationException("sending keys needs xdotool (X11), or wtype or ydotool (Wayland)");
+        ToolRun Run(string tool, params string[] args) => RunTool(tool, args, TimeSpan.FromSeconds(2), CancellationToken.None).Run;
+        if (!OnWayland() && FindTool("xdotool") is not null) return Run("xdotool", "key", "--clearmodifiers", x) == ToolRun.Ok;
+        var y = YdotoolCombo(combo);
+        return RunOnWayland(() => Run("wtype", WtypeArgs(combo)), y is null ? null : () => Run("ydotool", "key", y),
+            () => Run("xdotool", "key", "--clearmodifiers", x), "sending keys",
+            "ydotool can't press media keys, F13-F24 or keypad keys");
     }
 
     private static void Send(List<string> combo)
@@ -302,27 +301,73 @@ public static class KeySender
         if (!SendCombo(combo)) throw new InvalidOperationException("the computer refused the key press");
     }
 
+    internal enum ToolRun { Ok, Failed, TimedOut, Missing }
+
+    // Seams for the tests of which tool runs and in what order
+    internal static Func<string, string?> FindTool = Sh.Which;
+    internal static Func<bool> OnWayland = () => Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is not null;
+    internal static Func<string, string[], TimeSpan, CancellationToken, (ToolRun Run, string Output)> RunTool = RunProcess;
+
+    private static (ToolRun, string) RunProcess(string tool, string[] args, TimeSpan timeout, CancellationToken ct)
+    {
+        if (FindTool(tool) is not { } path) return (ToolRun.Missing, "");
+        var psi = new System.Diagnostics.ProcessStartInfo(path);
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        try
+        {
+            var r = Task.Run(() => ToolProcess.RunAsync(psi, timeout, ct)).GetAwaiter().GetResult();
+            return (r.ExitCode == 0 ? ToolRun.Ok : ToolRun.Failed, r.Output + r.Error);
+        }
+        catch (TimeoutException) { return (ToolRun.TimedOut, ""); }
+        catch (Exception e) when (e is IOException or System.ComponentModel.Win32Exception) { return (ToolRun.Failed, ""); }
+    }
+
+    /// <summary>
+    /// Wayland (or X11 without xdotool): wtype (wlroots, KDE), then ydotool (GNOME, which has neither wtype's protocol
+    /// nor a way for xdotool in). A tool that timed out may have typed already, so nothing runs after it. xdotool runs
+    /// only when neither wtype nor ydotool is installed: on GNOME it exits 0 having typed nothing.
+    /// <paramref name="ydotool"/> is null when ydotool can't do this input, <paramref name="ydotoolCannot"/> says why.
+    /// </summary>
+    private static bool RunOnWayland(Func<ToolRun> wtype, Func<ToolRun>? ydotool, Func<ToolRun> xdotool, string what, string ydotoolCannot)
+    {
+        var hasWtype = FindTool("wtype") is not null;
+        var hasYdotool = FindTool("ydotool") is not null;
+        if (hasWtype)
+        {
+            var w = wtype();
+            if (w == ToolRun.Ok) return true;
+            if (w == ToolRun.TimedOut || !hasYdotool) return false;
+        }
+        if (hasYdotool)
+        {
+            if (!YdotoolUsable()) throw new InvalidOperationException(YdotoolUnusable);
+            if (ydotool is null) throw new InvalidOperationException(ydotoolCannot);
+            return ydotool() == ToolRun.Ok;
+        }
+        if (FindTool("xdotool") is not null) return xdotool() == ToolRun.Ok;
+        throw new InvalidOperationException(what + " needs xdotool (X11), or wtype or ydotool (Wayland)");
+    }
+
+    private const string YdotoolUnusable = "ydotool doesn't work here: PhoneBox uses ydotool 0.1.x, with write access to /dev/uinput";
+
     // ydotool sends key positions of a US keyboard: on other layouts some keys differ (AZERTY a/q; UK @ " # ~ \ |).
     // Keys are not mapped through the active layout; letters and digits match on QWERTY layouts such as US and UK.
     // shortcut: only ydotool 0.1.x (Ubuntu 24.04, tested) is used. 1.x takes numeric key codes and reads escapes in
     // text, so it is skipped until someone can test it; its "type --help" is the one that lists --escape.
-    private static readonly Lazy<bool> YdotoolUsable = new(() =>
+    internal static bool YdotoolOk;
+
+    private static bool YdotoolUsable()
     {
-        if (Sh.Which("ydotool") is not { } path) return false;
-        var psi = new System.Diagnostics.ProcessStartInfo(path) { ArgumentList = { "type", "--help" } };
-        try
-        {
-            var r = ToolProcess.RunAsync(psi, TimeSpan.FromSeconds(3), CancellationToken.None).GetAwaiter().GetResult();
-            var help = r.Output + r.Error;
-            return help.Contains("--key-delay") && !help.Contains("--escape");
-        }
-        catch (Exception e) when (e is TimeoutException or IOException or System.ComponentModel.Win32Exception) { return false; }
-    });
+        if (YdotoolOk) return true;
+        var (_, help) = RunTool("ydotool", ["type", "--help"], TimeSpan.FromSeconds(3), CancellationToken.None);
+        // only a yes is kept: right after login /dev/uinput may not be ready yet
+        return YdotoolOk = help.Contains("--key-delay") && !help.Contains("--escape");
+    }
 
     /// <summary>ydotool 0.1.x types only these: it stops at any other character and still exits 0.</summary>
     internal static bool YdotoolCanType(string text) => text.All(c => c is '\n' or '\t' or (>= ' ' and <= '~'));
 
-    private static bool SendWtype(List<string> combo)
+    private static string[] WtypeArgs(List<string> combo)
     {
         var args = new List<string>();
         var mods = combo.Where(Modifiers.Contains).Select(m => m == "win" ? "logo" : m).ToList();
@@ -330,7 +375,7 @@ public static class KeySender
         var key = combo.FirstOrDefault(k => !Modifiers.Contains(k));
         if (key is not null) args.AddRange(["-k", Special.TryGetValue(key, out var s) ? s.X : key]);
         foreach (var m in Enumerable.Reverse(mods)) args.AddRange(["-m", m]);
-        return Sh.Run("wtype", [.. args]) is not null;
+        return [.. args];
     }
 
     /// <summary>
@@ -361,36 +406,23 @@ public static class KeySender
 
     /// <summary>
     /// Types the text; false when the tool failed (macOS throws when it refuses). The tool gets time for the whole text
-    /// (xdotool types a character every 8 ms) and is killed when <paramref name="ct"/> is cancelled.
+    /// (xdotool types a character every 8 ms, ydotool 0.1.x every 12 ms) and is killed when <paramref name="ct"/> is cancelled.
     /// </summary>
     public static bool TryTypeText(string text, CancellationToken ct)
     {
         var timeout = TimeSpan.FromMilliseconds(3000 + 20L * text.Length);
-        var timedOut = false;
-        bool Run(string tool, params string[] args)
-        {
-            var path = Sh.Which(tool);
-            if (path is null) return false;
-            var psi = new System.Diagnostics.ProcessStartInfo(path);
-            foreach (var a in args) psi.ArgumentList.Add(a);
-            try { return ToolProcess.RunAsync(psi, timeout, ct).GetAwaiter().GetResult().ExitCode == 0; }
-            catch (TimeoutException) { timedOut = true; return false; }
-        }
+        ToolRun Run(string tool, params string[] args) => RunTool(tool, args, timeout, ct).Run;
         if (OperatingSystem.IsMacOS())
         {
-            if (!Run("osascript", "-e", $"tell application \"System Events\" to keystroke \"{text.Replace("\\", "\\\\").Replace("\"", "\\\"")}\""))
+            if (Run("osascript", "-e", $"tell application \"System Events\" to keystroke \"{text.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"") != ToolRun.Ok)
                 throw new InvalidOperationException(AccessibilityHint);
             return true;
         }
-        if (Sh.Which("xdotool") is not null && Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is null) return Run("xdotool", "type", "--delay", "8", "--", text);
-        // wtype fails at once where the compositor lacks its protocol (GNOME); after a timeout it may have typed part of
-        // the text, which must not be typed again by the next tool
-        if (Run("wtype", "--", text)) return true;
-        if (timedOut) return false;
-        if (YdotoolUsable.Value && YdotoolCanType(text)) return Run("ydotool", "type", "--", text);
-        if (Sh.Which("xdotool") is not null) return Run("xdotool", "type", "--delay", "8", "--", text);
-        if (Sh.Which("wtype") is not null || YdotoolUsable.Value) return false;
-        throw new InvalidOperationException("typing needs xdotool (X11), or wtype or ydotool (Wayland)");
+        if (!OnWayland() && FindTool("xdotool") is not null) return Run("xdotool", "type", "--delay", "8", "--", text) == ToolRun.Ok;
+        var lf = text.Replace("\r\n", "\n"); // clipboard text can have Windows line endings, and ydotool can't type \r
+        return RunOnWayland(() => Run("wtype", "--", text), YdotoolCanType(lf) ? () => Run("ydotool", "type", "--", lf) : null,
+            () => Run("xdotool", "type", "--delay", "8", "--", text), "typing",
+            "ydotool types only ASCII: letters, digits, punctuation, tab and new lines");
     }
 
     private static void MacKeystroke(List<string> combo)
