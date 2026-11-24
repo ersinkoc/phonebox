@@ -80,4 +80,17 @@ public class KeySenderTests
         Assert.Equal(vk, KeySender.WinVk(key));
         Assert.Equal(extended, KeySender.WinExtended(key));
     }
+
+#if !WINDOWS
+    [Theory]
+    [InlineData("ctrl+shift+m", "leftctrl+leftshift+m")]
+    [InlineData("win+period", "leftmeta+dot")]
+    [InlineData("enter", "enter")]
+    [InlineData("ctrl+]", "leftctrl+rightbrace")]
+    [InlineData("next", "nextsong")]
+    [InlineData("ctrl+alt+numpad3", "leftctrl+leftalt+kp3")]
+    [InlineData("numpadenter", "kpenter")]
+    [InlineData("numpad*", "kpasterisk")]
+    public void YdotoolUsesLinuxKeyNames(string spec, string expected) => Assert.Equal(expected, KeySender.YdotoolCombo(KeySender.Parse(spec)[0]));
+#endif
 }

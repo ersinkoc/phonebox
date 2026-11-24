@@ -6,7 +6,7 @@ namespace PhoneBox.Agent;
 /// Sends key combinations and text to the computer for shortcut keys and macros: "ctrl+shift+m", "win+d", "f13",
 /// "playpause"; several combos separated by commas are pressed one after another.
 ///  - Windows: SendInput.
-///  - Linux: xdotool (X11) or wtype (Wayland).
+///  - Linux: xdotool (X11), or wtype then ydotool (Wayland; GNOME needs ydotool).
 ///  - macOS: System Events via osascript (needs the Accessibility permission for the agent). The mouse (Trackpad
 ///    widget) is Quartz events, see Unix/MacMouse.cs.
 /// </summary>
@@ -277,13 +277,13 @@ public static class KeySender
         return false;
     }
 #else
-    /// <summary>Presses one parsed combo; false when xdotool or wtype failed (macOS throws when it refuses).</summary>
+    /// <summary>Presses one parsed combo; false when xdotool, wtype or ydotool failed (macOS throws when it refuses).</summary>
     public static bool SendCombo(List<string> combo) => Send(combo);
 
     private static bool Send(List<string> combo)
     {
         if (OperatingSystem.IsMacOS()) { MacKeystroke(combo); return true; }
-        // X11: xdotool; Wayland: wtype
+        // X11: xdotool; Wayland: wtype (wlroots/KDE), then ydotool (GNOME, which ignores both wtype and xdotool)
         var x = string.Join("+", combo.Select(k => k switch
         {
             "win" => "super", "ctrl" or "shift" or "alt" => k,
@@ -292,19 +292,36 @@ public static class KeySender
             _ => k,
         }));
         if (Sh.Which("xdotool") is not null && Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is null) return Sh.Run("xdotool", "key", "--clearmodifiers", x) is not null;
-        if (Sh.Which("wtype") is not null)
-        {
-            var args = new List<string>();
-            var mods = combo.Where(Modifiers.Contains).Select(m => m == "win" ? "logo" : m).ToList();
-            foreach (var m in mods) args.AddRange(["-M", m]);
-            var key = combo.FirstOrDefault(k => !Modifiers.Contains(k));
-            if (key is not null) args.AddRange(["-k", Special.TryGetValue(key, out var s) ? s.X : key]);
-            foreach (var m in Enumerable.Reverse(mods)) args.AddRange(["-m", m]);
-            return Sh.Run("wtype", [.. args]) is not null;
-        }
+        if (Sh.Which("wtype") is not null && SendWtype(combo)) return true;
+        if (Sh.Run("ydotool", "key", YdotoolCombo(combo)) is not null) return true;
         if (Sh.Which("xdotool") is not null) return Sh.Run("xdotool", "key", "--clearmodifiers", x) is not null;
-        throw new InvalidOperationException("sending keys needs xdotool (X11) or wtype (Wayland)");
+        if (Sh.Which("wtype") is not null || Sh.Which("ydotool") is not null) return false;
+        throw new InvalidOperationException("sending keys needs xdotool (X11), or wtype or ydotool (Wayland)");
     }
+
+    private static bool SendWtype(List<string> combo)
+    {
+        var args = new List<string>();
+        var mods = combo.Where(Modifiers.Contains).Select(m => m == "win" ? "logo" : m).ToList();
+        foreach (var m in mods) args.AddRange(["-M", m]);
+        var key = combo.FirstOrDefault(k => !Modifiers.Contains(k));
+        if (key is not null) args.AddRange(["-k", Special.TryGetValue(key, out var s) ? s.X : key]);
+        foreach (var m in Enumerable.Reverse(mods)) args.AddRange(["-m", m]);
+        return Sh.Run("wtype", [.. args]) is not null;
+    }
+
+    /// <summary>A combo in ydotool's Linux key names ("leftctrl+c"); ydotool 0.1.8 exits 0 even on a name it does not know.</summary>
+    // shortcut: names are ydotool 0.1.x syntax (Ubuntu 24.04); 1.x wants numeric key codes, so map to KEY_* codes if a distro ships 1.x
+    internal static string YdotoolCombo(List<string> combo) => string.Join("+", combo.Select(k => k switch
+    {
+        "ctrl" => "leftctrl", "shift" => "leftshift", "alt" => "leftalt", "win" => "leftmeta",
+        "printscreen" => "sysrq", "equals" => "equal", "period" => "dot", "bracketleft" => "leftbrace", "bracketright" => "rightbrace",
+        "nexttrack" => "nextsong", "prevtrack" => "previoussong",
+        "numpadmultiply" => "kpasterisk", "numpadadd" => "kpplus", "numpadsubtract" => "kpminus", "numpaddecimal" => "kpdot",
+        "numpaddivide" => "kpslash", "numpadenter" => "kpenter",
+        _ when k.StartsWith("numpad") => "kp" + k[6..], // numpad0-9 -> kp0-9
+        _ => k,
+    }));
 
     public static void TypeText(string text) => TryTypeText(text, CancellationToken.None);
 
@@ -331,9 +348,10 @@ public static class KeySender
             return true;
         }
         if (Sh.Which("xdotool") is not null && Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is null) return Run("xdotool", "type", "--delay", "8", "--", text);
-        if (Sh.Which("wtype") is not null) return Run("wtype", "--", text);
+        if (Run("wtype", "--", text) || Run("ydotool", "type", "--", text)) return true;
         if (Sh.Which("xdotool") is not null) return Run("xdotool", "type", "--delay", "8", "--", text);
-        throw new InvalidOperationException("typing needs xdotool (X11) or wtype (Wayland)");
+        if (Sh.Which("wtype") is not null || Sh.Which("ydotool") is not null) return false;
+        throw new InvalidOperationException("typing needs xdotool (X11), or wtype or ydotool (Wayland)");
     }
 
     private static void MacKeystroke(List<string> combo)
