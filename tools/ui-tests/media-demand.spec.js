@@ -77,6 +77,18 @@ test('a hidden panel does not ask, and asks again when it is shown', async ({ pa
   await expect.poll(() => gets(page), { message: 'shown again: it asks at once' }).toBeGreaterThanOrEqual(1);
 });
 
+test('the panel asks at once when the Android app resumes it', async ({ page }) => {
+  await open(page);
+  await go(page, 1);
+  await page.evaluate(() => window.onAppPause(true));
+  await reset(page);
+  await page.clock.runFor(16_000);
+  expect(await gets(page), 'a paused panel does not ask').toBe(0);
+  // no visibilitychange: the app resumes the WebView itself
+  await page.evaluate(() => window.onAppPause(false));
+  expect(await gets(page), 'resumed: it asks at once, not at the next tick').toBeGreaterThanOrEqual(1);
+});
+
 test('the fresh reading reaches the Now playing widget', async ({ page }) => {
   await open(page);
   await go(page, 1);

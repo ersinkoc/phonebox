@@ -2681,6 +2681,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && !a
 function wokeUp() {
   if (!online) return;
   loadConfig(); loadPush(); loadApprovals();
+  watchMedia(true);
   if (anyNeeds('quotas')) loadQuotas();
   if (anyNeeds('calendar')) loadCalendar();
   if (anyNeeds('work') && !streaming()) loadWork();
@@ -2734,7 +2735,6 @@ setInterval(() => { if (idle()) return; if (online && pageOf('procs')) loadProcs
 setInterval(() => { if (online && !idle()) loadConfig(); }, 60_000);
 setInterval(watchMedia, 5000);
 document.addEventListener('visibilitychange', () => {
-  watchMedia(true);
   if (!document.hidden && lastHour12 !== null && hour12() !== lastHour12) {
     buildLayout();
     renderRulesBtn();
