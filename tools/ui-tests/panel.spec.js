@@ -623,11 +623,11 @@ test('the pairing page hands a checked link to the app and clears it from the ad
   await expect(page.locator('#check')).toHaveText('ABAB ABAB');
   const href = await page.locator('#open').getAttribute('href');
   expect(href).toBe(`intent://pair?v=1&pc=Desk%20PC&fp=${fp}&port=8766&h=192.168.1.10%2C100.64.0.7&c=${'A'.repeat(22)}`
-    + '#Intent;scheme=phonebox;package=net.oxog.phonebox.deskpanel;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fersinkoc%2Fphonebox%2Freleases%2Flatest;end');
+    + '#Intent;scheme=phonebox;package=net.oxog.phonebox.deskpanel;S.browser_fallback_url=https%3A%2F%2Fersinkoc.github.io%2Fphonebox%2Fpair%2F%23cannot-open;end');
   // the button stays pinned to the app's package; the plain link is a separate choice for browsers that open a store (#175)
   await expect(page.locator('#plainWrap')).toBeVisible();
   expect(await page.locator('#plain').getAttribute('href')).toBe(`phonebox://pair?v=1&pc=Desk%20PC&fp=${fp}&port=8766&h=192.168.1.10%2C100.64.0.7&c=${'A'.repeat(22)}`);
-  expect(new URL(page.url()).hash).toBe('');
+  expect(new 网站(page.url()).hash).toBe('');
   await page.goto('about:blank'); // a hash-only change would not run the page again
   await page.goto(`/pair/#v=1&pc=x&fp=${fp}&port=8766&h=8.8.8.8&c=${'A'.repeat(22)}`); // not a local address
   await expect(page.locator('#bad')).toBeVisible();
@@ -645,6 +645,15 @@ test('the pairing page hands a checked link to the app and clears it from the ad
   await page.goto('/pair/#v=1&fp=nope');
   await expect(page.locator('#bad')).toBeVisible();
   await expect(page.locator('#ok')).toBeHidden();
+  // #175: a browser that could not open the app link follows S.browser_fallback_url; that must explain the failure
+  // here instead of dropping the user on the release page as if the pairing had worked
+  await page.goto('about:blank');
+  await page.goto('/pair/#cannot-open');
+  await expect(page.locator('#cannotOpen')).toBeVisible();
+  await expect(page.locator('#cannotOpen')).toContainText('This browser could not open the PhoneBox app');
+  await expect(page.locator('#bad')).toBeHidden();
+  await expect(page.locator('#ok')).toBeHidden();
+  expect(new 网站(page.url()).hash).toBe('');
   await ctx.close();
 });
 
