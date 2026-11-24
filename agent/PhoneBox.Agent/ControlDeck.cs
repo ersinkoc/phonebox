@@ -48,8 +48,9 @@ public sealed partial class ControlDeck : BackgroundService
 
     private readonly PushStore? _push;
     private readonly AudioControl? _master;
-    public ControlDeck(ConfigStore config, AudioControl audio, MediaMonitor media, ILogger<ControlDeck> log, SpotifyControl spotify, PlexControl plex, PushStore push)
-        : this(config, CreateNative(audio, media, log), log, null, push, audio, spotify, plex: plex) { }
+    private readonly IVirtualCamera? _camera;
+    public ControlDeck(ConfigStore config, AudioControl audio, MediaMonitor media, ILogger<ControlDeck> log, SpotifyControl spotify, PlexControl plex, PushStore push, ObsMonitor obs)
+        : this(config, CreateNative(audio, media, log), log, null, push, audio, spotify, plex: plex, camera: obs) { }
 
     private static IDeckNative CreateNative(AudioControl audio, MediaMonitor media, ILogger log)
     {
@@ -59,9 +60,9 @@ public sealed partial class ControlDeck : BackgroundService
         return new PortableDeckNative(audio, media);
 #endif
     }
-    internal ControlDeck(ConfigStore config, IDeckNative native, ILogger<ControlDeck> log, Func<long>? now = null, PushStore? push = null, AudioControl? master = null, SpotifyControl? spotify = null, RadioLogoCache? logos = null, PlexControl? plex = null)
+    internal ControlDeck(ConfigStore config, IDeckNative native, ILogger<ControlDeck> log, Func<long>? now = null, PushStore? push = null, AudioControl? master = null, SpotifyControl? spotify = null, RadioLogoCache? logos = null, PlexControl? plex = null, IVirtualCamera? camera = null)
     {
-        _config = config; _log = log; _push = push; _master = master; _spotify = spotify; _plex = plex;
+        _config = config; _log = log; _push = push; _master = master; _spotify = spotify; _plex = plex; _camera = camera;
         _now = now ?? (() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         _tasks = new(config, log);
         _native = native;
@@ -283,6 +284,7 @@ public sealed partial class ControlDeck : BackgroundService
                         }
                     }
                     break;
+                case "mics-camera-off": return await MicsCameraOff(ct);
                 case "sound-stop":
                     if (string.IsNullOrEmpty(id)) { StopAllRadios(clearLast: true); _native.StopSound(null); }
                     else { StopRadio(id, clearLast: true); }
@@ -314,6 +316,61 @@ public sealed partial class ControlDeck : BackgroundService
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) { _log.LogDebug(ex, "Control {Kind} failed", kind); return new(false, "Control failed; check the computer's integration settings"); }
+    }
+
+    /// <summary>
+    /// "Mics off, camera off" (#387): mutes every controllable microphone the way panic does, but leaves the outputs
+    /// alone, then stops the OBS virtual camera. Never reports a camera as off unless OBS stopped it or it was off.
+    /// </summary>
+    private async Task<DeckResult> MicsCameraOff(CancellationToken ct)
+    {
+        var audio = _native.Audio();
+        var mics = audio.Available ? audio.Devices.Where(d => d.CanControl && d.Direction == "input").ToArray() : [];
+        string micState;
+        if (mics.Length == 0) micState = "unavailable";
+        else
+        {
+            var all = true;
+            // the same gate as panic: no push-to-talk hold can begin, or reopen a microphone, between the mutes
+            lock (_pttGate)
+            {
+                _ptt.AbandonAll();
+                foreach (var mic in mics)
+                {
+                    var mutedNow = TryMute(mic.Id);
+                    if (mutedNow) _panicPending.Remove(mic.Id);
+                    else _panicPending.Add(mic.Id); // retried, and push-to-talk refused, until the mute lands
+                    all &= mutedNow;
+                }
+            }
+            micState = all ? "muted" : "pending";
+        }
+        // the camera step runs even when no microphone could be muted
+        VirtualCameraStop camera;
+        try { camera = _camera is null ? VirtualCameraStop.NotConnected : await _camera.StopVirtualCamAsync(ct); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) { _log.LogDebug(ex, "Stopping the OBS virtual camera failed"); camera = VirtualCameraStop.Failed; }
+        var cameraState = camera switch
+        {
+            VirtualCameraStop.Stopped => "stopped", VirtualCameraStop.AlreadyOff => "off",
+            VirtualCameraStop.NotConnected => "not-connected", _ => "failed",
+        };
+        var ok = micState == "muted" && camera is VirtualCameraStop.Stopped or VirtualCameraStop.AlreadyOff;
+        var micText = micState switch
+        {
+            "muted" => "Microphones muted",
+            "pending" => "A microphone could not be muted; retrying",
+            _ => "No microphone could be muted",
+        };
+        var cameraText = cameraState switch
+        {
+            "stopped" => "OBS virtual camera stopped",
+            "off" => "OBS virtual camera was already off",
+            "not-connected" => "Camera not turned off: OBS is not connected",
+            _ => "Camera not turned off: OBS did not stop the virtual camera",
+        };
+        _log.LogInformation("Mics off, camera off: {Mics}; {Camera}", micText, cameraText);
+        return new(ok, ok ? null : micText + " · " + cameraText, Mics: micState, Camera: cameraState);
     }
 
     private async Task<DeckResult> Profile(string id, CancellationToken ct)

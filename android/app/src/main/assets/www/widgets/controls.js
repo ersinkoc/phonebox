@@ -24,7 +24,11 @@ export async function deckCommand(kind, values = {}) {
   for (const [key, value] of Object.entries(values)) if (value != null) query.set(key, String(value));
   invalidateDeckState();
   const result = await api(`/controls/command/${encodeURIComponent(kind)}?${query}`, 'POST', 20000);
-  if (!result.ok) throw new Error(result.error || tp('Control is unavailable'));
+  if (!result.ok) {
+    // the whole answer stays on the error, for a control that reports more than one outcome (mics-camera-off)
+    const error = new Error(result.error || tp('Control is unavailable')); error.result = result;
+    throw error;
+  }
   invalidateDeckState();
   if (kind === 'action' || kind === 'sound-stop' || kind === 'media') {
     api('/state' + (evSeq != null ? '?ev=' + evSeq : '')).then(s => {
@@ -49,6 +53,21 @@ function reconcile(root, nodes) {
   [...root.children].filter(node => !nodes.includes(node)).forEach(node => node.remove());
 }
 function empty(root, text) { root.replaceChildren(h('div', 'deck-empty', tp(text))); }
+// "Mics off, camera off" (#387): what happened to the microphones and to the OBS virtual camera, in the panel's
+// language. A camera OBS did not stop is never shown as off.
+function micsCameraText(r) {
+  const mics = r.mics === 'muted' ? tp('Microphones muted') : r.mics === 'pending' ? tp('A microphone could not be muted; retrying')
+    : tp('No microphone could be muted');
+  const camera = r.camera === 'stopped' ? tp('OBS virtual camera stopped') : r.camera === 'off' ? tp('OBS virtual camera was already off')
+    : r.camera === 'not-connected' ? tp('Camera not turned off: OBS is not connected') : tp('Camera not turned off: OBS did not stop the virtual camera');
+  return mics + ' · ' + camera;
+}
+async function micsCameraOff() {
+  let result;
+  try { result = await deckCommand('mics-camera-off'); }
+  catch (e) { if (!e.result?.camera) throw e; toast(micsCameraText(e.result), 'err', '', 6); return; }
+  toast(micsCameraText(result), 'ok', '', 4);
+}
 function slider(label, send, max = 100) {
   const input = h('input', 'deck-slider'); input.type = 'range'; input.min = 0; input.max = max; input.step = 1;
   input.setAttribute('aria-label', label);
@@ -581,6 +600,7 @@ export function registerDeckWidget(type, title, mode = type) {
       else if (mode === 'listen') component = listening(box);
       else if (['remote', 'seek', 'modes'].includes(mode)) render = mediaView(box, o, mode);
       else if (mode === 'panic') box.append(button(tp('Mute audio + microphones'), () => deckCommand('panic')));
+      else if (mode === 'mics-camera-off') box.append(button(tp('Mute microphones + stop OBS camera'), micsCameraOff));
       else if (mode === 'desktops') box.append(button(tp('← Desktop'), () => deckCommand('desktop', { value: -1 })), button(tp('Desktop →'), () => deckCommand('desktop', { value: 1 })));
       else if (mode === 'system') box.append(button(tp('Lock'), () => deckCommand('lock')), button(tp('Display off'), () => deckCommand('monitor-off')));
       else if (mode === 'power') {
@@ -629,7 +649,7 @@ export function registerDeckWidget(type, title, mode = type) {
 for (const [type, title, mode] of [
   ['audio-mixer', 'Application mixer', 'apps'], ['app-volume', 'Application volume', 'app'],
   ['device-volume', 'Device volume', 'output'], ['audio-balance', 'Channel balance', 'balance'], ['audio-meter', 'Audio levels', 'meter'],
-  ['panic-mute', 'Emergency mute', 'panic'], ['microphone', 'Microphone', 'mic'], ['audio-inputs', 'Microphone selection', 'inputs'],
+  ['panic-mute', 'Emergency mute', 'panic'], ['mics-camera-off', 'Mics off, camera off', 'mics-camera-off'], ['microphone', 'Microphone', 'mic'], ['audio-inputs', 'Microphone selection', 'inputs'],
   ['audio-outputs', 'Output selection', 'outputs'], ['push-to-talk', 'Push to talk', 'ptt'], ['audio-profiles', 'Audio profiles', 'profiles'],
   ['audio-ducking', 'Audio ducking', 'duck'], ['media-sources', 'Media sources', 'sources'], ['media-remote', 'Media remote', 'remote'],
   ['media-seek', 'Playback position', 'seek'], ['media-modes', 'Shuffle and repeat', 'modes'], ['media-sleep', 'Music sleep timer', 'sleep'],

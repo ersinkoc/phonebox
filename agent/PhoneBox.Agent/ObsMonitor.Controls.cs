@@ -2,7 +2,16 @@ using System.Text.Json.Nodes;
 
 namespace PhoneBox.Agent;
 
-public sealed partial class ObsMonitor
+/// <summary>What happened to the OBS virtual camera when the Control Deck asked it to stop.</summary>
+public enum VirtualCameraStop { Stopped, AlreadyOff, NotConnected, Failed }
+
+/// <summary>The OBS virtual camera as the Control Deck sees it (a fake in tests).</summary>
+internal interface IVirtualCamera
+{
+    Task<VirtualCameraStop> StopVirtualCamAsync(CancellationToken ct);
+}
+
+public sealed partial class ObsMonitor : IVirtualCamera
 {
     private readonly SemaphoreSlim _deckGate = new(1, 1);
     /// <summary>A built deck and the OBS session it describes; it is served only while that session is current.</summary>
@@ -109,6 +118,39 @@ public sealed partial class ObsMonitor
             return built ?? DisconnectedDeck();
         }
         finally { _deckGate.Release(); }
+    }
+
+    /// <summary>
+    /// Stops the OBS virtual camera for the Control Deck's "Mics off, camera off" (#387). A privacy action, so it does
+    /// not need the OBS widget's control option; it never starts a stopped camera (StopVirtualCam, not
+    /// ToggleVirtualCam) and reports plainly when the camera could not be turned off.
+    /// </summary>
+    public async Task<VirtualCameraStop> StopVirtualCamAsync(CancellationToken ct)
+    {
+        var session = _ws;
+        if (!DeckUsable() || session is null) return VirtualCameraStop.NotConnected;
+        bool? active;
+        try { active = (await Request("GetVirtualCamStatus", null, ct))?["outputActive"]?.GetValue<bool>(); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) { return CameraFailure(ex, session); }
+        // OBS refuses StopVirtualCam for a camera that is not running, which would read as a failure
+        if (active == false) return VirtualCameraStop.AlreadyOff;
+        try
+        {
+            await Request("StopVirtualCam", null, ct);
+            Interlocked.Exchange(ref _deckAt, 0);
+            log.LogInformation("obs: virtual camera stopped");
+            return VirtualCameraStop.Stopped;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) { return CameraFailure(ex, session); }
+    }
+
+    private VirtualCameraStop CameraFailure(Exception ex, System.Net.WebSockets.ClientWebSocket session)
+    {
+        log.LogInformation("obs: the virtual camera could not be stopped: {Msg}", ex.Message);
+        // the session ended under the request: OBS went away, it did not refuse
+        return ex is IOException || !_snap.Connected || !ReferenceEquals(_ws, session) ? VirtualCameraStop.NotConnected : VirtualCameraStop.Failed;
     }
 
     private bool DeckControlAllowed() =>

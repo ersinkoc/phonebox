@@ -23,6 +23,9 @@ public sealed class ObsTests : IDisposable
     private TaskCompletionSource? _inputsReady;
     private TaskCompletionSource? _inputsEntered;
     private WebSocket? _activeSocket;
+    private volatile bool _virtualCamActive;
+    // request types the fake OBS refuses (requestStatus.result false)
+    private readonly HashSet<string> _refuse = [];
 
     public ObsTests()
     {
@@ -85,9 +88,17 @@ public sealed class ObsTests : IDisposable
                     "GetSceneTransitionList" => new { transitions = new[] { new { transitionName = "Fade" } } },
                     "GetCurrentSceneTransition" => new { transitionName = "Fade", transitionDuration = 300 },
                     "GetReplayBufferStatus" => new { outputActive = true },
-                    "GetVirtualCamStatus" => new { outputActive = false },
+                    "GetVirtualCamStatus" => new { outputActive = _virtualCamActive },
                     _ => new { },
                 };
+                bool refused;
+                lock (_refuse) refused = _refuse.Contains(type);
+                if (refused)
+                {
+                    await Send(new { op = 7, d = new { requestType = type, requestId = d["requestId"]!.GetValue<string>(), requestStatus = new { result = false, code = 500, comment = "refused by the test" } } });
+                    continue;
+                }
+                if (type == "StopVirtualCam") _virtualCamActive = false;
                 if (type == "ToggleRecord") _recording = !_recording;
                 if (type == "SetCurrentProgramScene") _scene = d["requestData"]!["sceneName"]!.GetValue<string>();
                 await Send(new { op = 7, d = new { requestType = type, requestId = d["requestId"]!.GetValue<string>(), requestStatus = new { result = true, code = 100 }, responseData = data } });
@@ -169,6 +180,61 @@ public sealed class ObsTests : IDisposable
             }
         }
         finally { await obs.StopAsync(default); }
+    }
+
+    [Fact]
+    public async Task MicsOffCameraOffStopsTheVirtualCameraWithoutTogglingIt()
+    {
+        _virtualCamActive = true;
+        // a privacy action: it does not need the OBS widget's control option
+        var obs = Monitor(Password, control: false);
+        await obs.StartAsync(default);
+        try
+        {
+            await Until(() => obs.Snapshot().Connected);
+            Assert.Equal(VirtualCameraStop.Stopped, await obs.StopVirtualCamAsync(default));
+            Assert.False(_virtualCamActive);
+            // a camera that is already off stays off: StopVirtualCam is not sent again, and nothing toggles it on
+            Assert.Equal(VirtualCameraStop.AlreadyOff, await obs.StopVirtualCamAsync(default));
+            Assert.False(_virtualCamActive);
+            lock (_requests)
+            {
+                Assert.Single(_requests, r => r == "StopVirtualCam");
+                Assert.DoesNotContain("ToggleVirtualCam", _requests);
+            }
+        }
+        finally { await obs.StopAsync(default); }
+    }
+
+    [Fact]
+    public async Task MicsOffCameraOffReportsACameraObsDidNotStop()
+    {
+        _virtualCamActive = true;
+        lock (_refuse) _refuse.Add("StopVirtualCam");
+        var obs = Monitor(Password);
+        await obs.StartAsync(default);
+        try
+        {
+            await Until(() => obs.Snapshot().Connected);
+            Assert.Equal(VirtualCameraStop.Failed, await obs.StopVirtualCamAsync(default));
+            Assert.True(_virtualCamActive);
+            lock (_requests) Assert.DoesNotContain("ToggleVirtualCam", _requests);
+
+            // OBS without a virtual camera refuses the status request: still not reported as off
+            lock (_refuse) _refuse.Add("GetVirtualCamStatus");
+            Assert.Equal(VirtualCameraStop.Failed, await obs.StopVirtualCamAsync(default));
+        }
+        finally { await obs.StopAsync(default); }
+    }
+
+    [Fact]
+    public async Task MicsOffCameraOffSaysObsIsNotConnected()
+    {
+        _virtualCamActive = true;
+        var obs = Monitor(Password); // configured, but never connected
+        Assert.Equal(VirtualCameraStop.NotConnected, await obs.StopVirtualCamAsync(default));
+        lock (_requests) Assert.Empty(_requests);
+        Assert.True(_virtualCamActive);
     }
 
     private static async Task<JsonObject> UntilDeck(ObsMonitor obs)

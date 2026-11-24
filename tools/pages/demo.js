@@ -478,6 +478,13 @@
     } else if (kind === 'duck') deck.ducking = op !== 'off';
     else if (kind === 'brightness') deck.monitors[0].brightness = Math.max(0, Math.min(100, value));
     else if (kind === 'panic') { deck.audio.devices.forEach(d => d.muted = true); audio.muted = true; }
+    else if (kind === 'mics-camera-off') {
+      // ControlDeck.MicsCameraOff: the microphones only, then the OBS virtual camera (not connected when OBS is off)
+      deck.audio.devices.filter(d => d.direction === 'input').forEach(d => d.muted = true);
+      if (c.obs?.enabled === false) return { ok: false, error: 'Microphones muted · Camera not turned off: OBS is not connected', mics: 'muted', camera: 'not-connected' };
+      const camera = deckObsExtra.cameraActive ? 'stopped' : 'off'; deckObsExtra.cameraActive = false;
+      return { ok: true, mics: 'muted', camera };
+    }
     else if (kind === 'sleep') deck.sleep = value ? [{ id, at: now() + value * 60000 }] : [];
     else if (kind === 'power-plan') {
       if (!deck.powerPlans.some(x => x.id === id)) return { ok: false, error: 'Power plan unavailable' };

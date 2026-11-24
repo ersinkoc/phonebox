@@ -72,22 +72,124 @@ public sealed class ControlDeckPanicTests : IDisposable
         Assert.False(native.MicMuted);
     }
 
+    // "Mics off, camera off" (#387): panic's microphone path without the outputs, plus the OBS virtual camera
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MicsCameraOffMutesTheMicrophonesLeavesTheOutputsAndStopsTheCamera(bool speakerMuted)
+    {
+        var native = new PanicNative(micMuted: false, speakerMuted);
+        var camera = new FakeCamera(VirtualCameraStop.Stopped);
+        using var deck = new ControlDeck(new ConfigStore(_cfg), native, NullLogger<ControlDeck>.Instance, camera: camera);
+        var result = await deck.Act("mics-camera-off", null, null, null, null, null, default);
+        Assert.True(result.Ok);
+        Assert.Null(result.Error);
+        Assert.Equal("muted", result.Mics);
+        Assert.Equal("stopped", result.Camera);
+        Assert.True(native.MicMuted);
+        Assert.Equal(speakerMuted, native.SpeakerMuted);
+        Assert.DoesNotContain("spk-1", native.Calls); // the outputs are not even asked
+        Assert.Equal(1, camera.Calls);
+    }
+
+    [Fact]
+    public async Task MicsCameraOffKeepsARefusedMicrophonePendingAndClosedToPushToTalk()
+    {
+        var native = new PanicNative(micMuted: true);
+        using var deck = new ControlDeck(new ConfigStore(_cfg), native, NullLogger<ControlDeck>.Instance, camera: new FakeCamera(VirtualCameraStop.Stopped));
+        var hold = await deck.Act("ptt", "mic-1", "begin", null, null, null, default);
+        Assert.True(hold.Ok);
+        Assert.False(native.MicMuted);
+
+        native.FailMicMute = true;
+        var result = await deck.Act("mics-camera-off", null, null, null, null, null, default);
+        Assert.False(result.Ok);
+        Assert.Equal("pending", result.Mics);
+        Assert.Equal("stopped", result.Camera);
+        Assert.Contains("could not be muted", result.Error);
+        Assert.False(native.MicMuted);
+        // the held talk key can neither keep the microphone nor take it again
+        Assert.False((await deck.Act("ptt", "mic-1", "begin", null, null, null, default)).Ok);
+
+        native.FailMicMute = false;
+        // the hold was dropped; the pending mute lands on the next push-to-talk request
+        Assert.False((await deck.Act("ptt", "mic-1", "end", null, null, Assert.IsType<string>(hold.Lease), default)).Ok);
+        Assert.True(native.MicMuted);
+        Assert.DoesNotContain("spk-1", native.Calls);
+    }
+
+    [Theory]
+    [InlineData(VirtualCameraStop.NotConnected, "not-connected", "OBS is not connected")]
+    [InlineData(VirtualCameraStop.Failed, "failed", "OBS did not stop the virtual camera")]
+    public async Task MicsCameraOffNeverReportsACameraObsDidNotStop(VirtualCameraStop outcome, string code, string reason)
+    {
+        var native = new PanicNative(micMuted: false);
+        var camera = new FakeCamera(outcome);
+        using var deck = new ControlDeck(new ConfigStore(_cfg), native, NullLogger<ControlDeck>.Instance, camera: camera);
+        var result = await deck.Act("mics-camera-off", null, null, null, null, null, default);
+        Assert.False(result.Ok);
+        Assert.Equal("muted", result.Mics);
+        Assert.Equal(code, result.Camera);
+        Assert.Contains("Camera not turned off: " + reason, result.Error);
+        Assert.True(native.MicMuted); // the microphones are muted all the same
+        Assert.Equal(1, camera.Calls);
+    }
+
+    [Fact]
+    public async Task MicsCameraOffWithoutObsOrMicrophonesSaysSo()
+    {
+        // no OBS at all: the camera is not reported as off
+        var native = new PanicNative(micMuted: false);
+        using (var deck = new ControlDeck(new ConfigStore(_cfg), native, NullLogger<ControlDeck>.Instance))
+        {
+            var result = await deck.Act("mics-camera-off", null, null, null, null, null, default);
+            Assert.False(result.Ok);
+            Assert.Equal("not-connected", result.Camera);
+            Assert.True(native.MicMuted);
+        }
+
+        // no audio: the camera is still stopped, and the microphones are not reported as muted
+        var silent = new PanicNative(micMuted: false) { AudioAvailable = false };
+        var camera = new FakeCamera(VirtualCameraStop.AlreadyOff);
+        using (var deck = new ControlDeck(new ConfigStore(_cfg), silent, NullLogger<ControlDeck>.Instance, camera: camera))
+        {
+            var result = await deck.Act("mics-camera-off", null, null, null, null, null, default);
+            Assert.False(result.Ok);
+            Assert.Equal("unavailable", result.Mics);
+            Assert.Equal("off", result.Camera);
+            Assert.Equal(1, camera.Calls);
+            Assert.Empty(silent.Calls);
+        }
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_dir, recursive: true); } catch (IOException) { }
     }
 
-    private sealed class PanicNative(bool micMuted) : IDeckNative
+    private sealed class FakeCamera(VirtualCameraStop outcome) : IVirtualCamera
+    {
+        private int _calls;
+        public int Calls => Volatile.Read(ref _calls);
+        public Task<VirtualCameraStop> StopVirtualCamAsync(CancellationToken ct) { Interlocked.Increment(ref _calls); return Task.FromResult(outcome); }
+    }
+
+    private sealed class PanicNative(bool micMuted, bool speakerMuted = false) : IDeckNative
     {
         private volatile bool _micMuted = micMuted;
-        private volatile bool _speakerMuted;
+        private volatile bool _speakerMuted = speakerMuted;
         public bool MicMuted => _micMuted;
+        public bool SpeakerMuted => _speakerMuted;
+        public bool AudioAvailable { get; init; } = true;
+        // every device the deck asked to change, in order
+        public System.Collections.Concurrent.ConcurrentQueue<string> Calls { get; } = new();
         public volatile bool FailMicMute;
         public bool HoldSpeakerMute { get; init; }
         public ManualResetEventSlim SpeakerMuteEntered { get; } = new();
         public ManualResetEventSlim ReleaseSpeakerMute { get; } = new();
 
-        public DeckAudio Audio() => new(true, null,
+        public DeckAudio Audio() => new(AudioAvailable, null,
         [
             new("spk-1", "Speakers", "output", true, 60, _speakerMuted, 0, 2, CanControl: true),
             new("mic-1", "Desk Mic", "input", true, 80, _micMuted, 0, 1, CanControl: true),
@@ -95,6 +197,7 @@ public sealed class ControlDeckPanicTests : IDisposable
 
         public bool Device(string id, int? volume, bool? muted, int? channel = null)
         {
+            Calls.Enqueue(id);
             if (id == "spk-1")
             {
                 if (muted == true && HoldSpeakerMute && !SpeakerMuteEntered.IsSet)
