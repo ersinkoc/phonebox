@@ -465,13 +465,21 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         var held = await _round.WaitAsync(SleepRoundWait, ct);
         try
         {
+            // the stop cancels the rounds' token: these calls end with it, so the stop gets the round in time to take
+            // the rule off before the port closes (RemoveBeforeThePortCloses)
+            CancellationToken stop;
+            try { stop = _rounds?.Token ?? CancellationToken.None; }
+            catch (ObjectDisposedException) { return; } // the loop has ended: the agent is stopping
+            using var calls = CancellationTokenSource.CreateLinkedTokenSource(ct, stop);
             foreach (var d in _devices)
             {
+                if (_stopping) return;
                 try
                 {
-                    await Adb(adb, ["-s", d, "shell", "input", "keyevent", "KEYCODE_SLEEP"], ct);
+                    await Adb(adb, ["-s", d, "shell", "input", "keyevent", "KEYCODE_SLEEP"], calls.Token);
                     log.LogInformation("{Device}: phone screen asleep (lock shortcut)", d);
                 }
+                catch (OperationCanceledException) { return; }
                 catch (Exception ex)
                 {
                     log.LogWarning(ex, "{Device}: failed to sleep phone screen", d);
