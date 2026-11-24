@@ -434,8 +434,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         if (adb is null) return;
         foreach (var d in _devices)
         {
-            await Adb(adb, $"-s {d} shell input keyevent KEYCODE_WAKEUP", CancellationToken.None);
-            await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", CancellationToken.None);
+            await Adb(adb, ["-s", d, "shell", "input", "keyevent", "KEYCODE_WAKEUP"], CancellationToken.None);
+            await Adb(adb, ["-s", d, "shell", "am", "start", "-n", PanelActivity], CancellationToken.None);
         }
     }
 
@@ -497,9 +497,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
         // Only standby wakes carry the marker that allows the app
         // to dismiss the keyguard.
-        var startArguments =
-            $"-s {device} shell am start -n {PanelActivity}" +
-            (standby ? " --ez agentWake true" : "");
+        var startArguments = new List<string> { "-s", device, "shell", "am", "start", "-n", PanelActivity };
+        if (standby) startArguments.AddRange(["--ez", "agentWake", "true"]);
 
         await Adb(adb, startArguments, ct);
 
@@ -534,13 +533,13 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     {
         var adb = FindAdb(cfg.Get().AdbPath);
         if (adb is null) throw new IOException("ADB is not available");
-        if (locked) await Adb(adb, $"-s {device} shell input keyevent KEYCODE_SLEEP", ct);
+        if (locked) await Adb(adb, ["-s", device, "shell", "input", "keyevent", "KEYCODE_SLEEP"], ct);
         else
         {
-            await Adb(adb, $"-s {device} shell input keyevent KEYCODE_WAKEUP", ct);
+            await Adb(adb, ["-s", device, "shell", "input", "keyevent", "KEYCODE_WAKEUP"], ct);
             // A secure PIN/password keyguard still needs the user's unlock.
-            await Adb(adb, $"-s {device} shell wm dismiss-keyguard", ct);
-            await Adb(adb, $"-s {device} shell am start -n {PanelActivity}", ct);
+            await Adb(adb, ["-s", device, "shell", "wm", "dismiss-keyguard"], ct);
+            await Adb(adb, ["-s", device, "shell", "am", "start", "-n", PanelActivity], ct);
         }
         log.LogInformation("{Device}: phone screen {State}", device, locked ? "asleep" : "awake");
     }
@@ -594,7 +593,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private async Task RememberStayOn(string adb, string d, CancellationToken ct)
     {
         if (Originals.ContainsKey(d)) return;            // never record our own 0
-        var v = (await Adb(adb, $"-s {d} shell settings get global stay_on_while_plugged_in", ct, anyExit: true)).Trim();
+        var v = (await Adb(adb, ["-s", d, "shell", "settings", "get", "global", "stay_on_while_plugged_in"], ct, anyExit: true)).Trim();
         if (v != "null" && !int.TryParse(v, out _)) return;   // an error text is not a value
         Originals[d] = v;
         SaveOriginals();
@@ -605,9 +604,10 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         if (!Originals.TryGetValue(d, out var v)) return;
         try
         {
-            await Adb(adb, v == "null"
-                ? $"-s {d} shell settings delete global stay_on_while_plugged_in"
-                : $"-s {d} shell settings put global stay_on_while_plugged_in {v}", ct);
+            string[] restore = v == "null"
+                ? ["-s", d, "shell", "settings", "delete", "global", "stay_on_while_plugged_in"]
+                : ["-s", d, "shell", "settings", "put", "global", "stay_on_while_plugged_in", v];
+            await Adb(adb, restore, ct);
         }
         catch (Exception ex) when (ex is IOException or TimeoutException) { return; }   // keep the entry, try next round
         Originals.Remove(d);
@@ -628,7 +628,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
         var serial = cfg.Get().DeviceSerial;
         string listed;
-        try { listed = await Adb(adb, "devices", ct); }
+        try { listed = await Adb(adb, ["devices"], ct); }
         catch (TimeoutException)
         {
             if (_restarted) { _restarted = false; log.LogWarning("adb server still does not answer after the restart"); }
@@ -680,7 +680,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             {
                 try
                 {
-                    var answer = await Adb(adb, $"-s {d} shell getprop ro.build.version.sdk", ct, anyExit: true);
+                    var answer = await Adb(adb, ["-s", d, "shell", "getprop", "ro.build.version.sdk"], ct, anyExit: true);
                     if (int.TryParse(answer.Trim(), out sdk)) _sdk[d] = sdk;
                 }
                 catch (Exception ex) when (ex is IOException or TimeoutException)
@@ -694,7 +694,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             var list = "";
             if (listable)
             {
-                try { list = await Adb(adb, $"-s {d} reverse --list", ct); }
+                try { list = await Adb(adb, ["-s", d, "reverse", "--list"], ct); }
                 catch (Exception ex) when (ex is IOException or TimeoutException)
                 {
                     log.LogWarning("{Device}: could not list adb reverse rules ({Message})", d, ex.Message);
@@ -724,7 +724,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                 continue;
             }
             // is the app there at all? (the agent may have been installed on its own, with winget or Scoop)
-            var installed = (await Adb(adb, $"-s {d} shell pm path net.oxog.phonebox.deskpanel", ct, anyExit: true)).Contains("package:");
+            var installed = (await Adb(adb, ["-s", d, "shell", "pm", "path", "net.oxog.phonebox.deskpanel"], ct, anyExit: true)).Contains("package:");
             _missingApp = installed ? _missingApp.Where(x => x != d).ToArray() : _missingApp.Union([d]).ToArray();
             if (!installed) { Report($"{d}: the PhoneBox app is not installed (Settings › General › Install the phone app)"); continue; }
             if (!keyed) await ReadKeyAsync(adb, d, ct);
@@ -734,7 +734,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (_stopping) return; // the agent is closing: a rule set now would be left behind (RemoveBeforeThePortCloses)
             // noted before it is sent: a stop that cancels it may come after the adb server applied it
             _pending.Add(d);
-            try { await Adb(adb, $"-s {d} reverse {Rule} {TargetRule}", ct); }
+            try { await Adb(adb, ["-s", d, "reverse", Rule, TargetRule], ct); }
             catch (IOException) { _pending.Remove(d); throw; } // adb refused it: no rule was set
             _pending.Remove(d);
             _reverseSet.Add(d);
@@ -766,7 +766,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         foreach (var d in devices.Where(d => !_homeSet.Contains(d) && !unreachable.Contains(d)))
             {
                 // Android answers a refusal with exit code 1; that must not end the round for the other phones and keep-awake.
-                var r = await Adb(adb, $"-s {d} shell cmd package set-home-activity {HomeAlias}", ct, anyExit: true);
+                var r = await Adb(adb, ["-s", d, "shell", "cmd", "package", "set-home-activity", HomeAlias], ct, anyExit: true);
                 if (!r.Contains("Success")) continue; // the app has not enabled its home entry yet; try again shortly
                 _homeSet.Add(d);
                 log.LogInformation("{Device}: PhoneBox is now the home app", d);
@@ -806,12 +806,12 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         {
         foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:on") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
             {
-                await Adb(adb, $"-s {d} shell settings put secure screensaver_enabled 0", ct);
-                await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_dock 0", ct);
-                await Adb(adb, $"-s {d} shell settings put secure screensaver_activate_on_sleep 0", ct);
+                await Adb(adb, ["-s", d, "shell", "settings", "put", "secure", "screensaver_enabled", "0"], ct);
+                await Adb(adb, ["-s", d, "shell", "settings", "put", "secure", "screensaver_activate_on_dock", "0"], ct);
+                await Adb(adb, ["-s", d, "shell", "settings", "put", "secure", "screensaver_activate_on_sleep", "0"], ct);
                 if (standby)
                     await RememberStayOn(adb, d, ct);
-                await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
+                await Adb(adb, ["-s", d, "shell", "settings", "put", "global", "stay_on_while_plugged_in", stayOn], ct);
                 _awakeSet.Add($"{d}:{stayOn}:on");
                 log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
             }
@@ -828,7 +828,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             {
                 if (standby)
                     await RememberStayOn(adb, d, ct);
-                await Adb(adb, $"-s {d} shell settings put global stay_on_while_plugged_in {stayOn}", ct);
+                await Adb(adb, ["-s", d, "shell", "settings", "put", "global", "stay_on_while_plugged_in", stayOn], ct);
                 _awakeSet.Add($"{d}:{stayOn}:off");
                 log.LogInformation("{Device}: standby cleared stay_on_while_plugged_in (keep awake off)", d);
             }
@@ -847,13 +847,13 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     {
         if (usb is null) return;
         _keyTriedAt[d] = Environment.TickCount64;
-        var dump = await Adb(adb, $"-s {d} shell dumpsys package {UsbLink.Package}", ct, anyExit: true);
+        var dump = await Adb(adb, ["-s", d, "shell", "dumpsys", "package", UsbLink.Package], ct, anyExit: true);
         var key = UsbLink.OwnsKeyProvider(dump)
-            ? UsbLink.ParseKey(await Adb(adb, $"-s {d} shell content query --uri {UsbLink.KeyUri}", ct, anyExit: true))
+            ? UsbLink.ParseKey(await Adb(adb, ["-s", d, "shell", "content", "query", "--uri", UsbLink.KeyUri], ct, anyExit: true))
             : null;
         if (key is not null)
         {
-            await Adb(adb, $"-s {d} shell content insert --uri {UsbLink.PinUri} --bind fp:s:{usb.Pin}", ct, anyExit: true);
+            await Adb(adb, ["-s", d, "shell", "content", "insert", "--uri", UsbLink.PinUri, "--bind", $"fp:s:{usb.Pin}"], ct, anyExit: true);
             usb.SetKey(d, key);
             _oldApp.Remove(d);
             return;
@@ -882,7 +882,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// skipped and the panel still opens.</summary>
     private async Task<bool> KeyguardShowingAsync(string adb, string d, CancellationToken ct)
     {
-        try { return KeyguardShowing(await Adb(adb, $"-s {d} shell dumpsys window", ct, anyExit: true)); }
+        try { return KeyguardShowing(await Adb(adb, ["-s", d, "shell", "dumpsys", "window"], ct, anyExit: true)); }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
         {
@@ -957,7 +957,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         var map = new Dictionary<string, string>();
         try
         {
-            foreach (var line in (await Adb(adb, "devices -l", ct)).Split('\n').Skip(1))
+            foreach (var line in (await Adb(adb, ["devices", "-l"], ct)).Split('\n').Skip(1))
             {
                 var parts = line.Split((char[])[' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length > 1 && parts.FirstOrDefault(x => x.StartsWith("transport_id:", StringComparison.Ordinal)) is { } id)
