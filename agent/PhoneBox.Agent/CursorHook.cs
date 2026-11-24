@@ -101,8 +101,8 @@ public static class CursorHook
     // ---------------------------------------------------------------- install / remove the hooks in ~/.cursor/hooks.json
 
     /// <summary>
-    /// The hook's command. Cursor on Windows runs it in PowerShell and pipes the request in, so it posts with
-    /// Invoke-WebRequest (any PowerShell from 5.1, no curl quoting). Inside WSL (Linux, macOS) it is the Claude Code
+    /// The hook's command. Cursor on Windows runs it in PowerShell and pipes the request in (to stdin, or as pipeline
+    /// input: both are read), so it posts with Invoke-WebRequest (any PowerShell from 5.1, no curl quoting). Inside WSL (Linux, macOS) it is the Claude Code
     /// hook's curl.
     /// <para>
     /// Its stdout must be the answer or nothing. Cursor's hooks reference (https://cursor.com/docs/agent/hooks): for
@@ -117,10 +117,18 @@ public static class CursorHook
     /// </para>
     /// </summary>
     internal static string HookCommand(int port, bool windows) => windows
-        // stdin read as UTF-8 (Cursor sends UTF-8 JSON; [Console]::In would decode it with the console's OEM code page)
+        // The request: Cursor's reference says "On Windows, the desktop app runs hook commands through PowerShell and
+        // pipes the JSON into the command", and "a PowerShell script reads it from `$input`" while "other programs read
+        // it from stdin". So the process's stdin is read first, as UTF-8 (Cursor sends UTF-8 JSON; PowerShell decodes
+        // stdin with the console's OEM code page), and the pipeline input when stdin has nothing. The pipeline input is
+        // fetched with Get-Variable: a literal $input in the command makes PowerShell read stdin into it before the
+        // command runs, already decoded with the OEM code page.
         ? "$ProgressPreference = 'SilentlyContinue'; " +
-          "$b = (New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding $false))).ReadToEnd(); " +
-          "try { $r = Invoke-WebRequest -UseBasicParsing -Method Post " +
+          "try { $b = ''; if ([Console]::IsInputRedirected) { " +
+          "$b = (New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding $false))).ReadToEnd() }; " +
+          "if (-not $b.Trim()) { $e = Get-Variable -Name input -ValueOnly -ErrorAction SilentlyContinue; " +
+          "if ($e) { $b = @(foreach ($l in $e) { $l }) -join ' ' } }; " +
+          "$r = Invoke-WebRequest -UseBasicParsing -Method Post " +
           $"-Uri 'http://127.0.0.1:{port}{Endpoint}' -ContentType 'application/json; charset=utf-8' " +
           "-Body ([Text.Encoding]::UTF8.GetBytes($b)) -TimeoutSec 3600; [Console]::Out.Write($r.Content) } catch { }; exit 0"
         // `|| true`: with the agent unreachable (WSL without mirrored networking) curl exits 7; Cursor would let the
@@ -168,7 +176,8 @@ public static class CursorHook
         // one Install or Remove at a time: the record is read, the files written and the record updated as one step
         lock (ConfigureGate)
         {
-            var remembered = Remembered(installsPath);
+            // an unreadable record stops here, before any hook is written or the record replaced
+            if (ReadRecord(installsPath, out var remembered) is { } recordError) return recordError;
             var (inWsl, stopped) = install && !wsl ? (new List<string>(), new List<string>()) : WslTargets(wsl, running, remembered);
             string? error = null;
             if (install && inWsl.Count > 0)
@@ -249,16 +258,32 @@ public static class CursorHook
     // \\wsl.localhost paths: Windows compares them without case
     private static readonly StringComparer PathComparer = StringComparer.OrdinalIgnoreCase;
 
-    /// <summary>The distros' hooks.json files the hook was installed to, as remembered; empty when there is no record.</summary>
-    internal static IReadOnlyList<string> Remembered(string installsPath)
+    /// <summary>The distros' hooks.json files the hook was installed to, as remembered; empty when there is no record
+    /// or it cannot be read (for the settings page, which only shows it; Install and Remove use <see cref="ReadRecord"/>).</summary>
+    internal static IReadOnlyList<string> Remembered(string installsPath) => ReadRecord(installsPath, out var list) is null ? list : [];
+
+    /// <summary>
+    /// Reads the record: null with <paramref name="list"/> filled (empty when there is no record file), or an error
+    /// when the file is there but cannot be read or is not a list of paths. Install and Remove stop on that error
+    /// instead of replacing the record, which would forget the distros it names.
+    /// </summary>
+    internal static string? ReadRecord(string installsPath, out IReadOnlyList<string> list)
     {
+        list = [];
+        string text;
+        try { text = File.ReadAllText(installsPath); }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException) { return null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return $"{installsPath}: {ex.Message}"; }
         try
         {
-            return File.Exists(installsPath) && JsonSerializer.Deserialize<List<string>>(File.ReadAllText(installsPath)) is { } list
-                ? list.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(PathComparer).ToList()
-                : [];
+            var read = JsonSerializer.Deserialize<List<string?>>(text) ?? throw new JsonException("null instead of a list");
+            list = read.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!).Distinct(PathComparer).ToList();
+            return null;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return []; }
+        catch (JsonException ex)
+        {
+            return $"{installsPath}: not a list of the WSL hooks.json files PhoneBox installed to ({ex.Message}); fix or delete it";
+        }
     }
 
     /// <summary>Every target is tried, also after one failed: one unreadable hooks.json must not leave the others

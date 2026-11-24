@@ -308,17 +308,42 @@ public sealed class CursorHookTests : IDisposable
     public void ADistroIsRecordedBeforeItsHookIsWritten()
     {
         var (wsl, native, inDistro, state) = WslSetup();
-        Directory.CreateDirectory(state); // the record cannot be written
+        var blocker = Path.Combine(_dir, "blocker");
+        File.WriteAllText(blocker, ""); // a file where the record's folder should be: no record yet, and none can be written
+        var unwritable = Path.Combine(blocker, "cursor-hook-wsl.json");
 
-        Assert.Contains(state, CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+        Assert.Contains(unwritable, CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, unwritable));
         Assert.True(CursorHook.Installed(native));
         Assert.False(File.Exists(inDistro)); // no hook that Remove would not know about
 
         // a distro whose write fails stays recorded, and Remove tries it again
-        Directory.Delete(state);
         File.WriteAllText(inDistro, "[1]");
         Assert.NotNull(CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
         Assert.Equal([inDistro], CursorHook.Remembered(state));
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("{\"paths\":[]}")]
+    [InlineData("null")]
+    public void AnUnreadableRecordStopsInstallAndRemoveBeforeAnyHookIsWritten(string record)
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+        File.WriteAllText(state, record);
+
+        Assert.Contains("fix or delete it", CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+        Assert.False(File.Exists(native));
+        Assert.False(File.Exists(inDistro));
+        Assert.Equal(record, File.ReadAllText(state)); // not replaced: the distros it names are not forgotten
+
+        Assert.Null(CursorHook.Configure(true, 18765, 30, native, false));
+        Assert.Contains("fix or delete it", CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.True(CursorHook.Installed(native)); // nothing removed either
+        Assert.Equal(record, File.ReadAllText(state));
+
+        File.Delete(state); // no record at all is an empty one
+        Assert.Null(CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.False(CursorHook.HasAny(native));
     }
 
     [Fact]
@@ -367,6 +392,81 @@ public sealed class CursorHookTests : IDisposable
         Assert.Contains("$ProgressPreference = 'SilentlyContinue'", windows);
         Assert.True(CursorHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = command }));
         Assert.True(CursorHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = CursorHook.HookCommand(8765, windows: true) }));
+    }
+
+    // runs the Windows hook command in a PowerShell; null when that PowerShell is not installed
+    private static async Task<(int ExitCode, string Output)?> RunWindowsHook(string shell, string command, string stdin)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo(shell)
+        {
+            RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false,
+            StandardInputEncoding = new System.Text.UTF8Encoding(false), StandardOutputEncoding = System.Text.Encoding.UTF8,
+        };
+        foreach (var a in new[] { "-NoProfile", "-NonInteractive", "-Command", command }) psi.ArgumentList.Add(a);
+        System.Diagnostics.Process? ps;
+        try { ps = System.Diagnostics.Process.Start(psi); }
+        catch (System.ComponentModel.Win32Exception) { return null; }
+        using (ps)
+        {
+            await ps!.StandardInput.WriteAsync(stdin);
+            ps.StandardInput.Close();
+            var output = ps.StandardOutput.ReadToEndAsync();
+            _ = ps.StandardError.ReadToEndAsync();
+            await ps.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
+            return (ps.ExitCode, await output);
+        }
+    }
+
+    [Theory]
+    [InlineData("powershell.exe", false)]
+    [InlineData("powershell.exe", true)]
+    [InlineData("pwsh.exe", false)]
+    [InlineData("pwsh.exe", true)]
+    public async Task TheWindowsHookReadsTheRequestFromStdinOrThePipeline(string shell, bool pipeline)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        // Cursor's reference: "runs hook commands through PowerShell and pipes the JSON into the command, so a
+        // PowerShell script reads it from $input": stdin and pipeline input must both reach the agent, as UTF-8
+        const string request = """{"hook_event_name":"beforeShellExecution","command":"echo üçş 日本"}""";
+        var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        probe.Start();
+        var port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
+        probe.Stop();
+        using var listener = new System.Net.HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        string? received = null;
+        var serve = Task.Run(async () =>
+        {
+            var ctx = await listener.GetContextAsync();
+            using (var reader = new StreamReader(ctx.Request.InputStream, System.Text.Encoding.UTF8)) received = await reader.ReadToEndAsync();
+            var answer = System.Text.Encoding.UTF8.GetBytes("""{"permission":"allow"}""");
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.OutputStream.WriteAsync(answer);
+            ctx.Response.Close();
+        });
+
+        var command = CursorHook.HookCommand(port, windows: true);
+        var run = await RunWindowsHook(shell, pipeline ? "'" + request.Replace("'", "''") + "' | & { " + command + " }" : command,
+            pipeline ? "" : request);
+        if (run is not { } r) return; // that PowerShell is not installed here
+        await serve.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, r.ExitCode);
+        Assert.Equal("""{"permission":"allow"}""", r.Output);
+        Assert.Equal(request, received!.Trim());
+    }
+
+    [Theory]
+    [InlineData("powershell.exe")]
+    [InlineData("pwsh.exe")]
+    public async Task TheWindowsHookPrintsNothingAndExitsZeroWithoutTheAgent(string shell)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var run = await RunWindowsHook(shell, CursorHook.HookCommand(1, windows: true),
+            """{"hook_event_name":"beforeShellExecution","command":"ls"}""");
+        if (run is not { } r) return;
+        Assert.Equal(0, r.ExitCode);
+        Assert.Equal("", r.Output);
     }
 
     [Fact]
