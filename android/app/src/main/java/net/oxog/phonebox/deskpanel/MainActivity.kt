@@ -7,7 +7,6 @@ import android.content.ComponentName
 import android.content.Context
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
-import android.os.PowerManager
 import android.os.Looper
 import android.os.Handler
 import android.content.BroadcastReceiver
@@ -410,7 +409,7 @@ class MainActivity : Activity(), SensorEventListener {
     /** Every keyguard dismissal in this file goes through here. The mark is not used up on purpose: a dismissal
      *  while the display is still off does not take, so the next screen-on or resume inside the window may try
      *  again. A PIN or pattern lock is never dismissed by this - Android still asks. */
-        private fun standbyDismissKeyguard() {
+    private fun standbyDismissKeyguard() {
         if (!standbyMayDismissKeyguard()) return
         // requestDismissKeyguard needs API 26; below that the agent's own wm dismiss-keyguard is all there is
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -423,15 +422,15 @@ class MainActivity : Activity(), SensorEventListener {
 
 
     /** Put the panel back in front and take whatever swipe keyguard sits on top of it; harmless when it is
- *  already showing. Lighting the display belongs to the agent (KEYCODE_WAKEUP when the reverse rule is
- *  re-established after the computer returns) and to the plug-in itself; this app holds no WAKE_LOCK. */
-private fun standbyWakePanel() {
-    startActivity(Intent(this, MainActivity::class.java)
-        .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
-    // A swipe-to-unlock keyguard would otherwise keep the woken panel behind a lock screen nobody is
-    // standing there to swipe - but only after a wake the agent started.
-    standbyDismissKeyguard()
-}
+    *  already showing. Lighting the display belongs to the agent (KEYCODE_WAKEUP when the reverse rule is
+    *  re-established after the computer returns) and to the plug-in itself; this app holds no WAKE_LOCK. */
+    private fun standbyWakePanel() {
+        startActivity(Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        // A swipe-to-unlock keyguard would otherwise keep the woken panel behind a lock screen nobody is
+        // standing there to swipe - but only after a wake the agent started.
+        standbyDismissKeyguard()
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
