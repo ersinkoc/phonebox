@@ -1520,7 +1520,8 @@ export function buildLayout() {
     for (const w of p.widgets) {
       const def = W[w.type];
       if (!def) continue;
-      const at = pl ? pl.pos.get(w) : placeWidget(w, viewport.cols, viewport.rows);
+      // not upright: the grid the CSS draws (--pb-rows), which on a nearly square screen can differ from the viewport's
+      const at = pl ? pl.pos.get(w) : placeWidget(w, designed.cols, designed.rows);
       if (!at) continue; // a widget on a tablet-only row stays off a phone
       const box = h('div', `w w-${w.type}${def.bare ? ' bare' : ' card'}`);
       const appearance = PhoneBoxAppearance.resolve(cfg.display?.appearance, p.appearance, w.appearance);

@@ -321,10 +321,13 @@ public class ConfigTests
     {
         Assert.False(Load("{}").Display.TabletRows);
         Assert.True(Load("""{ "display": { "tabletRows": true } }""").Display.TabletRows);
+        // the default files are embedded in the agent, not copied next to the tests
         foreach (var name in new[] { "config.default.json", "config.default.linux.json", "config.default.macos.json" })
         {
-            var path = Path.Combine(AppContext.BaseDirectory, name);
-            if (File.Exists(path)) Assert.False(Load(File.ReadAllText(path)).Display.TabletRows);
+            using var stream = typeof(AgentConfig).Assembly.GetManifestResourceStream(name);
+            Assert.NotNull(stream);
+            using var doc = System.Text.Json.JsonDocument.Parse(stream, new() { CommentHandling = System.Text.Json.JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            Assert.Equal(System.Text.Json.JsonValueKind.False, doc.RootElement.GetProperty("display").GetProperty("tabletRows").ValueKind);
         }
     }
 
