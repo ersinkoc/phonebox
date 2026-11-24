@@ -964,7 +964,7 @@ app.MapPost(CursorHook.Endpoint, async (HttpRequest req, ConfigStore cfg, Approv
 });
 // installing in the distros (projects opened over Remote - WSL run their hooks there) follows "Also watch Cursor in
 // WSL"; status and removal look at every running distro, so a hook left there after turning it off is still found
-app.MapGet("/api/cursor/hook", () => Results.Json(CursorHook.Status()));
+app.MapGet("/api/cursor/hook", (ConfigStore cfg) => Results.Json(CursorHook.Status(cfg.Get().Cursor.WatchWsl)));
 app.MapPost("/api/cursor/hook", (ConfigStore cfg) => CursorHook.ConfigureAll(true, Port, cfg.Get().Claude.TimeoutSec, cfg.Get().Cursor.WatchWsl) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
 app.MapDelete("/api/cursor/hook", (ConfigStore cfg) => CursorHook.ConfigureAll(false, Port, cfg.Get().Claude.TimeoutSec, cfg.Get().Cursor.WatchWsl) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
 

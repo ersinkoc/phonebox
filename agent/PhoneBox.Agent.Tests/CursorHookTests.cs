@@ -121,17 +121,172 @@ public sealed class CursorHookTests : IDisposable
         Assert.False(CursorHook.Installed(good)); // and removed again
     }
 
-    [Fact]
-    public void AUsersOwnHookPostingToTheSameEndpointIsLeftAlone()
+    // the WSL command #470 wrote before its review added `|| true`: a hook from an earlier version
+    private const string OldWslCommand =
+        "curl -s --noproxy 127.0.0.1 --max-time 3600 -X POST http://127.0.0.1:8765/api/hooks/cursor/permission -H \"Content-Type: application/json\" --data-binary \"@-\"";
+
+    [Theory]
+    [InlineData(OldWslCommand)]
+    [InlineData("curl.exe -s -X POST http://127.0.0.1:18765/api/hooks/cursor/permission --data-binary @-")]
+    [InlineData("pwsh -c \"irm -Method Post http://127.0.0.1:1/api/hooks/cursor/permission -Body $input\"")]
+    public void AHookIsOursByItsEndpointWhateverTheCommandAround(string command)
     {
-        var path = Path.Combine(_dir, "own.json");
-        File.WriteAllText(path, """
-            {"version":1,"hooks":{"beforeShellExecution":[{"command":"./hooks/log.sh && curl -s http://127.0.0.1:18765/api/hooks/cursor/permission -d @-"}]}}
-            """);
+        Assert.True(CursorHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = command }));
+
+        // reinstalling replaces it instead of adding a second hook (two cards per command), and Remove takes it off
+        var path = Path.Combine(_dir, $"old-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            version = 1,
+            hooks = new { beforeShellExecution = new[] { new { command } }, beforeMCPExecution = new[] { new { command } } },
+        }));
+        Assert.True(CursorHook.Installed(path));
+        Assert.Null(CursorHook.Configure(true, 18765, 30, path, false));
+        using (var doc = JsonDocument.Parse(File.ReadAllText(path)))
+            foreach (var ev in CursorHook.Events)
+            {
+                var list = doc.RootElement.GetProperty("hooks").GetProperty(ev);
+                Assert.Equal(1, list.GetArrayLength());
+                Assert.Equal(CursorHook.HookCommand(18765, windows: false), list[0].GetProperty("command").GetString());
+            }
+        Assert.Null(CursorHook.Configure(false, 18765, 30, path, false));
+        Assert.False(CursorHook.HasAny(path));
+    }
+
+    [Theory]
+    [InlineData("curl -s http://127.0.0.1:18765/api/hooks/cursor/permission-audit -d @-")] // the path must end there
+    [InlineData("curl -s http://127.0.0.1:18765/api/hooks/cursor/permissions -d @-")]
+    [InlineData("curl -s http://192.168.1.20:18765/api/hooks/cursor/permission -d @-")] // not this computer's agent
+    [InlineData("curl -s http://127.0.0.1:18765/api/hooks/claude/permission -d @-")]
+    [InlineData("./hooks/audit.sh /api/hooks/cursor/permission")]
+    public void SomeoneElsesSimilarHookIsLeftAlone(string command)
+    {
+        Assert.False(CursorHook.IsOurs(new System.Text.Json.Nodes.JsonObject { ["command"] = command }));
+
+        var path = Path.Combine(_dir, $"other-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { version = 1, hooks = new { beforeShellExecution = new[] { new { command } } } }));
         Assert.False(CursorHook.HasAny(path)); // not reported as PhoneBox's
         Assert.Null(CursorHook.Configure(true, 18765, 30, path, false));
         Assert.Null(CursorHook.Configure(false, 18765, 30, path, false));
-        Assert.Contains("./hooks/log.sh", File.ReadAllText(path)); // survives install and removal
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        Assert.Equal(command, doc.RootElement.GetProperty("hooks").GetProperty("beforeShellExecution")[0].GetProperty("command").GetString());
+    }
+
+    // ---------------------------------------------------------------- WSL targets: looked at only when needed
+
+    private sealed class FakeWsl
+    {
+        public int Calls;
+        public bool Running = true;
+        public List<WslHomes.Entry> Distros { get; } = [];
+        public IReadOnlyList<WslHomes.Entry> List() { Calls++; return Running ? Distros : []; }
+    }
+
+    // a distro share under the test folder, with a ~/.cursor folder like one where Cursor's server has been used
+    private (FakeWsl Wsl, string Native, string InDistro, string State) WslSetup()
+    {
+        var root = Path.Combine(_dir, "share", "Ubuntu");
+        var home = Path.Combine(root, "home", "dev");
+        Directory.CreateDirectory(Path.Combine(home, ".cursor"));
+        var wsl = new FakeWsl();
+        wsl.Distros.Add(new WslHomes.Entry("Ubuntu", root, home));
+        return (wsl, Path.Combine(_dir, "native", "hooks.json"), Path.Combine(home, ".cursor", "hooks.json"), Path.Combine(_dir, "cursor-hook-wsl.json"));
+    }
+
+    private static List<string> StatusPaths(object status) =>
+        JsonDocument.Parse(JsonSerializer.Serialize(status)).RootElement.GetProperty("paths").EnumerateArray()
+            .Select(p => p.GetProperty("path").GetString()!).ToList();
+
+    [Fact]
+    public void WithWslWatchingOffAndNoHookThereWslIsNeverAsked()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+
+        Assert.Equal([native], StatusPaths(CursorHook.Status(false, native, wsl.List, state)));
+        Assert.Null(CursorHook.ConfigureAll(true, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.Null(CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.Equal(0, wsl.Calls); // no wsl.exe, no \\wsl.localhost read
+        Assert.False(File.Exists(inDistro));
+        Assert.False(File.Exists(state));
+    }
+
+    [Fact]
+    public void InstallingWithWslWatchingOffWritesOnlyTheNativeHook()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+
+        Assert.Null(CursorHook.ConfigureAll(true, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.True(CursorHook.Installed(native));
+        Assert.False(File.Exists(inDistro));
+
+        // with it on, both
+        Assert.Null(CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+        Assert.True(CursorHook.Installed(inDistro));
+        Assert.Equal([inDistro], CursorHook.Remembered(state));
+    }
+
+    [Fact]
+    public void AHookInstalledInWslIsShownAndRemovedAfterWslWatchingIsTurnedOff()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+        Assert.Null(CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+        Assert.True(CursorHook.Installed(native));
+        Assert.True(CursorHook.Installed(inDistro));
+
+        // WSL watching turned off: the page still shows the distro's hook, and Remove takes it off
+        Assert.Equal([native, inDistro], StatusPaths(CursorHook.Status(false, native, wsl.List, state)));
+        Assert.Null(CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.False(CursorHook.HasAny(native));
+        Assert.False(CursorHook.HasAny(inDistro));
+        Assert.False(File.Exists(state)); // nothing left to remember
+
+        // and WSL is no longer asked
+        var calls = wsl.Calls;
+        Assert.Equal([native], StatusPaths(CursorHook.Status(false, native, wsl.List, state)));
+        Assert.Equal(calls, wsl.Calls);
+    }
+
+    [Fact]
+    public void WithWslWatchingOnRemoveAlsoFindsAHookItDidNotRecord()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+        Assert.Null(CursorHook.Configure(true, 18765, 30, inDistro, false)); // e.g. copied there by hand
+
+        Assert.Equal([native, inDistro], StatusPaths(CursorHook.Status(true, native, wsl.List, state)));
+        Assert.Null(CursorHook.ConfigureAll(false, 18765, 30, true, (native, false), wsl.List, state));
+        Assert.False(CursorHook.HasAny(inDistro));
+    }
+
+    [Fact]
+    public void AStoppedDistroIsNotStartedToRemoveTheHookAndStaysRemembered()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+        Assert.Null(CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+
+        wsl.Running = false;
+        Assert.Equal([native], StatusPaths(CursorHook.Status(false, native, wsl.List, state)));
+        Assert.Contains("not running", CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.False(CursorHook.HasAny(native)); // the rest is still removed
+        Assert.True(CursorHook.Installed(inDistro));
+        Assert.Equal([inDistro], CursorHook.Remembered(state));
+
+        // once the distro runs again, the page shows the hook and Remove takes it off
+        wsl.Running = true;
+        Assert.Equal([native, inDistro], StatusPaths(CursorHook.Status(false, native, wsl.List, state)));
+        Assert.Null(CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.False(CursorHook.HasAny(inDistro));
+        Assert.Empty(CursorHook.Remembered(state));
+    }
+
+    [Fact]
+    public void AFailedRemovalInADistroKeepsItRemembered()
+    {
+        var (wsl, native, inDistro, state) = WslSetup();
+        Assert.Null(CursorHook.ConfigureAll(true, 18765, 30, true, (native, false), wsl.List, state));
+        File.WriteAllText(inDistro, "[1]"); // cannot be rewritten: Configure fails on it
+        Assert.Contains(inDistro, CursorHook.ConfigureAll(false, 18765, 30, false, (native, false), wsl.List, state));
+        Assert.False(CursorHook.HasAny(native)); // the native one is still removed
+        Assert.Equal([inDistro], CursorHook.Remembered(state)); // and the distro's is tried again next time
     }
 
     [Fact]

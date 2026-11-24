@@ -12,7 +12,9 @@ namespace PhoneBox.Agent;
 ///
 /// A project opened over Remote - WSL runs its hooks inside the distro, from the distro's ~/.cursor/hooks.json, so the
 /// hook is installed there too (with WSL watching on for Cursor): its curl reaches this agent on 127.0.0.1 when WSL
-/// shares the loopback with Windows (networkingMode=mirrored); otherwise curl fails and Cursor goes on as usual.
+/// shares the loopback with Windows (networkingMode=mirrored); otherwise curl fails and Cursor goes on as usual. The
+/// files it went to are remembered (<see cref="WslInstallsPath"/>), so the distros are looked at only with WSL watching
+/// on or after an install there, and Remove still finds those hooks once WSL watching is turned off.
 /// </summary>
 public static class CursorHook
 {
@@ -20,6 +22,8 @@ public static class CursorHook
     private static readonly string Home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     public static readonly string HooksPath = Path.Combine(Home, ".cursor", "hooks.json");
     internal static readonly string[] Events = ["beforeShellExecution", "beforeMCPExecution"];
+    /// <summary>The hooks.json files inside WSL distros the hook was installed to (a JSON list of paths).</summary>
+    internal static readonly string WslInstallsPath = Path.Combine(AppPaths.ConfigDir, "cursor-hook-wsl.json");
 
     /// <summary>Handles one hook call; returns the JSON for the hook to print, or null for "no decision".</summary>
     public static async Task<object?> HandleAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
@@ -115,46 +119,118 @@ public static class CursorHook
         // command run anyway, but log the hook as failed every time
         : $"curl -s --noproxy 127.0.0.1 --max-time 3600 -X POST http://127.0.0.1:{port}{Endpoint} -H \"Content-Type: application/json\" --data-binary \"@-\" || true";
 
-    /// <summary>Where the hook goes: the Windows (or native) profile, and with <paramref name="wsl"/> the running
-    /// distros' homes in which Cursor's server has been used (a ~/.cursor folder).</summary>
-    public static IReadOnlyList<(string Path, bool Windows)> Targets(bool wsl)
-    {
-        var targets = new List<(string, bool)> { (HooksPath, OperatingSystem.IsWindows()) };
-        if (wsl)
-            foreach (var home in WslHomes.Running())
-            {
-                var cursor = Path.Combine(home.Home, ".cursor");
-                try { if (Directory.Exists(cursor)) targets.Add((Path.Combine(cursor, "hooks.json"), false)); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-            }
-        return targets;
-    }
+    /// <summary>
+    /// Where the hook is, for the settings page: the Windows (or native) profile, and the running distros' files that
+    /// have it. WSL is looked at only with <paramref name="wsl"/> (Also watch Cursor in WSL) on, or when the hook was
+    /// installed in a distro before; otherwise loading the page runs no wsl.exe and reads no \\wsl.localhost share.
+    /// </summary>
+    public static object Status(bool wsl) => Status(wsl, HooksPath, () => WslHomes.Running(), WslInstallsPath);
 
-    /// <summary>Where the hook is: the WSL distros are always looked at, so a hook installed there before WSL watching
-    /// was turned off still shows (and is removed). A distro without the hook is listed only if it has one.</summary>
-    public static object Status()
+    internal static object Status(bool wsl, string native, Func<IReadOnlyList<WslHomes.Entry>> running, string installsPath)
     {
         // "installed" = any PhoneBox entry is there, also a partial one (one event kept by hand): it still asks the
-        // phone, so the page must offer to remove it
-        var paths = Targets(wsl: true).Where(t => t.Path == HooksPath || HasAny(t.Path))
-            .Select(t => new { path = t.Path, installed = HasAny(t.Path), complete = Installed(t.Path) }).ToList();
+        // phone, so the page must offer to remove it. A distro's file is listed only if it has one.
+        var paths = new[] { native }.Concat(WslTargets(wsl, running, Remembered(installsPath)).Running)
+            .Select(p => new { path = p, installed = HasAny(p), complete = Installed(p) })
+            .Where(p => p.path == native || p.installed).ToList();
         return new { installed = paths.Any(p => p.installed), paths };
     }
 
-    /// <summary>Installs the hook where <see cref="Targets"/> names (the distros only with WSL watching on) or removes
-    /// it from every place it may be; the first error, or null.</summary>
+    /// <summary>
+    /// Installs the hook in the native profile and, with <paramref name="wsl"/> on, in the running distros where Cursor's
+    /// server has been used. Removing takes it from the native profile and from every distro it was installed in (also
+    /// with <paramref name="wsl"/> off now), and with <paramref name="wsl"/> on from the other running distros too.
+    /// Returns the first error, or null.
+    /// </summary>
     public static string? ConfigureAll(bool install, int port, int timeoutSec, bool wsl) =>
-        ConfigureAll(install, port, timeoutSec, Targets(wsl: !install || wsl));
+        ConfigureAll(install, port, timeoutSec, wsl, (HooksPath, OperatingSystem.IsWindows()), () => WslHomes.Running(), WslInstallsPath);
+
+    internal static string? ConfigureAll(bool install, int port, int timeoutSec, bool wsl, (string Path, bool Windows) native,
+        Func<IReadOnlyList<WslHomes.Entry>> running, string installsPath)
+    {
+        var remembered = Remembered(installsPath);
+        var (inWsl, stopped) = install && !wsl ? (new List<string>(), new List<string>()) : WslTargets(wsl, running, remembered);
+        var done = new List<string>();
+        var error = ConfigureAll(install, port, timeoutSec, [native, .. inWsl.Select(p => (p, false))], done.Add);
+        // a stopped distro is not started to remove the hook: it stays remembered, and Remove takes it off once the
+        // distro runs (the page lists it again then)
+        if (!install && stopped.Count > 0) error ??= $"{stopped[0]}: not removed, its WSL distro is not running";
+        // only a distro file that was written changes the record: one that failed (a share not answering) keeps its place
+        var written = inWsl.Where(p => done.Contains(p, PathComparer)).ToList();
+        var next = (install ? remembered.Concat(written) : remembered.Where(p => !written.Contains(p, PathComparer)))
+            .Distinct(PathComparer).ToList();
+        if (!next.SequenceEqual(remembered, PathComparer))
+        {
+            try
+            {
+                if (next.Count == 0) File.Delete(installsPath);
+                else
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(installsPath)!);
+                    AppPaths.WriteAllTextPrivate(installsPath, JsonSerializer.Serialize(next));
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { error ??= $"{installsPath}: {ex.Message}"; }
+        }
+        return error;
+    }
+
+    /// <summary>
+    /// The distros' hooks.json files to look at, in running distros only (opening a stopped one's share would start it):
+    /// with <paramref name="wsl"/> each one whose home has a ~/.cursor folder (Cursor's server has been used there), and
+    /// always the ones the hook was installed to. Without either WSL is not asked at all. Stopped: the remembered files
+    /// whose distro is not running.
+    /// </summary>
+    internal static (List<string> Running, List<string> Stopped) WslTargets(bool wsl, Func<IReadOnlyList<WslHomes.Entry>> running,
+        IReadOnlyList<string> remembered)
+    {
+        if (!wsl && remembered.Count == 0) return ([], []);
+        var targets = new List<string>();
+        var stopped = remembered.ToList();
+        foreach (var home in running())
+        {
+            if (wsl)
+            {
+                var cursor = Path.Combine(home.Home, ".cursor");
+                try { if (Directory.Exists(cursor)) targets.Add(Path.Combine(cursor, "hooks.json")); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+            var root = home.Root.TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
+            foreach (var p in remembered.Where(p => p.StartsWith(root, StringComparison.OrdinalIgnoreCase)))
+            {
+                targets.Add(p);
+                stopped.Remove(p);
+            }
+        }
+        return (targets.Distinct(PathComparer).ToList(), stopped);
+    }
+
+    // \\wsl.localhost paths: Windows compares them without case
+    private static readonly StringComparer PathComparer = StringComparer.OrdinalIgnoreCase;
+
+    /// <summary>The distros' hooks.json files the hook was installed to, as remembered; empty when there is no record.</summary>
+    internal static IReadOnlyList<string> Remembered(string installsPath)
+    {
+        try
+        {
+            return File.Exists(installsPath) && JsonSerializer.Deserialize<List<string>>(File.ReadAllText(installsPath)) is { } list
+                ? list.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(PathComparer).ToList()
+                : [];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return []; }
+    }
 
     /// <summary>Every target is tried, also after one failed: one unreadable hooks.json must not leave the others
     /// installed when removing, or not installed when installing.</summary>
-    internal static string? ConfigureAll(bool install, int port, int timeoutSec, IReadOnlyList<(string Path, bool Windows)> targets)
+    internal static string? ConfigureAll(bool install, int port, int timeoutSec, IReadOnlyList<(string Path, bool Windows)> targets,
+        Action<string>? done = null)
     {
         string? error = null;
         foreach (var (path, windows) in targets)
         {
             var e = Configure(install, port, timeoutSec, path, windows);
             if (e is not null) error ??= $"{path}: {e}";
+            else done?.Invoke(path);
         }
         return error;
     }
@@ -180,16 +256,11 @@ public static class CursorHook
     }
 
     /// <summary>
-    /// A hook PhoneBox wrote: a command posting to its endpoint (any port) in one of the two forms <see cref="HookCommand"/>
-    /// writes. A hook of the user's own that posts to the same endpoint is not ours and is never removed.
+    /// A PhoneBox hook: a command posting to 127.0.0.1:&lt;any port&gt;<see cref="Endpoint"/>, as for Claude Code's
+    /// (<see cref="ClaudeHook.IsOurs"/>). The endpoint, not the command text, identifies it, so a hook written by an
+    /// earlier release with another command is still found (no second hook on reinstall, and Remove takes it off).
     /// </summary>
-    internal static bool IsOurs(JsonNode? hook)
-    {
-        if (!ClaudeHook.IsOurs(hook, Endpoint) || hook!["command"]?.GetValue<string>() is not { } cmd) return false;
-        var port = System.Text.RegularExpressions.Regex.Match(cmd, @"127\.0\.0\.1:(\d{1,5})" + System.Text.RegularExpressions.Regex.Escape(Endpoint));
-        return port.Success && int.TryParse(port.Groups[1].Value, out var p)
-            && (cmd == HookCommand(p, windows: false) || cmd == HookCommand(p, windows: true));
-    }
+    internal static bool IsOurs(JsonNode? hook) => ClaudeHook.IsOurs(hook, Endpoint);
 
     /// <summary>Adds (or, with install = false, removes) the PhoneBox hooks, keeping everything else and a backup.</summary>
     internal static string? Configure(bool install, int port, int timeoutSec, string path, bool windows)
