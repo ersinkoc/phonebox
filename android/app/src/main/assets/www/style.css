@@ -697,21 +697,34 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .w-button .key .k-label { font-size: clamp(10px, 15cqh, 18px); }
 /* Per-shortcut icon size (settings > Shortcuts > Icon size): medium, large, and max (the icon fills the key). The key
    is its own size container, so every size is measured against the key and not the widget around it: the sizes
-   always grow in that order and never overflow a short key. */
+   always grow in that order and never overflow a short key. Only an emoji and an uploaded picture (.k-icon-up) are
+   sized; a program's own icon keeps the size of an unsized key. Each size has a px value first for WebViews older than
+   Chromium 105 (no container query units), where the rule after it is dropped. */
 .key.k-isz-m, .key.k-isz-l, .key.k-isz-max { container-type: size; }
+/* A sized key is a container, so the cq units in the rules every key shares would measure the key instead of the widget:
+   in a Shortcuts grid the name and a program's icon would shrink next to unsized neighbours. The grid computes the
+   widget-relative sizes once (a registered length is resolved where it is set) and a sized key reads them back. */
+@property --k-lbl { syntax: '<length>'; inherits: true; initial-value: 14px; }
+@property --k-img { syntax: '<length>'; inherits: true; initial-value: 30px; }
+.deck-grid { --k-lbl: clamp(10px, 3.6cqmin, 14px); --k-img: clamp(16px, 7cqmin, 30px); }
+.deck-grid .key.k-isz-m .k-label, .deck-grid .key.k-isz-l .k-label, .deck-grid .key.k-isz-max .k-label { font-size: var(--k-lbl); }
+.deck-grid .key.k-isz-m .k-icon.k-icon-img:not(.k-icon-up) img, .deck-grid .key.k-isz-l .k-icon.k-icon-img:not(.k-icon-up) img,
+.deck-grid .key.k-isz-max .k-icon.k-icon-img:not(.k-icon-up) img { width: var(--k-img); height: var(--k-img); }
 /* the inline emoji icon carries a trailing margin (.ico.m) meant for text; on a sized key it would push it off-centre */
 .key.k-isz-m .k-icon .ico, .key.k-isz-l .k-icon .ico, .key.k-isz-max .k-icon .ico { margin: 0; }
-.key.k-isz-m .k-icon { font-size: min(46cqh, 50cqw); }
-.key.k-isz-m .k-icon.k-icon-img img { width: min(46cqh, 50cqw); height: min(46cqh, 50cqw); }
-.key.k-isz-l .k-icon { font-size: min(56cqh, 62cqw); }
-.key.k-isz-l .k-icon.k-icon-img img { width: min(56cqh, 62cqw); height: min(56cqh, 62cqw); }
+.key.k-isz-m .k-icon { font-size: 36px; font-size: min(46cqh, 50cqw); }
+.key.k-isz-m .k-icon.k-icon-up img { width: 36px; height: 36px; width: min(46cqh, 50cqw); height: min(46cqh, 50cqw); }
+.key.k-isz-l .k-icon { font-size: 44px; font-size: min(56cqh, 62cqw); }
+.key.k-isz-l .k-icon.k-icon-up img { width: 44px; height: 44px; width: min(56cqh, 62cqw); height: min(56cqh, 62cqw); }
 /* max: the icon takes whatever the label leaves (about 24px of height; the container's size already excludes the padding),
    and is never smaller than "large", even on a very short key */
 .key.k-isz-max { padding: 0; } /* a padding here would shrink the size the cq units measure, and "large" has none */
-.key.k-isz-max .k-icon { flex: 1 1 0; min-height: min(56cqh, 62cqw); padding: 0; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; line-height: 1; font-size: max(min(56cqh, 62cqw), min(calc(100cqh - 24px), 100cqw)); }
-.key.k-isz-max .k-icon.k-icon-img img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; }
-.key.k-isz-max .k-label { flex: 0 0 auto; font-size: 12px; }
-.key.k-isz-max.k-cover { padding: 0 0 7cqh; }
+.key.k-isz-max .k-icon { flex: 1 1 0; min-height: 44px; min-height: min(56cqh, 62cqw); padding: 0; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; line-height: 1; font-size: 56px; font-size: max(min(56cqh, 62cqw), min(calc(100cqh - 24px), 100cqw)); }
+.key.k-isz-max .k-icon.k-icon-up img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; }
+/* with the picture as the key's background the icon is hidden, so the label keeps the size it has on any Big button */
+.key.k-isz-max:not(.k-cover) .k-label { flex: 0 0 auto; font-size: 12px; }
+.deck-grid .key.k-isz-max:not(.k-cover) .k-label { font-size: var(--k-lbl); }
+.key.k-isz-max.k-cover { padding: 0 0 4px; padding: 0 0 7cqh; }
 /* Big button with "fill with the picture": the picture covers the key, the label sits on a shade at the bottom. */
 /* padding in % follows the width, so a wide, short key would lose its label: the inset follows the height (cqh) */
 .key.k-cover { justify-content: flex-end; padding-bottom: 4px; padding-bottom: 7cqh; }

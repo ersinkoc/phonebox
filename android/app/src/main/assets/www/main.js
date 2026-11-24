@@ -781,9 +781,11 @@ export async function runShortcut(btn, id, hold = false) {
   setTimeout(() => btn.classList.remove('ok', 'err'), 900);
 }
 
+const ICON_SIZES = new Set(['m', 'l', 'max']); // the agent only sends these; anything else is ignored, never a bad class token
+const ICON_SIZE_CLASSES = [...ICON_SIZES].map((z) => 'k-isz-' + z);
+
 /** A shortcut key. The Big button's options: with `cover`, a picture the user uploaded becomes the key's background
  *  instead of the centred icon; without `label`, the key shows no name (screen readers still get it). */
-const ICON_SIZES = new Set(['m', 'l', 'max']); // the agent only sends these; anything else is ignored, never a bad class token
 export function keyButton(s, { cover = false, label = true } = {}) {
   const icon = h('span', 'k-icon', s.icon ? rich(s.icon) : '•');
   const b = h('button', 'key' + (s.toggle ? ' toggle' : '') + (s.cycle ? ' cycle' : '') + (label ? '' : ' k-nolabel'), icon, h('span', 'k-label', s.label));
@@ -799,8 +801,9 @@ export function keyButton(s, { cover = false, label = true } = {}) {
   else b.addEventListener('click', () => runShortcut(b, s.id));
   // Only an upload fills the key: a program's own icon is 32 px on Windows, 64 px on macOS, and on Linux whatever logo
   // the icon theme has, none of them a picture the user chose for the button. The agent says which is which, since the
-  // picture's size cannot tell (an SVG reports a default size, often 24 px from an icon set).
-  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true);
+  // picture's size cannot tell (an SVG reports a default size, often 24 px from an icon set). The same goes for the
+  // icon size: only an upload is sized by it, a program's own icon keeps its size.
+  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true, s.iconUpload === true);
   return b;
 }
 
@@ -828,18 +831,20 @@ function holdToRun(b, id) {
 export function setKeyFace(b, s, cover = false) {
   b.dataset.face = s.id === b.dataset.id ? '' : s.id;
   b.querySelectorAll('.k-bg, .k-shade').forEach((n) => n.remove());
-  b.classList.remove('k-cover', 'k-isz-m', 'k-isz-l', 'k-isz-max');
+  b.classList.remove('k-cover', ...ICON_SIZE_CLASSES);
   if (ICON_SIZES.has(s.iconSize)) b.classList.add('k-isz-' + s.iconSize);
   const icon = b.querySelector('.k-icon');
-  icon.classList.remove('k-icon-img');
+  icon.classList.remove('k-icon-img', 'k-icon-up');
   icon.replaceChildren(s.icon ? rich(s.icon) : '•');
   b.querySelector('.k-label').textContent = s.label;
   // a key that had no visible name is named by its id; the name follows the face
   if (b.hasAttribute('aria-label')) b.setAttribute('aria-label', String(s.label || '').trim() || s.id);
-  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true);
+  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true, s.iconUpload === true);
 }
 
-function applyShortcutIcon(b, icon, id, cover) {
+/** `cover`: ask for the upload only and fill the key with it. `upload`: the picture the agent serves is an upload, so the
+ *  key's icon size applies to it (k-icon-up); a program's own icon is not resized. */
+function applyShortcutIcon(b, icon, id, cover, upload) {
   // a picture that arrives after the key changed face (a cycle key) is not the face any more: it is dropped
   const current = () => (b.dataset.face || b.dataset.id) === id;
   const url = `${API}/shortcuts/icon?id=${encodeURIComponent(id)}`;
@@ -854,11 +859,11 @@ function applyShortcutIcon(b, icon, id, cover) {
       b.prepend(img, h('span', 'k-shade'));
       b.classList.add('k-cover');
     };
-    img.onerror = () => applyShortcutIcon(b, icon, id, false);
+    img.onerror = () => applyShortcutIcon(b, icon, id, false, false); // the upload is gone: what is served now is not one
     img.src = url + '&upload=true'; // "true", not "1": the agent binds it as a bool and answers 400 to "1"
     return;
   }
-  img.onload = () => { if (!current()) return; icon.replaceChildren(img); icon.classList.add('k-icon-img'); };
+  img.onload = () => { if (!current()) return; icon.replaceChildren(img); icon.classList.add('k-icon-img'); icon.classList.toggle('k-icon-up', upload === true); };
   img.src = url;
 }
 
