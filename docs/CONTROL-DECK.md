@@ -7,7 +7,7 @@ This document tracks implementation and evidence; a catalog entry or demo is not
 
 | Group | Required capabilities | Implementation / evidence |
 |---|---|---|
-| Audio mixer | Per-application mixer, pinned application fader, device volume, stereo balance, meters, emergency mute | Native Windows implementation; isolated silent-session write/readback passed without changing other sessions or device levels |
+| Audio mixer | Per-application mixer, pinned application fader, device volume, stereo balance, meters, emergency mute, mics off / camera off | Native Windows implementation; isolated silent-session write/readback passed without changing other sessions or device levels |
 | Microphone / devices | Microphone volume/mute, input/output selection, push-to-talk, audio scenes, ducking | Implemented; lease expiry/overlap/restoration tests pass; physical microphone/default-device mutations deliberately not exercised during active work |
 | Music | Player selection, transport, seek, shuffle/repeat, playlists, queue/favorites, soundboard, sleep timer | Implemented; Spotify PKCE, disconnect, rate-limit and URI tests pass; actual Spotify account connection remains user setup |
 | Application controls | Running application dock, keys, macros, window layouts, desktops, projects/folders, snippets, presentations | Implemented with computer-configured bindings; foreground/window/presentation actions need the corresponding running application |
@@ -63,6 +63,14 @@ Push-to-talk temporarily unmutes the selected microphone. Release, page hiding, 
 expiry restores its original mute state. Renewals expire after three seconds without contact, with a maximum continuous
 hold of sixty seconds. Overlapping holds share the original state. Ducking lowers other audio sessions while an unmuted
 microphone has a signal, and preserves manual volume changes when restoring. It is not a noise gate or speech recognizer.
+
+**Emergency mute** mutes every controllable output and microphone. **Mics off, camera off** mutes only the
+controllable microphones, leaves the speakers exactly as they were, and stops the OBS virtual camera (`StopVirtualCam`,
+so a stopped camera is never started). Both hold push-to-talk off: a held talk key is dropped, and a microphone that
+refuses the mute is retried and closed to push-to-talk until the mute lands. The camera step needs OBS connected
+(Settings › OBS) but not the OBS widget's control option. A physical webcam is not touched: turning one off on
+Windows takes admin rights or disabling its driver. The phone shows what happened to each part, and says
+**Camera not turned off** when OBS is not connected or did not stop the virtual camera.
 
 The music sleep timer fades matching application sessions over its final thirty seconds, pauses the selected player,
 then restores volume. A manual volume adjustment takes ownership away from the fade. Players without a matching

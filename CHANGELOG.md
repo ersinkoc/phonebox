@@ -3,6 +3,11 @@
 ## Unreleased
 
 **Widgets**
+- Control Deck: **Mics off, camera off**, next to Emergency mute. One tap mutes every microphone, leaves the speakers
+  as they are and stops the OBS virtual camera. Like Emergency mute, it drops a held push-to-talk key and keeps
+  retrying a microphone that refuses. The phone says what happened to each, and **Camera not turned off** when OBS is
+  not connected or did not stop it; a physical webcam is not touched (#387, #476,
+  [CrippledHelix](https://github.com/CrippledHelix)).
 - News feeds on Windows: a headline opens the article in the default browser again, not in File Explorer. Links now go
   to Windows' URL handler instead of explorer.exe, which mistook some links (a long one, or a short one with a query
   string) for a path (#386, #411, [Exrahn](https://github.com/Exrahn),

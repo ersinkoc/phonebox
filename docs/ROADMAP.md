@@ -51,9 +51,6 @@ people who proposed or prototyped something are credited in the [changelog](../C
 - **A white theme and an e-ink option** ([#383](https://github.com/ersinkoc/phonebox/issues/383)), in two pull
   requests: a pure white theme, then an "E-ink screen" option, off by default, with no pulsing or animations and a
   slower refresh for fast widgets.
-- **Mics off, camera off** ([#387](https://github.com/ersinkoc/phonebox/issues/387)): an action next to panic that
-  mutes only the microphones and stops the OBS virtual camera. It doesn't touch the physical webcam and says so
-  instead of reporting success.
 - **Cursor permission prompts on the phone** ([#467](https://github.com/ersinkoc/phonebox/issues/467), pull request
   [#470](https://github.com/ersinkoc/phonebox/pull/470)): a Cursor hook, off by default, with the same
   Allow / Deny flow as Claude Code.

@@ -28,6 +28,10 @@ Open **Settings → General → Control Deck** to define computer-side bindings 
 matching widgets in Pages. Executable shortcuts and macros are configured in Shortcuts first; phone requests contain
 only configured IDs. PC audio listening and hold-to-confirm power buttons require separate desktop opt-ins.
 
+**Emergency mute** mutes the computer's outputs and microphones. **Mics off, camera off** mutes only the microphones
+and stops the OBS virtual camera; the speakers stay as they are. It needs OBS connected for the camera part, and tells
+you on the phone when the camera could not be turned off. A physical webcam is not turned off.
+
 Spotify queue, library and playlist controls need a Spotify Developer Client ID and a connection through the
 settings screen. OBS needs obs-websocket and widget control permission. Application routing uses an installed
 SoundVolumeView executable; virtual-mixer controls use the installed Voicemeeter Remote DLL. MIDI requires an
