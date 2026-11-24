@@ -308,7 +308,7 @@ public sealed partial class ControlDeck : BackgroundService
                     if (!_config.Get().Controls.AllowPower || lease is null || !_power.Consume(lease, id)) return new(false, "Hold the power button to confirm");
                     ok = await _native.PlatformAction("power", id, null, 0, ct); break;
                 case "lock": case "monitor-off":
-                    ok = Shortcuts.Execute(new Shortcut { Cmd = "builtin:" + kind, Label = kind }, _log) is null; break;
+                    ok = Shortcuts.Execute(new Shortcut { Cmd = "builtin:" + kind, Label = kind }, _log, _config.Get()) is null; break;
                 default: return new(false, "Unknown control action");
             }
             Invalidate();

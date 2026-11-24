@@ -460,21 +460,27 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     {
         var adb = FindAdb(cfg.Get().AdbPath);
         if (adb is null) return;
-        var devices = _devices;
-        if (devices.Length == 0) return;
-        foreach (var d in devices)
+        // after the running round: a phone it just connected gets its wake-up before this sleep, not after.
+        // A round that hangs does not hold the lock shortcut back for long.
+        var held = await _round.WaitAsync(SleepRoundWait, ct);
+        try
         {
-            try
+            foreach (var d in _devices)
             {
-                await Adb(adb, $"-s {d} shell input keyevent KEYCODE_SLEEP", ct);
-                log.LogInformation("{Device}: phone screen asleep (lock shortcut)", d);
-            }
-            catch (Exception ex)
-            {
-                log.LogWarning(ex, "{Device}: failed to sleep phone screen", d);
+                try
+                {
+                    await Adb(adb, ["-s", d, "shell", "input", "keyevent", "KEYCODE_SLEEP"], ct);
+                    log.LogInformation("{Device}: phone screen asleep (lock shortcut)", d);
+                }
+                catch (Exception ex)
+                {
+                    log.LogWarning(ex, "{Device}: failed to sleep phone screen", d);
+                }
             }
         }
+        finally { if (held) _round.Release(); }
     }
+    internal TimeSpan SleepRoundWait { get; init; } = TimeSpan.FromSeconds(30);
 
     private async Task Ensure(CancellationToken ct)
     {
