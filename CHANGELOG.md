@@ -24,6 +24,9 @@
 - Spotify queue: a track tapped in the widget plays inside the playlist or album that is playing, so the rest of it
   follows as in the Spotify app. A track you queued by hand still plays on its own (#441,
   [HugoDeLannoy5311](https://github.com/HugoDeLannoy5311)).
+- Synced lyrics: a music video from the VEVO channel of an artist with a name of more than one word ("Tan Bionica -
+  Song" from `TanBionicaVEVO`) finds its lyrics. The channel name drops the spaces, so the title was not split into
+  artist and song (#551).
 
 **Agent**
 - Settings › General › **Sleep the phone with the Lock shortcut**, off by default: running the built-in Lock shortcut
