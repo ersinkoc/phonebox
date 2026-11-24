@@ -42,4 +42,13 @@ public sealed class AdbWatchdogTests
         Assert.Null(AdbReverse.ListenerFromNetstat("  TCP    127.0.0.1:15037        0.0.0.0:0              LISTENING       9", 5037));
         Assert.Null(AdbReverse.ListenerFromNetstat(english.Replace("25760", "x"), 5037));
     }
+
+    [Fact]
+    public void TheAdbServerProcessIsFoundInSsOutput()
+    {
+        // ss -Hltnp sport = :5037, on a Linux without lsof
+        Assert.Equal(1234, AdbReverse.ListenerFromSs("LISTEN 0      4      127.0.0.1:5037      0.0.0.0:*    users:((\"adb\",pid=1234,fd=6))\n"));
+        Assert.Null(AdbReverse.ListenerFromSs(""));                                                       // nothing listens
+        Assert.Null(AdbReverse.ListenerFromSs("LISTEN 0      4      127.0.0.1:5037      0.0.0.0:*\n"));   // another user's process
+    }
 }

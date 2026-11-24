@@ -651,6 +651,7 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
     private async Task<string> InstallAsync(string adbExe, string serial, string apk, bool replace, CancellationToken ct)
     {
         string[] args = replace ? ["-s", serial, "install", "-r"] : ["-s", serial, "install"];
+        using var installing = adb.Installing(); // the USB loop doesn't restart the adb server meanwhile (it would end this)
         var output = await Run(adbExe, [.. args, apk], ct);
         if (!RetryWithoutStreaming(output)) return output;
         log.LogInformation("{Serial}: the streamed install failed ({Why}); trying again without streaming", serial,

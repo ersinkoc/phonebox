@@ -309,6 +309,80 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
         }
     }
 
+    /// <summary>While "adb install" runs, AdbReverse knows it, and doesn't restart an adb server that seems hung.</summary>
+    [Fact]
+    public async Task AnAppInstallIsMarkedAsRunningForTheAdbWatchdog()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pb-upd-installing-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var prevAppVer = UpdateService.AppVersion;
+        try
+        {
+            // "install" leaves a mark and waits for the gate file; everything else answers at once
+            string fakeAdb;
+            if (OperatingSystem.IsWindows())
+            {
+                fakeAdb = Path.Combine(dir, "adb.cmd");
+                File.WriteAllText(fakeAdb, """
+                    @echo off
+                    if not "%3"=="install" (echo ok& exit /b 0)
+                    echo.>"%~dp0installing"
+                    :hold
+                    if not exist "%~dp0gate" (ping -n 2 127.0.0.1 >nul& goto hold)
+                    echo Success
+                    exit /b 0
+                    """.ReplaceLineEndings("\r\n")); // goto finds its label reliably only in a CRLF batch file
+            }
+            else
+            {
+                fakeAdb = Path.Combine(dir, "adb");
+                File.WriteAllText(fakeAdb, "#!/bin/sh\nD=$(dirname \"$0\")\nif [ \"$3\" != install ]; then echo ok; exit 0; fi\n"
+                    + "touch \"$D/installing\"\nwhile [ ! -e \"$D/gate\" ]; do sleep 0.1; done\necho Success\n");
+                File.SetUnixFileMode(fakeAdb, (UnixFileMode)0b111_101_101);
+            }
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, JsonSerializer.Serialize(new { adbPath = fakeAdb, updates = new { auto = false } }));
+            var cfg = new ConfigStore(cfgPath);
+            var adb = new AdbReverse(cfg, NullLogger<AdbReverse>.Instance);
+            typeof(AdbReverse).GetField("_devices", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(adb, new[] { "SER1" });
+
+            var ver = AppPaths.Version;
+            var apkBytes = "apk-v-test"u8.ToArray();
+            var sums = $"{Convert.ToHexStringLower(SHA256.HashData(apkBytes))}  PhoneBox-{ver}.apk\n";
+            var relJson = $$"""
+                {
+                  "tag_name": "v{{ver}}",
+                  "html_url": "https://example.invalid/release",
+                  "assets": [
+                    { "name": "PhoneBox-{{ver}}.apk", "browser_download_url": "https://example.invalid/PhoneBox-{{ver}}.apk" },
+                    { "name": "SHA256SUMS-{{ver}}.txt", "browser_download_url": "https://example.invalid/SHA256SUMS-{{ver}}.txt" }
+                  ]
+                }
+                """;
+            var svc = new UpdateService(cfg, adb, new NoopLifetime(), NullLogger<UpdateService>.Instance) { DownloadsDir = Path.Combine(dir, "dl") };
+            typeof(UpdateService).GetField("_http", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(svc, new HttpClient(new FakeReleaseHandler(relJson, apkBytes, sums)));
+
+            UpdateService.AppVersion = "0.0.1";
+            await svc.CheckAsync();
+            Assert.False(adb.InstallRunning);
+            var apply = svc.ApplyAsync();
+            for (var i = 0; i < 600 && !File.Exists(Path.Combine(dir, "installing")); i++) await Task.Delay(50);
+            Assert.True(File.Exists(Path.Combine(dir, "installing")));
+            Assert.True(adb.InstallRunning);
+
+            File.WriteAllText(Path.Combine(dir, "gate"), "");
+            await apply.WaitAsync(TimeSpan.FromSeconds(60));
+            Assert.Null(svc.Status().Error);
+            Assert.False(adb.InstallRunning);
+        }
+        finally
+        {
+            UpdateService.AppVersion = prevAppVer;
+            try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
     private sealed class FakeReleaseHandler(string relJson, byte[] apk, string sums, Action? onApk = null) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
