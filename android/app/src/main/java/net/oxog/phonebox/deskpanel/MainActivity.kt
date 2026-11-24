@@ -160,8 +160,15 @@ class MainActivity : Activity(), SensorEventListener {
             standbyHostAlive = true
             standbyLostSince = 0L
             standbyApplyKeepAwake()
-            standbyHandler.removeCallbacks(standbyTick)
-            standbyHandler.post(standbyTick)
+
+            if (standbyMode == "off") {
+                // Standby is disabled: no timer and no standby receivers.
+                standbyHandler.removeCallbacks(standbyTick)
+                standbyUnregisterReceivers()
+            } else {
+                // Standby is enabled: start monitoring.
+                standbyStartMonitoring()
+            }
         }
     }
 
@@ -191,6 +198,9 @@ class MainActivity : Activity(), SensorEventListener {
      * for the next probe.
      */
     private fun standbyRegisterReceivers() {
+        if (standbyPowerReceiver != null ||
+            standbyUsbReceiver != null ||
+            standbyScreenReceiver != null) return
         val battery = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val now = standbyPluggedFrom(intent)
@@ -238,6 +248,31 @@ class MainActivity : Activity(), SensorEventListener {
         }
         standbyPlugged = standbyPluggedFrom(registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)))
         standbyUsbLink = standbyReadUsbLink()
+    }
+
+    private fun standbyUnregisterReceivers() {
+        standbyPowerReceiver?.let {
+            runCatching { unregisterReceiver(it) }
+        }
+        standbyUsbReceiver?.let {
+            runCatching { unregisterReceiver(it) }
+        }
+        standbyScreenReceiver?.let {
+            runCatching { unregisterReceiver(it) }
+        }
+
+        standbyPowerReceiver = null
+        standbyUsbReceiver = null
+        standbyScreenReceiver = null
+    }
+
+    private fun standbyStartMonitoring() {
+        if (standbyDestroyed || standbyMode == "off") return
+
+        standbyRegisterReceivers()
+
+        standbyHandler.removeCallbacks(standbyTick)
+        standbyHandler.post(standbyTick)
     }
 
     /**
@@ -301,14 +336,17 @@ class MainActivity : Activity(), SensorEventListener {
     /** Watch the computer: fast while it answers, slower once it has gone quiet. */
     private val standbyTick = object : Runnable {
         override fun run() {
-            if (standbyDestroyed) return
-            if (!standbyFromAgent) standbyLoadSetting()
-            if (standbyMode != "off") {
-                standbyUsbLink = standbyReadUsbLink()
-                standbyReconcile()
-                if (!standbyHostAlive) standbyProbe()   // the page's own polls stop while the WebView idles; this does not
-            }
-            standbyHandler.postDelayed(this, if (standbyHostAlive) standbyHealthPollMs else standbyPollMs)
+            if (standbyDestroyed || standbyMode == "off") return
+
+            standbyUsbLink = standbyReadUsbLink()
+            standbyReconcile()
+
+            if (!standbyHostAlive) standbyProbe()
+
+            standbyHandler.postDelayed(
+                this,
+                if (standbyHostAlive) standbyHealthPollMs else standbyPollMs
+            )
         }
     }
 
@@ -413,9 +451,8 @@ class MainActivity : Activity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        standbyHandler.postDelayed(standbyTick, standbyHealthPollMs)
-        standbyRegisterReceivers()      // sticky reads settle the state; standby stays off until the agent says otherwise
         link = AgentLink(this)
+        standbyLoadSetting()
         stream = AgentStream(link) { event, data ->
             markHostAnswer()   // a beat on the live stream is proof of life too
             val js = "window.onAgentStream && window.onAgentStream(${JSONObject.quote(event)}, ${JSONObject.quote(data)})"
@@ -651,8 +688,10 @@ class MainActivity : Activity(), SensorEventListener {
         super.onResume()
         if (!hasWeb) return
         resumed = true
-        standbyHandler.removeCallbacks(standbyTick)
-        standbyHandler.post(standbyTick)   // the panel is in front again: look now
+        if (standbyMode != "off") {
+            standbyHandler.removeCallbacks(standbyTick)
+            standbyHandler.post(standbyTick)
+        }
         // The agent's wake can reach us here before the lock screen is gone; dismiss it, but only inside a
         // wake the agent started (standbyDismissKeyguard checks), never on a plain resume.
         standbyDismissKeyguard()
