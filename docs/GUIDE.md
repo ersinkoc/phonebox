@@ -2,7 +2,7 @@
 
 [Back to PhoneBox](../README.md) · [Installation and connections](SETUP.md) · [Development](DEVELOPMENT.md)
 
-[Appearance](#appearance) · [Control Deck](#control-deck) · [Pages & templates](#pages--templates) · [Widgets](#widgets) · [Layout editor & settings](#layout-editor--settings) · [AI agent permission prompts](#ai-agent-permission-prompts) · [Webhooks](#webhooks) · [Rules](#rules) · [Security & privacy](#security--privacy)
+[Appearance](#appearance) · [Control Deck](#control-deck) · [Pages & templates](#pages--templates) · [Widgets](#widgets) · [Layout editor & settings](#layout-editor--settings) · [Power standby](#power-standby) · [AI agent permission prompts](#ai-agent-permission-prompts) · [Webhooks](#webhooks) · [Rules](#rules) · [Security & privacy](#security--privacy)
 
 ## Appearance
 
@@ -70,7 +70,7 @@ spot) for an overview of all pages and jump straight to one. Webhooks and rules 
 first (*"switching to AI in 3…"*, with Stay and Go now) and never pull a page away while you are using the panel.
 Settings › Display › Page navigation can also show a page bar with each page's name, or hide the dots. The panel
 returns to the home page when idle (each page can stay longer, or for good), can dim to a clock at night and keeps the
-screen on.
+screen on (unless [power standby](#power-standby) is on).
 
 <p align="center"><img src="screenshots/overview.png" width="600" alt="Page overview"></p>
 
@@ -214,7 +214,8 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   vibration, the message when a session finishes, volume-key paging and the phone's sensors (brightness that follows the room, the night screen when the
   room goes dark, wave to wake it); [OLED burn-in protection](#appearance); [page switching](#rules) (home page, countdown, back home after);
   kiosk options (screen pinning, the panel as the phone's home screen so it starts after a reboot, keep the phone
-  awake on the charger, open the panel when the phone is plugged in, which you can turn off for a phone you also
+  awake on the charger (or let it sleep when the computer is gone: [power standby](#power-standby)), open the
+  panel when the phone is plugged in, which you can turn off for a phone you also
   use for app testing; no root needed); on macOS, optionally follow the computer lock (sleep the phone on lock,
   wake it and open PhoneBox on unlock, with an ADB connection; phones secured by a PIN or password must be unlocked
   manually). Lock sync needs the agent to run in the macOS GUI session; [battery care](#rules);
@@ -234,6 +235,33 @@ the phone picks up changes within a few seconds.
 Use UTF-8 when editing this file externally. Saved page and shortcut icons use JSON Unicode escapes to survive
 ANSI-based editors; the settings editor displays the actual symbols. On startup, known double-encoded forms of
 the four affected default icons are repaired, with the original file kept in `config.json.bak`.
+
+## Power standby
+
+By default the phone keeps its screen on while the panel runs. **Settings › General › Display › Power standby** lets a
+panel wired to one computer sleep once that computer is gone, and light up again when it comes back:
+
+- **Off** (default): today's behaviour. PhoneBox does not wake the phone, dismiss its lock screen or change any phone
+  setting.
+- **Sleep when USB charge is cut**: the phone sleeps when the computer stops charging it.
+- **Sleep when the agent stops answering**: the phone sleeps when the agent stops answering. This also covers a
+  charge-capped port, or a board that keeps 5 V alive after shutdown.
+
+**Standby grace (s)** (3 to 600, default 30) is how long PhoneBox waits first, so a reboot or a network hiccup does
+not put the phone to sleep. Android's own screen-off timeout does the sleeping; PhoneBox only stops holding the
+screen.
+
+When the computer is back, the agent wakes the phone and opens the panel. A swipe-only lock screen is dismissed, but
+only after a wake the agent started. If the phone is protected by a PIN, password or pattern, you still unlock it
+yourself.
+
+Standby only acts on the phone you chose under **Phone connection**; with none chosen it does nothing. While it is on,
+PhoneBox turns off Android's *stay awake while charging* setting (`stay_on_while_plugged_in`), because that system
+setting would keep the screen on anyway. It saves the phone's original value and puts it back when you turn standby
+off, choose another phone or restart the agent.
+
+The phone app holds no `WAKE_LOCK` permission, so the phone relights through the agent's wake key or when USB power
+returns. A phone paired over Wi-Fi only (no USB) can stay dark until you touch it.
 
 ## Wake-on-LAN
 

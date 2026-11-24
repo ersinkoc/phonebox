@@ -213,6 +213,11 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/scripts/unin
 Without options it removes the program and the start-at-login entry and keeps the settings. `-Purge` / `--purge` also
 deletes the settings, and `-Apk` / `--apk` removes the app from the connected phone.
 
+If you uninstall PhoneBox while **power standby** is on, the phone may keep *stay awake while charging* switched off.
+Turn standby off first (**Settings › General › Display › Power standby: Off**), which puts the setting back. If it is
+already off, turn *Stay awake* back on in the phone's Developer options, or run
+`adb shell settings put global stay_on_while_plugged_in 7` (use your own value if it was different).
+
 ### What works where
 
 <details><summary><b>Full platform compatibility</b></summary>
