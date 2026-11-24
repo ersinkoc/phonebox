@@ -137,6 +137,19 @@ public static class Shortcuts
     /// <summary>Tests record what a shortcut would press or type instead of sending it to the computer.</summary>
     internal static Action<string>? TestKeys, TestType;
 
+    /// <summary>Tests replace the workstation lock with a no-op recorder instead of locking the computer.</summary>
+    internal static Action LockAction = DefaultLock;
+
+    private static void DefaultLock()
+    {
+#if WINDOWS
+        LockWorkStation();
+#else
+        if (OperatingSystem.IsMacOS()) Unix("pmset", "displaysleepnow");
+        else if (Sh.Run("loginctl", "lock-session") is null) Unix("xdg-screensaver", "lock");
+#endif
+    }
+
     private static void PressKeys(string spec) { if (TestKeys is { } t) t(spec); else KeySender.SendKeys(spec); }
     private static void TypeOut(string text) { if (TestType is { } t) t(text); else KeySender.TypeText(text); }
 
@@ -265,7 +278,7 @@ public static class Shortcuts
                     break;
 #if WINDOWS
                 case "builtin:lock":
-                    LockWorkStation();
+                    LockAction();
                     if (cfg is not null) OnLocked?.Invoke(cfg);
                     break;
                 case "builtin:monitor-off":
@@ -276,8 +289,7 @@ public static class Shortcuts
                     break;
 #else
                 case "builtin:lock":
-                    if (OperatingSystem.IsMacOS()) Unix("pmset", "displaysleepnow");
-                    else if (Sh.Run("loginctl", "lock-session") is null) Unix("xdg-screensaver", "lock");
+                    LockAction();
                     if (cfg is not null) OnLocked?.Invoke(cfg);
                     break;
                 case "builtin:monitor-off":

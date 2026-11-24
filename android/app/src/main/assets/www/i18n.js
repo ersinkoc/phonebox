@@ -4845,6 +4845,7 @@
       's.kiosk.homeScreen': 'Usar o painel como tela inicial do telefone: ele inicia após reiniciar e o botão Início volta para ele (desative para recuperar seu launcher)',
       's.kiosk.keepAwake': 'Manter o telefone acordado: desativa o protetor de tela do Android (ligado quando no carregador) e mantém a tela acesa enquanto conectado (definido via USB)',
       's.kiosk.followLock': 'Seguir o bloqueio do computador: desliga a tela do telefone quando o macOS é bloqueado; acorda e abre o PhoneBox quando o macOS é desbloqueado (requer ADB; desbloqueie manualmente telefones protegidos por PIN ou senha)',
+      's.kiosk.lockPhoneWithShortcut': 'Repousar o telefone com o atalho Bloquear: também desliga a tela do telefone sempre que o atalho Bloquear for executado (requer ADB)',
       's.claude.onlyWhenAway': 'Somente quando eu estiver longe do PC (sem teclado ou mouse por um minuto)',
       's.battery.keepBetween': 'Manter a bateria entre',
       's.wifi.addresses': 'Endereços oferecidos ao telefone',

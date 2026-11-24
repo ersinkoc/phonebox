@@ -14,15 +14,18 @@ public sealed class LockPhoneOnShortcutTests
     [Fact]
     public void BuiltinLock_Invokes_OnLocked_Callback()
     {
-        var called = false;
+        var lockCalled = false;
+        var callbackCalled = false;
         AgentConfig? passedConfig = null;
 
+        var prevLock = Shortcuts.LockAction;
         var prevHandler = Shortcuts.OnLocked;
         try
         {
+            Shortcuts.LockAction = () => { lockCalled = true; };
             Shortcuts.OnLocked = cfg =>
             {
-                called = true;
+                callbackCalled = true;
                 passedConfig = cfg;
             };
 
@@ -32,11 +35,13 @@ public sealed class LockPhoneOnShortcutTests
 
             Shortcuts.Run(cfg, "test-lock", NullLogger.Instance);
 
-            Assert.True(called);
+            Assert.True(lockCalled);
+            Assert.True(callbackCalled);
             Assert.Same(cfg, passedConfig);
         }
         finally
         {
+            Shortcuts.LockAction = prevLock;
             Shortcuts.OnLocked = prevHandler;
         }
     }

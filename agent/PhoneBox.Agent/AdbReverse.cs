@@ -58,6 +58,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     internal const long EndingWindowMs = 60_000;
     internal static void ResetSessionEnding() => Interlocked.Exchange(ref _endingSince, 0); // tests
     private static long _endingSince;
+    private static long _lastSleepAt;
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -111,6 +112,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// <summary>Puts connected phone screens to sleep immediately (e.g. when the lock shortcut is triggered).</summary>
     public async Task SleepPhonesAsync(CancellationToken ct = default)
     {
+        Interlocked.Exchange(ref _lastSleepAt, Clock());
         var adb = FindAdb(cfg.Get().AdbPath);
         if (adb is null) return;
         var devices = _devices;
@@ -119,7 +121,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         {
             try
             {
-                await Adb(adb, $"-s {d} shell input keyevent KEYCODE_SLEEP", ct);
+                await Adb(adb, ["-s", d, "shell", "input", "keyevent", "KEYCODE_SLEEP"], ct);
                 log.LogInformation("{Device}: phone screen asleep (lock shortcut)", d);
             }
             catch (Exception ex)
@@ -232,9 +234,17 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             }
             else if (cfg.Get().Display.OpenOnConnect)
             {
-                await Adb(adb, $"-s {d} shell input keyevent KEYCODE_WAKEUP", ct);
-                await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", ct);
-                log.LogInformation("{Device}: adb reverse set up, panel opened", d);
+                if (Clock() - Interlocked.Read(ref _lastSleepAt) < 5_000)
+                {
+                    await Adb(adb, ["-s", d, "shell", "input", "keyevent", "KEYCODE_SLEEP"], ct);
+                    log.LogInformation("{Device}: adb reverse set up, phone screen asleep (lock shortcut)", d);
+                }
+                else
+                {
+                    await Adb(adb, $"-s {d} shell input keyevent KEYCODE_WAKEUP", ct);
+                    await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", ct);
+                    log.LogInformation("{Device}: adb reverse set up, panel opened", d);
+                }
             }
             // Settings › Display › open on connect is off: the phone stays as it is (the panel opens when the user starts it).
             else log.LogInformation("{Device}: adb reverse set up", d);
@@ -370,6 +380,20 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
         catch (Exception ex) when (ex is IOException or TimeoutException) { }
         return map;
+    }
+
+    internal static async Task<string> Adb(string adb, IEnumerable<string> args, CancellationToken ct, bool anyExit = false)
+    {
+        if (SessionEnding) throw new OperationCanceledException("the session is ending");
+        var psi = new ProcessStartInfo(adb)
+        {
+            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
+            WorkingDirectory = AppPaths.NeutralCwd,
+        };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        var result = await ToolProcess.RunAsync(psi, TimeSpan.FromSeconds(8), ct);
+        if (result.ExitCode != 0 && !anyExit) throw new IOException($"ADB exited with code {result.ExitCode}");
+        return result.Output;
     }
 
     internal static async Task<string> Adb(string adb, string args, CancellationToken ct, bool anyExit = false)
