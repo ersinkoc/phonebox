@@ -395,6 +395,12 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
             var attach = new ProcessStartInfo("/usr/bin/hdiutil");
             foreach (var arg in new[] { "attach", dmg, "-nobrowse", "-readonly", "-noverify", "-mountpoint", mount }) attach.ArgumentList.Add(arg);
             var attached = await ToolProcess.RunAsync(attach, TimeSpan.FromMinutes(2), ct);
+            // "Resource temporarily unavailable" (EAGAIN): the disk image service is busy for a moment; try again
+            for (var retry = 0; retry < 3 && attached.ExitCode != 0 && (attached.Output + attached.Error).Contains("temporarily unavailable", StringComparison.OrdinalIgnoreCase); retry++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                attached = await ToolProcess.RunAsync(attach, TimeSpan.FromMinutes(2), ct);
+            }
             if (attached.ExitCode != 0) throw new InvalidOperationException("could not open the disk image: " + (attached.Output + attached.Error).Trim());
             try
             {

@@ -1057,8 +1057,11 @@ public sealed class PlexControlTests
             ServeLocal(player, stop.Token, c => Reply(c, TimelineXml(), "text/xml"));
             ServeLocal(server, stop.Token, c => StallLocal(c, stop.Token, "application/json"));
             using var fixture = new Fixture(Url(server), extra: $",\"plexPlayerUrl\":\"{Url(player)}\"");
-            using var plex = Real(fixture, TimeSpan.FromMilliseconds(300));
-            var snap = await plex.Snapshot(default).WaitAsync(TimeSpan.FromSeconds(5));
+            // the player answers at once, but a busy CI runner can take longer than 300 ms to get that answer to the
+            // agent, which then reports the player missing instead of the server stalling: a budget the stall still
+            // exceeds by far, while the player's answer fits in it
+            using var plex = Real(fixture, TimeSpan.FromMilliseconds(1500));
+            var snap = await plex.Snapshot(default).WaitAsync(TimeSpan.FromSeconds(10));
             Assert.Equal("The Plex server is unavailable", snap["error"]!.GetValue<string>());
         }
         finally { stop.Cancel(); player.Close(); server.Close(); }
