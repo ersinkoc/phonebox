@@ -286,7 +286,9 @@ permission prompts** and press *Install hook*: PhoneBox adds a `PermissionReques
 (and keeps a backup next to it as `settings.json.phonebox.bak`). If the phone is not connected or nobody answers in
 time, the hook returns no decision and Claude Code asks in the terminal as usual. Optionally only when you have been
 away from the keyboard for a minute. Each hook (Claude Code, Codex and Cursor) keeps the seconds to answer it was
-installed with: after changing them, remove the hook and install it again.
+installed with. A shorter time applies to the phone card at once; for a longer one, remove the hook and install it
+again, or the hook gives up before the phone does. To have a reinstalled Cursor hook cover WSL as well, turn on **Also
+watch Cursor in WSL** and start the distro first: with the option off, *Install hook* writes only the Windows hook.
 
 WorkBuddy speaks the same hook protocol. Add the same `PermissionRequest` entry to `~/.workbuddy/settings.json` by
 hand: *Install hook* writes to `~/.claude/settings.json` only. WorkBuddy keeps its sessions in `~/.workbuddy`, so the
@@ -306,7 +308,8 @@ Projects opened over Remote - WSL run their hooks inside the distro, from its ow
 watch Cursor in WSL** on, *Install hook* writes there too (in each running distro where Cursor's server has been used);
 PhoneBox remembers the distros it installed to, so *Remove hook* still takes it off there after WSL watching is
 turned off (once the distro runs: a stopped distro is never started for it). With WSL watching off and no hook
-installed in a distro, the settings page does not look into WSL at all. That hook reaches the agent on `127.0.0.1`, which works when WSL shares the loopback with Windows
+installed in a distro, the settings page does not look into WSL at all. That hook reaches the agent on `127.0.0.1`,
+which works when WSL shares the loopback with Windows
 (`networkingMode=mirrored` in `.wslconfig`); otherwise it fails and Cursor goes on as usual.
 
 OpenCode needs no hook: prompts are off until you turn them on — press the **Ask on the phone** switch under

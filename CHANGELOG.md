@@ -34,8 +34,9 @@
   **Settings › General**, each shell command and MCP tool call the Cursor agent is about to run waits for Allow or Deny
   on the phone; without a phone or an answer, Cursor goes on as usual. Off by default. With **Also watch Cursor in
   WSL** on, the hook also goes into the running distros, and Remove still finds it there after that option is turned
-  off. The settings page now also says that each hook keeps the seconds to answer it was installed with, so it has to
-  be installed again after they change (#467, #470, [lucaskaiut](https://github.com/lucaskaiut)).
+  off. The settings page now also says that each hook keeps the seconds to answer it was installed with: a shorter
+  time applies to the phone card at once, a longer one needs the hook installed again (#467, #470,
+  [lucaskaiut](https://github.com/lucaskaiut)).
 - AI quotas: Antigravity shows when `agy` is in `%USERPROFILE%\.gemini\bin` (`~/.gemini/bin` on macOS and Linux)
   and that folder is not on PATH; the provider silently went missing (#462, [Lyntter](https://github.com/Lyntter)).
 - Restarting, updating or quitting the agent with a phone connected takes about a second instead of 30: the live
