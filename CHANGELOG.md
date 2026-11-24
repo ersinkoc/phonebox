@@ -55,6 +55,10 @@
   crashes after some idle time in #389 (#508, [wahackr](https://github.com/wahackr)).
 
 **Setup**
+- Windows: each release also has an installer, `PhoneBox-<version>-win-x64-setup.exe`. It installs for the current
+  user (no administrator) into the folder the agent updates itself in, with a Start Menu shortcut and an optional
+  *Start PhoneBox with Windows*, and keeps the settings on uninstall. It is not code-signed (the agent inside is), so
+  SmartScreen may ask once (#439, [Vasilispapg](https://github.com/Vasilispapg)).
 - macOS: PhoneBox.app shows a phone icon in the menu bar: whether the phone is connected, Open Settings, Install
   update, Check for Updates, Restart Agent, Show Log, Open Config Folder, Start at Login and Quit. The agent installed
   by `setup.sh` and the zips run as before, without it (#438, [Vasilispapg](https://github.com/Vasilispapg)).

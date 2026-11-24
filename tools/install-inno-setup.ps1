@@ -15,8 +15,8 @@ if ($LASTEXITCODE) { throw "choco could not install Inno Setup $Version ($LASTEX
 $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
     Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $iscc) { throw "ISCC.exe was not found after installing Inno Setup $Version" }
-$info = (Get-Item -LiteralPath $iscc).VersionInfo
-if ($info.ProductVersion -notlike "$Version*" -and $info.FileVersion -notlike "$Version*") {
-    throw "Inno Setup $($info.ProductVersion) ($($info.FileVersion)) is installed, not the pinned $Version"
-}
+# ISCC.exe carries no usable version resource (it reads 0.0.0.0), so the version is the one Chocolatey installed
+$installed = (choco list innosetup --exact --limit-output | Select-String '^innosetup\|' | Select-Object -First 1).Line
+$have = if ($installed) { $installed.Split('|')[1].Trim() } else { '' }
+if ($have -ne $Version) { throw "Inno Setup '$have' is installed, not the pinned $Version" }
 Write-Host "Inno Setup ${Version}: $iscc"

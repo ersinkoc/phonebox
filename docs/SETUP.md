@@ -158,7 +158,7 @@ The settings are at <http://127.0.0.1:8765>, on Windows also from the tray icon.
 - **Windows installer**: `PhoneBox-<version>-win-x64-setup.exe` on the release installs for the current user (no
   administrator), into the folder the agent updates itself in, with a Start Menu shortcut and an optional *Start PhoneBox
   with Windows*. Uninstall it from *Settings › Apps*; your settings are kept. The agent updates itself from the release, so
-  *Apps & features* keeps showing the version the installer wrote (the one first installed); the PhoneBox settings page (Advanced) shows
+  *Apps & features* keeps showing the version the installer wrote (the one first installed); *Settings › General › Updates* shows
   the running one. Run again with nothing ticked to turn
   *Start with Windows* off (a silent run with no `/TASKS=` leaves it as it is). The installer file is not code-signed (the
   agent inside is), so SmartScreen may ask once: *More info › Run anyway*.
