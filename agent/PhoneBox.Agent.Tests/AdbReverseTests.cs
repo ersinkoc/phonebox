@@ -25,7 +25,7 @@ public sealed class AdbReverseTests : IDisposable
     /// refuses it (an error line, exit code 1).</summary>
     private string FakeAdb(string[] devices, string reverseList, string? homeRefused, bool installed = true,
         string? reverseRefused = null, string? usbKey = null, string? appVersion = null, bool ownsProvider = true, int? sdk = null,
-        string? transportId = null)
+        string? transportId = null, string? reverseSet = null)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -36,6 +36,7 @@ public sealed class AdbReverseTests : IDisposable
                 "if \"%1\"==\"devices\" if \"%2\"==\"-l\" (echo List of devices attached" + string.Concat(devices.Select(d => "& echo " + d + "    device usb:1-1 product:x model:y device:z" + (transportId is null ? "" : " transport_id:" + transportId))) + "& exit /b 0)",
                 "if \"%1\"==\"devices\" (echo List of devices attached" + string.Concat(devices.Select(d => "& echo " + d + "\tdevice")) + "& exit /b 0)",
                 "if \"%2\"==\"" + reverseRefused + "\" if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (exit /b 1)",
+                "if \"%3\"==\"reverse\" if \"%4\"==\"tcp:8765\" " + (reverseSet switch { "hang" => "goto hold", "fail" => "(exit /b 1)", _ => "(exit /b 0)" }),
                 "if \"%4\"==\"getprop\" (" + (sdk is null ? "exit /b 0)" : "echo " + sdk + "& exit /b 0)"),
                 "if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (" + (reverseList.Length == 0 ? "exit /b 0)" : "echo " + reverseList + "& exit /b 0)"),
                 "if \"%4\"==\"pm\" (" + (installed ? "echo package:/data/app/base.apk& exit /b 0)" : "exit /b 1)"),
@@ -44,6 +45,9 @@ public sealed class AdbReverseTests : IDisposable
                     + (usbKey is not null && ownsProvider ? "echo   [net.oxog.phonebox.deskpanel.usb]:& echo     Provider{3ec2f24 net.oxog.phonebox.deskpanel/.UsbKeyProvider}& " : "") + "exit /b 0)",
                 "if \"%6\"==\"set-home-activity\" if \"%2\"==\"" + homeRefused + "\" (echo Error: Failed to set default home.& exit /b 1)",
                 "if \"%6\"==\"set-home-activity\" (echo Success& exit /b 0)",
+                "exit /b 0",
+                ":hold",
+                "if not exist \"%~dp0gate\" (ping -n 2 127.0.0.1 >nul& goto hold)",
                 "exit /b 0", ""));
             return cmd;
         }
@@ -54,6 +58,12 @@ public sealed class AdbReverseTests : IDisposable
             "if [ \"$1\" = devices ] && [ \"$2\" = -l ]; then printf 'List of devices attached\\n" + string.Concat(devices.Select(d => d + "    device usb:1-1 product:x model:y device:z" + (transportId is null ? "" : " transport_id:" + transportId) + "\\n")) + "'; exit 0; fi",
             "if [ \"$1\" = devices ]; then printf 'List of devices attached\\n" + string.Concat(devices.Select(d => d + "\\tdevice\\n")) + "'; exit 0; fi",
             "if [ \"$2\" = '" + reverseRefused + "' ] && [ \"$3\" = reverse ] && [ \"$4\" = --list ]; then exit 1; fi",
+            "if [ \"$3\" = reverse ] && [ \"$4\" = tcp:8765 ]; then " + (reverseSet switch
+            {
+                "hang" => "while [ ! -e \"$(dirname \"$0\")/gate\" ]; do sleep 0.1; done; exit 0; fi",
+                "fail" => "exit 1; fi",
+                _ => "exit 0; fi",
+            }),
             "if [ \"$4\" = getprop ]; then " + (sdk is null ? "" : "echo " + sdk + "; ") + "exit 0; fi",
             "if [ \"$3\" = reverse ] && [ \"$4\" = --list ]; then " + (reverseList.Length == 0 ? "" : "echo '" + reverseList + "'; ") + "exit 0; fi",
             "if [ \"$4\" = pm ]; then " + (installed ? "echo package:/data/app/base.apk; exit 0; fi" : "exit 1; fi"),
@@ -101,7 +111,7 @@ public sealed class AdbReverseTests : IDisposable
     [InlineData("UsbFfs tcp:8765 tcp:9999", false)]  // another agent's: it took the phone over, so it stays
     public async Task StoppingTakesOnlyThisAgentsRuleOffThePhone(string rule, bool removed)
     {
-        var fake = FakeAdb(["FAKE1"], rule, null);
+        var fake = FakeAdb(["FAKE1"], rule, null, sdk: 30);
         var path = Path.Combine(_dir, "config.json");
         File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
         // which rule comes off, not how fast: a busy test machine may take more than the 3 s a real stop has
@@ -142,7 +152,7 @@ public sealed class AdbReverseTests : IDisposable
     [Fact]
     public async Task AStopDuringASlowRoundStillTakesTheRuleOffBeforeThePortCloses()
     {
-        // a fake adb whose Android version read hangs: the round is busy in it when the stop begins
+        // a fake adb whose home screen step hangs: the round is busy in it when the stop begins
         string fake;
         if (OperatingSystem.IsWindows())
         {
@@ -151,7 +161,8 @@ public sealed class AdbReverseTests : IDisposable
                 "@echo off",
                 WinLog,
                 "if \"%1\"==\"devices\" (echo List of devices attached& echo FAKE1\tdevice& exit /b 0)",
-                "if \"%4\"==\"getprop\" (ping -n 30 127.0.0.1 >nul& exit /b 0)",
+                "if \"%4\"==\"getprop\" (echo 30& exit /b 0)",
+                "if \"%6\"==\"set-home-activity\" (ping -n 30 127.0.0.1 >nul& exit /b 0)",
                 "if \"%3\"==\"reverse\" if \"%4\"==\"--list\" (echo UsbFfs tcp:8765 tcp:8765& exit /b 0)",
                 "exit /b 0", ""));
         }
@@ -162,13 +173,14 @@ public sealed class AdbReverseTests : IDisposable
                 "#!/bin/sh",
                 "echo \"$*\" >> \"$(dirname \"$0\")/calls.log\"",
                 "if [ \"$1\" = devices ]; then printf 'List of devices attached\\nFAKE1\\tdevice\\n'; exit 0; fi",
-                "if [ \"$4\" = getprop ]; then exec sleep 30; fi",
+                "if [ \"$4\" = getprop ]; then echo 30; exit 0; fi",
+                "if [ \"$6\" = set-home-activity ]; then exec sleep 30; fi",
                 "if [ \"$3\" = reverse ] && [ \"$4\" = --list ]; then echo 'UsbFfs tcp:8765 tcp:8765'; exit 0; fi",
                 "exit 0", ""));
             File.SetUnixFileMode(fake, (UnixFileMode)0b111_101_101);
         }
         var path = Path.Combine(_dir, "config.json");
-        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = true, keepAwake = false } }));
         var life = new Microsoft.Extensions.Hosting.Internal.ApplicationLifetime(
             NullLogger<Microsoft.Extensions.Hosting.Internal.ApplicationLifetime>.Instance);
         // The stop waits up to 7 s for the stuck round: less than adb's own 8 s limit, so the round must have been
@@ -179,8 +191,8 @@ public sealed class AdbReverseTests : IDisposable
             StopBudget = TimeSpan.FromSeconds(60),
         };
         await adb.StartAsync(CancellationToken.None);
-        for (var i = 0; i < 400 && !Calls().Any(c => c.Contains("getprop")); i++) await Task.Delay(50);
-        Assert.Contains(Calls(), c => c.Contains("getprop")); // the round is stuck in it now
+        for (var i = 0; i < 400 && !Calls().Any(c => c.Contains("set-home-activity")); i++) await Task.Delay(50);
+        Assert.Contains(Calls(), c => c.Contains("set-home-activity")); // the round is stuck in it now
 
         life.StopApplication(); // returns before the services (and the agent's port) are stopped
         Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
@@ -190,7 +202,7 @@ public sealed class AdbReverseTests : IDisposable
     [Fact]
     public async Task WhenTheAgentBeginsToStopTheRuleComesOffAndTheLoopEnds()
     {
-        var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);
+        var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null, sdk: 30);
         var path = Path.Combine(_dir, "config.json");
         File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false } }));
         var life = new Microsoft.Extensions.Hosting.Internal.ApplicationLifetime(
@@ -201,7 +213,8 @@ public sealed class AdbReverseTests : IDisposable
             StopBudget = TimeSpan.FromSeconds(60),
         };
         await adb.StartAsync(CancellationToken.None);
-        for (var i = 0; i < 400 && !adb.Connected; i++) await Task.Delay(50);
+        // the round has read the phone's Android version once it lists the rules (a phone of unknown version isn't asked)
+        for (var i = 0; i < 400 && !Calls().Contains("-s FAKE1 reverse --list"); i++) await Task.Delay(50);
         Assert.True(adb.Connected);
 
         life.StopApplication(); // before any service is stopped, and before the agent's port closes
@@ -251,6 +264,7 @@ public sealed class AdbReverseTests : IDisposable
         using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance) { StopBudget = TimeSpan.FromSeconds(60) };
         typeof(AdbReverse).GetField("_devices", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
             .SetValue(adb, new[] { "FAKE1", "FAKE2" });
+        Known(adb, 30, "FAKE1", "FAKE2");
 
         var stop = adb.RemoveOwnRulesAsync(CancellationToken.None);
         for (var i = 0; i < 400 && !Calls().Contains("-s FAKE2 reverse --remove tcp:8765"); i++) await Task.Delay(50);
@@ -396,6 +410,7 @@ public sealed class AdbReverseTests : IDisposable
         {
             typeof(AdbReverse).GetField("_devices", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                 .SetValue(stopping, new[] { "FAKE1" });
+            Known(stopping, 30, "FAKE1");
             FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);
             await stopping.RemoveOwnRulesAsync(CancellationToken.None);
         }
@@ -437,6 +452,81 @@ public sealed class AdbReverseTests : IDisposable
         public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel level) => true;
         public void Log<TState>(Microsoft.Extensions.Logging.LogLevel level, Microsoft.Extensions.Logging.EventId id, TState state,
             Exception? ex, Func<TState, Exception?, string> format) { lock (Lines) Lines.Add(format(state, ex)); }
+    }
+
+    /// <summary>Gives the phones a known Android version, as a round that read it would have.</summary>
+    private static void Known(AdbReverse adb, int sdk, params string[] serials)
+    {
+        var known = (Dictionary<string, int>)typeof(AdbReverse)
+            .GetField("_sdk", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(adb)!;
+        foreach (var serial in serials) known[serial] = sdk;
+    }
+
+    [Fact]
+    public async Task AtAStopAPhoneOfUnknownVersionIsNotAskedForItsRules()
+    {
+        // its version read was cancelled: it may be Android 5 or 6, where "reverse --list" drops the connection
+        var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance) { StopBudget = TimeSpan.FromSeconds(60) };
+        typeof(AdbReverse).GetField("_devices", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(adb, new[] { "FAKE1" });
+
+        await adb.RemoveOwnRulesAsync(CancellationToken.None); // nothing on record: left alone
+        Assert.DoesNotContain(Calls(), c => c.Contains("reverse --list") || c.Contains("reverse --remove"));
+
+        // this agent's own record says it set the rule: removed, still without asking
+        var setHere = (Dictionary<string, int>)typeof(AdbReverse)
+            .GetField("_setHere", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(adb)!;
+        setHere["FAKE1"] = 0;
+        await adb.RemoveOwnRulesAsync(CancellationToken.None);
+        Assert.Contains("-s FAKE1 reverse --remove tcp:8765", Calls());
+        Assert.DoesNotContain(Calls(), c => c.Contains("reverse --list"));
+    }
+
+    [Theory]
+    [InlineData("hang", true)]  // cancelled by the stop: the adb server may have applied it, so it comes off
+    [InlineData("fail", false)] // adb refused it: there is no rule of this agent's to remove
+    public async Task AStopRemovesARuleWhoseSettingWasCutShortOnAnOldPhone(string reverseSet, bool removed)
+    {
+        var fake = FakeAdb(["FAKE1"], "", null, reverseRefused: "FAKE1", sdk: 22, transportId: "1", reverseSet: reverseSet);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect = false } }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance) { StopBudget = TimeSpan.FromSeconds(60) };
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+
+        using var stop = new CancellationTokenSource();
+        var round = (Task)ensure.Invoke(adb, [stop.Token])!;
+        for (var i = 0; i < 400 && !Calls().Contains("-s FAKE1 reverse tcp:8765 tcp:8765"); i++) await Task.Delay(50);
+        Assert.Contains("-s FAKE1 reverse tcp:8765 tcp:8765", Calls());
+        await stop.CancelAsync(); // the stop begins while the command is out (or after adb refused it)
+        await Assert.ThrowsAnyAsync<Exception>(() => round.WaitAsync(TimeSpan.FromSeconds(60)));
+
+        await adb.RemoveOwnRulesAsync(CancellationToken.None);
+        Assert.Equal(removed, Calls().Contains("-s FAKE1 reverse --remove tcp:8765"));
+        Assert.DoesNotContain(Calls(), c => c.Contains("reverse --list")); // never asked on Android 5 and 6
+    }
+
+    [Fact]
+    public async Task NoAdbIsStartedToRestartTheServerWhileTheSessionEnds()
+    {
+        var fake = FakeAdb(["FAKE1"], "", null);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake }));
+        var log = new Capture<AdbReverse>();
+        using var adb = new AdbReverse(new ConfigStore(path), log);
+        try
+        {
+            AdbReverse.MarkSessionEnding();
+            await WithoutTheRealAdbServer(null, () => adb.RestartAdbServerAsync(fake, CancellationToken.None));
+        }
+        finally { AdbReverse.ResetSessionEnding(); }
+        Assert.DoesNotContain("kill-server", Calls());
+        Assert.Contains(log.Lines, l => l.Contains("session is ending"));
+
+        await WithoutTheRealAdbServer(null, () => adb.RestartAdbServerAsync(fake, CancellationToken.None));
+        Assert.Contains("kill-server", Calls()); // outside that window, as before
     }
 
     [Fact]

@@ -29,6 +29,9 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     // serial -> API level of each attached phone this agent set its rule on, kept when Settings › Phone connection
     // selects another phone (_reverseSet and _sdk follow the selection), so a stop can still take that rule off
     private readonly Dictionary<string, int> _setHere = [];
+    // phones a "reverse" command was sent to that has not answered (cancelled by a stop, or timed out): the adb server
+    // may have applied it, so a stop removes it too (removing a rule that isn't there does no harm)
+    private readonly HashSet<string> _pending = [];
     internal const long KeyRetryMs = 30_000;
     // asked again now and then even when known: an app whose data was cleared has a new key and no pin, and can't say so
     internal const long KeyRefreshMs = 120_000;
@@ -147,17 +150,19 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // The selected phones, and any other attached phone this agent set its rule on: Settings › Phone connection may
         // have switched to another phone since, which leaves the earlier one out of _devices with the rule still on it.
         var attached = _all;
-        var phones = _devices.Union(_setHere.Keys.Where(attached.Contains)).ToArray();
+        var phones = _devices.Union(_setHere.Keys.Where(attached.Contains)).Union(_pending.Where(attached.Contains)).ToArray();
         if (SessionEnding || phones.Length == 0 || FindAdb(cfg.Get().AdbPath) is not { } adb) return;
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
         limit.CancelAfter(StopBudget); // the agent is closing: never hold that up for long
         // Android 5 and 6 can't list their rules (see Ensure; asking even drops the connection): the one this agent set
-        // is remembered instead. A phone no longer selected keeps its level in _setHere. Read here, before the phones
-        // run side by side: the sets are only ever touched from one thread at a time.
-        var remembered = phones.ToDictionary(d => d, d =>
-            (_sdk.TryGetValue(d, out var sdk) || _setHere.TryGetValue(d, out sdk)) && sdk is > 0 and <= 23
-                ? _reverseSet.Contains(d) || _setHere.ContainsKey(d)
-                : (bool?)null);
+        // is remembered instead. So is the rule on a phone whose version isn't known (its version read was cancelled):
+        // it may be one of those. Only a phone known to be newer is asked. A phone no longer selected keeps its level
+        // in _setHere. Read here, before the phones run side by side: the sets are only ever touched from one thread
+        // at a time.
+        int Level(string d) => _sdk.TryGetValue(d, out var sdk) && sdk > 0 ? sdk : _setHere.GetValueOrDefault(d);
+        var remembered = phones.ToDictionary(d => d, d => Level(d) > 23
+            ? (bool?)null
+            : _reverseSet.Contains(d) || _setHere.ContainsKey(d) || _pending.Contains(d));
         // all phones at once, each with the whole budget: a slow phone must not leave the next one its stale rule
         var removed = await Task.WhenAll(phones.Select(async d =>
         {
@@ -181,6 +186,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         {
             _reverseSet.Remove(d);
             _setHere.Remove(d);
+            _pending.Remove(d);
         }
         if (removed.OfType<string>().ToArray() is { Length: > 0 } handedOver) WriteHandoff(handedOver);
     }
@@ -243,8 +249,11 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             return;
         }
         var pid = await FindServerPid(port, ct);
-        // an install may have begun meanwhile (the lookup takes a moment): ending the server would cut it short
+        // an install may have begun meanwhile (the lookup takes a moment): ending the server would cut it short. Nor
+        // is adb started while the session ends (see SessionEnding; RunAdb doesn't cover the kill-server below).
+        // Nothing awaits between here and kill-server.
         if (CalledOffForInstall()) return;
+        if (SessionEnding) { log.LogInformation("the session is ending: the adb server restart is called off"); return; }
         if (pid is null)
             // kill-server is all that is left, and a hung server may not answer it: the log must not claim a restart
             log.LogWarning("adb server has not answered for a minute, and its process on port {Port} could not be found: "
@@ -260,6 +269,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         _reverseSet.Clear();
         _transport.Clear();
         _setHere.Clear();
+        _pending.Clear();
         _restarted = true;
         try { await ToolProcess.RunAsync(new ProcessStartInfo(adb) { ArgumentList = { "kill-server" } }, TimeSpan.FromSeconds(3), ct); }
         catch (Exception ex) when (ex is IOException or TimeoutException or System.ComponentModel.Win32Exception) { }
@@ -552,7 +562,11 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             // the phone had a rule already: this agent restarted (its USB port changed), the phone was not plugged in now
             var moved = HasAnyRule(list);
             if (_stopping) return; // the agent is closing: a rule set now would be left behind (RemoveBeforeThePortCloses)
-            await Adb(adb, $"-s {d} reverse {Rule} {TargetRule}", ct);
+            // noted before it is sent: a stop that cancels it may come after the adb server applied it
+            _pending.Add(d);
+            try { await Adb(adb, $"-s {d} reverse {Rule} {TargetRule}", ct); }
+            catch (IOException) { _pending.Remove(d); throw; } // adb refused it: no rule was set
+            _pending.Remove(d);
             _reverseSet.Add(d);
             _setHere[d] = sdk;
             if (transports?.TryGetValue(d, out var transport) == true) _transport[d] = transport;
