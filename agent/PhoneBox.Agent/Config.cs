@@ -305,6 +305,10 @@ public sealed class CursorConfig
     /// <summary>Windows: also read the agent chats Cursor keeps inside the running WSL distros (projects opened over
     /// Remote - WSL). A stopped distro is never started for it (off by default).</summary>
     public bool WatchWsl { get; set; }
+    /// <summary>Show the commands and MCP tool calls the Cursor agent is about to run on the phone, with Allow / Deny
+    /// (needs the Cursor hook, see Settings › General). Cursor's hook runs before every command, also the ones it would
+    /// run by itself, and waits for the phone while one is connected, so this stays off until you turn it on.</summary>
+    public bool PhoneApprovals { get; set; }
 }
 
 public sealed class AntigravityConfig
