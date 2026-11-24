@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
+[Collection("Shortcut lock hooks")] // OnLocked and LockComputer are static
 public sealed class LockPhoneOnShortcutTests
 {
     [Fact]
@@ -18,8 +19,12 @@ public sealed class LockPhoneOnShortcutTests
         AgentConfig? passedConfig = null;
 
         var prevHandler = Shortcuts.OnLocked;
+        var prevLock = Shortcuts.LockComputer;
+        var locked = false;
         try
         {
+            // never the real lock: running the tests must not lock the developer's computer
+            Shortcuts.LockComputer = () => locked = true;
             Shortcuts.OnLocked = cfg =>
             {
                 called = true;
@@ -32,12 +37,17 @@ public sealed class LockPhoneOnShortcutTests
 
             Shortcuts.Run(cfg, "test-lock", NullLogger.Instance);
 
+            Assert.True(locked);
             Assert.True(called);
             Assert.Same(cfg, passedConfig);
         }
         finally
         {
             Shortcuts.OnLocked = prevHandler;
+            Shortcuts.LockComputer = prevLock;
         }
     }
 }
+
+[CollectionDefinition("Shortcut lock hooks", DisableParallelization = true)]
+public sealed class ShortcutLockHooksCollection { }

@@ -22,6 +22,8 @@
   [HugoDeLannoy5311](https://github.com/HugoDeLannoy5311)).
 
 **Agent**
+- Settings › General › **Sleep the phone with the Lock shortcut**, off by default: running the built-in Lock shortcut
+  also turns the connected phone's screen off over USB (#520, #521, [sanjai4334](https://github.com/sanjai4334)).
 - Settings › Display › **Wake and unlock**, off by default: when the agent opens PhoneBox on a phone just plugged in
   over USB, it also steps over a swipe-only lock screen, but only when the phone reports its lock screen is showing.
   A PIN, pattern or password is never passed, nothing else on the screen gets a tap or swipe, and nothing is polled

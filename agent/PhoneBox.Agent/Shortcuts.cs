@@ -17,6 +17,19 @@ public static class Shortcuts
     /// </summary>
     public static Action<AgentConfig>? OnLocked { get; set; }
 
+    /// <summary>Locks the computer for builtin:lock. A test replaces it, so running the tests never locks the machine.</summary>
+    internal static Action LockComputer { get; set; } = PlatformLock;
+
+    private static void PlatformLock()
+    {
+#if WINDOWS
+        LockWorkStation();
+#else
+        if (OperatingSystem.IsMacOS()) Unix("pmset", "displaysleepnow");
+        else if (Sh.Run("loginctl", "lock-session") is null) Unix("xdg-screensaver", "lock");
+#endif
+    }
+
     /// <returns>An error message, or null on success.</returns>
     public static string? Run(AgentConfig cfg, string id, ILogger log, PushStore? push = null, AudioControl? audio = null, bool hold = false)
     {
@@ -268,11 +281,11 @@ public static class Shortcuts
                 case PhoneDevices.MicCmd:
                     PhoneDevices.Run(sc.Cmd, sc.Args);
                     break;
-#if WINDOWS
                 case "builtin:lock":
-                    LockWorkStation();
+                    LockComputer();
                     if (cfg is not null) OnLocked?.Invoke(cfg);
                     break;
+#if WINDOWS
                 case "builtin:monitor-off":
                     MonitorOff();
                     break;
@@ -280,11 +293,6 @@ public static class Shortcuts
                     Keys.Tap(Keys.VK_VOLUME_MUTE);
                     break;
 #else
-                case "builtin:lock":
-                    if (OperatingSystem.IsMacOS()) Unix("pmset", "displaysleepnow");
-                    else if (Sh.Run("loginctl", "lock-session") is null) Unix("xdg-screensaver", "lock");
-                    if (cfg is not null) OnLocked?.Invoke(cfg);
-                    break;
                 case "builtin:monitor-off":
                     if (OperatingSystem.IsMacOS()) Unix("pmset", "displaysleepnow");
                     else Unix("xset", "dpms", "force", "off");

@@ -868,6 +868,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.kiosk.openOnConnect": "電話插入時打開 PhoneBox: 每當連接到 USB 時, 喚醒電話並將面板帶到前方 (關閉以自行打開它, 對於你也用來測試應用程式的電話)",
       "s.kiosk.followLock": "遵循電腦鎖定: 在 macOS 鎖定時關閉手機螢幕; 在 macOS 解鎖時啟動並打開 PhoneBox (需要 ADB; 手動解鎖 PIN 或密碼保護的手機)",
       "s.kiosk.wakeOnUnlock": "喚醒並解鎖: 當 PhoneBox 透過 USB 打開時, 跳過只要求滑動的鎖定螢幕 (不會越過 PIN,圖形或密碼)",
+      "s.kiosk.lockPhoneWithShortcut": "用鎖定捷徑讓手機休眠: 每次執行鎖定捷徑時也關閉手機螢幕 (需要 ADB)",
       "s.claude.shareConversation": "顯示電話上的對話 (點擊 Claude Code 會話以查看其最近的消息和步驟;這些是您的提示和 Claude 的回應,只發送到您的電話)",
       "s.claude.onlyWhenAway": "只有當我離開電腦時 (一分鐘不用鍵盤或滑鼠)",
       "s.claude.shareSessionTitles": "顯示電話上的 Claude Code 聊天標題 (Claude Code 通常從您的第一個提示中取得)",
