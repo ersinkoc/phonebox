@@ -234,7 +234,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             }
             else if (cfg.Get().Display.OpenOnConnect)
             {
-                if (Clock() - Interlocked.Read(ref _lastSleepAt) < 5_000)
+                var lastSleepAt = Interlocked.Read(ref _lastSleepAt);
+                if (lastSleepAt != 0 && Clock() - lastSleepAt < 5_000)
                 {
                     await Adb(adb, ["-s", d, "shell", "input", "keyevent", "KEYCODE_SLEEP"], ct);
                     log.LogInformation("{Device}: adb reverse set up, phone screen asleep (lock shortcut)", d);
