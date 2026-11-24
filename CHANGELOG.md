@@ -90,6 +90,9 @@
   [freefakesmile](https://github.com/freefakesmile)).
 
 **Panel**
+- Settings › Display › **More rows on a tablet**, off by default: a landscape tablet keeps the 12 columns and adds
+  rows (about 8 to 10, from its screen), so a page holds more widgets. Widgets below the top 6 rows stay off a phone.
+  In **Pages**, the layout editor shows Phone, Tablet and Wide tablet (#546, [dpackham](https://github.com/dpackham)).
 - Traditional Chinese: 160 panel and widget labels that were machine-translated now read right, for example
   功耗 (power), 時脈 (clock speed), 溫度 (temperature) and 錄影 / 直播 (OBS recording / stream). Units such as MHz,
   rpm and W stay as they are (#549, [avery02072003-cmyk](https://github.com/avery02072003-cmyk)).
