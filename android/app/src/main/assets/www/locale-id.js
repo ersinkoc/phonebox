@@ -2,6 +2,13 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "id": {
     "strings": {
+      "s.display.standby": "Mode siaga",
+      "s.display.standby.off": "Mati: pertahankan layar menyala selama panel berjalan",
+      "s.display.standby.power": "Tidur saat pengisian daya USB diputus",
+      "s.display.standby.data": "Tidur saat agen berhenti merespons",
+      "s.display.standbyHint": "Saat komputer kembali, PhoneBox membangunkan ponsel dan membuka panel. Layar kunci yang hanya perlu digeser akan dilewati otomatis. Jika ponsel dilindungi PIN atau pola, Anda tetap harus membukanya sendiri. Selama siaga aktif, PhoneBox mematikan pengaturan Android “Tetap aktif” saat mengisi daya dan memulihkannya saat siaga dimatikan.",
+      "s.display.standbyGrace": "Tenggang waktu siaga (dtk)",
+      "s.display.standbyGraceHint": "Mengabaikan restart atau gangguan jaringan sesaat.",
       "s.phoneMic.title": "Mikrofon ponsel",
       "s.phoneMic.enable": "Gunakan mikrofon ponsel sebagai mikrofon komputer",
       "s.phoneMic.hint": "Mikrofon ponsel diputar ke kabel virtual seperti VB-CABLE; aplikasi memilih ujung kabel yang lain (CABLE Output) sebagai mikrofon. Siapkan memeriksa kabel, mengunduh scrcpy-server 5.0.1 dari GitHub jika belum ada, lalu menyalakan mikrofon. Ponsel harus terhubung lewat USB. Opsi lain: Lanjutan › JSON (phoneMic).",

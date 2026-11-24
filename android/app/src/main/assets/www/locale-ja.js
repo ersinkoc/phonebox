@@ -2,6 +2,13 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ja": {
     "strings": {
+      "s.display.standby": "スタンバイ",
+      "s.display.standby.off": "オフ：パネルの実行中は画面を点灯したままにする",
+      "s.display.standby.power": "USB充電が切れたらスリープ",
+      "s.display.standby.data": "エージェントが応答しなくなったらスリープ",
+      "s.display.standbyHint": "コンピューターが戻ると、PhoneBox がスマートフォンを起こしてパネルを開きます。スワイプだけで解除できるロック画面は自動的に解除されます。PIN やパターンで保護されている場合は、ご自身でロックを解除する必要があります。スタンバイがオンの間、PhoneBox は Android の「スリープモードにしない」設定をオフにし、スタンバイをオフにすると元に戻します。",
+      "s.display.standbyGrace": "スタンバイの猶予時間（秒）",
+      "s.display.standbyGraceHint": "再起動や一時的なネットワークの途切れを吸収します。",
       "s.phoneMic.title": "スマホのマイク",
       "s.phoneMic.enable": "スマホのマイクをパソコンのマイクとして使う",
       "s.phoneMic.hint": "スマホのマイクの音は VB-CABLE などの仮想ケーブルに再生され、アプリはケーブルのもう一方の端(CABLE Output)をマイクとして選びます。「セットアップ」はケーブルを確認し、scrcpy-server 5.0.1 がなければ GitHub からダウンロードしてマイクをオンにします。スマホは USB で接続しておく必要があります。その他の設定: 詳細 › JSON(phoneMic)。",

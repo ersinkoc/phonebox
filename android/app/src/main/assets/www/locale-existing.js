@@ -27,6 +27,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "de": {
     "strings": {
+      "s.display.standby": "Standby-Modus",
+      "s.display.standby.off": "Aus: Bildschirm anbehalten, solange das Panel läuft",
+      "s.display.standby.power": "Schlafen, wenn die USB-Ladung unterbrochen wird",
+      "s.display.standby.data": "Schlafen, wenn der Agent nicht mehr antwortet",
+      "s.display.standbyHint": "Sobald der Computer wieder da ist, weckt PhoneBox das Handy und öffnet das Panel. Ein Sperrbildschirm, der nur Wischen verlangt, wird automatisch entfernt. Ist das Handy mit PIN oder Muster geschützt, müssen Sie es weiterhin selbst entsperren. Solange Standby aktiv ist, schaltet PhoneBox die Android-Einstellung „Aktiv lassen“ während des Ladens aus und stellt sie wieder her, wenn Standby ausgeschaltet wird.",
+      "s.display.standbyGrace": "Standby-Karenzzeit (s)",
+      "s.display.standbyGraceHint": "Fängt einen Neustart oder einen kurzen Netzwerkaussetzer ab.",
       "s.feeds.import": "+ Feeds importieren (OPML / mehrere)",
       "s.feeds.importTitle": "RSS-/Atom-Feeds importieren",
       "s.feeds.importHint": "Feeds mit Kategorien aus einer OPML-Exportdatei (Feedly, Inoreader, NetNewsWire usw.) importieren oder Zeilen einfügen (Kategorie | Name | URL oder Name | URL).",
@@ -1485,6 +1492,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "fr": {
     "strings": {
+      "s.display.standby": "Mise en veille",
+      "s.display.standby.off": "Désactivé : garder l'écran allumé tant que le panneau fonctionne",
+      "s.display.standby.power": "Se mettre en veille quand la charge USB est coupée",
+      "s.display.standby.data": "Se mettre en veille quand l'agent ne répond plus",
+      "s.display.standbyHint": "Quand l'ordinateur revient, PhoneBox réveille le téléphone et ouvre le panneau. Un écran de verrouillage par simple balayage est levé automatiquement. Si le téléphone est protégé par un code PIN ou un schéma, vous devez toujours le déverrouiller vous-même. Tant que la veille est active, PhoneBox désactive le réglage Android « Rester allumé » pendant la charge et le rétablit quand la veille est désactivée.",
+      "s.display.standbyGrace": "Délai de grâce de veille (s)",
+      "s.display.standbyGraceHint": "Absorbe un redémarrage ou une brève coupure réseau.",
       "s.feeds.import": "+ Importer des flux (OPML / en masse)",
       "s.feeds.importTitle": "Importer des flux RSS / Atom",
       "s.feeds.importHint": "Importez des flux classés à partir d'un fichier d'export OPML (Feedly, Inoreader, NetNewsWire, etc.) ou collez des lignes (Catégorie | Nom | URL, ou Nom | URL).",
@@ -2943,6 +2957,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "es": {
     "strings": {
+      "s.display.standby": "Modo de espera",
+      "s.display.standby.off": "Desactivado: mantener la pantalla encendida mientras el panel esté en marcha",
+      "s.display.standby.power": "Suspender cuando se corta la carga por USB",
+      "s.display.standby.data": "Suspender cuando el agente deja de responder",
+      "s.display.standbyHint": "Cuando el ordenador vuelve, PhoneBox activa el teléfono y abre el panel. Una pantalla de bloqueo que solo pide deslizar se descarta automáticamente. Si el teléfono está protegido con PIN o patrón, tendrás que desbloquearlo tú mismo. Mientras el modo de espera está activado, PhoneBox desactiva el ajuste de Android «Permanecer activo» durante la carga y lo restaura al desactivar el modo de espera.",
+      "s.display.standbyGrace": "Tiempo de gracia de la espera (s)",
+      "s.display.standbyGraceHint": "Absorbe un reinicio o un corte breve de red.",
       "s.feeds.import": "+ Importar fuentes (OPML / en bloque)",
       "s.feeds.importTitle": "Importar fuentes RSS / Atom",
       "s.feeds.importHint": "Importa fuentes con categorías desde un archivo de exportación OPML (Feedly, Inoreader, NetNewsWire, etc.) o pega líneas (Categoría | Nombre | URL, o Nombre | URL).",
@@ -4401,6 +4422,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "it": {
     "strings": {
+      "s.display.standby": "Modalità standby",
+      "s.display.standby.off": "Disattivato: tieni acceso lo schermo mentre il pannello è in esecuzione",
+      "s.display.standby.power": "Sospendi quando la ricarica USB viene interrotta",
+      "s.display.standby.data": "Sospendi quando l'agente smette di rispondere",
+      "s.display.standbyHint": "Quando il computer torna disponibile, PhoneBox riattiva il telefono e apre il pannello. Una schermata di blocco con solo scorrimento viene chiusa automaticamente. Se il telefono è protetto da PIN o sequenza, devi comunque sbloccarlo tu. Mentre lo standby è attivo, PhoneBox disattiva l'impostazione di Android «Rimani attivo» durante la ricarica e la ripristina quando lo standby viene disattivato.",
+      "s.display.standbyGrace": "Tolleranza standby (s)",
+      "s.display.standbyGraceHint": "Assorbe un riavvio o un breve problema di rete.",
       "s.feeds.import": "+ Importa feed (OPML / in blocco)",
       "s.feeds.importTitle": "Importa feed RSS / Atom",
       "s.feeds.importHint": "Importa feed con categorie da un file di esportazione OPML (Feedly, Inoreader, NetNewsWire, ecc.) o incolla delle righe (Categoria | Nome | URL, oppure Nome | URL).",
@@ -5859,6 +5887,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "pt": {
     "strings": {
+      "s.display.standby": "Modo de espera",
+      "s.display.standby.off": "Desligado: manter o ecrã ligado enquanto o painel estiver em execução",
+      "s.display.standby.power": "Adormecer quando o carregamento USB é cortado",
+      "s.display.standby.data": "Adormecer quando o agente deixa de responder",
+      "s.display.standbyHint": "Quando o computador volta, o PhoneBox acorda o telemóvel e abre o painel. Um ecrã de bloqueio que só pede deslizar é dispensado automaticamente. Se o telemóvel estiver protegido por PIN ou padrão, tem de o desbloquear manualmente. Enquanto o modo de espera estiver ativo, o PhoneBox desativa a definição do Android «Manter ativo» durante o carregamento e repõe-na quando o modo de espera for desativado.",
+      "s.display.standbyGrace": "Tolerância do modo de espera (s)",
+      "s.display.standbyGraceHint": "Absorve um reinício ou uma falha breve de rede.",
       "s.feeds.import": "+ Importar feeds (OPML / em lote)",
       "s.feeds.importTitle": "Importar feeds RSS / Atom",
       "s.feeds.importHint": "Importe feeds com categorias a partir de um ficheiro de exportação OPML (Feedly, Inoreader, NetNewsWire, etc.) ou cole linhas (Categoria | Nome | URL, ou Nome | URL).",
@@ -7317,6 +7352,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "pt-BR": {
     "strings": {
+      "s.display.standby": "Modo de espera",
+      "s.display.standby.off": "Desativado: manter a tela ligada enquanto o painel estiver em execução",
+      "s.display.standby.power": "Entrar em repouso quando a carga USB for cortada",
+      "s.display.standby.data": "Entrar em repouso quando o agente parar de responder",
+      "s.display.standbyHint": "Quando o computador volta, o PhoneBox acorda o celular e abre o painel. Uma tela de bloqueio que só exige deslizar é dispensada automaticamente. Se o celular estiver protegido por PIN ou padrão, você ainda precisa desbloqueá-lo. Enquanto o modo de espera estiver ativo, o PhoneBox desativa a configuração do Android «Permanecer ativo» durante o carregamento e a restaura quando o modo de espera for desativado.",
+      "s.display.standbyGrace": "Tolerância do modo de espera (s)",
+      "s.display.standbyGraceHint": "Absorve uma reinicialização ou uma falha rápida de rede.",
       "s.pair.title": "Emparelhar um telefone com {pc}",
       "s.pair.qr": "Emparelhamento do código QR",
       "s.pair.downloadQr": "Código QR para o download do aplicativo",
@@ -7356,6 +7398,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "nl": {
     "strings": {
+      "s.display.standby": "Stand-by",
+      "s.display.standby.off": "Uit: scherm aan houden zolang het paneel draait",
+      "s.display.standby.power": "In slaapstand als de USB-lading wegvalt",
+      "s.display.standby.data": "In slaapstand als de agent niet meer antwoordt",
+      "s.display.standbyHint": "Wanneer de computer terug is, maakt PhoneBox de telefoon wakker en opent het paneel. Een vergrendelscherm dat alleen swipen vraagt, wordt automatisch gesloten. Is de telefoon beveiligd met een pincode of patroon, dan moet je hem nog steeds zelf ontgrendelen. Zolang stand-by aan staat, schakelt PhoneBox de Android-instelling „Ingeschakeld laten” tijdens het opladen uit en zet die terug zodra stand-by wordt uitgezet.",
+      "s.display.standbyGrace": "Stand-by-uitstel (s)",
+      "s.display.standbyGraceHint": "Vangt een herstart of een korte netwerkstoring op.",
       "s.feeds.import": "+ Feeds importeren (OPML / in bulk)",
       "s.feeds.importTitle": "RSS- / Atom-feeds importeren",
       "s.feeds.importHint": "Importeer feeds met categorieën uit een OPML-exportbestand (Feedly, Inoreader, NetNewsWire enz.) of plak regels (Categorie | Naam | URL, of Naam | URL).",
@@ -8814,6 +8863,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "pl": {
     "strings": {
+      "s.display.standby": "Tryb czuwania",
+      "s.display.standby.off": "Wyłączone: ekran pozostaje włączony, gdy panel działa",
+      "s.display.standby.power": "Uśpij po odcięciu ładowania USB",
+      "s.display.standby.data": "Uśpij, gdy agent przestanie odpowiadać",
+      "s.display.standbyHint": "Gdy komputer wróci, PhoneBox budzi telefon i otwiera panel. Ekran blokady wymagający tylko przesunięcia jest zamykany automatycznie. Jeśli telefon jest chroniony kodem PIN lub wzorem, nadal musisz go odblokować samodzielnie. Gdy tryb czuwania jest włączony, PhoneBox wyłącza ustawienie Androida „Pozostaw włączony ekran” podczas ładowania i przywraca je po wyłączeniu trybu czuwania.",
+      "s.display.standbyGrace": "Zwłoka przed czuwaniem (s)",
+      "s.display.standbyGraceHint": "Pozwala przetrwać restart lub chwilową awarię sieci.",
       "s.feeds.import": "+ Importuj kanały (OPML / zbiorczo)",
       "s.feeds.importTitle": "Importuj kanały RSS / Atom",
       "s.feeds.importHint": "Zaimportuj kanały z kategoriami z pliku eksportu OPML (Feedly, Inoreader, NetNewsWire itp.) lub wklej wiersze (Kategoria | Nazwa | URL albo Nazwa | URL).",
@@ -10272,6 +10328,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "ru": {
     "strings": {
+      "s.display.standby": "Режим ожидания",
+      "s.display.standby.off": "Выкл.: держать экран включённым, пока работает панель",
+      "s.display.standby.power": "Засыпать при отключении зарядки по USB",
+      "s.display.standby.data": "Засыпать, когда агент перестаёт отвечать",
+      "s.display.standbyHint": "Когда компьютер снова появляется, PhoneBox будит телефон и открывает панель. Экран блокировки, который снимается только свайпом, закрывается автоматически. Если телефон защищён PIN-кодом или графическим ключом, разблокировать его по-прежнему нужно самостоятельно. Пока режим ожидания включён, PhoneBox отключает настройку Android «Не выключать экран» при зарядке и возвращает её, когда режим ожидания выключается.",
+      "s.display.standbyGrace": "Задержка режима ожидания (с)",
+      "s.display.standbyGraceHint": "Сглаживает перезагрузку или кратковременный сбой сети.",
       "s.feeds.import": "+ Импорт лент (OPML / списком)",
       "s.feeds.importTitle": "Импорт лент RSS / Atom",
       "s.feeds.importHint": "Импортируйте ленты с категориями из файла экспорта OPML (Feedly, Inoreader, NetNewsWire и др.) или вставьте строки (Категория | Название | URL или Название | URL).",
@@ -11730,6 +11793,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "el": {
     "strings": {
+      "s.display.standby": "Αναμονή",
+      "s.display.standby.off": "Ανενεργό: η οθόνη μένει αναμμένη όσο λειτουργεί ο πίνακας",
+      "s.display.standby.power": "Αναστολή λειτουργίας όταν διακοπεί η φόρτιση μέσω USB",
+      "s.display.standby.data": "Αναστολή λειτουργίας όταν ο πράκτορας δεν απαντά πια",
+      "s.display.standbyHint": "Όταν ο υπολογιστής επιστρέψει, το PhoneBox ξυπνά το τηλέφωνο και ανοίγει τον πίνακα. Μια οθόνη κλειδώματος που ζητά μόνο σύρσιμο παρακάμπτεται αυτόματα. Αν το τηλέφωνο προστατεύεται με PIN ή μοτίβο, πρέπει και πάλι να το ξεκλειδώσετε εσείς. Όσο η αναμονή είναι ενεργή, το PhoneBox απενεργοποιεί τη ρύθμιση του Android «Παραμονή σε λειτουργία» κατά τη φόρτιση και την επαναφέρει όταν η αναμονή απενεργοποιηθεί.",
+      "s.display.standbyGrace": "Περίοδος χάριτος αναμονής (δ)",
+      "s.display.standbyGraceHint": "Απορροφά μια επανεκκίνηση ή ένα στιγμιαίο πρόβλημα δικτύου.",
       "s.pair.title": "Ζεύξη τηλεφώνου με {pc}",
       "s.pair.qr": "Κωδικός ζεύξης QR",
       "s.pair.downloadQr": "QR κωδικός για τη λήψη της εφαρμογής",
@@ -12080,6 +12150,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "vi": {
     "strings": {
+      "s.display.standby": "Chế độ chờ",
+      "s.display.standby.off": "Tắt: giữ màn hình sáng khi bảng điều khiển đang chạy",
+      "s.display.standby.power": "Ngủ khi ngắt sạc USB",
+      "s.display.standby.data": "Ngủ khi tác nhân ngừng phản hồi",
+      "s.display.standbyHint": "Khi máy tính hoạt động trở lại, PhoneBox đánh thức điện thoại và mở bảng điều khiển. Màn hình khóa chỉ cần vuốt sẽ tự động được bỏ qua. Nếu điện thoại được bảo vệ bằng PIN hoặc hình mở khóa, bạn vẫn phải tự mở khóa. Khi chế độ chờ đang bật, PhoneBox tắt cài đặt “Luôn bật màn hình” của Android khi sạc và khôi phục lại khi chế độ chờ được tắt.",
+      "s.display.standbyGrace": "Thời gian chờ trước khi vào chế độ chờ (giây)",
+      "s.display.standbyGraceHint": "Bỏ qua một lần khởi động lại hoặc sự cố mạng thoáng qua.",
       "s.pair.title": "Đặt điện thoại với {pc}",
       "s.pair.qr": "Cặp mã QR",
       "s.pair.downloadQr": "Mã QR cho tải ứng dụng",
@@ -12430,6 +12507,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "zh": {
     "strings": {
+      "s.display.standby": "待机模式",
+      "s.display.standby.off": "关闭：面板运行时保持屏幕常亮",
+      "s.display.standby.power": "USB 充电中断时休眠",
+      "s.display.standby.data": "代理停止响应时休眠",
+      "s.display.standbyHint": "电脑恢复后，PhoneBox 会唤醒手机并打开面板。仅需滑动解锁的锁屏会被自动解除。如果手机设有 PIN 码或图案锁，仍需您自己解锁。待机模式开启期间，PhoneBox 会关闭 Android 的“充电时保持唤醒状态”设置，并在待机模式关闭时恢复该设置。",
+      "s.display.standbyGrace": "待机宽限时间（秒）",
+      "s.display.standbyGraceHint": "可容忍重启或短暂的网络波动。",
       "s.feeds.import": "+ 导入订阅源（OPML / 批量）",
       "s.feeds.importTitle": "导入 RSS / Atom 订阅源",
       "s.feeds.importHint": "从 OPML 导出文件（Feedly、Inoreader、NetNewsWire 等）导入带分类的订阅源，或粘贴文本行（分类 | 名称 | URL，或 名称 | URL）。",

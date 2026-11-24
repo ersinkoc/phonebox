@@ -2,6 +2,13 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "cs": {
     "strings": {
+      "s.display.standby": "Pohotovostní režim",
+      "s.display.standby.off": "Vypnuto: nechat displej rozsvícený, dokud panel běží",
+      "s.display.standby.power": "Uspat, když se přeruší nabíjení přes USB",
+      "s.display.standby.data": "Uspat, když agent přestane odpovídat",
+      "s.display.standbyHint": "Když se počítač vrátí, PhoneBox telefon probudí a otevře panel. Zamykací obrazovka vyžadující jen přejetí prstem se zruší automaticky. Pokud je telefon chráněn kódem PIN nebo gestem, musíte ho odemknout sami. Dokud je pohotovostní režim zapnutý, PhoneBox vypne nastavení Androidu „Nevypínat obrazovku“ při nabíjení a po vypnutí pohotovostního režimu ho obnoví.",
+      "s.display.standbyGrace": "Odklad pohotovostního režimu (s)",
+      "s.display.standbyGraceHint": "Přečká restart nebo krátký výpadek sítě.",
       "s.phoneMic.title": "Mikrofon telefonu",
       "s.phoneMic.enable": "Používat mikrofon telefonu jako mikrofon počítače",
       "s.phoneMic.hint": "Zvuk z mikrofonu telefonu se přehrává do virtuálního kabelu, například VB-CABLE; aplikace jako mikrofon vyberou druhý konec kabelu (CABLE Output). Nastavit zkontroluje kabel, stáhne scrcpy-server 5.0.1 z GitHubu, pokud chybí, a zapne mikrofon. Telefon musí být připojen přes USB. Další možnosti: Pokročilé › JSON (phoneMic).",

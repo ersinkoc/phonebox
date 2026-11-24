@@ -537,7 +537,7 @@
       's.display.standby.off': 'Off: hold the screen while the panel runs',
       's.display.standby.power': 'Sleep when USB charge is cut',
       's.display.standby.data': 'Sleep when the agent stops answering',
-      's.display.standbyHint': 'Off is today\'s behaviour. A panel wired to one computer can release its keep-awake hold once that computer is gone, then light up by itself when it returns. "Data" also survives a charge-capped port (a charging ceiling, some hubs) and a board that keeps 5 V alive after shutdown; "power" is the classic cable check. Any mode but Off clears Android\'s stay-on-while-charging setting for you (the app could not write it); the panel relights on reconnect - the agent sends it a wake key when ADB sees the phone again, and plugging the cable back in lights it anyway.',
+      's.display.standbyHint': 'When the computer comes back, PhoneBox wakes the phone and opens the panel. A swipe-only lock screen is dismissed automatically. If the phone is protected by a PIN or pattern, you must still unlock it yourself. While standby is on, PhoneBox turns off Android\'s stay-awake-while-charging setting and restores it when standby is turned off.',
       's.display.standbyGrace': 'Standby grace (s)',
       's.display.standbyGraceHint': 'Absorbs a reboot or a network hiccup.',
       's.rules.countdown': 'Page switches count down on the phone and wait while you use it (General › Page switching).',

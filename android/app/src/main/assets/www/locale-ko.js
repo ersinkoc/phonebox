@@ -2,6 +2,13 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ko": {
     "strings": {
+      "s.display.standby": "대기 모드",
+      "s.display.standby.off": "끄기: 패널이 실행되는 동안 화면 유지",
+      "s.display.standby.power": "USB 충전이 끊기면 절전",
+      "s.display.standby.data": "에이전트가 응답하지 않으면 절전",
+      "s.display.standbyHint": "컴퓨터가 다시 돌아오면 PhoneBox가 휴대폰을 깨우고 패널을 엽니다. 밀기만 하면 되는 잠금 화면은 자동으로 해제됩니다. 휴대폰이 PIN이나 패턴으로 보호되어 있으면 직접 잠금을 해제해야 합니다. 대기 모드가 켜져 있는 동안 PhoneBox는 Android의 ‘화면 켜짐 상태 유지’ 설정을 끄고, 대기 모드를 끄면 원래대로 복원합니다.",
+      "s.display.standbyGrace": "대기 모드 유예 시간(초)",
+      "s.display.standbyGraceHint": "재부팅이나 일시적인 네트워크 끊김을 흡수합니다.",
       "s.phoneMic.title": "휴대폰 마이크",
       "s.phoneMic.enable": "휴대폰 마이크를 컴퓨터 마이크로 사용",
       "s.phoneMic.hint": "휴대폰 마이크 소리는 VB-CABLE 같은 가상 케이블로 재생되고, 앱은 케이블의 반대쪽(CABLE Output)을 마이크로 선택합니다. 설정은 케이블을 확인하고, scrcpy-server 5.0.1이 없으면 GitHub에서 내려받은 뒤 마이크를 켭니다. 휴대폰은 USB로 연결되어 있어야 합니다. 추가 옵션: 고급 › JSON(phoneMic).",

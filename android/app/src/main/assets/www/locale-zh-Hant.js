@@ -2,6 +2,13 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "zh-Hant": {
     "strings": {
+      "s.display.standby": "待機模式",
+      "s.display.standby.off": "關閉：面板執行時保持螢幕恆亮",
+      "s.display.standby.power": "USB 充電中斷時休眠",
+      "s.display.standby.data": "代理程式停止回應時休眠",
+      "s.display.standbyHint": "電腦恢復後，PhoneBox 會喚醒手機並開啟面板。只需滑動解鎖的螢幕鎖定會自動解除。如果手機設有 PIN 碼或圖案鎖定，仍需由您自行解鎖。待機模式開啟期間，PhoneBox 會關閉 Android 的「保持清醒狀態」設定，並在待機模式關閉時還原。",
+      "s.display.standbyGrace": "待機寬限時間（秒）",
+      "s.display.standbyGraceHint": "可容忍重新啟動或短暫的網路中斷。",
       "s.phoneMic.title": "手機麥克風",
       "s.phoneMic.enable": "將手機的麥克風用作電腦麥克風",
       "s.phoneMic.hint": "手機麥克風的聲音會播放到虛擬音訊線(如 VB-CABLE)中;應用選擇音訊線的另一端(CABLE Output)作為麥克風。“設定”會檢查音訊線,如缺少則從 GitHub 下載 scrcpy-server 5.0.1,然後開啟麥克風。手機須透過 USB 連線。更多選項:進階 › JSON(phoneMic)。",
