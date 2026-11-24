@@ -589,7 +589,14 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
                 // is showing one — no input goes to whatever else is on screen, and a PIN, pattern or password is
                 // not passed: "wm dismiss-keyguard" only steps over swipe-to-unlock screens.
                 if (cfg.Get().Display.WakeOnUnlock && await KeyguardShowingAsync(adb, d, ct))
-                    await Adb(adb, $"-s {d} shell wm dismiss-keyguard", ct);
+                {
+                    // optional: a dismiss that fails must not keep the panel from opening (the rule is set already, so
+                    // the next round would not come back to open it)
+                    try { await Adb(adb, $"-s {d} shell wm dismiss-keyguard", ct); }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                    catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
+                    { log.LogInformation("{Device}: the lock screen could not be stepped over ({Why})", d, ex.Message); }
+                }
                 await Adb(adb, $"-s {d} shell am start -n {PanelActivity}", ct);
                 log.LogInformation("{Device}: adb reverse set up, panel opened", d);
             }

@@ -294,6 +294,8 @@ public sealed class AdbWakeTests : IDisposable
     [Fact]
     public async Task WakeOnUnlockIsNotTiedToFollowingTheComputerLock()
     {
+        // on macOS following the computer lock takes its own branch (SyncSessionAsync), not the open-on-connect one
+        if (OperatingSystem.IsMacOS()) return;
         var fake = FakeAdb(MiuiLocked);
         var calls = await RunUntil(fake, Settings(fake, false, followComputerLock: true),
             c => c.Contains("-s FAKE1 shell am start -n net.oxog.phonebox.deskpanel/.MainActivity"));
