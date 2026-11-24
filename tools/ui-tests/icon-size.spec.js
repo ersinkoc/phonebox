@@ -77,3 +77,29 @@ test('an unknown icon size is ignored', async ({ page }) => {
   await expect(key.locator('.k-label')).toHaveText('Key');
   await expect(key).not.toHaveClass(/k-isz-/);
 });
+
+// Non-text values (a hand-edited config) are ignored like the agent does, instead of throwing or being coerced ("m" in an array).
+for (const [name, value] of [['an array', ['m']], ['an object with a null toString', { toString: null }], ['a number', 42]]) {
+  test(`an icon size given as ${name} is ignored`, async ({ page }) => {
+    const key = await open(page, value);
+    await expect(key.locator('.k-label')).toHaveText('Key');
+    await expect(key).not.toHaveClass(/k-isz-/);
+  });
+}
+
+// On a very short key (about 40px) a picture at "maximum" is not smaller than at "large" either.
+test('the maximum picture is not smaller than large on a very short key', async ({ page }) => {
+  const sizes = ['l', 'max'];
+  await page.addInitScript((config) => localStorage.setItem('pb-demo-config', config), JSON.stringify({
+    night: { enabled: false }, rules: [],
+    shortcuts: sizes.map((s) => ({ id: 'k' + s, label: 'Key', icon: '🎚️', color: '#6b7280', cmd: 'builtin:keys', iconSize: s, iconRev: 1 })),
+    pages: [{ id: 'size-test', title: 'Keys', widgets: sizes.map((s, i) => ({ id: 'b' + i, type: 'button', x: i * 6, y: 0, w: 6, h: 1, options: { id: 'k' + s } })) }],
+  }));
+  await page.route('**/agent/api/shortcuts/icon**', (r) => r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="red"/></svg>' }));
+  await page.setViewportSize({ width: 1000, height: 250 });
+  await page.goto('/panel/');
+  const keys = page.locator('[data-id="size-test"] .w-button .key');
+  await expect(keys).toHaveCount(2);
+  const [large, max] = await Promise.all([0, 1].map((i) => keys.nth(i).locator('.k-icon img').boundingBox()));
+  expect(max.height).toBeGreaterThanOrEqual(large.height - 1);
+});
