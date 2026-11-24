@@ -32,6 +32,8 @@ public sealed partial class DiscordMonitor
     internal TimeSpan ShareStartWait = TimeSpan.FromSeconds(4); // internal: tests wait less
     /// <summary>How long a stop waits for a late "ended" event from Discord before it sends the toggle.</summary>
     internal TimeSpan ShareStopSettle = TimeSpan.FromMilliseconds(600); // internal: tests wait less
+    /// <summary>The wait itself; a test holds it open until it has delivered Discord's late "ended" event.</summary>
+    internal Func<Task>? ShareStopWait;
     internal int ShareAppsCacheMs = 10_000; // internal: tests make it old
 
     // Windows that are not apps you would share (the shell, Discord itself, PhoneBox).
@@ -215,7 +217,7 @@ public sealed partial class DiscordMonitor
                 if (!sharing) return null;
                 // The same command starts a share, and Discord reports a share ended on the computer about a third of a
                 // second later. Wait a moment and ask again, so a Stop pressed in that gap doesn't open the picker.
-                await Task.Delay(ShareStopSettle);
+                await (ShareStopWait?.Invoke() ?? Task.Delay(ShareStopSettle));
                 if (Sharing != true) return null;
             }
             else

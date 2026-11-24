@@ -7,6 +7,11 @@
   inside its own window, so with Discord minimized, behind other windows or in the tray the button seemed to do
   nothing. With more than one Discord build running (stable, PTB, Canary), the one PhoneBox is connected to comes
   forward, since that is where the picker opens (#539, #543, [DarkusK](https://github.com/DarkusK)).
+- Discord: a **current channel** bar widget, any size from 2 × 1 up to a full row: the voice channel you are in, who is
+  there, mute, deafen and leave, and Screen / Chat that open those tabs of the Discord widget. Outside a voice channel
+  it hides and the widgets next to it take its place. Its own **Control** allows only mute, deafen, leave and stopping
+  a screen share; starting one, the app list and the chat stay with the Discord widget (#540,
+  [DarkusK](https://github.com/DarkusK)).
 - Discord: a **Side by side** layout, as an option next to the list (the default), for tablets and large widgets. The
   left side shows the voice channel you are in with who is there, mute, deafen and leave; the right side has tabs for
   the chosen server's voice channels as big keys, the chat and the screen share. A server switcher keeps the servers
@@ -93,6 +98,9 @@
   [freefakesmile](https://github.com/freefakesmile)).
 
 **Panel**
+- Page bar: with many pages on a narrow phone, only the current page keeps its name, so the others are not cut to one
+  letter. It happens only when a name would be cut, so tablets, monitors and the side bar keep every name (#553,
+  [avery02072003-cmyk](https://github.com/avery02072003-cmyk)).
 - Settings › Display › **More rows on a tablet**, off by default: a landscape tablet keeps the 12 columns and adds
   rows (about 8 to 10, from its screen), so a page holds more widgets. Widgets below the top 6 rows stay off a phone.
   In **Pages**, the layout editor shows Phone, Tablet and Wide tablet (#546, [dpackham](https://github.com/dpackham)).
@@ -120,6 +128,9 @@
   a wallpaper is set (#468, #471, [lucaskaiut](https://github.com/lucaskaiut)).
 
 **Android app**
+- Pairing without a cable: when the browser can't hand the pairing link to the app, the pairing page now says what to
+  do (install the app first, or try the camera, Chrome or USB) instead of opening the download page as if pairing had
+  worked (#175, #552, [haop2922-ai](https://github.com/haop2922-ai)).
 - The app keeps its connections to the computer open and reuses them, instead of opening a new encrypted connection
   for every request. On Android 6 each one held system resources until the app was stopped, which may be behind the
   crashes after some idle time in #389 (#508, [wahackr](https://github.com/wahackr)).

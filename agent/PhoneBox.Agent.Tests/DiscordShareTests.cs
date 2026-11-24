@@ -484,12 +484,15 @@ public sealed class DiscordShareTests : IDisposable
     public async Task A_stop_right_after_the_share_ended_on_the_computer_sends_nothing()
     {
         var monitor = Monitor(share: true);
-        monitor.ShareStopSettle = TimeSpan.FromMilliseconds(400);
+        var settle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        monitor.ShareStopWait = () => settle.Task;           // Stop waits here until the late event is in
         await WithShare(monitor, Active, async discord =>
         {
             var stop = monitor.ShareActAsync("stop", null); // still active as far as the agent knows
-            await Task.Delay(100);
             await discord.State(Idle);                      // the late event of the share ended on the computer
+            for (var i = 0; i < 500 && monitor.Sharing != false; i++) await Task.Delay(10);
+            Assert.False(monitor.Sharing);
+            settle.SetResult();
             Assert.Null(await stop);                        // it has ended, as asked
             var sent = discord.Request("TOGGLE_SCREENSHARE");
             await Task.Delay(150);

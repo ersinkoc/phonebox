@@ -511,7 +511,8 @@ const dcFocus = {
       poll(); pollShare(); pollChat();
       if (kind !== 'fast') render();
       if (!data?.snapshot?.connected) return;
-      const to = dcTake(page, visible());
+      // the request is for a Discord widget on the page itself, not a Smart Stack card (as in the list layout)
+      const to = box.closest('.stack-item') ? null : dcTake(page, visible());
       if ((to === 'share' && data.share) || (to === 'chat' && data.chat)) openTab(to);
     } };
 
@@ -524,7 +525,9 @@ const dcFocus = {
 // shows one card at a time, so the request could not say which.
 let dcWant = null;
 const dcOpen = (tab) => {
-  const target = pages.find((p) => (p.widgets || []).some((w) => w.type === 'discord'));
+  // the first page whose own Discord widget is built on this screen: one on a tablet-only row is not built on a phone
+  const sections = [...document.querySelectorAll('#pager > .page')];
+  const target = pages[sections.findIndex((sec) => [...sec.querySelectorAll('.w-discord')].some((el) => !el.closest('.stack-item')))];
   if (!target) { toast(t('w.discord.addWidget'), 'err'); return; }
   dcWant = { tab, page: target };
   gotoPageRef(pages.indexOf(target) + 1);
