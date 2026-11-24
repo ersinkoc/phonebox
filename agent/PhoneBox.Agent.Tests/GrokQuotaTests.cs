@@ -380,6 +380,23 @@ public sealed class GrokQuotaTests : IDisposable
         }
     }
 
+    // A prepaid-only reading (a balance, no limits) is a good reading: a failed CodexBar answer must not hide it, but a
+    // fresh CodexBar reading with limits still wins.
+    [Fact]
+    public void APrepaidOnlyReadingIsNotHiddenByAFailedCodexBarAnswer()
+    {
+        const long now = 1_800_000_000_000;
+        var prepaid = new QuotaProvider("grok", "Grok", "SuperGrok", [], "$12.40 prepaid", now, null);
+        var failed = new QuotaProvider("grok", "Grok", "", [], null, now, "CodexBar: not signed in", Source: "codexbar");
+        Assert.Same(prepaid, QuotaMonitor.GrokSelect(prepaid, failed, now));
+        Assert.Same(prepaid, QuotaMonitor.GrokSelect(prepaid, null, now));
+        var limit = new QuotaLimit("Credits", 40, null, null, "ok");
+        var fresh = new QuotaProvider("grok", "Grok", "", [limit], null, now - 1000, null, Source: "codexbar");
+        Assert.Equal("codexbar", QuotaMonitor.GrokSelect(prepaid, fresh, now)!.Source);
+        var errorReading = prepaid with { Error = "Grok: offline" };
+        Assert.Equal("CodexBar: not signed in", QuotaMonitor.GrokSelect(errorReading, failed, now)!.Error);
+    }
+
     private sealed class ListLog : ILogger<QuotaMonitor>
     {
         public List<string> Lines { get; } = [];

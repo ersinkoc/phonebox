@@ -40,6 +40,11 @@
 - Shortcuts: an **Icon size** per shortcut (Settings › Shortcuts): Default, Medium, Large or Maximum, where the icon
   fills the key. It applies to an emoji and an uploaded picture, on any key (Shortcut grid, Big button, cycle keys); a
   program's own icon keeps its size (#542, [leosantana](https://github.com/leosantana)).
+- AI quotas and Sessions: **Grok**. The quotas card shows the current credit window, the plan, the product split and a
+  prepaid balance, read with the Grok CLI's own sign-in (`grok login`), which PhoneBox never refreshes, logs or sends
+  to the phone. It asks only while an enabled page shows Grok. The Sessions card lists Grok CLI sessions from
+  `~/.grok/sessions` (project, status, model, effort and token counts; the chat stays on the computer) (#548,
+  [dpackham](https://github.com/dpackham)).
 - Synced lyrics: **Timing offset per player**, one `Name=ms` per line with the player's name as Now playing shows it
   (for example `Apple Music=1000`), for a player whose position runs behind the sound while others don't. On Windows,
   Apple Music now shows as "Apple Music" instead of "AppleInc" (#557,

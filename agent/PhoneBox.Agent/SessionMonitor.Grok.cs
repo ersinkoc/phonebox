@@ -102,8 +102,10 @@ public sealed partial class SessionMonitor
             return info.Exists ? $"{info.LastWriteTimeUtc.Ticks}:{info.Length}" : "-";
         }));
         if (_grokParsed.TryGetValue(dir, out var cached) && cached.Stamp == stamp) return cached.Parsed;
-        var parsed = ParseGrokSession(dir);
-        _grokParsed[dir] = (stamp, parsed);
+        var parsed = ParseGrokSession(dir, out var transient);
+        // a file that could not be read this time (locked, access denied) is tried again on the next pass
+        if (transient) _grokParsed.TryRemove(dir, out _);
+        else _grokParsed[dir] = (stamp, parsed);
         return parsed;
     }
 
@@ -137,11 +139,12 @@ public sealed partial class SessionMonitor
             LastTool: GrokLabel(tail.LastTool, 64));
     }
 
-    private static GrokParsed ParseGrokSession(string dir)
+    private static GrokParsed ParseGrokSession(string dir, out bool transient)
     {
-        using var summary = ReadSharedJson(Path.Combine(dir, "summary.json"));
-        using var usage = ReadSharedJson(Path.Combine(dir, "usage.json"));
-        using var signals = ReadSharedJson(Path.Combine(dir, "signals.json"));
+        transient = false;
+        using var summary = ReadSharedJson(Path.Combine(dir, "summary.json"), ref transient);
+        using var usage = ReadSharedJson(Path.Combine(dir, "usage.json"), ref transient);
+        using var signals = ReadSharedJson(Path.Combine(dir, "signals.json"), ref transient);
         var summaryRoot = summary?.RootElement ?? default;
         var usageRoot = usage?.RootElement ?? default;
         var signalsRoot = signals?.RootElement ?? default;
@@ -314,13 +317,23 @@ public sealed partial class SessionMonitor
 
     private static JsonDocument? ReadSharedJson(string path)
     {
+        var transient = false;
+        return ReadSharedJson(path, ref transient);
+    }
+
+    /// <summary><paramref name="transient"/> is set when an existing file could not be read (locked, access denied);
+    /// a missing, oversized or malformed file is a result, not a failure to retry.</summary>
+    private static JsonDocument? ReadSharedJson(string path, ref bool transient)
+    {
         try
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             if (fs.Length > GrokMaxJsonBytes) return null;
             return JsonDocument.Parse(fs);
         }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException) { return null; }
+        catch (JsonException) { return null; }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException) { return null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { transient = true; return null; }
     }
 
     private static bool GrokId(string? id)

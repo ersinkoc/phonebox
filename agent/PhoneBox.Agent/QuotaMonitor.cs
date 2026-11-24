@@ -212,6 +212,17 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     public IReadOnlyList<QuotaProvider> Snapshot() => Snapshot(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
     /// <summary>The snapshot at <paramref name="now"/>; tests pass their own clock so windows roll the same way every day.</summary>
+    /// <summary>
+    /// Like <see cref="CodexBar.Select"/>, but a successful prepaid-only reading (a balance, no limits) counts as a
+    /// reading: it is not set aside for a failed or stale CodexBar answer. A fresh CodexBar reading still wins.
+    /// </summary>
+    internal static QuotaProvider? GrokSelect(QuotaProvider? local, QuotaProvider? external, long now)
+    {
+        var freshExternal = external is { Error: null, Limits.Count: > 0, UpdatedAt: { } updated } && now - updated <= CodexBar.FreshExternalMs;
+        if (!freshExternal && local is { Error: null, Limits.Count: 0, Extra: not null }) return local;
+        return CodexBar.Select(local, external, now);
+    }
+
     internal IReadOnlyList<QuotaProvider> Snapshot(long now)
     {
         var external = _external;
@@ -220,7 +231,7 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
             {
                 "codex" => CodexSnapshot(now, external.FirstOrDefault(p => p.Id == id)),
                 "claude" => CodexBar.Select(_claude, external.FirstOrDefault(p => p.Id == id), now),
-                "grok" => CodexBar.Select(_grok, external.FirstOrDefault(p => p.Id == id), now),
+                "grok" => GrokSelect(_grok, external.FirstOrDefault(p => p.Id == id), now),
                 _ => CodexBar.Select(_antigravity, external.FirstOrDefault(p => p.Id == id), now),
             })
             .OfType<QuotaProvider>();
