@@ -1,5 +1,4 @@
 package net.oxog.phonebox.deskpanel
-
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
@@ -373,14 +372,17 @@ class MainActivity : Activity(), SensorEventListener {
     /** Every keyguard dismissal in this file goes through here. The mark is not used up on purpose: a dismissal
      *  while the display is still off does not take, so the next screen-on or resume inside the window may try
      *  again. A PIN or pattern lock is never dismissed by this - Android still asks. */
-    private fun standbyDismissKeyguard() {
+        private fun standbyDismissKeyguard() {
         if (!standbyMayDismissKeyguard()) return
+        // requestDismissKeyguard needs API 26; below that the agent's own wm dismiss-keyguard is all there is
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         try {
             (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)?.requestDismissKeyguard(this, null)
         } catch (e: Exception) {
             Log.w("PhoneBox", "keyguard dismiss failed: " + e)
         }
     }
+
 
     /** Put the panel back in front and take whatever swipe keyguard sits on top of it; harmless when it is
      *  already showing. The prompt display wake belongs to the agent (KEYCODE_WAKEUP when the reverse rule is
