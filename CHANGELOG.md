@@ -22,6 +22,9 @@
   [HugoDeLannoy5311](https://github.com/HugoDeLannoy5311)).
 
 **Agent**
+- Settings: two saves within a few milliseconds no longer share one settings version on Windows, where a write's
+  time moves in coarse steps; a save from a page that loaded the settings before both is refused as a conflict, as
+  it should be.
 - Windows: the phone's microphone as a computer microphone, off by default. Settings › General › Phone mic › **Set up**
   plays the phone's mic into a virtual audio cable (VB-CABLE), and apps such as Zoom, Teams or Discord pick the cable's
   other end (*CABLE Output*) as their microphone. A shortcut mutes and unmutes it; muting silences it on the computer,

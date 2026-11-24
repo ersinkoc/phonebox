@@ -478,6 +478,31 @@ public class ConfigConcurrencyTests
     }
 
     [Fact]
+    public void EveryWriteMovesTheVersionForward()
+    {
+        // The version is the file's write time, which Windows keeps in coarse steps: two quick writes could share one
+        // version, and a stale save got through. A write time ahead of the clock stands in for "the same step" here, on
+        // any machine: a write must still move the version past it.
+        var (s, path) = NewStore();
+        try
+        {
+            var ahead = DateTime.UtcNow.AddMinutes(5);
+            File.SetLastWriteTimeUtc(path, ahead);
+            var loaded = s.Version;
+            Assert.Null(s.Save(With(s, c => c.Night.Start = "01:11"), loaded));
+            Assert.True(s.Version > loaded);
+            Assert.Equal(ConfigStore.Conflict, s.Save(With(s, c => c.Night.End = "06:06"), loaded)); // the stale one
+
+            File.SetLastWriteTimeUtc(path, ahead);
+            loaded = s.Version;
+            s.Touch();
+            Assert.True(s.Version > loaded);
+            Assert.True(s.VersionConflict(loaded.ToString()));
+        }
+        finally { File.Delete(path); File.Delete(path + ".bak"); }
+    }
+
+    [Fact]
     public void TouchAdvancesVersionSoAnotherTabsConflictCheckNoticesIt()
     {
         var (s, path) = NewStore();

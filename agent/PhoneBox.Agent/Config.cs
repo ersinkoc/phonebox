@@ -637,7 +637,29 @@ public sealed partial class ConfigStore(string path)
     /// Advances <see cref="Version"/> without touching the saved settings: for a write that bypasses <see cref="Save"/>
     /// (a shortcut icon upload or removal), so another tab's own optimistic-concurrency check still notices it.
     /// </summary>
-    public void Touch() { lock (_lock) { try { File.SetLastWriteTimeUtc(path, DateTime.UtcNow); } catch { } } }
+    public void Touch()
+    {
+        lock (_lock)
+        {
+            try
+            {
+                var before = File.GetLastWriteTimeUtc(path);
+                File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
+                Advance(before);
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>
+    /// Makes sure a write moved <see cref="Version"/> on. It is the file's write time, which Windows keeps in coarse steps
+    /// (often 1-16 ms): two writes in one step would leave the same version, and a caller holding the version from before
+    /// the first would not see the second as a conflict. Call under <c>_lock</c>, right after the write.
+    /// </summary>
+    private void Advance(DateTime before)
+    {
+        if (File.GetLastWriteTimeUtc(path) <= before) File.SetLastWriteTimeUtc(path, before.AddTicks(1));
+    }
 
     /// <summary>
     /// Validates and saves the settings. Returns an error message, or null on success. With
@@ -675,7 +697,8 @@ public sealed partial class ConfigStore(string path)
 
         lock (_lock)
         {
-            if (expectedVersion is { } expected && File.GetLastWriteTimeUtc(path).Ticks != expected) return Conflict;
+            var before = File.GetLastWriteTimeUtc(path);
+            if (expectedVersion is { } expected && before.Ticks != expected) return Conflict;
             var directory = System.IO.Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
             var tmp = path + ".tmp";
@@ -683,6 +706,7 @@ public sealed partial class ConfigStore(string path)
             AppPaths.WriteAllTextPrivate(tmp, JsonSerializer.Serialize(cfg, WriteOpts));
             if (File.Exists(path)) AppPaths.CopyPrivate(path, path + ".bak");
             File.Move(tmp, path, overwrite: true);
+            Advance(before);
             _config = cfg;
             _stamp = _seen = File.GetLastWriteTimeUtc(path);
             savedVersion = _seen.Ticks;
