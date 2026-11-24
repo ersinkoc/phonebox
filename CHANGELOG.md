@@ -39,6 +39,11 @@
   a prompt left to the computer says why in `agent.log` (the phone not seen for how long, Ask on the phone off, or
   the computer in use). Settings no longer offers an agent update to a copy outside the installed folder, which never
   updates itself (#497, [xxleocoolxx](https://github.com/xxleocoolxx)).
+- USB: quitting, restarting or updating the agent takes its `adb reverse` rule off every connected phone, all at
+  once, before its port closes. Left behind, the rule pointed the panel at a port nobody listened on and could hang
+  the adb server. An adb server that hasn't answered for a minute is restarted, at most once every 5 minutes and
+  never during a phone app install; phones that already had their rule get it back without being woken (#486,
+  [freefakesmile](https://github.com/freefakesmile)).
 
 **Panel**
 - Settings › Display › **Sound when a session finishes**, off by default: the panel plays its chime once when AI

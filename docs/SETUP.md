@@ -313,7 +313,9 @@ QR code or over USB, and allow the agent through the firewall for your private n
 
 If `adb devices` itself doesn't answer, the adb server is hung. The agent restarts an adb server that has been hung for
 a minute, which also ends other tools' adb sessions (Android Studio, scrcpy). It doesn't when `ADB_SERVER_SOCKET` points
-adb at another server, and it restarts the server at most once every 5 minutes. To recover at once, end `adb.exe` in Task
+adb at another server or while the phone app is being installed, and it restarts the server at most once every 5
+minutes. On Linux it finds the server's process with `lsof` or `ss`; without either, `agent.log` says the process
+couldn't be found. To recover at once, end `adb.exe` in Task
 Manager (`pkill adb` on Linux and macOS): `adb kill-server` asks the server itself, so a hung one may not answer it.
 </details>
 
