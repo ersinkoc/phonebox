@@ -61,6 +61,31 @@ public sealed class StockIntegrationTests : IDisposable
         return $"v_{code}=\"{string.Join('~', fields)}\";\n";
     }
 
+    [Fact]
+    public async Task MinuteDataDropsInvalidPricesAndRejectsAnEmptySeries()
+    {
+        var store = new ConfigStore(Path.Combine(_root, "config.json"));
+        Assert.Null(store.Save("""{"stocks":["sh000001","hk00700"]}"""));
+        using var feed = new QuoteFeed
+        {
+            Body = """
+                {"data":{
+                  "sh000001":{"data":{"date":"20261125","data":["0930 0 0 0","0931 -1 0 0","0932 3375.21 0 0"]}},
+                  "hk00700":{"data":{"date":"20261125","data":["0930 0 0 0"]}}
+                }}
+                """
+        };
+        using var http = new HttpClient(feed);
+        var stocks = new StockService(store, NullLogger<StockService>.Instance, http);
+
+        var minutes = await stocks.MinutesAsync("sh000001");
+        Assert.Null(minutes.Error);
+        Assert.Equal(new object[] { "0932", 3375.21 }, Assert.Single(minutes.Points!));
+        var unavailable = await stocks.MinutesAsync("hk00700");
+        Assert.Null(unavailable.Points);
+        Assert.NotNull(unavailable.Error);
+    }
+
     private sealed class QuoteFeed : HttpMessageHandler
     {
         public string Body { get; set; } = "";

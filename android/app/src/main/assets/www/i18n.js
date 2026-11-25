@@ -13244,6 +13244,7 @@
   }
   const STOCK_CATALOG = {
     "en": {
+      "Some data may be stale": "Some data may be stale",
       "Stocks": "Stocks",
       "Quotes and intraday charts for your watchlist.": "Quotes and intraday charts for your watchlist.",
       "Display mode": "Display mode",
@@ -13258,6 +13259,7 @@
       "Green on rise": "Green on rise"
     },
     "tr": {
+      "Some data may be stale": "Bazı veriler güncel olmayabilir",
       "Stocks": "Hisseler",
       "Quotes and intraday charts for your watchlist.": "Takip listenizdeki fiyatlar ve gün içi grafikler.",
       "Display mode": "Görünüm modu",
@@ -13272,6 +13274,7 @@
       "Green on rise": "Yükseliş yeşil"
     },
     "de": {
+      "Some data may be stale": "Einige Daten können veraltet sein",
       "Stocks": "Aktien",
       "Quotes and intraday charts for your watchlist.": "Kurse und Intraday-Charts für deine Beobachtungsliste.",
       "Display mode": "Anzeigemodus",
@@ -13286,6 +13289,7 @@
       "Green on rise": "Grün bei Anstieg"
     },
     "fr": {
+      "Some data may be stale": "Certaines données peuvent être anciennes",
       "Stocks": "Actions",
       "Quotes and intraday charts for your watchlist.": "Cours et graphiques intrajournaliers pour votre liste de suivi.",
       "Display mode": "Mode d’affichage",
@@ -13300,6 +13304,7 @@
       "Green on rise": "Vert à la hausse"
     },
     "es": {
+      "Some data may be stale": "Algunos datos pueden estar desactualizados",
       "Stocks": "Acciones",
       "Quotes and intraday charts for your watchlist.": "Cotizaciones y gráficos intradía de tu lista de seguimiento.",
       "Display mode": "Modo de visualización",
@@ -13314,6 +13319,7 @@
       "Green on rise": "Verde al subir"
     },
     "it": {
+      "Some data may be stale": "Alcuni dati potrebbero non essere aggiornati",
       "Stocks": "Azioni",
       "Quotes and intraday charts for your watchlist.": "Quotazioni e grafici intraday per i titoli che segui.",
       "Display mode": "Modalità di visualizzazione",
@@ -13328,6 +13334,7 @@
       "Green on rise": "Verde in rialzo"
     },
     "pt": {
+      "Some data may be stale": "Alguns dados podem estar desatualizados",
       "Stocks": "Ações",
       "Quotes and intraday charts for your watchlist.": "Cotações e gráficos intradiários da sua lista de seguimento.",
       "Display mode": "Modo de apresentação",
@@ -13342,6 +13349,7 @@
       "Green on rise": "Verde na subida"
     },
     "pt-BR": {
+      "Some data may be stale": "Alguns dados podem estar desatualizados",
       "Stocks": "Ações",
       "Quotes and intraday charts for your watchlist.": "Cotações e gráficos intradiários da sua lista de acompanhamento.",
       "Display mode": "Modo de exibição",
@@ -13356,6 +13364,7 @@
       "Green on rise": "Verde na alta"
     },
     "nl": {
+      "Some data may be stale": "Sommige gegevens zijn mogelijk verouderd",
       "Stocks": "Aandelen",
       "Quotes and intraday charts for your watchlist.": "Koersen en intradaygrafieken voor je volglijst.",
       "Display mode": "Weergavemodus",
@@ -13370,6 +13379,7 @@
       "Green on rise": "Groen bij stijging"
     },
     "pl": {
+      "Some data may be stale": "Niektóre dane mogą być nieaktualne",
       "Stocks": "Akcje",
       "Quotes and intraday charts for your watchlist.": "Notowania i wykresy śróddzienne dla obserwowanych akcji.",
       "Display mode": "Tryb wyświetlania",
@@ -13384,6 +13394,7 @@
       "Green on rise": "Zielony przy wzroście"
     },
     "ru": {
+      "Some data may be stale": "Некоторые данные могли устареть",
       "Stocks": "Акции",
       "Quotes and intraday charts for your watchlist.": "Котировки и внутридневные графики для списка наблюдения.",
       "Display mode": "Режим отображения",
@@ -13398,6 +13409,7 @@
       "Green on rise": "Зелёный при росте"
     },
     "el": {
+      "Some data may be stale": "Ορισμένα δεδομένα μπορεί να μην είναι ενημερωμένα",
       "Stocks": "Μετοχές",
       "Quotes and intraday charts for your watchlist.": "Τιμές και ενδοημερήσια διαγράμματα για τη λίστα παρακολούθησης.",
       "Display mode": "Τρόπος προβολής",
@@ -13412,6 +13424,7 @@
       "Green on rise": "Πράσινο στην άνοδο"
     },
     "vi": {
+      "Some data may be stale": "Một số dữ liệu có thể đã cũ",
       "Stocks": "Cổ phiếu",
       "Quotes and intraday charts for your watchlist.": "Báo giá và biểu đồ trong ngày cho danh sách theo dõi.",
       "Display mode": "Chế độ hiển thị",
@@ -13426,6 +13439,7 @@
       "Green on rise": "Tăng màu xanh lá"
     },
     "zh": {
+      "Some data may be stale": "部分数据可能已过时",
       "Stocks": "股票",
       "Quotes and intraday charts for your watchlist.": "查看自选股的报价和分时走势。",
       "Display mode": "显示方式",
@@ -13440,6 +13454,7 @@
       "Green on rise": "绿色表示上涨"
     },
     "ja": {
+      "Some data may be stale": "一部のデータが古い可能性があります",
       "Stocks": "株式",
       "Quotes and intraday charts for your watchlist.": "ウォッチリストの株価と日中チャート。",
       "Display mode": "表示モード",
@@ -13454,6 +13469,7 @@
       "Green on rise": "上昇を緑で表示"
     },
     "ko": {
+      "Some data may be stale": "일부 데이터가 오래되었을 수 있습니다",
       "Stocks": "주식",
       "Quotes and intraday charts for your watchlist.": "관심 목록 종목의 시세와 장중 차트를 표시합니다.",
       "Display mode": "표시 모드",
@@ -13468,6 +13484,7 @@
       "Green on rise": "상승은 초록색"
     },
     "id": {
+      "Some data may be stale": "Sebagian data mungkin sudah kedaluwarsa",
       "Stocks": "Saham",
       "Quotes and intraday charts for your watchlist.": "Harga dan grafik intrahari untuk daftar pantauan.",
       "Display mode": "Mode tampilan",
@@ -13482,6 +13499,7 @@
       "Green on rise": "Hijau saat naik"
     },
     "th": {
+      "Some data may be stale": "ข้อมูลบางส่วนอาจไม่เป็นปัจจุบัน",
       "Stocks": "หุ้น",
       "Quotes and intraday charts for your watchlist.": "ราคาหุ้นและกราฟระหว่างวันของหุ้นในรายการติดตาม",
       "Display mode": "โหมดการแสดงผล",
@@ -13496,6 +13514,7 @@
       "Green on rise": "ราคาขึ้นใช้สีเขียว"
     },
     "uk": {
+      "Some data may be stale": "Деякі дані могли застаріти",
       "Stocks": "Акції",
       "Quotes and intraday charts for your watchlist.": "Котирування й внутрішньоденні графіки для списку спостереження.",
       "Display mode": "Режим відображення",
@@ -13510,6 +13529,7 @@
       "Green on rise": "Зелений при зростанні"
     },
     "hi": {
+      "Some data may be stale": "कुछ डेटा पुराना हो सकता है",
       "Stocks": "शेयर",
       "Quotes and intraday charts for your watchlist.": "निगरानी सूची के शेयर भाव और इंट्राडे चार्ट।",
       "Display mode": "दिखाने का तरीका",
@@ -13524,6 +13544,7 @@
       "Green on rise": "बढ़त के लिए हरा"
     },
     "cs": {
+      "Some data may be stale": "Některé údaje mohou být zastaralé",
       "Stocks": "Akcie",
       "Quotes and intraday charts for your watchlist.": "Kurzy a vnitrodenní grafy sledovaných akcií.",
       "Display mode": "Režim zobrazení",
@@ -13538,6 +13559,7 @@
       "Green on rise": "Zelená při růstu"
     },
     "ar": {
+      "Some data may be stale": "قد تكون بعض البيانات قديمة",
       "Stocks": "الأسهم",
       "Quotes and intraday charts for your watchlist.": "أسعار الأسهم والرسوم البيانية خلال اليوم لقائمة المتابعة.",
       "Display mode": "وضع العرض",
@@ -13552,6 +13574,7 @@
       "Green on rise": "الأخضر للارتفاع"
     },
     "zh-Hant": {
+      "Some data may be stale": "部分資料可能已過時",
       "Stocks": "股票",
       "Quotes and intraday charts for your watchlist.": "查看自選股報價與分時走勢。",
       "Display mode": "顯示模式",

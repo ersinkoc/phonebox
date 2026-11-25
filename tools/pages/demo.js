@@ -950,10 +950,17 @@
       { code: 'sh000001', name: 'Shanghai Composite', price: 3375.21, change: 17.12, changePct: 0.51 },
       { code: 'hk00700', name: 'Tencent', price: 410.8, change: -1.2, changePct: -0.29 },
     ], updated: now() });
-    if (path === '/api/stocks/minutes') return json({
-      points: [['0930', 3370], ['0935', 3372.45], ['0940', 3369.12], ['0945', 3375.21]],
-      prevClose: 3358.09, updated: now(),
-    });
+    if (path === '/api/stocks/minutes') {
+      if (q.get('code') === 'sh000001') return json({
+        points: [['0930', 3370], ['0935', 3372.45], ['0940', 3369.12], ['0945', 3375.21]],
+        prevClose: 3358.09, updated: now(),
+      });
+      if (q.get('code') === 'hk00700') return json({
+        points: [['0930', 412], ['0935', 411.25], ['0940', 411.4], ['0945', 410.8]],
+        prevClose: 412, updated: now(),
+      });
+      return json({ error: 'code not in watchlist' }, 404);
+    }
     if (path === '/api/guba') return json({
       posts: [{ id: 'demo-1', title: 'Morning market notes', author: 'Demo user', time: '2026-01-01 09:20', reads: 36, comments: 2 }],
       updated: now(),

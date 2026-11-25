@@ -177,6 +177,7 @@ W.stocks = {
     const upColor = greenUp ? '#22c55e' : '#ef4444';
     const downColor = greenUp ? '#ef4444' : '#22c55e';
     const quoteColor = pct => pct > 0 ? upColor : pct < 0 ? downColor : 'var(--muted)';
+    const staleText = stockText('Some data may be stale');
     const chartMode = (o.mode || 'list') === 'chart';
     // ---- chart mode: rows x cols intraday charts on one screen ----
     if (chartMode) {
@@ -190,6 +191,14 @@ W.stocks = {
       }
       const count = rows * cols;
       const tiles = [];
+      let quoteError = false;
+      const status = h('span', 'w-sub sc-status');
+      status.hidden = true;
+      status.setAttribute('aria-live', 'polite');
+      const updateStatus = () => {
+        status.hidden = !quoteError && !tiles.some(tile => tile.q.err);
+        status.textContent = status.hidden ? '' : staleText;
+      };
       const grid = h('div', 'sc-grid');
       grid.style.display = 'grid';
       grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
@@ -281,15 +290,17 @@ W.stocks = {
         ctx.textAlign = 'right';
         ctx.fillText(String(Math.round(last * 100) / 100), W2 - 2, pad - 1);
       };
-      box.append(grid);
+      box.append(status, grid);
       let lastKey = '';
       const load = every(60_000, async () => {
         try {
           const d = await api('/stocks', 'GET', 6000);
           const quotes = (d.quotes || []).slice(0, count);
+          quoteError = Boolean(d.error && quotes.length);
           if (!quotes.length) {
             lastKey = '';
             tiles.length = 0;
+            updateStatus();
             grid.replaceChildren(h('div', 'empty', t('w.ratesUnavailable')));
             return false;
           }
@@ -301,6 +312,7 @@ W.stocks = {
               tile.pct.textContent = quotePercent(q.changePct);
               tile.pct.style.color = quoteColor(q.changePct);
             });
+            updateStatus();
             loadMinutes();
             return;
           }
@@ -322,19 +334,28 @@ W.stocks = {
             tiles.push({ canvas, pct, q });
             return cell;
           }));
+          updateStatus();
           loadMinutes();
-        } catch (_) { if (!lastKey) grid.replaceChildren(h('div', 'empty', t('w.offline'))); return false; }
+        } catch (_) {
+          quoteError = Boolean(lastKey);
+          updateStatus();
+          if (!lastKey) grid.replaceChildren(h('div', 'empty', t('w.offline')));
+          return false;
+        }
       });
       const loadMinutes = () => {
         for (const tile of tiles) {
           api('/stocks/minutes?code=' + encodeURIComponent(tile.q.code), 'GET', 8000)
             .then(m => {
               if (!Array.isArray(m.points)) { tile.q.err = true; return; }
-              tile.q = { ...tile.q, points: m.points, prevClose: Number(m.prevClose) || 0, err: false };
+              tile.q = { ...tile.q, points: m.points, prevClose: Number(m.prevClose) || 0, err: Boolean(m.error) };
             })
             .catch(() => { tile.q.err = true; })
             .finally(() => {
-              if (tiles.includes(tile)) requestAnimationFrame(() => drawTile(tile, tile.q));
+              if (tiles.includes(tile)) {
+                updateStatus();
+                requestAnimationFrame(() => drawTile(tile, tile.q));
+              }
             });
         }
       };
@@ -346,15 +367,18 @@ W.stocks = {
     }
     // ---- list mode ----
     const list = h('div', 'fx-list', h('div', 'empty', t('w.loading')));
-    box.append(h('div', 'w-title', stockText('Stocks'), h('span', 'w-sub', '')), list);
+    const status = h('span', 'w-sub');
+    status.setAttribute('aria-live', 'polite');
+    box.append(h('div', 'w-title', stockText('Stocks'), status), list);
     const price = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 8 });
     let last = '';
     const load = every(30_000, async () => {
       try {
         const d = await api('/stocks', 'GET', 6000);
         const quotes = d.quotes || [];
+        const updated = d.updated ? new Date(d.updated).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }) : '';
+        status.textContent = quotes.length ? (d.error ? staleText : updated) : '';
         if (!quotes.length) { last = ''; list.replaceChildren(h('div', 'empty', t('w.ratesUnavailable'))); return false; }
-        box.querySelector('.w-sub').textContent = d.updated ? new Date(d.updated).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }) : '';
         const key = JSON.stringify(quotes.map((q) => [q.code, q.price, q.changePct]));
         if (key === last) return;
         last = key;
@@ -370,7 +394,11 @@ W.stocks = {
           row.style.color = col;
           return row;
         }));
-      } catch (_) { if (!last) list.replaceChildren(h('div', 'empty', t('w.offline'))); return false; }
+      } catch (_) {
+        status.textContent = last ? staleText : '';
+        if (!last) list.replaceChildren(h('div', 'empty', t('w.offline')));
+        return false;
+      }
     });
     return { update: load };
   },

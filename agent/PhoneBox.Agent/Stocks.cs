@@ -142,14 +142,15 @@ public sealed partial class StockService(ConfigStore config, ILogger<StockServic
                 // each row: "hhmm price volume amount"
                 var parts = row.GetString()?.Split(' ') ?? [];
                 if (parts.Length >= 2 && double.TryParse(parts[1], System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture, out var p) && double.IsFinite(p))
+                        System.Globalization.CultureInfo.InvariantCulture, out var p) && double.IsFinite(p) && p > 0)
                     pts.Add([parts[0], p]);
             }
+            if (pts.Count == 0) throw new InvalidDataException("No usable minute prices");
             double prev = 0;
             if (node.TryGetProperty("qt", out var qt) &&
                 qt.TryGetProperty(Sanitize(code), out var qa) && qa.GetArrayLength() > 4 &&
                 double.TryParse(qa[4].GetString(), System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture, out var pv) && double.IsFinite(pv))
+                    System.Globalization.CultureInfo.InvariantCulture, out var pv) && double.IsFinite(pv) && pv > 0)
                 prev = pv;
             return new MinuteResult(pts, prev, date, now, null);
         }
