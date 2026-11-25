@@ -13242,6 +13242,195 @@
     if (data.catalog) CATALOG[lang] = { ...CATALOG[lang], ...data.catalog };
     if (data.panel) PANEL[lang] = { ...PANEL[lang], ...data.panel };
   }
+  const GUBA_CATALOG = {
+    "en": {
+      "Stock forum": "Stock forum",
+      "Recent East Money forum posts for a stock.": "Recent East Money forum posts for a stock.",
+      "Six-digit stock code": "Six-digit stock code",
+      "Posts to show": "Posts to show",
+      "Reads": "Reads",
+      "Comments": "Comments"
+    },
+    "tr": {
+      "Stock forum": "Hisse forumu",
+      "Recent East Money forum posts for a stock.": "Bir hissenin East Money forumundaki son gönderiler.",
+      "Six-digit stock code": "Altı haneli hisse kodu",
+      "Posts to show": "Gösterilecek gönderiler",
+      "Reads": "Okunma",
+      "Comments": "Yorum"
+    },
+    "de": {
+      "Stock forum": "Aktienforum",
+      "Recent East Money forum posts for a stock.": "Aktuelle East-Money-Forenbeiträge zu einer Aktie.",
+      "Six-digit stock code": "Sechsstelliger Aktiencode",
+      "Posts to show": "Anzahl angezeigter Beiträge",
+      "Reads": "Aufrufe",
+      "Comments": "Kommentare"
+    },
+    "fr": {
+      "Stock forum": "Forum boursier",
+      "Recent East Money forum posts for a stock.": "Dernières publications du forum East Money pour une action.",
+      "Six-digit stock code": "Code boursier à six chiffres",
+      "Posts to show": "Publications à afficher",
+      "Reads": "Lectures",
+      "Comments": "Commentaires"
+    },
+    "es": {
+      "Stock forum": "Foro bursátil",
+      "Recent East Money forum posts for a stock.": "Publicaciones recientes de una acción en el foro de East Money.",
+      "Six-digit stock code": "Código bursátil de seis dígitos",
+      "Posts to show": "Publicaciones que se muestran",
+      "Reads": "Lecturas",
+      "Comments": "Comentarios"
+    },
+    "it": {
+      "Stock forum": "Forum azionario",
+      "Recent East Money forum posts for a stock.": "Ultimi post del forum East Money per un titolo.",
+      "Six-digit stock code": "Codice azionario a sei cifre",
+      "Posts to show": "Post da mostrare",
+      "Reads": "Letture",
+      "Comments": "Commenti"
+    },
+    "pt": {
+      "Stock forum": "Fórum de ações",
+      "Recent East Money forum posts for a stock.": "Publicações recentes do fórum East Money para uma ação.",
+      "Six-digit stock code": "Código de ação com seis algarismos",
+      "Posts to show": "Publicações a apresentar",
+      "Reads": "Leituras",
+      "Comments": "Comentários"
+    },
+    "pt-BR": {
+      "Stock forum": "Fórum de ações",
+      "Recent East Money forum posts for a stock.": "Publicações recentes do fórum East Money sobre uma ação.",
+      "Six-digit stock code": "Código da ação com seis dígitos",
+      "Posts to show": "Publicações a exibir",
+      "Reads": "Leituras",
+      "Comments": "Comentários"
+    },
+    "nl": {
+      "Stock forum": "Aandelenforum",
+      "Recent East Money forum posts for a stock.": "Recente forumberichten van East Money over een aandeel.",
+      "Six-digit stock code": "Zescijferige aandelencode",
+      "Posts to show": "Aantal te tonen berichten",
+      "Reads": "Weergaven",
+      "Comments": "Reacties"
+    },
+    "pl": {
+      "Stock forum": "Forum akcji",
+      "Recent East Money forum posts for a stock.": "Najnowsze wpisy na forum East Money dla danej akcji.",
+      "Six-digit stock code": "Sześciocyfrowy kod akcji",
+      "Posts to show": "Liczba widocznych wpisów",
+      "Reads": "Odczyty",
+      "Comments": "Komentarze"
+    },
+    "ru": {
+      "Stock forum": "Форум акций",
+      "Recent East Money forum posts for a stock.": "Свежие публикации об акции на форуме East Money.",
+      "Six-digit stock code": "Шестизначный код акции",
+      "Posts to show": "Количество публикаций",
+      "Reads": "Просмотры",
+      "Comments": "Комментарии"
+    },
+    "el": {
+      "Stock forum": "Φόρουμ μετοχών",
+      "Recent East Money forum posts for a stock.": "Πρόσφατες αναρτήσεις του φόρουμ East Money για μια μετοχή.",
+      "Six-digit stock code": "Εξαψήφιος κωδικός μετοχής",
+      "Posts to show": "Αναρτήσεις για εμφάνιση",
+      "Reads": "Αναγνώσεις",
+      "Comments": "Σχόλια"
+    },
+    "vi": {
+      "Stock forum": "Diễn đàn cổ phiếu",
+      "Recent East Money forum posts for a stock.": "Bài viết gần đây về một cổ phiếu trên diễn đàn East Money.",
+      "Six-digit stock code": "Mã cổ phiếu gồm sáu chữ số",
+      "Posts to show": "Số bài viết hiển thị",
+      "Reads": "Lượt đọc",
+      "Comments": "Bình luận"
+    },
+    "zh": {
+      "Stock forum": "股吧",
+      "Recent East Money forum posts for a stock.": "东方财富股吧的最新股票帖子。",
+      "Six-digit stock code": "六位股票代码",
+      "Posts to show": "显示帖数",
+      "Reads": "阅读",
+      "Comments": "评论"
+    },
+    "ja": {
+      "Stock forum": "株式掲示板",
+      "Recent East Money forum posts for a stock.": "East Money の銘柄別掲示板の最新投稿。",
+      "Six-digit stock code": "6 桁の銘柄コード",
+      "Posts to show": "表示する投稿数",
+      "Reads": "閲覧",
+      "Comments": "コメント"
+    },
+    "ko": {
+      "Stock forum": "주식 게시판",
+      "Recent East Money forum posts for a stock.": "East Money의 종목별 최신 게시글입니다.",
+      "Six-digit stock code": "6자리 종목 코드",
+      "Posts to show": "표시할 게시글 수",
+      "Reads": "조회수",
+      "Comments": "댓글"
+    },
+    "id": {
+      "Stock forum": "Forum saham",
+      "Recent East Money forum posts for a stock.": "Kiriman terbaru tentang saham di forum East Money.",
+      "Six-digit stock code": "Kode saham enam digit",
+      "Posts to show": "Jumlah kiriman yang ditampilkan",
+      "Reads": "Dibaca",
+      "Comments": "Komentar"
+    },
+    "th": {
+      "Stock forum": "กระดานสนทนาหุ้น",
+      "Recent East Money forum posts for a stock.": "โพสต์ล่าสุดเกี่ยวกับหุ้นในกระดาน East Money",
+      "Six-digit stock code": "รหัสหุ้นหกหลัก",
+      "Posts to show": "จำนวนโพสต์ที่แสดง",
+      "Reads": "ยอดอ่าน",
+      "Comments": "ความคิดเห็น"
+    },
+    "uk": {
+      "Stock forum": "Форум акцій",
+      "Recent East Money forum posts for a stock.": "Останні дописи про акцію на форумі East Money.",
+      "Six-digit stock code": "Шестизначний код акції",
+      "Posts to show": "Кількість дописів",
+      "Reads": "Перегляди",
+      "Comments": "Коментарі"
+    },
+    "hi": {
+      "Stock forum": "शेयर फ़ोरम",
+      "Recent East Money forum posts for a stock.": "East Money फ़ोरम पर किसी शेयर की हाल की पोस्ट।",
+      "Six-digit stock code": "छह अंकों का शेयर कोड",
+      "Posts to show": "दिखाई जाने वाली पोस्ट",
+      "Reads": "पढ़े गए",
+      "Comments": "टिप्पणियाँ"
+    },
+    "cs": {
+      "Stock forum": "Akciové fórum",
+      "Recent East Money forum posts for a stock.": "Poslední příspěvky o akcii na fóru East Money.",
+      "Six-digit stock code": "Šestimístný kód akcie",
+      "Posts to show": "Počet zobrazených příspěvků",
+      "Reads": "Zobrazení",
+      "Comments": "Komentáře"
+    },
+    "ar": {
+      "Stock forum": "منتدى الأسهم",
+      "Recent East Money forum posts for a stock.": "أحدث منشورات سهم في منتدى East Money.",
+      "Six-digit stock code": "رمز سهم من ستة أرقام",
+      "Posts to show": "عدد المنشورات المعروضة",
+      "Reads": "القراءات",
+      "Comments": "التعليقات"
+    },
+    "zh-Hant": {
+      "Stock forum": "股票論壇",
+      "Recent East Money forum posts for a stock.": "東方財富股吧的最新股票貼文。",
+      "Six-digit stock code": "六位股票代碼",
+      "Posts to show": "顯示貼文數量",
+      "Reads": "閱讀",
+      "Comments": "留言"
+    }
+  };
+  for (const [lang, entries] of Object.entries(GUBA_CATALOG)) {
+    CATALOG[lang] = { ...CATALOG[lang], ...entries };
+  }
   delete window.PhoneBoxLocaleData;
 
   let pref = 'auto';
