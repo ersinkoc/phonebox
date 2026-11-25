@@ -755,7 +755,8 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     {
         _awakeSet.IntersectWith(devices);
         _reverseSet.IntersectWith(devices); // plugged in again: the rule has to be set again
-        foreach (var gone in _sdk.Keys.Except(devices).ToList()) _sdk.Remove(gone);
+        // A timed-out reverse command may still have installed the rule. Keep its API level until cleanup.
+        foreach (var gone in _sdk.Keys.Except(devices).Where(d => !_pending.Contains(d)).ToList()) _sdk.Remove(gone);
         foreach (var gone in _transport.Keys.Except(devices).ToList()) _transport.Remove(gone);
         var changed = string.Join(",", devices) != string.Join(",", _devices);
         _devices = devices;

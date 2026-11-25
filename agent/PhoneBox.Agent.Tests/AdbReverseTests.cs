@@ -170,6 +170,27 @@ public sealed class AdbReverseTests : IDisposable
     }
 
     [Fact]
+    public async Task IgnoringAPendingModernRuleStillChecksOwnershipOnEveryRound()
+    {
+        var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:9999", null, sdk: 30);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, ignoredDeviceSerials = new[] { "FAKE1" } }));
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var sdk = (Dictionary<string, int>)typeof(AdbReverse).GetField("_sdk", flags)!.GetValue(adb)!;
+        var pending = (HashSet<string>)typeof(AdbReverse).GetField("_pending", flags)!.GetValue(adb)!;
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", flags)!;
+        // The first reverse command timed out before _setHere was updated.
+        sdk["FAKE1"] = 30;
+        pending.Add("FAKE1");
+
+        await (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        await (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        Assert.Equal(2, Calls().Count(call => call == "-s FAKE1 reverse --list"));
+        Assert.DoesNotContain("-s FAKE1 reverse --remove tcp:8765", Calls());
+    }
+
+    [Fact]
     public async Task StoppingAlsoTakesTheRuleOffAPhoneNoLongerSelected()
     {
         var fake = FakeAdb(["FAKE1", "FAKE2"], "", null); // no rule yet: the agent sets it on both
