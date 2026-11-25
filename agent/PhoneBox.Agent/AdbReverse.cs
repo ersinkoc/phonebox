@@ -453,6 +453,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// come forward ("Background activity start" is logged and blocked) - shell commands via adb are neither.
     /// </summary>
 
+
     private async Task LightPanel(
         string device,
         string adb,
@@ -591,7 +592,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         catch (IOException ex) { log.LogWarning("could not save standby-originals.json ({Message})", ex.Message); }
     }
 
-    private async Task RememberStayOn(string adb, string d, CancellationToken ct)
+    private async Task<bool> RememberStayOn(string adb, string d, CancellationToken ct)
     {
         if (Originals.ContainsKey(d)) return true;       // already recorded, safe to write 0
         var v = (await Adb(adb, ["-s", d, "shell", "settings", "get", "global", "stay_on_while_plugged_in"], ct, anyExit: true)).Trim();
@@ -602,6 +603,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
         Originals[d] = v;
         SaveOriginals();
+        return true;
     }
 
     private async Task RestoreStayOn(string adb, string d, CancellationToken ct)
@@ -768,7 +770,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // Settings › Display › home screen: the app offers itself as a home app; make it the default one (no root needed).
         if (cfg.Get().Display.HomeScreen)
         {
-        foreach (var d in devices.Where(d => !_homeSet.Contains(d) && !unreachable.Contains(d)))
+            foreach (var d in devices.Where(d => !_homeSet.Contains(d) && !unreachable.Contains(d)))
             {
                 // Android answers a refusal with exit code 1; that must not end the round for the other phones and keep-awake.
                 var r = await Adb(adb, ["-s", d, "shell", "cmd", "package", "set-home-activity", HomeAlias], ct, anyExit: true);
@@ -809,16 +811,17 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // stay_on, and sharing one key would let that half-apply silence the screen-saver writes later
         if (keepAwake)
         {
-        foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:on") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
+            foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:on") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
             {
                 await Adb(adb, ["-s", d, "shell", "settings", "put", "secure", "screensaver_enabled", "0"], ct);
                 await Adb(adb, ["-s", d, "shell", "settings", "put", "secure", "screensaver_activate_on_dock", "0"], ct);
                 await Adb(adb, ["-s", d, "shell", "settings", "put", "secure", "screensaver_activate_on_sleep", "0"], ct);
-                if (standby)
-                    await RememberStayOn(adb, d, ct);
-                await Adb(adb, ["-s", d, "shell", "settings", "put", "global", "stay_on_while_plugged_in", stayOn], ct);
-                _awakeSet.Add($"{d}:{stayOn}:on");
-                log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
+                if (!standby || await RememberStayOn(adb, d, ct))
+                {
+                    await Adb(adb, ["-s", d, "shell", "settings", "put", "global", "stay_on_while_plugged_in", stayOn], ct);
+                    _awakeSet.Add($"{d}:{stayOn}:on");
+                    log.LogInformation("{Device}: screen saver off, stay_on_while_plugged_in={StayOn}", d, stayOn);
+                }
             }
         }
         else if (standby)
@@ -831,11 +834,12 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             // independently of KeepAwake; the screen-saver writes stay the optional part.
             foreach (var d in devices.Where(d => !_awakeSet.Contains($"{d}:{stayOn}:off") && !_missingApp.Contains(d) && !unreachable.Contains(d)))
             {
-                if (standby)
-                    await RememberStayOn(adb, d, ct);
-                await Adb(adb, ["-s", d, "shell", "settings", "put", "global", "stay_on_while_plugged_in", stayOn], ct);
-                _awakeSet.Add($"{d}:{stayOn}:off");
-                log.LogInformation("{Device}: standby cleared stay_on_while_plugged_in (keep awake off)", d);
+                if (await RememberStayOn(adb, d, ct))
+                {
+                    await Adb(adb, ["-s", d, "shell", "settings", "put", "global", "stay_on_while_plugged_in", stayOn], ct);
+                    _awakeSet.Add($"{d}:{stayOn}:off");
+                    log.LogInformation("{Device}: standby cleared stay_on_while_plugged_in (keep awake off)", d);
+                }
             }
         }
         else _awakeSet.Clear();
