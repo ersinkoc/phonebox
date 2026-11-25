@@ -492,6 +492,8 @@
       's.display.title': 'Display',
       's.display.theme': 'Theme',
       's.display.theme.default': 'Default',
+      's.display.theme.system': 'Follow device',
+      's.display.theme.light': 'Day',
       's.display.theme.amoled': 'AMOLED black',
       's.display.theme.midnight': 'Midnight blue',
       's.display.theme.warm': 'Warm',

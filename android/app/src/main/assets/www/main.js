@@ -2515,13 +2515,21 @@ function applyWallpaper(w = {}) {
   }
 }
 
+// 'system' follows the device's light or dark setting and updates when it changes; 'light' is the Day theme
+const LIGHT_QUERY = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: light)') : null;
+LIGHT_QUERY?.addEventListener?.('change', () => { if (cfg?.display?.theme === 'system') applyDisplay(); });
+function resolveTheme(name) {
+  if (name === 'system') return LIGHT_QUERY?.matches ? 'light' : 'default';
+  return ['amoled', 'midnight', 'warm', 'graphite', 'light'].includes(name) ? name : 'default';
+}
+
 export function applyDisplay() {
   const d = cfg.display || {};
   const langChanged = I18n ? I18n.setLang(d.language || 'auto') : false;
   LOCALE = I18n ? I18n.getLocale() : 'en-GB';
   I18n?.applyDom();
   // theme and accent apply in the preview and the browser too
-  document.body.dataset.theme = ['amoled', 'midnight', 'warm', 'graphite'].includes(d.theme) ? d.theme : 'default';
+  document.body.dataset.theme = resolveTheme(d.theme);
   const accent = hexToRgb(d.accent);
   const before = DEFAULT_AMBIENT;
   DEFAULT_AMBIENT = accent || '45, 212, 191';
