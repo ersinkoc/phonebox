@@ -1033,7 +1033,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.noHosts": "V tomto počítači nebyla nalezena žádná adresa LAN nebo Tailscale, takže telefon nemá k čemu se připojit.",
       "s.pair.copy": "Zkopírujte párovací odkaz",
       "s.pair.expired": "Zavřete a zkuste to znovu.",
-      "s.pair.expires": "Expires in 10 dny {time}.",
+      "s.pair.expires": "Vyprší za {time}.",
       "w.steamlib.title": "Knihovna Steam",
       "w.steamlib.off": "Umístěte tento widget na zapnutou stránku, aby se knihovna načetla",
       "w.steamlib.notFound": "Steam na tomto počítači nebyl nalezen",
