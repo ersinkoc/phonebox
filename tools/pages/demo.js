@@ -954,6 +954,10 @@
       points: [['0930', 3370], ['0935', 3372.45], ['0940', 3369.12], ['0945', 3375.21]],
       prevClose: 3358.09, updated: now(),
     });
+    if (path === '/api/guba') return json({
+      posts: [{ id: 'demo-1', title: 'Morning market notes', author: 'Demo user', time: '2026-01-01 09:20', reads: 36, comments: 2 }],
+      updated: now(),
+    });
     if (path === '/api/claude/hook') {
       // the extra accounts' settings.json files too, so the settings show where Install would write
       const extra = (await config()).claude?.extraCredentialDirs || [];
