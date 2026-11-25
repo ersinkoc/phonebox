@@ -946,6 +946,14 @@
     if (path === '/api/lan') return json({ configured: true, active: true, port: 8766, restartNeeded: false, hosts: ['192.168.1.20', '100.101.102.103'], fingerprint: 'demo' });
     if (path === '/api/update') return json({ status: { agentVersion: VERSION, appVersion: VERSION, latest: VERSION, releaseUrl: 'https://github.com/ersinkoc/phonebox/releases/latest', agentUpdate: false, appUpdate: false,
       lastCheck: now() - 3600e3, state: 'idle', error: null }, auto: (await config()).updates?.auto !== false, installed: true });
+    if (path === '/api/stocks') return json({ quotes: [
+      { code: 'sh000001', name: 'Shanghai Composite', price: 3375.21, change: 17.12, changePct: 0.51 },
+      { code: 'hk00700', name: 'Tencent', price: 410.8, change: -1.2, changePct: -0.29 },
+    ], updated: now() });
+    if (path === '/api/stocks/minutes') return json({
+      points: [['0930', 3370], ['0935', 3372.45], ['0940', 3369.12], ['0945', 3375.21]],
+      prevClose: 3358.09, updated: now(),
+    });
     if (path === '/api/claude/hook') {
       // the extra accounts' settings.json files too, so the settings show where Install would write
       const extra = (await config()).claude?.extraCredentialDirs || [];

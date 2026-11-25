@@ -614,6 +614,14 @@ nav a.on::before { color: var(--accent); }
       </div>
 
       <div class="card">
+        <h3 data-i18n="s.stocks.title">Stock watchlist</h3>
+        <div class="field"><label for="stockSymbols" data-i18n="s.stocks.symbols">Symbols (one per line, up to 20)</label>
+          <textarea id="stockSymbols" data-bind="stocks" data-type="stock-symbols" rows="3" spellcheck="false" placeholder="sh000001&#10;hk00700&#10;usaapl"></textarea>
+          <span class="hint" data-i18n="s.stocks.hint">Use sh, sz or bj for mainland China, hk for Hong Kong, and us for US stocks.</span>
+        </div>
+      </div>
+
+      <div class="card">
         <h3 data-i18n="s.calendars.title">Calendars</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n-html="s.cal.hint">For the <b>Agenda</b> widget and calendar rules. Paste an iCalendar (ICS) address:
           Google Calendar › Settings › your calendar › <i>Secret address in iCal format</i>; Outlook › Settings › Calendar › Shared calendars ›
@@ -3892,7 +3900,7 @@ function bindForm() {
     if (p === 'display.language') return;
     const v = getPath(cfg, p);
     if (el.type === 'checkbox') el.checked = !!v;
-    else if (type === 'device-serials') el.value = (Array.isArray(v) ? v : []).join('\n');
+    else if (type === 'device-serials' || type === 'stock-symbols') el.value = (Array.isArray(v) ? v : []).join('\n');
     else if (type === 'hour12') el.value = v === true || v === 'true' ? 'true' : v === 'auto' ? 'auto' : 'false';
     else el.value = v ?? '';
     el.oninput = el.onchange = () => {
@@ -3900,6 +3908,7 @@ function bindForm() {
       if (type === 'num') val = parseFloat(val);
       if (type === 'int') val = parseInt(val || '0', 10);
       if (type === 'device-serials') val = [...new Set(val.split('\n').map(s => s.trim()).filter(Boolean))];
+      if (type === 'stock-symbols') val = [...new Set(val.toLowerCase().split(/[\n,;]+/).map(s => s.trim()).filter(Boolean))];
       if (type === 'hour12') val = val === 'true' ? true : val === 'auto' ? 'auto' : false;
       if (p === 'adbPath' && val === '') val = null;
       setPath(cfg, p, val);
@@ -4053,6 +4062,7 @@ function fillDefaults() {
     showSeconds: true, weekStart: 'monday', vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', tabletRows: false, theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
   cfg.steam ??= { enabled: false };
+  cfg.stocks ??= [];
 }
 
 async function load() {

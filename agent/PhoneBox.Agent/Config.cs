@@ -24,6 +24,7 @@ public sealed class AgentConfig
     public UpdateConfig Updates { get; set; } = new();
     public ClaudeConfig Claude { get; set; } = new();
     /// <summary>Cursor agent-transcript sessions on the AI sessions widget (off by default).</summary>
+    public List<string> Stocks { get; set; } = [];
     public CursorConfig Cursor { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
     public AntigravityConfig Antigravity { get; set; } = new();
@@ -827,6 +828,8 @@ public sealed partial class ConfigStore(string path)
             ? Cap(plexToken, 256) : null;
         c.IgnoredDeviceSerials = (c.IgnoredDeviceSerials ?? []).Select(s => s?.Trim())
             .OfType<string>().Where(s => s.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+        c.Stocks = (c.Stocks ?? []).Select(StockService.NormalizeCode).OfType<string>()
+            .Distinct(StringComparer.Ordinal).Take(20).ToList();
         c.Display ??= new();
         c.Display.Appearance?.Normalize();
         c.Display.Hour12 = Hour12JsonConverter.Normalize(c.Display.Hour12);

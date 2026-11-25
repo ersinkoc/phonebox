@@ -1,4 +1,4 @@
-import { $, API, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, store, t, tick, toast, tp } from '../main.js';
+import { $, API, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, sizeCanvas, store, t, tick, toast, tp } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every, fmtNum, lines, pctSpan, sparkLine } from './helpers.js';
 
@@ -162,6 +162,214 @@ W.crypto = {
           return h('div', 'fx-i', h('b', null, (c.symbol || '').toUpperCase()), h('span', 'fx-v', fmtNum(c.current_price)), pctSpan(c.price_change_percentage_24h ?? 0), cv);
         }));
       } catch (_) { list.replaceChildren(h('div', 'empty', t('w.pricesUnavailable'))); return false; }
+    });
+    return { update: load };
+  },
+};
+
+const stockText = source => I18n?.tc(source) ?? source;
+const quotePercent = n => (n > 0 ? '+' : '') + (n || 0).toFixed(2) + '%';
+
+W.stocks = {
+  needs: ['tick'],
+  create(box, { o }) {
+    const greenUp = o.colours === 'green-up';
+    const upColor = greenUp ? '#22c55e' : '#ef4444';
+    const downColor = greenUp ? '#ef4444' : '#22c55e';
+    const quoteColor = pct => pct > 0 ? upColor : pct < 0 ? downColor : 'var(--muted)';
+    const chartMode = (o.mode || 'list') === 'chart';
+    // ---- chart mode: rows x cols intraday charts on one screen ----
+    if (chartMode) {
+      // "2*4" = 2 rows, 4 columns (8 charts); legacy "chartCount" = total per screen
+      const m = /^\s*(\d+)\s*[*x×]\s*(\d+)\s*$/i.exec(String(o.chartGrid || ''));
+      let rows, cols;
+      if (m) { rows = Math.min(5, Math.max(1, +m[1])); cols = Math.min(5, Math.max(1, +m[2])); }
+      else {
+        cols = Math.max(1, Math.min(4, Number(o.chartCount) || 2));
+        rows = 1;
+      }
+      const count = rows * cols;
+      const tiles = [];
+      const grid = h('div', 'sc-grid');
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      grid.style.gap = '6px';
+      grid.style.height = '100%';
+      grid.style.alignContent = 'stretch';
+      const drawTile = (tile, q) => {
+        const [ctx, w, hh, dpr] = sizeCanvas(tile.canvas);
+        const W2 = w, H2 = hh;
+        ctx.clearRect(0, 0, W2, H2);
+        // frame: the day's open as baseline; prices scale to the data with padding
+        const pts = q.points || [];
+        if (pts.length < 2) {
+          // visible reason instead of a blank tile
+          ctx.fillStyle = '#888';
+          ctx.font = '11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(q.err ? t('w.offline') : pts.length ? t('w.ratesUnavailable') : t('w.loading'), W2 / 2, H2 / 2);
+          return;
+        }
+        const prices = pts.map((p) => p[1]);
+        const open = prices[0];
+        // prevClose is the 0% baseline; the scale must include it and the last price
+        const prev = q.prevClose > 0 ? q.prevClose : open;
+        const last = prices[prices.length - 1];
+        const lo = Math.min(...prices, prev), hi = Math.max(...prices, prev);
+        const span = (hi - lo) || Math.abs(hi) * 0.001 || 1;
+        const pad = H2 * 0.10;
+        const up = last >= prev;
+        const col = up ? upColor : downColor;
+        // grid lines (3 horizontal)
+        ctx.strokeStyle = 'rgba(128,128,128,0.18)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 3; i++) {
+          const y = pad + ((H2 - pad * 2) * i) / 3;
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W2, y); ctx.stroke();
+        }
+        // 0% baseline (yesterday's close) dashed
+        const oy = pad + (H2 - pad * 2) * (1 - (prev - lo) / span);
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = 'rgba(128,128,128,0.45)';
+        ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(W2, oy); ctx.stroke();
+        ctx.setLineDash([]);
+        // x mapping: by clock time on the market's full-day axis, so a
+        // half-day chart only fills the left part (like 同花顺). Codes:
+        // sh/sz = A-shares (09:15 auction .. 15:30), hk = 09:30..16:00,
+        // anything else falls back to index-based spread.
+        const t0 = String(pts[0][0] || '');
+        let total = 0, elapsed = (i) => i;
+        if (t0.length === 4 && /^\d{4}$/.test(t0)) {
+          const mins = (s) => ((+s.slice(0, 2)) * 60 + (+s.slice(2)));
+          if (/^(sh|sz)/.test(String(q.code || ''))) {
+            const start = mins('0915');               // auction included
+            total = mins('1530') - start;             // to 15:30 after-hours
+            elapsed = (i) => mins(pts[i][0]) - start;
+          } else if (/^hk/.test(String(q.code || ''))) {
+            const start = mins('0930');
+            total = mins('1600') - start;
+            elapsed = (i) => mins(pts[i][0]) - start;
+          }
+        }
+        const n = pts.length;
+        const x = (i) => (total > 0
+          ? (elapsed(i) / total) * W2
+          : (i / (n - 1)) * W2);
+        const y = (p) => pad + (H2 - pad * 2) * (1 - (p - lo) / span);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = Math.max(1.5, dpr > 1 ? 1.5 : 1);
+        ctx.beginPath();
+        pts.forEach(([t, p], i) => {
+          const px = x(i), py = y(p);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        // fill between the line and the 0% baseline (prevClose), gradient fading down
+        ctx.lineTo(x(n - 1), y(prev));
+        ctx.lineTo(x(0), y(prev));
+        ctx.closePath();
+        const g = ctx.createLinearGradient(0, pad, 0, H2);
+        const c = (up !== greenUp) ? '239,68,68' : '34,197,94';
+        g.addColorStop(0, `rgba(${c},0.22)`);
+        g.addColorStop(1, `rgba(${c},0.03)`);
+        ctx.fillStyle = g;
+        ctx.fill();
+        // last price label (top-right; the name lives in the tile header, not here)
+        ctx.fillStyle = col;
+        ctx.font = `${Math.max(10, Math.round(H2 * 0.12))}px sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.fillText(String(Math.round(last * 100) / 100), W2 - 2, pad - 1);
+      };
+      box.append(grid);
+      let lastKey = '';
+      const load = every(60_000, async () => {
+        try {
+          const d = await api('/stocks', 'GET', 6000);
+          const quotes = (d.quotes || []).slice(0, count);
+          if (!quotes.length) {
+            lastKey = '';
+            tiles.length = 0;
+            grid.replaceChildren(h('div', 'empty', t('w.ratesUnavailable')));
+            return false;
+          }
+          const key = quotes.map(q => q.code).join(',');
+          if (key === lastKey) {
+            quotes.forEach((q, i) => {
+              const tile = tiles[i];
+              tile.q = { ...tile.q, ...q };
+              tile.pct.textContent = quotePercent(q.changePct);
+              tile.pct.style.color = quoteColor(q.changePct);
+            });
+            loadMinutes();
+            return;
+          }
+          lastKey = key;
+          tiles.length = 0;
+          grid.replaceChildren(...quotes.map((q) => {
+            const cell = h('div', 'sc-tile');
+            cell.style.cssText = 'display:flex;flex-direction:column;min-height:0;border:1px solid var(--border,#333);border-radius:8px;overflow:hidden;background:var(--card-bg,transparent)';
+            const head = h('div', 'sc-h');
+            head.style.cssText = 'display:flex;justify-content:space-between;padding:4px 6px 0;font-size:11px;white-space:nowrap;overflow:hidden';
+            const canvas = h('canvas');
+            canvas.style.cssText = 'flex:1;width:100%;height:100%;min-height:0;display:block';
+            const name = h('b', 'sc-name', q.name || q.code);
+            name.style.cssText = 'overflow:hidden;text-overflow:ellipsis';
+            const pct = h('span', 'sc-pct', quotePercent(q.changePct));
+            pct.style.color = quoteColor(q.changePct);
+            head.append(name, pct);
+            cell.append(head, canvas);
+            tiles.push({ canvas, pct, q });
+            return cell;
+          }));
+          loadMinutes();
+        } catch (_) { if (!lastKey) grid.replaceChildren(h('div', 'empty', t('w.offline'))); return false; }
+      });
+      const loadMinutes = () => {
+        for (const tile of tiles) {
+          api('/stocks/minutes?code=' + encodeURIComponent(tile.q.code), 'GET', 8000)
+            .then(m => {
+              if (!Array.isArray(m.points)) { tile.q.err = true; return; }
+              tile.q = { ...tile.q, points: m.points, prevClose: Number(m.prevClose) || 0, err: false };
+            })
+            .catch(() => { tile.q.err = true; })
+            .finally(() => {
+              if (tiles.includes(tile)) requestAnimationFrame(() => drawTile(tile, tile.q));
+            });
+        }
+      };
+      const ro = new ResizeObserver(() => {
+        for (const tile of tiles) drawTile(tile, tile.q);
+      });
+      ro.observe(grid);
+      return { update: load, destroy() { ro.disconnect(); tiles.length = 0; } };
+    }
+    // ---- list mode ----
+    const list = h('div', 'fx-list', h('div', 'empty', t('w.loading')));
+    box.append(h('div', 'w-title', stockText('Stocks'), h('span', 'w-sub', '')), list);
+    let last = '';
+    const load = every(30_000, async () => {
+      try {
+        const d = await api('/stocks', 'GET', 6000);
+        const quotes = d.quotes || [];
+        if (!quotes.length) { last = ''; list.replaceChildren(h('div', 'empty', t('w.ratesUnavailable'))); return false; }
+        box.querySelector('.w-sub').textContent = d.updated ? new Date(d.updated).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }) : '';
+        const key = JSON.stringify(quotes.map((q) => [q.code, q.price, q.changePct]));
+        if (key === last) return;
+        last = key;
+        list.replaceChildren(...quotes.map((q) => {
+          // up = red, down = green, flat = dim (A-share colours); the whole row takes the colour
+          const col = quoteColor(q.changePct);
+          const name = h('b', null, q.name || q.code);
+          name.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+          const pct = h('span', null, quotePercent(q.changePct));
+          pct.style.cssText = 'font-weight:600;min-width:56px;text-align:right';
+          const row = h('div', 'fx-i', name, h('span', 'fx-v', fmtNum(q.price)), pct,
+            h('span', 'fx-c', (q.change > 0 ? '+' : '') + (q.change || 0).toFixed(2)));
+          row.style.color = col;
+          return row;
+        }));
+      } catch (_) { if (!last) list.replaceChildren(h('div', 'empty', t('w.offline'))); return false; }
     });
     return { update: load };
   },

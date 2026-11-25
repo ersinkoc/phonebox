@@ -83,6 +83,7 @@ builder.Services.AddSingleton<PlexControl>();
 builder.Services.AddSingleton<ControlDeck>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ControlDeck>());
 builder.Services.AddSingleton<PushStore>();
+builder.Services.AddSingleton<StockService>();
 builder.Services.AddSingleton<CommandRunner>();
 builder.Services.AddSingleton<ApprovalStore>();
 builder.Services.AddSingleton<HomeAssistant>();
@@ -551,6 +552,22 @@ app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg, SystemMonitor monitor)
     webviewProblem = WebViewDoctor.DiagnoseRecent(PhoneRegistry.All(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
 }));
 
+// Quotes for the Stocks widget: the watchlist comes from Config.Stocks.
+app.MapGet("/api/stocks", (StockService stocks, ConfigStore cfg) =>
+{
+    if (!cfg.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "stocks")) return Results.NotFound();
+    var (quotes, updated, error) = stocks.Snapshot();
+    return Results.Json(new { quotes, updated, error });
+});
+// Intraday minute prices for one symbol (the Stocks widget's chart mode).
+app.MapGet("/api/stocks/minutes", async (StockService stocks, ConfigStore cfg, string? code) =>
+{
+    if (!cfg.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "stocks" && w.Str("mode") == "chart")) return Results.NotFound();
+    var (points, prev, date, updated, error) = await stocks.MinutesAsync(code ?? "");
+    return points is null
+        ? Results.Json(new { error = error ?? "no data" }, statusCode: 404)
+        : Results.Json(new { points, prevClose = prev, date, updated, error });
+});
 // Phone mic status for the settings page and scripts (local port only: not a phone path, see Lan.AllowedOverLan).
 app.MapGet("/api/phone-mic", (PhoneMic mic) => Results.Json(new { mic = mic.Snapshot() }));
 app.MapPost("/api/phone-mic/mute", (bool? muted, PhoneMic mic) =>
