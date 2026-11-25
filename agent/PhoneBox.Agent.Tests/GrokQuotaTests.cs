@@ -304,11 +304,14 @@ public sealed class GrokQuotaTests : IDisposable
             res.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(120));
             return res;
         };
+        var started = Environment.TickCount64;
         await agent.GrokTickAsync(Now, default);
+        // The wait starts at the reply. The whole call bounds that elapsed time on a busy runner.
+        var elapsed = Environment.TickCount64 - started;
         Assert.Single(http.Urls);
         await agent.GrokTickAsync(Now + 119_000, default);
         Assert.Single(http.Urls);
-        await agent.GrokTickAsync(Now + 121_000, default);
+        await agent.GrokTickAsync(Now + 120_000 + elapsed, default);
         Assert.Equal(2, http.Urls.Count);
         Assert.Contains("limiting", Assert.Single(agent.Snapshot(Now), p => p.Id == "grok").Error, StringComparison.Ordinal);
     }
@@ -319,10 +322,12 @@ public sealed class GrokQuotaTests : IDisposable
         WriteReady();
         var (agent, http, _) = Agent();
         http.Reply = _ => new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        var started = Environment.TickCount64;
         await agent.GrokTickAsync(Now, default);
+        var elapsed = Environment.TickCount64 - started;
         await agent.GrokTickAsync(Now + 299_000, default);
         Assert.Single(http.Urls);
-        await agent.GrokTickAsync(Now + 305_000, default); // the wait counts from the answer, a few ms after Now
+        await agent.GrokTickAsync(Now + 300_000 + elapsed, default);
         Assert.Equal(2, http.Urls.Count);
     }
 
