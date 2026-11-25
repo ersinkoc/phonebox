@@ -828,6 +828,27 @@ public sealed class AdbReverseTests : IDisposable
     }
 
     [Fact]
+    public async Task SelectingAnUnpluggedPhoneRestoresThePreviousPhonesPowerSetting()
+    {
+        var fake = FakeAdb(["FAKE1"], "UsbFfs tcp:8765 tcp:8765", null, stayOn: "3");
+        var path = Path.Combine(_dir, "config.json");
+        string Settings(string serial) => JsonSerializer.Serialize(new
+        {
+            adbPath = fake, deviceSerial = serial,
+            display = new { homeScreen = false, keepAwake = false, standby = "power" },
+        });
+        File.WriteAllText(path, Settings("FAKE1"));
+        var store = new ConfigStore(path);
+        using var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        await Pass(adb);
+        Assert.Contains("-s FAKE1 shell settings put global stay_on_while_plugged_in 0", Calls());
+
+        Assert.Null(store.Save(Settings("UNPLUGGED")));
+        await Pass(adb);
+        Assert.Contains("-s FAKE1 shell settings put global stay_on_while_plugged_in 3", Calls());
+    }
+
+    [Fact]
     public async Task StandbyWithKeepAwakeOffRecordsAndRestoresTheOriginal()
     {
         const string rule = "UsbFfs tcp:8765 tcp:8765";
