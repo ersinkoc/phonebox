@@ -121,7 +121,7 @@
 - Settings › Display › **Sound when a permission prompt appears**, off by default: plays two short beeps at the finish-sound volume when a new permission prompt arrives, staying quiet on the night screen (#497, #598, [sszxt](https://github.com/sszxt)).
 - Settings › Display › **Standby** (`display.standby = off | power | data`, off by default): opt-in power standby mode (#430).
 - Live previews in Settings now match the connected device's WebView dimensions (#582), and USB, quota, and timer settings are improved (#581).
-- Translations: translated UI text that was hard-coded in English (#571, [dancho12](https://github.com/dancho12)) and rewrote machine-translated Russian strings (#572, [dancho12](https://github.com/dancho12)).
+- Translations: translated UI text that was hard-coded in English (#571, [dancho12](https://github.com/dancho12)), rewrote machine-translated Russian strings (#572, [dancho12](https://github.com/dancho12)), and fixed pairing dialog expiry and spacing strings in 7 locales (#603, [nunesjr](https://github.com/nunesjr)).
 - Page bar: with many pages on a narrow phone, only the current page keeps its name, so the others are not cut to one
   letter. It happens only when a name would be cut, so tablets, monitors and the side bar keep every name (#553,
   [avery02072003-cmyk](https://github.com/avery02072003-cmyk)).
@@ -152,7 +152,7 @@
   a wallpaper is set (#468, #471, [lucaskaiut](https://github.com/lucaskaiut)).
 
 **Android app**
-- **Phone bridge** (off by default): clipboard sharing on the phone via **Send to Mac** in the text-selection menu and Share sheet (with preview confirmation), a Quick Settings tile, and a notification button (#529, [Vasilispapg](https://github.com/Vasilispapg)).
+- **Phone bridge** (off by default): clipboard sharing on the phone via **Send to Mac** in the text-selection menu and Share sheet (with preview confirmation), a Quick Settings tile, and a notification button (#529, [Vasilispapg](https://github.com/Vasilispapg)), plus opt-in phone notification forwarding to the Mac with per-app selection, Samsung ringing-call and contact-name support, app icons and an **All apps** switch, and a clearer Phone bridge screen with the app list inline (#531, #535, #536, #537, [Vasilispapg](https://github.com/Vasilispapg)).
 - Pairing without a cable: when the browser can't hand the pairing link to the app, the pairing page now says what to
   do (install the app first, or try the camera, Chrome or USB) instead of opening the download page as if pairing had
   worked (#175, #552, [haop2922-ai](https://github.com/haop2922-ai)).
@@ -162,9 +162,10 @@
 
 **iOS app**
 - Experimental SwiftUI companion that reuses the PhoneBox panel and pairs with the desktop agent over
-  Wi-Fi or Tailscale (#599, [Hal33mm5](https://github.com/Hal33mm5)).
+  Wi-Fi or Tailscale (#599, [Hal33mm5](https://github.com/Hal33mm5)), with an automatic `usbmuxd` USB bridge (#600, [Hal33mm5](https://github.com/Hal33mm5)) and real-device fixes keeping iOS app versions out of Android APK update prompts and moving the options button out of widget headers (#604, #605).
 
 **Setup**
+- Windows ARM64: native `win-arm64` agent builds, `setup.ps1` support, and self-update (#602, #606).
 - Standalone setup now honors the ignored-device list (#587).
 - Windows: each release also has an installer, `PhoneBox-<version>-win-x64-setup.exe`. It installs for the current
   user (no administrator) into the folder the agent updates itself in, with a Start Menu shortcut and an optional
