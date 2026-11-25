@@ -97,3 +97,37 @@ test('the night screen keeps the chime silent', async ({ page }) => {
   await run(page, 'busy', 'idle');
   expect(await tones(page)).toEqual([]);
 });
+
+// A permission prompt can chime too (#497): two beeps, so it sounds different from the finish tune, once per prompt,
+// at the finish sound's volume.
+const ask = (page) => page.evaluate(() => window.PhoneBoxDemo.ask());
+
+test('a permission prompt plays two beeps once when approvalSound is enabled', async ({ page }) => {
+  await load(page, { approvalSound: true, finishSoundVolume: 50 });
+  await ask(page);
+  await expect(page.locator('#approval')).toBeVisible();
+  const t = await tones(page);
+  expect(t.map((x) => x.freq)).toEqual([880, 880]);
+  expect(t[0].peak).toBeCloseTo(0.2);
+  // the same prompt drawn again (as the next poll does) doesn't chime again
+  await page.evaluate(async () => (await import('/panel/main.js')).renderApproval());
+  expect(await tones(page)).toHaveLength(2);
+});
+
+test('without approvalSound a permission prompt stays silent', async ({ page }) => {
+  await load(page, {});
+  await ask(page);
+  await expect(page.locator('#approval')).toBeVisible();
+  expect(await tones(page)).toEqual([]);
+});
+
+test('a permission prompt that wakes the night screen stays silent', async ({ page }) => {
+  const NOON = new Date(2026, 0, 1, 12, 0, 0).getTime();
+  await page.clock.install({ time: NOON });
+  await load(page, { approvalSound: true }, { enabled: true, start: '11:00', end: '13:00' });
+  await expect(page.locator('body')).toHaveClass(/night/);
+  await ask(page);
+  await expect(page.locator('#approval')).toBeVisible();
+  await expect(page.locator('body')).not.toHaveClass(/night/); // the prompt still wakes the screen
+  expect(await tones(page)).toEqual([]);
+});

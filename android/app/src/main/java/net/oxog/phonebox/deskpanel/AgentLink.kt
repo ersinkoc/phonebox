@@ -43,7 +43,7 @@ class AgentLink(private val context: Context) {
     @Volatile var route: Route = Route.NONE
         private set
 
-    private val prefs = context.getSharedPreferences("pairing", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(PAIRING_PREFS, Context.MODE_PRIVATE)
 
     /**
      * A computer this phone is paired with; the certificate fingerprint is its id. [macs] are the MAC addresses of its
@@ -133,17 +133,47 @@ class AgentLink(private val context: Context) {
     @Volatile private var factory: Pair<String, SSLSocketFactory>? = null
     @Volatile private var usbFactory: Pair<String, SSLSocketFactory>? = null // its own: the USB agent's pin may differ from the Wi-Fi PC's
 
-    /** Opens a long-lived GET (the live stream) over the best route; null when the PC is unreachable. */
-    fun stream(path: String): Pair<Route, Reply>? {
-        usb("GET", path, STREAM_READ_TIMEOUT)?.let { route = Route.USB; return Route.USB to it }
-        wifi("GET", path, STREAM_READ_TIMEOUT)?.let { route = Route.WIFI; return Route.WIFI to it }
-        return null
+    /** An open stream: its [route], the [reply] and which computer answered ([computer]: the certificate it was pinned to). */
+    class Stream(val route: Route, val reply: Reply, val computer: String)
+
+    /**
+     * Opens a long-lived GET (the live stream) over the best route; null when the PC is unreachable. [readTimeoutMs]: how
+     * long a silent stream may stay open before the read gives up (the panel's stream sends every second). [resumeFor]: the
+     * bridge stream's Last-Event-ID for the computer an attempt is about to reach (USB is tried first and may lead to a
+     * different computer than Wi-Fi does, so one id for both could be another computer's); null sends none, as the panel's does.
+     */
+    fun stream(path: String, readTimeoutMs: Int = STREAM_READ_TIMEOUT, resumeFor: (String) -> String? = { null }): Stream? {
+        fun resume(computer: String) = resumeFor(computer)?.let { mapOf("Last-Event-ID" to it) } ?: emptyMap()
+        val wifiPc = activePc()
+        var usbRefusal: Stream? = null
+        UsbKey.pin(context)?.let { pin ->
+            usb("GET", path, readTimeoutMs, null, null, resume(pin), pin)?.let { reply ->
+                val attempt = Stream(Route.USB, reply, pin)
+                if (reply.code == 200 || path != "/api/bridge/stream" || wifiPc == null || wifiPc.id == pin) {
+                    route = Route.USB
+                    return attempt
+                }
+                usbRefusal = attempt
+            }
+        }
+        if (wifiPc != null) {
+            val reply = wifi("GET", path, readTimeoutMs, null, null, target = wifiPc, headers = resume(wifiPc.id))
+            if (reply != null) {
+                usbRefusal?.reply?.body?.close()
+                route = Route.WIFI
+                return Stream(Route.WIFI, reply, wifiPc.id)
+            }
+        }
+        if (usbRefusal != null) route = Route.USB
+        return usbRefusal
     }
 
     /** Forwards a request (method + path with query) to the agent over the best available route. */
     fun request(method: String, pathAndQuery: String): Reply = request(method, pathAndQuery, null, null)
 
     fun request(method: String, pathAndQuery: String, body: ByteArray?, contentType: String?): Reply {
+        if (method == "POST" && pathAndQuery == "/api/bridge/clipboard")
+            return sendBridgeClipboard(pathAndQuery, body, contentType)
         usb(method, pathAndQuery, 4000, body, contentType)?.let {
             route = Route.USB
             maybePair()
@@ -156,6 +186,28 @@ class AgentLink(private val context: Context) {
         }
         route = Route.NONE
         return Reply(503, "application/json", ByteArrayInputStream("""{"error":"offline"}""".toByteArray()))
+    }
+
+    private fun sendBridgeClipboard(path: String, body: ByteArray?, contentType: String?): Reply {
+        val usbPin = UsbKey.pin(context)
+        val paired = activePc()
+        val wired = usbPin?.let { usb("POST", path, 4000, body, contentType, pin = it) }
+        if (wired != null && (paired == null || paired.id == usbPin || !BridgeClip.canFallBackFromUsb(wired.code))) {
+            route = Route.USB
+            return wired
+        }
+        val wireless = paired?.let { wifi("POST", path, 4000, body, contentType, target = it) }
+        if (wireless != null) {
+            try { wired?.body?.close() } catch (_: Exception) {}
+            route = Route.WIFI
+            return wireless
+        }
+        if (wired != null) {
+            route = Route.USB
+            return wired
+        }
+        route = Route.NONE
+        return Reply(503, "application/json", ByteArrayInputStream("{\"error\":\"offline\"}".toByteArray()))
     }
 
     val trackpadSocket = TrackpadSocket(this)
@@ -223,9 +275,11 @@ class AgentLink(private val context: Context) {
     private fun usb(method: String, pathAndQuery: String, readTimeout: Int = 4000): Reply? =
         usb(method, pathAndQuery, readTimeout, null, null)
 
-    private fun usb(method: String, pathAndQuery: String, readTimeout: Int, body: ByteArray?, contentType: String?): Reply? = try {
-        val c = usbConnection(pathAndQuery)
+    private fun usb(method: String, pathAndQuery: String, readTimeout: Int, body: ByteArray?, contentType: String?,
+                    headers: Map<String, String> = emptyMap(), pin: String? = UsbKey.pin(context)): Reply? = try {
+        val c = usbConnection(pathAndQuery, pin)
         c.connectTimeout = 400 // refused instantly when no adb reverse tunnel exists
+        headers.forEach { (name, value) -> c.setRequestProperty(name, value) }
         val r = send(c, method, readTimeout, body, contentType)
         if (r.code == 401) {
             // the agent doesn't know this app's key yet (it reads it over adb within seconds): nothing ran, try Wi-Fi
@@ -237,8 +291,8 @@ class AgentLink(private val context: Context) {
     }
 
     /** A USB request: TLS pinned to the agent's certificate, then the key. Without a pin yet, USB is not used at all. */
-    private fun usbConnection(pathAndQuery: String): HttpURLConnection {
-        val pin = UsbKey.pin(context) ?: throw java.io.IOException("no USB pin yet")
+    private fun usbConnection(pathAndQuery: String, pin: String? = UsbKey.pin(context)): HttpURLConnection {
+        if (pin == null) throw java.io.IOException("no USB pin yet")
         val f = usbFactory?.takeIf { it.first == pin }?.second ?: pinnedFactory(pin).also { usbFactory = pin to it }
         return (URL("$USB_BASE$pathAndQuery").openConnection() as HttpsURLConnection).apply {
             sslSocketFactory = f
@@ -251,7 +305,8 @@ class AgentLink(private val context: Context) {
         wifi(method, pathAndQuery, readTimeout, null, null)
 
     /** Over Wi-Fi to the active computer, or to [target] when a caller must reach one particular computer. */
-    private fun wifi(method: String, pathAndQuery: String, readTimeout: Int, body: ByteArray?, contentType: String?, target: Pc? = null): Reply? {
+    private fun wifi(method: String, pathAndQuery: String, readTimeout: Int, body: ByteArray?, contentType: String?, target: Pc? = null,
+                     headers: Map<String, String> = emptyMap()): Reply? {
         val pc = target ?: activePc() ?: return null
         val hosts = pc.hosts
         val token = pc.token
@@ -270,6 +325,7 @@ class AgentLink(private val context: Context) {
                 c.hostnameVerifier = PINNED_HOSTNAME_VERIFIER // identity is the pinned certificate
                 c.connectTimeout = 1500
                 c.setRequestProperty("Authorization", "Bearer $token")
+                headers.forEach { (name, value) -> c.setRequestProperty(name, value) }
                 val r = send(c, method, readTimeout, body, contentType)
                 if (target == null) preferredHost = i
                 return r
@@ -306,20 +362,15 @@ class AgentLink(private val context: Context) {
         c.useCaches = false
         if (method == "POST") {
             c.doOutput = true
-            if (body != null) {
-                if (contentType != null) c.setRequestProperty("Content-Type", contentType)
-                c.setFixedLengthStreamingMode(body.size)
-                c.outputStream.write(body)
-            } else {
-                c.setFixedLengthStreamingMode(0)
-            }
-            c.outputStream.close()
+            if (contentType != null && body != null) c.setRequestProperty("Content-Type", contentType)
+            c.setFixedLengthStreamingMode(body?.size ?: 0)
+            val output = c.outputStream
+            try { output.use { if (body != null) it.write(body) } }
+            catch (_: java.io.IOException) { return unknownPost(c) }
         }
         val code = try { c.responseCode } catch (e: java.io.IOException) {
             if (!controlPost) throw e
-            // The command body was already submitted. Trying the Wi-Fi route now could run a macro or toggle twice.
-            c.disconnect()
-            return Reply(504, "application/json", ByteArrayInputStream("""{"ok":false,"error":"The command result is unknown; check the computer before retrying"}""".toByteArray()))
+            return unknownPost(c)
         }
         if (code !in 100..599 || code in 300..399) {
             try { (if (code >= 400) c.errorStream else c.inputStream)?.close() } catch (_: Exception) {}
@@ -328,6 +379,13 @@ class AgentLink(private val context: Context) {
         }
         val body = (if (code >= 400) c.errorStream else c.inputStream) ?: ByteArrayInputStream(ByteArray(0))
         return Reply(code, c.contentType, body)
+    }
+
+    private fun unknownPost(c: HttpURLConnection): Reply {
+        // A write may have reached the computer. Do not try any other route or address.
+        c.disconnect()
+        return Reply(504, "application/json", ByteArrayInputStream(
+            """{"ok":false,"error":"The command result is unknown; check the computer before retrying"}""".toByteArray()))
     }
 
     private val macRefreshThrottle = RefreshThrottle(10 * 60_000)
@@ -650,7 +708,9 @@ class AgentLink(private val context: Context) {
 
         private const val USB_BASE = "https://127.0.0.1:8765"
         /** The agent sends "state" every second, so a silent connection for this long is dead. */
-        private const val STREAM_READ_TIMEOUT = 8000
+        const val STREAM_READ_TIMEOUT = 8000
+        /** The paired computers' preferences. Each AgentLink reads them once, so the clipboard service watches them for changes. */
+        const val PAIRING_PREFS = "pairing"
     }
 }
 

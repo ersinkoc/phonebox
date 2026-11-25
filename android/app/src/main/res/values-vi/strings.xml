@@ -15,4 +15,25 @@
     <string name="pair_failed_certificate">Máy tính này có chứng chỉ khác với mã QR. Hãy bắt đầu ghép nối lại.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">Bảng điều khiển không thể chạy trên điện thoại này: Android không khởi động được WebView. Một số điện thoại Android 5 không chạy được các phiên bản WebView mà PhoneBox cần.</string>
+    <string name="bridge_title">Cầu nối điện thoại</string>
+    <string name="bridge_clipboard_switch">Chia sẻ bộ nhớ tạm với Mac</string>
+    <string name="bridge_clipboard_help">Văn bản bạn sao chép trên Mac sẽ xuất hiện trên điện thoại này. Để gửi văn bản tới Mac, hãy chọn văn bản rồi chạm “Gửi tới Mac”, dùng Chia sẻ › Gửi tới Mac, hoặc ô Gửi tới Mac trong Cài đặt nhanh. Công tắc Cầu nối điện thoại trên Mac (trong cài đặt PhoneBox trên máy tính) cũng phải bật.</string>
+    <string name="bridge_state_off">Tắt</string>
+    <string name="bridge_state_waiting">Đang chờ Mac…</string>
+    <string name="bridge_state_running">Đã kết nối với Mac</string>
+    <string name="bridge_state_mac_off">Công tắc bộ nhớ tạm của Mac đang tắt (Cài đặt › Cầu nối điện thoại trên máy tính)</string>
+    <string name="bridge_notification_channel">Chia sẻ bộ nhớ tạm</string>
+    <string name="bridge_notification_title">PhoneBox đang chia sẻ bộ nhớ tạm</string>
+    <string name="bridge_send_to_mac">Gửi tới Mac</string>
+    <string name="bridge_sent">Đã gửi tới Mac</string>
+    <string name="bridge_send_off">Công tắc bộ nhớ tạm của Mac đang tắt</string>
+    <string name="bridge_send_unreachable">Không thể kết nối với Mac</string>
+    <string name="bridge_send_nothing">Không có gì để gửi: bộ nhớ tạm trống hoặc riêng tư</string>
+    <string name="bridge_send_too_large">Quá dài để gửi (giới hạn 64 KiB)</string>
+    <string name="bridge_state_unsupported">Máy tính này không thể chia sẻ bộ nhớ tạm: cầu nối điện thoại cần tác nhân PhoneBox trên máy Mac</string>
+    <string name="bridge_state_stopped">Android đã dừng. Hãy mở lại màn hình này, hoặc khởi động lại PhoneBox, để kết nối lại</string>
+    <string name="bridge_confirm_title">Gửi văn bản này tới bộ nhớ tạm của Mac?</string>
+    <string name="bridge_confirm_more">Còn văn bản phía sau không được hiển thị (ký tự: %1$s, dòng: %2$s).</string>
+    <string name="bridge_pair_again">Mac không còn nhận ra điện thoại này: hãy nối USB một lần hoặc ghép nối lại.</string>
+    <string name="bridge_send_unknown">Không có phản hồi từ Mac: văn bản có thể đã tới. Hãy kiểm tra trên Mac trước khi gửi lại.</string>
 </resources>

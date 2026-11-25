@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">このコンピュータは QR コードと異なる証明書を持っています。ペアリングを再開してください。</string>
     <string name="ok">OK</string>
     <string name="webview_failed">このスマートフォンではパネルを実行できません。Android が WebView を起動できませんでした。一部の Android 5 端末では、PhoneBox に必要な WebView のバージョンを実行できません。</string>
+    <string name="bridge_title">スマホブリッジ</string>
+    <string name="bridge_clipboard_switch">Mac とクリップボードを共有</string>
+    <string name="bridge_clipboard_help">Mac でコピーしたテキストがこのスマートフォンに表示されます。Mac に送るには、テキストを選択して「Mac に送信」をタップするか、共有 › Mac に送信、またはクイック設定の「Mac に送信」タイルを使います。Mac 側の「スマホブリッジ」スイッチ（コンピューターの PhoneBox 設定内）もオンにする必要があります。</string>
+    <string name="bridge_state_off">オフ</string>
+    <string name="bridge_state_waiting">Mac を待っています…</string>
+    <string name="bridge_state_running">Mac に接続しました</string>
+    <string name="bridge_state_mac_off">Mac のクリップボードスイッチがオフです（コンピューターの設定 › スマホブリッジ）</string>
+    <string name="bridge_notification_channel">クリップボード共有</string>
+    <string name="bridge_notification_title">PhoneBox がクリップボードを共有中</string>
+    <string name="bridge_send_to_mac">Mac に送信</string>
+    <string name="bridge_sent">Mac に送信しました</string>
+    <string name="bridge_send_off">Mac のクリップボードスイッチがオフです</string>
+    <string name="bridge_send_unreachable">Mac に接続できませんでした</string>
+    <string name="bridge_send_nothing">送信するものがありません：クリップボードが空か非公開です</string>
+    <string name="bridge_send_too_large">長すぎて送信できません（上限は 64 KiB）</string>
+    <string name="bridge_state_unsupported">このコンピューターはクリップボードを共有できません：スマホブリッジには Mac 上の PhoneBox エージェントが必要です</string>
+    <string name="bridge_state_stopped">Android によって停止されました。この画面をもう一度開くか、PhoneBox を再起動して再接続してください</string>
+    <string name="bridge_confirm_title">このテキストを Mac のクリップボードに送信しますか？</string>
+    <string name="bridge_confirm_more">表示されていない続きのテキストがあります（文字数: %1$s、行数: %2$s）。</string>
+    <string name="bridge_pair_again">Macがこのスマートフォンを認識しなくなりました。一度USBで接続するか、もう一度ペアリングしてください。</string>
+    <string name="bridge_send_unknown">Mac から応答がありません。テキストは届いている可能性があります。もう一度送る前に Mac で確認してください。</string>
 </resources>

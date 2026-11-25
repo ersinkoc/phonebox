@@ -15,4 +15,25 @@
     <string name="pair_failed_certificate">Ο υπολογιστής έχει διαφορετικό πιστοποιητικό από τον κωδικό QR. Ξεκινήστε ξανά τη σύζευξη.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">Ο πίνακας δεν μπορεί να λειτουργήσει σε αυτό το τηλέφωνο: το Android δεν μπόρεσε να ξεκινήσει το WebView. Ορισμένα τηλέφωνα με Android 5 δεν μπορούν να τρέξουν τις εκδόσεις WebView που χρειάζεται το PhoneBox.</string>
+    <string name="bridge_title">Γέφυρα τηλεφώνου</string>
+    <string name="bridge_clipboard_switch">Κοινό πρόχειρο με το Mac</string>
+    <string name="bridge_clipboard_help">Το κείμενο που αντιγράφεις στο Mac εμφανίζεται σε αυτό το τηλέφωνο. Για να στείλεις κείμενο στο Mac, επίλεξέ το και πάτησε «Αποστολή στο Mac», χρησιμοποίησε Κοινή χρήση › Αποστολή στο Mac ή το πλακίδιο Αποστολή στο Mac στις Γρήγορες ρυθμίσεις. Ο διακόπτης Γέφυρα τηλεφώνου του Mac (στις ρυθμίσεις του PhoneBox στον υπολογιστή) πρέπει επίσης να είναι ενεργός.</string>
+    <string name="bridge_state_off">Ανενεργό</string>
+    <string name="bridge_state_waiting">Αναμονή για το Mac…</string>
+    <string name="bridge_state_running">Συνδέθηκε με το Mac</string>
+    <string name="bridge_state_mac_off">Ο διακόπτης προχείρου του Mac είναι ανενεργός (Ρυθμίσεις › Γέφυρα τηλεφώνου στον υπολογιστή)</string>
+    <string name="bridge_notification_channel">Κοινό πρόχειρο</string>
+    <string name="bridge_notification_title">Το PhoneBox μοιράζεται το πρόχειρο</string>
+    <string name="bridge_send_to_mac">Αποστολή στο Mac</string>
+    <string name="bridge_sent">Εστάλη στο Mac</string>
+    <string name="bridge_send_off">Ο διακόπτης προχείρου του Mac είναι ανενεργός</string>
+    <string name="bridge_send_unreachable">Δεν ήταν δυνατή η επικοινωνία με το Mac</string>
+    <string name="bridge_send_nothing">Δεν υπάρχει τίποτα για αποστολή: το πρόχειρο είναι κενό ή ιδιωτικό</string>
+    <string name="bridge_send_too_large">Πολύ μεγάλο για αποστολή (το όριο είναι 64 KiB)</string>
+    <string name="bridge_state_unsupported">Αυτός ο υπολογιστής δεν μπορεί να μοιραστεί το πρόχειρο: η γέφυρα τηλεφώνου χρειάζεται τον πράκτορα PhoneBox σε Mac</string>
+    <string name="bridge_state_stopped">Σταμάτησε από το Android. Άνοιξε ξανά αυτή την οθόνη ή επανεκκίνησε το PhoneBox για να συνδεθείς</string>
+    <string name="bridge_confirm_title">Αποστολή αυτού του κειμένου στο πρόχειρο του Mac;</string>
+    <string name="bridge_confirm_more">Ακολουθεί κι άλλο κείμενο που δεν εμφανίζεται (χαρακτήρες: %1$s, γραμμές: %2$s).</string>
+    <string name="bridge_pair_again">Το Mac δεν αναγνωρίζει πια αυτό το τηλέφωνο: συνδέστε το μία φορά με USB ή κάντε ξανά σύζευξη.</string>
+    <string name="bridge_send_unknown">Δεν ήρθε απάντηση από το Mac: το κείμενο ίσως έφτασε. Ελέγξτε στο Mac πριν το στείλετε ξανά.</string>
 </resources>

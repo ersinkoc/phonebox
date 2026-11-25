@@ -70,4 +70,33 @@
   <ItemGroup>
     <InternalsVisibleTo Include="PhoneBox.Agent.Tests" />
   </ItemGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <MacPasteboardSource>$(MSBuildProjectDirectory)/Unix/MacPasteboard.m</MacPasteboardSource>
+    <MacPasteboardArch Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">-arch arm64</MacPasteboardArch>
+    <MacPasteboardArch Condition="'$(RuntimeIdentifier)' == 'osx-x64'">-arch x86_64</MacPasteboardArch>
+    <IncludeNativeLibrariesForSelfExtract Condition="'$(PublishSingleFile)' == 'true'">true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <Target Name="BuildMacPasteboard" Inputs="$(MacPasteboardSource)" Outputs="$(IntermediateOutputPath)libPhoneBoxPasteboard.dylib"
+          Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <Exec Command="/usr/bin/clang -dynamiclib -O2 -fobjc-exceptions -framework Foundation $(MacPasteboardArch) -o &quot;$(IntermediateOutputPath)libPhoneBoxPasteboard.dylib&quot; &quot;$(MacPasteboardSource)&quot;" />
+  </Target>
+
+  <Target Name="IncludeMacPasteboard" BeforeTargets="AssignTargetPaths" DependsOnTargets="BuildMacPasteboard"
+          Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <ItemGroup>
+      <None Include="$(IntermediateOutputPath)libPhoneBoxPasteboard.dylib" Link="libPhoneBoxPasteboard.dylib"
+            CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="ClassifyMacPasteboardForBundle" BeforeTargets="_ComputeFilesToBundle"
+          Condition="'$(PublishSingleFile)' == 'true' and $([MSBuild]::IsOSPlatform('OSX'))">
+    <ItemGroup>
+      <ResolvedFileToPublish Update="@(ResolvedFileToPublish->WithMetadataValue('RelativePath', 'libPhoneBoxPasteboard.dylib'))"
+                             AssetType="native" />
+    </ItemGroup>
+  </Target>
 </Project>

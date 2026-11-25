@@ -72,9 +72,6 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   way to run the Linux agent without a desktop session, an address to advertise for Wi-Fi pairing from behind
   container networking, and persistent data. Remote access to the settings page needs its own sign-in first; until
   then an SSH tunnel to the loopback port is the safe way.
-- **Night screen as a rule action** ([#330](https://github.com/ersinkoc/phonebox/issues/330)): while a rule holds
-  (for example *PC away for 5 minutes*), the phone shows the night screen at its own brightness, and goes back when the
-  rule ends. The schedule stays as it is, and a tap still wakes the screen for a while.
 - **Pushed values without refetching the whole list** ([#329](https://github.com/ersinkoc/phonebox/issues/329)): the
   change event carries the key and its new value, and the phone fetches all of `/api/push` again only when it missed a
   version. A value pushed every second, such as a game's FPS, then costs one small event instead of the full list.
@@ -83,9 +80,6 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   the timed lyric of the current track and follows the playback position. The agent looks the track up on LRCLIB
   (title, artist, album, duration) only when the user turns the lookup on and only while such a widget is on an enabled
   page; results stay in memory, and the phone never contacts LRCLIB.
-- **A sound for a new permission prompt** ([#497](https://github.com/ersinkoc/phonebox/issues/497)): an option to
-  play the panel's chime when an approval card appears, not only vibrate, with the same volume setting as a finished
-  session's sound ([#488](https://github.com/ersinkoc/phonebox/pull/488)) once that lands.
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
 

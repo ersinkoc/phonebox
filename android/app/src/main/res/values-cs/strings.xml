@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">Certifikát počítače se liší od certifikátu v QR kódu. Spusťte párování znovu.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">Panel na tomto telefonu nepoběží: Android nedokázal spustit WebView. Některé telefony s Androidem 5 nezvládnou verze WebView, které PhoneBox potřebuje.</string>
+    <string name="bridge_title">Most k telefonu</string>
+    <string name="bridge_clipboard_switch">Sdílet schránku s Macem</string>
+    <string name="bridge_clipboard_help">Text, který zkopírujete v Macu, se objeví v tomto telefonu. Chcete-li poslat text do Macu, označte ho a klepněte na „Poslat do Macu“, použijte Sdílet › Poslat do Macu nebo dlaždici Poslat do Macu v Rychlém nastavení. Přepínač Most k telefonu v Macu (v nastavení PhoneBox v počítači) musí být také zapnutý.</string>
+    <string name="bridge_state_off">Vypnuto</string>
+    <string name="bridge_state_waiting">Čekám na Mac…</string>
+    <string name="bridge_state_running">Připojeno k Macu</string>
+    <string name="bridge_state_mac_off">Přepínač schránky v Macu je vypnutý (Nastavení › Most k telefonu v počítači)</string>
+    <string name="bridge_notification_channel">Sdílení schránky</string>
+    <string name="bridge_notification_title">PhoneBox sdílí schránku</string>
+    <string name="bridge_send_to_mac">Poslat do Macu</string>
+    <string name="bridge_sent">Odesláno do Macu</string>
+    <string name="bridge_send_off">Přepínač schránky v Macu je vypnutý</string>
+    <string name="bridge_send_unreachable">Mac se nepodařilo zastihnout</string>
+    <string name="bridge_send_nothing">Není co poslat: schránka je prázdná nebo soukromá</string>
+    <string name="bridge_send_too_large">Příliš dlouhé k odeslání (limit je 64 KiB)</string>
+    <string name="bridge_state_unsupported">Tento počítač nemůže sdílet schránku: most k telefonu potřebuje agenta PhoneBox na Macu</string>
+    <string name="bridge_state_stopped">Zastaveno systémem Android. Otevřete tuto obrazovku znovu nebo restartujte PhoneBox a připojte se</string>
+    <string name="bridge_confirm_title">Poslat tento text do schránky Macu?</string>
+    <string name="bridge_confirm_more">Následuje další text, který se nezobrazuje (znaky: %1$s, řádky: %2$s).</string>
+    <string name="bridge_pair_again">Mac už tento telefon nepoznává: připojte ho jednou přes USB nebo spárujte znovu.</string>
+    <string name="bridge_send_unknown">Mac neodpověděl: text možná dorazil. Než ho pošlete znovu, zkontrolujte to na Macu.</string>
 </resources>

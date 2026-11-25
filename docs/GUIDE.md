@@ -314,7 +314,48 @@ packet, it carries no password, so anyone on the same network who knows a MAC ad
 4. Waking from sleep or hibernate works most reliably. Waking from a full shutdown depends on the board, and
    Windows *Fast startup* can interfere: turn it off if a shut-down machine does not wake.
 
+## Phone bridge (macOS)
+
+Share what you copy between the Mac and the phone. It starts with the clipboard.
+
+- Turn on **Settings › Phone bridge › Share the clipboard with the phone**. It is off by default, and while it is off
+  the agent refuses everything the phone sends for it.
+- **Mac to phone:** copy plain text on the Mac and the paired phone's clipboard has it within about a second. Text over
+  64 KiB is not sent, and neither is anything a password manager marked as not to be shared (concealed, transient or
+  auto-generated, the markers 1Password, Bitwarden, KeePassXC and Strongbox use). A copy is read only once the clipboard
+  has stayed the same for a moment. A password manager can omit a marker or add it after the bridge has read the copy.
+  Turn off sharing before copying sensitive text.
+  On Android 9 and older, every app on the phone can read the clipboard at any time. From Android 10, the foreground
+  app and the default keyboard can read it.
+- **Phone to Mac:** Android does not let an app read the clipboard in the background, so sending from the phone is
+  something you do, in any of four places. **Send to Mac** in the text-selection menu (select text, it sits next to
+  Copy, and the text is sent without copying first) and **Share › Send to Mac** ask first, because any app can hand text
+  to them: a dialog shows the start of the text, says how much more there is that it does not show, and sends it when
+  you tap **Send to Mac** there (the button works after half a second). A **Send to Mac** tile (add it under Quick
+  Settings › Edit) and the **Send to Mac** button on the app's "sharing the clipboard" notification are one tap and send
+  what is on the clipboard straight away. A short message says whether it arrived. These entries appear in your apps
+  only while the phone's switch below is on.
+- **On the phone:** open the page overview (long-press the page dots) and tap **Phone bridge**, then turn on **Share
+  the clipboard with the Mac**. Both switches, this one and the Mac's, must be on; the screen says whether it is
+  connected, the Mac's switch is off, the computer has no bridge, the phone must be paired again (the Mac was paired
+  again or got a new key), or Android stopped the service (opening the screen starts it again). Android 13 and later asks to show notifications. On Samsung phones set PhoneBox's battery use to
+  **Unrestricted** (Settings › Apps › PhoneBox › Battery), or the system may stop the service.
+- The text goes only to your own paired phones over the PhoneBox link (USB or paired Wi-Fi / Tailscale), with the
+  phone's key. Enable the bridge only on a computer where users and software with access to the local agent API are
+  trusted. The text is kept in memory and never stored
+  or logged. A phone whose connection drops for a moment is sent what it missed when it reconnects (at most the last 20
+  copies, and only those from the last two minutes). See [PRIVACY.md](../PRIVACY.md).
+- **macOS asking before an app reads the clipboard:** newer macOS versions can ask whether an app may paste from other
+  apps (System Settings › Privacy & Security). If macOS asks about PhoneBox, choose Allow there, or it asks again at each
+  copy. If PhoneBox is denied, macOS gives it no text, nothing you copy reaches the phone, and the Phone bridge card says
+  so (the log gets one line too, without the text).
+- Needs macOS: on Windows and Linux the card is hidden and the agent answers the phone with 501.
+
 ## AI agent permission prompts
+
+Turn on **Sound when a permission prompt appears** in **Settings › General › Display** to hear two short
+beeps at the configured sound volume. The phone stays quiet on the night screen. A desktop browser may
+require a tap or click on the panel after opening it to allow audio.
 
 When Codex asks for permission (run a command, edit a file, use an MCP tool…), the phone shows the project, tool and
 operation with **Allow** and **Deny**. Turn it on in **Settings › General › AI coding agent permission prompts** and
@@ -339,10 +380,18 @@ hook* also write the `settings.json` of each of those folders that exists, with 
 those files under the button before you press it, and a folder that doesn't exist is skipped, never created. Remove
 the hook before you delete an account: *Remove hook* only reaches the folders still in the list.
 
-WorkBuddy speaks the same hook protocol. Add the same `PermissionRequest` entry to `~/.workbuddy/settings.json` by
-hand: *Install hook* writes only to Claude Code's own folders (`~/.claude` and the other accounts'). WorkBuddy keeps its sessions in `~/.workbuddy`, so the
-card takes the project name from the workspace name WorkBuddy stores
-(`~/.workbuddy/workspace-display-names.json`) instead of the folder name.
+WorkBuddy has its own controls under **Settings › General › AI coding agent permission prompts**.
+Turn on **Ask on the phone** in the WorkBuddy section. Enable **Allow WorkBuddy approvals on the phone**
+in an AI sessions widget on an enabled page. Save the settings, then click **Install hook** in the WorkBuddy
+section. The installer uses the saved timeout and writes a `PermissionRequest` hook to `~/.workbuddy/settings.json`
+and keeps the existing settings. Restart WorkBuddy after installation and use its default permission mode to see prompts.
+To avoid duplicate prompts, remove any old PhoneBox entry you copied manually before installing this one.
+The event provides the session ID, working directory, tool name and tool input. The phone returns Allow or Deny.
+If the phone does not answer, WorkBuddy keeps its own approval flow.
+[Tencent hook reference](https://cloud.tencent.com/document/product/1831/137030#permissionrequest).
+
+**Show WorkBuddy sessions** is a separate switch. It reads the live process status files under `~/.workbuddy/sessions`
+and displays the workspace name and activity. No chat titles or conversation text are read from those files.
 
 Cursor has no permission-prompt hook; its `beforeShellExecution` and `beforeMCPExecution` hooks run before **every**
 shell command and MCP tool call of the agent, also the ones Cursor would run by itself. So Cursor prompts are off until
@@ -462,7 +511,9 @@ With **only while it lasts**, the effect ends with the condition: the phone goes
 you moved on yourself) and stays on the rule's page instead of returning home when idle; a pushed value is removed
 again. The editor starts from examples (Claude needs me → AI page, music → Music page, on air during calls, CPU busy,
 away → Ambient, evenings → Calm, doorbell, quota warning, review requested, CI failed, workday mornings, low battery,
-too warm) and has a Test button for each rule.
+too warm). The Test button runs one-shot actions. Use **Show the night screen** to dim the phone while a
+rule is active, such as after five minutes away from the PC. A tap temporarily wakes the screen. The
+normal night schedule applies independently.
 
 **Battery care** (Settings › General) keeps the phone's battery between two levels, 50–80 % by default, so a panel
 that is always plugged in lasts longer. Phones cannot stop charging without root, so PhoneBox switches the power

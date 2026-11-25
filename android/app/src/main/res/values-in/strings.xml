@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">Sertifikat komputer berbeda dari yang tercantum pada kode QR. Mulai lagi penyandingan.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">Panel tidak bisa berjalan di ponsel ini: Android tidak dapat memulai WebView. Beberapa ponsel Android 5 tidak dapat menjalankan versi WebView yang dibutuhkan PhoneBox.</string>
+    <string name="bridge_title">Jembatan ponsel</string>
+    <string name="bridge_clipboard_switch">Bagikan papan klip ke Mac</string>
+    <string name="bridge_clipboard_help">Teks yang Anda salin di Mac muncul di ponsel ini. Untuk mengirim teks ke Mac, pilih teksnya lalu ketuk “Kirim ke Mac”, gunakan Bagikan › Kirim ke Mac, atau kartu Kirim ke Mac di Pengaturan Cepat. Sakelar Jembatan ponsel di Mac (di pengaturan PhoneBox pada komputer) juga harus aktif.</string>
+    <string name="bridge_state_off">Mati</string>
+    <string name="bridge_state_waiting">Menunggu Mac…</string>
+    <string name="bridge_state_running">Terhubung ke Mac</string>
+    <string name="bridge_state_mac_off">Sakelar papan klip Mac mati (Pengaturan › Jembatan ponsel di komputer)</string>
+    <string name="bridge_notification_channel">Berbagi papan klip</string>
+    <string name="bridge_notification_title">PhoneBox sedang membagikan papan klip</string>
+    <string name="bridge_send_to_mac">Kirim ke Mac</string>
+    <string name="bridge_sent">Terkirim ke Mac</string>
+    <string name="bridge_send_off">Sakelar papan klip Mac mati</string>
+    <string name="bridge_send_unreachable">Tidak dapat menjangkau Mac</string>
+    <string name="bridge_send_nothing">Tidak ada yang dikirim: papan klip kosong atau pribadi</string>
+    <string name="bridge_send_too_large">Terlalu panjang untuk dikirim (batasnya 64 KiB)</string>
+    <string name="bridge_state_unsupported">Komputer ini tidak dapat membagikan papan klip: jembatan ponsel memerlukan agen PhoneBox di Mac</string>
+    <string name="bridge_state_stopped">Dihentikan oleh Android. Buka layar ini lagi, atau mulai ulang PhoneBox, untuk terhubung kembali</string>
+    <string name="bridge_confirm_title">Kirim teks ini ke papan klip Mac?</string>
+    <string name="bridge_confirm_more">Ada teks lanjutan yang tidak ditampilkan (karakter: %1$s, baris: %2$s).</string>
+    <string name="bridge_pair_again">Mac tidak lagi mengenali ponsel ini: sambungkan sekali lewat USB atau pasangkan lagi.</string>
+    <string name="bridge_send_unknown">Tidak ada jawaban dari Mac: teks mungkin sudah sampai. Periksa di Mac sebelum mengirim lagi.</string>
 </resources>

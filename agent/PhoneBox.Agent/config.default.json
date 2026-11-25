@@ -17,6 +17,10 @@
   // of Claude Code inside the running WSL distros, and uses its sign-in there for the quota when Windows has none (off by default).
   "claude": { "shareSessionTitles": false, "shareConversation": false, "watchWsl": false, "extraCredentialDirs": [] },
 
+  // Phone bridge (macOS): share copied text with the paired phone, both ways. Off, because it moves what you copy off this
+  // computer; the PhoneBox app has its own switch too, and both must be on.
+  "bridge": { "clipboard": false },
+
   // Ping target for the ping metric and the "ping high" rule, every 5 s (empty = off)
   "ping": { "host": "1.1.1.1", "adapters": [] },
   // Discord widget: talks to the Discord desktop app on this computer. Create an application at discord.com/developers/applications, add the redirect http://127.0.0.1, and enter its client ID and secret (see docs/DISCORD.md). "allowControl" lets shortcuts and custom widgets mute, deafen, leave and join without a Discord widget (off by default). screenShare (off by default) lets the phone start and stop screen shares; it asks Discord for the rpc.screenshare scopes, so Discord asks you to approve PhoneBox again
@@ -32,6 +36,7 @@
   // the phone answer. "watchWsl" adds OpenCode inside running WSL distros, "shareSessionTitles" the session titles.
   "opencode": { "phoneApprovals": false, "sessions": false, "timeoutSec": 90, "alwaysCountdownSec": 10, "watchWsl": false, "shareSessionTitles": false },
   "stocks": [],
+  "workBuddy": { "sessions": false, "phoneApprovals": false, "onlyWhenAway": false, "timeoutSec": 90 },
   // App console widget (Windows): keys and dial bindings per app, matched by the focused window's process name
   "console": { "profiles": [] },
   // Phone mic (Windows, off by default): the phone's microphone played into a virtual cable ("endpoint", e.g. VB-CABLE's CABLE Input),
@@ -46,7 +51,7 @@
 
   // Clock seconds, return to the first page after N idle seconds (0 = never), vibrate on session events, a message when a session finishes,
   // switch pages with the phone's volume keys
-  "display": { "showSeconds": true, "weekStart": "monday", "idleReturnSec": 90, "vibrate": true, "finishToast": true, "finishSound": false, "finishSoundVolume": 70, "volumeKeys": true, "pixelShift": false, "controlsTop": false, "tabletRows": false, "pageBar": "dots", "pageBarSide": "bottom", "idleDimMin": 0, "nightWhenUnreachable": false, "unreachableNightDelayMin": 5, "wakeOnUnlock": false, "lockPhoneWithShortcut": false, "language": "auto", "wallpaper": { "dim": 45, "blur": 0 }, "standby": "off", "standbyGraceSec": 30 },
+  "display": { "showSeconds": true, "weekStart": "monday", "idleReturnSec": 90, "vibrate": true, "finishToast": true, "finishSound": false, "approvalSound": false, "finishSoundVolume": 70, "volumeKeys": true, "pixelShift": false, "controlsTop": false, "tabletRows": false, "pageBar": "dots", "pageBarSide": "bottom", "idleDimMin": 0, "nightWhenUnreachable": false, "unreachableNightDelayMin": 5, "wakeOnUnlock": false, "lockPhoneWithShortcut": false, "language": "auto", "wallpaper": { "dim": 45, "blur": 0 }, "standby": "off", "standbyGraceSec": 30 },
 
   // Plex music control (Caldera Amp or another Plex Companion player): the server address and token, and the player address.
   // None of these go to the phone; the token is sent only to the server, never to the player.

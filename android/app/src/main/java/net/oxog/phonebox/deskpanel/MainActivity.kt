@@ -652,6 +652,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onResume() {
         super.onResume()
+        ClipboardService.sync(applicationContext) // Phone bridge: starts, stops or reconnects it to match the switch
         if (!hasWeb) return
         resumed = true
         if (standbyMode != "off") {
@@ -883,6 +884,13 @@ class MainActivity : Activity(), SensorEventListener {
             .put("light", sensors?.getDefaultSensor(Sensor.TYPE_LIGHT) != null)
             .put("proximity", sensors?.getDefaultSensor(Sensor.TYPE_PROXIMITY) != null)
             .toString()
+
+        /** The panel's overview button: opens the phone's own Phone bridge screen. */
+        @JavascriptInterface
+        fun openBridge(key: String) {
+            if (!ok(key)) return
+            runOnUiThread { startActivity(Intent(this@MainActivity, BridgeActivity::class.java)) }
+        }
 
         /**
          * Screen pinning (lock task without a device owner): Home and Recents stay on the panel until it is unpinned

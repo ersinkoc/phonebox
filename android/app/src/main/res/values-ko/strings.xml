@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">컴퓨터의 인증서가 QR 코드의 인증서와 다릅니다. 페어링을 다시 시작하세요.</string>
     <string name="ok">확인</string>
     <string name="webview_failed">이 휴대폰에서는 패널을 실행할 수 없습니다. Android가 WebView를 시작하지 못했습니다. 일부 Android 5 휴대폰은 PhoneBox에 필요한 WebView 버전을 실행할 수 없습니다.</string>
+    <string name="bridge_title">휴대폰 브리지</string>
+    <string name="bridge_clipboard_switch">Mac과 클립보드 공유</string>
+    <string name="bridge_clipboard_help">Mac에서 복사한 텍스트가 이 휴대폰에 나타납니다. Mac으로 텍스트를 보내려면 텍스트를 선택하고 “Mac으로 보내기”를 누르거나, 공유 › Mac으로 보내기 또는 빠른 설정의 “Mac으로 보내기” 타일을 사용하세요. Mac의 휴대폰 브리지 스위치(컴퓨터의 PhoneBox 설정)도 켜져 있어야 합니다.</string>
+    <string name="bridge_state_off">꺼짐</string>
+    <string name="bridge_state_waiting">Mac을 기다리는 중…</string>
+    <string name="bridge_state_running">Mac에 연결됨</string>
+    <string name="bridge_state_mac_off">Mac의 클립보드 스위치가 꺼져 있습니다(컴퓨터의 설정 › 휴대폰 브리지)</string>
+    <string name="bridge_notification_channel">클립보드 공유</string>
+    <string name="bridge_notification_title">PhoneBox가 클립보드를 공유하는 중</string>
+    <string name="bridge_send_to_mac">Mac으로 보내기</string>
+    <string name="bridge_sent">Mac으로 보냈습니다</string>
+    <string name="bridge_send_off">Mac의 클립보드 스위치가 꺼져 있습니다</string>
+    <string name="bridge_send_unreachable">Mac에 연결할 수 없습니다</string>
+    <string name="bridge_send_nothing">보낼 내용이 없습니다: 클립보드가 비어 있거나 비공개입니다</string>
+    <string name="bridge_send_too_large">너무 길어서 보낼 수 없습니다(제한 64 KiB)</string>
+    <string name="bridge_state_unsupported">이 컴퓨터는 클립보드를 공유할 수 없습니다: 휴대폰 브리지에는 Mac의 PhoneBox 에이전트가 필요합니다</string>
+    <string name="bridge_state_stopped">Android에서 중지했습니다. 이 화면을 다시 열거나 PhoneBox를 다시 시작하여 다시 연결하세요</string>
+    <string name="bridge_confirm_title">이 텍스트를 Mac의 클립보드로 보낼까요?</string>
+    <string name="bridge_confirm_more">표시되지 않은 텍스트가 더 있습니다(문자: %1$s, 줄: %2$s).</string>
+    <string name="bridge_pair_again">Mac이 더 이상 이 휴대폰을 인식하지 못합니다. USB로 한 번 연결하거나 다시 페어링하세요.</string>
+    <string name="bridge_send_unknown">Mac에서 응답이 없습니다. 텍스트가 도착했을 수 있습니다. 다시 보내기 전에 Mac에서 확인하세요.</string>
 </resources>

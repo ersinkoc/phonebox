@@ -37,6 +37,9 @@ jobs:
           ./gradlew lintDebug assembleDebug testDebugUnitTest --no-daemon --console=plain
       - name: Stream lifecycle regression checks (real Kotlin, gated completion)
         run: python3 tools/test-agent-stream.py
+      # after the Gradle build, like the step above: it compiles with the Kotlin compiler that build cached, on the JDK 17 set up here
+      - name: Phone bridge checks (real Kotlin, BridgeClip and the bridge stream)
+        run: python3 tools/test-bridge-checks.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: phonebox-apk

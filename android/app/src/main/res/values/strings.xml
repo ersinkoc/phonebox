@@ -16,4 +16,28 @@
     <string name="ok">OK</string>
     <!-- Shown instead of the panel when Android cannot start its WebView (#385). -->
     <string name="webview_failed">The panel can\'t run on this phone: Android could not start its WebView. Some Android 5 phones can\'t run the WebView versions PhoneBox needs.</string>
+    <!-- Phone bridge (clipboard sharing with the paired Mac): the screen, the service's notification and the send results. -->
+    <string name="bridge_title">Phone bridge</string>
+    <string name="bridge_clipboard_switch">Share the clipboard with the Mac</string>
+    <string name="bridge_clipboard_help">Text you copy on the Mac appears on this phone. To send text to the Mac, select it and tap \"Send to Mac\", use Share › Send to Mac, or the Send to Mac tile in Quick Settings. The Mac\'s own Phone bridge switch (in PhoneBox settings on the computer) must be on too.</string>
+    <string name="bridge_state_off">Off</string>
+    <string name="bridge_state_waiting">Waiting for the Mac…</string>
+    <string name="bridge_state_running">Connected to the Mac</string>
+    <string name="bridge_state_mac_off">The Mac\'s clipboard switch is off (Settings › Phone bridge on the computer)</string>
+    <string name="bridge_notification_channel">Clipboard sharing</string>
+    <string name="bridge_notification_title">PhoneBox is sharing the clipboard</string>
+    <string name="bridge_send_to_mac">Send to Mac</string>
+    <string name="bridge_sent">Sent to the Mac</string>
+    <string name="bridge_send_off">The Mac\'s clipboard switch is off</string>
+    <string name="bridge_send_unreachable">Couldn\'t reach the Mac</string>
+    <string name="bridge_send_nothing">Nothing to send: the clipboard is empty or private</string>
+    <string name="bridge_send_too_large">Too long to send (the limit is 64 KiB)</string>
+    <string name="bridge_state_unsupported">This computer can\'t share the clipboard: the phone bridge needs the PhoneBox agent on a Mac</string>
+    <string name="bridge_state_stopped">Stopped by Android. Open this screen again, or restart PhoneBox, to reconnect</string>
+    <!-- Phone bridge: the confirmation before Send to Mac from another app (Share, text selection), a key the Mac no longer
+         accepts (401), and a send whose answer was lost (the text may be on the Mac). -->
+    <string name="bridge_confirm_title">Send this text to the Mac\'s clipboard?</string>
+    <string name="bridge_confirm_more">More text follows that is not shown (characters: %1$s, lines: %2$s).</string>
+    <string name="bridge_pair_again">The Mac no longer knows this phone: connect it by USB once, or pair again.</string>
+    <string name="bridge_send_unknown">No answer from the Mac: the text may have arrived. Check on the Mac before sending it again.</string>
 </resources>

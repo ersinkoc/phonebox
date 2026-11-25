@@ -29,7 +29,11 @@ Last updated: 2026-11-20 (PhoneBox 0.9.6).
 - **Phone app**: caches (weather, rates, widget state) in its own app storage. The app asks for `INTERNET`,
   `VIBRATE` and `ACCESS_NETWORK_STATE` (only to tell which network is Wi-Fi when the Wake button sends its packet; Android
   grants it without a prompt), and for the microphone (`RECORD_AUDIO`) only when a Dictation widget's button is tapped for
-  the first time.
+  the first time. For the phone bridge's clipboard sharing (off until you turn it on in the app's Phone bridge screen)
+  it also holds `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_SPECIAL_USE` (a service with a visible notification keeps
+  the connection to your computer), `POST_NOTIFICATIONS` (so that notification can show, asked when you turn the
+  switch on) and `RECEIVE_BOOT_COMPLETED` (to start that service again after a restart; the receiver is switched off,
+  and the app does not start at boot, while the bridge is off).
 - **Computer data shown on the panel** (CPU, GPU, memory, disks, processes, media, volume, AI coding sessions and
   quotas, Docker / Podman, OBS) is read locally and goes only to your phone: over the USB cable (`adb reverse` to
   `127.0.0.1`, with a key only the PhoneBox app has) or, after pairing, over Wi-Fi / Tailscale with a pinned certificate and a key. On Linux, an Intel GPU's
@@ -87,6 +91,25 @@ Last updated: 2026-11-20 (PhoneBox 0.9.6).
   often draws from your first prompt. The agent reads only the title records at the end of the chat's file in
   `~/.claude/projects`, never the prompts, replies or tool arguments, and sends the title only to your phone, like the
   rest of this list. With the switch off the file is not opened and no title is sent.
+- **Clipboard sharing, the phone bridge** (macOS only, off by default; **Settings › Phone bridge**): while it is on,
+  the agent looks at the clipboard's change counter about every 400 ms and, when you copy plain text (up to 64 KiB),
+  sends it over the same USB / paired Wi-Fi link as other panel data. This assumes that users and software with access
+  to the local agent API are trusted. Text a phone sends is put on this computer's clipboard. The agent skips copies
+  when it detects concealed, transient or auto-generated markers. Password managers can omit or add markers after the
+  clipboard has been read. Turn off sharing before copying sensitive text. The text is held in memory
+  only: the last 20 copies are kept so a phone that reconnects within two minutes gets what it missed, and they are
+  forgotten when the setting is turned off. It is never written to disk, `data.json` or the log (the log records no
+  clipboard text), and it goes nowhere except your own phones. Turning the setting off stops both directions at once.
+  If macOS denies PhoneBox the clipboard (its paste permission in Privacy & Security), nothing is read or sent, and the
+  settings card says so.
+  On the phone the app puts the text you copied on the computer onto the phone's clipboard, and
+  reads the phone's clipboard only when you ask it to (Send to Mac in the text-selection menu, the Share sheet, a
+  Quick Settings tile or a button on the service's notification); it never sends a clip Android marks as sensitive.
+  Text that another app hands to Send to Mac (the selection menu, the Share sheet) is shown first and sent only when
+  you tap **Send to Mac**. To pick up again after a dropped connection, the phone keeps the number of the last
+  clipboard event in memory (not the text) and sends it when it reconnects. **On Android 9 and older, every app on the
+  phone can read the clipboard at any time**, not only the app in front: there, text you copy on the Mac is readable
+  by all apps installed on the phone. Android 10 and later let only the app in front (and the keyboard) read it.
 - **Sound for the Spectrum bars widget** (Windows): while an enabled page with the widget is on the phone's screen,
   the agent captures what the default output device plays, analyzes it in memory and sends only 48 loudness levels
   per frame to the phone. Audio is never stored or sent; capture stops a few seconds after the widget leaves the
@@ -109,6 +132,12 @@ the Android app removes everything on the phone.
 
 The Water intake widget stores the current local day's total and the next reminder in panel storage on that device.
 It sends no intake data to the desktop agent or an external service.
+
+WorkBuddy sessions and phone approvals are off by default. When enabled, WorkBuddy session cards use local status files and
+workspace names. When an enabled AI sessions widget allows WorkBuddy phone approvals, the hook sends pending
+prompt details (session ID, workspace, working directory, tool, action details and any description) to the local
+agent. The paired phone receives the prompt and replies over USB or pinned TLS over Wi-Fi. Turn off **Ask on
+the phone** in WorkBuddy's settings section, disable the widget's approval option or remove the hook to stop it.
 
 ## Connections made by default
 

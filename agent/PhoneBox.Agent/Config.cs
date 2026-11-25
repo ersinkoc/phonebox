@@ -23,9 +23,14 @@ public sealed class AgentConfig
     public LanConfig Lan { get; set; } = new();
     public UpdateConfig Updates { get; set; } = new();
     public ClaudeConfig Claude { get; set; } = new();
-    /// <summary>Cursor agent-transcript sessions on the AI sessions widget (off by default).</summary>
+    /// <summary>Symbols for the Stocks widget watchlist.</summary>
     public List<string> Stocks { get; set; } = [];
+    /// <summary>WorkBuddy sessions and phone approvals (off by default).</summary>
+    public WorkBuddyConfig WorkBuddy { get; set; } = new();
+    /// <summary>Cursor agent-transcript sessions on the AI sessions widget (off by default).</summary>
     public CursorConfig Cursor { get; set; } = new();
+    /// <summary>Clipboard sharing with the paired phone (macOS only; off by default).</summary>
+    public BridgeConfig Bridge { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
     public AntigravityConfig Antigravity { get; set; } = new();
     /// <summary>OpenCode prompts and sessions on the phone; everything is off until the settings page turns it on.</summary>
@@ -82,8 +87,10 @@ public sealed class AgentConfig
     /// <param name="wallpaperRev">The uploaded wallpaper's revision (null without one): the panel loads the picture
     /// with it in the URL, so a new upload is fetched and an unchanged one comes from the cache. Sent as text: a 64-bit
     /// value loses its last digits as a JavaScript number, and two pictures could then share a cached URL.</param>
+    /// <param name="standbyForPhone">Whether an ignored or unselected USB phone should use standby mode.</param>
+    /// <param name="bridgeExists">Whether this computer has a phone bridge at all (null uses the platform default).</param>
     public object ToPublic(string? deviceId = null, Func<Shortcut, (long? Rev, bool Upload)>? shortcutIcon = null,
-        long? wallpaperRev = null, bool standbyForPhone = false) => new
+        long? wallpaperRev = null, bool standbyForPhone = false, bool? bridgeExists = null) => new
     {
         weather = Weather,
         codexBar = CodexBar,
@@ -109,11 +116,15 @@ public sealed class AgentConfig
             var pic = shortcutIcon?.Invoke(s);
             return new { s.Id, s.Label, s.Icon, s.Color, iconSize = s.IconSize, toggle = s.Toggle || s.Cmd is "builtin:mute" or PhoneDevices.MicCmd, hold = s.LongPress is not null, cycle = s.Cmd == "builtin:cycle" && s.Cycle is { Count: > 0 }, iconRev = pic?.Rev, iconUpload = pic?.Upload == true };
         }),
-        // names only (for the Rules widget); what a rule matches on stays here
-        rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When }),
+        // names, what a rule reacts to and its action (the phone keeps a rule's page and, for the "night" action,
+        // shows the night screen while the rule is active); what a rule matches on stays here
+        rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When, r.Then }),
         charge = new { Charge.Enabled, Charge.Min, Charge.Max },
         // OpenCode prompts: how long the Allow always button waits before it can be pressed (it saves a pattern)
         opencode = new { OpenCode.AlwaysCountdownSec },
+        // the bridge switches: the phone's Phone bridge screen follows them (nothing here is a secret). "supported" is what the
+        // panel's Phone bridge button waits for: on Windows and Linux there is no bridge, and the screen could only say so.
+        bridge = new { Bridge.Clipboard, supported = bridgeExists ?? BridgeConfig.PlatformHasBridge },
     };
 
 
@@ -222,6 +233,9 @@ public sealed class DisplayConfig
     public bool FinishToast { get; set; } = true;
     /// <summary>Play a chime when a session finishes.</summary>
     public bool FinishSound { get; set; }
+    /// <summary>Play a chime when a permission prompt appears on the phone, at the finish sound's volume.</summary>
+    [JsonConverter(typeof(OptInBoolJsonConverter))]
+    public bool ApprovalSound { get; set; }
     /// <summary>Sound volume (% of the phone's media volume).</summary>
     public int FinishSoundVolume { get; set; } = 70;
     /// <summary>The phone's volume keys switch pages.</summary>
@@ -396,6 +410,21 @@ public sealed class AntigravityConfig
     public bool ShareSessionTitles { get; set; }
 }
 
+/// <summary>WorkBuddy: permission prompts reuse the Claude Code hook protocol (its own settings file),
+/// sessions come from ~/.workbuddy/sessions. Like Claude's, the hook is installed from Settings.</summary>
+public sealed class WorkBuddyConfig
+{
+    /// <summary>Show WorkBuddy permission prompts on the phone (uses the Claude hook protocol).</summary>
+    public bool PhoneApprovals { get; set; }
+    /// <summary>Show WorkBuddy's live sessions on the AI sessions widget (off by default: sharing
+    /// what you chat about is opt-in, like OpenCode's and Cursor's).</summary>
+    public bool Sessions { get; set; }
+    /// <summary>How long the phone may answer before WorkBuddy asks in its own UI.</summary>
+    public int TimeoutSec { get; set; } = 90;
+    /// <summary>Only use the phone when the PC has been idle for a minute.</summary>
+    public bool OnlyWhenAway { get; set; }
+}
+
 public sealed class OpenCodeConfig
 {
     /// <summary>Show OpenCode permission prompts on the phone. Off until Settings › General turns it on: letting the
@@ -414,6 +443,23 @@ public sealed class OpenCodeConfig
     /// <summary>Show each OpenCode session's title on the phone. OpenCode draws the titles from the conversation,
     /// so they stay off the phone until you turn this on, like Claude's shareSessionTitles.</summary>
     public bool ShareSessionTitles { get; set; }
+}
+
+/// <summary>
+/// The phone bridge shares the clipboard's text between this computer and the phone, so its switch stays off until the
+/// owner turns it on. The agent enforces it (the bridge endpoints answer 403 while it is off); the phone reads it from the
+/// public config and stops sending.
+/// </summary>
+public sealed class BridgeConfig
+{
+    /// <summary>Share copied text with the phone, both ways (plain text, up to 64 KiB).</summary>
+    public bool Clipboard { get; set; }
+
+    /// <summary>
+    /// Whether this system has a bridge: macOS, where Program.cs creates it. A fact about the system, not a setting: it is
+    /// not read from the config file, so editing the file cannot make a Windows or Linux agent claim one.
+    /// </summary>
+    public static bool PlatformHasBridge => OperatingSystem.IsMacOS();
 }
 
 public sealed class PageConfig
@@ -471,7 +517,7 @@ public sealed class RuleConfig
     public string? Match { get; set; }
     /// <summary>CPU percent, or idle minutes.</summary>
     public double? Value { get; set; }
-    /// <summary>goto, notify or push.</summary>
+    /// <summary>goto, notify, push, shortcut or night (the phone shows its night screen while the rule is active).</summary>
     public string Then { get; set; } = "goto";
     public string? Page { get; set; }
     public string? Text { get; set; }
@@ -503,7 +549,7 @@ public sealed class RuleConfig
 
     public static readonly string[] Triggers = ["session-waiting", "session-busy", "media-playing", "process-running", "app-in-front", "mic-in-use", "camera-in-use", "obs-live", "calendar-event",
         "cpu-above", "idle", "time", "push", "quota-above", "review-requested", "ci-failed", "battery-low", "ping-high", "always"];
-    public static readonly string[] Actions = ["goto", "notify", "push", "shortcut"];
+    public static readonly string[] Actions = ["goto", "notify", "push", "shortcut", "night"];
 }
 
 /// <summary>Charge guard: keep the phone's battery between Min and Max by switching its power supply.</summary>
@@ -830,6 +876,8 @@ public sealed partial class ConfigStore(string path)
             .OfType<string>().Where(s => s.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
         c.Stocks = (c.Stocks ?? []).Select(StockService.NormalizeCode).OfType<string>()
             .Distinct(StringComparer.Ordinal).Take(20).ToList();
+        c.WorkBuddy ??= new();
+        c.WorkBuddy.TimeoutSec = Math.Clamp(c.WorkBuddy.TimeoutSec, 10, 3600);
         c.Display ??= new();
         c.Display.Appearance?.Normalize();
         c.Display.Hour12 = Hour12JsonConverter.Normalize(c.Display.Hour12);
@@ -871,6 +919,7 @@ public sealed partial class ConfigStore(string path)
         c.Cursor ??= new();
         c.Antigravity ??= new();
         c.OpenCode ??= new();
+        c.Bridge ??= new(); // a hand-edited "bridge": null must not break /api/config or the clipboard poll
         c.OpenCode.TimeoutSec = Math.Clamp(c.OpenCode.TimeoutSec, 10, 3600);
         c.OpenCode.AlwaysCountdownSec = Math.Clamp(c.OpenCode.AlwaysCountdownSec, 0, 60);
         if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = "ersinkoc/phonebox";
@@ -1305,4 +1354,20 @@ internal sealed class Hour12JsonConverter : JsonConverter<string>
         else if (value == "auto") writer.WriteStringValue("auto");
         else writer.WriteBooleanValue(false);
     }
+}
+
+/// <summary>Only a JSON true enables the setting. A malformed value keeps the setting off.</summary>
+internal sealed class OptInBoolJsonConverter : JsonConverter<bool>
+{
+    public override bool HandleNull => true;
+
+    public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.True) return true;
+        reader.Skip();
+        return false;
+    }
+
+    public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) =>
+        writer.WriteBooleanValue(value);
 }

@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">ใบรับรองของคอมพิวเตอร์ไม่ตรงกับข้อมูลในรหัส QR โปรดเริ่มจับคู่ใหม่</string>
     <string name="ok">ตกลง</string>
     <string name="webview_failed">แผงไม่สามารถทำงานบนโทรศัพท์เครื่องนี้ได้: Android ไม่สามารถเริ่ม WebView ได้ โทรศัพท์ Android 5 บางรุ่นไม่สามารถใช้ WebView เวอร์ชันที่ PhoneBox ต้องการได้</string>
+    <string name="bridge_title">สะพานเชื่อมโทรศัพท์</string>
+    <string name="bridge_clipboard_switch">แชร์คลิปบอร์ดกับ Mac</string>
+    <string name="bridge_clipboard_help">ข้อความที่คุณคัดลอกบน Mac จะปรากฏบนโทรศัพท์เครื่องนี้ หากต้องการส่งข้อความไปยัง Mac ให้เลือกข้อความแล้วแตะ “ส่งไปยัง Mac” ใช้แชร์ › ส่งไปยัง Mac หรือไทล์ส่งไปยัง Mac ในการตั้งค่าด่วน สวิตช์สะพานเชื่อมโทรศัพท์บน Mac (ในการตั้งค่า PhoneBox บนคอมพิวเตอร์) ต้องเปิดอยู่ด้วย</string>
+    <string name="bridge_state_off">ปิด</string>
+    <string name="bridge_state_waiting">กำลังรอ Mac…</string>
+    <string name="bridge_state_running">เชื่อมต่อกับ Mac แล้ว</string>
+    <string name="bridge_state_mac_off">สวิตช์คลิปบอร์ดของ Mac ปิดอยู่ (การตั้งค่า › สะพานเชื่อมโทรศัพท์ บนคอมพิวเตอร์)</string>
+    <string name="bridge_notification_channel">การแชร์คลิปบอร์ด</string>
+    <string name="bridge_notification_title">PhoneBox กำลังแชร์คลิปบอร์ด</string>
+    <string name="bridge_send_to_mac">ส่งไปยัง Mac</string>
+    <string name="bridge_sent">ส่งไปยัง Mac แล้ว</string>
+    <string name="bridge_send_off">สวิตช์คลิปบอร์ดของ Mac ปิดอยู่</string>
+    <string name="bridge_send_unreachable">เชื่อมต่อกับ Mac ไม่ได้</string>
+    <string name="bridge_send_nothing">ไม่มีสิ่งที่จะส่ง: คลิปบอร์ดว่างหรือเป็นส่วนตัว</string>
+    <string name="bridge_send_too_large">ยาวเกินไปที่จะส่ง (ขีดจำกัด 64 KiB)</string>
+    <string name="bridge_state_unsupported">คอมพิวเตอร์เครื่องนี้แชร์คลิปบอร์ดไม่ได้: สะพานเชื่อมโทรศัพท์ต้องใช้เอเจนต์ PhoneBox บน Mac</string>
+    <string name="bridge_state_stopped">ถูก Android หยุดไว้ เปิดหน้าจอนี้อีกครั้ง หรือรีสตาร์ต PhoneBox เพื่อเชื่อมต่อใหม่</string>
+    <string name="bridge_confirm_title">ส่งข้อความนี้ไปยังคลิปบอร์ดของ Mac ไหม</string>
+    <string name="bridge_confirm_more">ยังมีข้อความต่อจากนี้ที่ไม่ได้แสดง (ตัวอักษร: %1$s, บรรทัด: %2$s)</string>
+    <string name="bridge_pair_again">Mac ไม่รู้จักโทรศัพท์เครื่องนี้แล้ว: เชื่อมต่อผ่าน USB สักครั้งหรือจับคู่ใหม่</string>
+    <string name="bridge_send_unknown">ไม่มีการตอบกลับจาก Mac ข้อความอาจไปถึงแล้ว ตรวจสอบที่ Mac ก่อนส่งอีกครั้ง</string>
 </resources>

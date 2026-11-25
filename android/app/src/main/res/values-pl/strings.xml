@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">Komputer ma inny certyfikat niż kod QR. Rozpocznij parowanie ponownie.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">Panel nie może działać na tym telefonie: Android nie zdołał uruchomić WebView. Niektóre telefony z Androidem 5 nie obsługują wersji WebView, których potrzebuje PhoneBox.</string>
+    <string name="bridge_title">Most telefonu</string>
+    <string name="bridge_clipboard_switch">Udostępniaj schowek Makowi</string>
+    <string name="bridge_clipboard_help">Tekst skopiowany na Macu pojawia się na tym telefonie. Aby wysłać tekst na Maca, zaznacz go i dotknij „Wyślij na Maca”, użyj Udostępnij › Wyślij na Maca albo kafelka Wyślij na Maca w Szybkich ustawieniach. Przełącznik Most telefonu na Macu (w ustawieniach PhoneBox na komputerze) też musi być włączony.</string>
+    <string name="bridge_state_off">Wyłączone</string>
+    <string name="bridge_state_waiting">Czekam na Maca…</string>
+    <string name="bridge_state_running">Połączono z Makiem</string>
+    <string name="bridge_state_mac_off">Przełącznik schowka na Macu jest wyłączony (Ustawienia › Most telefonu na komputerze)</string>
+    <string name="bridge_notification_channel">Udostępnianie schowka</string>
+    <string name="bridge_notification_title">PhoneBox udostępnia schowek</string>
+    <string name="bridge_send_to_mac">Wyślij na Maca</string>
+    <string name="bridge_sent">Wysłano na Maca</string>
+    <string name="bridge_send_off">Przełącznik schowka na Macu jest wyłączony</string>
+    <string name="bridge_send_unreachable">Nie można połączyć się z Makiem</string>
+    <string name="bridge_send_nothing">Nie ma nic do wysłania: schowek jest pusty lub prywatny</string>
+    <string name="bridge_send_too_large">Za długie do wysłania (limit to 64 KiB)</string>
+    <string name="bridge_state_unsupported">Ten komputer nie może udostępniać schowka: most telefonu wymaga agenta PhoneBox na Macu</string>
+    <string name="bridge_state_stopped">Zatrzymane przez Androida. Otwórz ten ekran ponownie lub uruchom PhoneBox od nowa, aby się połączyć</string>
+    <string name="bridge_confirm_title">Wysłać ten tekst do schowka Maca?</string>
+    <string name="bridge_confirm_more">Dalej jest tekst, który nie jest pokazany (znaki: %1$s, wiersze: %2$s).</string>
+    <string name="bridge_pair_again">Mac nie rozpoznaje już tego telefonu: podłącz go raz przez USB lub sparuj ponownie.</string>
+    <string name="bridge_send_unknown">Brak odpowiedzi z Maca: tekst mógł dotrzeć. Sprawdź na Macu, zanim wyślesz go ponownie.</string>
 </resources>

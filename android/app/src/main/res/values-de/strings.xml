@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">Der Computer verfügt über ein anderes Zertifikat als den Code QR. Starten Sie die Kopplung erneut.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">Das Panel läuft auf diesem Telefon nicht: Android konnte sein WebView nicht starten. Manche Android-5-Telefone können die WebView-Versionen, die PhoneBox braucht, nicht ausführen.</string>
+    <string name="bridge_title">Telefonbrücke</string>
+    <string name="bridge_clipboard_switch">Zwischenablage mit dem Mac teilen</string>
+    <string name="bridge_clipboard_help">Text, den du auf dem Mac kopierst, erscheint auf diesem Telefon. Um Text an den Mac zu senden, markiere ihn und tippe auf „An Mac senden“, nutze Teilen › An Mac senden oder die Kachel „An Mac senden“ in den Schnelleinstellungen. Der Schalter „Telefonbrücke“ des Macs (in den PhoneBox-Einstellungen am Computer) muss ebenfalls an sein.</string>
+    <string name="bridge_state_off">Aus</string>
+    <string name="bridge_state_waiting">Warte auf den Mac …</string>
+    <string name="bridge_state_running">Mit dem Mac verbunden</string>
+    <string name="bridge_state_mac_off">Der Zwischenablage-Schalter des Macs ist aus (Einstellungen › Telefonbrücke am Computer)</string>
+    <string name="bridge_notification_channel">Zwischenablage teilen</string>
+    <string name="bridge_notification_title">PhoneBox teilt die Zwischenablage</string>
+    <string name="bridge_send_to_mac">An Mac senden</string>
+    <string name="bridge_sent">An den Mac gesendet</string>
+    <string name="bridge_send_off">Der Zwischenablage-Schalter des Macs ist aus</string>
+    <string name="bridge_send_unreachable">Mac nicht erreichbar</string>
+    <string name="bridge_send_nothing">Nichts zu senden: Die Zwischenablage ist leer oder privat</string>
+    <string name="bridge_send_too_large">Zu lang zum Senden (Grenze: 64 KiB)</string>
+    <string name="bridge_state_unsupported">Dieser Computer kann die Zwischenablage nicht teilen: Die Telefonbrücke braucht den PhoneBox-Agenten auf einem Mac</string>
+    <string name="bridge_state_stopped">Von Android beendet. Öffne diesen Bildschirm erneut oder starte PhoneBox neu, um die Verbindung wiederherzustellen</string>
+    <string name="bridge_confirm_title">Diesen Text in die Zwischenablage des Mac senden?</string>
+    <string name="bridge_confirm_more">Es folgt weiterer Text, der nicht angezeigt wird (Zeichen: %1$s, Zeilen: %2$s).</string>
+    <string name="bridge_pair_again">Der Mac kennt dieses Handy nicht mehr: einmal per USB verbinden oder neu koppeln.</string>
+    <string name="bridge_send_unknown">Keine Antwort vom Mac: Der Text ist vielleicht angekommen. Prüfen Sie es am Mac, bevor Sie ihn erneut senden.</string>
 </resources>

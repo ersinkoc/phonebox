@@ -143,6 +143,9 @@
       shortcuts: (c.shortcuts || []).map(({ id, label, icon, color, toggle, cmd, longPress, cycle, iconRev, iconUpload, iconSize }) => ({ id, label, icon, color, iconSize: typeof iconSize === 'string' && ['m', 'l', 'max'].includes(iconSize.trim().toLowerCase()) ? iconSize.trim().toLowerCase() : undefined, toggle: !!toggle || cmd === 'builtin:mute', cycle: cmd === 'builtin:cycle' && (cycle || []).length > 0, hold: !!longPress && longPress !== id && (c.shortcuts || []).some((x) => x.id === longPress), iconRev: iconRev ?? null, iconUpload: iconUpload === true })),
       rules: (c.rules || []).map(({ id, name, enabled, when }) => ({ id, name, enabled: enabled !== false, when })),
       charge: { enabled: !!c.charge?.enabled, min: c.charge?.min ?? 50, max: c.charge?.max ?? 80 },
+      // bridge: the agent says whether this computer has a phone bridge (macOS) and whether its switch is on; the demo has
+      // none, so only a config that sets it carries it (see bridge-overview.spec.js)
+      ...(c.bridge ? { bridge: { clipboard: !!c.bridge.clipboard, supported: c.bridge.supported === true } } : {}),
     };
   }
 
@@ -961,6 +964,7 @@
       });
       return json({ error: 'code not in watchlist' }, 404);
     }
+    if (path === '/api/workbuddy/hook') return json({ installed: false, path: '~/.workbuddy/settings.json' });
     if (path === '/api/guba') return json({
       posts: [{ id: 'demo-1', title: 'Morning market notes', author: 'Demo user', time: '2026-01-01 09:20', reads: 36, comments: 2 }],
       updated: now(),

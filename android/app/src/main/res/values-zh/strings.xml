@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">计算机的证书与 QR 代码不同。 重新开始配对。</string>
     <string name="ok">好的</string>
     <string name="webview_failed">面板无法在这部手机上运行：Android 无法启动 WebView。部分 Android 5 手机无法运行 PhoneBox 所需的 WebView 版本。</string>
+    <string name="bridge_title">手机桥接</string>
+    <string name="bridge_clipboard_switch">与 Mac 共享剪贴板</string>
+    <string name="bridge_clipboard_help">你在 Mac 上复制的文字会出现在这部手机上。要把文字发送到 Mac，请选中文字并点按“发送到 Mac”，或使用“分享 › 发送到 Mac”，也可使用快速设置里的“发送到 Mac”磁贴。Mac 上的“手机桥接”开关（在电脑的 PhoneBox 设置中）也必须打开。</string>
+    <string name="bridge_state_off">已关闭</string>
+    <string name="bridge_state_waiting">正在等待 Mac…</string>
+    <string name="bridge_state_running">已连接到 Mac</string>
+    <string name="bridge_state_mac_off">Mac 的剪贴板开关已关闭（电脑上的“设置 › 手机桥接”）</string>
+    <string name="bridge_notification_channel">剪贴板共享</string>
+    <string name="bridge_notification_title">PhoneBox 正在共享剪贴板</string>
+    <string name="bridge_send_to_mac">发送到 Mac</string>
+    <string name="bridge_sent">已发送到 Mac</string>
+    <string name="bridge_send_off">Mac 的剪贴板开关已关闭</string>
+    <string name="bridge_send_unreachable">无法连接到 Mac</string>
+    <string name="bridge_send_nothing">没有可发送的内容：剪贴板为空或为私密内容</string>
+    <string name="bridge_send_too_large">内容过长，无法发送（上限 64 KiB）</string>
+    <string name="bridge_state_unsupported">此电脑无法共享剪贴板：手机桥接需要在 Mac 上运行 PhoneBox 代理</string>
+    <string name="bridge_state_stopped">已被 Android 停止。请再次打开此屏幕，或重新启动 PhoneBox 以重新连接</string>
+    <string name="bridge_confirm_title">要将这段文字发送到 Mac 的剪贴板吗？</string>
+    <string name="bridge_confirm_more">后面还有未显示的文本（字符：%1$s，行：%2$s）。</string>
+    <string name="bridge_pair_again">Mac 已不再识别这部手机：请用 USB 连接一次，或重新配对。</string>
+    <string name="bridge_send_unknown">Mac 没有响应：文字可能已经送达。再次发送前，请先在 Mac 上确认。</string>
 </resources>

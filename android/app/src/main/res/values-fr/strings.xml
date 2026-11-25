@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">L\'ordinateur possède un certificat différent de celui indiqué par le code QR.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">Le panneau ne peut pas fonctionner sur ce téléphone : Android n\'a pas pu démarrer son WebView. Certains téléphones Android 5 ne peuvent pas exécuter les versions de WebView dont PhoneBox a besoin.</string>
+    <string name="bridge_title">Passerelle téléphone</string>
+    <string name="bridge_clipboard_switch">Partager le presse-papiers avec le Mac</string>
+    <string name="bridge_clipboard_help">Le texte que vous copiez sur le Mac apparaît sur ce téléphone. Pour envoyer du texte au Mac, sélectionnez-le et touchez « Envoyer au Mac », utilisez Partager › Envoyer au Mac, ou la vignette Envoyer au Mac des Réglages rapides. L\'interrupteur Passerelle téléphone du Mac (dans les réglages PhoneBox sur l\'ordinateur) doit aussi être activé.</string>
+    <string name="bridge_state_off">Désactivé</string>
+    <string name="bridge_state_waiting">En attente du Mac…</string>
+    <string name="bridge_state_running">Connecté au Mac</string>
+    <string name="bridge_state_mac_off">L\'interrupteur du presse-papiers du Mac est désactivé (Réglages › Passerelle téléphone sur l\'ordinateur)</string>
+    <string name="bridge_notification_channel">Partage du presse-papiers</string>
+    <string name="bridge_notification_title">PhoneBox partage le presse-papiers</string>
+    <string name="bridge_send_to_mac">Envoyer au Mac</string>
+    <string name="bridge_sent">Envoyé au Mac</string>
+    <string name="bridge_send_off">L\'interrupteur du presse-papiers du Mac est désactivé</string>
+    <string name="bridge_send_unreachable">Impossible de joindre le Mac</string>
+    <string name="bridge_send_nothing">Rien à envoyer : le presse-papiers est vide ou privé</string>
+    <string name="bridge_send_too_large">Trop long à envoyer (limite : 64 Kio)</string>
+    <string name="bridge_state_unsupported">Cet ordinateur ne peut pas partager le presse-papiers : la passerelle téléphone nécessite l\'agent PhoneBox sur un Mac</string>
+    <string name="bridge_state_stopped">Arrêté par Android. Rouvrez cet écran, ou redémarrez PhoneBox, pour vous reconnecter</string>
+    <string name="bridge_confirm_title">Envoyer ce texte dans le presse-papiers du Mac ?</string>
+    <string name="bridge_confirm_more">Du texte suit mais n\'est pas affiché (caractères : %1$s, lignes : %2$s).</string>
+    <string name="bridge_pair_again">Le Mac ne reconnaît plus ce téléphone : branchez-le une fois en USB ou jumelez-le à nouveau.</string>
+    <string name="bridge_send_unknown">Pas de réponse du Mac : le texte est peut-être arrivé. Vérifiez sur le Mac avant de le renvoyer.</string>
 </resources>

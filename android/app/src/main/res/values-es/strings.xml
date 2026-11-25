@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">El ordenador tiene un certificado diferente al código QR. Comience a emparejar de nuevo.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">El panel no puede funcionar en este teléfono: Android no pudo iniciar su WebView. Algunos teléfonos con Android 5 no pueden ejecutar las versiones de WebView que necesita PhoneBox.</string>
+    <string name="bridge_title">Puente del teléfono</string>
+    <string name="bridge_clipboard_switch">Compartir el portapapeles con el Mac</string>
+    <string name="bridge_clipboard_help">El texto que copias en el Mac aparece en este teléfono. Para enviar texto al Mac, selecciónalo y toca «Enviar al Mac», usa Compartir › Enviar al Mac o el mosaico Enviar al Mac de Ajustes rápidos. El interruptor Puente del teléfono del Mac (en los ajustes de PhoneBox del ordenador) también debe estar activado.</string>
+    <string name="bridge_state_off">Desactivado</string>
+    <string name="bridge_state_waiting">Esperando al Mac…</string>
+    <string name="bridge_state_running">Conectado al Mac</string>
+    <string name="bridge_state_mac_off">El interruptor del portapapeles del Mac está desactivado (Ajustes › Puente del teléfono en el ordenador)</string>
+    <string name="bridge_notification_channel">Compartir portapapeles</string>
+    <string name="bridge_notification_title">PhoneBox está compartiendo el portapapeles</string>
+    <string name="bridge_send_to_mac">Enviar al Mac</string>
+    <string name="bridge_sent">Enviado al Mac</string>
+    <string name="bridge_send_off">El interruptor del portapapeles del Mac está desactivado</string>
+    <string name="bridge_send_unreachable">No se pudo conectar con el Mac</string>
+    <string name="bridge_send_nothing">Nada que enviar: el portapapeles está vacío o es privado</string>
+    <string name="bridge_send_too_large">Demasiado largo para enviar (el límite es 64 KiB)</string>
+    <string name="bridge_state_unsupported">Este ordenador no puede compartir el portapapeles: el puente del teléfono necesita el agente de PhoneBox en un Mac</string>
+    <string name="bridge_state_stopped">Detenido por Android. Abre esta pantalla de nuevo, o reinicia PhoneBox, para reconectar</string>
+    <string name="bridge_confirm_title">¿Enviar este texto al portapapeles del Mac?</string>
+    <string name="bridge_confirm_more">Sigue más texto que no se muestra (caracteres: %1$s, líneas: %2$s).</string>
+    <string name="bridge_pair_again">El Mac ya no reconoce este teléfono: conéctalo una vez por USB o vuelve a emparejarlo.</string>
+    <string name="bridge_send_unknown">Sin respuesta del Mac: puede que el texto haya llegado. Compruébalo en el Mac antes de enviarlo de nuevo.</string>
 </resources>

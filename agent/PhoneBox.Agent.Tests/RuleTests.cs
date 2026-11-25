@@ -162,6 +162,44 @@ public class RuleTests
         }
     }
 
+    [Fact]
+    public void NightRuleActivatesWithoutAnEventAndAPauseReleasesIt()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"phonebox-rule-night-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        PushStore? push = null;
+        try
+        {
+            var cfgPath = Path.Combine(dir, "config.json");
+            File.WriteAllText(cfgPath, """
+            { "rules": [ { "id": "night", "name": "Night", "when": "always", "then": "night", "whileActive": true } ] }
+            """);
+            var cfg = new ConfigStore(cfgPath);
+            push = new PushStore(Microsoft.Extensions.Logging.Abstractions.NullLogger<PushStore>.Instance, Path.Combine(dir, "push.json"));
+            var engine = NewEngine(cfg, push);
+
+            // the phone learns about the night screen from the active-rule list, not from a push event
+            var seq = push.Seq;
+            engine.Evaluate();
+            Assert.Equal(["night"], engine.Active());
+            Assert.Empty(push.Since(seq));
+
+            engine.Pause(5);
+            engine.Evaluate();
+            Assert.Empty(engine.Active());                 // the pause releases the night screen as well
+            Assert.Empty(push.Since(seq));
+
+            engine.Pause(0);
+            engine.Evaluate();
+            Assert.Equal(["night"], engine.Active());      // resuming brings the rule back
+        }
+        finally
+        {
+            push?.Dispose();
+            Directory.Delete(dir, true);
+        }
+    }
+
     private static RuleEngine NewEngine(ConfigStore cfg, PushStore push) => new(cfg, push,
         new SessionMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SessionMonitor>.Instance),
         new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance),

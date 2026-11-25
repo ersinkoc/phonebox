@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">Сертификат компьютера не совпадает с QR-кодом. Начните привязку заново.</string>
     <string name="ok">ОК</string>
     <string name="webview_failed">Панель не может работать на этом телефоне: Android не смог запустить WebView. Некоторые телефоны на Android 5 не поддерживают версии WebView, которые нужны PhoneBox.</string>
+    <string name="bridge_title">Мост с телефоном</string>
+    <string name="bridge_clipboard_switch">Общий буфер обмена с Mac</string>
+    <string name="bridge_clipboard_help">Текст, скопированный на Mac, появляется на этом телефоне. Чтобы отправить текст на Mac, выделите его и нажмите «Отправить на Mac», используйте «Поделиться › Отправить на Mac» или плитку «Отправить на Mac» в быстрых настройках. Переключатель «Мост с телефоном» на Mac (в настройках PhoneBox на компьютере) тоже должен быть включён.</string>
+    <string name="bridge_state_off">Выкл.</string>
+    <string name="bridge_state_waiting">Ожидание Mac…</string>
+    <string name="bridge_state_running">Подключено к Mac</string>
+    <string name="bridge_state_mac_off">Переключатель буфера обмена на Mac выключен (Настройки › Мост с телефоном на компьютере)</string>
+    <string name="bridge_notification_channel">Общий буфер обмена</string>
+    <string name="bridge_notification_title">PhoneBox делится буфером обмена</string>
+    <string name="bridge_send_to_mac">Отправить на Mac</string>
+    <string name="bridge_sent">Отправлено на Mac</string>
+    <string name="bridge_send_off">Переключатель буфера обмена на Mac выключен</string>
+    <string name="bridge_send_unreachable">Не удалось связаться с Mac</string>
+    <string name="bridge_send_nothing">Нечего отправлять: буфер обмена пуст или приватный</string>
+    <string name="bridge_send_too_large">Слишком длинный текст (лимит — 64 КиБ)</string>
+    <string name="bridge_state_unsupported">Этот компьютер не может делиться буфером обмена: для моста с телефоном нужен агент PhoneBox на Mac</string>
+    <string name="bridge_state_stopped">Остановлено Android. Откройте этот экран снова или перезапустите PhoneBox, чтобы подключиться</string>
+    <string name="bridge_confirm_title">Отправить этот текст в буфер обмена Mac?</string>
+    <string name="bridge_confirm_more">Дальше есть текст, который не показан (символов: %1$s, строк: %2$s).</string>
+    <string name="bridge_pair_again">Mac больше не узнаёт этот телефон: подключите его один раз по USB или выполните сопряжение заново.</string>
+    <string name="bridge_send_unknown">Нет ответа от Mac: возможно, текст дошёл. Проверьте на Mac, прежде чем отправлять снова.</string>
 </resources>

@@ -63,7 +63,7 @@ export const $ = (id) => document.getElementById(id);
 // The native bridge (window.Android) is in every frame, sandboxed widgets included, so each call carries a key that only
 // the panel's own frames receive (MainActivity.bridgeKey). This wrapper adds it.
 const BRIDGE = ['battery', 'buzz', 'haptic', 'is24Hour', 'pcs', 'selectPc', 'forgetPc', 'setBrightness', 'setHomeScreen', 'setOrientation',
-  'setPinned', 'setVolumeKeys', 'setStandby', 'setLanguage', 'transport', 'sensors', 'version', 'canListen', 'listen', 'stopListening', 'cancelListening', 'trackpad', 'canWake', 'wakePc'];
+  'setPinned', 'setVolumeKeys', 'setStandby', 'setLanguage', 'transport', 'sensors', 'version', 'canListen', 'listen', 'stopListening', 'cancelListening', 'trackpad', 'canWake', 'wakePc', 'openBridge'];
 export const bridge = typeof Android === 'undefined' ? null : Object.fromEntries(BRIDGE.filter((m) => typeof Android[m] === 'function')
   .map((m) => [m, (...args) => Android[m](window.__phoneboxKey || '', ...args)]));
 // Live preview inside the agent's layout editor: the layout comes from the editor (unsaved), not from the agent.
@@ -84,7 +84,7 @@ export const FALLBACK_PAGES = [{
 export const DEFAULT_CFG = {
   weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
-  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, pageBar: 'dots', pageBarSide: 'bottom' },
+  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, finishSound: false, approvalSound: false, finishSoundVolume: 70, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, pageBar: 'dots', pageBarSide: 'bottom' },
   opencode: { alwaysCountdownSec: 10 },
   pages: FALLBACK_PAGES,
   shortcuts: [],
@@ -1301,6 +1301,8 @@ export function renderApproval() {
     approvalShown = a.id;
     lastTouch = Date.now();
     undim();
+    // before the night screen wakes: chime() keeps quiet at night, like the finish sound
+    if (cfg.display?.approvalSound) chime(cfg.display.finishSoundVolume ?? 70);
     if (nightOn) { wakeUntil = Date.now() + 60_000; setNight(false); }
     buzz('0,120,80,120,80,240');
     // A prompt whose answer is still in flight comes back locked: it can be shown again while its own post runs.
@@ -2067,6 +2069,11 @@ export function openOverview() {
   };
   $('ovGrid').replaceChildren(...pages.map(tile));
   renderRulesBtn();
+  // the phone's own Phone bridge screen (clipboard sharing with a Mac): only inside the Android app, and only when the agent
+  // says it has a bridge (macOS). A Windows or Linux agent, or one from before the bridge, sends no such flag: no button.
+  const ob = $('ovBridge');
+  ob.hidden = PREVIEW || !bridge?.openBridge || cfg.bridge?.supported !== true;
+  ob.replaceChildren(icon('smartphone', 'm'), t('s.bridge.title'));
   // several paired computers: switch between them here (a USB cable always wins)
   const pcs = pairedPcs();
   $('ovPcs').replaceChildren(...(pcs.length > 1 ? pcs.map((pc) => {
@@ -2092,6 +2099,7 @@ export function switchPc(pc) {
 export function closeOverview() { $('overview').hidden = true; }
 $('overview').addEventListener('click', closeOverview);
 $('ovRules').addEventListener('click', (e) => { e.stopPropagation(); toggleRulesPause(); });
+$('ovBridge').addEventListener('click', (e) => { e.stopPropagation(); haptic(); closeOverview(); bridge?.openBridge?.(); });
 
 let dotsHoldTimer = 0, dotsHoldStart = null, heldDots = false;
 // ---- the page bar: the dots shown as buttons with each page's icon and name (Settings › Display › Page navigation)
@@ -2380,7 +2388,9 @@ function reconcileUnreachableNight(now = new Date()) {
   const unreachable = enabled && unreachableSince > 0
     && Date.now() - unreachableSince >= delayMin * 60_000;
   const dark = darkRoom && cfg.display?.nightWhenDark === true;
-  setNight((isNight(now) || dark || unreachable) && Date.now() > wakeUntil);
+  // a running rule can hold the night screen up (its "night" action): the agent's active list carries ids only, so match them against cfg.rules
+  const ruleNight = (D.state?.rules || []).some((id) => (cfg.rules || []).some((r) => r.id === id && r.then === 'night'));
+  setNight((isNight(now) || dark || unreachable || ruleNight) && Date.now() > wakeUntil);
 }
 /**
  * Before widgets are built: a timer that ran out while the panel was closed rings during the build, so the night

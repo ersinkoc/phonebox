@@ -794,6 +794,7 @@ nav a.on::before { color: var(--accent); }
         <label class="check"><input type="checkbox" data-bind="display.vibrate"> <span data-i18n="s.display.vibrate">Vibrate when a session finishes or needs input</span></label>
         <label class="check"><input type="checkbox" data-bind="display.finishToast"> <span data-i18n="s.display.finishToast">Show a message when a session finishes</span></label>
         <label class="check"><input type="checkbox" data-bind="display.finishSound"> <span data-i18n="s.display.finishSound">Sound when a session finishes</span></label>
+        <label class="check"><input type="checkbox" data-bind="display.approvalSound"> <span data-i18n="s.display.approvalSound">Sound when a permission prompt appears</span></label>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.finishSoundVolume">Sound volume (% of the phone's media volume)</label><input type="number" min="10" max="100" data-bind="display.finishSoundVolume" data-type="int"></div>
         <label class="check"><input type="checkbox" data-bind="display.volumeKeys"> <span data-i18n="s.display.volumeKeys">The phone's volume keys switch pages</span></label>
         <label class="check"><input type="checkbox" data-bind="display.autoBrightness"> <span data-i18n="s.display.autoBrightness">Brightness follows the room (light sensor)</span></label>
@@ -880,6 +881,13 @@ nav a.on::before { color: var(--accent); }
         <label class="check"><input type="checkbox" data-bind="antigravity.shareSessionTitles"> <span data-i18n="s.antigravity.shareSessionTitles">Show Antigravity chat titles on the phone (Antigravity draws them from the conversation)</span></label>
       </div>
 
+      <div class="card" id="bridgeCard" style="display:none">
+        <h3 data-i18n="s.bridge.title">Phone bridge</h3>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.bridge.hint">Share what you copy between this Mac and the paired phone (off by default). The text goes only to your own phone over the PhoneBox link and is not stored. The PhoneBox app has its own Phone bridge switch, and both must be on.</p>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="bridge.clipboard" aria-labelledby="bridgeClipboardLabel"><span></span></label> <span id="bridgeClipboardLabel" data-i18n="s.bridge.clipboard">Share the clipboard with the phone (plain text, both ways)</span></div>
+        <p id="bridgeRefused" hidden style="margin:4px 0 0;font-size:13px;color:var(--warn)" data-i18n="s.bridge.refused">macOS gave PhoneBox no text from the clipboard, so what you copy is not reaching the phone. Allow PhoneBox to paste in System Settings › Privacy &amp; Security.</p>
+      </div>
+
       <div class="card">
         <h3 data-i18n="s.approvals.title">AI coding agent permission prompts</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n-html="s.approvals.hint">When Codex or Claude Code asks for permission, the phone shows the request with <b>Allow</b> and <b>Deny</b>. Install the hook for each agent you use; existing hook files are preserved and backed up.</p>
@@ -900,6 +908,13 @@ nav a.on::before { color: var(--accent); }
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="cursor.phoneApprovals" aria-labelledby="cursorAskOnPhoneLabel"><span></span></label> <span id="cursorAskOnPhoneLabel" data-i18n="s.cursor.askOnPhone">Ask on the phone for Cursor</span></div>
         <div class="field" style="max-width:260px;margin-top:12px"><label data-i18n="s.claude.timeout">Seconds to answer before the terminal takes over</label><input type="number" min="10" max="3600" data-bind="claude.timeoutSec" data-type="int"></div>
         <p class="hint" style="margin:4px 0 0" data-i18n="s.claude.timeoutReinstall">Each hook keeps the seconds it was installed with: after changing them, remove the hook and install it again.</p>
+
+        <div class="row" style="margin:14px 0 8px"><b style="min-width:92px">WorkBuddy</b><button class="btn" id="workbuddyHookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="workbuddyHookState"></span></div>
+        <label class="check"><input type="checkbox" data-bind="workBuddy.phoneApprovals"> <span data-i18n="s.claude.askOnPhone">Ask on the phone</span></label>
+        <label class="check"><input type="checkbox" data-bind="workBuddy.onlyWhenAway"> <span data-i18n="s.claude.onlyWhenAway">Only when I am away from the PC (no keyboard or mouse for a minute)</span></label>
+        <div class="field" style="max-width:260px;margin-top:12px"><label for="workBuddyTimeout" data-i18n="s.claude.timeout">Seconds to answer before the terminal takes over</label><input id="workBuddyTimeout" type="number" min="10" max="3600" data-bind="workBuddy.timeoutSec" data-type="int"></div>
+        <p class="hint" data-i18n="s.claude.timeoutReinstall">Each hook keeps the seconds it was installed with: after changing them, remove the hook and install it again.</p>
+        <label class="check"><input type="checkbox" data-bind="workBuddy.sessions"> <span data-i18n="s.workbuddy.sessions">Show WorkBuddy sessions</span></label>
 
         <div class="row" style="margin:14px 0 4px"><b style="min-width:92px">OpenCode</b></div>
         <p class="hint" style="margin:-2px 0 12px" data-i18n="s.opencode.hint">OpenCode permission prompts and agent questions reach the phone while its background service is running. Off until you turn it on here. Allow always saves the requested pattern for the project, so it arms only after a short countdown.</p>
@@ -1041,6 +1056,7 @@ nav a.on::before { color: var(--accent); }
 <script src="../panel/locale-cs.js"></script>
 <script src="../panel/locale-ar.js"></script>
 <script src="../panel/locale-zh-Hant.js"></script>
+<script src="../panel/locale-zz-night.js"></script>
 <script src="../panel/i18n.js"></script>
 <script src="../panel/appearance.js"></script>
 <script>
@@ -2937,7 +2953,7 @@ const TRIGGERS = {
   'ping-high': { label: 'the network is slow', value: 'ms (or unreachable)', def: 150 },
   always: { label: 'always (use the days and hours below)' },
 };
-const ACTIONS = { goto: 'show the page', notify: 'show a notification', push: 'push a value', shortcut: 'run a shortcut' };
+const ACTIONS = { goto: 'show the page', notify: 'show a notification', push: 'push a value', shortcut: 'run a shortcut', night: 'show the night screen' };
 const DAYS = [['mon', 'Mo'], ['tue', 'Tu'], ['wed', 'We'], ['thu', 'Th'], ['fri', 'Fr'], ['sat', 'Sa'], ['sun', 'Su']];
 const PRIORITIES = { 2: 'low', 5: 'normal', 8: 'high' };
 const pageId = (...ids) => ids.find((id) => cfg.pages.some((p) => p.id === id)) || cfg.pages[0]?.id || '';
@@ -2948,6 +2964,7 @@ const RULE_PRESETS = [
   ['📆 In a meeting → on air', () => ({ name: 'In a meeting', when: 'calendar-event', then: 'push', key: 'onair', pushValue: '{detail}', whileActive: true })],
   ['🔥 CPU busy → notification', () => ({ name: 'CPU busy', when: 'cpu-above', value: 90, then: 'notify', text: '{detail} for a while', level: 'warn', whileActive: false })],
   ['🌙 Away → ambient page', () => ({ name: 'Away', when: 'idle', value: 10, then: 'goto', page: pageId('ambient', 'clock', 'calm'), whileActive: true })],
+  ['🌑 Away → night screen', () => ({ name: 'Away', when: 'idle', value: 5, then: 'night', whileActive: true })],
   ['🕙 Evenings → calm page', () => ({ name: 'Evenings', when: 'time', match: '22:00-07:00', then: 'goto', page: pageId('calm', 'clock', 'ambient'), whileActive: true })],
   ['🔔 Doorbell → notification', () => ({ name: 'Doorbell', when: 'push', match: 'doorbell', then: 'notify', text: 'Someone is at the door', level: 'warn', whileActive: false })],
   ['🎯 Quota above 80 % → warning', () => ({ name: 'Quota', when: 'quota-above', value: 80, then: 'notify', text: '{detail}', level: 'warn', whileActive: false, cooldownMin: 60 })],
@@ -3034,15 +3051,16 @@ function ruleCard(r, i) {
       h('label', { class: 'switch', title: t('s.r.enabled') }, h('input', { type: 'checkbox', checked: r.enabled !== false, onchange: (e) => set('enabled', e.target.checked, true) }), h('span')),
       h('input', { type: 'text', class: 'grow', value: r.name || '', placeholder: t('s.r.namePlaceholder'), oninput: (e) => set('name', e.target.value) }),
       live ? h('span', { class: 'live' }, '● ' + t('s.r.activeNow')) : null,
-      h('button', { class: 'btn sm', title: t('s.r.runOnce'), onclick: async () => {
+      r.then !== 'night' ? h('button', { class: 'btn sm', title: t('s.r.runOnce'), onclick: async () => {
         const res = await fetch('/api/rules/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r) });
         toast(res.ok ? t('s.r.done') : t('s.js.couldNotRun'), !res.ok);
-      } }, t('s.r.test')),
+      } }, t('s.r.test')) : null,
       h('button', { class: 'btn sm danger', onclick: () => { cfg.rules.splice(i, 1); renderRules(); changed(); } }, t('s.r.del'))),
     h('div', { class: 'line' }, h('b', {}, t('s.r.when')), sel(r.when, TRIGGERS, (v) => { r.match = null; r.value = null; set('when', v, true); }), ...cond),
     h('div', { class: 'line' }, h('b', {}, t('s.r.then')), sel(r.then, ACTIONS, (v) => { if (v === 'goto' && !cfg.pages.some((p) => p.id === r.page)) r.page = cfg.pages[0]?.id || null; set('then', v, true); }), ...act),
-    r.then !== 'notify' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: r.whileActive !== false, onchange: (e) => set('whileActive', e.target.checked) }),
-      r.then === 'goto' ? t('s.r.onlyWhileGoto') : r.then === 'shortcut' ? t('s.r.onlyWhileShortcut') : t('s.r.onlyWhileValue')) : null,
+    r.then === 'night' ? h('span', { class: 'hint' }, t('s.r.onlyWhileNight')) :
+      r.then !== 'notify' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: r.whileActive !== false, onchange: (e) => set('whileActive', e.target.checked) }),
+        r.then === 'goto' ? t('s.r.onlyWhileGoto') : r.then === 'shortcut' ? t('s.r.onlyWhileShortcut') : t('s.r.onlyWhileValue')) : null,
     opts);
 }
 
@@ -3992,6 +4010,8 @@ async function loadInfo() {
     if (lhmStatus.textContent !== lhmText) lhmStatus.textContent = lhmText;
     if ($('phoneMicCard')) { $('phoneMicCard').hidden = osName !== 'windows'; if (osName === 'windows') renderPhoneMicState(); }
     $('followComputerLockOption').style.display = osName === 'macos' ? '' : 'none';
+    $('bridgeCard').style.display = osName === 'macos' ? '' : 'none';
+    $('bridgeRefused').hidden = !(osName === 'macos' && i.bridgeRefused);
     $('adbFound').textContent = i.adb ? t('s.conn.adbFound', { path: i.adb }) : t('s.conn.adbNotFound') + ' — ' + ({ linux: 'sudo apt install adb', macos: 'brew install android-platform-tools' }[osName] || 'winget install Google.PlatformTools');
     $('appMissing').hidden = !(i.appMissing && i.appMissing.length);
     $('usbProblem').hidden = !i.usbProblem;
@@ -4026,17 +4046,18 @@ async function loadInfo() {
     $('restartBtn').hidden = !lan.restartNeeded;
     renderUpdate(await (await fetch('/api/update')).json());
     renderWebhooks(lan);
-    const [claudeHook, codexHook, cursorHook] = await Promise.all([
+    const [claudeHook, codexHook, cursorHook, workbuddyHook] = await Promise.all([
       fetch('/api/claude/hook').then((r) => r.json()),
       fetch('/api/codex/hook').then((r) => r.json()),
       fetch('/api/cursor/hook').then((r) => r.json()),
+      fetch('/api/workbuddy/hook').then((r) => r.json()),
     ]);
     // Cursor's hook can sit in several places (Windows and each running WSL distro): list the ones that have it
     cursorHook.path = (cursorHook.paths || []).filter((p) => p.installed).map((p) => p.path).join(', ');
     renderClaudeHookTargets(claudeHook.paths || []);
     // with other accounts, "Installed in" names the files that have it, like Cursor's
     if ((claudeHook.paths || []).length > 1) claudeHook.path = claudeHook.paths.filter((p) => p.installed).map((p) => p.path).join(', ');
-    for (const [name, hk] of [['claude', claudeHook], ['codex', codexHook], ['cursor', cursorHook]]) {
+    for (const [name, hk] of [['claude', claudeHook], ['codex', codexHook], ['cursor', cursorHook], ['workbuddy', workbuddyHook]]) {
       $(`${name}HookState`).textContent = hk.installed ? t('s.claude.installedIn', { path: hk.path }) : t('s.claude.notInstalled');
       const btn = $(`${name}HookBtn`);
       btn.dataset.i18n = hk.installed ? 's.claude.removeHook' : 's.claude.installHook';
@@ -4059,10 +4080,11 @@ function fillDefaults() {
   cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.display.wallpaper ??= { dim: 45, blur: 0 }; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.claude.extraCredentialDirs ??= []; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity', 'grok'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
-    showSeconds: true, weekStart: 'monday', vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', tabletRows: false, theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
+    showSeconds: true, weekStart: 'monday', vibrate: true, finishToast: true, finishSound: false, approvalSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', tabletRows: false, theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
   cfg.steam ??= { enabled: false };
   cfg.stocks ??= [];
+  cfg.workBuddy = { sessions: false, phoneApprovals: false, onlyWhenAway: false, timeoutSec: 90, ...cfg.workBuddy };
 }
 
 async function load() {
@@ -4190,7 +4212,7 @@ $('restartBtn').onclick = async () => {
   };
   setTimeout(wait, 1500);
 };
-for (const name of ['codex', 'claude', 'cursor']) $(`${name}HookBtn`).onclick = async () => {
+for (const name of ['codex', 'claude', 'cursor', 'workbuddy']) $(`${name}HookBtn`).onclick = async () => {
   // the agent installs with the saved settings (the seconds to answer, Cursor's "Also watch Cursor in WSL"): an
   // unsaved change would be silently left out
   if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveFirst'), true); return; }
@@ -4198,7 +4220,7 @@ for (const name of ['codex', 'claude', 'cursor']) $(`${name}HookBtn`).onclick = 
   const r = await fetch(`/api/${name}/hook`, { method: remove ? 'DELETE' : 'POST' });
   const j = await r.json().catch(() => ({}));
   const successKey = remove ? 's.approvals.hookRemoved' : name === 'codex' ? 's.approvals.codexHookInstalled' : 's.approvals.hookInstalled';
-  r.ok ? toast(t(successKey, { agent: { codex: 'Codex', cursor: 'Cursor' }[name] || 'Claude Code' }))
+  r.ok ? toast(t(successKey, { agent: { codex: 'Codex', cursor: 'Cursor', workbuddy: 'WorkBuddy' }[name] || 'Claude Code' }))
     : toast(j.error || t('s.approvals.hookError'), true);
   loadInfo();
 };

@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">कंप्यूटर का सर्टिफ़िकेट QR कोड में दिए गए सर्टिफ़िकेट से अलग है। फिर से पेयरिंग शुरू करें।</string>
     <string name="ok">ठीक है</string>
     <string name="webview_failed">इस फ़ोन पर पैनल नहीं चल सकता: Android अपना WebView शुरू नहीं कर सका। कुछ Android 5 फ़ोन वे WebView संस्करण नहीं चला सकते जिनकी PhoneBox को ज़रूरत है।</string>
+    <string name="bridge_title">फ़ोन ब्रिज</string>
+    <string name="bridge_clipboard_switch">Mac के साथ क्लिपबोर्ड साझा करें</string>
+    <string name="bridge_clipboard_help">Mac पर कॉपी किया गया टेक्स्ट इस फ़ोन पर दिखता है। Mac को टेक्स्ट भेजने के लिए उसे चुनें और “Mac को भेजें” पर टैप करें, शेयर › Mac को भेजें का उपयोग करें, या क्विक सेटिंग्स में “Mac को भेजें” टाइल का उपयोग करें। Mac का फ़ोन ब्रिज स्विच (कंप्यूटर पर PhoneBox सेटिंग्स में) भी चालू होना चाहिए।</string>
+    <string name="bridge_state_off">बंद</string>
+    <string name="bridge_state_waiting">Mac की प्रतीक्षा है…</string>
+    <string name="bridge_state_running">Mac से जुड़ा है</string>
+    <string name="bridge_state_mac_off">Mac का क्लिपबोर्ड स्विच बंद है (कंप्यूटर पर सेटिंग्स › फ़ोन ब्रिज)</string>
+    <string name="bridge_notification_channel">क्लिपबोर्ड साझा करना</string>
+    <string name="bridge_notification_title">PhoneBox क्लिपबोर्ड साझा कर रहा है</string>
+    <string name="bridge_send_to_mac">Mac को भेजें</string>
+    <string name="bridge_sent">Mac को भेज दिया</string>
+    <string name="bridge_send_off">Mac का क्लिपबोर्ड स्विच बंद है</string>
+    <string name="bridge_send_unreachable">Mac तक नहीं पहुँच सका</string>
+    <string name="bridge_send_nothing">भेजने के लिए कुछ नहीं: क्लिपबोर्ड खाली या निजी है</string>
+    <string name="bridge_send_too_large">भेजने के लिए बहुत लंबा (सीमा 64 KiB है)</string>
+    <string name="bridge_state_unsupported">यह कंप्यूटर क्लिपबोर्ड साझा नहीं कर सकता: फ़ोन ब्रिज के लिए Mac पर PhoneBox एजेंट चाहिए</string>
+    <string name="bridge_state_stopped">Android ने रोक दिया। फिर से जुड़ने के लिए यह स्क्रीन दोबारा खोलें या PhoneBox को फिर से शुरू करें</string>
+    <string name="bridge_confirm_title">यह टेक्स्ट Mac के क्लिपबोर्ड पर भेजें?</string>
+    <string name="bridge_confirm_more">आगे और टेक्स्ट है जो दिखाया नहीं गया (अक्षर: %1$s, पंक्तियाँ: %2$s)।</string>
+    <string name="bridge_pair_again">Mac अब इस फ़ोन को नहीं पहचानता: इसे एक बार USB से जोड़ें या फिर से पेयर करें।</string>
+    <string name="bridge_send_unknown">Mac से कोई जवाब नहीं आया: टेक्स्ट शायद पहुँच गया है। दोबारा भेजने से पहले Mac पर देख लें।</string>
 </resources>

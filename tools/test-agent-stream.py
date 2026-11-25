@@ -402,8 +402,8 @@ def check_agent_link(compiler_cp: str, classpath: str, base_out: Path) -> None:
          "-storetype", "PKCS12", "-keystore", str(pfx), "-storepass", "changeit", "-keypass", "changeit"],
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
     deskpanel = ROOT / "android/app/src/main/java/net/oxog/phonebox/deskpanel"
-    # WakePacket.kt holds what AgentLink's Wake-on-LAN code uses (packet, MAC parsing, LanLink)
-    src_files = [deskpanel / "AgentLink.kt", deskpanel / "WakePacket.kt"]
+    # Compile the production link and its dependencies that do not require Android.
+    src_files = [deskpanel / name for name in ("AgentLink.kt", "WakePacket.kt", "BridgeClip.kt")]
     for name, content in LINK_STUBS.items():
         path = src_dir / name
         path.write_text(content, encoding="utf-8")

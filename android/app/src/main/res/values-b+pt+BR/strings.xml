@@ -15,4 +15,25 @@
     <string name="pair_failed_certificate">O computador tem um certificado diferente do QR code. Inicie o pareamento novamente.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">O painel não funciona neste celular: o Android não conseguiu iniciar o WebView. Alguns celulares com Android 5 não rodam as versões do WebView de que o PhoneBox precisa.</string>
+    <string name="bridge_title">Ponte do telefone</string>
+    <string name="bridge_clipboard_switch">Compartilhar a área de transferência com o Mac</string>
+    <string name="bridge_clipboard_help">O texto que você copia no Mac aparece neste telefone. Para enviar texto ao Mac, selecione-o e toque em “Enviar para o Mac”, use Compartilhar › Enviar para o Mac ou o bloco Enviar para o Mac nas Configurações rápidas. O botão Ponte do telefone do Mac (nas configurações do PhoneBox no computador) também precisa estar ativado.</string>
+    <string name="bridge_state_off">Desativado</string>
+    <string name="bridge_state_waiting">Aguardando o Mac…</string>
+    <string name="bridge_state_running">Conectado ao Mac</string>
+    <string name="bridge_state_mac_off">O botão da área de transferência do Mac está desativado (Configurações › Ponte do telefone no computador)</string>
+    <string name="bridge_notification_channel">Compartilhamento da área de transferência</string>
+    <string name="bridge_notification_title">O PhoneBox está compartilhando a área de transferência</string>
+    <string name="bridge_send_to_mac">Enviar para o Mac</string>
+    <string name="bridge_sent">Enviado ao Mac</string>
+    <string name="bridge_send_off">O botão da área de transferência do Mac está desativado</string>
+    <string name="bridge_send_unreachable">Não foi possível alcançar o Mac</string>
+    <string name="bridge_send_nothing">Nada para enviar: a área de transferência está vazia ou é privada</string>
+    <string name="bridge_send_too_large">Longo demais para enviar (o limite é 64 KiB)</string>
+    <string name="bridge_state_unsupported">Este computador não consegue compartilhar a área de transferência: a ponte do telefone precisa do agente PhoneBox em um Mac</string>
+    <string name="bridge_state_stopped">Parado pelo Android. Abra esta tela de novo, ou reinicie o PhoneBox, para reconectar</string>
+    <string name="bridge_confirm_title">Enviar este texto para a área de transferência do Mac?</string>
+    <string name="bridge_confirm_more">Há mais texto que não é exibido (caracteres: %1$s, linhas: %2$s).</string>
+    <string name="bridge_pair_again">O Mac não reconhece mais este celular: conecte-o uma vez por USB ou pareie de novo.</string>
+    <string name="bridge_send_unknown">Sem resposta do Mac: o texto pode ter chegado. Confira no Mac antes de enviá-lo de novo.</string>
 </resources>

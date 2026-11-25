@@ -166,6 +166,34 @@ public class ConfigTests
     }
 
     [Fact]
+    public void DisplayApprovalSoundIsOffUntilTurnedOn()
+    {
+        Assert.False(Load("{}").Display.ApprovalSound);
+        Assert.True(Load("""{ "display": { "approvalSound": true } }""").Display.ApprovalSound);
+    }
+
+    [Theory]
+    [InlineData("false")]
+    [InlineData("null")]
+    [InlineData("1")]
+    [InlineData("\"true\"")]
+    [InlineData("[true]")]
+    [InlineData("""{"enabled":true}""")]
+    public void SavingAnInvalidApprovalSoundKeepsItOffAndPreservesOtherSettings(string value)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"phonebox-cfg-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new ConfigStore(path);
+            Assert.Null(store.Save($$"""{ "display": { "approvalSound": {{value}}, "finishSoundVolume": 41 } }"""));
+            var display = store.Get().Display;
+            Assert.False(display.ApprovalSound);
+            Assert.Equal(41, display.FinishSoundVolume);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public void TemplatesExpandIntoWidgets()
     {
         var c = Load("""{ "pages": [ { "template": "music" }, { "template": "music" } ] }""");

@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">Сертифікат комп’ютера відрізняється від сертифіката в QR-коді. Почніть створення пари ще раз.</string>
     <string name="ok">OK</string>
     <string name="webview_failed">Панель не може працювати на цьому телефоні: Android не зміг запустити WebView. Деякі телефони з Android 5 не можуть запускати версії WebView, потрібні PhoneBox.</string>
+    <string name="bridge_title">Міст із телефоном</string>
+    <string name="bridge_clipboard_switch">Спільний буфер обміну з Mac</string>
+    <string name="bridge_clipboard_help">Текст, скопійований на Mac, з\'являється на цьому телефоні. Щоб надіслати текст на Mac, виділіть його й торкніться «Надіслати на Mac», скористайтеся Поділитися › Надіслати на Mac або плиткою «Надіслати на Mac» у швидких налаштуваннях. Перемикач «Міст із телефоном» на Mac (у налаштуваннях PhoneBox на комп\'ютері) також має бути ввімкнено.</string>
+    <string name="bridge_state_off">Вимкнено</string>
+    <string name="bridge_state_waiting">Очікування Mac…</string>
+    <string name="bridge_state_running">Підключено до Mac</string>
+    <string name="bridge_state_mac_off">Перемикач буфера обміну на Mac вимкнено (Налаштування › Міст із телефоном на комп\'ютері)</string>
+    <string name="bridge_notification_channel">Спільний буфер обміну</string>
+    <string name="bridge_notification_title">PhoneBox ділиться буфером обміну</string>
+    <string name="bridge_send_to_mac">Надіслати на Mac</string>
+    <string name="bridge_sent">Надіслано на Mac</string>
+    <string name="bridge_send_off">Перемикач буфера обміну на Mac вимкнено</string>
+    <string name="bridge_send_unreachable">Не вдалося зв\'язатися з Mac</string>
+    <string name="bridge_send_nothing">Нічого надсилати: буфер обміну порожній або приватний</string>
+    <string name="bridge_send_too_large">Надто довгий текст (ліміт — 64 КіБ)</string>
+    <string name="bridge_state_unsupported">Цей комп\'ютер не може ділитися буфером обміну: для мосту з телефоном потрібен агент PhoneBox на Mac</string>
+    <string name="bridge_state_stopped">Зупинено Android. Відкрийте цей екран знову або перезапустіть PhoneBox, щоб підключитися</string>
+    <string name="bridge_confirm_title">Надіслати цей текст у буфер обміну Mac?</string>
+    <string name="bridge_confirm_more">Далі є текст, який не показано (символів: %1$s, рядків: %2$s).</string>
+    <string name="bridge_pair_again">Mac більше не впізнає цей телефон: підключіть його один раз через USB або створіть пару знову.</string>
+    <string name="bridge_send_unknown">Немає відповіді від Mac: можливо, текст дійшов. Перевірте на Mac, перш ніж надсилати знову.</string>
 </resources>

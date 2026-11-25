@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">شهادة الكمبيوتر تختلف عن الشهادة في رمز QR. ابدأ الاقتران من جديد.</string>
     <string name="ok">موافق</string>
     <string name="webview_failed">لا يمكن تشغيل اللوحة على هذا الهاتف: تعذّر على Android تشغيل WebView. بعض هواتف Android 5 لا تستطيع تشغيل إصدارات WebView التي يحتاجها PhoneBox.</string>
+    <string name="bridge_title">جسر الهاتف</string>
+    <string name="bridge_clipboard_switch">مشاركة الحافظة مع Mac</string>
+    <string name="bridge_clipboard_help">يظهر على هذا الهاتف النص الذي تنسخه على Mac. لإرسال نص إلى Mac، حدده ثم اضغط على «إرسال إلى Mac»، أو استخدم مشاركة › إرسال إلى Mac، أو بلاطة «إرسال إلى Mac» في الإعدادات السريعة. ويجب أيضًا تشغيل مفتاح «جسر الهاتف» على Mac (في إعدادات PhoneBox على الكمبيوتر).</string>
+    <string name="bridge_state_off">متوقف</string>
+    <string name="bridge_state_waiting">بانتظار Mac…</string>
+    <string name="bridge_state_running">متصل بـ Mac</string>
+    <string name="bridge_state_mac_off">مفتاح الحافظة على Mac متوقف (الإعدادات › جسر الهاتف على الكمبيوتر)</string>
+    <string name="bridge_notification_channel">مشاركة الحافظة</string>
+    <string name="bridge_notification_title">يشارك PhoneBox الحافظة</string>
+    <string name="bridge_send_to_mac">إرسال إلى Mac</string>
+    <string name="bridge_sent">تم الإرسال إلى Mac</string>
+    <string name="bridge_send_off">مفتاح الحافظة على Mac متوقف</string>
+    <string name="bridge_send_unreachable">تعذّر الوصول إلى Mac</string>
+    <string name="bridge_send_nothing">لا شيء لإرساله: الحافظة فارغة أو خاصة</string>
+    <string name="bridge_send_too_large">النص أطول من أن يُرسل (الحد 64 KiB)</string>
+    <string name="bridge_state_unsupported">لا يستطيع هذا الكمبيوتر مشاركة الحافظة: يحتاج جسر الهاتف إلى وكيل PhoneBox على جهاز Mac</string>
+    <string name="bridge_state_stopped">أوقفه Android. افتح هذه الشاشة مرة أخرى، أو أعد تشغيل PhoneBox، لإعادة الاتصال</string>
+    <string name="bridge_confirm_title">إرسال هذا النص إلى حافظة Mac؟</string>
+    <string name="bridge_confirm_more">يوجد نص إضافي غير معروض (الأحرف: %1$s، الأسطر: %2$s).</string>
+    <string name="bridge_pair_again">لم يعد الـ Mac يتعرّف على هذا الهاتف: صِله مرة واحدة عبر USB أو أعد الاقتران.</string>
+    <string name="bridge_send_unknown">لم يصل رد من Mac: ربما وصل النص. تحقّق على Mac قبل إرساله مجددًا.</string>
 </resources>

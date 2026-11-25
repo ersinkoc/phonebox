@@ -13,4 +13,25 @@
     <string name="pair_failed_certificate">Bilgisayarın sertifikası QR kodundaki sertifikayla eşleşmiyor. Eşleştirmeyi yeniden başlatın.</string>
     <string name="ok">Tamam</string>
     <string name="webview_failed">Panel bu telefonda çalışamıyor: Android, WebView\'i başlatamadı. Bazı Android 5 telefonlar PhoneBox\'ın ihtiyaç duyduğu WebView sürümlerini çalıştıramıyor.</string>
+    <string name="bridge_title">Telefon köprüsü</string>
+    <string name="bridge_clipboard_switch">Panoyu Mac ile paylaş</string>
+    <string name="bridge_clipboard_help">Mac\'te kopyaladığınız metin bu telefonda görünür. Mac\'e metin göndermek için metni seçip “Mac\'e gönder”e dokunun, Paylaş › Mac\'e gönder\'i veya Hızlı Ayarlar\'daki Mac\'e gönder kutucuğunu kullanın. Mac\'teki Telefon köprüsü anahtarı da (bilgisayardaki PhoneBox ayarlarında) açık olmalıdır.</string>
+    <string name="bridge_state_off">Kapalı</string>
+    <string name="bridge_state_waiting">Mac bekleniyor…</string>
+    <string name="bridge_state_running">Mac\'e bağlı</string>
+    <string name="bridge_state_mac_off">Mac\'in pano anahtarı kapalı (bilgisayarda Ayarlar › Telefon köprüsü)</string>
+    <string name="bridge_notification_channel">Pano paylaşımı</string>
+    <string name="bridge_notification_title">PhoneBox panoyu paylaşıyor</string>
+    <string name="bridge_send_to_mac">Mac\'e gönder</string>
+    <string name="bridge_sent">Mac\'e gönderildi</string>
+    <string name="bridge_send_off">Mac\'in pano anahtarı kapalı</string>
+    <string name="bridge_send_unreachable">Mac\'e ulaşılamadı</string>
+    <string name="bridge_send_nothing">Gönderilecek bir şey yok: pano boş veya özel</string>
+    <string name="bridge_send_too_large">Göndermek için çok uzun (sınır 64 KiB)</string>
+    <string name="bridge_state_unsupported">Bu bilgisayar panoyu paylaşamıyor: telefon köprüsü için bir Mac\'te PhoneBox aracısı gerekir</string>
+    <string name="bridge_state_stopped">Android tarafından durduruldu. Yeniden bağlanmak için bu ekranı tekrar açın veya PhoneBox\'ı yeniden başlatın</string>
+    <string name="bridge_confirm_title">Bu metin Mac\'in panosuna gönderilsin mi?</string>
+    <string name="bridge_confirm_more">Gösterilmeyen başka metin var (karakter: %1$s, satır: %2$s).</string>
+    <string name="bridge_pair_again">Mac bu telefonu artık tanımıyor: bir kez USB ile bağlayın veya yeniden eşleştirin.</string>
+    <string name="bridge_send_unknown">Mac\'ten yanıt gelmedi: metin ulaşmış olabilir. Yeniden göndermeden önce Mac\'te kontrol edin.</string>
 </resources>
