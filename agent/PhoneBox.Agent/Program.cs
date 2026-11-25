@@ -8,8 +8,18 @@ var endpoint = AgentEndpoint.FromArgs(args);
 var Port = endpoint.Port;
 string[] SameOrigins = [$"http://127.0.0.1:{Port}", $"http://localhost:{Port}"];
 
-// Install scripts ask where the agent belongs (it differs per OS), then copy it there.
-if (args.Contains("--print-install-dir")) { Console.WriteLine(AppPaths.InstallDir); return; }
+// Older installers expect one line. The paired flag lets new installers ask even an old agent without starting it.
+if (args.Contains("--print-install-dir"))
+{
+    var ignoreAt = Array.IndexOf(args, "--write-ignored-usb");
+    if (ignoreAt >= 0 && (ignoreAt + 1 >= args.Length || !AppPaths.TryWriteIgnoredUsb(args[ignoreAt + 1])))
+    {
+        Environment.ExitCode = 1;
+        return;
+    }
+    Console.WriteLine(AppPaths.InstallDir);
+    return;
+}
 
 // Single instance: a second launch opens the running instance's settings page and exits.
 // After a restart the previous instance may still be shutting down, so wait for it briefly.

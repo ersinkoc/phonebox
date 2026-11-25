@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 
 namespace PhoneBox.Agent;
 
@@ -30,6 +31,34 @@ public static class AppPaths
 
     /// <summary>Where install scripts put the agent; self-update only works for this copy.</summary>
     public static readonly string InstallDir = Path.Combine(LocalDir, "app");
+
+    internal static bool TryWriteIgnoredUsb(string outputPath, string? configPath = null)
+    {
+        try
+        {
+            string[] ignored;
+            try
+            {
+                var config = JsonSerializer.Deserialize<AgentConfig>(File.ReadAllText(configPath ?? ConfigPath), ConfigStore.ReadOpts)
+                    ?? throw new JsonException();
+                ignored = config.IgnoredDeviceSerials ?? [];
+            }
+            catch (IOException ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                ignored = [];
+            }
+
+            using var output = new StreamWriter(new FileStream(outputPath, FileMode.CreateNew, FileAccess.Write));
+            foreach (var serial in ignored.Select(s => s?.Trim()).OfType<string>()
+                .Where(s => s.Length > 0 && !s.Any(char.IsWhiteSpace)).Distinct(StringComparer.Ordinal))
+                output.WriteLine(serial);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException)
+        {
+            return false;
+        }
+    }
 
     /// <summary>"windows", "linux" or "macos".</summary>
     public static string Os => OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux";
