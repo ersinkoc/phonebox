@@ -32,8 +32,7 @@ jobs:
         run: brew install xcodegen
 
       - name: Pairing and proxy unit tests (no Xcode needed)
-        run: swift test --package-path ios/PhoneBoxKit
-
+        run: swift test --package-path ios/PhoneBox/PhoneBoxKit
 
       - name: Generate the Xcode project
         working-directory: ios/PhoneBox

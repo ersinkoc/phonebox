@@ -33,8 +33,9 @@ final class USBLink: ObservableObject {
 
     private let token: String
     private let queue = DispatchQueue(label: "net.oxog.phonebox.usb")
-    private var hostListener: NWListener?
-    private var proxyListener: NWListener?
+    private enum ListenerRole { case host, proxy }
+    private var listeners: [ListenerRole: NWListener] = [:]
+    private var listenerRetries: [ListenerRole: DispatchWorkItem] = [:]
     private var pipes: [Pipe] = []
     private var sessions: [ObjectIdentifier: Session] = [:]
     private var running = false
@@ -47,8 +48,8 @@ final class USBLink: ObservableObject {
         queue.async { [weak self] in
             guard let self, !self.running, !self.token.isEmpty else { return }
             self.running = true
-            self.startHostListener()
-            self.syncProxyListener()
+            self.syncListener(.host)
+            self.syncListener(.proxy)
         }
     }
 
@@ -56,10 +57,10 @@ final class USBLink: ObservableObject {
         queue.async { [weak self] in
             guard let self else { return }
             self.running = false
-            self.hostListener?.cancel()
-            self.hostListener = nil
-            self.proxyListener?.cancel()
-            self.proxyListener = nil
+            for listener in self.listeners.values { listener.cancel() }
+            self.listeners.removeAll()
+            for retry in self.listenerRetries.values { retry.cancel() }
+            self.listenerRetries.removeAll()
             for pipe in self.pipes { pipe.connection.cancel() }
             for (_, session) in self.sessions { session.end() }
             self.pipes.removeAll()
@@ -68,27 +69,53 @@ final class USBLink: ObservableObject {
         }
     }
 
-    // MARK: - Listener side (the computer dials in)
-
-    private func startHostListener() {
+    private func syncListener(_ role: ListenerRole) {
+        guard running, role == .host || hasTransport else {
+            listenerRetries.removeValue(forKey: role)?.cancel()
+            listeners.removeValue(forKey: role)?.cancel()
+            return
+        }
+        guard listeners[role] == nil, listenerRetries[role] == nil else { return }
+        let number = role == .host ? Self.hostPort : Self.proxyPort
+        guard let port = NWEndpoint.Port(rawValue: number) else { return }
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
-        guard let port = NWEndpoint.Port(rawValue: Self.hostPort) else { return }
         parameters.requiredLocalEndpoint = .hostPort(host: NWEndpoint.Host("127.0.0.1"), port: port)
-        guard let listener = try? NWListener(using: parameters) else { return }
-
-        listener.newConnectionHandler = { [weak self] connection in
-            self?.acceptHost(connection)
+        guard let listener = try? NWListener(using: parameters) else {
+            retryListener(role)
+            return
         }
-        listener.stateUpdateHandler = { [weak self] state in
-            if case .failed = state {
-                self?.hostListener?.cancel()
-                self?.hostListener = nil
+
+        listener.newConnectionHandler = { [weak self, weak listener] connection in
+            guard let self, let listener, self.listeners[role] === listener else {
+                connection.cancel()
+                return
+            }
+            switch role {
+            case .host: self.acceptHost(connection)
+            case .proxy: self.acceptLocal(connection)
             }
         }
+        listener.stateUpdateHandler = { [weak self, weak listener] state in
+            guard case .failed = state, let self, let listener, self.listeners[role] === listener else { return }
+            self.listeners.removeValue(forKey: role)?.cancel()
+            self.retryListener(role)
+        }
+        listeners[role] = listener
         listener.start(queue: queue)
-        hostListener = listener
     }
+
+    private func retryListener(_ role: ListenerRole) {
+        guard running, role == .host || hasTransport, listenerRetries[role] == nil else { return }
+        let retry = DispatchWorkItem { [weak self] in
+            self?.listenerRetries.removeValue(forKey: role)
+            self?.syncListener(role)
+        }
+        listenerRetries[role] = retry
+        queue.asyncAfter(deadline: .now() + 1, execute: retry)
+    }
+
+    // MARK: - Listener side (the computer dials in)
 
     private func acceptHost(_ connection: NWConnection) {
         guard running, !token.isEmpty else {
@@ -133,7 +160,7 @@ final class USBLink: ObservableObject {
             let pipe = Pipe(connection: connection)
             self.pipes.append(pipe)
             self.publish(self.hasTransport)
-            self.syncProxyListener()
+            self.syncListener(.proxy)
         }
     }
 
@@ -144,7 +171,7 @@ final class USBLink: ObservableObject {
             close(match.value)
         } else {
             publish(hasTransport)
-            syncProxyListener()
+            syncListener(.proxy)
         }
     }
 
@@ -152,36 +179,6 @@ final class USBLink: ObservableObject {
 
     private var hasTransport: Bool {
         !pipes.isEmpty || !sessions.isEmpty
-    }
-
-    private func syncProxyListener() {
-        guard running else { return }
-        if hasTransport, proxyListener == nil {
-            startProxyListener()
-        } else if !hasTransport, let listener = proxyListener {
-            listener.cancel()
-            proxyListener = nil
-        }
-    }
-
-    private func startProxyListener() {
-        let parameters = NWParameters.tcp
-        parameters.allowLocalEndpointReuse = true
-        guard let port = NWEndpoint.Port(rawValue: Self.proxyPort) else { return }
-        parameters.requiredLocalEndpoint = .hostPort(host: NWEndpoint.Host("127.0.0.1"), port: port)
-        guard let listener = try? NWListener(using: parameters) else { return }
-
-        listener.newConnectionHandler = { [weak self] connection in
-            self?.acceptLocal(connection)
-        }
-        listener.stateUpdateHandler = { [weak self] state in
-            if case .failed = state {
-                self?.proxyListener?.cancel()
-                self?.proxyListener = nil
-            }
-        }
-        listener.start(queue: queue)
-        proxyListener = listener
     }
 
     private func acceptLocal(_ connection: NWConnection) {
@@ -241,7 +238,7 @@ final class USBLink: ObservableObject {
         guard sessions.removeValue(forKey: ObjectIdentifier(session)) != nil else { return }
         session.end()
         publish(hasTransport)
-        syncProxyListener()
+        syncListener(.proxy)
     }
 
     // MARK: - Relay

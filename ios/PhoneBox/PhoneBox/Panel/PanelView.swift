@@ -128,6 +128,10 @@ struct PanelView: UIViewRepresentable {
                 decisionHandler(.allow)
                 return
             }
+            if url.absoluteString == "about:srcdoc", navigationAction.targetFrame?.isMainFrame == false {
+                decisionHandler(.allow)
+                return
+            }
             // Links the panel opens (widget shortcuts, Steam pages, …) belong to the system browser; the panel
             // itself stays on its own origin.
             if navigationAction.navigationType == .linkActivated {

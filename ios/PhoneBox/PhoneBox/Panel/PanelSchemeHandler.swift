@@ -14,8 +14,8 @@ final class PanelSchemeHandler: NSObject, WKURLSchemeHandler {
 
     private let client: AgentClient
     private let assetRoot: URL?
-    private let lock = NSLock()
-    private var stoppedTasks = Set<ObjectIdentifier>()
+    // WebKit calls the scheme handler on the main thread. Asynchronous replies return there too.
+    private var activeTasks = Set<ObjectIdentifier>()
 
     init(client: AgentClient) {
         self.client = client
@@ -24,8 +24,10 @@ final class PanelSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
+        activeTasks.insert(ObjectIdentifier(task))
         guard let url = task.request.url else {
-            respond(task, status: 400, contentType: "text/plain; charset=utf-8", data: Data())
+            activeTasks.remove(ObjectIdentifier(task))
+            task.didFailWithError(URLError(.badURL))
             return
         }
         if url.path.hasPrefix("/agent/") {
@@ -36,9 +38,7 @@ final class PanelSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {
-        lock.lock()
-        stoppedTasks.insert(ObjectIdentifier(task))
-        lock.unlock()
+        activeTasks.remove(ObjectIdentifier(task))
     }
 
     private func serveAsset(_ task: WKURLSchemeTask, url: URL) {
@@ -65,7 +65,7 @@ final class PanelSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     private func proxy(_ task: WKURLSchemeTask, url: URL) {
-        let query = url.percentEncodedQuery.map { "?" + $0 } ?? ""
+        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery.map { "?" + $0 } ?? ""
         guard let target = PanelProxyPolicy.agentRequest(
             method: "GET",
             pathAndQuery: url.path + query,
@@ -94,10 +94,8 @@ final class PanelSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     private func respond(_ task: WKURLSchemeTask, status: Int, contentType: String, data: Data) {
-        lock.lock()
-        let isStopped = stoppedTasks.contains(ObjectIdentifier(task))
-        lock.unlock()
-        guard !isStopped, let url = task.request.url else { return }
+        let id = ObjectIdentifier(task)
+        guard activeTasks.contains(id), let url = task.request.url else { return }
 
         let headers = [
             "Content-Type": contentType,
@@ -105,10 +103,14 @@ final class PanelSchemeHandler: NSObject, WKURLSchemeHandler {
             "Cache-Control": "no-cache",
         ]
         guard let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers) else {
+            activeTasks.remove(id)
+            task.didFailWithError(URLError(.badServerResponse))
             return
         }
         task.didReceive(response)
+        guard activeTasks.contains(id) else { return }
         if !data.isEmpty { task.didReceive(data) }
+        guard activeTasks.remove(id) != nil else { return }
         task.didFinish()
     }
 

@@ -57,7 +57,7 @@ is the checked-in definition.
 toolchain (the macOS workflow runs them):
 
 ```sh
-swift test --package-path ios/PhoneBoxKit
+swift test --package-path ios/PhoneBox/PhoneBoxKit
 ```
 
 They cover both pairing-link forms (`https://ersinkoc.github.io/phonebox/pair/#…` and
@@ -69,7 +69,7 @@ allowlist (panel header, read-only images, methods and traversal attempts), and 
 [`.github/workflows/ios.yml`](../../.github/workflows/ios.yml) runs on `macos-15` for changes under `ios/`, the
 Android panel assets or the workflow itself, and manually via **workflow_dispatch**:
 
-1. `swift test --package-path ios/PhoneBoxKit`
+1. `swift test --package-path ios/PhoneBox/PhoneBoxKit`
 2. `xcodegen generate`
 3. `xcodebuild … -destination 'generic/platform=iOS Simulator'`
 4. checks that `www/index.html`, `www/main.js`, a widget module and `PanelShim.js` are in the built app

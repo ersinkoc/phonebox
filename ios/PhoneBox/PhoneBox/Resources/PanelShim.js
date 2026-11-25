@@ -61,6 +61,25 @@
     throw new TypeError('unsupported request body');
   }
 
+  function postWithSignal(handler, message, signal) {
+    if (!signal) return handler.postMessage(message);
+    return new Promise(function (resolve, reject) {
+      function onAbort() {
+        reject(signal.reason !== undefined ? signal.reason : new DOMException('Aborted', 'AbortError'));
+      }
+      if (signal.aborted) { onAbort(); return; }
+      signal.addEventListener('abort', onAbort, { once: true });
+      try {
+        Promise.resolve(handler.postMessage(message)).then(resolve, reject).finally(function () {
+          signal.removeEventListener('abort', onAbort);
+        });
+      } catch (error) {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      }
+    });
+  }
+
   async function proxy(input, init) {
     var handler = bridge();
     if (!handler) throw new TypeError('PhoneBox bridge unavailable');
@@ -84,13 +103,13 @@
     var signal = (init && init.signal) || (isRequest(input) ? input.signal : null);
     if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-    var reply = await handler.postMessage({
+    var reply = await postWithSignal(handler, {
       key: window.__phoneboxBridgeKey || '',
       method: method,
       path: url.pathname + url.search,
       headers: headers,
       body: body
-    });
+    }, signal);
 
     if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
     if (!reply) throw new TypeError('PhoneBox bridge failed');

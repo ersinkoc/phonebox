@@ -140,7 +140,7 @@ struct UnpairedView: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("The iPhone must be on the same Wi-Fi or Tailscale network as the computer. iOS may ask for Local Network access the first time; allow it.")
-            Text("This iOS version connects over Wi-Fi or Tailscale only; it does not use USB. Android-only panel features (light and proximity sensors, phone battery, dictation, haptics, volume-key paging and forced landscape) are not implemented.")
+            Text("Pair over Wi-Fi or Tailscale. After pairing, an iPhone can also connect over USB through a desktop agent with iOS USB support. Android-only panel features (light and proximity sensors, phone battery, dictation, haptics, volume-key paging and forced landscape) are not implemented.")
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
