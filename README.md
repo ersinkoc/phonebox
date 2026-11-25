@@ -108,7 +108,8 @@ The [installation guide](docs/SETUP.md) covers options, dependencies, install pa
 | Wakes and opens the panel on connection; supports app updates over adb. | No adb or developer options needed; install app updates manually unless you later configure USB. |
 
 The phone app is not in any app store; it comes only from this repository's releases. It runs on Android 5.0 and
-newer; there is no iOS version.
+newer. An experimental iOS companion (SwiftUI, built from source with Xcode) is documented in
+[ios/PhoneBox](ios/PhoneBox/README.md); it has no releases and does not implement the Android-only panel features.
 
 For automatic USB/Wi-Fi fallback, enable Wi-Fi and connect the phone over USB once.
 [Connection details and Tailscale setup →](docs/SETUP.md#wi-fi--tailscale)
@@ -207,7 +208,9 @@ Read the [security details](docs/GUIDE.md#security--privacy). To report a vulner
 
 ## Development
 
-The agent uses **.NET 10**; the Android app uses **Kotlin and a WebView** with plain JavaScript widgets.
+The agent uses **.NET 10**; the Android app uses **Kotlin and a WebView** with plain JavaScript widgets. The
+optional iOS app is SwiftUI + `WKWebView` and reuses the Android panel assets; see
+[ios/PhoneBox/README.md](ios/PhoneBox/README.md).
 For Android builds, install **JDK 17** and **Android SDK Platform 35** (the SDK the app is built with; the app itself
 runs on Android 5.0, API 21, and later).
 Preview the panel and editor from source with Python 3, using simulated data:
