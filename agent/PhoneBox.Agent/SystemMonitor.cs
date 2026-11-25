@@ -182,27 +182,19 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
     /// <summary>macOS has no nvidia-smi; the GPU's load and memory come from the IOAccelerator entry of ioreg.</summary>
     private async Task AppleGpuLoop(CancellationToken ct)
     {
+        // A discrete card (an Intel Mac's Radeon) has memory of its own; its name and size sit on its PCI device and
+        // don't change while the agent runs, so they are read once.
+        (string Name, double Bytes)? card = null;
+        try { card = ParseMacPciGpu(await RunIoreg("-r -d 1 -w 0 -c IOPCIDevice", ct)); }
+        catch (OperationCanceledException) { return; }
+        catch (Exception ex) { log.LogDebug("apple-gpu pci: {Msg}", ex.Message); }
         while (!ct.IsCancellationRequested)
         {
             try
             {
-                var psi = new ProcessStartInfo("ioreg", "-r -d 1 -w 0 -c IOAccelerator")
-                {
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    WorkingDirectory = AppPaths.NeutralCwd,
-                };
-                using var p = Process.Start(psi)!;
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                cts.CancelAfter(TimeSpan.FromSeconds(5));
-                try
-                {
-                    var text = await p.StandardOutput.ReadToEndAsync(cts.Token);
-                    await p.WaitForExitAsync(cts.Token);
-                    _osGpus = ParseAppleGpu(text, Memory().Total) is { } g ? [g with { Temp = _appleGpuTemp }] : null;
-                }
-                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { try { p.Kill(); } catch { } _osGpus = null; }
+                var text = await RunIoreg("-r -d 1 -w 0 -c IOAccelerator", ct); // "" after a timeout: no GPU this round
+                // the SMC's GPU temperature exists only on Apple silicon; a discrete card brings its own
+                _osGpus = ParseAppleGpu(text, Memory().Total, card) is { } g ? [g with { Temp = _appleGpuTemp ?? g.Temp }] : null;
             }
             catch (OperationCanceledException) { return; }
             catch (Exception ex) { log.LogDebug("apple-gpu: {Msg}", ex.Message); _osGpus = null; }
@@ -245,14 +237,73 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
     }
 #endif
 
-    /// <summary>Reads the GPU from the ioreg text. The memory is unified: the total is the machine's RAM, the used part what the GPU holds.</summary>
-    internal static GpuInfo? ParseAppleGpu(string ioreg, double totalMemoryBytes)
+    private static async Task<string> RunIoreg(string args, CancellationToken ct)
+    {
+        var psi = new ProcessStartInfo("ioreg", args)
+        {
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory = AppPaths.NeutralCwd,
+        };
+        using var p = Process.Start(psi)!;
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(5));
+        try
+        {
+            var text = await p.StandardOutput.ReadToEndAsync(cts.Token);
+            await p.WaitForExitAsync(cts.Token);
+            return text;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { try { p.Kill(); } catch { } return ""; }
+    }
+
+    /// <summary>
+    /// The graphics card with memory of its own among the PCI devices (<c>ioreg -c IOPCIDevice</c>): its name and size
+    /// from "VRAM,totalMB". The largest wins when there are several. Null on Apple silicon, which has no such device.
+    /// </summary>
+    internal static (string Name, double Bytes)? ParseMacPciGpu(string ioreg)
+    {
+        (string Name, double Bytes)? best = null;
+        foreach (var block in ioreg.Split("+-o ", StringSplitOptions.RemoveEmptyEntries))
+        {
+            var vram = Regex.Match(block, "\"VRAM,totalMB\"\\s*=\\s*(\\d+)");
+            if (!vram.Success) continue;
+            var mb = double.Parse(vram.Groups[1].Value, CultureInfo.InvariantCulture);
+            if (mb <= 0 || (best is { } b && b.Bytes >= mb * 1024 * 1024)) continue;
+            var model = Regex.Match(block, "\"model\"\\s*=\\s*<?\"([^\"]+)\"");
+            best = (model.Success ? model.Groups[1].Value : "GPU", mb * 1024 * 1024);
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// Reads the GPU from the ioreg text. On Apple silicon the memory is unified: the total is the machine's RAM, the
+    /// used part what the GPU holds. A discrete card (an Intel Mac's Radeon) reports its own video memory in use, its
+    /// temperature and power; its total and name come from <paramref name="card"/>, the PCI device.
+    /// </summary>
+    internal static GpuInfo? ParseAppleGpu(string ioreg, double totalMemoryBytes, (string Name, double Bytes)? card = null)
     {
         var util = Regex.Match(ioreg, "\"Device Utilization %\"\\s*=\\s*(\\d+)");
         if (!util.Success) return null; // no accelerator entry: nothing to show
         var model = Regex.Match(ioreg, "\"model\"\\s*=\\s*\"([^\"]+)\"");
-        var alloc = Regex.Match(ioreg, "\"Alloc system memory\"\\s*=\\s*(\\d+)");
         const double Gb = 1024.0 * 1024 * 1024;
+        var vid = Regex.Match(ioreg, "\"inUseVidMemoryBytes\"\\s*=\\s*(\\d+)");
+        if (vid.Success)
+        {
+            double? Stat(string key) => Regex.Match(ioreg, "\"" + Regex.Escape(key) + "\"\\s*=\\s*(\\d+)") is { Success: true } m
+                ? double.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : null;
+            var accel = Regex.Match(ioreg, "\"IOClass\"\\s*=\\s*\"([^\"]+)\"").Groups[1].Value;
+            var vendor = accel.StartsWith("AMD", StringComparison.Ordinal) ? "amd" : accel.StartsWith("Intel", StringComparison.Ordinal) ? "intel" : null;
+            return new GpuInfo(card?.Name ?? (model.Success ? model.Groups[1].Value : "GPU"),
+                double.Parse(util.Groups[1].Value, CultureInfo.InvariantCulture),
+                Stat("Temperature(C)") is > 0 and var t ? t : null, Stat("Total Power(W)") is > 0 and var w ? w : null, null,
+                Math.Round(double.Parse(vid.Groups[1].Value, CultureInfo.InvariantCulture) / Gb, 1),
+                card is { } c ? Math.Round(c.Bytes / Gb, 1) : null, Stat("Fan Speed(%)") is > 0 and var f ? f : null, Stat("Core Clock(MHz)"),
+                Vendor: vendor, Source: "ioreg", Integrated: false, MemClock: Stat("Memory Clock(MHz)"),
+                FanRpm: Stat("Fan Speed(RPM)") is > 0 and var r ? r : null);
+        }
+        var alloc = Regex.Match(ioreg, "\"Alloc system memory\"\\s*=\\s*(\\d+)");
         return new GpuInfo(model.Success ? model.Groups[1].Value : "Apple GPU",
             double.Parse(util.Groups[1].Value, CultureInfo.InvariantCulture), null, null, null,
             alloc.Success ? Math.Round(double.Parse(alloc.Groups[1].Value, CultureInfo.InvariantCulture) / Gb, 1) : null,
