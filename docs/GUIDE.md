@@ -255,10 +255,11 @@ When the computer is back, the agent wakes the phone and opens the panel. A swip
 only after a wake the agent started. If the phone is protected by a PIN, password or pattern, you still unlock it
 yourself.
 
-Standby only acts on the phone you chose under **Phone connection**; with none chosen it does nothing. While it is on,
+Standby only acts on the USB phone you chose under **Phone connection**. While it is on,
 PhoneBox turns off Android's *stay awake while charging* setting (`stay_on_while_plugged_in`), because that system
 setting would keep the screen on anyway. It saves the phone's original value and puts it back when you turn standby
-off, choose another phone or restart the agent.
+off or choose another phone. If **Keep awake** is enabled, PhoneBox then applies its normal charging setting to
+the selected phone.
 
 The phone app holds no `WAKE_LOCK` permission, so the phone relights through the agent's wake key or when USB power
 returns. A phone paired over Wi-Fi only (no USB) can stay dark until you touch it.

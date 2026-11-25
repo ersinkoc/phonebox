@@ -997,8 +997,16 @@ app.MapGet("/api/widget/{page}/{widget}", (string page, string widget, bool? for
     runner.Get(page, widget, force == true) is { } r ? Results.Json(r) : Results.NotFound());
 
 app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req, ShortcutIconUploads icons, WallpaperStore wallpaper) =>
-    Results.Json(new { version = cfg.Version.ToString(), config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString(),
-        s => icons.Revision(s.Id) is { } up ? (up, true) : (ShortcutIcons.Revision(s), false), wallpaper.Revision()) }));
+{
+    var settings = cfg.Get();
+    var standby = req.HttpContext.Connection.LocalPort == usb.Port && usb.MatchesPhone(settings.DeviceSerial, req.Headers.Authorization);
+    return Results.Json(new
+    {
+        version = cfg.Version.ToString(),
+        config = settings.ToPublic(req.Headers["X-PhoneBox-Device"].ToString(),
+            s => icons.Revision(s.Id) is { } up ? (up, true) : (ShortcutIcons.Revision(s), false), wallpaper.Revision(), standby)
+    });
+});
 
 // The panel's wallpaper (Settings › Display). The panel asks with ?v=<revision>, so the picture may be kept for good.
 app.MapGet("/api/wallpaper", (WallpaperStore wallpaper, HttpResponse res, string? v) =>

@@ -376,12 +376,13 @@ public class ConfigTests
     }
 
     [Theory]
-    [InlineData("""{"display":{"standby":"power"}}""", "off")]                          // no phone named: the phone is told off
-    [InlineData("""{"deviceSerial":"FAKE1","display":{"standby":"power"}}""", "power")]
-    public void StandbyReachesThePhoneOnlyWithANamedPhone(string json, string expected)
+    [InlineData("""{"display":{"standby":"power"}}""", false, "off")]
+    [InlineData("""{"deviceSerial":"FAKE1","display":{"standby":"power"}}""", false, "off")]
+    [InlineData("""{"deviceSerial":"FAKE1","display":{"standby":"power"}}""", true, "power")]
+    public void StandbyReachesOnlyTheSelectedUsbPhone(string json, bool selected, string expected)
     {
         var c = Load(json);
-        var display = JsonSerializer.SerializeToElement(c.ToPublic(), ConfigStore.WriteOpts).GetProperty("display");
+        var display = JsonSerializer.SerializeToElement(c.ToPublic(standbyForPhone: selected), ConfigStore.WriteOpts).GetProperty("display");
         Assert.Equal(expected, display.GetProperty("standby").GetString());
         Assert.Equal("power", c.Display.Standby); // the saved value is unchanged
     }

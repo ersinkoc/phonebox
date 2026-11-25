@@ -77,12 +77,13 @@ public sealed class AgentConfig
     /// <param name="wallpaperRev">The uploaded wallpaper's revision (null without one): the panel loads the picture
     /// with it in the URL, so a new upload is fetched and an unchanged one comes from the cache. Sent as text: a 64-bit
     /// value loses its last digits as a JavaScript number, and two pictures could then share a cached URL.</param>
-    public object ToPublic(string? deviceId = null, Func<Shortcut, (long? Rev, bool Upload)>? shortcutIcon = null, long? wallpaperRev = null) => new
+    public object ToPublic(string? deviceId = null, Func<Shortcut, (long? Rev, bool Upload)>? shortcutIcon = null,
+        long? wallpaperRev = null, bool standbyForPhone = false) => new
     {
         weather = Weather,
         codexBar = CodexBar,
         night = Night,
-        display = Display.ForPhone(DeviceSerial),
+        display = Display.ForPhone(standbyForPhone && !string.IsNullOrEmpty(DeviceSerial)),
         // this device's own home page (Settings › Phones), when it has one among the pages it shows
         homePage = HomePageFor(deviceId),
         wallpaperRev = wallpaperRev?.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -224,9 +225,9 @@ public sealed class DisplayConfig
     /// (deviceSerial), so without one the phone is told "off": the app must not release its keep-awake hold
     /// when the agent will not write the matching system setting. The saved value is left alone.
     /// </summary>
-    public DisplayConfig ForPhone(string? deviceSerial)
+    public DisplayConfig ForPhone(bool standbyForPhone)
     {
-        if (Standby == "off" || !string.IsNullOrEmpty(deviceSerial)) return this;
+        if (Standby == "off" || standbyForPhone) return this;
         var copy = (DisplayConfig)MemberwiseClone();
         copy.Standby = "off";
         return copy;
