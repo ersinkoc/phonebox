@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.30 — 2026-11-25
+
 - Windows 11 on ARM: native ARM64 agent ZIP and architecture-aware PowerShell setup (#602).
 
 **Widgets**
