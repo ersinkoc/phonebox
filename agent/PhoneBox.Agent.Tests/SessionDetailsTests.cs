@@ -97,6 +97,35 @@ public sealed class SessionDetailsTests : IDisposable
     }
 
     [Fact]
+    public void ExtraClaudeConfigFoldersShowTheirSessionsAndRememberWhereTheyRun()
+    {
+        var work = Path.Combine(_root, "claude-work");
+        Directory.CreateDirectory(Path.Combine(work, "sessions"));
+        File.WriteAllText(Path.Combine(work, "sessions", "4455.json"),
+            JsonSerializer.Serialize(new { pid = 4455, sessionId = "abcdef12-work", cwd = "/work/api", status = "busy" }));
+        var transcript = Path.Combine(work, "projects", "-work-api", "abcdef12-work.jsonl");
+        Directory.CreateDirectory(Path.GetDirectoryName(transcript)!);
+        File.WriteAllText(transcript, "");
+        ClaudeCredentialDir[] dirs = [new() { Label = "work", Dir = work }, new() { Label = "again", Dir = work + "/" }];
+
+        var (rows, folders) = _monitor.ReadExtraClaude(dirs, pid => pid == 4455);
+        var s = Assert.Single(rows);
+        Assert.Equal("claude:abcdef12-work", s.Id);
+        Assert.Equal("api", s.Project);
+        Assert.Equal(work, folders[s.Id]);
+        Assert.Equal(transcript, ClaudeTranscript.FindFile("abcdef12-work", claudeDir: folders[s.Id]));
+
+        // the same id already read from ~/.claude keeps that one source: no extra row, no extra folder for its conversation
+        (rows, folders) = _monitor.ReadExtraClaude(dirs, pid => pid == 4455, taken: ["claude:abcdef12-work"]);
+        Assert.Empty(rows);
+        Assert.Empty(folders);
+
+        (rows, folders) = _monitor.ReadExtraClaude([], pid => true);
+        Assert.Empty(rows);
+        Assert.Empty(folders);
+    }
+
+    [Fact]
     public void Claude_ClaudeProbeAndCodexBar_AreIgnored()
     {
         var claudeDir = Path.Combine(_root, ".claude", "sessions");

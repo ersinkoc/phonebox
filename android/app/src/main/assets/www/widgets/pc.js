@@ -52,7 +52,7 @@ W.batteries = {
     const render = () => {
       const devices = [...(data?.devices || [])];
       if (o.phone !== false && bridge) {
-        try { const b = JSON.parse(bridge.battery()); if (b.level >= 0) devices.push({ name: 'This phone', level: b.level, kind: 'phone', charging: b.plugged }); } catch (_) {}
+        try { const b = JSON.parse(bridge.battery()); if (b.level >= 0) devices.push({ name: tp('This phone'), level: b.level, kind: 'phone', charging: b.plugged }); } catch (_) {}
       }
       const key = JSON.stringify([devices, box.clientHeight]);
       if (key === lastKey) return;
@@ -1345,7 +1345,7 @@ export function haState(e) {
     if (dc === 'moisture') return on ? tp('Wet') : tp('Dry');
     return on ? tp('On') : tp('Off');
   }
-  if (dom === 'scene' || dom === 'script' || dom === 'button' || dom === 'input_button') return 'Run';
+  if (dom === 'scene' || dom === 'script' || dom === 'button' || dom === 'input_button') return tp('Run');
   if (/^-?\d+(\.\d+)?$/.test(s)) { const n = +s; return (Math.abs(n) >= 100 ? Math.round(n) : Math.round(n * 10) / 10) + (e.unit ? ' ' + e.unit : ''); }
   return s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
@@ -1434,8 +1434,8 @@ W.docker = {
       try {
         const r = await fetch(`${API}/docker/${encodeURIComponent(c.id)}/${action}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
         const j = await r.json().catch(() => ({}));
-        if (!r.ok) toast(j.error || `Could not ${action} ${c.name}`, 'err');
-        else toast(`${c.name}: ${action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted'}`, 'ok');
+        if (!r.ok) toast(j.error || tpv(action === 'stop' ? 'Could not stop {name}' : action === 'start' ? 'Could not start {name}' : 'Could not restart {name}', { name: c.name }), 'err');
+        else toast(`${c.name}: ${tp(action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted')}`, 'ok');
       } catch (_) { toast(t('panel.pcNoAnswer'), 'err'); }
       busy = null; open = null;
       await load(); render(true);
@@ -1455,8 +1455,8 @@ W.docker = {
       if (!snap.available || (snap.error && !items.length)) { list.replaceChildren(h('div', 'empty', snap.error || tp('Docker is not running'))); return; }
       if (!items.length) {
         const msg = matched.length
-          ? `No running containers (${matched.length} stopped)`
-          : filter ? `No containers match "${o.filter}"` : 'No containers';
+          ? tpv('No running containers ({n} stopped)', { n: matched.length })
+          : filter ? tpv('No containers match "{filter}"', { filter: o.filter }) : tp('No containers');
         list.replaceChildren(h('div', 'empty', msg));
         return;
       }
@@ -1476,7 +1476,7 @@ W.docker = {
           b.addEventListener('click', (e) => { e.stopPropagation(); act(c, action); });
           return b;
         };
-        return h('div', 'dk-wrap', row, h('div', 'dk-acts', ...(c.state === 'running' ? [btn('↻ Restart', 'restart'), btn('■ Stop', 'stop', 'danger')] : [btn('▶ Start', 'start', 'go')])));
+        return h('div', 'dk-wrap', row, h('div', 'dk-acts', ...(c.state === 'running' ? [btn('↻ ' + tp('Restart'), 'restart'), btn('■ ' + tp('Stop'), 'stop', 'danger')] : [btn('▶ ' + tp('Start'), 'start', 'go')])));
       }));
     };
     const tick = every(4000, async () => { await load(); render(); });
@@ -1511,7 +1511,7 @@ W.apps = {
       try {
         const r = await fetch(`${API}/apps/open?id=${encodeURIComponent(a.id)}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
         const j = await r.json().catch(() => ({}));
-        if (r.ok) toast(`Opening ${a.name}`, 'ok'); else toast(j.error || `Could not open ${a.name}`, 'err');
+        if (r.ok) toast(tpv('Opening {name}', { name: a.name }), 'ok'); else toast(j.error || tpv('Could not open {name}', { name: a.name }), 'err');
       } catch (_) { toast(tp('The PC did not answer'), 'err'); }
       busy = null; render(true);
     };
@@ -1537,7 +1537,7 @@ W.apps = {
       }, { once: true });
       const isArmed = armed === a.id;
       const t = h('button', 'ap-tile' + (busy === a.id ? ' busy' : '') + (isArmed ? ' armed' : ''), img,
-        h('span', 'ap-name', isArmed ? 'Tap again to open' : a.name));
+        h('span', 'ap-name', isArmed ? tp('Tap again to open') : a.name));
       t.title = a.name;
       t.addEventListener('click', () => {
         if (!confirm || armed === a.id) { clearTimeout(armTimer); armed = null; open(a); return; }
@@ -1559,7 +1559,7 @@ W.apps = {
       head.querySelector('.ap-count').textContent = all.length ? ` ${q ? items.length + '/' : ''}${all.length}` : '';
       if (!data) { grid.replaceChildren(h('div', 'empty', tp('Loading…'))); return; }
       if (!data.supported) { grid.replaceChildren(h('div', 'empty', tp('The apps list is available on macOS for now'))); return; }
-      if (!items.length) { grid.replaceChildren(h('div', 'empty', q ? `No apps match "${search.value.trim()}"` : 'No apps found')); return; }
+      if (!items.length) { grid.replaceChildren(h('div', 'empty', q ? tpv('No apps match "{q}"', { q: search.value.trim() }) : tp('No apps found'))); return; }
       grid.replaceChildren(...items.map(tile));
     };
     const tick = every(60_000, async () => { const ok = await load(); render(); return ok; }, 5000);
@@ -1610,7 +1610,7 @@ W.agenda = {
         if (!e) { box.replaceChildren(h('div', 'ag-big-t', tp('No events')), h('div', 'ag-big-s', tpv('next {n} days', { n: days }))); return; }
         box.style.setProperty('--c', e.color);
         box.replaceChildren(
-          h('div', 'ag-big-s', e === cur ? `Now · until ${hm(e.end)}` : e.allDay ? dayName(e.start) + ' · all day' : `${dayName(e.start) === t('time.today') ? inMin(e.start) || t('time.today') : dayName(e.start)} · ${hm(e.start)}`),
+          h('div', 'ag-big-s', e === cur ? tpv('Now · until {time}', { time: hm(e.end) }) : e.allDay ? dayName(e.start) + tp(' · all day') : `${dayName(e.start) === t('time.today') ? inMin(e.start) || t('time.today') : dayName(e.start)} · ${hm(e.start)}`),
           h('div', 'ag-big-t', e.title));
         return;
       }
@@ -1624,14 +1624,14 @@ W.agenda = {
         const isNow = e === cur;
         const row = h('div', 'ag-row' + (isNow ? ' now' : ''),
           h('span', 'ag-dot'),
-          h('span', 'ag-time', e.allDay ? 'all day' : hm(e.start)),
+          h('span', 'ag-time', e.allDay ? tp('all day') : hm(e.start)),
           h('span', 'ag-title', e.title, o.location !== false && e.location ? h('small', null, ' · ' + e.location) : null),
           h('span', 'ag-when', isNow ? `until ${hm(e.end)}` : e === next ? inMin(e.start) : ''));
         row.style.setProperty('--c', e.color);
         if (isNow) row.style.setProperty('--p', Math.min(1, (now - e.start) / Math.max(1, e.end - e.start)));
         rows.push(row);
       }
-      const body = h('div', 'ag-list', ...(rows.length ? rows : [h('div', 'empty', `Nothing in the next ${days} days`)]));
+      const body = h('div', 'ag-list', ...(rows.length ? rows : [h('div', 'empty', tpv('Nothing in the next {n} days', { n: days }))]));
       box.replaceChildren(h('div', 'w-title', o.title || en('Agenda'), cal.errors?.length ? h('span', 'ag-err', ' ', icon('warn')) : null), body);
       // drop rows that do not fit, keeping the day headers tidy
       while (body.scrollHeight > body.clientHeight + 2 && body.childElementCount > 1) {
@@ -1717,7 +1717,7 @@ W.pcswitch = {
         b.addEventListener('click', (e) => { e.stopPropagation(); switchPc(pc); });
         return b;
       }));
-      sub.textContent = usb ? 'USB cable connected: the panel uses that computer' : '';
+      sub.textContent = usb ? tp('USB cable connected: the panel uses that computer') : '';
     };
     render();
     return { update: render };
@@ -1861,7 +1861,7 @@ W.rules = {
         box.classList.toggle('paused', !!paused);
         if (!rules.length) { list.replaceChildren(h('div', 'empty', tp('Add rules in Settings › Rules'))); return; }
         const sorted = [...rules].sort((a, b) => active.includes(b.id) - active.includes(a.id));
-        list.replaceChildren(...(paused ? [h('div', 'ru-note', `Paused until ${fmtHM(new Date(rulesPaused))}`)] : []),
+        list.replaceChildren(...(paused ? [h('div', 'ru-note', tpv('Paused until {time}', { time: fmtHM(new Date(rulesPaused)) }))] : []),
           ...sorted.map((r) => h('div', 'ru-row' + (active.includes(r.id) && !paused ? ' on' : ''),
             h('span', 'ru-ico', emo(RULE_WHEN[r.when] || '⚡')), h('span', 'ru-name', r.name || r.when), h('i', 'ru-dot'))));
       },
@@ -1895,8 +1895,8 @@ W.chargecare = {
       q('.cc-state').replaceChildren(emo(b.plugged ? '⚡' : '🔋'));
       const col = b.level <= 20 ? '#ef4444' : ch.enabled && b.level > max ? '#f59e0b' : b.plugged ? '#22c55e' : 'rgb(var(--ambient))';
       box.style.setProperty('--cc', col);
-      q('.cc-text').textContent = !ch.enabled ? `Battery care is off${b.temp ? ` · ${b.temp.toFixed(0)} °C` : ''}`
-        : b.plugged ? `Charges up to ${max}%` + (b.level >= max ? ' · power off soon' : '') : `Charges again at ${min}%`;
+      q('.cc-text').textContent = !ch.enabled ? tp('Battery care is off') + (b.temp ? ` · ${b.temp.toFixed(0)} °C` : '')
+        : b.plugged ? tpv('Charges up to {n}%', { n: max }) + (b.level >= max ? tp(' · power off soon') : '') : tpv('Charges again at {n}%', { n: min });
     });
     return { update: load };
   },
@@ -1924,7 +1924,7 @@ W.nextup = {
         track.hidden = !cur;
         if (!ev) {
           when.textContent = ''; meta.textContent = '';
-          title.textContent = !cal ? t('w.loading') : cal.updated || evs.length ? t('w.noEvents') : 'Add a calendar in Settings › General';
+          title.textContent = !cal ? t('w.loading') : cal.updated || evs.length ? t('w.noEvents') : tp('Add a calendar in Settings › General');
           return;
         }
         const left = Math.round(((cur ? ev.end : ev.start) - now) / 60000);
@@ -1981,10 +1981,10 @@ W.gpu = {
 
         const list = [];
         const mem = gpuMem(g);
-        if (mem) list.push(meter(mem.label === 'VRAM' ? 'VRAM' : tp('GPU memory'), `${r1(mem.used)} / ${Math.round(mem.total)} GB`, (mem.used / mem.total) * 100));
-        if (!g.integrated && g.sharedTotal && g.sharedUsed != null) list.push(meter(tp('Shared memory'), `${r1(g.sharedUsed)} GB`, (g.sharedUsed / g.sharedTotal) * 100, '#64748b'));
+        if (mem) list.push(meter(mem.label === 'VRAM' ? 'VRAM' : tp('GPU memory'), `${r1(mem.used)} / ${Math.round(mem.total)} ${tp('GB')}`, (mem.used / mem.total) * 100));
+        if (!g.integrated && g.sharedTotal && g.sharedUsed != null) list.push(meter(tp('Shared memory'), `${r1(g.sharedUsed)} ${tp('GB')}`, (g.sharedUsed / g.sharedTotal) * 100, '#64748b'));
         if (g.power != null) {
-          list.push(meter(tp('Power'), g.powerLimit ? `${Math.round(g.power)} / ${Math.round(g.powerLimit)} W` : `${Math.round(g.power)} W`,
+          list.push(meter(tp('Power'), g.powerLimit ? `${Math.round(g.power)} / ${Math.round(g.powerLimit)} ${tp("W")}` : `${Math.round(g.power)} ${tp("W")}`,
             g.powerLimit ? (g.power / g.powerLimit) * 100 : g.powerPct, '#facc15'));
         } else if (g.powerPct != null) list.push(meter(tp('Power'), tpv('{n}% of limit', { n: Math.round(g.powerPct) }), g.powerPct, '#facc15'));
         const hottest = Math.max(g.temp ?? -1, g.hotSpot ?? -1);
@@ -1997,7 +1997,7 @@ W.gpu = {
         chips.replaceChildren(...[
           g.clock != null ? tpv('Core {n} MHz', { n: Math.round(g.clock) }) : null,
           g.memClock != null ? tpv('Memory {n} MHz', { n: Math.round(g.memClock) }) : null,
-          g.fan != null ? tpv('Fan {n}%', { n: Math.round(g.fan) }) + (g.fanRpm != null ? ` · ${Math.round(g.fanRpm)} rpm` : '')
+          g.fan != null ? tpv('Fan {n}%', { n: Math.round(g.fan) }) + (g.fanRpm != null ? ' · ' + tpv('{n} rpm', { n: Math.round(g.fanRpm) }) : '')
             : g.fanRpm != null ? tpv('Fan {n} rpm', { n: Math.round(g.fanRpm) }) : null,
           g.driver ? `Driver ${g.driver}` : null,
           g.source ? g.source.split('+').map((x) => GPU_SOURCE[x] || x).join(' + ') : null,

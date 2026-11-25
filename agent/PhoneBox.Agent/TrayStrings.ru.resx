@@ -25,22 +25,22 @@
         <value>Открыть журнал</value>
     </data>
     <data xml:space="preserve" name="autostart">
-        <value>Начинаются с Windows</value>
+        <value>Запускать вместе с Windows</value>
     </data>
     <data xml:space="preserve" name="quit">
         <value>Выход</value>
     </data>
     <data xml:space="preserve" name="connected">
-        <value>Телефон подключен ( {0} )</value>
+        <value>Телефон подключён ({0})</value>
     </data>
     <data xml:space="preserve" name="disconnected">
-        <value>Телефон не подключен</value>
+        <value>Телефон не подключён</value>
     </data>
     <data xml:space="preserve" name="tooltipConnected">
-        <value>PhoneBox — телефон подключен</value>
+        <value>PhoneBox — телефон подключён</value>
     </data>
     <data xml:space="preserve" name="tooltipWaiting">
-        <value>PhoneBox — жду телефона</value>
+        <value>PhoneBox — ожидание телефона</value>
     </data>
     <data xml:space="preserve" name="autostartError">
         <value>Не удалось изменить ярлык запуска: {0}</value>

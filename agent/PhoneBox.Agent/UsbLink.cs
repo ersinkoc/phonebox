@@ -44,6 +44,8 @@ public sealed partial class UsbLink(int port, string pin)
     }
 
     public bool HasKey(string serial) => _keys.ContainsKey(serial);
+    internal bool MatchesPhone(string? serial, string? authorization) =>
+        serial is not null && _keys.TryGetValue(serial, out var key) && Lan.Matches(authorization, key);
     public void SetKey(string serial, string key) => _keys[serial] = key;
     public void Forget(string serial) => _keys.TryRemove(serial, out _);
 

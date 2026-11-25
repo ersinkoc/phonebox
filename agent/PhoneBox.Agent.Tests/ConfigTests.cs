@@ -423,6 +423,19 @@ public class ConfigTests
         Assert.Equal(1440, c.Rules[0].Value);
         Assert.Equal("info", c.Rules[0].Level);
     }
+
+    [Theory]
+    [InlineData("""{"display":{"standby":"power"}}""", false, "off")]
+    [InlineData("""{"deviceSerial":"FAKE1","display":{"standby":"power"}}""", false, "off")]
+    [InlineData("""{"deviceSerial":"FAKE1","display":{"standby":"power"}}""", true, "power")]
+    [InlineData("""{"deviceSerial":"FAKE1","ignoredDeviceSerials":["FAKE1"],"display":{"standby":"power"}}""", true, "off")]
+    public void StandbyReachesOnlyTheSelectedUsbPhone(string json, bool selected, string expected)
+    {
+        var c = Load(json);
+        var display = JsonSerializer.SerializeToElement(c.ToPublic(standbyForPhone: selected), ConfigStore.WriteOpts).GetProperty("display");
+        Assert.Equal(expected, display.GetProperty("standby").GetString());
+        Assert.Equal("power", c.Display.Standby); // the saved value is unchanged
+    }
 }
 
 public class LanTests

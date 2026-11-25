@@ -1,11 +1,12 @@
 package net.oxog.phonebox.deskpanel
-
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Context
+import android.content.BroadcastReceiver
+import android.app.KeyguardManager
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
@@ -15,6 +16,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Handler
+import android.os.Looper
 import android.os.BatteryManager
 import android.os.SystemClock
 import android.os.Bundle
@@ -47,6 +50,8 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.Locale
 
 /**
@@ -87,12 +92,335 @@ class MainActivity : Activity(), SensorEventListener {
             .build()
     }
 
+
+    // --------------------------------------------------------------------------- power standby
+    //
+    // A desk panel fed by one computer should stop holding the screen once that computer is gone. The stock app
+    // only ever adds FLAG_KEEP_SCREEN_ON in onCreate, so the panel stays lit forever - on a phone that is nothing
+    // but a panel, that is a battery problem. Here the hold is released when the computer is judged absent and
+    // retaken the moment it answers again, which lights the panel again without a touch. Android's own screen-off
+    // timeout does the actual sleeping: a normal app cannot force the display off, it can only stop insisting
+    // that it stays on.
+    //
+    // display.standby = "off" | "power" | "data", where off is exactly today's behaviour and the default, so no
+    // existing desk changes. "power" watches the USB charge state; "data" watches whether the agent still
+    // answers, which is the criterion that survives two common setups: a port whose charge is capped at the
+    // PMIC (a charging ceiling) while it still powers and syncs the phone, and a board that keeps 5 V alive
+    // after shutdown (ErP off) - in the first case the panel would sleep while the computer runs, in the
+    // second it never sleeps at all. The USB_STATE edge never gates the sleep (measured: some devices never
+    // roll it back when their port loses power); it only speeds the wake, about a second after the host
+    // kernel enumerates the phone, beside the agent's own KEYCODE_WAKEUP on reconnect.
+
+    @Volatile private var standbyMode = "off"
+    @Volatile private var standbyGraceMs = 30_000L
+    @Volatile private var standbyAgentDataAt = 0L   // elapsedRealtime of the agent's last answer, either transport
+    @Volatile private var standbyUsbLink = false    // an enumerated USB data link proves that computer is running
+    @Volatile private var standbyPlugged = true     // USB charge state: the "power" criterion, and probe timing
+    @Volatile private var standbyHostAlive = true   // what standby acts on; reconciled by standbyTick
+    @Volatile private var standbyFromAgent = false  // have we read display.standby from the agent yet?
+    @Volatile private var standbyLostSince = 0L     // elapsedRealtime of the first absence; 0 while alive
+    @Volatile private var standbyDestroyed = false  // onDestroy ran: late callbacks must not reschedule or probe
+    @Volatile private var standbyAgentWakeAt = 0L   // elapsedRealtime of the last panel start the agent marked as its standby wake; 0 = none
+    private val standbyAgentWakeWindowMs = 15_000L  // how long such a mark lets this app dismiss the keyguard
+    private val standbyHealthPollMs = 2_000L        // while the computer answers
+    private val standbyPollMs = 15_000L             // once it went quiet, until it comes back
+    private val standbySilenceMs = 12_000L          // this long with no answer at all => not reachable
+    private val standbyHandler = Handler(Looper.getMainLooper())
+    private val standbyProbes = Executors.newSingleThreadExecutor()
+    private var standbyPowerReceiver: BroadcastReceiver? = null
+    private var standbyUsbReceiver: BroadcastReceiver? = null
+    private var standbyScreenReceiver: BroadcastReceiver? = null
+
+    /** The panel may hold the display on while it believes the computer is running, or while standby is off. */
+    private fun standbyApplyKeepAwake() {
+        if (standbyMode == "off" || standbyHostAlive) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // The new window attributes have to be pushed at WindowManager again: a static page never relayouts on its
+        // own, so after clearFlags the old keep-awake wakelock would linger and the screen would never sleep
+        // (measured on Android 11). One layout request is enough - the traversal follows.
+        window.decorView.requestLayout()
+    }
+
+    /** Take the criterion from whoever knows it: the panel pushes it when the setting changes */
+    private fun applyStandbySetting(mode: String, graceSec: Int) {
+        if (standbyDestroyed) return
+        val m = when (mode.trim().lowercase()) { "power" -> "power"; "data" -> "data"; else -> "off" }
+        val g = graceSec.coerceIn(3, 600)
+        if (m == standbyMode && g * 1000L == standbyGraceMs) return
+        standbyMode = m
+        standbyGraceMs = g * 1000L
+        standbyFromAgent = true
+        Log.i("PhoneBox", "power standby: mode=$standbyMode grace=${g}s")
+        // Both callers are background threads - the settings-read executor at cold start and the JS bridge
+        // when the panel pushes display settings - and everything from here on touches the window, so hop
+        // to the main looper before anything View-related (measured: CalledFromWrongThreadException).
+        standbyHandler.post {
+            standbyHostAlive = true
+            standbyLostSince = 0L
+            standbyApplyKeepAwake()
+
+            if (standbyMode == "off") {
+                // Standby is disabled: no timer and no standby receivers.
+                standbyHandler.removeCallbacks(standbyTick)
+                standbyUnregisterReceivers()
+            } else {
+                // Standby is enabled: start monitoring.
+                standbyStartMonitoring()
+            }
+        }
+    }
+
+    /** A charged-to-100 % phone can report EXTRA_PLUGGED=0 while EXTRA_STATUS still says CHARGING/FULL, so the
+     *  status counts as "cable in" too; otherwise a fully charged panel would sleep during normal use. */
+    private fun standbyPluggedFrom(sticky: Intent?): Boolean {
+        val st = sticky?.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)
+            ?: BatteryManager.BATTERY_STATUS_UNKNOWN
+        return (sticky?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0 ||
+            st == BatteryManager.BATTERY_STATUS_CHARGING || st == BatteryManager.BATTERY_STATUS_FULL
+    }
+
+    /** The phone's own view of its USB data link: an enumerated (configured) link means that host is running,
+     *  worth knowing even when the Wi-Fi pairing is stale. Sticky, so reading it costs one binder call. */
+    private fun standbyReadUsbLink(): Boolean = try {
+        val u = registerReceiver(null, IntentFilter("android.hardware.usb.action.USB_STATE"))
+        u != null && (u.getBooleanExtra("configured", false) || u.getBooleanExtra("connected", false))
+    } catch (e: Exception) {
+        false
+    }
+
+    /**
+     * Both criteria ride sticky broadcasts, which a context-registered receiver is delivered and which can also be
+     * read on demand to settle the initial state (a reboot into an unpowered hub must not light the panel). The
+     * USB_STATE edge matters more than it looks: it fires as soon as the host kernel enumerates the device, about
+     * a second after boot and long before any service is up, so the panel lights on the event instead of waiting
+     * for the next probe.
+     */
+    private fun standbyRegisterReceivers() {
+        if (standbyPowerReceiver != null ||
+            standbyUsbReceiver != null ||
+            standbyScreenReceiver != null) return
+        val battery = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val now = standbyPluggedFrom(intent)
+                if (now == standbyPlugged) return
+                standbyPlugged = now
+                Log.i("PhoneBox", "power standby: USB charge -> $now")
+                standbyHandler.removeCallbacks(standbyTick)
+                standbyHandler.post(standbyTick)     // an edge is worth an immediate look, either way round
+            }
+        }
+        val usb = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val up = intent?.getBooleanExtra("configured", false) == true ||
+                    intent?.getBooleanExtra("connected", false) == true
+                if (up == standbyUsbLink) return
+                standbyUsbLink = up
+                Log.i("PhoneBox", "power standby: USB data link -> $up")
+                standbyHandler.removeCallbacks(standbyTick)
+                standbyHandler.post(standbyTick)
+            }
+        }
+        val screen = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                // The display went dark: the agent's wake is over, so the next screen-on must not
+                // dismiss a swipe lock on its account.
+                if (intent?.action == Intent.ACTION_SCREEN_OFF) { standbyAgentWakeAt = 0L; return }
+                if (standbyMode == "off") return
+                standbyDismissKeyguard()
+                standbyHandler.removeCallbacks(standbyTick)
+                standbyHandler.post(standbyTick)
+            }
+        }
+        standbyScreenReceiver = screen
+        standbyPowerReceiver = battery
+        standbyUsbReceiver = usb
+        // SCREEN_OFF ends the agent's wake window (see onReceive above), so the receiver needs both actions.
+        val screenFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(usb, IntentFilter("android.hardware.usb.action.USB_STATE"), Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(screen, screenFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            registerReceiver(usb, IntentFilter("android.hardware.usb.action.USB_STATE"))
+            registerReceiver(screen, screenFilter)
+        }
+        standbyPlugged = standbyPluggedFrom(registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)))
+        standbyUsbLink = standbyReadUsbLink()
+    }
+
+    private fun standbyUnregisterReceivers() {
+        standbyPowerReceiver?.let {
+            runCatching { unregisterReceiver(it) }
+        }
+        standbyUsbReceiver?.let {
+            runCatching { unregisterReceiver(it) }
+        }
+        standbyScreenReceiver?.let {
+            runCatching { unregisterReceiver(it) }
+        }
+
+        standbyPowerReceiver = null
+        standbyUsbReceiver = null
+        standbyScreenReceiver = null
+    }
+
+    private fun standbyStartMonitoring() {
+        if (standbyDestroyed || standbyMode == "off") return
+
+        standbyRegisterReceivers()
+
+        standbyHandler.removeCallbacks(standbyTick)
+        standbyHandler.post(standbyTick)
+    }
+
+    /**
+     * Decide, on a clock that cannot jump (elapsedRealtime survives the re-syncs a phone does after boot): this
+     * long without any answer means the computer is not reachable, so release the
+     * screen - but only after the grace period, which is what keeps a host reboot or a Wi-Fi hiccup from blacking
+     * the panel. Coming back online retakes the hold and wakes the panel by itself.
+     */
+    private fun standbyReconcile() {
+        val absent = when (standbyMode) {
+            "power" -> !standbyPlugged
+            // measured: some devices never roll USB_STATE/battery back after their hub port loses VBUS (3T on
+            // Lineage 18.1 kept reporting connected=true, configured=true and USB powered=true for a full
+            // minute), so the data criterion must not wait for the link to drop. The link only ever speeds the
+            // wake up - the enumeration edge lights the panel in about a second instead of on the next poll.
+            "data" -> SystemClock.elapsedRealtime() - standbyAgentDataAt >= standbySilenceMs
+            else -> false
+        }
+        if (!absent) {
+            standbyLostSince = 0L
+            if (!standbyHostAlive) {
+                standbyHostAlive = true
+                Log.i("PhoneBox", "power standby: the computer is back -> holding the screen")
+                standbyApplyKeepAwake()
+                standbyWakePanel()
+            }
+            return
+        }
+        if (standbyLostSince == 0L) {
+            standbyLostSince = SystemClock.elapsedRealtime()
+            return
+        }
+        if (standbyHostAlive && SystemClock.elapsedRealtime() - standbyLostSince >= standbyGraceMs) {
+            standbyHostAlive = false
+            Log.i("PhoneBox", "power standby: $standbyMode says the computer is gone -> releasing the screen")
+            standbyApplyKeepAwake()   // releases the hold; the system timeout then sleeps the display
+        }
+    }
+
+    /** Watch the computer: fast while it answers, slower once it has gone quiet. */
+    private val standbyTick = object : Runnable {
+        override fun run() {
+            if (standbyDestroyed || standbyMode == "off") return
+
+            standbyUsbLink = standbyReadUsbLink()
+            standbyReconcile()
+
+            if (!standbyHostAlive) standbyProbe()
+
+            standbyHandler.postDelayed(
+                this,
+                if (standbyHostAlive) standbyHealthPollMs else standbyPollMs
+            )
+        }
+    }
+
+    /** Proof that the computer answers: stamp the clock and, when the verdict keys off data (mode "data"),
+     *  do not wait for the next fallback tick either - reconcile right away, so the keyguard that the
+     *  agent's KEYCODE_WAKEUP left standing is dismissed within a second instead of within standbyPollMs.
+     *  Mode "power" keys off the charge state: an answer proves nothing there, and posting anyway
+     *  would feed a probe-tick-probe hot loop whenever the agent answers over Wi-Fi with the cable out. */
+    private fun markHostAnswer() {
+        if (standbyDestroyed) return
+        standbyAgentDataAt = SystemClock.elapsedRealtime()
+        if (!standbyHostAlive && standbyMode == "data") {
+            standbyHandler.removeCallbacks(standbyTick)
+            standbyHandler.post(standbyTick)
+        }
+    }
+
+    /** Fire-and-forget submission for the standby executor: a teardown may land between the destroyed
+     *  check and execute(), and the RejectedExecutionException must not reach a handler thread. */
+    private fun standbyExecute(task: Runnable) {
+        if (standbyDestroyed) return
+        try {
+            standbyProbes.execute(task)
+        } catch (e: RejectedExecutionException) {
+            Unit
+        }
+    }
+
+    /** Ask the agent directly, off the UI thread. The page's own polls stop while the WebView idles; this does
+     *  not need a CPU wakelock to keep going: holding one would take WAKE_LOCK, a permission this feature
+     *  deliberately does not add (upstream ships without it), so while the device idles these probes simply
+     *  land in the doze maintenance windows - good enough as a fallback, because the prompt path is the agent
+     *  itself, which sends KEYCODE_WAKEUP when it re-establishes the adb reverse rule after a reconnect. */
+    private fun standbyProbe() {
+        standbyExecute {
+            try {
+                val reply = link.request("GET", "/api/state")
+                reply.body.use { }  // an unread, unclosed body strands the HttpURLConnection
+                if (reply.code < 400) markHostAnswer()
+            } catch (e: Exception) {
+                Unit
+            }
+        }
+    }
+
+    /** The agent starts the panel with agentWake=true right after the wake key and wm dismiss-keyguard it sends
+     *  when the computer is back (AdbReverse.LightPanel; standby on, named phone only). That mark is the only
+     *  thing that lets this app touch the keyguard: no mark, no dismissal. */
+    private fun standbyNoteAgentWake(i: Intent?) {
+        if (i?.getBooleanExtra("agentWake", false) != true) return
+        standbyAgentWakeAt = SystemClock.elapsedRealtime()
+        standbyDismissKeyguard()   // the display is usually lit already, so no screen-on edge will follow
+    }
+
+    private fun standbyMayDismissKeyguard(): Boolean {
+        val at = standbyAgentWakeAt
+        return standbyMode != "off" && standbyHostAlive && at != 0L &&
+            SystemClock.elapsedRealtime() - at < standbyAgentWakeWindowMs
+    }
+
+    /** Every keyguard dismissal in this file goes through here. The mark is not used up on purpose: a dismissal
+     *  while the display is still off does not take, so the next screen-on or resume inside the window may try
+     *  again. A PIN or pattern lock is never dismissed by this - Android still asks. */
+    private fun standbyDismissKeyguard() {
+        if (!standbyMayDismissKeyguard()) return
+        // requestDismissKeyguard needs API 26; below that the agent's own wm dismiss-keyguard is all there is
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)?.requestDismissKeyguard(this, null)
+        } catch (e: Exception) {
+            Log.w("PhoneBox", "keyguard dismiss failed: " + e)
+        }
+    }
+
+
+    /** Put the panel back in front and take whatever swipe keyguard sits on top of it; harmless when it is
+    *  already showing. Lighting the display belongs to the agent (KEYCODE_WAKEUP when the reverse rule is
+    *  re-established after the computer returns) and to the plug-in itself; this app holds no WAKE_LOCK. */
+    private fun standbyWakePanel() {
+        startActivity(Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        // A swipe-to-unlock keyguard would otherwise keep the woken panel behind a lock screen nobody is
+        // standing there to swipe - but only after a wake the agent started.
+        standbyDismissKeyguard()
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         link = AgentLink(this)
         stream = AgentStream(link) { event, data ->
+            markHostAnswer()   // a beat on the live stream is proof of life too
             val js = "window.onAgentStream && window.onAgentStream(${JSONObject.quote(event)}, ${JSONObject.quote(data)})"
             runOnUiThread { if (!destroyed) web.evaluateJavascript(js, null) }
         }
@@ -154,12 +482,14 @@ class MainActivity : Activity(), SensorEventListener {
 
         web.loadUrl("https://$ASSET_HOST/assets/www/index.html")
         hideSystemUi()
+        if (savedInstanceState == null) standbyNoteAgentWake(intent)   // not again after a configuration change
         handlePairingLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        standbyNoteAgentWake(intent)
         handlePairingLink(intent)
     }
 
@@ -215,6 +545,7 @@ class MainActivity : Activity(), SensorEventListener {
         val path = req.url.encodedPath!!.removePrefix("/agent")
         val query = req.url.encodedQuery?.let { "?$it" } ?: ""
         val r = link.request(req.method, path + query)
+        if (r.code < 400) markHostAnswer()
         val ct = r.contentType ?: "application/octet-stream"
         val mime = ct.substringBefore(';').trim()
         val charset = if (ct.contains("charset=")) ct.substringAfter("charset=").trim() else null
@@ -323,6 +654,13 @@ class MainActivity : Activity(), SensorEventListener {
         super.onResume()
         if (!hasWeb) return
         resumed = true
+        if (standbyMode != "off") {
+            standbyHandler.removeCallbacks(standbyTick)
+            standbyHandler.post(standbyTick)
+        }
+        // The agent's wake can reach us here before the lock screen is gone; dismiss it, but only inside a
+        // wake the agent started (standbyDismissKeyguard checks), never on a plain resume.
+        standbyDismissKeyguard()
         web.onResume()
         web.evaluateJavascript("window.onAppPause && window.onAppPause(false)", null) // the panel catches up at once
         stream.start()
@@ -353,6 +691,12 @@ class MainActivity : Activity(), SensorEventListener {
     override fun onDestroy() {
         destroyed = true
         resumed = false
+        standbyDestroyed = true
+        standbyHandler.removeCallbacks(standbyTick)
+        standbyPowerReceiver?.let { runCatching { unregisterReceiver(it) } }
+        standbyUsbReceiver?.let { runCatching { unregisterReceiver(it) } }
+        standbyScreenReceiver?.let { runCatching { unregisterReceiver(it) } }
+        standbyProbes.shutdownNow()
         dictation.cancel(0)
         sensors?.unregisterListener(this)
         stream.stop()
@@ -480,6 +824,12 @@ class MainActivity : Activity(), SensorEventListener {
             if (!v.hasVibrator() || timings.isEmpty()) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createWaveform(timings, -1))
             else @Suppress("DEPRECATION") v.vibrate(timings, -1)
+        }
+
+        @JavascriptInterface
+        fun setStandby(key: String, mode: String, graceSec: Int) {
+            if (!ok(key)) return
+            applyStandbySetting(mode, graceSec)
         }
 
         @JavascriptInterface

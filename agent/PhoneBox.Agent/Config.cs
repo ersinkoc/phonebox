@@ -81,12 +81,13 @@ public sealed class AgentConfig
     /// <param name="wallpaperRev">The uploaded wallpaper's revision (null without one): the panel loads the picture
     /// with it in the URL, so a new upload is fetched and an unchanged one comes from the cache. Sent as text: a 64-bit
     /// value loses its last digits as a JavaScript number, and two pictures could then share a cached URL.</param>
-    public object ToPublic(string? deviceId = null, Func<Shortcut, (long? Rev, bool Upload)>? shortcutIcon = null, long? wallpaperRev = null) => new
+    public object ToPublic(string? deviceId = null, Func<Shortcut, (long? Rev, bool Upload)>? shortcutIcon = null,
+        long? wallpaperRev = null, bool standbyForPhone = false) => new
     {
         weather = Weather,
         codexBar = CodexBar,
         night = Night,
-        display = Display,
+        display = Display.ForPhone(standbyForPhone && DeviceSerial is { Length: > 0 } serial && UsesUsbDevice(serial)),
         // this device's own home page (Settings › Phones), when it has one among the pages it shows
         homePage = HomePageFor(deviceId),
         wallpaperRev = wallpaperRev?.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -113,6 +114,7 @@ public sealed class AgentConfig
         // OpenCode prompts: how long the Allow always button waits before it can be pressed (it saves a pattern)
         opencode = new { OpenCode.AlwaysCountdownSec },
     };
+
 
     /// <summary>Ending processes is allowed when an enabled page has a processes widget that allows it.</summary>
     public IEnumerable<WidgetConfig> Widgets(bool enabledPagesOnly = false) => Pages.Where(p => !enabledPagesOnly || p.Enabled)
@@ -223,6 +225,27 @@ public sealed class DisplayConfig
     public int FinishSoundVolume { get; set; } = 70;
     /// <summary>The phone's volume keys switch pages.</summary>
     public bool VolumeKeys { get; set; } = true;
+    /// <summary>Whether the panel releases its keep-awake hold when the computer goes away: "off" (today's
+    /// behaviour - hold the screen while the panel runs and keep it lit at system level while plugged), "power"
+    /// (when USB charge is cut) or "data" (when the agent stops answering, whatever the cable reports). Any
+    /// mode but off also clears the system stay_on_while_plugged_in, which would outvote the app. Off by
+    /// default, so nothing changes.</summary>
+    public string Standby { get; set; } = "off";
+    /// <summary>Seconds the computer may be absent before the hold is released. Debounces a host reboot and a
+    /// network hiccup; the system's own screen-off timeout is what actually sleeps the display.</summary>
+    public int StandbyGraceSec { get; set; } = 30;
+        /// <summary>
+    /// The display settings as the phone should see them. Standby only works with a phone named in Settings
+    /// (deviceSerial), so without one the phone is told "off": the app must not release its keep-awake hold
+    /// when the agent will not write the matching system setting. The saved value is left alone.
+    /// </summary>
+    public DisplayConfig ForPhone(bool standbyForPhone)
+    {
+        if (Standby == "off" || standbyForPhone) return this;
+        var copy = (DisplayConfig)MemberwiseClone();
+        copy.Standby = "off";
+        return copy;
+    }
     /// <summary>landscape, portrait or auto (follow the phone). In portrait the widgets are arranged automatically.</summary>
     public string Orientation { get; set; } = "landscape";
     /// <summary>
@@ -655,6 +678,9 @@ public sealed partial class ConfigStore(string path)
 
     public string Path => path;
 
+    public string DataDir => System.IO.Path.GetDirectoryName(
+    System.IO.Path.GetFullPath(path))!;
+
     /// <summary>Version stamp (file write time) so the phone can notice changes.</summary>
     public long Version { get { Get(); return _seen.Ticks; } }
 
@@ -822,6 +848,8 @@ public sealed partial class ConfigStore(string path)
         c.Display.MinDwellSec = Math.Clamp(c.Display.MinDwellSec, 0, 600);
         c.Display.HoldMaxMin = Math.Clamp(c.Display.HoldMaxMin, 0, 1440);
         c.Display.FinishSoundVolume = Math.Clamp(c.Display.FinishSoundVolume, 10, 100);
+        c.Display.Standby = c.Display.Standby?.Trim().ToLowerInvariant() switch { "power" => "power", "data" => "data", _ => "off" };
+        c.Display.StandbyGraceSec = Math.Clamp(c.Display.StandbyGraceSec, 3, 600);
         c.Lan ??= new();
         c.Updates ??= new();
         c.Ping ??= new();

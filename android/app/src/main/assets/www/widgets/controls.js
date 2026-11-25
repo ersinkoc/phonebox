@@ -105,14 +105,14 @@ function audioView(box, options, mode) {
         const name = h('div', 'deck-channel-name', item.name);
         const signal = meter(item.peak);
         const kind = mode === 'app' || mode === 'apps' ? 'session' : 'device';
-        const controls = slider(item.name + ' volume', value => deckCommand(kind, { id: item.id, value }));
+        const controls = slider(tpv('{name} volume', { name: item.name }), value => deckCommand(kind, { id: item.id, value }));
         const mute = button('', () => deckCommand(kind, { id: item.id, muted: !row.item.muted }), 'Mute ' + item.name);
         mute.classList.add('deck-mute');
         const balance = [];
         el.append(name, signal);
         if (mode === 'balance') {
-          const left = slider('Left channel', value => deckCommand('device', { id: item.id, op: 'left', value }));
-          const right = slider('Right channel', value => deckCommand('device', { id: item.id, op: 'right', value }));
+          const left = slider(tp('Left channel'), value => deckCommand('device', { id: item.id, op: 'left', value }));
+          const right = slider(tp('Right channel'), value => deckCommand('device', { id: item.id, op: 'right', value }));
           left.set(item.volume); right.set(item.volume);
           balance.push(left, right);
           el.append(h('label', '', 'L', left.input, left.number), h('label', '', 'R', right.input, right.number));
@@ -215,15 +215,15 @@ function hold(box, options, power = null) {
 function mediaView(box, options, mode) {
   const title = h('div', 'deck-track'), source = h('div', 'deck-caption'); box.append(title, source);
   let current = null;
-  const call = (op, value) => current ? deckCommand('media', { id: current.id, op, value }) : Promise.reject(new Error('No media player selected'));
+  const call = (op, value) => current ? deckCommand('media', { id: current.id, op, value }) : Promise.reject(new Error(t('w.noMediaSelected')));
   const controls = h('div', 'deck-toolbar'); box.append(controls);
   let seek = null, shuffle = null, repeat = null;
-  if (mode === 'seek') { seek = slider('Playback position', value => call('seek', value)); box.append(seek.input, seek.number); }
+  if (mode === 'seek') { seek = slider(tp('Playback position'), value => call('seek', value)); box.append(seek.input, seek.number); }
   else if (mode === 'modes') {
-    shuffle = button('Shuffle', () => call('shuffle', current.shuffle ? 0 : 1));
-    repeat = button('Repeat', () => call('repeat', current.repeat === 'None' ? 1 : current.repeat === 'Track' ? 2 : 0));
+    shuffle = button(tp('Shuffle'), () => call('shuffle', current.shuffle ? 0 : 1));
+    repeat = button(tp('Repeat'), () => call('repeat', current.repeat === 'None' ? 1 : current.repeat === 'Track' ? 2 : 0));
     controls.append(shuffle, repeat);
-  } else controls.append(button(icon('skip-back'), () => call('prev'), 'Previous track'), button(icon('play'), () => call('playpause'), 'Play or pause'), button(icon('skip-forward'), () => call('next'), 'Next track'));
+  } else controls.append(button(icon('skip-back'), () => call('prev'), tp('Previous track')), button(icon('play'), () => call('playpause'), tp('Play or pause')), button(icon('skip-forward'), () => call('next'), tp('Next track')));
   return data => {
     current = selectedPlayer(data, options);
     title.textContent = current?.title || t('w.noMediaSelected'); source.textContent = current?.name || tp('Choose a source in Media sources');
@@ -524,7 +524,7 @@ function mixerView(box,options){
         if(item.kind==='mixer'){
           row.slider=slider(item.name+' gain',value=>deckCommand('action',{id:item.id,value}),12);row.slider.input.min=-60;
           el.append(row.slider.input,row.slider.number);
-        }else {row.toggle=button('Toggle',()=>deckCommand('action',{id:item.id,value:Number(row.item.state)>0?0:1}));el.append(row.toggle);}
+        }else {row.toggle=button(tp('Toggle'),()=>deckCommand('action',{id:item.id,value:Number(row.item.state)>0?0:1}));el.append(row.toggle);}
         rows.set(item.id,row);
       }
       row.item=item;row.label.textContent=item.name;row.state.textContent=item.available===false?item.state || t('w.notConnected'):'';
@@ -542,7 +542,7 @@ function listening(box) {
   const toggle = button(t('w.listen'), async () => {
     if (ctl) { stop(); return; }
     const Audio = window.AudioContext || window.webkitAudioContext;
-    if (!Audio || !window.ReadableStream) throw new Error('This WebView does not support live audio');
+    if (!Audio || !window.ReadableStream) throw new Error(tp('This WebView does not support live audio'));
     context = new Audio(); await context.resume(); ctl = new AbortController(); toggle.textContent = t('w.stopListening');
     state.textContent = t('w.listeningOn');
     const own = ctl;
@@ -550,19 +550,19 @@ function listening(box) {
     (async () => {
       try {
         const response = await fetch(API + '/controls/listen', { headers: PANEL_HEADERS, signal: own.signal });
-        if (!response.ok || !response.body) throw new Error('Listening is unavailable');
+        if (!response.ok || !response.body) throw new Error(tp('Listening is unavailable'));
         const reader = response.body.getReader(), decoder = new TextDecoder(); let text = '';
         while (ctl === own) {
           const chunk = await reader.read(); if (chunk.done) break;
           text += decoder.decode(chunk.value, { stream: true });
-          if (text.length > 1e6) throw new Error('Invalid audio stream');
+          if (text.length > 1e6) throw new Error(tp('Invalid audio stream'));
           let newline;
           while ((newline = text.indexOf('\n')) >= 0) {
             const packet = JSON.parse(text.slice(0, newline)); text = text.slice(newline + 1);
             if (!packet.data || !context) continue;
             const raw = Uint8Array.from(atob(packet.data), c => c.charCodeAt(0)); const view = new DataView(raw.buffer);
             const bytes = packet.bits / 8, frames = raw.length / bytes / packet.channels;
-            if (!Number.isInteger(frames) || ![16, 32].includes(packet.bits)) throw new Error('Unsupported audio format');
+            if (!Number.isInteger(frames) || ![16, 32].includes(packet.bits)) throw new Error(tp('Unsupported audio format'));
             const buffer = context.createBuffer(packet.channels, frames, packet.rate);
             for (let channel = 0; channel < packet.channels; channel++) {
               const samples = buffer.getChannelData(channel);
@@ -608,7 +608,7 @@ export function registerDeckWidget(type, title, mode = type) {
         const components = ['sleep', 'restart', 'shutdown'].map(action => { const item = h('div', 'deck-power-item'); group.append(item); return hold(item, o, action); });
         component = { render(data) { components.forEach(c => c.render(data)); }, destroy() { components.forEach(c => c.destroy()); } };
       } else if (mode === 'duck') {
-        let enabled = false; const b = button('Enable ducking', () => deckCommand('duck', { op: enabled ? 'off' : 'on', value: o.level ?? 25 })); box.append(b);
+        let enabled = false; const b = button(t('w.enableDucking'), () => deckCommand('duck', { op: enabled ? 'off' : 'on', value: o.level ?? 25 })); box.append(b);
         render = data => { enabled = data.ducking; b.textContent = enabled ? t('w.disableDucking') : t('w.enableDucking'); b.setAttribute('aria-pressed', String(enabled)); };
       } else if (mode === 'profiles') {
         const list = h('div', 'deck-actions'); box.append(list); let key = '';
@@ -617,8 +617,8 @@ export function registerDeckWidget(type, title, mode = type) {
           else list.replaceChildren(...data.profiles.map(p => button(p.name, () => deckCommand('profile', { id: p.id })))); };
       } else if (mode === 'sleep') {
         let player = null; const caption = h('div', 'deck-caption');
-        box.append(button(`Sleep in ${o.minutes || 30} min`, () => deckCommand('sleep', { id: player?.id || '', value: o.minutes || 30 })),
-          button('Cancel timer', () => deckCommand('sleep', { id: player?.id || '', value: 0 })), caption);
+        box.append(button(tpv('Sleep in {n} min', { n: o.minutes || 30 }), () => deckCommand('sleep', { id: player?.id || '', value: o.minutes || 30 })),
+          button(tp('Cancel timer'), () => deckCommand('sleep', { id: player?.id || '', value: 0 })), caption);
         render = data => { player = selectedPlayer(data, o); const timer = data.sleep?.find(t => t.id === player?.id);
           caption.textContent = timer ? tpv('Pausing {player} in {n} min', { player: player?.name || tp('player'), n: Math.max(0, Math.ceil((timer.at - Date.now()) / 60000)) }) : t('w.noSleepTimer'); };
       } else if (mode === 'brightness') {
@@ -626,7 +626,7 @@ export function registerDeckWidget(type, title, mode = type) {
         render = data => {
           const items = (data.monitors || []).filter(m => !o.device || m.id === o.device);
           if (!items.length) { empty(list, t('w.noMonitors')); return; }
-          reconcile(list, items.map(m => { if (!rows.has(m.id)) { const s = slider(m.name + ' brightness', value => deckCommand('brightness', { id: m.id, value }));
+          reconcile(list, items.map(m => { if (!rows.has(m.id)) { const s = slider(tpv('{name} brightness', { name: m.name }), value => deckCommand('brightness', { id: m.id, value }));
             rows.set(m.id, { ...s, el: h('div', 'deck-channel', h('div', 'deck-channel-name', m.name), s.input, s.number) }); }
             const row = rows.get(m.id); row.input.disabled = m.brightness == null; row.set(m.brightness || 0); if (m.brightness == null) row.number.textContent = tp('DDC/CI unavailable'); return row.el; }));
         };
@@ -688,7 +688,7 @@ const timeText = ms => { const s = Math.floor((ms || 0) / 1000); return Math.flo
 integrationWidget('obs-mixer', 'OBS mixer', 'obs', (root, data, send) => {
   if (!data.inputs?.length) { empty(root, 'No OBS inputs found'); return; }
   for (const input of data.inputs) {
-    const s = slider(input.name + ' volume', value => send('volume', {id:input.id,value}));
+    const s = slider(tpv('{name} volume', { name: input.name }), value => send('volume', {id:input.id,value}));
     s.set(input.volume || 0); s.input.disabled = input.volume == null;
     const mute = button(input.muted ? tp('Unmute') : tp('Mute'), ()=>send('mute',{id:input.id,enabled:!input.muted}), 'Mute ' + input.name);
     mute.disabled = input.muted == null;
@@ -710,11 +710,11 @@ integrationWidget('obs-recording', 'OBS recording and stream', 'obs', (root,data
 });
 integrationWidget('obs-replay', 'OBS replay buffer', 'obs', (root,data,send)=>{
   const toggle=button(data.replayActive?tp('Stop replay buffer'):tp('Start replay buffer'),()=>send('replay'));toggle.disabled=!data.replayAvailable;
-  const save=button('Save replay',()=>send('save-replay'));save.disabled=!data.replayActive;root.append(toggle,save);
+  const save=button(tp('Save replay'),()=>send('save-replay'));save.disabled=!data.replayActive;root.append(toggle,save);
 });
 integrationWidget('obs-transition', 'OBS transition', 'obs', (root,data,send)=>{
   for(const t of data.transitions || []) {const b=button(t.transitionName,()=>send('transition',{id:t.transitionName}));b.classList.toggle('selected',data.transition===t.transitionName);root.append(b);}
-  const s=slider('Transition duration',value=>send('duration',{value}),10000);s.input.min=50;s.input.step=50;s.set(data.duration || 300);s.input.disabled=data.duration==null;root.append(s.input,s.number);
+  const s=slider(tp('Transition duration'),value=>send('duration',{value}),10000);s.input.min=50;s.input.step=50;s.set(data.duration || 300);s.input.disabled=data.duration==null;root.append(s.input,s.number);
 });
 integrationWidget('obs-camera', 'OBS virtual camera', 'obs', (root,data,send)=>{
   const b=button(data.cameraActive?tp('Stop virtual camera'):tp('Start virtual camera'),()=>send('camera'));b.disabled=!data.cameraAvailable;root.append(b);
@@ -770,7 +770,7 @@ integrationWidget('plex-queue', 'Plex queue', 'plex/state', (root,data,send)=>{
 });
 integrationWidget('media-favorites', 'Spotify favorites', 'spotify/state', (root,data,send)=>{
   root.append(h('div','deck-track',data.current?.name || t('w.nothingPlaying')),h('div','deck-caption',data.current?.artist || ''));
-  const b=button('Save to library',()=>send('favorite'));b.disabled=!data.current?.id;root.append(b);
+  const b=button(tp('Save to library'),()=>send('favorite'));b.disabled=!data.current?.id;root.append(b);
 });
 W['meeting-timer'] = {needs:['tick'],create(box,{o}){
   const key='meeting-timer:'+ (o.timerId || 'default');
@@ -778,7 +778,7 @@ W['meeting-timer'] = {needs:['tick'],create(box,{o}){
   let state=store.get(key,{elapsed:0,started:0});
   const persist=()=>store.set(key,state);
   const start=button(state.started?tp('Pause'):tp('Start'),()=>{state=store.get(key,state);if(state.started){state.elapsed+=Date.now()-state.started;state.started=0;}else state.started=Date.now();persist();render();});
-  box.append(start,button('Reset',()=>{state={elapsed:0,started:0};persist();render();}));
+  box.append(start,button(tp('Reset'),()=>{state={elapsed:0,started:0};persist();render();}));
   function render(){state=store.get(key,state);const elapsed=state.elapsed+(state.started?Date.now()-state.started:0);clock.textContent=timeText(elapsed);start.textContent=state.started?t('w.pause'):t('w.start');start.setAttribute('aria-label',start.textContent);clock.classList.toggle('deck-overdue',elapsed>=(o.minutes || 30)*60000);}
   render();return {update:render};
 }};
@@ -834,9 +834,9 @@ W.trackpad = {
     const pad = h('div', 'deck-trackpad' + (scrollBar === 'left' ? ' has-scroll-left' : ''), surface);
     pad.setAttribute('tabindex', '0');
     pad.setAttribute('role', 'region');
-    pad.setAttribute('aria-label', o.title || 'Trackpad');
+    pad.setAttribute('aria-label', o.title || tp('Trackpad'));
     if (scrollBarEl) pad.append(scrollBarEl);
-    box.append(h('div', 'w-title', o.title || 'Trackpad'), pad);
+    box.append(h('div', 'w-title', o.title || en('Trackpad')), pad);
 
     if (!controlEnabled) {
       pad.classList.add('is-disabled');

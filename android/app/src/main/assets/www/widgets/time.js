@@ -52,7 +52,7 @@ W.progress = {
   create(box) {
     const rows = ['Day', 'Week', 'Month', 'Year'].map((n) => {
       const pct = h('span'), bar = h('i');
-      const row = h('div', 'pr-row', h('div', 'm-row', h('span', null, n), pct), h('div', 'track', bar));
+      const row = h('div', 'pr-row', h('div', 'm-row', h('span', null, tp(n)), pct), h('div', 'track', bar));
       return { pct, bar, row };
     });
     box.append(h('div', 'w-title', en('Time')), h('div', 'pr-list', rows.map((r) => r.row)));
@@ -190,7 +190,7 @@ W.breathe = {
           ball.style.transition = `transform ${secs}s ease-in-out`;
           if (name === 'Inhale') ball.style.transform = 'scale(1)';
           if (name === 'Exhale') ball.style.transform = 'scale(.45)';
-          word.textContent = name;
+          word.textContent = tp(name);
         }
         count.textContent = Math.ceil(secs - t);
       },

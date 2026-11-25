@@ -19,6 +19,16 @@ public class UsbLinkTests
         return usb;
     }
 
+    [Fact]
+    public void AKeyMatchesOnlyTheSelectedUsbPhone()
+    {
+        var usb = Linked();
+        usb.SetKey("FAKE2", OtherKey);
+        Assert.True(usb.MatchesPhone("FAKE1", "Bearer " + Key));
+        Assert.False(usb.MatchesPhone("FAKE1", "Bearer " + OtherKey));
+        Assert.False(usb.MatchesPhone(null, "Bearer " + Key));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

@@ -213,7 +213,7 @@
       pc: {
         cpu: Math.max(1, wave(37, 8, 46, 0, 6)), cpuName: 'AMD Ryzen 9 7950X 16-Core Processor', cpuTemp: wave(60, 52, 68), cpuPower: wave(41, 38, 96, 2, 4),
         ramUsedGb: wave(120, 21, 24), ramTotalGb: 64, netDownBps: Math.max(0, wave(23, 0.2e6, 9e6, 0, 1e6)), netUpBps: Math.max(0, wave(17, 40e3, 600e3, 1, 50e3)),
-        uptimeSec: 3 * 86400 + 5 * 3600 + Math.floor((now() - START) / 1000),
+        uptimeSec: 3 * 86400 + 5 * 3600 + Math.floor((now() - START) / 1000), seq: Math.floor(now() / 1000),
         disks: [{ name: 'C:', usedGb: 612, totalGb: 1000 }, { name: 'D:', usedGb: 1450, totalGb: 2000 }, { name: 'E:', usedGb: 310, totalGb: 4000 }],
         ...(() => {
           const gpus = [
@@ -946,7 +946,12 @@
     if (path === '/api/lan') return json({ configured: true, active: true, port: 8766, restartNeeded: false, hosts: ['192.168.1.20', '100.101.102.103'], fingerprint: 'demo' });
     if (path === '/api/update') return json({ status: { agentVersion: VERSION, appVersion: VERSION, latest: VERSION, releaseUrl: 'https://github.com/ersinkoc/phonebox/releases/latest', agentUpdate: false, appUpdate: false,
       lastCheck: now() - 3600e3, state: 'idle', error: null }, auto: (await config()).updates?.auto !== false, installed: true });
-    if (path === '/api/claude/hook') return json({ installed: false, path: '~/.claude/settings.json' });
+    if (path === '/api/claude/hook') {
+      // the extra accounts' settings.json files too, so the settings show where Install would write
+      const extra = (await config()).claude?.extraCredentialDirs || [];
+      return json({ installed: false, path: '~/.claude/settings.json', paths: [{ label: null, path: '~/.claude/settings.json', exists: true, installed: false },
+        ...extra.map((d) => ({ label: d.label, path: d.dir.replace(/\/$/, '') + '/settings.json', exists: true, installed: false }))] });
+    }
     if (method !== 'GET') return json({ ok: true });
     return json({ error: 'not in the demo' }, 404);
   }

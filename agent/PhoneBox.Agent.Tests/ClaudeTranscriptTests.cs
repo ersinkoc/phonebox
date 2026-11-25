@@ -133,6 +133,16 @@ public sealed class ClaudeTranscriptTests : IDisposable
     }
 
     [Fact]
+    public void FindFile_GivesNoFileForAProjectsFolderItMayNotList()
+    {
+        if (OperatingSystem.IsWindows()) return; // the folder is made unlistable with a Unix mode
+        var projects = Directory.CreateDirectory(Path.Combine(_root, "locked", "projects")).FullName;
+        File.SetUnixFileMode(projects, UnixFileMode.None);
+        try { Assert.Null(ClaudeTranscript.FindFile("abcdef12-3456", claudeDir: Path.Combine(_root, "locked"))); }
+        finally { File.SetUnixFileMode(projects, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
+    }
+
+    [Fact]
     public void FindFile_RefusesIdsThatCouldLeaveTheProjectsFolder()
     {
         var dir = Path.Combine(_root, ".claude", "projects", "-some-folder");

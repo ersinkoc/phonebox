@@ -101,7 +101,7 @@ W.air = {
           if (band) {
             box.style.setProperty('--c', band[2]);
             v.textContent = Math.round(aqi);
-            cat.textContent = band[1] + ' · ' + t('w.euroAqi');
+            cat.textContent = tp(band[1]) + ' · ' + t('w.euroAqi');
           } else clearIndex(t('w.unavailable'));
           chips.replaceChildren(...[['PM2.5', c.pm2_5], ['PM10', c.pm10], ['O₃', c.ozone], ['NO₂', c.nitrogen_dioxide]]
             .filter((x) => x[1] != null).map(([n, x]) => h('span', 'chip', `${n} ${Math.round(x)}`)));

@@ -38,3 +38,16 @@ test('accounts can be added, edited and removed, and are saved as label and fold
   const saved = JSON.parse((await page.evaluate(() => window.__savedBodies))[0]);
   expect(saved.claude.extraCredentialDirs).toEqual([{ label: 'personal', dir: '~/.claude-personal' }]);
 });
+
+test('with other accounts, the settings list every settings.json the hook would write before it does', async ({ page }) => {
+  await seed(page, [{ label: 'work', dir: '~/.claude-work' }]);
+  const box = page.locator('#claudeHookTargets');
+  await expect(box).toBeVisible();
+  await expect(box.locator('li')).toHaveText([/~\/\.claude\/settings\.json/, /work · ~\/\.claude-work\/settings\.json/]);
+  await expect(box).toContainText('Remove the hook before you delete an account');
+});
+
+test('without other accounts, the hook shows no list of files', async ({ page }) => {
+  await seed(page, []);
+  await expect(page.locator('#claudeHookTargets')).toBeHidden();
+});

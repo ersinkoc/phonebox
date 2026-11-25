@@ -528,6 +528,7 @@ nav a.on::before { color: var(--accent); }
                 <button type="button" data-screen="wide" data-i18n="s.pages.screen.wide">Wide tablet</button>
               </div>
               <span class="hint" id="screenHint" data-i18n="s.pages.screenHint">A phone page is 12 × 6. A tablet keeps the 12 columns and adds rows, so the page holds more widgets. Widgets below the top 6 rows stay on the tablet; a phone shows the top 6.</span>
+              <select class="preview-device" hidden></select>
               <span class="hint" id="stageHint"></span>
             </div>
             <div class="canvas-wrap"><div class="phone"><div class="canvas" id="canvas"></div><div class="preview" id="previewBox" hidden></div></div></div>
@@ -760,7 +761,21 @@ nav a.on::before { color: var(--accent); }
         <span class="hint" style="display:block;margin:-4px 0 10px" data-i18n="s.display.tabletRowsHint">A landscape tablet keeps the 12 columns and gets more rows (about 8 to 10, from its screen), so a page holds more widgets; upright, it packs 12 across. Widgets below the top 6 rows show only on a tablet: a phone leaves them out without a sign. Update the PhoneBox app on the tablet first, as an older app squeezes those widgets onto extra rows.</span>
         <div class="field" style="max-width:420px"><label for="weekStart" data-i18n="s.display.weekStart">First day of the week</label>
           <select id="weekStart" data-bind="display.weekStart"><option value="monday" data-i18n="s.display.weekStart.monday">Monday</option><option value="sunday" data-i18n="s.display.weekStart.sunday">Sunday</option><option value="auto" data-i18n="s.display.weekStart.auto">Follow the display language</option></select></div>
-        <div class="field" style="max-width:420px"><label data-i18n="s.display.timeFormat">Time format</label>
+          <div class="field" style="max-width:460px">
+            <label data-i18n="s.display.standby">Power standby</label>
+            <select data-bind="display.standby">
+              <option value="off" data-i18n="s.display.standby.off">Off: hold the screen while the panel runs</option>
+              <option value="power" data-i18n="s.display.standby.power">Sleep when USB charge is cut</option>
+              <option value="data" data-i18n="s.display.standby.data">Sleep when the agent stops answering</option>
+            </select>
+            <span class="hint" data-i18n="s.display.standbyHint">When the computer comes back, PhoneBox wakes the phone and opens the panel. A swipe-only lock screen is dismissed automatically. If the phone is protected by a PIN or pattern, you must still unlock it yourself. While standby is on, PhoneBox turns off Android's stay-awake-while-charging setting and restores it when standby is turned off. Standby only acts on the phone named under Phone connection › Phone to use; with no phone chosen it does nothing.</span>
+          </div>
+          <div class="field" style="max-width:170px">
+            <label data-i18n="s.display.standbyGrace">Standby grace (s)</label>
+            <input type="number" data-bind="display.standbyGraceSec" data-type="int" min="3" max="600" step="1">
+            <span class="hint" data-i18n="s.display.standbyGraceHint">Absorbs a reboot or a network hiccup.</span>
+          </div>
+          <div class="field" style="max-width:420px"><label data-i18n="s.display.timeFormat">Time format</label>
           <select data-bind="display.hour12" data-type="hour12"><option value="false" data-i18n="s.display.h24">24-hour (14:05)</option><option value="true" data-i18n="s.display.h12">12-hour (2:05 PM)</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select></div>
         <label class="check"><input type="checkbox" data-bind="display.showSeconds"> <span data-i18n="s.display.showSeconds">Show seconds on the clock</span></label>
         <label class="check"><input type="checkbox" data-bind="display.vibrate"> <span data-i18n="s.display.vibrate">Vibrate when a session finishes or needs input</span></label>
@@ -858,10 +873,11 @@ nav a.on::before { color: var(--accent); }
         <div class="row" style="margin-bottom:8px"><b style="min-width:92px" data-i18n="s.approvals.codex">Codex</b><button class="btn" id="codexHookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="codexHookState"></span></div>
         <p class="hint" id="codexHookTrust" style="display:none;margin:-2px 0 12px 100px" data-i18n-html="s.approvals.codexTrust">Required once: start a new Codex session, then trust the PhoneBox hook in <b>Settings › Hooks</b> (desktop) or <code>/hooks</code> (CLI).</p>
         <div class="row" style="margin-bottom:12px"><b style="min-width:92px" data-i18n="s.approvals.claude">Claude Code</b><button class="btn" id="claudeHookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="claudeHookState"></span></div>
+        <div class="hint" id="claudeHookTargets" style="margin:-6px 0 12px" hidden></div>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="claude.phoneApprovals"><span></span></label> <span data-i18n="s.claude.askOnPhone">Ask on the phone</span></div>
         <label class="check"><input type="checkbox" data-bind="claude.shareSessionTitles"> <span data-i18n="s.claude.shareSessionTitles">Show Claude Code chat titles on the phone (Claude Code often draws them from your first prompt)</span></label>
         <label class="check"><input type="checkbox" data-bind="claude.watchWsl"> <span data-i18n="s.claude.watchWsl">Also watch Claude Code in WSL: its sessions, and its sign-in for the quota when Windows has none (a stopped distro is never started for this)</span></label>
-        <p class="hint" style="margin:10px 0 6px" data-i18n="s.claude.extraDirs">Other Claude Code accounts for the quota: a label and the folder used as CLAUDE_CONFIG_DIR. Only the label reaches the phone. The label is part of the card id: renaming it changes the id, so pick the account again in widgets set to it.</p>
+        <p class="hint" style="margin:10px 0 6px" data-i18n="s.claude.extraDirs">Other Claude Code accounts for the quota, sessions and permission prompts: a label and the folder used as CLAUDE_CONFIG_DIR. Only the label reaches the phone. The label is part of the card id: renaming it changes the id, so pick the account again in widgets set to it.</p>
         <div id="claudeDirList"></div>
         <div style="margin-bottom:10px"><button class="btn sm" id="claudeDirAdd" data-i18n="s.claude.extraDirsAdd">＋ Add an account</button></div>
         <label class="check"><input type="checkbox" data-bind="claude.onlyWhenAway"> <span data-i18n="s.claude.onlyWhenAway">Only when I am away from the PC (no keyboard or mouse for a minute)</span></label>
@@ -1290,6 +1306,40 @@ if (!EDITOR_SCREENS[editorScreenId]) editorScreenId = 'phone';
 // Without Settings › Display › More rows on a tablet, every screen shows the phone page, so the editor does too.
 const tabletRowsOn = () => cfg?.display?.tabletRows === true;
 const editorScreen = () => EDITOR_SCREENS[tabletRowsOn() ? editorScreenId : 'phone'];
+let previewPhones = [], previewDeviceId = '', automaticPreviewDeviceId = '';
+function previewViewport(fallback) {
+  const phone = previewPhones.find(p => p.id === (previewDeviceId || automaticPreviewDeviceId));
+  return phone?.viewport ?? { width: fallback.previewW, height: fallback.previewH };
+}
+
+function syncPreviewDeviceSelectors() {
+  for (const select of document.querySelectorAll('.preview-device')) {
+    select.hidden = !previewPhones.length || (select.closest('#stage') && stageMode !== 'live');
+    select.setAttribute('aria-label', t('s.phones.title'));
+    select.replaceChildren(h('option', { value: '' }, tl('Automatic')),
+      ...previewPhones.map(p => h('option', { value: p.id }, p.name || p.model || p.id)));
+    select.value = previewDeviceId;
+    select.onchange = () => {
+      previewDeviceId = select.value;
+      syncPreviewViewports();
+    };
+  }
+}
+
+function syncPreviewViewports() {
+  syncPreviewDeviceSelectors();
+  fitPreview();
+  fitAppearancePreview();
+}
+
+function fitPreviewFrame(container, frame, viewport) {
+  if (!frame) return;
+  const { width, height } = viewport;
+  container.style.aspectRatio = `${width} / ${height}`;
+  frame.style.width = width + 'px';
+  frame.style.height = height + 'px';
+  frame.style.transform = `scale(${container.clientWidth / width})`;
+}
 const gridCols = () => editorScreen().cols;
 const gridRows = () => editorScreen().rows;
 let selPage = 0;
@@ -1371,7 +1421,7 @@ function widgetSummary(w) {
     case 'label': return o.text || '';
     case 'countdown': return o.label || '';
     case 'button': return cfg.shortcuts.find((s) => s.id === o.id)?.label || 'pick a shortcut';
-    case 'shortcuts': return (o.ids?.length ? `${o.ids.length} keys` : 'all keys') + ` · ${o.columns || 4} columns`;
+    case 'shortcuts': return (o.ids?.length ? tcv('{n} keys', { n: o.ids.length }) : tc('all keys')) + ' · ' + tcv('{n} columns', { n: o.columns || 4 });
     case 'worldclock': return (o.zones || d.options[0]?.default || []).map((z) => z.split('=')[0]).join(' · ');
     case 'quotas': case 'codexbar': return (o.providers || ['claude', 'codex', 'antigravity', 'grok']).join(' + ');
     case 'quotaring': return `${choice('provider')} · ${choice('limit').split(' (')[0]}`;
@@ -1379,7 +1429,7 @@ function widgetSummary(w) {
     case 'topprocs': case 'breathe': return choice(w.type === 'topprocs' ? 'sort' : 'pattern');
     case 'gpu': return choice('adapter');
     case 'timer': case 'counter': return o.label || '';
-    case 'checklist': return `${o.title || t('time.today')} · ${(o.items || d.options[1].default).length} items`;
+    case 'checklist': return `${o.title || t('time.today')} · ` + tcv('{n} items', { n: (o.items || d.options[1].default).length });
     case 'exchange': return `${o.base || 'EUR'} → ${(o.symbols || d.options[1].default).join(', ')}`;
     case 'crypto': return (o.coins || d.options[0].default).join(', ');
     case 'radio': return choice('view');
@@ -1485,7 +1535,7 @@ function renderPageEditor() {
           icon('home', 'm'), isHome(p) ? t('s.js.homePage') : t('s.js.makeHome')),
         h('label', { class: 'hint', title: t('s.js.backHomeAfterHint') }, t('s.js.backHomeAfter'),
           h('select', { onchange: (e) => { p.idleSec = e.target.value === '' ? null : +e.target.value; changed(); } },
-            ...[['', `${tc('default')} (${fmtIdle(cfg.display.idleReturnSec ?? 90)})`], ['0', tc('never')], ['30', '30 s'], ['60', '1 min'], ['120', '2 min'], ['300', '5 min'], ['900', '15 min'], ['3600', '1 hour']]
+            ...[['', `${tc('default')} (${fmtIdle(cfg.display.idleReturnSec ?? 90)})`], ['0', tc('never')], ['30', tcv('{n} s', { n: 30 })], ['60', tcv('{n} min', { n: 1 })], ['120', tcv('{n} min', { n: 2 })], ['300', tcv('{n} min', { n: 5 })], ['900', tcv('{n} min', { n: 15 })], ['3600', tc('1 hour')]]
               .map(([v, l]) => h('option', { value: v, selected: String(p.idleSec ?? '') === v }, l)))),
         h('button', { class: 'btn sm danger', disabled: cfg.pages.length === 1, onclick: () => {
           if (!confirm(t('s.js.deletePageConfirm', { title: p.title }))) return;
@@ -1519,6 +1569,8 @@ function setStage(mode) {
   $('canvas').hidden = live;
   $('previewBox').hidden = !live;
   $('pageEditor').classList.toggle('live', live);
+  const device = $('stage').querySelector('.preview-device');
+  device.hidden = !live || !previewPhones.length;
   updateStageText();
   if (live && !previewFrame) {
     previewFrame = h('iframe', { src: '../panel/?preview=1' });
@@ -1589,13 +1641,7 @@ function applyEditorScreen() {
     canvas.style.gridTemplateColumns = `repeat(${s.cols}, 1fr)`;
     canvas.style.gridTemplateRows = `repeat(${s.rows}, 1fr)`;
   }
-  const preview = $('previewBox');
-  if (preview) preview.style.aspectRatio = `${s.previewW} / ${s.previewH}`;
-  if (previewFrame) {
-    previewFrame.style.width = s.previewW + 'px';
-    previewFrame.style.height = s.previewH + 'px';
-    fitPreview();
-  }
+  fitPreview();
   const seg = $('screenSeg');
   if (seg) {
     seg.hidden = !tabletRowsOn();
@@ -1606,8 +1652,7 @@ function applyEditorScreen() {
 }
 
 function fitPreview() {
-  if (!previewFrame) return;
-  previewFrame.style.transform = `scale(${$('previewBox').clientWidth / editorScreen().previewW})`;
+  fitPreviewFrame($('previewBox'), previewFrame, previewViewport(editorScreen()));
 }
 
 function renderCanvas() {
@@ -1878,7 +1923,7 @@ function renderStackWidgetsOption(w, o) {
       const subOptions = (d.options || []).filter((opt) => opt.key !== 'widgets');
       const configBox = h('div', { class: 'stack-sub-config' },
         h('div', { class: 'stack-sub-header' },
-          h('span', { style: { fontWeight: '600', fontSize: '12px', color: 'var(--accent)' } }, icon('settings', 'm'), rich(`${d.icon} ${d.name} settings`)),
+          h('span', { style: { fontWeight: '600', fontSize: '12px', color: 'var(--accent)' } }, icon('settings', 'm'), rich(`${d.icon} ` + tcv('{name} settings', { name: tc(d.name) }))),
           h('button', { type: 'button', class: 'stack-btn-sm', title: t('panel.close'), onclick: (e) => { e.stopPropagation(); activeStackSubIdx = -1; renderInspector(); } }, icon('x'))
         ),
         ...(subOptions.length > 0
@@ -1890,7 +1935,7 @@ function renderStackWidgetsOption(w, o) {
                 save(false);
               }),
             ])
-          : [h('p', { class: 'hint', style: { margin: '2px 0 0', fontSize: '12px' } }, 'This widget has no additional settings.')])
+          : [h('p', { class: 'hint', style: { margin: '2px 0 0', fontSize: '12px' } }, tc('This widget has no additional settings.'))])
       );
       rowsAndConfigs.push(configBox);
     }
@@ -1921,7 +1966,7 @@ function renderStackWidgetsOption(w, o) {
     }
   },
     h('span', { style: { fontSize: '18px' } }, icon('plus')),
-    h('span', {}, items.length ? 'Drag a widget here from the palette' : 'Stack is empty. Drag a widget here from the palette')
+    h('span', {}, items.length ? tc('Drag a widget here from the palette') : tc('Stack is empty. Drag a widget here from the palette'))
   );
 
   const quickSelect = h('div', { class: 'row', style: { gap: '6px', marginTop: '8px' } },
@@ -1931,13 +1976,13 @@ function renderStackWidgetsOption(w, o) {
     h('button', { type: 'button', class: 'btn sm', onclick: () => {
       const sel = $('stackQuickAdd');
       if (sel?.value) add(sel.value);
-    } }, '＋ Add')
+    } }, tc('＋ Add'))
   );
 
   return h('div', { class: 'field' },
     h('label', {}, o.label || t('s.js.widgetsInStack')),
     h('span', { class: 'hint', style: { margin: '2px 0 8px', display: 'block' } },
-      'Click a widget row to edit its settings. Drag rows or use the arrows to reorder.'),
+      tc('Click a widget row to edit its settings. Drag rows or use the arrows to reorder.')),
     h('div', {
       class: 'stack-list',
       ondragover: (e) => e.preventDefault(),
@@ -2349,13 +2394,22 @@ async function pairOverWifi() {
 
 // ---------------------------------------------------------------- phones
 let phonesSeen = [];
-async function loadPhones() {
+async function loadPhones(renderList = true) {
   try { phonesSeen = await (await fetch('/api/phones')).json(); } catch (_) { return; }
-  renderPhones();
+  previewPhones = phonesSeen.filter(p => p.viewport && Date.now() - p.lastSeen < 45_000);
+  if (!previewPhones.some(p => p.id === previewDeviceId)) previewDeviceId = '';
+  if (!previewPhones.some(p => p.id === automaticPreviewDeviceId))
+    automaticPreviewDeviceId = previewPhones[0]?.id ?? '';
+  syncPreviewViewports();
+  if (renderList) renderPhones();
 }
+
+setInterval(() => {
+  if (stageMode === 'live' || appearancePreviewFrame?.parentElement?.hidden === false) loadPhones(false);
+}, 5000);
 function renderPhones() {
   cfg.phones ??= [];
-  const ago = (ms) => { if (!ms) return 'not seen since the agent started'; const s = (Date.now() - ms) / 1000; return s < 15 ? 'connected now' : s < 3600 ? `seen ${Math.round(s / 60)} min ago` : `seen ${Math.round(s / 3600)} h ago`; };
+  const ago = (ms) => { if (!ms) return tc('not seen since the agent started'); const s = (Date.now() - ms) / 1000; return s < 15 ? tc('connected now') : s < 3600 ? tcv('seen {n} min ago', { n: Math.round(s / 60) }) : tcv('seen {n} h ago', { n: Math.round(s / 3600) }); };
   const list = phonesSeen.length ? phonesSeen : [];
   if (!list.length) { $('phoneList').replaceChildren(h('p', { class: 'hint', 'data-i18n': 's.phones.empty' }, t('s.phones.empty'))); return; }
   const entry = (id) => { let e = cfg.phones.find((x) => x.id === id); if (!e) { e = { id, name: '', pages: null, homePage: null }; cfg.phones.push(e); } return e; };
@@ -2367,7 +2421,7 @@ function renderPhones() {
     return h('div', { class: 'phone-row' },
       h('div', { class: 'row' },
         h('input', { type: 'text', value: conf?.name || '', placeholder: ph.model || 'Phone', style: { maxWidth: '220px' }, oninput: (e) => { entry(ph.id).name = e.target.value; changed(); } }),
-        h('span', { class: 'hint' }, `${ph.model || 'Android device'} · ${ago(ph.lastSeen)}${ph.via ? ' over ' + ph.via : ''}${wvMajor ? ' · WebView ' + wvMajor : ''}`)),
+        h('span', { class: 'hint' }, `${ph.model || tc('Android device')} · ${ago(ph.lastSeen)}${ph.via ? tc(' over ') + ph.via : ''}${wvMajor ? ' · WebView ' + wvMajor : ''}`)),
       ph.webviewProblem ? h('p', { class: 'hint', style: { margin: '6px 0 0', color: 'var(--warn)' } }, icon('warn', 'm'), ph.webviewProblem) : null,
       h('label', { class: 'check', style: { marginTop: '8px' } },
         h('input', { type: 'checkbox', checked: all, onchange: (e) => { entry(ph.id).pages = e.target.checked ? null : cfg.pages.map((p) => p.id).filter(Boolean); changed(); renderPhones(); } }),
@@ -2410,7 +2464,7 @@ function pickFile() {
 function exportPages(pages, name) {
   const withCommands = pages.some((p) => (p.widgets || []).some((w) => w.type === 'command' || w.type === 'html'));
   download(name, { phonebox: 'pages', version: 1, exported: new Date().toISOString(), pages: JSON.parse(JSON.stringify(pages)) });
-  toast(withCommands ? 'Exported — it includes command / custom HTML widgets: check them before sharing' : 'Exported');
+  toast(withCommands ? tc('Exported — it includes command / custom HTML widgets: check them before sharing') : tc('Exported'));
 }
 async function importPages() {
   const text = await pickFile();
@@ -2431,15 +2485,15 @@ async function importPages() {
     const list = risky.flatMap((w) => w.type === 'command'
       ? [cut('Command (Windows)', w.options.command), cut('Command (Linux / macOS)', w.options.commandUnix)].filter(Boolean)
       : [`• Custom HTML (${String(w.options.html).length} characters)`]).join('\n');
-    const keep = confirm(`This file contains ${risky.length} widget(s) that run code on this computer:\n\n${list}\n\nOK = import them as they are (only if you trust the file)\nCancel = import them empty`);
+    const keep = confirm(tcv('This file contains {n} widget(s) that run code on this computer:\n\n{list}\n\nOK = import them as they are (only if you trust the file)\nCancel = import them empty', { n: risky.length, list }));
     if (!keep) for (const w of risky) { w.options = { ...w.options }; delete w.options.command; delete w.options.commandUnix; if (w.type === 'html') w.options.html = ''; }
   }
-  const replace = cfg.pages.length && confirm(`Import ${clean.length} page(s).\n\nOK = replace all ${cfg.pages.length} current pages\nCancel = add them after the current pages`);
+  const replace = cfg.pages.length && confirm(tcv('Import {n} page(s).\n\nOK = replace all {total} current pages\nCancel = add them after the current pages', { n: clean.length, total: cfg.pages.length }));
   if (replace) cfg.pages = clean; else cfg.pages.push(...clean);
   selPage = replace ? 0 : cfg.pages.length - clean.length;
   selWidget = -1;
   renderPages(); changed();
-  toast(`Imported ${clean.length} page(s)` + (dropped ? ` (${dropped} unknown widget(s) left out)` : '') + ' — remember to save');
+  toast(tcv('Imported {n} page(s)', { n: clean.length }) + (dropped ? tcv(' ({n} unknown widget(s) left out)', { n: dropped }) : '') + tc(' — remember to save'));
 }
 $('downloadJson').onclick = () => download('phonebox-settings', cfg);
 $('uploadJson').onclick = async () => {
@@ -2464,11 +2518,11 @@ function renderCalendars() {
 }
 $('installApp').onclick = async () => {
   $('installApp').disabled = true;
-  $('appMissingText').textContent = 'downloading and installing… (allow it on the phone if it asks)';
+  $('appMissingText').textContent = tc('downloading and installing… (allow it on the phone if it asks)');
   try {
     const r = await fetch('/api/phone/install', { method: 'POST' });
     const j = await r.json().catch(() => ({}));
-    $('appMissingText').textContent = r.ok ? 'Installed — the panel opens in a few seconds' : (j.error || 'Could not install it');
+    $('appMissingText').textContent = r.ok ? tc('Installed — the panel opens in a few seconds') : (j.error || tc('Could not install it'));
   } catch (_) { $('appMissingText').textContent = 'Could not install it'; }
   $('installApp').disabled = false;
   setTimeout(loadInfo, 4000);
@@ -2595,7 +2649,7 @@ function renderConsole() {
     h('textarea', { rows: '4', spellcheck: 'false', placeholder: 'Undo = ctrl+z\nRedo = ctrl+shift+z\nBrush = b',
       oninput: (e) => { p.keys = consoleKeysParse(e.target.value); changed(); } }, consoleKeysText(p)),
     h('div', { class: 'console-dial' },
-      field(p, 'dialLeft', 'Dial left, e.g. ['), field(p, 'dialRight', 'Dial right, e.g. ]'), field(p, 'dialPress', 'Dial press, e.g. ctrl+0')),
+      field(p, 'dialLeft', tc('Dial left, e.g. [')), field(p, 'dialRight', tc('Dial right, e.g. ]')), field(p, 'dialPress', tc('Dial press, e.g. ctrl+0'))),
     h('button', { class: 'btn sm danger', onclick: () => { cfg.console.profiles.splice(i, 1); renderConsole(); changed(); } }, t('s.js.remove')))));
 }
 $('consoleAdd').onclick = () => {
@@ -2803,7 +2857,7 @@ function renderCameras() {
     h('input', { type: 'text', class: 'cal-url', value: c.url || '', placeholder: 'rtsp://user:password@192.168.1.20:554/stream1', spellcheck: 'false', autocomplete: 'off',
       oninput: (e) => { c.url = e.target.value.trim(); changed(); } }),
     h('select', { title: 'Pictures a second', onchange: (e) => { c.fps = +e.target.value; changed(); } },
-      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => h('option', { value: n, selected: (c.fps || 5) === n }, `${n} fps`))),
+      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => h('option', { value: n, selected: (c.fps || 5) === n }, tcv('{n} fps', { n })))),
     h('select', { title: 'RTSP transport', onchange: (e) => { c.transport = e.target.value; changed(); } },
       ...[['tcp', 'TCP'], ['udp', 'UDP']].map(([v, l]) => h('option', { value: v, selected: (c.transport || 'tcp') === v }, l))),
     h('button', { class: 'btn sm danger', onclick: () => { cfg.cameras.sources.splice(i, 1); renderCameras(); changed(); } }, t('s.js.remove')))));
@@ -2814,6 +2868,17 @@ $('cameraAdd').onclick = () => {
   cfg.cameras.sources.push({ id: cameraId(), name: '', url: '', transport: 'tcp', fps: 5 });
   renderCameras(); changed();
 };
+// Which settings.json files Install / Remove hook write, shown before they do; only with other accounts set up
+function renderClaudeHookTargets(targets) {
+  const box = $('claudeHookTargets');
+  box.hidden = targets.length < 2;
+  if (box.hidden) return;
+  const state = (x) => !x.exists ? t('s.claude.hookTargetMissing') : x.installed ? '✓' : t('s.claude.notInstalled');
+  box.replaceChildren(h('div', {}, t('s.claude.hookTargets')),
+    h('ul', { style: 'margin:4px 0 6px;padding-left:18px' }, ...targets.map((x) => h('li', {},
+      x.label ? x.label + ' · ' : '', h('code', {}, x.path), ' — ', state(x)))),
+    h('div', {}, t('s.claude.hookRemoveFirst')));
+}
 // Extra Claude Code accounts: blank rows are dropped by the agent when saving
 function renderClaudeDirs() {
   const dirs = cfg.claude.extraCredentialDirs ??= [];
@@ -3011,7 +3076,7 @@ async function chargeTest(action) {
   if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveThenTest'), true); return; }
   const r = await fetch(`/api/charge/test?action=${action}`, { method: 'POST' });
   const j = await r.json().catch(() => ({}));
-  toast(r.ok ? `Power ${action}` : j.error || 'Could not switch', !r.ok);
+  toast(r.ok ? tc(action === 'on' ? 'Power on' : 'Power off') : j.error || tc('Could not switch'), !r.ok);
   pollCharge();
 }
 async function pollCharge() {
@@ -3021,7 +3086,7 @@ async function pollCharge() {
     const p = s.phone;
     const age = p ? Math.round((Date.now() - p.at) / 1000) : null;
     $('chargeState').replaceChildren(...(p
-      ? [`Phone: ${p.level}% `, ...(p.plugged ? [icon('zap', 'm'), 'charging'] : ['on battery']), ` (${age < 90 ? 'just now' : Math.round(age / 60) + ' min ago'})`]
+      ? [tcv('Phone: {n}% ', { n: p.level }), ...(p.plugged ? [icon('zap', 'm'), tc('charging')] : [tc('on battery')]), ` (${age < 90 ? tc('just now') : tcv('{n} min ago', { n: Math.round(age / 60) })})`]
       : [tc('No report from the phone yet')]),
       s.power ? ` · power ${s.power}` : '', s.error ? ` · ${s.error}` : '');
   } catch (_) {}
@@ -3519,7 +3584,7 @@ function renderControlSettings() {
       enField.querySelector('input').addEventListener('change', () => renderStations());
       const lblField = field(t('s.cd.controlLabel'), a, 'label');
       lblField.querySelector('input').addEventListener('change', () => renderStations());
-      box.append(enField, field(t('s.cd.controlId'), a, 'id'), lblField, h('label', {}, 'Kind'), kind, hint, targetField, plexBox, iconField, field(t('s.cd.argument'), a, 'argument'), field(t('s.cd.device'), a, 'device'), field(t('s.cd.value'), a, 'value', 'number'));
+      box.append(enField, field(t('s.cd.controlId'), a, 'id'), lblField, h('label', {}, t('s.cd.controlKind')), kind, hint, targetField, plexBox, iconField, field(t('s.cd.argument'), a, 'argument'), field(t('s.cd.device'), a, 'device'), field(t('s.cd.value'), a, 'value', 'number'));
       const output = h('pre', { style: { maxHeight: '240px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
       box.append(btn(t('s.cd.showOutput'), async () => { const r = await fetch('/api/controls/task-output/' + encodeURIComponent(a.id)); if (!r.ok) throw new Error(t('s.cd.outputUnavailable')); output.textContent = await r.text(); }), btn(t('s.cd.removeControl'), () => { c.actions = c.actions.filter((x) => x !== a); changed(); renderActions(); }), output);
       return box;
@@ -3547,7 +3612,7 @@ function renderControlSettings() {
           );
           dirStatus.textContent = `Loaded ${list.length} countries.`;
         } catch (e) {
-          dirStatus.textContent = e.message || 'Could not load countries from radio-browser.info.';
+          dirStatus.textContent = e.message || tc('Could not load countries from radio-browser.info.');
           throw e;
         }
       }),
@@ -3559,8 +3624,8 @@ function renderControlSettings() {
         const MAX_ACTIONS = 512;
         c.actions ||= [];
         if (c.actions.length >= MAX_ACTIONS) {
-          dirStatus.textContent = `Control Deck is full (${MAX_ACTIONS} controls maximum). Remove unused controls before importing.`;
-          toast(`Control Deck is full (${MAX_ACTIONS} max)`, true);
+          dirStatus.textContent = tcv('Control Deck is full ({n} controls maximum). Remove unused controls before importing.', { n: MAX_ACTIONS });
+          toast(tcv('Control Deck is full ({n} max)', { n: MAX_ACTIONS }), true);
           return;
         }
         const limit = Math.max(1, Math.min(100, parseInt(limitInput.value || '30', 10)));
@@ -3591,14 +3656,14 @@ function renderControlSettings() {
             added++;
           }
           if (added > 0) { changed(); renderActions(); }
-          const msg = `Imported ${added} new station(s)`
-            + (skipped ? ` (${skipped} already present)` : '')
-            + (capped ? ` — stopped at ${MAX_ACTIONS}-control limit (${capped} omitted)` : '')
+          const msg = tcv('Imported {n} new station(s)', { n: added })
+            + (skipped ? tcv(' ({n} already present)', { n: skipped }) : '')
+            + (capped ? tcv(' — stopped at {max}-control limit ({n} omitted)', { max: MAX_ACTIONS, n: capped }) : '')
             + '. Click Save to apply.';
           dirStatus.textContent = msg;
-          toast(capped ? `Imported ${added} stations (${MAX_ACTIONS} limit reached)` : `Imported ${added} station(s)`);
+          toast(capped ? tcv('Imported {n} stations ({max} limit reached)', { n: added, max: MAX_ACTIONS }) : tcv('Imported {n} station(s)', { n: added }));
         } catch (e) {
-          dirStatus.textContent = e.message || 'Could not import stations from radio-browser.info.';
+          dirStatus.textContent = e.message || tc('Could not import stations from radio-browser.info.');
           throw e;
         }
       }),
@@ -3612,14 +3677,14 @@ function renderControlSettings() {
           body: JSON.stringify({ stations: radios.map((a) => ({ id: a.id, streamUrl: a.target })) })
         });
         const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error || 'Stream check failed');
+        if (!r.ok) throw new Error(j.error || tc('Stream check failed'));
         const results = j.results || [];
         const byId = new Map(results.map((x) => [x.id, x]));
         const okCount = results.filter((x) => x.ok).length;
-        dirStatus.textContent = `Checked ${results.length} stream(s): ${okCount} live, ${results.length - okCount} unreachable (no controls were modified).`;
+        dirStatus.textContent = tcv('Checked {n} stream(s): {ok} live, {bad} unreachable (no controls were modified).', { n: results.length, ok: okCount, bad: results.length - okCount });
         checkReport.textContent = radios.map((a) => {
           const st = byId.get(a.id);
-          return `${st?.ok ? '✓' : '✗'} ${a.label || a.id} — ${st?.status || 'Unknown'} (${a.target})`;
+          return `${st?.ok ? '✓' : '✗'} ${a.label || a.id} — ${st?.status || tc('Unknown')} (${a.target})`;
         }).join('\n');
       })
     ),
@@ -3632,7 +3697,7 @@ function renderControlSettings() {
     const box=h('details',{},h('summary',{},p.label || p.id));
     box.append(field(t('s.cd.profileId'),p,'id'),field(t('s.cd.profileLabel'),p,'label'),field(t('s.cd.overrideOutput'),p,'output'),field(t('s.cd.overrideInput'),p,'input'));
     const levels=h('details',{},h('summary',{},t('s.cd.capturedLevelsTitle')));
-    for(const level of p.levels || []) levels.append(h('p',{class:'hint'},level.kind+': '+level.id),field('Volume',level,'volume','number'),field('Muted',level,'muted','checkbox'));
+    for(const level of p.levels || []) levels.append(h('p',{class:'hint'},level.kind+': '+level.id),field(tc('Volume'),level,'volume','number'),field(tc('Muted'),level,'muted','checkbox'));
     box.append(levels);
     const list=h('textarea',{'aria-label':'Profile action IDs',rows:3},(p.actions || []).join('\n'));
     const syncActions=()=>{p.actions=list.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);changed();};
@@ -3701,11 +3766,16 @@ function appearanceEditor(owner, parents, label, widget = false) {
           h('option', { value: 'true', selected: value === true }, on), h('option', { value: 'false', selected: value === false }, off))));
     }
     root.replaceChildren(h('summary', {}, label), h('p', { class: 'hint' }, widget
-      ? 'Overrides the page and global appearance. Inherit restores the preset or parent value.'
+      ? tc('Overrides the page and global appearance. Inherit restores the preset or parent value.')
       : tl('Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.')), ...fields,
       h('button', { type: 'button', class: 'btn sm', onclick: () => { delete owner.appearance; update(); render(); } }, t('s.appearance.reset')));
   };
   render(); return root;
+}
+
+function fitAppearancePreview() {
+  if (appearancePreviewFrame)
+    fitPreviewFrame(appearancePreviewFrame.parentElement, appearancePreviewFrame, previewViewport(EDITOR_SCREENS.phone));
 }
 
 function renderAppearanceSettings() {
@@ -3723,18 +3793,22 @@ function renderAppearanceSettings() {
     if (!appearancePreviewFrame && !preview.hidden) {
       appearancePreviewFrame = h('iframe', { src: '../panel/?preview=1', title: 'Live appearance preview' });
       preview.append(appearancePreviewFrame);
-      const frame = appearancePreviewFrame;
-      appearancePreviewObserver = new ResizeObserver(() => { frame.style.transform = 'scale(' + preview.clientWidth / 780 + ')'; });
+      appearancePreviewObserver = new ResizeObserver(fitAppearancePreview);
       appearancePreviewObserver.observe(preview);
+      fitAppearancePreview();
     }
     queuePreview();
   } }, t('s.appearance.showPreview'));
   root.replaceChildren(h('h3', {}, t('s.appearance.title')), h('p', { class: 'hint' }, t('s.ap.lead')),
-    editor, h('div', { class: 'row', style: { gap: '10px', marginBottom: '12px' } }, selector, toggle), preview);
+    editor, h('div', { class: 'row', style: { gap: '10px', marginBottom: '12px' } }, selector, toggle,
+      h('select', { class: 'preview-device', hidden: true })), preview);
+  syncPreviewDeviceSelectors();
 }
 
 const t = (k, v) => (window.PhoneBoxI18n ? window.PhoneBoxI18n.t(k, v) : k);
 const tc = (s) => (window.PhoneBoxI18n?.tc ? window.PhoneBoxI18n.tc(s) : s);
+// tc() with {name} placeholders filled in after the lookup; a declaration so code above may call it too
+function tcv(s, vars) { return Object.entries(vars).reduce((r, [k, v]) => r.split(`{${k}}`).join(String(v)), tc(s)); }
 
 /** The catalog ships English names, descriptions and option labels; translate a copy so every render site
  *  keeps working unchanged. The English original stays in catalogRaw for the next language switch. */
@@ -3903,11 +3977,11 @@ async function loadInfo() {
     $('usbProblem').replaceChildren(...(i.usbProblem ? [icon('warn', 'm'), i.usbProblem] : []));
     $('webviewProblem').hidden = !i.webviewProblem;
     $('webviewProblem').replaceChildren(...(i.webviewProblem ? [icon('warn', 'm'), i.webviewProblem] : []));
-    if (i.appMissing?.length) $('appMissingText').textContent = `${i.appMissing.join(', ')} has no PhoneBox app yet`;
+    if (i.appMissing?.length) $('appMissingText').textContent = tcv('{names} has no PhoneBox app yet', { names: i.appMissing.join(', ') });
     const sel = $('serial');
     const cur = cfg.deviceSerial || '';
     const opts = [['', t('s.conn.allDevices')], ...i.devices.map((d) => [d, d])];
-    if (cur && !i.devices.includes(cur)) opts.push([cur, cur + ' (not connected)']);
+    if (cur && !i.devices.includes(cur)) opts.push([cur, cur + tc(' (not connected)')]);
     sel.replaceChildren(...opts.map(([v, l]) => h('option', { value: v, selected: v === cur }, l)));
     sel.onchange = () => { cfg.deviceSerial = sel.value || null; changed(); };
     const ignore = $('ignoreDevice'), addIgnore = $('ignoreDeviceAdd');
@@ -3925,7 +3999,7 @@ async function loadInfo() {
     const lan = await (await fetch('/api/lan')).json();
     $('lanHosts').textContent = lan.hosts.length
       ? lan.hosts.map((a) => a.startsWith('100.') ? a + ' (Tailscale)' : a).join(', ')
-      : 'No LAN or Tailscale address found';
+      : tc('No LAN or Tailscale address found');
     lanInfo = lan;
     renderLanStatus();
     $('restartBtn').hidden = !lan.restartNeeded;
@@ -3938,6 +4012,9 @@ async function loadInfo() {
     ]);
     // Cursor's hook can sit in several places (Windows and each running WSL distro): list the ones that have it
     cursorHook.path = (cursorHook.paths || []).filter((p) => p.installed).map((p) => p.path).join(', ');
+    renderClaudeHookTargets(claudeHook.paths || []);
+    // with other accounts, "Installed in" names the files that have it, like Cursor's
+    if ((claudeHook.paths || []).length > 1) claudeHook.path = claudeHook.paths.filter((p) => p.installed).map((p) => p.path).join(', ');
     for (const [name, hk] of [['claude', claudeHook], ['codex', codexHook], ['cursor', cursorHook]]) {
       $(`${name}HookState`).textContent = hk.installed ? t('s.claude.installedIn', { path: hk.path }) : t('s.claude.notInstalled');
       const btn = $(`${name}HookBtn`);
@@ -4028,12 +4105,12 @@ $('openPhone').onclick = async () => {
   let onPhone = null;
   try { onPhone = (JSON.parse(saved || '{}').pages || []).find((s) => s.id === p?.id && s.enabled !== false); } catch (_) { }
   if (p?.id && p.enabled !== false && !onPhone) {
-    toast(`Save first: ${p.title || 'this page'} is not on the phone yet`, true);
+    toast(tcv('Save first: {title} is not on the phone yet', { title: p.title || tc('this page') }), true);
     return;
   }
   if (p?.id && p.enabled !== false) {
     await fetch('/api/goto/' + encodeURIComponent(p.id) + '?countdown=0', { method: 'POST' });
-    toast(`Showing ${p.title || 'this page'} on the phone`);
+    toast(tcv('Showing {title} on the phone', { title: p.title || tc('this page') }));
   } else toast(t('s.js.openingPanel'));
 };
 $('cityBtn').onclick = searchCity;
