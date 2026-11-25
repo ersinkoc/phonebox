@@ -947,6 +947,10 @@
     if (path === '/api/update') return json({ status: { agentVersion: VERSION, appVersion: VERSION, latest: VERSION, releaseUrl: 'https://github.com/ersinkoc/phonebox/releases/latest', agentUpdate: false, appUpdate: false,
       lastCheck: now() - 3600e3, state: 'idle', error: null }, auto: (await config()).updates?.auto !== false, installed: true });
     if (path === '/api/workbuddy/hook') return json({ installed: false, path: '~/.workbuddy/settings.json' });
+    if (path === '/api/guba') return json({
+      posts: [{ id: 'demo-1', title: 'Morning market notes', author: 'Demo user', time: '2026-01-01 09:20', reads: 36, comments: 2 }],
+      updated: now(),
+    });
     if (path === '/api/claude/hook') {
       // the extra accounts' settings.json files too, so the settings show where Install would write
       const extra = (await config()).claude?.extraCredentialDirs || [];

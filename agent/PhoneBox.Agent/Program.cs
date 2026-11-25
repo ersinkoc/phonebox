@@ -551,6 +551,17 @@ app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg, SystemMonitor monitor)
     webviewProblem = WebViewDoctor.DiagnoseRecent(PhoneRegistry.All(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
 }));
 
+// Guba (East Money stock forum) latest posts for one stock code, e.g. "002317".
+app.MapGet("/api/guba", async (ConfigStore cfg, string? code, int? count) =>
+{
+    if (code is null || !cfg.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "guba"
+        && (w.Str("code") ?? "002317").Trim() == code)) return Results.NotFound();
+    var (posts, updated, error) = await GubaFeed.LatestAsync(code, count ?? 10);
+    return posts is null
+        ? Results.Json(new { error = error ?? "no data" }, statusCode: 404)
+        : Results.Json(new { posts, updated, error });
+});
+
 // Phone mic status for the settings page and scripts (local port only: not a phone path, see Lan.AllowedOverLan).
 app.MapGet("/api/phone-mic", (PhoneMic mic) => Results.Json(new { mic = mic.Snapshot() }));
 app.MapPost("/api/phone-mic/mute", (bool? muted, PhoneMic mic) =>
