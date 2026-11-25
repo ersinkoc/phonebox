@@ -32,6 +32,55 @@ public class ConfigTests
     }
 
     [Fact]
+    public void ExtraClaudeCredentialDirsDropBlankAndRepeatedEntries()
+    {
+        var c = Load("""{"claude":{"extraCredentialDirs":[{"label":" work ","dir":" ~/.claude-work "},{"label":"","dir":"/x"},{"label":"y","dir":""},{"label":"again","dir":"~/.claude-work/"},{"label":"relative","dir":"claude-x"},{"label":"default","dir":"~/.claude"},null]}}""");
+        var d = Assert.Single(c.Claude.ExtraCredentialDirs);
+        Assert.Equal("work", d.Label);
+        Assert.Equal("~/.claude-work", d.Dir);
+        Assert.Empty(Load("{}").Claude.ExtraCredentialDirs);
+    }
+
+    [Fact]
+    public void ExtraClaudeLabelsAreUniqueAndShortBecauseTheyMakeTheCardId()
+    {
+        string Dir(string name) => Path.Combine(Path.GetTempPath(), name); // fully qualified on every platform
+        var c = Load(JsonSerializer.Serialize(new { claude = new { extraCredentialDirs = new[]
+        {
+            new { label = "Work", dir = Dir("a") }, new { label = " work ", dir = Dir("b") },
+            new { label = "a-label-longer-than-twenty", dir = Dir("c") }, new { label = "home", dir = Dir("d") },
+        } } }));
+        Assert.Equal(["Work", "home"], c.Claude.ExtraCredentialDirs.Select(d => d.Label));
+    }
+
+    [Fact]
+    public void ExtraClaudeFoldersAreComparedByTheirFullPath()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "claude-work");
+        var c = Load(JsonSerializer.Serialize(new { claude = new { extraCredentialDirs = new[]
+        {
+            new { label = "work", dir = work },
+            new { label = "dots", dir = Path.Combine(Path.GetTempPath(), "x", "..", "claude-work") },
+            new { label = "here", dir = Path.Combine(Path.GetTempPath(), ".", "claude-work") + Path.DirectorySeparatorChar },
+            new { label = "home", dir = "~/x/../.claude" },
+            new { label = "dot", dir = "~/./.claude" },
+        } } }));
+        Assert.Equal("work", Assert.Single(c.Claude.ExtraCredentialDirs).Label);
+    }
+
+    [Fact]
+    public void AnExtraClaudeFolderThatCantBeMadeFullIsDroppedAndTheRestIsKept()
+    {
+        var c = Load(JsonSerializer.Serialize(new { claude = new { extraCredentialDirs = new[]
+        {
+            // throws in GetFullPath on every platform, like a path past the Windows length limit does there
+            new { label = "nul", dir = Path.Combine(Path.GetTempPath(), "a\0b") },
+            new { label = "work", dir = Path.Combine(Path.GetTempPath(), "claude-work") },
+        } } }));
+        Assert.Equal("work", Assert.Single(c.Claude.ExtraCredentialDirs).Label);
+    }
+
+    [Fact]
     public void EmptyConfigGetsTheDefaultPagesAndFreshTokens()
     {
         var c = Load("{}");
@@ -295,9 +344,40 @@ public class ConfigTests
         var ws = c.Pages.Single().Widgets!;
         Assert.Equal(3, ws.Count);                                      // the unknown widget is dropped
         var clock = ws[0];
-        Assert.True(clock.X + clock.W <= 12 && clock.Y + clock.H <= 6);
+        Assert.True(clock.X + clock.W <= Catalog.Cols && clock.Y + clock.H <= Catalog.MaxRows);
+        Assert.Equal(9, clock.H); // taller than a phone page, still inside the tablet maximum
         Assert.Equal(0, ws[1].X);
         Assert.Equal(["clock", "n", "n-2"], ws.Select(w => w.Id));
+    }
+
+    [Fact]
+    public void WidgetsOnLaterRowsStayThereUntilTheMaximum()
+    {
+        var c = Load("""
+        { "pages": [ { "id": "p", "title": "P", "widgets": [
+            { "type": "clock", "x": 0, "y": 6, "w": 6, "h": 2 },
+            { "type": "note", "x": 0, "y": 40, "w": 2, "h": 30 } ] } ] }
+        """);
+        var ws = c.Pages.Single().Widgets!;
+        Assert.Equal(6, ws[0].Y); // below a phone's 6 rows: kept for a tablet
+        Assert.Equal(2, ws[0].H);
+        Assert.Equal(Catalog.MaxRows, ws[1].H);
+        Assert.True(ws[1].Y + ws[1].H <= Catalog.MaxRows);
+    }
+
+    [Fact]
+    public void MoreRowsOnATabletIsOffByDefaultAndKeptWhenOn()
+    {
+        Assert.False(Load("{}").Display.TabletRows);
+        Assert.True(Load("""{ "display": { "tabletRows": true } }""").Display.TabletRows);
+        // the default files are embedded in the agent, not copied next to the tests
+        foreach (var name in new[] { "config.default.json", "config.default.linux.json", "config.default.macos.json" })
+        {
+            using var stream = typeof(AgentConfig).Assembly.GetManifestResourceStream(name);
+            Assert.NotNull(stream);
+            using var doc = System.Text.Json.JsonDocument.Parse(stream, new() { CommentHandling = System.Text.Json.JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            Assert.Equal(System.Text.Json.JsonValueKind.False, doc.RootElement.GetProperty("display").GetProperty("tabletRows").ValueKind);
+        }
     }
 
     [Fact]
@@ -342,6 +422,19 @@ public class ConfigTests
         Assert.Equal(["away", "away-2"], c.Rules.Select(r => r.Id));
         Assert.Equal(1440, c.Rules[0].Value);
         Assert.Equal("info", c.Rules[0].Level);
+    }
+
+    [Theory]
+    [InlineData("""{"display":{"standby":"power"}}""", false, "off")]
+    [InlineData("""{"deviceSerial":"FAKE1","display":{"standby":"power"}}""", false, "off")]
+    [InlineData("""{"deviceSerial":"FAKE1","display":{"standby":"power"}}""", true, "power")]
+    [InlineData("""{"deviceSerial":"FAKE1","ignoredDeviceSerials":["FAKE1"],"display":{"standby":"power"}}""", true, "off")]
+    public void StandbyReachesOnlyTheSelectedUsbPhone(string json, bool selected, string expected)
+    {
+        var c = Load(json);
+        var display = JsonSerializer.SerializeToElement(c.ToPublic(standbyForPhone: selected), ConfigStore.WriteOpts).GetProperty("display");
+        Assert.Equal(expected, display.GetProperty("standby").GetString());
+        Assert.Equal("power", c.Display.Standby); // the saved value is unchanged
     }
 }
 

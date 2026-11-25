@@ -149,6 +149,47 @@ public sealed class LyricsServiceTests : IDisposable
     }
 
     [Fact]
+    public void QueriesDropTheBracketedExtrasAndTheExtraArtists()
+    {
+        // a player that names a translated title, a version note and three artists in one string: LRCLIB matches the
+        // track name as a whole, so only the bare form can be found
+        var queries = LyricsService.Queries(
+            "secret base ~君がくれたもの~ (秘密基地 ~你所给予之物~) (10 years after Ver.)",
+            "茅野愛衣 (かやの あい)/戸松遥 (とまつ はるか)/早見沙織 (はやみ さおり)").ToList();
+        Assert.Equal("secret base ~君がくれたもの~ (秘密基地 ~你所给予之物~) (10 years after Ver.)", queries[0].Title);
+        Assert.Equal("茅野愛衣 (かやの あい)/戸松遥 (とまつ はるか)/早見沙織 (はやみ さおり)", queries[0].Artist);
+        Assert.Contains(("secret base ~君がくれたもの~", "茅野愛衣"), queries);
+        Assert.Contains(("secret base ~君がくれたもの~", ""), queries);
+        // an ordinary title has one query, as before
+        Assert.Equal([("Song", "Artist")], LyricsService.Queries("Song", "Artist"));
+        // and an empty artist must not send the same search twice
+        var noArtist = LyricsService.Queries("Song (Mix)", "").ToList();
+        Assert.Equal(noArtist.Count, noArtist.Distinct().Count());
+        // an artist-only cleanup still falls back to the title alone when both artist-filtered searches miss
+        Assert.Contains(("Song", ""), LyricsService.Queries("Song", "A/B"));
+    }
+
+    [Fact]
+    public async Task ATitleWithBracketedExtrasIsSearchedWithoutThem()
+    {
+        var lrclib = new Lrclib(req =>
+        {
+            var q = Uri.UnescapeDataString(req.RequestUri!.Query);
+            return q.Contains("track_name=secret base ~君がくれたもの~", StringComparison.Ordinal)
+                && !q.Contains("(秘密基地", StringComparison.Ordinal)
+                ? Json("""[{"id":1,"trackName":"secret base ~君がくれたもの~","artistName":"茅野愛衣","duration":352,"instrumental":false,"syncedLyrics":"[00:01.00] one"}]""")
+                : Json("[]");
+        });
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib);
+        var result = await Ask(lyrics, Track(
+            "secret base ~君がくれたもの~ (秘密基地 ~你所给予之物~) (10 years after Ver.)",
+            "茅野愛衣 (かやの あい)/戸松遥 (とまつ はるか)", durMs: 352_504));
+        Assert.Equal("ok", result.Status);
+        Assert.StartsWith("[00:01.00]", result.Synced);
+        Assert.True(lrclib.Asked.Count is > 1 and <= 5, $"asked {lrclib.Asked.Count} times");
+    }
+
+    [Fact]
     public void TheSearchPrefersTheSameSongToABetterFormatAndSkipsNonObjects()
     {
         // the search matches keywords: a timed "Coming Home" must not beat a plain "Home" by the same artist
@@ -189,6 +230,10 @@ public sealed class LyricsServiceTests : IDisposable
     [Theory]
     [InlineData("Song", "Artist", "Song", "Artist")]
     [InlineData("Artist - Song (Official Music Video)", "ArtistVEVO", "Song", "Artist")]
+    // #551: a VEVO channel writes a multi-word name without spaces
+    [InlineData("Tan Bionica - Obsesionario En La Mayor", "TanBionicaVEVO", "Obsesionario En La Mayor", "Tan Bionica")]
+    [InlineData("Other Band - Song", "TanBionicaVEVO", "Other Band - Song", "TanBionica")]
+    [InlineData("The Band - Song", "TheBanditVEVO", "The Band - Song", "TheBandit")]
     [InlineData("Artist - Song [Lyrics]", "", "Song", "Artist")]
     [InlineData("Song - Remastered 2011", "The Beatles", "Song - Remastered 2011", "The Beatles")]
     [InlineData("Song (Live)", "Band - Topic", "Song (Live)", "Band")]

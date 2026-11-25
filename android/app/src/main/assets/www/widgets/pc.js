@@ -52,7 +52,7 @@ W.batteries = {
     const render = () => {
       const devices = [...(data?.devices || [])];
       if (o.phone !== false && bridge) {
-        try { const b = JSON.parse(bridge.battery()); if (b.level >= 0) devices.push({ name: 'This phone', level: b.level, kind: 'phone', charging: b.plugged }); } catch (_) {}
+        try { const b = JSON.parse(bridge.battery()); if (b.level >= 0) devices.push({ name: tp('This phone'), level: b.level, kind: 'phone', charging: b.plugged }); } catch (_) {}
       }
       const key = JSON.stringify([devices, box.clientHeight]);
       if (key === lastKey) return;
@@ -347,6 +347,7 @@ const dcFocus = {
     };
 
     const renderFocus = (s, ctl) => {
+      const joinControl = data.joinControl ?? ctl;
       // screen share switched off (or the Discord widget's Control): nothing of it is kept, the shared app's name included
       if (!data.share) share = null;
       const servers = new Map();
@@ -374,7 +375,7 @@ const dcFocus = {
       // voice activity when the widget may switch the input mode.
       const ptt = () => {
         if (s.inputMode !== 'PUSH_TO_TALK' || s.pttKey) return null;
-        const fix = ctl ? h('button', 'dcf-warnbtn' + (busy === 'inputmode' ? ' busy' : ''), t('w.a.useVoiceActivity')) : null;
+        const fix = joinControl ? h('button', 'dcf-warnbtn' + (busy === 'inputmode' ? ' busy' : ''), t('w.a.useVoiceActivity')) : null;
         if (fix) { if (!busy) fix.addEventListener('click', () => act('inputmode')); else fix.disabled = true; }
         return h('div', 'dcf-warn', h('span', null, t('w.discord.pttNoKey')), fix);
       };
@@ -395,7 +396,7 @@ const dcFocus = {
         const lastId = store.get('dc-last', null)?.id;
         const last = o.channels !== false && lastId ? s.channels.find((c) => c.id === lastId) : null;
         const back = last ? h('button', 'dcf-back', icon('rotate-ccw'), h('span', null, t('w.discord.backTo', { name: last.name + (last.guild ? ' · ' + last.guild : '') }))) : null;
-        if (back) { if (ctl && !busy) back.addEventListener('click', () => act('join', last.id)); else back.disabled = true; }
+        if (back) { if (joinControl && !busy) back.addEventListener('click', () => act('join', last.id)); else back.disabled = true; }
         mid = h('div', 'dcf-empty', h('span', 'dcf-eico', icon('volume-x')), h('div', 'dcf-name', t('w.discord.notInChannel')),
           h('div', 'dcf-hint', t('w.discord.tapToJoin')), back);
       }
@@ -445,7 +446,7 @@ const dcFocus = {
         right = h('div', 'dcf-right', tabs, showChannels ? h('div', 'dcf-cap', t('w.discord.channelsOf', { name: sel ? sname(sel) : '' })) : null,
           showChannels ? h('div', 'dcf-grid', ...chans.map((c) => {
             const b = h('button', 'dcf-chan' + (c.id === s.channelId ? ' cur' : '') + (busy === 'join' + c.id ? ' busy' : ''), icon('volume-2'), h('span', null, c.name));
-            if (ctl && !busy && c.id !== s.channelId) b.addEventListener('click', () => act('join', c.id));
+            if (joinControl && !busy && c.id !== s.channelId) b.addEventListener('click', () => act('join', c.id));
             return b;
           })) : null);
         if (o.notifications !== false && s.notifications?.length) {
@@ -506,7 +507,153 @@ const dcFocus = {
       loadChat().then(() => render());
     };
     // 'fast' (every 250 ms) drives the asking; 'tick' (every second) also redraws when the widget's size changes
-    return { update: (kind) => { poll(); pollShare(); pollChat(); if (kind !== 'fast') render(); } };
+    return { update: (kind) => {
+      poll(); pollShare(); pollChat();
+      if (kind !== 'fast') render();
+      if (!data?.snapshot?.connected) return;
+      // the request is for a Discord widget on the page itself, not a Smart Stack card (as in the list layout)
+      const to = box.closest('.stack-item') ? null : dcTake(page, visible());
+      if ((to === 'share' && data.share) || (to === 'chat' && data.chat)) openTab(to);
+    } };
+
+  },
+};
+
+// ---- Discord current-channel bar ---------------------------------------------------------------------------------
+// The bar asks the Discord widget to open a tab: go to the first page that holds one; only a Discord widget on that
+// page picks the request up, once it is on screen. A Discord widget inside a Smart Stack is not looked for: the stack
+// shows one card at a time, so the request could not say which.
+let dcWant = null;
+const dcOpen = (tab) => {
+  // the first page whose own Discord widget is built on this screen: one on a tablet-only row is not built on a phone
+  const sections = [...document.querySelectorAll('#pager > .page')];
+  const target = pages[sections.findIndex((sec) => [...sec.querySelectorAll('.w-discord')].some((el) => !el.closest('.stack-item')))];
+  if (!target) { toast(t('w.discord.addWidget'), 'err'); return; }
+  dcWant = { tab, page: target };
+  gotoPageRef(pages.indexOf(target) + 1);
+};
+/** The tab the bar asked this widget to open, taken once: only on the page the request was for, and only once it shows. */
+const dcTake = (page, shown) => {
+  if (!dcWant || dcWant.page !== page || !shown) return null;
+  const { tab } = dcWant;
+  dcWant = null;
+  return tab;
+};
+
+// The voice channel you are in as a bar any page can hold: the channel, who is there and mic / sound / screen / chat /
+// leave. Its layout follows its size in the grid (style.css, container queries). Outside a voice channel it hides and
+// the widgets next to it take its cells (reflowPage in main.js), unless "autoHide" is off. Screen and Chat open those
+// tabs of the Discord widget; while you share, Screen stops the share.
+W['discord-bar'] = {
+  needs: ['tick', 'fast'],
+  create(box, { o, page, reflow }) {
+    let data = null, lastKey = '', busy = null;
+    let share = null, shareBusy = false, shareWaiting = false, shareNext = 0;
+    const rings = new Map();
+    const load = async () => { try { data = await api('/discord'); } catch (_) {} };
+    const loadShare = async () => {
+      shareWaiting = true;
+      try { share = await api('/discord/share', undefined, 8000); } catch (_) {} finally { shareWaiting = false; }
+    };
+    const act = async (action) => {
+      if (busy) return;
+      haptic();
+      busy = action; render(true);
+      await dcPost(action);
+      await new Promise((done) => setTimeout(done, 600));
+      await load(); busy = null; render(true);
+    };
+    // after a rebuild (a rotation, a settings save) a late answer must not reflow the old page
+    let destroyed = false;
+    const hide = (v) => { if (!destroyed && box.hidden !== v) { box.hidden = v; reflow?.(); } };
+    // It hides only on a page grid that can give its rows away (a Smart Stack card has no reflow), never in the
+    // settings' live preview, and only once the agent has answered, so it doesn't blink away while the page loads.
+    const canHide = o.autoHide !== false && !!reflow && !PREVIEW;
+    // Out of a channel it was showing (or Discord reconnecting for a moment) it waits a little before it hides, so the
+    // widgets around it don't jump for a blip.
+    const GRACE = 3000;
+    let shownIn = false, awaySince = 0;
+    // Start hidden where it may hide, so the widgets around it don't jump when the first answer says you are not in a
+    // channel; the page gives its rows away once every widget is in place.
+    if (canHide) { box.hidden = true; queueMicrotask(() => { if (!destroyed) reflow(); }); }
+    const render = (force = false) => {
+      const s = data?.snapshot;
+      if (!s?.channelId || !data.enabled || !s.connected) {
+        if (canHide) {
+          if (!data) return; // still hidden until the agent answers
+          if (!shownIn) { lastKey = ''; hide(true); return; }
+          awaySince ||= Date.now();
+          if (Date.now() - awaySince < GRACE) return; // keep what is drawn for now
+          shownIn = false; lastKey = ''; hide(true); return;
+        }
+        lastKey = '';
+        hide(false);
+        box.replaceChildren(h('div', 'empty', !data ? t('w.loading') : !data.enabled ? t('w.discord.turnOn') : !s.connected ? (s.error || t('panel.connecting')) : t('w.discord.notInChannel')));
+        return;
+      }
+      shownIn = true; awaySince = 0;
+      hide(false);
+      const live = !!share?.active;
+      const quiet = { ...s, members: s.members.map(({ speaking, ...m }) => m), notifications: null };
+      const key = JSON.stringify([quiet, data.control, data.share, data.shareState, data.chat, data.chatUnread, busy, live, share?.name, shareBusy]);
+      if (!force && key === lastKey) { for (const m of s.members) rings.get(m.id)?.classList.toggle('speaking', !!m.speaking); return; }
+      lastKey = key;
+      rings.clear();
+      const ctl = data.control;
+      const here = s.channels.find((c) => c.id === s.channelId);
+      const av = (m) => dcIco(m.avatar && dcImg('user', m.id, m.avatar), m.name, 'dcb-av');
+      const chips = s.members.map((m) => h('span', 'dcb-chip' + (m.speaking ? ' speaking' : ''), av(m), h('span', null, m.name)));
+      const stack = s.members.slice(0, 5).map((m) => { const a = av(m); if (m.speaking) a.classList.add('speaking'); return a; });
+      // one ring entry per member: the chip (names shown) or the stacked avatar, whichever the size shows
+      s.members.forEach((m, i) => rings.set(m.id, { classList: { toggle: (c, v) => { chips[i].classList.toggle(c, v); stack[i]?.classList.toggle(c, v); } } }));
+      const btn = (kind) => {
+        const { on, ic, label } = dcCall(kind, s);
+        const b = labelled(h('button', `dcb-btn ${kind}` + (on ? ' on' : '') + (busy === kind ? ' busy' : ''), icon(ic), h('span', 'dcb-l', label)), label);
+        if (ctl && !busy) b.addEventListener('click', () => act(kind)); else b.disabled = true;
+        return b;
+      };
+      let screen = null;
+      if (live) {
+        screen = labelled(h('button', 'dcb-btn share live' + (shareBusy ? ' busy' : ''), icon('screen-share-off'), h('span', 'dcb-l', t('w.discord.shareStop'))), t('w.discord.shareStop'));
+        if (!shareBusy) screen.addEventListener('click', async () => { haptic(); shareBusy = true; render(true); await dcShareAct('stop'); shareBusy = false; await loadShare(); render(true); });
+        else screen.disabled = true;
+      } else if (data.share) {
+        screen = labelled(h('button', 'dcb-btn share', icon('screen-share'), h('span', 'dcb-l', t('w.discord.screen'))), t('w.discord.share'));
+        screen.addEventListener('click', () => { haptic(); dcOpen('share'); });
+      }
+      let chatB = null;
+      if (data.chat) {
+        chatB = labelled(h('button', 'dcb-btn chat', icon('message-square'), h('span', 'dcb-l', t('w.discord.chat')), data.chatUnread ? h('span', 'dcb-dot') : null), t('w.discord.chat'));
+        chatB.addEventListener('click', () => { haptic(); dcOpen('chat'); });
+      }
+      const btns = [btn('mute'), btn('deafen'), screen, chatB, btn('leave')].filter(Boolean);
+      box.replaceChildren(h('div', 'dcb' + (live ? ' live' : ''),
+        h('div', 'dcb-info',
+          h('div', 'dcb-head', icon('volume-2', 'dcb-vi'), h('b', 'dcb-name', s.channelName || ''), live ? h('span', 'dcb-badge', t('w.discord.live')) : null, here?.guild ? h('span', 'dcb-guild', here.guild) : null),
+          h('div', 'dcb-chips', ...chips),
+          h('div', 'dcb-stack', ...stack, s.members.length > 5 ? h('span', 'dcb-av dcb-more', '+' + (s.members.length - 5)) : null)),
+        h('div', 'dcb-btns n' + btns.length, ...btns)));
+    };
+    const visible = () => dcVisible(box, page);
+    let next = 0, asking = false, shown = false;
+    const poll = () => {
+      const now = visible();
+      if (now && !shown) next = 0;
+      shown = now;
+      if (asking || !now || Date.now() < next) return;
+      asking = true;
+      load().then(() => { asking = false; next = Date.now() + (data?.snapshot?.channelId ? 500 : 2000); render(); });
+    };
+    // the share state every 4 s while in a call, for the Live badge and the stop button
+    const pollShare = () => {
+      // shareState: the bar's own Control is enough to see whether you share and to stop it
+      if (!(data?.shareState ?? data?.share) || !data.snapshot?.channelId) { share = null; return; }
+      if (shareWaiting || shareBusy || !visible() || Date.now() < shareNext) return;
+      shareNext = Date.now() + 4000;
+      loadShare().then(() => render());
+    };
+    // 'fast' also counts down the grace period before hiding
+    return { update: (kind) => { if (destroyed) return; poll(); pollShare(); if (kind !== 'fast' || awaySince) render(); }, destroy: () => { destroyed = true; } };
   },
 };
 
@@ -755,7 +902,8 @@ W.discord = {
         const b = labelled(h('button', 'dc-btn ' + cls + (on ? ' on' : '') + (busy === action ? ' busy' : ''), label),
           t({ mute: on ? 'w.a.unmuteMic' : 'w.a.muteMic', deafen: on ? 'w.a.undeafen' : 'w.a.deafen', leave: 'w.a.leave',
             inputmode: on ? 'w.a.useVoiceActivity' : 'w.a.usePushToTalk' }[action]));
-        if (ctl && !busy) b.addEventListener('click', () => act(action)); else b.disabled = true;
+        // joining and the input mode need more than the current-channel bar's option (mute, deafen and leave only)
+        if ((action === 'inputmode' ? data.joinControl ?? ctl : ctl) && !busy) b.addEventListener('click', () => act(action)); else b.disabled = true;
         return b;
       };
       let chatBtn = null;
@@ -849,7 +997,7 @@ W.discord = {
           if (isOpen) {
             block.append(h('div', 'dc-chans', ...chans.map((c) => {
               const b = h('button', 'dc-chan' + (c.id === s.channelId ? ' cur' : '') + (busy === 'join' + c.id ? ' busy' : ''), rich('🔊 ' + c.name));
-              if (!editing && ctl && !busy && c.id !== s.channelId) b.addEventListener('click', () => act('join', c.id));
+              if (!editing && (data.joinControl ?? ctl) && !busy && c.id !== s.channelId) b.addEventListener('click', () => act('join', c.id));
               else if (editing) b.disabled = true;
               // who is in the channel (the agent reads it for favourites only)
               const people = c.people?.length ? h('div', 'dc-people', ...c.people.map((m) =>
@@ -896,7 +1044,14 @@ W.discord = {
       loadChat().then(() => render());
     };
     // 'fast' (every 250 ms) drives the asking; 'tick' (every second) also redraws when the widget's size changes
-    return { update: (kind) => { poll(); pollShare(); pollChat(); if (kind !== 'fast') render(); } };
+    // the current-channel bar's Screen and Chat buttons: open that view, one at a time as the buttons above do
+    const wanted = () => {
+      if (box.closest('.stack-item')) return; // the request is for a Discord widget on the page itself, not a stack card
+      const to = data && dcTake(page, visible());
+      if (to === 'share' && data.share) { shareOpen = true; chatOpen = false; picking = false; pickGuild = null; share = null; loadShare().then(() => render(true)); render(true); }
+      if (to === 'chat' && data.chat) { chatOpen = true; shareOpen = false; picking = false; pickGuild = null; chat = null; loadChat().then(() => render(true)); render(true); }
+    };
+    return { update: (kind) => { poll(); pollShare(); pollChat(); wanted(); if (kind !== 'fast') render(); } };
   },
 };
 
@@ -1190,7 +1345,7 @@ export function haState(e) {
     if (dc === 'moisture') return on ? tp('Wet') : tp('Dry');
     return on ? tp('On') : tp('Off');
   }
-  if (dom === 'scene' || dom === 'script' || dom === 'button' || dom === 'input_button') return 'Run';
+  if (dom === 'scene' || dom === 'script' || dom === 'button' || dom === 'input_button') return tp('Run');
   if (/^-?\d+(\.\d+)?$/.test(s)) { const n = +s; return (Math.abs(n) >= 100 ? Math.round(n) : Math.round(n * 10) / 10) + (e.unit ? ' ' + e.unit : ''); }
   return s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
@@ -1279,8 +1434,8 @@ W.docker = {
       try {
         const r = await fetch(`${API}/docker/${encodeURIComponent(c.id)}/${action}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
         const j = await r.json().catch(() => ({}));
-        if (!r.ok) toast(j.error || `Could not ${action} ${c.name}`, 'err');
-        else toast(`${c.name}: ${action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted'}`, 'ok');
+        if (!r.ok) toast(j.error || tpv(action === 'stop' ? 'Could not stop {name}' : action === 'start' ? 'Could not start {name}' : 'Could not restart {name}', { name: c.name }), 'err');
+        else toast(`${c.name}: ${tp(action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted')}`, 'ok');
       } catch (_) { toast(t('panel.pcNoAnswer'), 'err'); }
       busy = null; open = null;
       await load(); render(true);
@@ -1300,8 +1455,8 @@ W.docker = {
       if (!snap.available || (snap.error && !items.length)) { list.replaceChildren(h('div', 'empty', snap.error || tp('Docker is not running'))); return; }
       if (!items.length) {
         const msg = matched.length
-          ? `No running containers (${matched.length} stopped)`
-          : filter ? `No containers match "${o.filter}"` : 'No containers';
+          ? tpv('No running containers ({n} stopped)', { n: matched.length })
+          : filter ? tpv('No containers match "{filter}"', { filter: o.filter }) : tp('No containers');
         list.replaceChildren(h('div', 'empty', msg));
         return;
       }
@@ -1321,7 +1476,7 @@ W.docker = {
           b.addEventListener('click', (e) => { e.stopPropagation(); act(c, action); });
           return b;
         };
-        return h('div', 'dk-wrap', row, h('div', 'dk-acts', ...(c.state === 'running' ? [btn('↻ Restart', 'restart'), btn('■ Stop', 'stop', 'danger')] : [btn('▶ Start', 'start', 'go')])));
+        return h('div', 'dk-wrap', row, h('div', 'dk-acts', ...(c.state === 'running' ? [btn('↻ ' + tp('Restart'), 'restart'), btn('■ ' + tp('Stop'), 'stop', 'danger')] : [btn('▶ ' + tp('Start'), 'start', 'go')])));
       }));
     };
     const tick = every(4000, async () => { await load(); render(); });
@@ -1356,7 +1511,7 @@ W.apps = {
       try {
         const r = await fetch(`${API}/apps/open?id=${encodeURIComponent(a.id)}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
         const j = await r.json().catch(() => ({}));
-        if (r.ok) toast(`Opening ${a.name}`, 'ok'); else toast(j.error || `Could not open ${a.name}`, 'err');
+        if (r.ok) toast(tpv('Opening {name}', { name: a.name }), 'ok'); else toast(j.error || tpv('Could not open {name}', { name: a.name }), 'err');
       } catch (_) { toast(tp('The PC did not answer'), 'err'); }
       busy = null; render(true);
     };
@@ -1382,7 +1537,7 @@ W.apps = {
       }, { once: true });
       const isArmed = armed === a.id;
       const t = h('button', 'ap-tile' + (busy === a.id ? ' busy' : '') + (isArmed ? ' armed' : ''), img,
-        h('span', 'ap-name', isArmed ? 'Tap again to open' : a.name));
+        h('span', 'ap-name', isArmed ? tp('Tap again to open') : a.name));
       t.title = a.name;
       t.addEventListener('click', () => {
         if (!confirm || armed === a.id) { clearTimeout(armTimer); armed = null; open(a); return; }
@@ -1404,7 +1559,7 @@ W.apps = {
       head.querySelector('.ap-count').textContent = all.length ? ` ${q ? items.length + '/' : ''}${all.length}` : '';
       if (!data) { grid.replaceChildren(h('div', 'empty', tp('Loading…'))); return; }
       if (!data.supported) { grid.replaceChildren(h('div', 'empty', tp('The apps list is available on macOS for now'))); return; }
-      if (!items.length) { grid.replaceChildren(h('div', 'empty', q ? `No apps match "${search.value.trim()}"` : 'No apps found')); return; }
+      if (!items.length) { grid.replaceChildren(h('div', 'empty', q ? tpv('No apps match "{q}"', { q: search.value.trim() }) : tp('No apps found'))); return; }
       grid.replaceChildren(...items.map(tile));
     };
     const tick = every(60_000, async () => { const ok = await load(); render(); return ok; }, 5000);
@@ -1455,7 +1610,7 @@ W.agenda = {
         if (!e) { box.replaceChildren(h('div', 'ag-big-t', tp('No events')), h('div', 'ag-big-s', tpv('next {n} days', { n: days }))); return; }
         box.style.setProperty('--c', e.color);
         box.replaceChildren(
-          h('div', 'ag-big-s', e === cur ? `Now · until ${hm(e.end)}` : e.allDay ? dayName(e.start) + ' · all day' : `${dayName(e.start) === t('time.today') ? inMin(e.start) || t('time.today') : dayName(e.start)} · ${hm(e.start)}`),
+          h('div', 'ag-big-s', e === cur ? tpv('Now · until {time}', { time: hm(e.end) }) : e.allDay ? dayName(e.start) + tp(' · all day') : `${dayName(e.start) === t('time.today') ? inMin(e.start) || t('time.today') : dayName(e.start)} · ${hm(e.start)}`),
           h('div', 'ag-big-t', e.title));
         return;
       }
@@ -1469,14 +1624,14 @@ W.agenda = {
         const isNow = e === cur;
         const row = h('div', 'ag-row' + (isNow ? ' now' : ''),
           h('span', 'ag-dot'),
-          h('span', 'ag-time', e.allDay ? 'all day' : hm(e.start)),
+          h('span', 'ag-time', e.allDay ? tp('all day') : hm(e.start)),
           h('span', 'ag-title', e.title, o.location !== false && e.location ? h('small', null, ' · ' + e.location) : null),
           h('span', 'ag-when', isNow ? `until ${hm(e.end)}` : e === next ? inMin(e.start) : ''));
         row.style.setProperty('--c', e.color);
         if (isNow) row.style.setProperty('--p', Math.min(1, (now - e.start) / Math.max(1, e.end - e.start)));
         rows.push(row);
       }
-      const body = h('div', 'ag-list', ...(rows.length ? rows : [h('div', 'empty', `Nothing in the next ${days} days`)]));
+      const body = h('div', 'ag-list', ...(rows.length ? rows : [h('div', 'empty', tpv('Nothing in the next {n} days', { n: days }))]));
       box.replaceChildren(h('div', 'w-title', o.title || en('Agenda'), cal.errors?.length ? h('span', 'ag-err', ' ', icon('warn')) : null), body);
       // drop rows that do not fit, keeping the day headers tidy
       while (body.scrollHeight > body.clientHeight + 2 && body.childElementCount > 1) {
@@ -1562,7 +1717,7 @@ W.pcswitch = {
         b.addEventListener('click', (e) => { e.stopPropagation(); switchPc(pc); });
         return b;
       }));
-      sub.textContent = usb ? 'USB cable connected: the panel uses that computer' : '';
+      sub.textContent = usb ? tp('USB cable connected: the panel uses that computer') : '';
     };
     render();
     return { update: render };
@@ -1617,7 +1772,7 @@ W.quotaring = {
   needs: ['quotas', 'tick'],
   create(box, { o }) {
     const prov = o.provider || 'claude', idx = Number(o.limit) || 0;
-    const st = Q_STYLE[prov] || { color: '#94a3b8', logo: '●' };
+    const st = Q_STYLE[String(prov).split('@')[0]] || { color: '#94a3b8', logo: '●' };
     box.style.setProperty('--q', st.color);
     const dial = dialEl(), label = h('div', 'g-label'), sub = h('div', 'g-sub');
     box.append(dial, label, sub);
@@ -1706,7 +1861,7 @@ W.rules = {
         box.classList.toggle('paused', !!paused);
         if (!rules.length) { list.replaceChildren(h('div', 'empty', tp('Add rules in Settings › Rules'))); return; }
         const sorted = [...rules].sort((a, b) => active.includes(b.id) - active.includes(a.id));
-        list.replaceChildren(...(paused ? [h('div', 'ru-note', `Paused until ${fmtHM(new Date(rulesPaused))}`)] : []),
+        list.replaceChildren(...(paused ? [h('div', 'ru-note', tpv('Paused until {time}', { time: fmtHM(new Date(rulesPaused)) }))] : []),
           ...sorted.map((r) => h('div', 'ru-row' + (active.includes(r.id) && !paused ? ' on' : ''),
             h('span', 'ru-ico', emo(RULE_WHEN[r.when] || '⚡')), h('span', 'ru-name', r.name || r.when), h('i', 'ru-dot'))));
       },
@@ -1740,8 +1895,8 @@ W.chargecare = {
       q('.cc-state').replaceChildren(emo(b.plugged ? '⚡' : '🔋'));
       const col = b.level <= 20 ? '#ef4444' : ch.enabled && b.level > max ? '#f59e0b' : b.plugged ? '#22c55e' : 'rgb(var(--ambient))';
       box.style.setProperty('--cc', col);
-      q('.cc-text').textContent = !ch.enabled ? `Battery care is off${b.temp ? ` · ${b.temp.toFixed(0)} °C` : ''}`
-        : b.plugged ? `Charges up to ${max}%` + (b.level >= max ? ' · power off soon' : '') : `Charges again at ${min}%`;
+      q('.cc-text').textContent = !ch.enabled ? tp('Battery care is off') + (b.temp ? ` · ${b.temp.toFixed(0)} °C` : '')
+        : b.plugged ? tpv('Charges up to {n}%', { n: max }) + (b.level >= max ? tp(' · power off soon') : '') : tpv('Charges again at {n}%', { n: min });
     });
     return { update: load };
   },
@@ -1769,7 +1924,7 @@ W.nextup = {
         track.hidden = !cur;
         if (!ev) {
           when.textContent = ''; meta.textContent = '';
-          title.textContent = !cal ? t('w.loading') : cal.updated || evs.length ? t('w.noEvents') : 'Add a calendar in Settings › General';
+          title.textContent = !cal ? t('w.loading') : cal.updated || evs.length ? t('w.noEvents') : tp('Add a calendar in Settings › General');
           return;
         }
         const left = Math.round(((cur ? ev.end : ev.start) - now) / 60000);
@@ -1826,10 +1981,10 @@ W.gpu = {
 
         const list = [];
         const mem = gpuMem(g);
-        if (mem) list.push(meter(mem.label === 'VRAM' ? 'VRAM' : tp('GPU memory'), `${r1(mem.used)} / ${Math.round(mem.total)} GB`, (mem.used / mem.total) * 100));
-        if (!g.integrated && g.sharedTotal && g.sharedUsed != null) list.push(meter(tp('Shared memory'), `${r1(g.sharedUsed)} GB`, (g.sharedUsed / g.sharedTotal) * 100, '#64748b'));
+        if (mem) list.push(meter(mem.label === 'VRAM' ? 'VRAM' : tp('GPU memory'), `${r1(mem.used)} / ${Math.round(mem.total)} ${tp('GB')}`, (mem.used / mem.total) * 100));
+        if (!g.integrated && g.sharedTotal && g.sharedUsed != null) list.push(meter(tp('Shared memory'), `${r1(g.sharedUsed)} ${tp('GB')}`, (g.sharedUsed / g.sharedTotal) * 100, '#64748b'));
         if (g.power != null) {
-          list.push(meter(tp('Power'), g.powerLimit ? `${Math.round(g.power)} / ${Math.round(g.powerLimit)} W` : `${Math.round(g.power)} W`,
+          list.push(meter(tp('Power'), g.powerLimit ? `${Math.round(g.power)} / ${Math.round(g.powerLimit)} ${tp("W")}` : `${Math.round(g.power)} ${tp("W")}`,
             g.powerLimit ? (g.power / g.powerLimit) * 100 : g.powerPct, '#facc15'));
         } else if (g.powerPct != null) list.push(meter(tp('Power'), tpv('{n}% of limit', { n: Math.round(g.powerPct) }), g.powerPct, '#facc15'));
         const hottest = Math.max(g.temp ?? -1, g.hotSpot ?? -1);
@@ -1842,7 +1997,7 @@ W.gpu = {
         chips.replaceChildren(...[
           g.clock != null ? tpv('Core {n} MHz', { n: Math.round(g.clock) }) : null,
           g.memClock != null ? tpv('Memory {n} MHz', { n: Math.round(g.memClock) }) : null,
-          g.fan != null ? tpv('Fan {n}%', { n: Math.round(g.fan) }) + (g.fanRpm != null ? ` · ${Math.round(g.fanRpm)} rpm` : '')
+          g.fan != null ? tpv('Fan {n}%', { n: Math.round(g.fan) }) + (g.fanRpm != null ? ' · ' + tpv('{n} rpm', { n: Math.round(g.fanRpm) }) : '')
             : g.fanRpm != null ? tpv('Fan {n} rpm', { n: Math.round(g.fanRpm) }) : null,
           g.driver ? `Driver ${g.driver}` : null,
           g.source ? g.source.split('+').map((x) => GPU_SOURCE[x] || x).join(' + ') : null,

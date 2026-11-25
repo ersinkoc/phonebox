@@ -57,16 +57,20 @@ public static partial class ClaudeTranscript
     private static partial Regex SystemReminder();
 
     /// <summary>The transcript of a session id, or null: the id is checked, so it cannot point outside the projects folder.</summary>
-    public static string? FindFile(string sessionId, string? homeDir = null)
+    public static string? FindFile(string sessionId, string? homeDir = null, string? claudeDir = null)
     {
         if (!SessionIdPattern().IsMatch(sessionId)) return null;
-        var projects = Path.Combine(homeDir ?? Home, ".claude", "projects");
-        if (!Directory.Exists(projects)) return null;
-        foreach (var dir in Directory.EnumerateDirectories(projects))
+        var projects = Path.Combine(claudeDir ?? Path.Combine(homeDir ?? Home, ".claude"), "projects");
+        try
         {
-            var path = Path.Combine(dir, sessionId + ".jsonl");
-            if (File.Exists(path)) return path;
+            if (!Directory.Exists(projects)) return null;
+            foreach (var dir in Directory.EnumerateDirectories(projects))
+            {
+                var path = Path.Combine(dir, sessionId + ".jsonl");
+                if (File.Exists(path)) return path;
+            }
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // a folder it may not list: no conversation
         return null;
     }
 
@@ -74,12 +78,12 @@ public static partial class ClaudeTranscript
     /// The answer to the phone's request for one session. With the setting off it carries no text at all; otherwise only a
     /// Claude Code session the monitor sees running is read, so an id cannot be used to open some other chat file.
     /// </summary>
-    public static object ForPhone(bool enabled, IReadOnlyList<AgentSession> running, string id, string? homeDir = null)
+    public static object ForPhone(bool enabled, IReadOnlyList<AgentSession> running, string id, string? homeDir = null, string? claudeDir = null)
     {
         Trim(running.Where(s => s.Tool == "claude").Select(s => s.Id["claude:".Length..]), enabled);
         if (!enabled) return new { enabled = false };
         var live = running.FirstOrDefault(s => s.Id == id && s.Tool == "claude");
-        var file = live is null ? null : FindFile(id["claude:".Length..], homeDir);
+        var file = live is null ? null : FindFile(id["claude:".Length..], homeDir, claudeDir);
         var view = file is null ? Empty : Read(file);
         return new { enabled = true, messages = view.Messages, steps = view.Steps };
     }

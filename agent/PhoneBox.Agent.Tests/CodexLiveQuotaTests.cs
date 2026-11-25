@@ -133,7 +133,21 @@ public sealed class CodexLiveQuotaTests
     }
 
     [Fact]
-    public async Task LivePollingIsOptInRequiresVisibleCodexWidgetAndYieldsToFreshCodexBar()
+    public void StoreCliFallbackRunsOnlyWhenWindowsPathHasNoCli()
+    {
+        var root = Directory.CreateTempSubdirectory("pb-codex-store-").FullName;
+        try
+        {
+            Assert.Equal("store-codex", CodexQuota.Find(root, true, () => "store-codex"));
+            var cli = Path.Combine(root, "codex.exe");
+            File.WriteAllText(cli, "");
+            Assert.Equal(cli, CodexQuota.Find(root, true, () => throw new InvalidOperationException()));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task LivePollingIsOptInWorksWithoutNativeWidgetsAndYieldsToFreshCodexBar()
     {
         var root = Directory.CreateTempSubdirectory("pb-codex-gating-").FullName;
         try
@@ -149,15 +163,9 @@ public sealed class CodexLiveQuotaTests
                     (_, _) => throw new Exception("must not query CLI"), 1000, default));
             Assert.Null(agent.CodexSnapshot(1000));
 
-            // Opted in, but widget excludes codex -> must not poll
+            // Opted in with only a custom API consumer -> polls and succeeds
             store.Get().CodexBar.CodexLiveQuota = true;
-            store.Get().Pages[0].Widgets![0].Set("providers", new[] { "claude" });
-            Assert.Equal(QuotaMonitor.CodexLiveOutcome.Skipped,
-                await agent.RefreshCodexOnceAsync(() => throw new Exception("must not discover CLI"),
-                    (_, _) => throw new Exception("must not query CLI"), 1000, default));
-
-            // Widget includes codex again -> polls and succeeds
-            store.Get().Pages[0].Widgets![0].Options = null;
+            store.Get().Pages[0].Widgets![0].Type = "html";
             Assert.Equal(QuotaMonitor.CodexLiveOutcome.Ok,
                 await agent.RefreshCodexOnceAsync(() => "fake", (_, _) => Task.FromResult(Parse("{\"rateLimits\":" + Rate + "}")), 1000, default));
             Assert.NotNull(agent.CodexSnapshot(1000));

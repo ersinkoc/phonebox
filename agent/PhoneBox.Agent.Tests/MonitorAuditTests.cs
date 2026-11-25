@@ -179,13 +179,14 @@ public sealed class MonitorAuditTests : IDisposable
     {
         var selfProc = System.Diagnostics.Process.GetCurrentProcess();
         var pid = selfProc.Id;
-        var sessionsField = typeof(SessionMonitor).GetField("_sessions", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        var sessionMon = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
-        sessionsField.SetValue(sessionMon, new[]
+        var sessionMon = new SessionMonitor(NullLogger<SessionMonitor>.Instance)
         {
+            Sessions =
+            [
             new AgentSession("claude:s1", "claude", "older", "demo", "idle", null, 1000, 500, Pid: pid),
             new AgentSession("claude:s2", "claude", "newest", "demo", "busy", null, 5000, 500, Pid: pid),
-        });
+            ],
+        };
         var procMon = new ProcessMonitor(NullLogger<ProcessMonitor>.Instance, sessionMon);
         var detail = procMon.Detail(selfProc.ProcessName);
         var inst = Assert.Single(detail.Instances, i => i.Pid == pid);

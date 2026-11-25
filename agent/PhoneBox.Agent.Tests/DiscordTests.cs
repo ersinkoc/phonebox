@@ -13,18 +13,19 @@ public sealed class DiscordTests : IDisposable
 
     public void Dispose() { try { File.Delete(_configPath); } catch { } }
 
-    private DiscordMonitor Monitor(bool? control, bool pageEnabled = true, bool? notifications = null, bool discordEnabled = true, bool allowControl = false)
+    private DiscordMonitor Monitor(bool? control, bool pageEnabled = true, bool? notifications = null, bool discordEnabled = true, bool allowControl = false,
+        string type = "discord", bool chat = false, bool screenShare = false)
     {
         var options = new Dictionary<string, object>();
         if (control is { } c) options["control"] = c;
         if (notifications is { } n) options["notifications"] = n;
         File.WriteAllText(_configPath, JsonSerializer.Serialize(new
         {
-            discord = new { enabled = discordEnabled, clientId = "1", clientSecret = "s", allowControl },
+            discord = new { enabled = discordEnabled, clientId = "1", clientSecret = "s", allowControl, chat, screenShare },
             // At least one page must stay enabled (the config repairs an all-disabled list), so a second page holds no widgets.
             pages = new[]
             {
-                new { id = "p", title = "P", enabled = pageEnabled, widgets = new object[] { new { id = "d", type = "discord", x = 0, y = 0, w = 4, h = 5, options } } },
+                new { id = "p", title = "P", enabled = pageEnabled, widgets = new object[] { new { id = "d", type, x = 0, y = 0, w = 4, h = 5, options } } },
                 new { id = "q", title = "Q", enabled = true, widgets = Array.Empty<object>() },
             },
         }));
@@ -62,6 +63,115 @@ public sealed class DiscordTests : IDisposable
     {
         Monitor(control: true);
         Assert.True(DiscordMonitor.ControlAllowed(Config()));
+    }
+
+    // ---- the current-channel bar (discord-bar): its Control allows only what it shows ----
+
+    [Fact]
+    public async Task The_bar_allows_mute_deafen_and_leave_and_nothing_else()
+    {
+        var monitor = Monitor(control: true, type: "discord-bar");
+        foreach (var action in new[] { "mute", "deafen", "leave" }) Assert.True(DiscordMonitor.ControlAllowed(Config(), action), action);
+        foreach (var action in new[] { "join", "inputmode" }) Assert.False(DiscordMonitor.ControlAllowed(Config(), action), action);
+        Assert.Contains("turned off", await monitor.ActAsync("join", "c1"));
+        Assert.Contains("turned off", await monitor.ActAsync("inputmode", null));
+        // allowed, so the press gets as far as needing a connection
+        Assert.Equal("Discord is not connected", await monitor.ActAsync("mute", null));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(false)]
+    public void The_bar_without_its_option_allows_nothing(bool? control)
+    {
+        Monitor(control, type: "discord-bar");
+        Assert.False(DiscordMonitor.ControlAllowed(Config()));
+        Assert.False(DiscordMonitor.ControlAllowed(Config(), "mute"));
+    }
+
+    [Fact]
+    public void The_bar_on_a_disabled_page_allows_nothing()
+    {
+        Monitor(control: true, pageEnabled: false, type: "discord-bar");
+        Assert.False(DiscordMonitor.ControlAllowed(Config(), "mute"));
+        Assert.False(DiscordMonitor.BarControl(Config()));
+    }
+
+    [Fact]
+    public void The_bar_does_not_open_screen_share_the_app_list_or_the_chat()
+    {
+        Monitor(control: true, type: "discord-bar", chat: true, screenShare: true);
+        var cfg = Config();
+        Assert.False(DiscordMonitor.WidgetControl(cfg));      // "Open in Discord" and starting a share
+        Assert.False(DiscordMonitor.ShareWanted(cfg));        // the app list
+        Assert.True(DiscordMonitor.ShareStateWanted(cfg));    // only whether you share, for Live and Stop
+        Assert.False(DiscordMonitor.ChatWanted(cfg));         // no chat is read for a bar
+    }
+
+    [Fact]
+    public async Task The_bar_may_stop_a_share_but_not_start_one()
+    {
+        var monitor = Monitor(control: true, type: "discord-bar", screenShare: true);
+        Assert.Equal("control", (await monitor.ShareActAsync("pick", null))?.Code);
+        Assert.Equal("control", (await monitor.ShareActAsync("app", 42))?.Code);
+        // past the control check: here it stops at Discord not having allowed screen share yet
+        Assert.NotEqual("control", (await monitor.ShareActAsync("stop", null))?.Code);
+    }
+
+    [Fact]
+    public void The_Discord_widget_and_the_global_switch_still_allow_every_action()
+    {
+        Monitor(control: true);
+        Assert.True(DiscordMonitor.ControlAllowed(Config(), "join"));
+        Assert.True(DiscordMonitor.ControlAllowed(Config(), "inputmode"));
+        Monitor(control: false, type: "discord-bar", allowControl: true);
+        Assert.True(DiscordMonitor.ControlAllowed(Config(), "join"));
+    }
+
+    // ---- the bar inside a Smart Stack: an enabled card counts like a widget on the page ----
+
+    private void StackWithBar(bool cardEnabled, bool pageEnabled)
+    {
+        File.WriteAllText(_configPath, JsonSerializer.Serialize(new
+        {
+            discord = new { enabled = true, clientId = "1", clientSecret = "s", screenShare = true },
+            pages = new[]
+            {
+                new { id = "p", title = "P", enabled = pageEnabled, widgets = new object[] { new { id = "s", type = "stack", x = 0, y = 0, w = 6, h = 2, options = new
+                {
+                    widgets = new object[] { new { id = "n", type = "note", options = new { text = "front" } }, new { id = "b", type = "discord-bar", enabled = cardEnabled, options = new { control = true } } },
+                } } } },
+                new { id = "q", title = "Q", enabled = true, widgets = Array.Empty<object>() },
+            },
+        }));
+    }
+
+    [Fact]
+    public async Task A_bar_card_in_an_enabled_stack_allows_what_the_bar_does()
+    {
+        StackWithBar(cardEnabled: true, pageEnabled: true);
+        var cfg = Config();
+        Assert.True(DiscordMonitor.BarControl(cfg));
+        foreach (var action in DiscordMonitor.BarActions) Assert.True(DiscordMonitor.ControlAllowed(cfg, action), action);
+        Assert.False(DiscordMonitor.ControlAllowed(cfg, "join"));
+        Assert.True(DiscordMonitor.ShareStateWanted(cfg));
+        var monitor = new DiscordMonitor(new ConfigStore(_configPath), NullLogger<DiscordMonitor>.Instance);
+        Assert.NotEqual("control", (await monitor.ShareActAsync("stop", null))?.Code);
+        Assert.Equal("control", (await monitor.ShareActAsync("pick", null))?.Code);
+    }
+
+    [Theory]
+    [InlineData(false, true)]  // the card is switched off in the stack
+    [InlineData(true, false)]  // the stack is on a page that is switched off
+    public async Task A_bar_card_that_is_off_allows_nothing(bool cardEnabled, bool pageEnabled)
+    {
+        StackWithBar(cardEnabled, pageEnabled);
+        var cfg = Config();
+        Assert.False(DiscordMonitor.BarControl(cfg));
+        Assert.False(DiscordMonitor.ControlAllowed(cfg, "mute"));
+        Assert.False(DiscordMonitor.ShareStateWanted(cfg));
+        var monitor = new DiscordMonitor(new ConfigStore(_configPath), NullLogger<DiscordMonitor>.Instance);
+        Assert.Equal("control", (await monitor.ShareActAsync("stop", null))?.Code);
     }
 
     // ---- the global "allow control" switch (for shortcuts and custom widgets) ----

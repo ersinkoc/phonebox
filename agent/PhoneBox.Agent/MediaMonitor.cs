@@ -109,7 +109,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         if (pos < TimeSpan.Zero) pos = TimeSpan.Zero;
 
         _snap = new MediaSnapshot(
-            App: FriendlyApp(s.SourceAppUserModelId),
+            App: MediaAppName.Friendly(s.SourceAppUserModelId),
             Title: props.Title ?? "",
             Artist: props.Artist ?? "",
             Album: props.AlbumTitle ?? "",
@@ -149,17 +149,5 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
         var ok = await s.TryPauseAsync();
         try { await Poll(); } catch { }
         return ok;
-    }
-
-    private static string FriendlyApp(string id)
-    {
-        var l = id.ToLowerInvariant();
-        if (l.Contains("spotify")) return "Spotify";
-        if (l.Contains("chrome")) return "Chrome";
-        if (l.Contains("firefox") || l.Contains("308046b0af4a39cb")) return "Firefox";
-        if (l.Contains("msedge")) return "Edge";
-        if (l.Contains("zune") || l.Contains("media")) return "Media Player";
-        if (l.Contains("vlc")) return "VLC";
-        return Path.GetFileNameWithoutExtension(id.Split('!')[0]);
     }
 }

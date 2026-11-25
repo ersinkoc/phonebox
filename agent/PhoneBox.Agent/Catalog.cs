@@ -16,7 +16,10 @@ public sealed class TemplateDef
 public static class Catalog
 {
     public const int Cols = 12;
+    /// <summary>Rows on a phone. A tablet shows more (see the panel's grid.js); <see cref="MaxRows"/> is the limit.</summary>
     public const int Rows = 6;
+    /// <summary>Tallest page that can be saved. Widgets below row <see cref="Rows"/> show on a tablet and stay off a phone.</summary>
+    public const int MaxRows = 18;
 
     private static readonly JsonSerializerOptions Opts = new() { PropertyNameCaseInsensitive = true };
 

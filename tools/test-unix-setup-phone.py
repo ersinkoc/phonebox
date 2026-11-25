@@ -13,7 +13,7 @@ SETUP = Path(__file__).resolve().parents[1] / 'setup.sh'
 
 
 class SetupPhoneTests(unittest.TestCase):
-    def install(self, mode, root, expected_code=0):
+    def install(self, mode, root, expected_code=0, options=()):
         bin_dir = root / 'bin'
         bin_dir.mkdir()
         agent = root / 'PhoneBox/app'
@@ -21,7 +21,15 @@ class SetupPhoneTests(unittest.TestCase):
         apk = root / 'PhoneBox-0.0.1.apk'
         apk.write_bytes(b'fixture APK')
         with ZipFile(archive, 'w') as bundle:
-            bundle.writestr('PhoneBoxAgent', '#!/bin/sh\nprintf "%s\\n" "$PHONEBOX_TEST_AGENT"\n')
+            bundle.writestr('PhoneBoxAgent', '''#!/bin/sh
+if [ "$2" = --write-ignored-usb ]; then
+    case "$PHONEBOX_TEST_MODE" in
+      unreadable) exit 1 ;;
+      ignored|two-devices) printf '%s\n' fixture-phone > "$3" ;;
+    esac
+fi
+printf '%s\n' "$PHONEBOX_TEST_AGENT"
+''')
         (root / 'SHA256SUMS-0.0.1.txt').write_text(
             ''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n'
                     for p in (archive, apk)),
@@ -55,10 +63,11 @@ else:
         stub('uname', 'case "$1" in -s) echo Linux;; -m) echo x86_64;; -r) echo fixture;; esac')
         stub('id', 'echo 1000')
         stub('adb', '''case "$1" in
-  devices) printf 'List of devices attached\nfixture-phone\tdevice\n' ;;
+  devices) printf 'List of devices attached\nfixture-phone\tdevice\n'
+           if [ "$PHONEBOX_TEST_MODE" = two-devices ]; then printf 'other-phone\tdevice\n'; fi ;;
   -s) case "$3:$4" in
         shell:getprop) echo 34 ;;
-        install:-r) touch "$PHONEBOX_TEST_ROOT/phone-installed"; echo Success ;;
+        install:-r) printf '%s' "$2" > "$PHONEBOX_TEST_ROOT/phone-installed"; echo Success ;;
       esac ;;
 esac''')
         stub('nohup', 'touch "$PHONEBOX_TEST_ROOT/agent-started"')
@@ -67,11 +76,11 @@ esac''')
         for name in ('pkill', 'sleep'):
             stub(name, 'exit 0')
         env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ['PATH'],
-                   HOME=str(root), TMPDIR=str(root), PHONEBOX_TEST_ROOT=str(root),
+                   HOME=str(root), XDG_CONFIG_HOME=str(root / '.config'), TMPDIR=str(root), PHONEBOX_TEST_ROOT=str(root),
                    PHONEBOX_TEST_AGENT=str(agent), PHONEBOX_TEST_MODE=mode,
                    DISPLAY='', WAYLAND_DISPLAY='')
         result = subprocess.run(
-            ['/bin/bash', str(SETUP), '--yes', '--no-autostart', '--no-extras', '--version', '0.0.1'],
+            ['/bin/bash', str(SETUP), '--yes', '--no-autostart', '--no-extras', '--version', '0.0.1', *options],
             env=env, capture_output=True, text=True, timeout=20,
         )
         self.assertEqual(result.returncode, expected_code, result.stdout + result.stderr)
@@ -99,6 +108,39 @@ esac''')
             root = Path(directory)
             self.install('valid', root)
             self.assertTrue((root / 'phone-installed').exists())
+
+    def test_ignored_device_is_never_installed_even_with_an_explicit_serial(self):
+        for options in ((), ('--serial', 'fixture-phone')):
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                result = self.install('ignored', root, options=options)
+                self.assertIn('Skipping the phone app', result.stderr)
+                self.assertFalse((root / 'phone-installed').exists())
+
+    def test_other_device_can_still_be_installed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.install('two-devices', root)
+            self.assertEqual((root / 'phone-installed').read_text(), 'other-phone')
+
+    def test_failed_policy_keeps_desktop_setup_working(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result = self.install('unreadable', root)
+            self.assertIn('could not read the USB ignore settings', result.stdout)
+            self.assertFalse((root / 'phone-installed').exists())
+
+    def test_old_agent_cannot_validate_an_existing_configuration(self):
+        for policy in ('{"ignoredDeviceSerials":["fixture-phone"]}',
+                       r'{"ignoredDevice\u0053erials":["fixture-phone"]}', '{'):
+            with self.subTest(policy=policy), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                config = root / '.config/PhoneBox/config.json'
+                config.parent.mkdir(parents=True)
+                config.write_text(policy, encoding='utf-8')
+                result = self.install('valid', root)
+                self.assertIn('could not read the USB ignore settings', result.stdout)
+                self.assertFalse((root / 'phone-installed').exists())
 
 
 if __name__ == '__main__':

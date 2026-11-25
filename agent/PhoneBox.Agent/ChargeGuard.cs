@@ -124,10 +124,13 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
     private async Task<string?> SwitchCore(ChargeConfig c, string action, HaTarget target)
     {
         string? error;
+        var submitted = false;
         if (c.Method == "shortcuts")
         {
             var id = action == "on" ? c.OnShortcut : c.OffShortcut;
-            error = string.IsNullOrWhiteSpace(id) ? $"no shortcut set for power {action}" : Shortcuts.Run(config.Get(), id, log, push, audio);
+            var cfg = config.Get();
+            submitted = cfg.Shortcuts.Any(s => s.Id == id);
+            error = string.IsNullOrWhiteSpace(id) ? $"no shortcut set for power {action}" : Shortcuts.Run(cfg, id, log, push, audio);
         }
         else if (string.IsNullOrWhiteSpace(target.Entity)) error = "no Home Assistant switch set";
         else
@@ -136,12 +139,13 @@ public sealed class ChargeGuard(ConfigStore config, HomeAssistant ha, PushStore 
             var result = await ha.SwitchAsync(target.Entity, action == "on",
                 new HomeAssistantConfig { Url = target.Url, Token = target.Token ?? recovery?.Token });
             error = result.Error;
+            submitted = result.Submitted;
             // A failed response can follow a successful switch; retain that possible off target too.
             if (action == "off" && result.Submitted) _offHa = target;
             if (action == "on" && error is null && SameSupply(_offHa, target)) _offHa = null;
         }
         // a failed "on" leaves the plug off: keep the old state so the next pass asks again (never leave the phone unpowered)
-        if (error is null || action == "off") _last = action;
+        if (error is null || (action == "off" && submitted)) _last = action;
         _lastAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         _error = error;
         if (error is null) log.LogInformation("charge guard: power {Action} (phone at {Level}%)", action, _report?.Level);

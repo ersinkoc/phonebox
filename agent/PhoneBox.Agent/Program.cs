@@ -8,8 +8,18 @@ var endpoint = AgentEndpoint.FromArgs(args);
 var Port = endpoint.Port;
 string[] SameOrigins = [$"http://127.0.0.1:{Port}", $"http://localhost:{Port}"];
 
-// Install scripts ask where the agent belongs (it differs per OS), then copy it there.
-if (args.Contains("--print-install-dir")) { Console.WriteLine(AppPaths.InstallDir); return; }
+// Older installers expect one line. The paired flag lets new installers ask even an old agent without starting it.
+if (args.Contains("--print-install-dir"))
+{
+    var ignoreAt = Array.IndexOf(args, "--write-ignored-usb");
+    if (ignoreAt >= 0 && (ignoreAt + 1 >= args.Length || !AppPaths.TryWriteIgnoredUsb(args[ignoreAt + 1])))
+    {
+        Environment.ExitCode = 1;
+        return;
+    }
+    Console.WriteLine(AppPaths.InstallDir);
+    return;
+}
 
 // Single instance: a second launch opens the running instance's settings page and exits.
 // After a restart the previous instance may still be shutting down, so wait for it briefly.
@@ -524,10 +534,11 @@ app.MapPost("/api/shortcuts/test", async (HttpRequest req, ConfigStore cfg, Push
     return err is null ? Results.Ok() : Results.BadRequest(new { error = err });
 });
 
-app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg) => Results.Json(new
+app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg, SystemMonitor monitor) => Results.Json(new
 {
     version = AppPaths.Version,
     os = AppPaths.Os,
+    sensors = new { lhm = monitor.LhmStatus },
     configPath = cfg.Path,
     logPath = AppPaths.LogPath,
     adb = AdbReverse.FindAdb(cfg.Get().AdbPath),
@@ -539,6 +550,17 @@ app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg) => Results.Json(new
     usbProblem = adb.UsbProblem,
     webviewProblem = WebViewDoctor.DiagnoseRecent(PhoneRegistry.All(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
 }));
+
+// Guba (East Money stock forum) latest posts for one stock code, e.g. "002317".
+app.MapGet("/api/guba", async (ConfigStore cfg, string? code, int? count) =>
+{
+    if (code is null || !cfg.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "guba"
+        && (w.Str("code") ?? "002317").Trim() == code)) return Results.NotFound();
+    var (posts, updated, error) = await GubaFeed.LatestAsync(code, count ?? 10);
+    return posts is null
+        ? Results.Json(new { error = error ?? "no data" }, statusCode: 404)
+        : Results.Json(new { posts, updated, error });
+});
 
 // Phone mic status for the settings page and scripts (local port only: not a phone path, see Lan.AllowedOverLan).
 app.MapGet("/api/phone-mic", (PhoneMic mic) => Results.Json(new { mic = mic.Snapshot() }));
@@ -558,7 +580,7 @@ app.MapPost("/api/phone-mic/setup", async (ConfigStore cfg, CancellationToken ct
 app.MapPost("/api/phone/open", async (AdbReverse adb) => { await adb.OpenPanelAsync(); return Results.Ok(); });
 
 // Widget types and page templates for the settings page's layout editor.
-app.MapGet("/api/catalog", () => Results.Text($"{{\"cols\":{Catalog.Cols},\"rows\":{Catalog.Rows},\"widgets\":{Catalog.WidgetsJson},\"templates\":{Catalog.TemplatesJson}}}",
+app.MapGet("/api/catalog", () => Results.Text($"{{\"cols\":{Catalog.Cols},\"rows\":{Catalog.Rows},\"maxRows\":{Catalog.MaxRows},\"widgets\":{Catalog.WidgetsJson},\"templates\":{Catalog.TemplatesJson}}}",
     "application/json; charset=utf-8"));
 
 // ---------------------------------------------------------------- webhook API: push data and events into the panel
@@ -733,6 +755,10 @@ app.MapGet("/api/discord", (DiscordMonitor dc, ConfigStore cfg) => Results.Json(
     snapshot = dc.Snapshot(),
     control = DiscordMonitor.ControlAllowed(cfg.Get()),
     share = DiscordMonitor.ShareWanted(cfg.Get()),
+    // the current-channel bar: whether you share (its Live badge and Stop), and whether join and the input mode are
+    // allowed beyond its own Control option (mute, deafen and leave only)
+    shareState = DiscordMonitor.ShareStateWanted(cfg.Get()),
+    joinControl = DiscordMonitor.ControlAllowed(cfg.Get(), "join"),
     widgetControl = DiscordMonitor.WidgetControl(cfg.Get()),
     chat = DiscordMonitor.ChatWanted(cfg.Get()),
     chatUnread = dc.ChatUnread(),
@@ -816,13 +842,19 @@ app.MapGet("/api/batteries", (BatteryMonitor b) => Results.Json(new { devices = 
 app.MapPost("/api/rules/test", (RuleConfig rule, RuleEngine rules) =>
 {
     if (!RuleConfig.Actions.Contains(rule.Then)) return Results.BadRequest(new { error = "unknown action" });
+    if (rule.Then == "night") return Results.BadRequest(new { error = "the night screen requires an active rule" });
     if (string.IsNullOrWhiteSpace(rule.Id)) rule.Id = "test";
     rules.Test(rule);
     return Results.Ok(new { ok = true });
 });
 
 // The phone reports its battery (charge guard); the settings show the guard's state and can switch the power to test it.
-app.MapPost("/api/phone/battery", (int level, bool plugged, double? temp, string? source, string? usb) => { ChargeGuard.Report(level, plugged, temp, source, usb); return Results.Ok(); });
+app.MapPost("/api/phone/battery", (HttpRequest request, int level, bool plugged, double? temp, string? source, string? usb, int? viewWidth, int? viewHeight) =>
+{
+    ChargeGuard.Report(level, plugged, temp, source, usb);
+    PhoneRegistry.SetViewport(request.Headers["X-PhoneBox-Device"].ToString(), viewWidth, viewHeight);
+    return Results.Ok();
+});
 app.MapGet("/api/charge", (ChargeGuard guard) => Results.Json(guard.Status()));
 app.MapPost("/api/charge/test", async (string action, ChargeGuard guard, ConfigStore cfg) =>
 {
@@ -937,9 +969,15 @@ app.MapPost(ClaudeHook.Endpoint, async (HttpRequest req, ConfigStore cfg, Approv
     var output = await ClaudeHook.HandleAsync(input, cfg, approvals, sessions, req.HttpContext.RequestAborted);
     return output is null ? Results.Text("") : Results.Json(output);
 });
-app.MapGet("/api/claude/hook", () => Results.Json(new { installed = ClaudeHook.Installed(), path = ClaudeHook.SettingsPath }));
-app.MapPost("/api/claude/hook", (ConfigStore cfg) => ClaudeHook.Configure(true, Port, cfg.Get().Claude.TimeoutSec) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
-app.MapDelete("/api/claude/hook", (ConfigStore cfg) => ClaudeHook.Configure(false, Port, cfg.Get().Claude.TimeoutSec) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
+app.MapGet("/api/claude/hook", (ConfigStore cfg) =>
+{
+    // full paths are fine here: this endpoint answers the settings page on this computer only
+    var targets = ClaudeHook.Targets(cfg.Get().Claude.ExtraCredentialDirs);
+    // installed while any file has it, so Remove stays reachable when another file couldn't be written
+    return Results.Json(new { installed = targets.Any(t => t.Installed), path = ClaudeHook.SettingsPath, paths = targets });
+});
+app.MapPost("/api/claude/hook", (ConfigStore cfg) => ClaudeHook.Configure(true, Port, cfg.Get().Claude.TimeoutSec, cfg.Get().Claude.ExtraCredentialDirs) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
+app.MapDelete("/api/claude/hook", (ConfigStore cfg) => ClaudeHook.Configure(false, Port, cfg.Get().Claude.TimeoutSec, cfg.Get().Claude.ExtraCredentialDirs) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
 
 // The recent messages and steps of one running Claude Code session, for the phone's session details. Off until the user
 // turns on Settings › Claude Code › "Show the conversation on the phone"; only a session the monitor currently sees.
@@ -947,7 +985,10 @@ app.MapGet("/api/work/conversation", (string id, ConfigStore cfg, SessionMonitor
 {
     // a session inside WSL keeps its chat file in the distro's home; a distro that stopped is not read (that would start it)
     var home = sessions.ConversationHome(id, out var usable);
-    return Results.Json(ClaudeTranscript.ForPhone(cfg.Get().Claude.ShareConversation, usable ? sessions.Snapshot() : [], id, home));
+    var (rows, claudeDir) = sessions.ConversationSource(id);
+    // a native extra-folder session is read from its own folder (ForPhone prefers claudeDir), so the WSL check doesn't apply
+    usable |= claudeDir is not null;
+    return Results.Json(ClaudeTranscript.ForPhone(cfg.Get().Claude.ShareConversation, usable ? rows : [], id, home, claudeDir));
 });
 
 // Codex uses the same PermissionRequest decision contract, through ~/.codex/hooks.json.
@@ -997,8 +1038,16 @@ app.MapGet("/api/widget/{page}/{widget}", (string page, string widget, bool? for
     runner.Get(page, widget, force == true) is { } r ? Results.Json(r) : Results.NotFound());
 
 app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req, ShortcutIconUploads icons, WallpaperStore wallpaper) =>
-    Results.Json(new { version = cfg.Version.ToString(), config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString(),
-        s => icons.Revision(s.Id) is { } up ? (up, true) : (ShortcutIcons.Revision(s), false), wallpaper.Revision()) }));
+{
+    var settings = cfg.Get();
+    var standby = req.HttpContext.Connection.LocalPort == usb.Port && usb.MatchesPhone(settings.DeviceSerial, req.Headers.Authorization);
+    return Results.Json(new
+    {
+        version = cfg.Version.ToString(),
+        config = settings.ToPublic(req.Headers["X-PhoneBox-Device"].ToString(),
+            s => icons.Revision(s.Id) is { } up ? (up, true) : (ShortcutIcons.Revision(s), false), wallpaper.Revision(), standby)
+    });
+});
 
 // The panel's wallpaper (Settings › Display). The panel asks with ?v=<revision>, so the picture may be kept for good.
 app.MapGet("/api/wallpaper", (WallpaperStore wallpaper, HttpResponse res, string? v) =>
@@ -1058,6 +1107,7 @@ app.MapGet("/api/phones", (ConfigStore cfg) =>
         lastSeen = s?.LastSeen,
         via = s?.Via,
         webView = s?.WebView,
+        viewport = s?.Viewport,
         webviewProblem = s is null ? null : WebViewDoctor.Diagnose(s.WebView, s.Model),
         name = c.Phones.FirstOrDefault(p => p.Id == id)?.Name,
         pages = c.Phones.FirstOrDefault(p => p.Id == id)?.Pages,

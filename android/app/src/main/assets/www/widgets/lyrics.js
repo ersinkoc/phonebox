@@ -27,6 +27,26 @@ export function lyricAt(lines, ms) {
   return at;
 }
 
+/** Per-player timing offsets from lines like "Apple Music=1000" (ms) as a Map of lower-case player name → clamped ms. */
+export function parsePlayerOffsets(list) {
+  const map = new Map();
+  for (const raw of Array.isArray(list) ? list : []) {
+    const at = String(raw).lastIndexOf('=');
+    const value = String(raw).slice(at + 1).trim();
+    const ms = Number(value);
+    // "Spotify=" (no value) is skipped, not read as 0: Number('') is 0 and would replace the general offset
+    if (at < 1 || value === '' || !Number.isFinite(ms)) continue;
+    map.set(String(raw).slice(0, at).trim().toLowerCase(), Math.max(-5000, Math.min(5000, Math.round(ms))));
+  }
+  return map;
+}
+
+/** The offset for the player named `app`: its own line when it has one, else the widget's general offset. */
+export function offsetFor(perPlayer, app, general) {
+  const own = perPlayer.get(String(app || '').trim().toLowerCase());
+  return own === undefined ? general : own;
+}
+
 // Synced lyrics: the words of the song playing on the computer, the line being sung lit and kept in the middle. Timed
 // lyrics follow the position; plain ones are shown as a page, and so are timed ones when the player reports no position
 // (a note says why). The agent asks LRCLIB (free, no account) once per song, and only for a widget whose own "Look up
@@ -39,6 +59,7 @@ W.lyrics = {
     const note = h('div', 'ly-note');
     box.append(h('div', 'w-title', o.title || t('w.lyrics.title')), list, note, h('div', 'ly-credit', 'LRCLIB'));
     const offset = Math.max(-5000, Math.min(5000, Number(o.offset) || 0)); // ms: a positive value shows the lines earlier
+    const perPlayer = parsePlayerOffsets(o.playerOffsets); // a lead that depends on the player (Apple Music needs one, others don't)
     const plainToo = o.plain !== false;
     let track = '', result = null, lines = [], rows = [], shown = -2, loading = false, retryAt = 0, timedShown = null, requestGen = 0;
     const trackKey = (m) => (m?.title ? [m.app, m.title, m.artist, m.album, m.durMs].join('\n') : '');
@@ -84,7 +105,7 @@ W.lyrics = {
     };
     const follow = (jump = false) => {
       if (!rows.length || !media) return;
-      const pos = media.posMs + (media.playing ? performance.now() - media.at : 0) + offset;
+      const pos = media.posMs + (media.playing ? performance.now() - media.at : 0) + offsetFor(perPlayer, media.app, offset);
       const at = lyricAt(lines, pos);
       if (at === shown && !jump) return;
       shown = at;

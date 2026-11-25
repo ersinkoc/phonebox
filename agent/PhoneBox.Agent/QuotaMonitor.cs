@@ -31,6 +31,8 @@ public sealed record QuotaProvider(string Id, string Name, string Plan, IReadOnl
 ///    Claude Code refreshes it itself (refreshing it here could break Claude Code's session).
 ///  - Codex: live account quota through the signed-in Codex CLI app-server, with local session logs as fallback.
 ///  - Antigravity: a running local server, or the signed-in agy CLI's structured /usage command.
+///  - Grok: cli-chat-proxy.grok.com with the bearer from ~/.grok/auth.json (GROK_HOME overrides that folder).
+///    The token is only read and never refreshed; the Grok CLI refreshes it itself.
 /// </summary>
 public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonitor> log) : BackgroundService
 {
@@ -200,25 +202,44 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     private volatile QuotaOverview? _overview;
 
     /// <summary>Seeds quota state in unit tests without running background loops.</summary>
-    internal void SetStateForTest(QuotaProvider? claude = null, IReadOnlyList<QuotaProvider>? external = null)
+    internal void SetStateForTest(QuotaProvider? claude = null, IReadOnlyList<QuotaProvider>? external = null, QuotaProvider? grok = null)
     {
         _claude = claude;
         if (external is not null) _external = external;
+        if (grok is not null) _grok = grok;
     }
 
-    public IReadOnlyList<QuotaProvider> Snapshot()
+    public IReadOnlyList<QuotaProvider> Snapshot() => Snapshot(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+    /// <summary>The snapshot at <paramref name="now"/>; tests pass their own clock so windows roll the same way every day.</summary>
+    /// <summary>
+    /// Like <see cref="CodexBar.Select"/>, but a successful prepaid-only reading (a balance, no limits) counts as a
+    /// reading: it is not set aside for a failed or stale CodexBar answer. A fresh CodexBar reading still wins.
+    /// </summary>
+    internal static QuotaProvider? GrokSelect(QuotaProvider? local, QuotaProvider? external, long now)
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var freshExternal = external is { Error: null, Limits.Count: > 0, UpdatedAt: { } updated } && now - updated <= CodexBar.FreshExternalMs;
+        if (!freshExternal && local is { Error: null, Limits.Count: 0, Extra: not null }) return local;
+        return CodexBar.Select(local, external, now);
+    }
+
+    internal IReadOnlyList<QuotaProvider> Snapshot(long now)
+    {
         var external = _external;
-        var core = new[] { "claude", "codex", "antigravity" }
-            .Select(id => id == "codex" ? CodexSnapshot(now, external.FirstOrDefault(p => p.Id == id))
-                : CodexBar.Select(id == "claude" ? _claude : _antigravity, external.FirstOrDefault(p => p.Id == id), now))
+        var core = new[] { "claude", "codex", "antigravity", "grok" }
+            .Select(id => id switch
+            {
+                "codex" => CodexSnapshot(now, external.FirstOrDefault(p => p.Id == id)),
+                "claude" => CodexBar.Select(_claude, external.FirstOrDefault(p => p.Id == id), now),
+                "grok" => GrokSelect(_grok, external.FirstOrDefault(p => p.Id == id), now),
+                _ => CodexBar.Select(_antigravity, external.FirstOrDefault(p => p.Id == id), now),
+            })
             .OfType<QuotaProvider>();
         var extra = external
-            .Where(p => p.Id is not ("claude" or "codex" or "antigravity"))
+            .Where(p => p.Id is not ("claude" or "codex" or "antigravity" or "grok"))
             .Select(p => CodexBar.Select(null, p, now))
             .OfType<QuotaProvider>();
-        return core.Concat(extra).Select(p => Rolled(p, now)).ToList();
+        return core.Concat(_extraClaudeView).Concat(extra).Select(p => Rolled(p, now)).ToList();
     }
 
     /// <summary>A window whose reset time has passed started over: the last reading (kept while the tool is not used) no longer applies.</summary>
@@ -243,8 +264,12 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     /// <summary>Returns the current cost overview evaluated at <paramref name="now"/>.</summary>
     internal QuotaOverview? Overview(long now) => CodexBar.SelectOverview(_overview, IsOverviewEnabled(), now);
 
+    /// <summary>Grok is polled only while an enabled page shows Grok quotas. Unit tests without a config poll it.</summary>
+    internal bool IsGrokEnabled() => config is null || config.Get().ShowGrokQuota();
+
     /// <summary>Returns true when live Codex CLI polling is opted in and an enabled page shows Codex quotas.</summary>
-    internal bool IsCodexLiveEnabled() => config is null || (config.Get() is { } c && c.CodexBar.CodexLiveQuota && c.ShowCodexQuota());
+    internal bool IsCodexLiveEnabled() => config is null
+        || (config.Get().CodexBar is { CodexLiveQuota: true } settings && settings.Providers.Contains("codex"));
 
     internal const long CodexLiveIntervalMs = 180_000;
     internal const long CodexLiveStaleMs = 360_000;
@@ -428,9 +453,16 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
                 _nextAntigravity = Environment.TickCount64 + (ok ? 60_000 : 30_000);
             }
 
-            try { await ClaudeTickAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct); }
+            try
+            {
+                await ClaudeTickAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct);
+                await ExtraClaudeTickAsync(config?.Get().Claude.ExtraCredentialDirs ?? [], DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct);
+            }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
-            catch (Exception ex) { log.LogWarning("claude quota: {Msg}", ex.Message); } // never end the loop for Codex and Antigravity
+            catch (Exception ex) { log.LogWarning("claude quota: {Msg}", ex.Message); } // never end the loop for Codex, Antigravity and Grok
+            try { await GrokTickAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct); }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
+            catch (Exception ex) { log.LogWarning("grok quota: {Msg}", ex.Message); }
             // Zero when the CodexBar deadline has already passed (do not sleep another 30 s); otherwise min(30 s, remaining).
             var untilCodex = Math.Max(0L, _nextCodexBar - Environment.TickCount64);
             var wait = TimeSpan.FromMilliseconds(Math.Min(30_000L, untilCodex));
@@ -459,6 +491,7 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     private long _claudeRefusedAt;
     private bool _claudeAwaitingToken;  // expired, missing or refused: only the sign-in is read until it changes
     private long _claudeCredsReadAt;
+    private int _claudeUnreadable;      // sign-in files in a row that were not valid JSON
 
     /// <summary>The shared schedule: when the next request may go out, and the message to show until then.</summary>
     /// <param name="Refused">Fingerprint (a hash prefix, not the token) of the token Anthropic refused, and when.</param>
@@ -539,8 +572,14 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         }
         catch (JsonException)
         {
-            return; // read mid-write; the next pass reads the whole file
+            // read mid-write: the next pass reads the whole file. Twice in a row, the file itself is broken: say so on
+            // the card (keeping the last reading) and read it again every minute until it is repaired.
+            if (++_claudeUnreadable < 2) return;
+            _claude = Keep(_claude?.Plan ?? "Claude", "The Claude Code sign-in file can't be read");
+            _claudeAwaitingToken = true;
+            return;
         }
+        _claudeUnreadable = 0;
 
         var print = token.Length == 0 ? "" : Fingerprint(token);
         // A plan without a token is what the Claude Desktop app leaves in the file: it keeps its own sign-in to itself,
@@ -604,6 +643,46 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
         }
         _claudeNextAt = next;
         SaveClaudeSchedule(new ClaudeSchedule(next, _claudeFailures, error, refused, refusedAt));
+    }
+
+    // ------------------------------------------------------------------ Extra Claude accounts
+    // Each extra Claude Code config folder gets a reader of its own (its own token, schedule, back-off and cache), so
+    // one account that is expired or rate limited never holds up or stands in for another.
+
+    private readonly Dictionary<string, QuotaMonitor> _extraClaude = [];
+    private volatile IReadOnlyList<QuotaProvider> _extraClaudeView = [];
+
+    internal async Task ExtraClaudeTickAsync(IReadOnlyList<ClaudeCredentialDir> dirs, long nowMs, CancellationToken ct)
+    {
+        var view = new List<QuotaProvider>();
+        var keep = new HashSet<string>();
+        var clock = System.Diagnostics.Stopwatch.StartNew(); // accounts are read one after another: each gets its own start time
+        foreach (var d in dirs)
+        {
+            var at = nowMs + clock.ElapsedMilliseconds;
+            // one reader, schedule and cache per folder however it is spelled, so an equivalent edit keeps a Retry-After
+            var key = d.Key();
+            keep.Add(key);
+            if (!_extraClaude.TryGetValue(key, out var m))
+            {
+                // the cache file is named by a hash so the folder path itself is never written next to the readings
+                _extraClaude[key] = m = new QuotaMonitor(log)
+                {
+                    CredentialsPath = Path.Combine(Path.GetFullPath(d.FullPath()), ".credentials.json"),
+                    ClaudeCachePath = Path.Combine(Path.GetDirectoryName(ClaudeCachePath)!, $"claude-quota-{Fingerprint(key)}.json"),
+                    HttpHandler = HttpHandler,
+                };
+                m.LoadClaudeCache(at);
+            }
+            try { await m.ClaudeTickAsync(at, ct); }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex) { log.LogWarning("claude quota ({Label}): {Msg}", d.Label, ex.Message); }
+            // a folder without a credentials file still gets its card, so a typo in the path is visible
+            var p = m._claude ?? new QuotaProvider("claude", "Claude", "", [], null, null, "No Claude Code sign-in in this folder");
+            view.Add(p with { Id = "claude@" + d.Label, Name = "Claude · " + d.Label });
+        }
+        foreach (var gone in _extraClaude.Keys.Where(k => !keep.Contains(k)).ToList()) _extraClaude.Remove(gone);
+        _extraClaudeView = view;
     }
 
     private const string RefusedMessage = "Anthropic did not accept the sign-in; it will refresh when Claude Code runs";

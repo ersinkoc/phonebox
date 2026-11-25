@@ -1,4 +1,4 @@
-import { $, LOCALE, buzz, fmtTime, h, en, haptic, icon, labelled, pad, r1, rich, store, t, tick, toast, tp } from '../main.js';
+import { $, I18n, LOCALE, PREVIEW, buzz, cfg, chime, fmtTime, h, en, haptic, icon, labelled, pad, r1, rich, store, t, tick, toast, tp } from '../main.js';
 import { W } from '../registry.js';
 import { dialEl, lines } from './helpers.js';
 const tr = (...args) => t(...args); // some widgets below name a local `t` (a timer element), which hides the translator
@@ -33,12 +33,26 @@ W.analog = {
   },
 };
 
+// The locale API uses 1–7, the Date API uses 0–6.
+export function weekStartDay() {
+  const setting = cfg.display?.weekStart;
+  if (setting === 'sunday') return 0;
+  if (setting === 'auto') {
+    try {
+      const locale = new Intl.Locale(LOCALE);
+      const info = locale.getWeekInfo?.() ?? locale.weekInfo;
+      if (info) return info.firstDay % 7;
+    } catch (_) {}
+  }
+  return 1;
+}
+
 W.progress = {
   needs: ['tick'],
   create(box) {
     const rows = ['Day', 'Week', 'Month', 'Year'].map((n) => {
       const pct = h('span'), bar = h('i');
-      const row = h('div', 'pr-row', h('div', 'm-row', h('span', null, n), pct), h('div', 'track', bar));
+      const row = h('div', 'pr-row', h('div', 'm-row', h('span', null, tp(n)), pct), h('div', 'track', bar));
       return { pct, bar, row };
     });
     box.append(h('div', 'w-title', en('Time')), h('div', 'pr-list', rows.map((r) => r.row)));
@@ -46,12 +60,13 @@ W.progress = {
     return {
       update() {
         const now = new Date();
-        const minute = Math.floor(now.getTime() / 60_000);
-        if (minute === shown) return;
-        shown = minute;
+        const firstDay = weekStartDay();
+        const key = Math.floor(now.getTime() / 60_000) + '/' + firstDay;
+        if (key === shown) return;
+        shown = key;
         const day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const day1 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-        const wk0 = new Date(day0); wk0.setDate(day0.getDate() - ((day0.getDay() + 6) % 7));
+        const wk0 = new Date(day0); wk0.setDate(day0.getDate() - ((day0.getDay() - firstDay + 7) % 7));
         const wk1 = new Date(wk0); wk1.setDate(wk0.getDate() + 7);
         const m0 = new Date(now.getFullYear(), now.getMonth(), 1), m1 = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         const y0 = new Date(now.getFullYear(), 0, 1), y1 = new Date(now.getFullYear() + 1, 0, 1);
@@ -70,7 +85,7 @@ W.stopwatch = {
     const save = () => store.set(key, st);
     const t = h('div', 'sw-t'), laps = h('div', 'sw-laps');
     const a = labelled(h('button', 'pb main', icon('play')), tr('w.a.start')), b = labelled(h('button', 'pb', icon('rotate-ccw')), tr('w.a.restart'));
-    box.append(h('div', 'w-title', en('Stopwatch')), t, h('div', 'pomo-btns', b, a), laps);
+    box.append(h('div', 'timer-layout', h('div', 'w-title', en('Stopwatch')), t, h('div', 'pomo-btns', b, a), laps));
     const elapsed = () => st.acc + (st.start ? Date.now() - st.start : 0);
     const fmtSw = (ms) => { const s = Math.floor(ms / 1000); const hh = Math.floor(s / 3600); return (hh ? hh + ':' + pad(Math.floor((s % 3600) / 60)) : Math.floor(s / 60)) + ':' + pad(s % 60) + '.' + Math.floor((ms % 1000) / 100); };
     const renderLaps = () => laps.replaceChildren(...st.laps.slice(-6).reverse().map((l, i, arr) => h('div', 'sw-lap', h('span', null, '#' + (st.laps.length - i)), h('span', null, fmtSw(l)))));
@@ -92,10 +107,11 @@ W.timer = {
     let st = store.get(key, null) || { endsAt: null, left: 0, total: 0 };
     const save = () => store.set(key, st);
     const dial = dialEl(), btns = h('div', 'tm-btns');
-    box.append(h('div', 'w-title', o.label || en('Timer')), dial, btns);
+    box.append(h('div', 'timer-layout', h('div', 'w-title', o.label || en('Timer')), dial, btns));
     box.style.setProperty('--q', o.color || '#38bdf8');
     const remaining = () => (st.endsAt ? Math.max(0, st.endsAt - Date.now()) : st.left);
     const renderBtns = () => {
+      btns.classList.toggle('presets', !st.total);
       if (!st.total) {
         btns.replaceChildren(...presets.map((m) => { const b = h('button', 'chip-btn', m + 'm'); b.addEventListener('click', () => { haptic(); st = { endsAt: Date.now() + m * 60000, left: m * 60000, total: m * 60000 }; save(); renderBtns(); render(); }); return b; }));
       } else {
@@ -119,6 +135,7 @@ W.timer = {
       if (st.endsAt && remaining() <= 0) {
         st = { endsAt: null, left: 0, total: 0 }; save(); renderBtns();
         buzz('0,300,150,300,150,600');
+        if (o.sound === true) chime(o.soundVolume, true);
         toast(tp('Time is up'), 'ok', '⏳ ' + (o.label || tp('Timer')), 6);
       }
       const left = remaining();
@@ -138,7 +155,7 @@ W.counter = {
     const step = Number(o.step) || 1;
     const num = h('div', 'ct-n'), minus = h('button', 'pb', '−'), plus = h('button', 'pb main', '+'), reset = h('button', 'mini-btn', tp('Reset'));
     box.style.setProperty('--q', o.color || '#a78bfa');
-    box.append(h('div', 'w-title', o.label || en('Counter'), reset), num, h('div', 'pomo-btns', minus, plus));
+    box.append(h('div', 'timer-layout', h('div', 'w-title', o.label || en('Counter'), reset), num, h('div', 'pomo-btns', minus, plus)));
     // "Start from zero every day" also when the panel stays open over midnight (it is never rebuilt then)
     const fresh = () => { const today = new Date().toDateString(); if (o.daily !== false && st.day !== today) { st = { n: 0, day: today }; num.textContent = st.n; } };
     const set = (n) => { st.n = n; st.day = new Date().toDateString(); store.set(key, st); num.textContent = st.n; };
@@ -148,6 +165,88 @@ W.counter = {
     fresh();
     num.textContent = st.n;
     return { update: fresh };
+  },
+};
+
+W['water-intake'] = {
+  needs: ['tick'],
+  always: true,
+  create(box, { o, page, w }) {
+    const goal = Math.min(20_000, Math.max(1, Number.parseInt(o.goalMl, 10) || 2000));
+    const interval = Math.min(720, Math.max(0, Number.parseInt(o.reminderMinutes, 10) || 0)) * 60_000;
+    const key = 'water:' + page.id + '/' + w.id;
+    const text = source => I18n?.tc(source) ?? source;
+    const number = new Intl.NumberFormat(LOCALE);
+    const ml = n => number.format(n) + ' ml';
+    let state = PREVIEW ? null : store.get(key, null);
+    const save = () => { if (!PREVIEW) store.set(key, state); };
+    const total = h('strong', 'water-total');
+    const remaining = h('span', 'water-remaining');
+    const progress = h('progress', 'water-progress');
+    progress.max = goal;
+    progress.setAttribute('aria-label', text('Water intake'));
+    const render = () => {
+      total.textContent = ml(state.total) + ' / ' + ml(goal);
+      progress.value = Math.min(goal, state.total);
+      remaining.textContent = text('{amount} remaining').replace('{amount}', () => ml(Math.max(0, goal - state.total)));
+    };
+    const fresh = now => {
+      const day = now.toDateString();
+      if (state?.day === day && state.interval === interval) return;
+      state = { day, total: state?.day === day ? state.total : 0, interval, due: interval ? +now + interval : null };
+      save();
+      render();
+    };
+    const add = amount => {
+      const now = new Date();
+      fresh(now);
+      state.total += amount;
+      state.due = interval ? +now + interval : null;
+      save();
+      render();
+      if (!PREVIEW) haptic();
+    };
+    const quick = [250, 500].map(amount => {
+      const button = h('button', 'chip-btn', '+' + ml(amount));
+      button.type = 'button';
+      button.onclick = () => add(amount);
+      return button;
+    });
+    const custom = h('input', 'water-custom');
+    custom.type = 'number';
+    custom.inputMode = 'numeric';
+    custom.min = '1';
+    custom.max = '20000';
+    custom.step = '1';
+    custom.required = true;
+    custom.placeholder = 'ml';
+    custom.setAttribute('aria-label', text('Custom amount (ml)'));
+    const submit = h('button', 'chip-btn', text('Log water'));
+    submit.type = 'submit';
+    const form = h('form', 'water-form', custom, submit);
+    form.onsubmit = event => {
+      event.preventDefault();
+      if (custom.reportValidity()) {
+        add(custom.valueAsNumber);
+        custom.value = '';
+      }
+    };
+    box.append(h('div', 'w-title', text('Water intake')), total, progress, remaining,
+      h('div', 'water-quick', ...quick), form);
+    fresh(new Date());
+    render();
+    return {
+      update() {
+        const now = new Date();
+        fresh(now);
+        if (PREVIEW || !interval || state.total >= goal || +now < state.due) return;
+        state.due = +now + interval;
+        save();
+        buzz('0,180,110,180');
+        if (o.sound === true) chime(60);
+        toast(text('Time to drink water'), 'ok', '💧 ' + text('Water intake'), 6);
+      },
+    };
   },
 };
 
@@ -173,7 +272,7 @@ W.breathe = {
           ball.style.transition = `transform ${secs}s ease-in-out`;
           if (name === 'Inhale') ball.style.transform = 'scale(1)';
           if (name === 'Exhale') ball.style.transform = 'scale(.45)';
-          word.textContent = name;
+          word.textContent = tp(name);
         }
         count.textContent = Math.ceil(secs - t);
       },

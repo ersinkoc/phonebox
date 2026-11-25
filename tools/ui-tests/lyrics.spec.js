@@ -188,3 +188,19 @@ test('nothing the agent can look up reads as nothing playing, never as empty lyr
   await expect(lyrics).not.toContainText('undefined');
   expect(errors).toEqual([]);
 });
+
+test('a player can have its own timing offset, and the others keep the general one', async ({ page }) => {
+  await page.goto('/panel/');
+  const out = await page.evaluate(async () => {
+    const { parsePlayerOffsets, offsetFor } = await import('./widgets/lyrics.js');
+    const per = parsePlayerOffsets(['Apple Music=1000', ' spotify = -250 ', 'Broken', 'No number=abc', '=5', 'Far=99999', 'a=b=300', 'Empty=', 'Blank=  ']);
+    return {
+      size: per.size,
+      apple: offsetFor(per, 'Apple Music', 200), appleCase: offsetFor(per, 'apple music ', 200), spotify: offsetFor(per, 'Spotify', 200),
+      other: offsetFor(per, 'YouTube', 200), none: offsetFor(per, undefined, 200), far: offsetFor(per, 'Far', 0), last: offsetFor(per, 'a=b', 0), empty: offsetFor(per, 'Empty', 200), blank: offsetFor(per, 'Blank', 200),
+      notAList: parsePlayerOffsets('Apple Music=1000').size,
+    };
+  });
+  // lines without a name or a number are ignored; the last "=" splits the value; values are held to +-5 s
+  expect(out).toEqual({ size: 4, apple: 1000, appleCase: 1000, spotify: -250, other: 200, none: 200, far: 5000, last: 300, empty: 200, blank: 200, notAList: 0 });
+});

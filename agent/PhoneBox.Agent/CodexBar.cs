@@ -347,7 +347,7 @@ internal static class CodexBar
         if (external is { Error: null, Limits.Count: > 0, UpdatedAt: { } updated } && now - updated <= FreshExternalMs)
             return external with { Codex = local?.Codex };
         if (local is { Error: null, Limits.Count: > 0 }) return local;
-        // Cursor / Grok have no local reader: keep the last good CodexBar reading across transient session failures.
+        // Cursor has no local reader: keep the last good CodexBar reading across transient session failures.
         if (HeldReading(external, now) is { } held)
             return held with { Codex = local?.Codex };
         if (external is not null) return external with { Error = external.Error ?? "CodexBar data is stale", Codex = local?.Codex };

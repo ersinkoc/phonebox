@@ -724,13 +724,13 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
     /// </summary>
     public async Task<string?> ActAsync(string action, string? channel)
     {
-        if (!ControlAllowed(config.Get()))
+        if (!ControlAllowed(config.Get(), action))
             return "controlling Discord is turned off in the widget's settings and in Settings › General › Discord";
         await _act.WaitAsync();
         try
         {
             // Checked again here: the widget's option or page may have been switched off while this press was queued.
-            if (!ControlAllowed(config.Get())) return "controlling Discord is turned off in the widget's settings and in Settings › General › Discord";
+            if (!ControlAllowed(config.Get(), action)) return "controlling Discord is turned off in the widget's settings and in Settings › General › Discord";
             var s = _snap;
             if (!s.Connected) return "Discord is not connected";
             switch (action)
@@ -761,8 +761,21 @@ public sealed partial class DiscordMonitor(ConfigStore config, ILogger<DiscordMo
     /// Control needs a Discord widget with the control option on, on a page that is enabled, or the global
     /// <see cref="DiscordConfig.AllowControl"/> switch (off by default) for shortcuts and custom widgets.
     /// </summary>
-    public static bool ControlAllowed(AgentConfig cfg) =>
-        cfg.Discord.AllowControl || WidgetControl(cfg);
+    /// <param name="action">The action asked for; null asks whether any is allowed (the panel's buttons). The
+    /// current-channel bar's own Control option allows only the actions it shows: mute, deafen and leave.</param>
+    public static bool ControlAllowed(AgentConfig cfg, string? action = null) =>
+        cfg.Discord.AllowControl || WidgetControl(cfg) || (action is null || BarActions.Contains(action)) && BarControl(cfg);
+
+    /// <summary>The voice actions the current-channel bar's Control option allows.</summary>
+    internal static readonly string[] BarActions = ["mute", "deafen", "leave"];
+
+    /// <summary>
+    /// The current-channel bar with its Control option on, on an enabled page. It allows <see cref="BarActions"/> and
+    /// stopping a screen share, nothing else: starting a share, the app list, the chat and "Open in Discord" stay with
+    /// the Discord widget's own Control (<see cref="WidgetControl"/>).
+    /// </summary>
+    public static bool BarControl(AgentConfig cfg) =>
+        cfg.Widgets(enabledPagesOnly: true).Any(w => w.Type == "discord-bar" && w.Bool("control") == true);
 
     /// <summary>A Discord widget with the control option on, on a page that is enabled: the global switch does not count.</summary>
     public static bool WidgetControl(AgentConfig cfg) =>

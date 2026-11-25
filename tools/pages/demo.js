@@ -31,7 +31,7 @@
   async function loadCatalog() {
     if (catalog) return catalog;
     const [widgets, templates] = await Promise.all([realFetch(ROOT + 'widgets.json').then((r) => r.json()), realFetch(ROOT + 'templates.json').then((r) => r.json())]);
-    return (catalog = { cols: 12, rows: 6, widgets, templates });
+    return (catalog = { cols: 12, rows: 6, maxRows: 18, widgets, templates });
   }
 
   const store = {
@@ -52,7 +52,7 @@
     const action = (id, label, kind, target, value = 0) => ({ id, label, kind, target, argument: null, value, device: null });
     // every section the agent serves, with its defaults (Config.cs), so the settings page shows what a real one does
     c = {
-      codexBar: { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 },
+      codexBar: { providers: ['claude', 'codex', 'antigravity', 'grok'], rotate: true, pageSize: 2, rotateInterval: 8 },
       controls: { allowListening: false, allowPower: false, actions: [
         action('build', 'Build', 'task', 'npm run build'), action('tests', 'Run tests', 'task', 'npm test'),
         action('web', 'Web dev server', 'server', 'npm run dev'), action('api', 'API dev server', 'server', 'dotnet watch'),
@@ -113,9 +113,15 @@
   const isObs = (type) => type === 'obs' || type.startsWith('obs-');
   // like AgentConfig.Widgets(enabledPagesOnly: true): what may control the computer comes from enabled pages only
   const shownWidgets = (c) => widgets({ ...c, pages: (c.pages || []).filter((p) => p.enabled !== false) });
+  // a saved config without a Discord section keeps the simulated connection; an explicit enabled: false turns it off
+  const dcOn = (c) => c.discord?.enabled !== false;
   const dcControl = (c) => shownWidgets(c).some((w) => w.type === 'discord' && w.options?.control === true); // DiscordMonitor.WidgetControl
-  const dcShare = (c) => c.discord?.screenShare === true && dcControl(c); // DiscordMonitor.ShareWanted
-  const dcChat = (c) => c.discord?.chat === true && shownWidgets(c).some((w) => w.type === 'discord'); // DiscordMonitor.ChatWanted
+  const dcBar = (c) => shownWidgets(c).some((w) => w.type === 'discord-bar' && w.options?.control === true); // DiscordMonitor.BarControl
+  // DiscordMonitor.ControlAllowed: the bar's own option allows only the actions it shows
+  const dcVoice = (c, a) => c.discord?.allowControl === true || dcControl(c) || ((a == null || ['mute', 'deafen', 'leave'].includes(a)) && dcBar(c));
+  const dcShare = (c) => dcOn(c) && c.discord?.screenShare === true && dcControl(c); // DiscordMonitor.ShareWanted
+  const dcShareState = (c) => dcOn(c) && c.discord?.screenShare === true && (dcControl(c) || dcBar(c)); // DiscordMonitor.ShareStateWanted
+  const dcChat = (c) => dcOn(c) && c.discord?.chat === true && shownWidgets(c).some((w) => w.type === 'discord'); // DiscordMonitor.ChatWanted
   const feedsCanOpen = (c) => shownWidgets(c).some((w) => w.type === 'feeds' && w.options?.open === true);
 
   // What the agent sends to a phone (AgentConfig.ToPublic): no commands, keys, tokens or what a rule matches on.
@@ -134,7 +140,7 @@
       // iconRev / iconUpload: the agent sets them when a shortcut has a picture (and when the user uploaded it). The demo
       // has no uploads and serves no /agent/api/shortcuts/icon, so a config that sets them also needs that image mocked
       // (see button-cover.spec.js); without one the key keeps its emoji.
-      shortcuts: (c.shortcuts || []).map(({ id, label, icon, color, toggle, cmd, longPress, cycle, iconRev, iconUpload }) => ({ id, label, icon, color, toggle: !!toggle || cmd === 'builtin:mute', cycle: cmd === 'builtin:cycle' && (cycle || []).length > 0, hold: !!longPress && longPress !== id && (c.shortcuts || []).some((x) => x.id === longPress), iconRev: iconRev ?? null, iconUpload: iconUpload === true })),
+      shortcuts: (c.shortcuts || []).map(({ id, label, icon, color, toggle, cmd, longPress, cycle, iconRev, iconUpload, iconSize }) => ({ id, label, icon, color, iconSize: typeof iconSize === 'string' && ['m', 'l', 'max'].includes(iconSize.trim().toLowerCase()) ? iconSize.trim().toLowerCase() : undefined, toggle: !!toggle || cmd === 'builtin:mute', cycle: cmd === 'builtin:cycle' && (cycle || []).length > 0, hold: !!longPress && longPress !== id && (c.shortcuts || []).some((x) => x.id === longPress), iconRev: iconRev ?? null, iconUpload: iconUpload === true })),
       rules: (c.rules || []).map(({ id, name, enabled, when }) => ({ id, name, enabled: enabled !== false, when })),
       charge: { enabled: !!c.charge?.enabled, min: c.charge?.min ?? 50, max: c.charge?.max ?? 80 },
     };
@@ -207,7 +213,7 @@
       pc: {
         cpu: Math.max(1, wave(37, 8, 46, 0, 6)), cpuName: 'AMD Ryzen 9 7950X 16-Core Processor', cpuTemp: wave(60, 52, 68), cpuPower: wave(41, 38, 96, 2, 4),
         ramUsedGb: wave(120, 21, 24), ramTotalGb: 64, netDownBps: Math.max(0, wave(23, 0.2e6, 9e6, 0, 1e6)), netUpBps: Math.max(0, wave(17, 40e3, 600e3, 1, 50e3)),
-        uptimeSec: 3 * 86400 + 5 * 3600 + Math.floor((now() - START) / 1000),
+        uptimeSec: 3 * 86400 + 5 * 3600 + Math.floor((now() - START) / 1000), seq: Math.floor(now() / 1000),
         disks: [{ name: 'C:', usedGb: 612, totalGb: 1000 }, { name: 'D:', usedGb: 1450, totalGb: 2000 }, { name: 'E:', usedGb: 310, totalGb: 4000 }],
         ...(() => {
           const gpus = [
@@ -307,6 +313,8 @@
         codex: { model: 'Demo coding model', effort: 'high', totalTokens: 187000, totalInput: 150000, totalOutput: 37000, totalCached: 90000, totalReasoning: 12000, lastInput: 42000, contextWindow: 256000 }, limits: [
         { label: '5-hour session', percent: 12, resetsAt: n + 4.1 * 3600e3, windowSec: 18000 },
         { label: 'Weekly', percent: 27, resetsAt: n + 5.5 * 86400e3, windowSec: 604800 }] },
+      { id: 'grok', name: 'Grok', plan: 'SuperGrok', updatedAt: n - 90e3, extra: 'Grok Build 28% · Grok Chat 13%', error: null, codex: null, source: 'local', limits: [
+        { label: 'Weekly', percent: 41, resetsAt: n + 4.2 * 86400e3, windowSec: 604800 }] },
     ] };
   }
 
@@ -315,12 +323,12 @@
     const s = (i, tool, name, status, mins, waitingFor = null) => ({ id: `${tool}:${i}`, tool, name, project: name, status, waitingFor, since: n - mins * 60e3, startedAt: n - 3 * 3600e3,
       pid: 4000 + i * 211, outcome: null, model: null, effort: null, totalTokens: null, inputTokens: null, outputTokens: null, cachedInputTokens: null, reasoningTokens: null,
       lastInputTokens: null, contextWindow: null, lastTool: null, turnStartedAt: null,
-      ...(tool === 'codex' ? { model: 'Demo coding model', effort: 'high', totalTokens: 187000, inputTokens: 150000, outputTokens: 37000, cachedInputTokens: 90000, reasoningTokens: 12000, lastInputTokens: 42000, contextWindow: 256000, lastTool: 'read', turnStartedAt: n - 45000 } : {}) });
+      ...(tool === 'codex' || tool === 'grok' ? { model: tool === 'grok' ? 'grok-demo' : 'Demo coding model', effort: 'high', totalTokens: 187000, inputTokens: 150000, outputTokens: 37000, cachedInputTokens: 90000, reasoningTokens: 12000, lastInputTokens: 42000, contextWindow: 256000, lastTool: 'read', turnStartedAt: n - 45000 } : {}) });
     const pr = (repo, number, title, ci = null, review = null, draft = false, author = null) => ({ repo, number, title, ci, review, draft, author, updated: n - (number % 9 + 1) * 3600e3 });
     return {
       sessions: [s(1, 'claude', 'api-gateway', 'busy', 4), s(2, 'claude', 'docs-site', 'waiting', 2, 'approve a file edit'), s(3, 'codex', 'mobile-app', 'busy', 11),
         s(4, 'claude', 'infra', 'shell', 1), s(5, 'claude', 'blog-engine', 'idle', 38), s(6, 'codex', 'data-pipeline', 'idle', 74), s(7, 'claude', 'design-system', 'idle', 125),
-        s(8, 'cursor', 'phonebox', 'busy', 3), s(9, 'cursor', 'fueltrack', 'idle', 1), s(10, 'antigravity', 'phonebox', 'busy', 2)],
+        s(8, 'cursor', 'phonebox', 'busy', 3), s(9, 'cursor', 'fueltrack', 'idle', 1), s(10, 'antigravity', 'phonebox', 'busy', 2), s(11, 'grok', 'desk-widget', 'busy', 6)],
       github: { user: 'octocat', notifications: 7, error: null, updatedAt: n - 90e3,
         reviewRequests: [pr('acme/api', 412, 'Rate limiter for public endpoints', null, null, false, 'hubot'), pr('acme/web', 1288, 'Dark mode for the dashboard', null, null, false, 'monalisa'),
           pr('acme/infra', 77, 'Move staging to a new region', null, null, false, 'hubot')],
@@ -657,7 +665,8 @@
       // who is in Lounge: only when a widget that shows channels wants it, as the agent does (DiscordFavorites.WantedRooms)
       const lounge = shownWidgets(c).some((w) => w.type === 'discord' && w.options?.channels !== false
         && ((w.options?.favChannels || []).includes('c3') || ((w.options?.favGuilds || []).includes('g1') && !(w.options?.favChannels || []).includes('c1'))));
-      return json({ enabled: true, share: dcShare(c), chat: dcChat(c), chatUnread: dcChat(c) && !dc.chatSeen, control: c.discord?.allowControl === true || dcControl(c), widgetControl: dcControl(c), snapshot: {
+      if (!dcOn(c)) return json({ enabled: false, share: false, shareState: false, chat: false, chatUnread: false, control: false, joinControl: false, widgetControl: false, snapshot: null });
+      return json({ enabled: true, share: dcShare(c), shareState: dcShareState(c), chat: dcChat(c), chatUnread: dcChat(c) && !dc.chatSeen, control: dcVoice(c), joinControl: dcVoice(c, 'join'), widgetControl: dcControl(c), snapshot: {
         connected: true, error: null, user: 'demo', muted: dc.muted, deafened: dc.deaf, channelId: dc.in, channelName: dc.in ? 'Game night' : null, channelKind: dc.in ? 'voice' : null,
         inputMode: dc.ptt ? 'PUSH_TO_TALK' : 'VOICE_ACTIVITY', pttKey: true,
         members: dc.in ? [{ id: '1', name: 'demo', muted: dc.muted, deafened: dc.deaf }, { id: '2', name: 'Ada', muted: false, deafened: false, speaking: Math.floor(now() / 1500) % 2 === 0 }, { id: '3', name: 'Linus', muted: true, deafened: false }] : [],
@@ -708,20 +717,22 @@
     }
     if (path === '/api/discord/share') {
       // screen share (off unless discord.screenShare is on): a few running apps; only the game shares directly
-      if (!dcShare(await config())) return json({ enabled: false });
+      const sc = await config();
+      if (!dcShareState(sc)) return json({ enabled: false });
       // the agent reads it as a bool: anything but true or false is refused, as ASP.NET does
       if (q.has('apps') && !/^(true|false)$/i.test(q.get('apps'))) return json({}, 400);
-      // the name of what is shared only with the app list, as the agent does (DiscordMonitor.Share)
-      const withApps = /^true$/i.test(q.get('apps') || '');
+      // the app list and the name of what is shared only for the Discord widget's share view, as the agent does
+      const withApps = /^true$/i.test(q.get('apps') || '') && dcShare(sc);
       return json({ enabled: true, ready: true, inCall: !!dc.in, active: !!dc.sharing, name: withApps ? dc.sharing : null,
-        apps: /^true$/i.test(q.get('apps') || '') ? [{ pid: 4242, name: 'Space Racers' }, { pid: 77, name: 'Firefox' }, { pid: 91, name: 'Visual Studio Code' }] : null });
+        apps: withApps ? [{ pid: 4242, name: 'Space Racers' }, { pid: 77, name: 'Firefox' }, { pid: 91, name: 'Visual Studio Code' }] : null });
     }
     if (path.startsWith('/api/discord/share/') && method === 'POST') {
       const c = await config();
       const no = (code, error) => json({ error, code }, 400); // DiscordShareError
-      if (!dcControl(c)) return no('control', "controlling Discord is turned off in the widget's settings");
-      if (c.discord?.screenShare !== true) return no('off', 'screen share is turned off');
       const a = path.slice(19);
+      // the current-channel bar may only stop a share
+      if (!dcControl(c) && !(a === 'stop' && dcBar(c))) return no('control', "controlling Discord is turned off in the widget's settings");
+      if (c.discord?.screenShare !== true) return no('off', 'screen share is turned off');
       if (a === 'stop') dc.sharing = null;
       else if (!dc.in) return no('noCall', 'join a voice channel first');
       else if (dc.sharing) return no('sharing', 'you are already sharing');
@@ -754,8 +765,8 @@
     }
     if (path.startsWith('/api/discord/') && method === 'POST') {
       const dcCfg = await config();
-      if (dcCfg.discord?.allowControl !== true && !dcControl(dcCfg)) return json({ error: "controlling Discord is turned off in the widget's settings and in Settings › General › Discord" }, 400);
       const a = path.slice(13);
+      if (!dcVoice(dcCfg, a)) return json({ error: "controlling Discord is turned off in the widget's settings and in Settings › General › Discord" }, 400);
       if (a === 'mute') dc.muted = !dc.muted; else if (a === 'deafen') dc.deaf = !dc.deaf; else if (a === 'inputmode') dc.ptt = !dc.ptt; else if (a === 'leave') dc.in = null; else if (a === 'join') dc.in = q.get('channel'); else return json({ error: 'unknown action' }, 400);
       return json({ ok: true });
     }
@@ -920,7 +931,7 @@
       }
       return json(await config(), 200, { 'X-Config-Version': String(cfgVersion()) });
     }
-    if (path === '/api/info') return json({ version: VERSION, os: 'windows', configPath: 'browser storage (demo)', logPath: '—', adb: 'demo', connected: true, devices: ['DEMO0001'], appMissing: [], usbProblem: null, webviewProblem: null });
+    if (path === '/api/info') return json({ version: VERSION, os: 'windows', sensors: { lhm: 'connected' }, configPath: 'browser storage (demo)', logPath: '—', adb: 'demo', connected: true, devices: ['DEMO0001'], appMissing: [], usbProblem: null, webviewProblem: null });
     // Pairing over Wi-Fi: a placeholder pattern instead of real QR codes (the demo has no agent to pair with)
     if (path === '/api/pair/start' && method === 'POST') {
       const box = (label) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"><rect width="29" height="29" fill="#fff"/>${
@@ -935,7 +946,16 @@
     if (path === '/api/lan') return json({ configured: true, active: true, port: 8766, restartNeeded: false, hosts: ['192.168.1.20', '100.101.102.103'], fingerprint: 'demo' });
     if (path === '/api/update') return json({ status: { agentVersion: VERSION, appVersion: VERSION, latest: VERSION, releaseUrl: 'https://github.com/ersinkoc/phonebox/releases/latest', agentUpdate: false, appUpdate: false,
       lastCheck: now() - 3600e3, state: 'idle', error: null }, auto: (await config()).updates?.auto !== false, installed: true });
-    if (path === '/api/claude/hook') return json({ installed: false, path: '~/.claude/settings.json' });
+    if (path === '/api/guba') return json({
+      posts: [{ id: 'demo-1', title: 'Morning market notes', author: 'Demo user', time: '2026-01-01 09:20', reads: 36, comments: 2 }],
+      updated: now(),
+    });
+    if (path === '/api/claude/hook') {
+      // the extra accounts' settings.json files too, so the settings show where Install would write
+      const extra = (await config()).claude?.extraCredentialDirs || [];
+      return json({ installed: false, path: '~/.claude/settings.json', paths: [{ label: null, path: '~/.claude/settings.json', exists: true, installed: false },
+        ...extra.map((d) => ({ label: d.label, path: d.dir.replace(/\/$/, '') + '/settings.json', exists: true, installed: false }))] });
+    }
     if (method !== 'GET') return json({ ok: true });
     return json({ error: 'not in the demo' }, 404);
   }

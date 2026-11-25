@@ -4,6 +4,7 @@
 
   // Only use the phone with this serial number (null = every connected Android device)
   "deviceSerial": null,
+  "ignoredDeviceSerials": [],
   // Path to adb.exe (null = searched in PATH, the Android SDK and winget locations)
   "adbPath": null,
 
@@ -14,7 +15,7 @@
   // chat's title on the phone (without it only the folder name is shown and no title is read); "shareConversation" lets the phone
   // open a session's recent messages and steps (nothing is read from a chat file and nothing is sent). Windows: "watchWsl" also shows the sessions
   // of Claude Code inside the running WSL distros, and uses its sign-in there for the quota when Windows has none (off by default).
-  "claude": { "shareSessionTitles": false, "shareConversation": false, "watchWsl": false },
+  "claude": { "shareSessionTitles": false, "shareConversation": false, "watchWsl": false, "extraCredentialDirs": [] },
 
   // Ping target for the ping metric and the "ping high" rule, every 5 s (empty = off)
   "ping": { "host": "1.1.1.1", "adapters": [] },
@@ -44,7 +45,7 @@
 
   // Clock seconds, return to the first page after N idle seconds (0 = never), vibrate on session events, a message when a session finishes,
   // switch pages with the phone's volume keys
-  "display": { "showSeconds": true, "idleReturnSec": 90, "vibrate": true, "finishToast": true, "finishSound": false, "finishSoundVolume": 70, "volumeKeys": true, "pixelShift": false, "controlsTop": false, "pageBar": "dots", "pageBarSide": "bottom", "idleDimMin": 0, "nightWhenUnreachable": false, "unreachableNightDelayMin": 5, "wakeOnUnlock": false, "lockPhoneWithShortcut": false, "language": "auto", "wallpaper": { "dim": 45, "blur": 0 } },
+  "display": { "showSeconds": true, "weekStart": "monday", "idleReturnSec": 90, "vibrate": true, "finishToast": true, "finishSound": false, "finishSoundVolume": 70, "volumeKeys": true, "pixelShift": false, "controlsTop": false, "tabletRows": false, "pageBar": "dots", "pageBarSide": "bottom", "idleDimMin": 0, "nightWhenUnreachable": false, "unreachableNightDelayMin": 5, "wakeOnUnlock": false, "lockPhoneWithShortcut": false, "language": "auto", "wallpaper": { "dim": 45, "blur": 0 }, "standby": "off", "standbyGraceSec": 30 },
 
   // Plex music control (Caldera Amp or another Plex Companion player): the server address and token, and the player address.
   // None of these go to the phone; the token is sent only to the server, never to the player.

@@ -39,6 +39,23 @@ public class PhonesTests
     }
 
     [Fact]
+    public void APhoneKeepsItsOwnViewportBetweenRequests()
+    {
+        var first = Guid.NewGuid().ToString("N");
+        var second = Guid.NewGuid().ToString("N");
+        PhoneRegistry.Touch(first, "Tablet", "USB");
+        PhoneRegistry.Touch(second, "Phone", "Wi-Fi");
+        PhoneRegistry.SetViewport(first, 1138, 711);
+        PhoneRegistry.SetViewport(second, 780, 360);
+        PhoneRegistry.Touch(first, "Tablet", "USB");
+        PhoneRegistry.SetViewport(first, -1, 9000);
+        Assert.Equal(new PhoneViewport(1138, 711), PhoneRegistry.All().Single(p => p.Id == first).Viewport);
+        Assert.Equal(new PhoneViewport(780, 360), PhoneRegistry.All().Single(p => p.Id == second).Viewport);
+        PhoneRegistry.SetViewport(first, 711, 1138);
+        Assert.Equal(new PhoneViewport(711, 1138), PhoneRegistry.All().Single(p => p.Id == first).Viewport);
+    }
+
+    [Fact]
     public void RegistryIgnoresMalformedIds()
     {
         PhoneRegistry.Touch("abc123", "Pixel 8", "USB");

@@ -45,7 +45,10 @@ Setup installs the [latest release](https://github.com/ersinkoc/phonebox/release
 
 The agent installs for your user. System package managers may request administrator rights for missing dependencies;
 on Linux, setup asks before using `sudo`. Run it again
-any time to update or repair PhoneBox; settings and pairings are kept. Read [`setup.ps1`](../setup.ps1) or
+any time to update or repair PhoneBox; settings and pairings are kept. Both scripts skip devices listed under
+**Settings › General › Phone connection › Ignored USB devices**, even when passed an explicit serial. If the
+installer cannot verify the USB policy, it installs the desktop agent and skips the phone app.
+This also applies when an older agent cannot read the policy from an existing configuration. Read [`setup.ps1`](../setup.ps1) or
 [`setup.sh`](../setup.sh) before you run it if you like. With `-DryRun` / `--dry-run` it downloads and checks everything
 and changes nothing.
 
@@ -96,6 +99,15 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
 - **Linux USB permissions**: if `adb devices` shows `no permissions`, adb also needs udev rules. Install
   `android-sdk-platform-tools-common` on Debian/Ubuntu or `android-udev` on Arch. Some systems also need the
   `plugdev` group (`sudo usermod -aG plugdev $USER`, then log out and in). Setup points this out when it happens.
+- **Linux shortcuts that type or press keys** use `xdotool` on X11. On Wayland they use `wtype` (wlroots, KDE) or
+  `ydotool` (GNOME, which takes neither of the others). PhoneBox uses ydotool 0.1.x (Ubuntu 24.04's `ydotool`
+  package, `sudo apt install ydotool`; 1.x isn't supported yet), which needs no `ydotoold` but needs write access to
+  `/dev/uinput`. Give that access through a group of its own, not `input`: the `input` group can usually also read
+  the real keyboards (`/dev/input/event*`), and with them every password typed. For example:
+  `sudo groupadd --system uinput`, the udev rule `KERNEL=="uinput", GROUP="uinput", MODE="0660",
+  OPTIONS+="static_node=uinput"` in `/etc/udev/rules.d/60-uinput.rules`, `sudo usermod -aG uinput $USER`, then
+  restart. Any program you run can then send key presses and mouse input, as PhoneBox does. ydotool presses the keys
+  of a US layout, so on other layouts some characters come out different, and it types only ASCII.
 - **On macOS**, the agent is signed with PhoneBox's own certificate, not an Apple Developer ID. The first time,
   macOS may ask whether it may control Music or Spotify (for Now Playing), or accept incoming connections (with Wi-Fi
   on). Shortcuts that press keys, and the Trackpad widget (its mouse events and its gestures), need *System Settings ›
@@ -203,6 +215,11 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/scripts/unin
 
 Without options it removes the program and the start-at-login entry and keeps the settings. `-Purge` / `--purge` also
 deletes the settings, and `-Apk` / `--apk` removes the app from the connected phone.
+
+If you uninstall PhoneBox while **power standby** is on, the phone may keep *stay awake while charging* switched off.
+Turn standby off first (**Settings › General › Display › Power standby: Off**), which puts the setting back. If it is
+already off, turn *Stay awake* back on in the phone's Developer options, or run
+`adb shell settings put global stay_on_while_plugged_in 7` (use your own value if it was different).
 
 ### What works where
 
@@ -349,6 +366,27 @@ certificate authority its certificate chains to (Let's Encrypt's ISRG Root X1). 
 [letsencrypt.org/certificates](https://letsencrypt.org/certificates/), rename it to `isrgrootx1.crt`, and install it
 under **Settings › Security › Install from device storage**. The panel itself talks to the computer and is not
 affected. Thanks to [phongnguyen2277](https://github.com/phongnguyen2277) for finding this (#184).
+</details>
+
+<details><summary><b>On an x86 tablet the panel asks for a newer WebView, and the Play Store has none.</b></summary>
+
+Some older tablets have an Intel (x86) processor, such as the Galaxy Tab 3 10.1 (GT-P5200). On the one we tried, the
+Play Store offered no WebView or Chrome newer than 101, below the 105 the panel needs to scale widgets. On a rooted
+device running LineageOS 14.1 (Android 7), LineageOS's own x86 WebView can replace the system one:
+
+1. Take `webview.apk` from the commit with
+   [WebView 119.0.6045.134](https://github.com/LineageOS/android_external_chromium-webview_prebuilt_x86/tree/91c9fde9772f760daebb73402e5f3dce9808f427)
+   (the APK is stored with Git LFS). 119 is the last Chromium for Android 7: from 120 on, WebView needs Android 8.0
+   (API 26), and the newer builds on that repository's default branch will not run on Android 7.
+2. Keep a copy of `/system/app/webview/webview.apk`, put the new APK in its place and restart the tablet.
+   `adb install -r` cannot do this, because the new APK is signed with a different key than the system one.
+3. On Android 7 to 9, Chrome can be the active WebView, and then replacing the system one changes nothing. Open
+   **Developer options › WebView implementation**, pick *Android System WebView* (or disable Chrome), and check that
+   the version is 105 or later under **Settings › Apps › Android System WebView**; the panel's update notice also
+   goes away.
+
+This worked on a GT-P5200 with LineageOS 14.1 (Android 7.1.2), where Chrome 101 is installed next to it. Without root
+there is no newer WebView for these devices.
 </details>
 
 <details><summary><b>I want the volume keys to change the phone's volume.</b></summary>

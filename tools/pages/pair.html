@@ -45,6 +45,20 @@ code { font-size: 13px; }
     <p class="muted">Scan the QR code again from PhoneBox on the computer: Settings › General › Wi-Fi &amp; Tailscale › Pair a phone over Wi-Fi.</p>
   </div>
 
+  <div class="card" id="cannotOpen" hidden>
+    <h2 class="warn">The PhoneBox app didn't open</h2>
+    <p class="muted">If PhoneBox isn't installed yet, use the download button below, then scan the QR code again.
+      If it's already installed, try one of these options:</p>
+    <ul class="muted" style="margin:8px 0 0 18px;padding:0">
+      <li>scan the code with the phone's camera, or open the pairing page in Chrome, which hands app links to the app
+        reliably;</li>
+      <li>or use the direct pairing link the pairing page shows under <b>Open in PhoneBox</b>;</li>
+      <li>or skip Wi-Fi pairing: plug the phone in once over USB and the agent pairs it there.</li>
+    </ul>
+    <p class="muted" style="margin-top:10px">The pairing code works once, for 5 minutes; start pairing again if it
+      expired.</p>
+  </div>
+
   <div class="card">
     <h2>No PhoneBox app yet?</h2>
     <p class="muted">Install it first (Android 5.0 or later), then scan the QR code again.</p>
@@ -58,14 +72,19 @@ code { font-size: 13px; }
 <script>
 (() => {
   const raw = location.hash.slice(1);
+  const cannotOpen = new URLSearchParams(location.search).get('cannot-open') === '1';
+  // Keep the one-time code and fallback flag out of the address bar and browser history.
+  history.replaceState(null, '', location.pathname);
+  if (cannotOpen) {
+    document.getElementById('cannotOpen').hidden = false;
+    return;
+  }
   // the addresses the agent offers: private network and Tailscale IPv4 (the app accepts nothing else either)
   const local = (h) => {
     const b = h.split('.').map((x) => (/^\d{1,3}$/.test(x) ? +x : NaN));
     return b.length === 4 && b.every((x) => x >= 0 && x <= 255)
       && (b[0] === 10 || (b[0] === 172 && b[1] >= 16 && b[1] <= 31) || (b[0] === 192 && b[1] === 168) || (b[0] === 100 && b[1] >= 64 && b[1] <= 127));
   };
-  // keep the one-time code out of the browser history and the address bar
-  history.replaceState(null, '', location.pathname);
   const p = new URLSearchParams(raw);
   // one checked host list for the check, the display and the link handed to the app
   const hosts = (p.get('h') || '').split(',').map((h) => h.trim()).filter(local).slice(0, 8);
@@ -78,14 +97,15 @@ code { font-size: 13px; }
   document.getElementById('pc').textContent = (p.get('pc') || 'your computer').slice(0, 64);
   document.getElementById('hosts').textContent = hosts.join(', ') + ' (port ' + port + ')';
   document.getElementById('check').textContent = (p.get('fp').slice(0, 4) + ' ' + p.get('fp').slice(4, 8)).toUpperCase();
-  // Chrome on Android opens intent:// links in the app and falls back to the download page when it is not installed;
+  // Chrome on Android opens intent:// links in the app or follows the fallback if it cannot open the app;
   // other browsers get the plain phonebox:// link. The intent names the package, so no other app that claims the
   // phonebox:// scheme receives the one-time code. Some browsers (common on LineageOS) send such a link to the Play Store
   // even with the app installed (#175); for them the plain link is offered below, only as a choice the user makes.
   // rebuilt from the checked fields only, so nothing else from the link reaches the intent syntax
   const query = ['v', 'pc', 'fp', 'port', 'h', 'c'].filter((k) => p.has(k)).map((k) => k + '=' + encodeURIComponent(p.get(k))).join('&');
   const android = /Android/i.test(navigator.userAgent);
-  const fallback = encodeURIComponent('https://github.com/ersinkoc/phonebox/releases/latest');
+  // A query parameter loads the fallback even in the tab that already shows the pairing card (#175).
+  const fallback = encodeURIComponent('https://ersinkoc.github.io/phonebox/pair/?cannot-open=1');
   document.getElementById('open').href = android
     ? `intent://pair?${query}#Intent;scheme=phonebox;package=net.oxog.phonebox.deskpanel;S.browser_fallback_url=${fallback};end`
     : `phonebox://pair?${query}`;

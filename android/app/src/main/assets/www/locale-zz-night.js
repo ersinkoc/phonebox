@@ -1,14 +1,15 @@
 // PhoneBox interface translations for the "night" rule action. See docs/DEVELOPMENT.md for the locale checks.
 // Merged deeply into the other packs: a plain top-level assign would replace whole language entries, and this file
-// loads in the middle of the alphabetically ordered locale-*.js files (check-release.py parses the literal below).
+// loads last among the locale-*.js files (check-release.py parses the literal below).
 function pbNightMerge(prev, extra) {
   const next = { ...prev };
   for (const [lang, pack] of Object.entries(extra)) {
     const old = next[lang] || {};
     next[lang] = {
-      strings: { ...old.strings, ...pack.strings },
-      catalog: { ...old.catalog, ...pack.catalog },
-      panel: { ...old.panel, ...pack.panel },
+      ...old,
+      ...(pack.strings && { strings: { ...old.strings, ...pack.strings } }),
+      ...(pack.catalog && { catalog: { ...old.catalog, ...pack.catalog } }),
+      ...(pack.panel && { panel: { ...old.panel, ...pack.panel } }),
     };
   }
   return next;

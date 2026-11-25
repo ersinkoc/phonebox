@@ -182,17 +182,68 @@ public sealed partial class LyricsService : IDisposable
             }
             else if (res.StatusCode != HttpStatusCode.NotFound) throw Refused(res);
         }
-        // a failure of another lookup may have started a back-off meanwhile: no second request during it
-        if (PausedFor() is > 0 and var left) throw new LrclibPausedException(left);
-        // no widget wants lyrics any more (its option was turned off while the exact lookup ran): no second request
-        if (!_config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "lyrics" && w.Bool("lookup") == true))
-            return new LyricsResult("off");
-        var search = $"/api/search?track_name={Uri.EscapeDataString(title)}" + (artist.Length > 0 ? $"&artist_name={Uri.EscapeDataString(artist)}" : "");
-        using (var res = await _http.GetAsync(search))
+        // The searches, widest first: as the player named the track, then with the extra artists and the bracketed
+        // extras dropped. A player often carries a translation in brackets or a version note ("(10 years after Ver.)")
+        // in the title and several artists in one string; LRCLIB matches the track name as a whole, so such a title
+        // finds nothing even when the song is there. An ordinary title has one query here, as before.
+        foreach (var (queryTitle, queryArtist) in Queries(title, artist))
         {
+            // a failure of another lookup may have started a back-off meanwhile: no further request during it
+            if (PausedFor() is > 0 and var left) throw new LrclibPausedException(left);
+            // no widget wants lyrics any more (its option was turned off while the exact lookup ran): no further request
+            if (!_config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "lyrics" && w.Bool("lookup") == true))
+                return new LyricsResult("off");
+            var search = $"/api/search?track_name={Uri.EscapeDataString(queryTitle)}"
+                + (queryArtist.Length > 0 ? $"&artist_name={Uri.EscapeDataString(queryArtist)}" : "");
+            using var res = await _http.GetAsync(search);
             if (!res.IsSuccessStatusCode) throw Refused(res);
             using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-            return Best(doc.RootElement, seconds, title, artist) ?? new LyricsResult("notfound");
+            if (Best(doc.RootElement, seconds, queryTitle, queryArtist) is { } hit) return hit;
+        }
+        return new LyricsResult("notfound");
+    }
+
+    /// <summary>
+    /// The searches to try for one track, widest first: as the player named it, then with the extra artists dropped
+    /// (a string like "A (…)/B (…)" names them together), then with the bracketed extras of the title dropped too
+    /// ("(Chinese title)", "(10 years after Ver.)"). Duplicates are left out, so an ordinary title costs one search.
+    /// </summary>
+    internal static IEnumerable<(string Title, string Artist)> Queries(string title, string artist)
+    {
+        var first = FirstArtist(artist);
+        var bare = WithoutTrailingGroups(title);
+        // a title and artist as they are: one query, as before
+        if (bare == title && first == artist) return [(title, artist)];
+        var candidates = new List<(string Title, string Artist)> { (title, artist) };
+        if (first != artist) candidates.Add((title, first));
+        if (bare != title)
+        {
+            candidates.Add((bare, artist));
+            if (first != artist) candidates.Add((bare, first));
+        }
+        // the title alone, tried last when the artist-filtered searches above found nothing
+        candidates.Add((bare, ""));
+        return candidates.Distinct();
+    }
+
+    /// <summary>The first artist of a string that names several ("A (…)/B (…)" or "A &amp; B"), without its own bracketed note.</summary>
+    internal static string FirstArtist(string artist)
+    {
+        var a = artist.Trim();
+        var cut = a.IndexOfAny(['/', '、', '&', ';', '；', ',']);
+        if (cut > 0) a = a[..cut].Trim();
+        return TrailingGroup().Replace(a, "").Trim();
+    }
+
+    /// <summary>A title without the bracketed notes at its end: "(Chinese title)", "[Live]", "(10 years after Ver.)".</summary>
+    internal static string WithoutTrailingGroups(string title)
+    {
+        var t = title.Trim();
+        while (true)
+        {
+            var shorter = TrailingGroup().Replace(t, "").Trim();
+            if (shorter == t || shorter.Length == 0) return t;
+            t = shorter;
         }
     }
 
@@ -255,8 +306,11 @@ public sealed partial class LyricsService : IDisposable
         {
             var left = t[..dash].Trim();
             var right = t[(dash + 3)..].Trim();
-            // "Artist - Song": the part that names the channel's artist (or any part, without an artist) is the artist
-            if (right.Length > 0 && (a.Length == 0 || left.Contains(a, StringComparison.OrdinalIgnoreCase) || a.Contains(left, StringComparison.OrdinalIgnoreCase)))
+            // "Artist - Song": the part that names the channel's artist (or any part, without an artist) is the artist.
+            // A VEVO channel drops the spaces ("TanBionicaVEVO" for "Tan Bionica"): equal without them counts too, but
+            // only equal, so "The Band" is not taken for "TheBandit".
+            if (right.Length > 0 && (a.Length == 0 || left.Contains(a, StringComparison.OrdinalIgnoreCase) || a.Contains(left, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Spaces().Replace(left, ""), Spaces().Replace(a, ""), StringComparison.OrdinalIgnoreCase)))
             {
                 a = left;
                 t = right;
@@ -267,6 +321,10 @@ public sealed partial class LyricsService : IDisposable
 
     [GeneratedRegex(@"\s*[\(\[](?:official|lyric|lyrics|audio|video|hd|hq|4k|visualizer|visualiser|music video|clip officiel|videoclip|mv)[^\)\]]*[\)\]]", RegexOptions.IgnoreCase)]
     private static partial Regex Extras();
+
+    /// <summary>A trailing bracketed group in either width: "(…)", "[…]", "（…）", "【…】".</summary>
+    [GeneratedRegex(@"\s*(?:\([^()]*\)|\[[^\[\]]*\]|（[^（）]*）|【[^【】]*】)\s*$")]
+    private static partial Regex TrailingGroup();
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Spaces();

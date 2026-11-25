@@ -80,4 +80,31 @@ public class KeySenderTests
         Assert.Equal(vk, KeySender.WinVk(key));
         Assert.Equal(extended, KeySender.WinExtended(key));
     }
+
+#if !WINDOWS
+    // names from ydotool 0.1.x's tables: it reads an unknown name as its first letter, so "leftctrl" would press L
+    [Theory]
+    [InlineData("ctrl+shift+m", "ctrl+shift+m")]
+    [InlineData("win+period", "super+.")]
+    [InlineData("enter", "enter")]
+    [InlineData("ctrl+]", "ctrl+]")]
+    [InlineData("alt+f4", "alt+f4")]
+    [InlineData("ctrl+space", "ctrl+ ")]
+    [InlineData("printscreen", "sysrq")]
+    public void YdotoolUsesItsOwnKeyNames(string spec, string expected) => Assert.Equal(expected, KeySender.YdotoolCombo(KeySender.Parse(spec)[0]));
+
+    [Theory]
+    [InlineData("next")]
+    [InlineData("ctrl+alt+numpad3")]
+    [InlineData("f13")]
+    [InlineData("volumeup")]
+    public void YdotoolIsSkippedForKeysItCannotName(string spec) => Assert.Null(KeySender.YdotoolCombo(KeySender.Parse(spec)[0]));
+
+    [Theory]
+    [InlineData("Hello, world!", true)]
+    [InlineData("a\tb\nc ~{}|", true)]
+    [InlineData("café", false)]
+    [InlineData("🦊", false)]
+    public void YdotoolTypesOnlyWhatItCanTypeInFull(string text, bool ok) => Assert.Equal(ok, KeySender.YdotoolCanType(text));
+#endif
 }

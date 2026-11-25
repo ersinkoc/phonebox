@@ -172,7 +172,30 @@ public static class ClaudeHook
 
     private static bool IsPathChar(char c) => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' or '/' or '~' or '%';
 
-    public static bool Installed() => Installed(SettingsPath);
+    /// <summary>~/.claude/settings.json and the settings.json of each extra config folder that exists.</summary>
+    internal static List<string> SettingsPaths(IEnumerable<ClaudeCredentialDir>? extra, string? defaultPath = null) =>
+        Targets(extra, defaultPath).Where(t => t.Exists).Select(t => t.Path).ToList();
+
+    /// <summary>A settings.json Install and Remove reach; Label is null for ~/.claude. Shown in the settings before writing.</summary>
+    public sealed record HookTarget(string? Label, string Path, bool Exists, bool Installed);
+
+    /// <summary>~/.claude first, then each extra folder once however it is spelled. A folder that doesn't exist is listed
+    /// but never written: the hook doesn't create it.</summary>
+    internal static List<HookTarget> Targets(IEnumerable<ClaudeCredentialDir>? extra, string? defaultPath = null)
+    {
+        var main = defaultPath ?? SettingsPath;
+        var list = new List<HookTarget> { new(null, main, true, Installed(main)) };
+        var seen = new HashSet<string> { ClaudeCredentialDir.KeyOf(Path.GetDirectoryName(main)!) };
+        foreach (var d in extra ?? [])
+        {
+            if (d.TryKey() is not { } key || !seen.Add(key)) continue;
+            var dir = Path.GetFullPath(d.FullPath());
+            var path = Path.Combine(dir, "settings.json");
+            var exists = Directory.Exists(dir);
+            list.Add(new(d.Label, path, exists, exists && Installed(path)));
+        }
+        return list;
+    }
 
     internal static bool Installed(string path)
         => Installed(path, Endpoint);
@@ -191,8 +214,9 @@ public static class ClaudeHook
     }
 
     /// <summary>Adds (or, with install = false, removes) the PhoneBox hook, keeping everything else and a backup.</summary>
-    public static string? Configure(bool install, int port, int timeoutSec) =>
-        Configure(install, port, timeoutSec, SettingsPath);
+    public static string? Configure(bool install, int port, int timeoutSec, IEnumerable<ClaudeCredentialDir>? extra = null) =>
+        // every file is tried, so one broken settings.json doesn't leave the others without the hook
+        SettingsPaths(extra).Select(p => Configure(install, port, timeoutSec, p)).ToList().FirstOrDefault(e => e is not null);
 
     internal static string? Configure(bool install, int port, int timeoutSec, string path)
         => Configure(install, port, timeoutSec, path, Endpoint);

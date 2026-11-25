@@ -1,6 +1,7 @@
 // PhoneBox desk panel: core, pages, navigation and data from the agent. The widgets live in widgets/*.js;
 // they import what they need from here, so this module must not run code that needs them while it loads
 // (the start section at the end runs after every module has loaded).
+import { designGrid, gridForViewport, placeWidget, widgetsOnGrid } from './grid.js';
 import { W } from './registry.js';
 import './appearance.js';
 import { cached } from './widgets/helpers.js';
@@ -19,7 +20,8 @@ import './widgets/spectrum.js';
 import './widgets/steam-library.js';
 import './widgets/lyrics.js';
 
-// PhoneBox desk panel. Pages are 12 × 6 grids of widgets, designed in the agent's settings page.
+// PhoneBox desk panel. Pages are grids of widgets, designed in the agent's settings page.
+// A phone is 12 × 6. A tablet keeps the 12 columns and adds rows, so the page holds more widgets.
 // The panel talks to the PhoneBox agent through "/agent/*", which the Android shell proxies over USB
 // (adb reverse) or Wi-Fi to the computer.
 
@@ -61,7 +63,7 @@ export const $ = (id) => document.getElementById(id);
 // The native bridge (window.Android) is in every frame, sandboxed widgets included, so each call carries a key that only
 // the panel's own frames receive (MainActivity.bridgeKey). This wrapper adds it.
 const BRIDGE = ['battery', 'buzz', 'haptic', 'is24Hour', 'pcs', 'selectPc', 'forgetPc', 'setBrightness', 'setHomeScreen', 'setOrientation',
-  'setPinned', 'setVolumeKeys', 'setLanguage', 'transport', 'sensors', 'version', 'canListen', 'listen', 'stopListening', 'cancelListening', 'trackpad', 'canWake', 'wakePc'];
+  'setPinned', 'setVolumeKeys', 'setStandby', 'setLanguage', 'transport', 'sensors', 'version', 'canListen', 'listen', 'stopListening', 'cancelListening', 'trackpad', 'canWake', 'wakePc'];
 export const bridge = typeof Android === 'undefined' ? null : Object.fromEntries(BRIDGE.filter((m) => typeof Android[m] === 'function')
   .map((m) => [m, (...args) => Android[m](window.__phoneboxKey || '', ...args)]));
 // Live preview inside the agent's layout editor: the layout comes from the editor (unsaved), not from the agent.
@@ -134,6 +136,10 @@ export const D = { state: null, quotas: null, work: null, procs: null, push: {},
 export const HIST = 90;
 export const hist = { cpu: [], gpu: [], ram: [], vram: [], down: [], up: [], ping: [], gputemp: [], cputemp: [], hotspot: [], gpupower: [], gpuclock: [], cpupower: [] };
 export const pushHist = (k, v) => { const a = hist[k]; a.push(v ?? 0); if (a.length > HIST) a.shift(); };
+// the agent numbers its samples (pc.seq); a state sent again for a media or volume change carries the same one and
+// adds no point, so the charts move once per sample. Agents before seq send none: every state adds a point, as before
+let histSeq = null;
+let histRunId = null;
 
 // ---------------------------------------------------------------- helpers
 /** fetch() to the panel's local/USB feed proxy when the phone cannot reach an allowed public HTTPS feed directly. */
@@ -455,10 +461,10 @@ export const fmtHM = (d) => fmtClock(d.getHours(), d.getMinutes());
 export const fmtTime = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + pad(s % 60); };
 export function fmtRate(bps) {
   if (bps == null) return ['—', ''];
-  if (bps >= 1e9) return [(bps / 1e9).toFixed(1), 'GB/s'];
-  if (bps >= 1e6) return [(bps / 1e6).toFixed(bps >= 1e8 ? 0 : 1), 'MB/s'];
-  if (bps >= 1e3) return [(bps / 1e3).toFixed(0), 'KB/s'];
-  return [Math.round(bps).toString(), 'B/s'];
+  if (bps >= 1e9) return [(bps / 1e9).toFixed(1), tp('GB/s')];
+  if (bps >= 1e6) return [(bps / 1e6).toFixed(bps >= 1e8 ? 0 : 1), tp('MB/s')];
+  if (bps >= 1e3) return [(bps / 1e3).toFixed(0), tp('KB/s')];
+  return [Math.round(bps).toString(), tp('B/s')];
 }
 export const rateStr = (b) => fmtRate(b).join(' ');
 export function fmtDur(ms) {
@@ -472,13 +478,13 @@ export function fmtDur(ms) {
 export function shortDur(ms) {
   const m = Math.max(0, Math.floor(ms / 60000));
   if (m < 1) return t('time.now');
-  if (m < 60) return m + 'm';
+  if (m < 60) return tpv('{m}m', { m });
   const hr = Math.floor(m / 60);
-  return hr < 24 ? `${hr}h ${m % 60}m` : `${Math.floor(hr / 24)}d`;
+  return hr < 24 ? tpv('{h}h {m}m', { h: hr, m: m % 60 }) : tpv('{d}d', { d: Math.floor(hr / 24) });
 }
 export const ago = (ts) => { const d = Date.now() - ts; return d < 60_000 ? t('time.justNow') : t('time.ago', { dur: shortDur(d) }); };
 export const r1 = (v) => (v == null ? '—' : (Math.round(v * 10) / 10).toString());
-export const fmtMem = (mb) => (mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB');
+export const fmtMem = (mb) => (mb >= 1024 ? (mb / 1024).toFixed(1) + ' ' + tp('GB') : Math.round(mb) + ' ' + tp('MB'));
 export const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 export const color = (c) => (c && c.startsWith('--') ? cssVar(c) : c);
 
@@ -511,21 +517,20 @@ export function chart(canvas, series, opts = {}) {
     g.lineWidth = 1;
     for (let i = 1; i < 4; i++) { const y = Math.round((hh * i) / 4) + 0.5; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
   }
-  const top = 4 * dpr;
-  for (const s of series) {
-    const d = s.data;
-    if (d.length < 2) continue;
-    const max = s.max || 1;
-    const step = w / (HIST - 1);
-    const x0 = w - (d.length - 1) * step;
-    const y = (v) => hh - (Math.min(v, max) / max) * (hh - top);
+  const top = 4 * dpr, step = w / (HIST - 1);
+  const visible = series.filter(s => s.data.length >= 2);
+  const trace = ({ data, max = 1 }) => {
+    max = max || 1;
+    const x0 = w - (data.length - 1) * step;
+    const y = v => hh - (Math.min(v, max) / max) * (hh - top);
     g.beginPath();
-    g.moveTo(x0, y(d[0]));
-    for (let i = 1; i < d.length; i++) g.lineTo(x0 + i * step, y(d[i]));
-    g.lineWidth = 1.6 * dpr;
-    g.strokeStyle = s.color;
-    g.lineJoin = 'round';
-    g.stroke();
+    g.moveTo(x0, y(data[0]));
+    for (let i = 1; i < data.length; i++) g.lineTo(x0 + i * step, y(data[i]));
+    return x0;
+  };
+  // Draw all shading first so a higher series cannot paint over a different series' line.
+  for (const s of visible) {
+    const x0 = trace(s);
     g.lineTo(w, hh);
     g.lineTo(x0, hh);
     g.closePath();
@@ -534,6 +539,13 @@ export function chart(canvas, series, opts = {}) {
     grad.addColorStop(1, s.color + '00');
     g.fillStyle = grad;
     g.fill();
+  }
+  g.lineWidth = 1.6 * dpr;
+  g.lineJoin = 'round';
+  for (const s of visible) {
+    trace(s);
+    g.strokeStyle = s.color;
+    g.stroke();
   }
 }
 
@@ -568,15 +580,15 @@ export function gpuMem(g) {
   }
   return g.vramTotal ? { label: 'VRAM', used: g.vramUsed || 0, total: g.vramTotal } : null;
 }
-const memText = (m) => `${r1(m.used)} / ${Math.round(m.total)} GB`;
+const memText = (m) => `${r1(m.used)} / ${Math.round(m.total)} ${tp('GB')}`;
 /** Board power: watts when a sensor gives them, otherwise the share of the power limit Windows reports. */
-export const gpuPower = (g) => (g?.power != null ? `${Math.round(g.power)} W` : g?.powerPct != null ? tpv('{n}% power', { n: Math.round(g.powerPct) }) : null);
+export const gpuPower = (g) => (g?.power != null ? `${Math.round(g.power)} ${tp("W")}` : g?.powerPct != null ? tpv('{n}% power', { n: Math.round(g.powerPct) }) : null);
 export const netMax = () => Math.max(1, ...hist.down, ...hist.up) * 1.15;
 
 export const METRICS = {
   cpu: { label: 'CPU', name: 'Processor', color: '--cpu', unit: '%', max: () => 100, val: (s) => s.pc?.cpu,
     sub: (s) => {
-      const parts = [s.pc?.cpuTemp != null ? `${Math.round(s.pc.cpuTemp)}°C` : null, s.pc?.cpuPower != null ? `${Math.round(s.pc.cpuPower)} W` : null].filter(Boolean);
+      const parts = [s.pc?.cpuTemp != null ? `${Math.round(s.pc.cpuTemp)}°C` : null, s.pc?.cpuPower != null ? `${Math.round(s.pc.cpuPower)} ${tp("W")}` : null].filter(Boolean);
       return parts.length ? parts.join(' · ') : shortCpu(s.pc?.cpuName);
     }, title: (s) => s.pc?.cpuName },
   gpu: { label: 'GPU', name: 'Graphics', color: '--gpu', unit: '%', max: () => 100, val: (s) => gpuOf(s)?.util,
@@ -590,7 +602,7 @@ export const METRICS = {
       return shortGpu(g.name) || tp('Active');
     }, title: (s) => gpuOf(s)?.name },
   ram: { label: 'RAM', name: 'Memory', color: '--ram', unit: 'GB', max: (s) => s.pc?.ramTotalGb || 1, val: (s) => s.pc?.ramUsedGb, fmt: r1,
-    pct: (s) => (s.pc ? (s.pc.ramUsedGb / s.pc.ramTotalGb) * 100 : null), sub: (s) => (s.pc && s.pc.ramTotalGb ? `${r1(s.pc.ramUsedGb)} / ${Math.round(s.pc.ramTotalGb)} GB` : '') },
+    pct: (s) => (s.pc ? (s.pc.ramUsedGb / s.pc.ramTotalGb) * 100 : null), sub: (s) => (s.pc && s.pc.ramTotalGb ? `${r1(s.pc.ramUsedGb)} / ${Math.round(s.pc.ramTotalGb)} ${tp('GB')}` : '') },
   vram: { label: 'VRAM', name: 'Video memory', color: '--gpu', unit: '%', max: () => 100,
     val: (s) => { const m = gpuMem(gpuOf(s)); return m ? (m.used / m.total) * 100 : null; },
     sub: (s) => { const m = gpuMem(gpuOf(s)); return m ? memText(m) : tp('No GPU data'); } },
@@ -635,7 +647,7 @@ export const METRICS = {
 export function metricText(m, s) {
   const v = m.val(s);
   if (m.rate) return fmtRate(v);
-  const unit = (typeof m.unit === 'function' ? m.unit(s) : m.unit) || '';
+  const unit = tp((typeof m.unit === 'function' ? m.unit(s) : m.unit) || '');
   if (v == null) return ['—', unit];
   return [m.fmt ? m.fmt(v) : String(Math.round(v)), unit];
 }
@@ -753,6 +765,8 @@ export function phoneBattery() {
 }
 
 export function quotaProviders() { return D.quotas?.providers || []; }
+// An extra account's card is `claude@<label>`: a widget set to `claude` shows every Claude account, or it names one.
+export const quotaWanted = (want, id) => want.includes(id) || want.includes(String(id).split('@')[0]);
 
 export function renderStatus(el, o = {}) {
   const via = transport();
@@ -763,7 +777,7 @@ export function renderStatus(el, o = {}) {
   for (const p of quotaProviders()) {
     const l = p.limits?.[0];
     // Clocks saved before the Providers option have none: show every provider like before.
-    if (!l || (o.providers != null && !o.providers.includes(p.id))) continue;
+    if (!l || (o.providers != null && !quotaWanted(o.providers, p.id))) continue;
     const s = h('span', 'qm', h('span', 'sep', '·'), p.name + ' ', h('b', null, Math.round(l.percent) + '%'));
     if (l.percent >= 95) s.style.color = '#f87171'; else if (l.percent >= 80) s.style.color = '#fbbf24';
     kids.push(s);
@@ -790,6 +804,9 @@ export async function runShortcut(btn, id, hold = false) {
   setTimeout(() => btn.classList.remove('ok', 'err'), 900);
 }
 
+const ICON_SIZES = new Set(['m', 'l', 'max']); // the agent only sends these; anything else is ignored, never a bad class token
+const ICON_SIZE_CLASSES = [...ICON_SIZES].map((z) => 'k-isz-' + z);
+
 /** A shortcut key. The Big button's options: with `cover`, a picture the user uploaded becomes the key's background
  *  instead of the centred icon; without `label`, the key shows no name (screen readers still get it). */
 export function keyButton(s, { cover = false, label = true } = {}) {
@@ -800,14 +817,16 @@ export function keyButton(s, { cover = false, label = true } = {}) {
   const name = String(s.label || '').trim();
   if (!label || !name) b.setAttribute('aria-label', name || s.id);
   b.style.setProperty('--k', s.color || '#6b7280');
+  if (ICON_SIZES.has(s.iconSize)) b.classList.add('k-isz-' + s.iconSize);
   b.dataset.id = s.id;
   b._cover = cover;
   if (s.hold) holdToRun(b, s.id);
   else b.addEventListener('click', () => runShortcut(b, s.id));
   // Only an upload fills the key: a program's own icon is 32 px on Windows, 64 px on macOS, and on Linux whatever logo
   // the icon theme has, none of them a picture the user chose for the button. The agent says which is which, since the
-  // picture's size cannot tell (an SVG reports a default size, often 24 px from an icon set).
-  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true);
+  // picture's size cannot tell (an SVG reports a default size, often 24 px from an icon set). The same goes for the
+  // icon size: only an upload is sized by it, a program's own icon keeps its size.
+  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true, s.iconUpload === true);
   return b;
 }
 
@@ -835,17 +854,20 @@ function holdToRun(b, id) {
 export function setKeyFace(b, s, cover = false) {
   b.dataset.face = s.id === b.dataset.id ? '' : s.id;
   b.querySelectorAll('.k-bg, .k-shade').forEach((n) => n.remove());
-  b.classList.remove('k-cover');
+  b.classList.remove('k-cover', ...ICON_SIZE_CLASSES);
+  if (ICON_SIZES.has(s.iconSize)) b.classList.add('k-isz-' + s.iconSize);
   const icon = b.querySelector('.k-icon');
-  icon.classList.remove('k-icon-img');
+  icon.classList.remove('k-icon-img', 'k-icon-up');
   icon.replaceChildren(s.icon ? rich(s.icon) : '•');
   b.querySelector('.k-label').textContent = s.label;
   // a key that had no visible name is named by its id; the name follows the face
   if (b.hasAttribute('aria-label')) b.setAttribute('aria-label', String(s.label || '').trim() || s.id);
-  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true);
+  if (s.iconRev != null) applyShortcutIcon(b, icon, s.id, cover && s.iconUpload === true, s.iconUpload === true);
 }
 
-function applyShortcutIcon(b, icon, id, cover) {
+/** `cover`: ask for the upload only and fill the key with it. `upload`: the picture the agent serves is an upload, so the
+ *  key's icon size applies to it (k-icon-up); a program's own icon is not resized. */
+function applyShortcutIcon(b, icon, id, cover, upload) {
   // a picture that arrives after the key changed face (a cycle key) is not the face any more: it is dropped
   const current = () => (b.dataset.face || b.dataset.id) === id;
   const url = `${API}/shortcuts/icon?id=${encodeURIComponent(id)}`;
@@ -860,11 +882,11 @@ function applyShortcutIcon(b, icon, id, cover) {
       b.prepend(img, h('span', 'k-shade'));
       b.classList.add('k-cover');
     };
-    img.onerror = () => applyShortcutIcon(b, icon, id, false);
+    img.onerror = () => applyShortcutIcon(b, icon, id, false, false); // the upload is gone: what is served now is not one
     img.src = url + '&upload=true'; // "true", not "1": the agent binds it as a bool and answers 400 to "1"
     return;
   }
-  img.onload = () => { if (!current()) return; icon.replaceChildren(img); icon.classList.add('k-icon-img'); };
+  img.onload = () => { if (!current()) return; icon.replaceChildren(img); icon.classList.add('k-icon-img'); icon.classList.toggle('k-icon-up', upload === true); };
   img.src = url;
 }
 
@@ -1456,7 +1478,7 @@ export function handleEvent(e) {
   else if (e.kind === 'reload') location.reload();
 }
 
-export const WIDGET_ICONS = { camera: '📹', dictate: '🎙️', spectrum: '📶', 'app-console': '🎛️', discord: '💬', steam: '👥', 'steam-activity': '🔔', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', media: '🎵', lyrics: '🎤', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖',
+export const WIDGET_ICONS = { camera: '📹', dictate: '🎙️', spectrum: '📶', 'app-console': '🎛️', discord: '💬', 'discord-bar': '🔊', steam: '👥', 'steam-activity': '🔔', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', media: '🎵', lyrics: '🎤', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖',
   github: '🐙', processes: '⚙️', shortcuts: '🎛️', button: '🔘', worldclock: '🌍', calendar: '📅', pomodoro: '🍅', countdown: '⏳', note: '📝', command: '💻',
   push: '📡', inbox: '📬', label: '🔤', analog: '🕰️', progress: '📆', stopwatch: '⏱️', timer: '⏲️', counter: '🔢', breathe: '🫁', quote: '💬',
   checklist: '✅', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊', sun: '🌅', air: '🍃', hackernews: '📰', feeds: '🗞️', photos: '🖼️', exchange: '💱', crypto: '🪙', image: '🖼️', pcswitch: '🖥️', pagebuttons: '🧭', 'plex-queue': '🎛️', 'plex-playlists': '🎶' };
@@ -1471,10 +1493,11 @@ let lastHour12 = null;
 
 export const isPortrait = () => window.innerHeight > window.innerWidth * 1.05;
 
-// Portrait: the same widgets packed into a 6-column grid in reading order. Their sizes in cells stay the same
-// (portrait cells are about as square as landscape ones); wider widgets shrink to 6 columns and the rows grow to fit.
-export function portraitLayout(widgets) {
-  const cols = 6, occ = [], pos = new Map();
+// Portrait: the same widgets packed in reading order. Their sizes in cells stay the same (portrait cells are about
+// as square as landscape ones). A phone uses 6 columns, so a widget wider than that shrinks; a tablet uses 12,
+// so more widgets sit next to each other. The rows grow to fit.
+export function portraitLayout(widgets, cols = 6) {
+  const occ = [], pos = new Map();
   const free = (x, y, w, h) => { for (let r = y; r < y + h; r++) for (let c = x; c < x + w; c++) if (occ[r]?.[c]) return false; return true; };
   const take = (x, y, w, h) => { for (let r = y; r < y + h; r++) { occ[r] = occ[r] || []; for (let c = x; c < x + w; c++) occ[r][c] = true; } };
   for (const w of [...widgets].sort((a, b) => a.y - b.y || a.x - b.x)) {
@@ -1484,13 +1507,20 @@ export function portraitLayout(widgets) {
   return { pos, rows: Math.max(12, occ.length) };
 }
 
+// Settings › Display › More rows on a tablet. Off by default, so an arranged tablet keeps its 12 × 6 pages.
+const gridOptions = () => ({ tabletRows: cfg.display?.tabletRows === true });
+
 export function buildLayout() {
   const enabled = (cfg.pages || []).filter((p) => p.enabled !== false && Array.isArray(p.widgets));
   const next = enabled.length ? enabled : FALLBACK_PAGES;
-  const portrait = isPortrait();
+  const viewport = gridForViewport(window.innerWidth, window.innerHeight, gridOptions());
+  const portrait = viewport.portrait;
+  const designed = designGrid(window.innerWidth, window.innerHeight, gridOptions());
+  document.documentElement.style.setProperty('--pb-cols', String(designed.cols));
+  document.documentElement.style.setProperty('--pb-rows', String(designed.rows));
   const h12 = hour12();
   // the active language belongs in the key: the widgets render their texts once, when they are created
-  const key = JSON.stringify([next, cfg.shortcuts, cfg.display?.showSeconds, cfg.display?.hour12, h12, cfg.display?.appearance, portrait, I18n?.getLang()]);
+  const key = JSON.stringify([next, cfg.shortcuts, cfg.display?.showSeconds, cfg.display?.hour12, h12, cfg.display?.appearance, viewport.cols, viewport.rows, designed.cols, designed.rows, portrait, I18n?.getLang()]);
   if (key === layoutKey) return;
   layoutKey = key;
   lastHour12 = h12;
@@ -1503,17 +1533,21 @@ export function buildLayout() {
   pages.forEach((p, pi) => {
     const grid = h('div', 'grid');
     const pageAppearance = PhoneBoxAppearance.resolve(cfg.display?.appearance, p.appearance);
-    const pl = portrait ? portraitLayout(p.widgets) : null;
-    if (pl) { grid.style.gridTemplateColumns = 'repeat(6, minmax(0, 1fr))'; grid.style.gridTemplateRows = `repeat(${pl.rows}, minmax(0, 1fr))`; }
+    // Upright, pack only the widgets this screen's landscape grid shows, so a phone leaves out tablet-only rows
+    // while a tablet held upright keeps them.
+    const pl = portrait ? portraitLayout(widgetsOnGrid(p.widgets, designed.cols, designed.rows), viewport.cols) : null;
+    if (pl) { grid.style.gridTemplateColumns = `repeat(${viewport.cols}, minmax(0, 1fr))`; grid.style.gridTemplateRows = `repeat(${pl.rows}, minmax(0, 1fr))`; }
     for (const w of p.widgets) {
       const def = W[w.type];
       if (!def) continue;
+      // not upright: the grid the CSS draws (--pb-rows), which on a nearly square screen can differ from the viewport's
+      const at = pl ? pl.pos.get(w) : placeWidget(w, designed.cols, designed.rows);
+      if (!at) continue; // a widget on a tablet-only row stays off a phone
       const box = h('div', `w w-${w.type}${def.bare ? ' bare' : ' card'}`);
       const appearance = PhoneBoxAppearance.resolve(cfg.display?.appearance, p.appearance, w.appearance);
-      const at = pl?.pos.get(w) || w;
       box.style.gridArea = `${at.y + 1} / ${at.x + 1} / span ${at.h} / span ${at.w}`;
       grid.appendChild(box);
-      const ctx = { page: p, w, o: w.options || {}, box, appearance };
+      const ctx = { page: p, w, o: w.options || {}, box, appearance, at, reflow: () => reflowPage(pi) };
       let inst;
       try { inst = def.create(box, ctx) || {}; } catch (e) { box.replaceChildren(h('div', 'empty', `${w.type}: ${e.message}`)); inst = {}; }
       PhoneBoxAppearance.widget(box, appearance);
@@ -1678,6 +1712,36 @@ export function buildDots() {
   dots.replaceChildren(...pages.map(dot), pageAllBtn, pagePauseBtn);
   dots.hidden = false;
   syncPagePauseUi();
+  fitPageBar();
+}
+
+/** A widget that hides itself (box.hidden, like the Discord bar outside a voice channel) gives its cells away: the
+ *  widgets right below it whose columns lie within its own grow up into its rows; with none below, the ones right above
+ *  grow down. Shown again, all go back to their own cells (every call starts again from each widget's own place). */
+export function reflowPage(pi) {
+  const items = mounted.filter((m) => m.pi === pi);
+  const area = new Map(items.map((m) => [m, { ...m.ctx.at }]));
+  const shown = items.filter((m) => !m.ctx.box.hidden);
+  // A neighbour that grows can reach the next hidden widget (two hidden bars stacked above a widget), so the hidden
+  // widgets are tried again until none is left or none moves.
+  let left = items.filter((m) => m.ctx.box.hidden);
+  for (let moved = true; moved && left.length;) {
+    moved = false;
+    left = left.filter((gone) => {
+      const g = gone.ctx.at;
+      const inside = (a) => a.x >= g.x && a.x + a.w <= g.x + g.w;
+      const below = shown.filter((m) => inside(area.get(m)) && area.get(m).y === g.y + g.h);
+      const above = shown.filter((m) => inside(area.get(m)) && area.get(m).y + area.get(m).h === g.y);
+      for (const m of below.length ? below : above) {
+        const a = area.get(m);
+        if (below.length) a.y = g.y;
+        a.h += g.h;
+      }
+      if (below.length || above.length) { moved = true; return false; }
+      return true;
+    });
+  }
+  for (const m of items) { const a = area.get(m); m.ctx.box.style.gridArea = `${a.y + 1} / ${a.x + 1} / span ${a.h} / span ${a.w}`; }
 }
 
 export function updateDots() {
@@ -1986,11 +2050,17 @@ export function openOverview() {
   haptic();
   const ov = $('overview');
   const tile = (p, i) => {
-    const map = h('div', 'ov-map', p.widgets.map((w) => {
+    const g = designGrid(window.innerWidth, window.innerHeight, gridOptions());
+    const map = h('div', 'ov-map', p.widgets.flatMap((w) => {
+      const at = placeWidget(w, g.cols, g.rows);
+      if (!at) return [];
       const b = h('span', null, emo(WIDGET_ICONS[w.type] || '◻'));
-      b.style.gridArea = `${w.y + 1} / ${w.x + 1} / span ${w.h} / span ${w.w}`;
-      return b;
+      b.style.gridArea = `${at.y + 1} / ${at.x + 1} / span ${at.h} / span ${at.w}`;
+      return [b];
     }));
+    // Tracks follow the same grid as the icons, even when the page layout was not rebuilt after a resize.
+    map.style.gridTemplateColumns = `repeat(${g.cols}, 1fr)`;
+    map.style.gridTemplateRows = `repeat(${g.rows}, 1fr)`;
     const t = h('button', 'ov-tile' + (i === curPage ? ' on' : ''), map, h('div', 'ov-name', h('b', null, `${i + 1}`), rich(` ${p.icon || ''} ${p.title}`)));
     t.addEventListener('click', (e) => { e.stopPropagation(); haptic(); closeOverview(); goPage(i, true); });
     return t;
@@ -2059,6 +2129,16 @@ export function applyPageBar() {
   $('dots').classList.toggle('pb-vertical', shown && side !== 'bottom');
   // a docked bar changes the size of the pages: keep the current one in place
   if (reflow) requestAnimationFrame(() => goPage(curPage, true));
+  fitPageBar();
+}
+/** Adds .pb-tight when a bottom/top page bar does not fit the screen, so only the current page keeps its name (#553). */
+export function fitPageBar() {
+  const d = $('dots');
+  d.classList.remove('pb-tight'); // measure with every name showing
+  if (!d.classList.contains('pagebar') || d.classList.contains('pb-vertical')) return;
+  // the buttons shrink before the bar overflows, so a name cut short ("首", "播…") is the sign that it does not fit
+  const cut = [...d.querySelectorAll('.dot-nm')].some((n) => n.scrollWidth > n.clientWidth);
+  if (cut || d.scrollWidth > d.clientWidth) d.classList.add('pb-tight');
 }
 /** Whether the dots show as a page bar down the left or right edge (slides then go up and down). */
 const barVertical = () => $('dots').classList.contains('pagebar') && $('dots').classList.contains('pb-vertical');
@@ -2264,7 +2344,7 @@ window.onAndroidBack = () => {
   else if (curPage !== homeIndex()) goPage(homeIndex(), true);
   else openOverview();
 };
-window.addEventListener('resize', () => { buildLayout(); goPage(curPage, true); });
+window.addEventListener('resize', () => { buildLayout(); goPage(curPage, true); fitPageBar(); });
 
 ['pointerdown', 'touchstart'].forEach((ev) => document.addEventListener(ev, (e) => {
   if (dimmed) wakeFromDim();
@@ -2471,6 +2551,8 @@ export function applyDisplay() {
   try { bridge.setPinned && bridge.setPinned(d.pin === true); } catch (_) {}
   try { bridge.setOrientation && bridge.setOrientation(['portrait', 'auto'].includes(d.orientation) ? d.orientation : 'landscape'); } catch (_) {}
   try { bridge.setHomeScreen && bridge.setHomeScreen(d.homeScreen === true); } catch (_) {}
+  // standby is opt-in: an absent or older agent leaves the stock behaviour alone
+  try { bridge.setStandby && bridge.setStandby(d.standby || 'off', +(d.standbyGraceSec ?? 30)); } catch (_) {}
   applyBrightness(true);
 }
 
@@ -2639,7 +2721,9 @@ export function applyState(s, replayGen = null) {
   if (!$('overview').hidden) renderRulesBtn();
   {
     const pc = s.pc;
-    if (pc) {
+    if (pc && (pc.seq == null || pc.seq !== histSeq || (pc.runId ?? null) !== histRunId)) {
+      histSeq = pc.seq ?? null;
+      histRunId = pc.runId ?? null;
       pushHist('cpu', pc.cpu);
       pushHist('gpu', pc.gpu?.util);
       pushHist('ram', pc.ramUsedGb);
@@ -2781,9 +2865,14 @@ function reportBattery() {
     const b = JSON.parse(bridge.battery());
     // the phone's view of its USB link lets the agent explain a cable that only charges (see UsbDoctor.cs)
     const usb = b.usb ? ['connected', 'configured', 'adb'].filter((k) => b.usb[k]).join(',') || 'none' : '';
-    if (b.level >= 0) api(`/phone/battery?level=${b.level}&plugged=${!!b.plugged}&temp=${b.temp || 0}&source=${b.source || ''}&usb=${usb}`, 'POST', 4000).catch(() => {});
+    if (b.level >= 0) api(`/phone/battery?level=${b.level}&plugged=${!!b.plugged}&temp=${b.temp || 0}&source=${b.source || ''}&usb=${usb}&viewWidth=${window.innerWidth}&viewHeight=${window.innerHeight}`, 'POST', 4000).catch(() => {});
   } catch (_) {}
 }
+let resizeReportTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeReportTimer);
+  resizeReportTimer = setTimeout(reportBattery, 300);
+});
 setInterval(reportBattery, 30_000);
 setTimeout(reportBattery, 5000);
 

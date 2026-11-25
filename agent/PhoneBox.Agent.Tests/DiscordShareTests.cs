@@ -15,13 +15,13 @@ public sealed class DiscordShareTests : IDisposable
 
     public void Dispose() { try { Directory.Delete(_dir, recursive: true); } catch { } }
 
-    private ConfigStore Store(bool share, bool control = true, bool pageEnabled = true, bool allowControl = false, string secret = "s")
+    private ConfigStore Store(bool share, bool control = true, bool pageEnabled = true, bool allowControl = false, string secret = "s", string type = "discord")
     {
         File.WriteAllText(ConfigPath, JsonSerializer.Serialize(new
         {
             discord = new { enabled = true, clientId = "1", clientSecret = secret, screenShare = share, allowControl },
             // at least one page must stay enabled, so a second page holds no widgets
-            pages = new[] { new { id = "p", title = "P", enabled = pageEnabled, widgets = new object[] { new { id = "d", type = "discord", x = 0, y = 0, w = 4, h = 5, options = new { control } } } }, new { id = "q", title = "Q", enabled = true, widgets = Array.Empty<object>() } },
+            pages = new[] { new { id = "p", title = "P", enabled = pageEnabled, widgets = new object[] { new { id = "d", type, x = 0, y = 0, w = 4, h = 5, options = new { control } } } }, new { id = "q", title = "Q", enabled = true, widgets = Array.Empty<object>() } },
         }));
         // a write time of its own, so a store already reading this file sees the change however coarse the clock is
         File.SetLastWriteTimeUtc(ConfigPath, DateTime.UtcNow.AddMinutes(++_writes));
@@ -35,6 +35,26 @@ public sealed class DiscordShareTests : IDisposable
     };
 
     private static string? Code(DiscordShareError? e) => e?.Code;
+
+    // ---- the current-channel bar: whether you share, and stop; never the apps ----
+
+    [Fact]
+    public async Task A_bar_alone_learns_that_you_share_but_never_the_apps_or_the_name()
+    {
+        // the phone can ask /api/discord/share?apps=true itself: with only the bar's Control the agent still says no
+        var monitor = new DiscordMonitor(Store(share: true, type: "discord-bar"), NullLogger<DiscordMonitor>.Instance)
+        {
+            ListApps = () => [new(42, "Space Racers"), new(77, "Firefox")],
+        };
+        await WithShare(monitor, Active, async discord =>
+        {
+            await Until(() => monitor.Sharing == true);
+            var answer = Json(monitor.Share(true));
+            Assert.True((bool?)answer["active"]);
+            Assert.Null(answer["apps"]);
+            Assert.Null(answer["name"]);
+        });
+    }
 
     // ---- settings and permissions ----
 
@@ -455,6 +475,28 @@ public sealed class DiscordShareTests : IDisposable
             await discord.Answer(toggle);
             Assert.Null(await stop);
             Assert.False(monitor.Sharing);                             // no other event would come
+        });
+    }
+
+    // A share ended on the computer just before Stop: Discord's "ended" event comes a moment later, and the toggle
+    // would then start a share. Stop waits that moment and sends nothing.
+    [Fact]
+    public async Task A_stop_right_after_the_share_ended_on_the_computer_sends_nothing()
+    {
+        var monitor = Monitor(share: true);
+        var settle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        monitor.ShareStopWait = () => settle.Task;           // Stop waits here until the late event is in
+        await WithShare(monitor, Active, async discord =>
+        {
+            var stop = monitor.ShareActAsync("stop", null); // still active as far as the agent knows
+            await discord.State(Idle);                      // the late event of the share ended on the computer
+            for (var i = 0; i < 500 && monitor.Sharing != false; i++) await Task.Delay(10);
+            Assert.False(monitor.Sharing);
+            settle.SetResult();
+            Assert.Null(await stop);                        // it has ended, as asked
+            var sent = discord.Request("TOGGLE_SCREENSHARE");
+            await Task.Delay(150);
+            Assert.False(sent.IsCompleted);
         });
     }
 

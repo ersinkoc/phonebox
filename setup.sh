@@ -383,11 +383,33 @@ linux_usb_help() {
   caution '  Guide: https://developer.android.com/studio/run/device#setting-up'
 }
 
+read_usb_install_policy() {
+  local config
+  "$app/PhoneBoxAgent" --print-install-dir --write-ignored-usb "$1" >/dev/null 2>&1 || return 1
+  [ -f "$1" ] && return 0
+  # Legacy agents cannot validate an existing configuration.
+  if [ "$os" = osx ]; then config="$HOME/Library/Application Support/PhoneBox/config.json"
+  else config="${XDG_CONFIG_HOME:-$HOME/.config}/PhoneBox/config.json"; fi
+  if [ -e "$config" ] || [ -L "$config" ]; then return 1; fi
+  : > "$1"
+}
+
 select_phone() { # prints the serial of the one authorised phone, or nothing to skip
-  local wanted="$serial" devices ready count answer
+  local ignore_list="$1" wanted="$serial" devices available ready count answer
   "$adb" start-server >/dev/null 2>&1 || true
   while :; do
+    if [ -n "$wanted" ] && grep -Fxq -- "$wanted" "$ignore_list"; then
+      caution "$wanted is in PhoneBox's ignored USB device list. Skipping the phone app." >&2
+      return 0
+    fi
     devices="$("$adb" devices 2>/dev/null | awk -F'\t' 'NF >= 2 { print $1 "\t" $2 }')"
+    available="$(printf '%s\n' "$devices" | awk -F'\t' 'FILENAME == ARGV[1] { ignored[$0] = 1; next }
+      NF >= 2 && !($1 in ignored)' "$ignore_list" -)"
+    if [ -n "$devices" ] && [ -z "$available" ]; then
+      caution 'All attached devices are ignored. Skipping the phone app.' >&2
+      return 0
+    fi
+    devices="$available"
     if [ -n "$wanted" ]; then devices="$(printf '%s\n' "$devices" | awk -F'\t' -v s="$wanted" '$1 == s')"; fi
     # only phones on a cable are picked automatically, not emulators or wireless-debugging connections
     ready="$(printf '%s\n' "$devices" | awk -F'\t' -v w="$wanted" '$2 == "device" && (w != "" || $1 !~ /^emulator-|:|\._tcp/) { print $1 }')"
@@ -606,7 +628,9 @@ main() {
     elif ask 'Install the PhoneBox app on a phone connected over USB now?' y; then
       info 'USB debugging lets an allowed computer control the phone. Allow only your own computers; you can'
       info 'revoke them under Developer options > "Revoke USB debugging authorisations".'
-      device="$(select_phone)"
+      local ignore_list="$tmp/ignored-usb-devices"
+      if read_usb_install_policy "$ignore_list"; then device="$(select_phone "$ignore_list")"
+      else caution 'Phone app skipped: this agent could not read the USB ignore settings.'; device=""; fi
       if [ -n "$device" ]; then
         apk="$tmp/PhoneBox-$ver.apk"
         if ! download "$base/PhoneBox-$ver.apk" "$apk"; then

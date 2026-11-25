@@ -8,6 +8,22 @@ using Xunit;
 
 public sealed class ChargeRecoveryTests
 {
+    [Theory]
+    [InlineData("", "no Home Assistant switch set")]
+    [InlineData("switch.a", null)]
+    public async Task DisablingRecoversOnlyWhenOffWasSubmitted(string entity, string? expectedError)
+    {
+        await using var f = new ChargeRecoveryFixture(gateOff: false);
+        f.Configure(entity, enabled: true);
+        Assert.Equal(expectedError, await f.Guard.Switch(f.Settings, "off"));
+        f.Configure(entity, enabled: false);
+        await f.Check();
+        var status = JsonSerializer.SerializeToElement(f.Guard.Status());
+        Assert.Equal(expectedError is null ? "on" : null, status.GetProperty("power").GetString());
+        Assert.Equal(expectedError, status.GetProperty("error").GetString());
+        Assert.Equal(expectedError is null ? ["off:switch.a", "on:switch.a"] : [], f.Calls);
+    }
+
     [Fact]
     public async Task DisablingAfterASettingsChangeRestoresTheOriginalPlug()
     {

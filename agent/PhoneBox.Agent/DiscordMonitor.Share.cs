@@ -30,6 +30,10 @@ public sealed partial class DiscordMonitor
         DiscordBuilds.OrderBy(b => string.Equals(b.Process, connected, StringComparison.OrdinalIgnoreCase) ? 0 : 1);
     /// <summary>How long a direct share may take to start before the phone is told to use the picker.</summary>
     internal TimeSpan ShareStartWait = TimeSpan.FromSeconds(4); // internal: tests wait less
+    /// <summary>How long a stop waits for a late "ended" event from Discord before it sends the toggle.</summary>
+    internal TimeSpan ShareStopSettle = TimeSpan.FromMilliseconds(600); // internal: tests wait less
+    /// <summary>The wait itself; a test holds it open until it has delivered Discord's late "ended" event.</summary>
+    internal Func<Task>? ShareStopWait;
     internal int ShareAppsCacheMs = 10_000; // internal: tests make it old
 
     // Windows that are not apps you would share (the shell, Discord itself, PhoneBox).
@@ -57,6 +61,12 @@ public sealed partial class DiscordMonitor
     /// <see cref="DiscordConfig.AllowControl"/> is not enough: it is for the voice actions only.
     /// </summary>
     internal static bool ShareWanted(AgentConfig cfg) => cfg.Discord is { Enabled: true, ScreenShare: true } && WidgetControl(cfg);
+
+    /// <summary>
+    /// Whether you share, for the current-channel bar's Live badge and Stop button: the setting is on and the Discord
+    /// widget or the bar has Control on. The app list and starting a share still need <see cref="ShareWanted"/>.
+    /// </summary>
+    internal static bool ShareStateWanted(AgentConfig cfg) => cfg.Discord is { Enabled: true, ScreenShare: true } && (WidgetControl(cfg) || BarControl(cfg));
 
     private bool ShareGranted => !ShareScopes.Except(_granted).Any();
     private bool ShareOn => !_shareRefused && ShareGranted && config.Get().Discord is { Enabled: true, ScreenShare: true };
@@ -160,7 +170,8 @@ public sealed partial class DiscordMonitor
     /// <summary>What the phone's share view shows. Apps are listed only when <paramref name="apps"/> is asked (the view is open), at most every 10 s.</summary>
     public object Share(bool apps)
     {
-        if (!ShareWanted(config.Get())) return new { enabled = false };
+        if (!ShareStateWanted(config.Get())) return new { enabled = false };
+        apps = apps && ShareWanted(config.Get()); // the bar alone gets the state, never the apps
         var s = _snap;
         if (!s.Connected || !ShareOn) return new { enabled = true, ready = false, refused = _shareRefused, error = s.Error };
         bool old;
@@ -169,7 +180,10 @@ public sealed partial class DiscordMonitor
         lock (_lock)
         {
             // turned off (or disconnected) while the apps were read: their names are neither kept nor sent
-            if (!ShareWanted(config.Get())) return new { enabled = false };
+            if (!ShareStateWanted(config.Get())) return new { enabled = false };
+            // asked again after the apps were read: a Discord widget's Control turned off meanwhile (the bar's still on)
+            // must not get this list, nor keep it
+            if (apps && !ShareWanted(config.Get())) { apps = false; list = null; }
             if (!ShareOn || !_snap.Connected) return new { enabled = true, ready = false, refused = _shareRefused, error = _snap.Error };
             if (list is not null) { _shareApps = list; _shareAppsAt = Environment.TickCount64; }
             if (_sharing == true && _shareName is null) _sharePicked = _shareApps.FirstOrDefault(a => a.Pid == _sharePid)?.Name ?? _sharePicked;
@@ -201,6 +215,10 @@ public sealed partial class DiscordMonitor
             if (action == "stop")
             {
                 if (!sharing) return null;
+                // The same command starts a share, and Discord reports a share ended on the computer about a third of a
+                // second later. Wait a moment and ask again, so a Stop pressed in that gap doesn't open the picker.
+                await (ShareStopWait?.Invoke() ?? Task.Delay(ShareStopSettle));
+                if (Sharing != true) return null;
             }
             else
             {
@@ -287,7 +305,8 @@ public sealed partial class DiscordMonitor
         DiscordShareError? Refusal()
         {
             var cfg = config.Get();
-            if (!WidgetControl(cfg)) return new("control", "controlling Discord is turned off in the widget's settings");
+            // the current-channel bar may only stop a share; starting one needs the Discord widget's own Control
+            if (!WidgetControl(cfg) && !(action == "stop" && BarControl(cfg))) return new("control", "controlling Discord is turned off in the widget's settings");
             if (!cfg.Discord.ScreenShare) return new("off", "screen share is turned off");
             return ShareOn ? null : new("notAllowed", "Discord has not allowed PhoneBox to share the screen");
         }

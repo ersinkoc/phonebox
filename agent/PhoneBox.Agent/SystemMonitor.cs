@@ -23,7 +23,7 @@ public sealed record DiskInfo(string Name, double UsedGb, double TotalGb);
 
 public sealed record PcSnapshot(double? Cpu, double? CpuTemp, string CpuName, double RamUsedGb, double RamTotalGb,
     GpuInfo? Gpu, double NetDownBps, double NetUpBps, IReadOnlyList<DiskInfo> Disks, long UptimeSec,
-    IReadOnlyList<GpuInfo>? Gpus = null, double? CpuPower = null);
+    IReadOnlyList<GpuInfo>? Gpus = null, double? CpuPower = null, long Seq = 0, string? RunId = null);
 
 /// <summary>Samples CPU, RAM, network, disk and GPU metrics once a second.</summary>
 public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStore? config = null) : BackgroundService
@@ -39,8 +39,21 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
     private double? _cpuPower; // package watts: LibreHardwareMonitor on Windows, RAPL on Linux; none on macOS
     private double? _appleGpuTemp; // macOS: the GPU's temperature from the SMC, added to the ioreg GPU
     private IReadOnlyList<DiskInfo> _disks = [];
+    // counts samples, so the panel can tell a new one from the same one sent again (with a media or volume change)
+    private long _seq;
+    private readonly string _runId = Guid.NewGuid().ToString("N");
+
+#if WINDOWS
+    private volatile string _lhmStatus = "checking";
+    public string? LhmStatus => _lhmStatus;
+#else
+    public string? LhmStatus => null;
+#endif
 
     public PcSnapshot? Snapshot() => _snap;
+
+    internal void PublishSample(PcSnapshot sample) =>
+        _snap = sample with { Seq = ++_seq, RunId = _runId };
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -73,7 +86,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             const double Gb = 1024d * 1024 * 1024;
             var gpus = Gpus.Compose(_nvidia, _lhmGpus, _osGpus);
 
-            _snap = new PcSnapshot(
+            PublishSample(new PcSnapshot(
                 Cpu: cpu is { } c ? Math.Round(c, 1) : null,
                 CpuTemp: _cpuTemp,
                 CpuName: _cpuName,
@@ -85,7 +98,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
                 Disks: _disks,
                 UptimeSec: Environment.TickCount64 / 1000,
                 Gpus: gpus,
-                CpuPower: _cpuPower);
+                CpuPower: _cpuPower));
         }
     }
 
@@ -260,9 +273,13 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             try
             {
                 using var doc = JsonDocument.Parse(await _http.GetStringAsync("http://127.0.0.1:8085/data.json", ct));
-                failures = 0;
+                if (doc.RootElement.ValueKind != JsonValueKind.Object
+                    || !doc.RootElement.TryGetProperty("Children", out var children) || children.ValueKind != JsonValueKind.Array)
+                    throw new JsonException("LibreHardwareMonitor sensor tree is missing.");
                 _cpuTemp = FindCpuTemp(doc.RootElement);
                 _cpuPower = FindCpuPower(doc.RootElement);
+                failures = 0;
+                _lhmStatus = "connected";
                 try { _lhmGpus = Gpus.ParseLhm(doc.RootElement); }
                 catch (Exception ex)
                 {
@@ -274,7 +291,13 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             catch
             {
                 (var clear, delay) = LhmFailed(ref failures);
-                if (clear) { _cpuTemp = null; _cpuPower = null; _lhmGpus = null; }
+                if (clear)
+                {
+                    _cpuTemp = null;
+                    _cpuPower = null;
+                    _lhmGpus = null;
+                    _lhmStatus = "unavailable";
+                }
             }
             await Task.Delay(delay, ct);
         }

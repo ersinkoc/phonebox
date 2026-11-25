@@ -43,3 +43,16 @@ public sealed class IconJsonConverter : JsonConverter<string>
     public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) =>
         writer.WriteStringValue(JsonEncodedText.Encode(value, JavaScriptEncoder.Default));
 }
+
+/// <summary>A shortcut's icon size is a short preset name; any other JSON token (a number, an object) is dropped so a
+/// hand-edited config.json still loads and the key just uses the default size.</summary>
+public sealed class IconSizeJsonConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String) return reader.GetString();
+        reader.Skip();
+        return null;
+    }
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options) => writer.WriteStringValue(value);
+}

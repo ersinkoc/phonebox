@@ -96,8 +96,9 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .grid {
   height: 100%;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: repeat(6, minmax(0, 1fr));
+  /* --pb-cols / --pb-rows come from the screen: 12 × 6 on a phone, more rows on a tablet. */
+  grid-template-columns: repeat(var(--pb-cols, 12), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--pb-rows, 6), minmax(0, 1fr));
   gap: 8px;
 }
 /* Widget coordinates are saved from the left edge in both the panel and the editor. */
@@ -151,6 +152,14 @@ body.dots-hidden #dots { display: none; }
 #dots.pagebar .dot.on { color: var(--text); background: color-mix(in srgb, var(--accent, #2dd4bf) 22%, transparent); }
 #dots.pagebar .dot.aim, #dots.pagebar .dot:focus-visible { box-shadow: inset 0 0 0 1.5px var(--accent, #fff); }
 #dots.pagebar .page-all, #dots.pagebar .page-pause { min-width: 32px; min-height: 40px; margin: 0; }
+/* A bottom or top page bar that is wider than the screen (many pages on a narrow phone, e.g. 16:9 at ~750 CSS px):
+   main.js adds .pb-tight, then only the current page keeps its name and the spacing is tightened. Wide screens and
+   the side bar (pb-vertical) are untouched. */
+#dots.pagebar.pb-tight:not(.pb-vertical) { gap: 2px; padding: 3px; }
+#dots.pagebar.pb-tight:not(.pb-vertical) .dot { padding: 0 9px; gap: 5px; max-width: none; }
+#dots.pagebar.pb-tight:not(.pb-vertical) .dot:not(.on) .dot-ic + .dot-nm { display: none; } /* only when an icon stands in front of the name: a page without an icon keeps its name */
+#dots.pagebar.pb-tight:not(.pb-vertical) .dot.on .dot-nm { max-width: none; font-size: 13px; overflow: visible; text-overflow: clip; }
+#dots.pagebar.pb-tight:not(.pb-vertical) .page-all, #dots.pagebar.pb-tight:not(.pb-vertical) .page-pause { min-width: 30px; }
 #dots.pagebar .page-all svg, #dots.pagebar .page-pause svg { width: 13px; height: 13px; }
 body.controls-top #dots.pagebar:not(.pb-vertical) { bottom: auto; top: 6px; }
 /* down the left or right edge: icon above a short name */
@@ -260,7 +269,7 @@ body.night #pagePauseOverlay { display: none; }
 .pcs-sub:empty { display: none; }
 .ov-tile.on { border-color: rgba(var(--ambient), .8); box-shadow: 0 0 0 2px rgba(var(--ambient), .25); }
 .ov-tile:active { transform: scale(.97); }
-.ov-map { flex: 1; min-height: 28px; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(6, 1fr); gap: 2px; }
+.ov-map { flex: 1; min-height: 28px; display: grid; grid-template-columns: repeat(var(--pb-cols, 12), 1fr); grid-template-rows: repeat(var(--pb-rows, 6), 1fr); gap: 2px; }
 .ov-map span { background: rgba(255, 255, 255, .07); border-radius: 4px; display: grid; place-items: center; font-size: 11px; overflow: hidden; }
 .ov-name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-name b { color: var(--muted); font-weight: 600; }
@@ -490,6 +499,20 @@ body.offline .offline-msg { display: flex; }
 .g-sub { font-size: clamp(9px, 5.4cqh, 12px); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
 @container (max-height: 120px) { .w-gauge .g-sub { display: none; } .w-gauge .g-dial { height: 72cqh; } }
 
+.w-water-intake { padding: 9px 12px; display: grid; align-content: start; gap: 4px; }
+.water-total { font-size: clamp(12px, 10cqh, 24px); font-variant-numeric: tabular-nums; }
+.water-remaining { color: var(--muted); font-size: 11px; }
+.water-progress { width: 100%; height: 8px; accent-color: #38bdf8; }
+.water-quick, .water-form { display: flex; gap: 4px; min-width: 0; }
+.water-form > * { flex: 1; }
+.water-custom { width: 0; min-width: 36px; min-height: 26px; border: 1px solid var(--border);
+  border-radius: 6px; padding-inline: 5px; color: inherit; background: var(--card-bg, transparent); }
+.w-water-intake .chip-btn { min-height: 26px; line-height: 1; margin: 0; padding: 3px 5px; }
+@container (max-height: 115px) {
+  .w-water-intake { padding: 5px 7px; gap: 2px; }
+  .w-water-intake .chip-btn, .water-custom { min-height: 20px; }
+}
+
 /* ---------- chart & meters ---------- */
 .w-chart, .w-meters { padding: 9px 12px 0; display: flex; flex-direction: column; }
 .w-meters { padding-bottom: 10px; }
@@ -504,6 +527,7 @@ body.offline .offline-msg { display: flex; }
 .chips { margin-inline-start: auto; display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; overflow: hidden; }
 .chip { font-size: 11px; padding: 3px 7px; border-radius: 8px; background: rgba(255, 255, 255, .06); color: #cdd5df; white-space: nowrap; }
 .w-chart canvas { flex: 1; width: calc(100% + 24px); margin: 4px -12px 0; min-height: 0; }
+.chart-missing { margin-block: 2px 5px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .meters { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; flex: 1; justify-content: space-evenly; min-height: 0; }
 .m-row { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 3px; }
 .m-row span:last-child { color: #d5dce5; }
@@ -576,6 +600,7 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .sess .tl.cursor { color: #67e8f9; }
 .sess .tl.opencode { color: #a78bfa; }
 .sess .tl.antigravity { color: #38bdf8; }
+.sess .tl.grok { color: #f8fafc; }
 .sess-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .sess .nm { min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sess-meta { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -695,6 +720,36 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .w-button .key .k-icon { font-size: min(40cqh, 30cqw); }
 .w-button .key .k-icon.k-icon-img img { width: 40px; height: 40px; width: min(40cqh, 30cqw); height: min(40cqh, 30cqw); }
 .w-button .key .k-label { font-size: clamp(10px, 15cqh, 18px); }
+/* Per-shortcut icon size (settings > Shortcuts > Icon size): medium, large, and max (the icon fills the key). The key
+   is its own size container, so every size is measured against the key and not the widget around it: the sizes
+   always grow in that order and never overflow a short key. Only an emoji and an uploaded picture (.k-icon-up) are
+   sized; a program's own icon keeps the size of an unsized key. Each size has a px value first for WebViews older than
+   Chromium 105 (no container query units), where the rule after it is dropped. */
+.key.k-isz-m, .key.k-isz-l, .key.k-isz-max { container-type: size; }
+/* A sized key is a container, so the cq units in the rules every key shares would measure the key instead of the widget:
+   in a Shortcuts grid the name and a program's icon would shrink next to unsized neighbours. The grid computes the
+   widget-relative sizes once (a registered length is resolved where it is set) and a sized key reads them back. */
+@property --k-lbl { syntax: '<length>'; inherits: true; initial-value: 14px; }
+@property --k-img { syntax: '<length>'; inherits: true; initial-value: 30px; }
+.deck-grid { --k-lbl: clamp(10px, 3.6cqmin, 14px); --k-img: clamp(16px, 7cqmin, 30px); }
+.deck-grid .key.k-isz-m .k-label, .deck-grid .key.k-isz-l .k-label, .deck-grid .key.k-isz-max .k-label { font-size: var(--k-lbl); }
+.deck-grid .key.k-isz-m .k-icon.k-icon-img:not(.k-icon-up) img, .deck-grid .key.k-isz-l .k-icon.k-icon-img:not(.k-icon-up) img,
+.deck-grid .key.k-isz-max .k-icon.k-icon-img:not(.k-icon-up) img { width: var(--k-img); height: var(--k-img); }
+/* the inline emoji icon carries a trailing margin (.ico.m) meant for text; on a sized key it would push it off-centre */
+.key.k-isz-m .k-icon .ico, .key.k-isz-l .k-icon .ico, .key.k-isz-max .k-icon .ico { margin: 0; }
+.key.k-isz-m .k-icon { font-size: 36px; font-size: min(46cqh, 50cqw); }
+.key.k-isz-m .k-icon.k-icon-up img { width: 36px; height: 36px; width: min(46cqh, 50cqw); height: min(46cqh, 50cqw); }
+.key.k-isz-l .k-icon { font-size: 44px; font-size: min(56cqh, 62cqw); }
+.key.k-isz-l .k-icon.k-icon-up img { width: 44px; height: 44px; width: min(56cqh, 62cqw); height: min(56cqh, 62cqw); }
+/* max: the icon takes whatever the label leaves (about 24px of height; the container's size already excludes the padding),
+   and is never smaller than "large", even on a very short key */
+.key.k-isz-max { padding: 0; } /* a padding here would shrink the size the cq units measure, and "large" has none */
+.key.k-isz-max .k-icon { flex: 1 1 0; min-height: 44px; min-height: min(56cqh, 62cqw); padding: 0; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; line-height: 1; font-size: 56px; font-size: max(min(56cqh, 62cqw), min(calc(100cqh - 24px), 100cqw)); }
+.key.k-isz-max .k-icon.k-icon-up img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; }
+/* with the picture as the key's background the icon is hidden, so the label keeps the size it has on any Big button */
+.key.k-isz-max:not(.k-cover) .k-label { flex: 0 0 auto; font-size: 12px; }
+.deck-grid .key.k-isz-max:not(.k-cover) .k-label { font-size: var(--k-lbl); }
+.key.k-isz-max.k-cover { padding: 0 0 4px; padding: 0 0 7cqh; }
 /* Big button with "fill with the picture": the picture covers the key, the label sits on a shade at the bottom. */
 /* padding in % follows the width, so a wide, short key would lose its label: the inset follows the height (cqh) */
 .key.k-cover { justify-content: flex-end; padding-bottom: 4px; padding-bottom: 7cqh; }
@@ -849,6 +904,39 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .chip-btn { font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 9px; background: rgba(255, 255, 255, .08); }
 .chip-btn:active { background: var(--q); color: #06080b; }
 .ct-n { flex: 1; display: flex; align-items: center; font-size: min(48cqh, 30cqw); font-weight: 300; color: var(--q); line-height: 1; }
+
+.timer-layout { display: contents; }
+@container (min-aspect-ratio: 3/2) {
+  .timer-layout {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: repeat(3, auto);
+    align-content: center;
+    align-items: center;
+    justify-items: center;
+    column-gap: 6px;
+  }
+  .timer-layout > * { grid-column: 1; }
+  .timer-layout > :is(.pomo-btns, .tm-btns) {
+    grid-area: 1 / 2 / span 3;
+    flex-direction: column;
+    margin: 0;
+    gap: 3px;
+  }
+  .timer-layout > .tm-btns.presets {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(3, auto);
+  }
+  .timer-layout .pb { width: min(20cqh, 42px); height: min(20cqh, 42px); }
+  .timer-layout .chip-btn { padding: 2px 4px; }
+  .w-timer .timer-layout .g-dial { height: min(60cqh, 45cqw); }
+  .timer-layout > :is(.w-title, .sw-laps) { justify-self: stretch; }
+  .timer-layout .sw-laps { max-height: 25cqh; overflow-y: auto; }
+}
 
 /* ---------- breathe ---------- */
 .w-breathe { cursor: pointer; }
@@ -1152,6 +1240,86 @@ html.beat-4 .obs-pill.on .obs-led { box-shadow: 0 0 34px rgba(239, 68, 68, .9); 
 .dcf-stop { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 54px; padding: 0 20px; border-radius: 14px; border: none; background: #da373c; color: #fff; font: inherit; font-size: 16px; font-weight: 600; }
 .dcf-stop .ico { width: 20px; height: 20px; }
 
+
+/* Discord current-channel bar. Wide: names and labelled buttons; narrower: round icon buttons, then stacked
+   avatars, then only the name and the buttons; two rows tall or more: stacked, the buttons in a row at the bottom. */
+.w-discord-bar { background: #5865f2; border-color: #5865f2; color: #fff; }
+.w-discord-bar[hidden] { display: none; }
+.w-discord-bar .empty { color: rgba(255, 255, 255, .8); }
+.dcb { height: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 16px; padding: 0 18px; }
+.dcb-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.dcb-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dcb-vi { width: 20px; height: 20px; flex: none; }
+.dcb-name { font-size: clamp(15px, 22cqh, 26px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dcb-guild { flex: 0 1 auto; min-width: 0; font-size: 13px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* a long server name gives way to the channel's */
+.dcb-chips { display: flex; gap: 6px; overflow: hidden; }
+.dcb-chip { flex: none; display: inline-flex; align-items: center; gap: 7px; padding-block: 3px; padding-inline: 3px 11px; border-radius: 999px; background: rgba(0, 0, 0, .25); font-size: 14px; }
+.dcb-av { flex: none; width: 26px; height: 26px; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: #3b3f4a; font-size: 11px; font-weight: 700; color: #fff; }
+.dcb-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dcb-chip.speaking .dcb-av, .dcb-av.speaking { box-shadow: 0 0 0 2px #5865f2, 0 0 0 4px #23a55a; }
+.dcb-stack { display: none; align-items: center; }
+.dcb-stack .dcb-av { border: 2px solid #5865f2; margin-inline-start: -8px; }
+.dcb-stack .dcb-av:first-child { margin-inline-start: 0; }
+.dcb-btns { flex: none; display: flex; gap: 8px; }
+.dcb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 54px; padding: 0 18px; border-radius: 999px; border: none; background: rgba(0, 0, 0, .28); color: #fff; font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; }
+.dcb-btn .ico { width: 22px; height: 22px; flex: none; }
+.dcb-btn.on { background: #fff; color: #da373c; }
+.dcb-btn.leave { background: #da373c; }
+.dcb-btn:disabled { opacity: .6; }
+.dcb-btn.busy { opacity: .55; }
+.dcb-btn:active { transform: scale(.95); }
+/* the bar while sharing, and its Screen and Chat buttons */
+.dcb-badge { flex: none; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: #f23f43; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.dcb-sub { font-size: 13px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dcb-btn { position: relative; }
+.dcb-btn.share.live { background: #f23f43; }
+.dcb-dot { position: absolute; top: 2px; inset-inline-end: 2px; width: 12px; height: 12px; border-radius: 50%; background: #f23f43; box-shadow: 0 0 0 2px #5865f2; }
+/* less room: Sound goes first, then Chat, then Stop (Mic and Leave stay) */
+@container (max-width: 640px) { .dcb-btns.n5 .dcb-btn.deafen { display: none; } }
+@container (max-width: 560px) { .dcb-btns.n4 .dcb-btn.deafen, .dcb-btns.n5 .dcb-btn.chat { display: none; } .dcb-sub { display: none; } }
+/* while you share, Stop stays at every size: only the Screen button that opens the share view gives way */
+@container (max-width: 460px) { .dcb-btns .dcb-btn.chat, .dcb-btns .dcb-btn.share:not(.live) { display: none; } }
+@container (max-width: 900px) {
+  .dcb-l { display: none; }
+  .dcb-btn { width: 48px; height: 48px; padding: 0; }
+}
+@container (max-width: 560px) {
+  .dcb { gap: 10px; padding: 0 12px; }
+  .dcb-chips, .dcb-guild { display: none; }
+  .dcb-stack { display: flex; }
+  .dcb-btns { gap: 6px; }
+  .dcb-btn { width: 44px; height: 44px; }
+}
+/* short and narrow (one grid row, two to four columns): the name and Sound give way, so Mic and Leave are never cut */
+@container (max-width: 300px) and (max-height: 89px) {
+  .dcb { justify-content: center; gap: 6px; padding: 0 6px; }
+  .dcb-info, .dcb-btn.deafen, .dcb-btn.chat, .dcb-btn.share:not(.live) { display: none; }
+  .dcb-btns { gap: 6px; }
+  .dcb-btn { width: min(44px, 40cqh); height: min(44px, 40cqh); min-width: 32px; min-height: 32px; }
+}
+@container (max-width: 300px) and (min-height: 90px) {
+  .dcb { flex-direction: column; justify-content: center; gap: 8px; padding: 6px 8px; }
+  .dcb-info { flex: none; width: 100%; align-items: center; }
+  .dcb-vi, .dcb-stack { display: none; }
+  .dcb-name { font-size: 14px; }
+}
+@container (min-height: 200px) {
+  .dcb { flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 14px 16px; gap: 10px; }
+  .dcb-info { flex: 1; min-height: 0; }
+  .dcb-chips { flex-wrap: wrap; }
+  .dcb-btns { width: 100%; }
+  .dcb-btn { flex: 1; width: auto; height: 50px; border-radius: 14px; padding: 0 8px; }
+}
+@container (min-height: 200px) and (min-width: 520px) {
+  .dcb-l { display: inline; }
+}
+@container (min-height: 200px) and (max-width: 300px) {
+  .dcb { align-items: center; text-align: center; }
+  .dcb-info { width: 100%; align-items: center; }
+  .dcb-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 16px; }
+  .dcb-btns { flex-wrap: wrap; }
+  .dcb-btn.leave { flex-basis: 100%; }
+}
 /* a large Discord widget grows its buttons, names and avatars with it, for a phone on a stand at desk distance (#420);
    at the usual sizes each clamp stays at its minimum, the size given above */
 .w-discord .dc-where { font-size: clamp(16px, min(6cqmin, 3.4cqw), 26px); }

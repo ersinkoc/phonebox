@@ -220,11 +220,21 @@ function Show-PhoneHelp {
 }
 
 # Waits for exactly one authorised phone; returns its serial, or $null to skip.
-function Select-Phone([string]$Adb) {
+function Select-Phone([string]$Adb, [string[]]$Ignored) {
     [void](Invoke-Native $Adb @('start-server'))
     $wanted = $Serial
     while ($true) {
+        if ($wanted -and $Ignored -ccontains $wanted) {
+            Write-Caution "$wanted is in PhoneBox's ignored USB device list. Skipping the phone app."
+            return $null
+        }
         $devices = @(Get-Devices $Adb)
+        $available = @($devices | Where-Object { $Ignored -cnotcontains $_.Serial })
+        if ($devices.Count -gt 0 -and $available.Count -eq 0) {
+            Write-Caution 'All attached devices are ignored. Skipping the phone app.'
+            return $null
+        }
+        $devices = $available
         if ($wanted) { $devices = @($devices | Where-Object { $_.Serial -eq $wanted }) }
         # only phones on a cable are picked automatically, not emulators or wireless-debugging connections
         $ready = @($devices | Where-Object { $_.State -eq 'device' -and ($wanted -or ($_.Serial -notmatch '^emulator-|:|\._tcp')) })
@@ -252,6 +262,20 @@ function Select-Phone([string]$Adb) {
         if ($answer -eq 's' -or $answer -eq 'skip') { return $null }
         [void](Invoke-Native $Adb @('reconnect', 'offline'))
     }
+}
+
+function Get-UsbInstallPolicy([string]$Agent, [string]$OutputPath) {
+    try {
+        $probe = Invoke-Native $Agent @('--print-install-dir', '--write-ignored-usb', $OutputPath)
+        if ($probe.Code -ne 0) { return $null }
+        if (Test-Path -LiteralPath $OutputPath -PathType Leaf) {
+            return [pscustomobject]@{ Ignored = @(Get-Content -LiteralPath $OutputPath -Encoding UTF8 -ErrorAction Stop) }
+        }
+        # Legacy agents cannot validate an existing configuration.
+        $config = Join-Path $env:APPDATA 'PhoneBox\config.json'
+        if (Test-Path -LiteralPath $config -ErrorAction Stop) { return $null }
+    } catch { return $null }
+    [pscustomobject]@{ Ignored = @() }
 }
 
 function Install-PhoneApp([string]$Adb, [string]$Apk, [string]$Device) {
@@ -457,7 +481,9 @@ function Install-PhoneBox {
             } elseif (Read-YesNo 'Install the PhoneBox app on a phone connected over USB now?') {
                 Write-Info 'USB debugging lets an allowed computer control the phone. Allow only your own computers; you can'
                 Write-Info 'revoke them under Developer options > "Revoke USB debugging authorisations".'
-                $device = Select-Phone $adb
+                $policy = Get-UsbInstallPolicy $exe (Join-Path $temp 'ignored-usb-devices')
+                $device = if ($policy) { Select-Phone $adb $policy.Ignored }
+                else { Write-Caution 'Phone app skipped: this agent could not read the USB ignore settings.' }
                 if ($device) {
                     # The phone app is optional: a failed download or checksum skips it, and the agent (already
                     # installed and stopped for the update) still starts below.

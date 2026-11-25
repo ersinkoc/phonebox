@@ -2,7 +2,7 @@
 
 [Back to PhoneBox](../README.md) · [Installation and connections](SETUP.md) · [Development](DEVELOPMENT.md)
 
-[Appearance](#appearance) · [Control Deck](#control-deck) · [Pages & templates](#pages--templates) · [Widgets](#widgets) · [Layout editor & settings](#layout-editor--settings) · [AI agent permission prompts](#ai-agent-permission-prompts) · [Webhooks](#webhooks) · [Rules](#rules) · [Security & privacy](#security--privacy)
+[Appearance](#appearance) · [Control Deck](#control-deck) · [Pages & templates](#pages--templates) · [Widgets](#widgets) · [Layout editor & settings](#layout-editor--settings) · [Power standby](#power-standby) · [AI agent permission prompts](#ai-agent-permission-prompts) · [Webhooks](#webhooks) · [Rules](#rules) · [Security & privacy](#security--privacy)
 
 ## Appearance
 
@@ -45,7 +45,7 @@ Every page is a 12 × 6 grid. Start a page from one of the 30 templates (or from
 |---|---|
 | **Home** — clock, weather, now playing, CPU / GPU / RAM / network tiles | **Dashboard** — gauges, clock, media and a few shortcut keys |
 | <img src="screenshots/home.png" alt="Home"> | <img src="screenshots/dashboard.png" alt="Dashboard"> |
-| **AI quotas** — Claude and Codex limits, reset times, "at this pace: full in 1 d 5 h" | **Sessions** — Claude Code / Codex / Cursor / OpenCode / Antigravity sessions and GitHub |
+| **AI quotas** — Claude, Codex and Grok limits, reset times, "at this pace: full in 1 d 5 h" | **Sessions** — Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions and GitHub |
 | <img src="screenshots/ai.png" alt="AI quotas"> | <img src="screenshots/work.png" alt="Sessions"> |
 | **System** — CPU, GPU, memory, disks, network and ping charts | **Processes** — heaviest apps; tap one to end an instance or all of them |
 | <img src="screenshots/system.png" alt="System"> | <img src="screenshots/procs-sheet.png" alt="Processes"> |
@@ -70,7 +70,7 @@ spot) for an overview of all pages and jump straight to one. Webhooks and rules 
 first (*"switching to AI in 3…"*, with Stay and Go now) and never pull a page away while you are using the panel.
 Settings › Display › Page navigation can also show a page bar with each page's name, or hide the dots. The panel
 returns to the home page when idle (each page can stay longer, or for good), can dim to a clock at night and keeps the
-screen on.
+screen on (unless [power standby](#power-standby) is on).
 
 <p align="center"><img src="screenshots/overview.png" width="600" alt="Page overview"></p>
 
@@ -148,7 +148,7 @@ on a page rather than inside a stack.
 **CodexBar** is an optional source: install its `codexbar` CLI on the computer and the agent reads `usage --json`.
 The CodexBar template and quota widget can show every provider reported by the CLI, with configurable provider rotation.
 An optional cost overview shows the last 30 days of spend and tokens; it is off by default.
-Local Claude, Codex and Antigravity sources keep refreshing when CodexBar is absent, fails, or reports stale data. General settings
+Local Claude, Codex, Antigravity and Grok sources keep refreshing when CodexBar is absent, fails, or reports stale data. General settings
 provide defaults; a widget's own options override them, including an empty provider selection.
 Install a compatible CLI from [CodexBar](https://github.com/steipete/CodexBar) if available for your system.
 PhoneBox uses native local sources when no compatible CLI is installed.
@@ -157,11 +157,26 @@ PhoneBox uses native local sources when no compatible CLI is installed.
 app keeps its own sign-in to itself, so with only the desktop app the widget shows the plan and says so; its sessions
 still show up in the Sessions widget.
 
+**Grok quotas** need the Grok CLI sign-in (`grok login`). PhoneBox reads the token in `~/.grok/auth.json`
+(`GROK_HOME` overrides that folder) and asks `cli-chat-proxy.grok.com` for the credit window, only while an enabled
+page shows Grok quotas (a Quotas, CodexBar or Quota ring widget, or a Clock status line, that includes Grok). It does
+not refresh the token, start `grok`, or send the token to the phone. The bar is the weekly or monthly included credits. A prepaid
+balance is shown in dollars only when the reply includes one. The included credits stay a percentage.
+
 **Codex live quotas** are off by default (normally PhoneBox reads Codex's local session logs without running `codex`).
 Turn on **Read live Codex quotas with the Codex CLI** in **Settings › General › AI quotas & CodexBar** to query
-account-wide limits through `codex app-server` even when no Codex session is active. It runs every few minutes only
-while an enabled page shows Codex quotas and fresh CodexBar data is not already winning, and backs off on failures.
+account-wide limits through `codex app-server` even when no Codex session is active. It runs every few minutes while
+Codex is selected in the provider list and fresh CodexBar data is unavailable. A custom widget reading `/api/quotas`
+works without a built-in quota widget. On Windows the agent also looks for the CLI bundled with the Microsoft Store
+Codex app when it cannot find the CLI on PATH. Failed polls back off.
 Because it starts the Codex CLI, Codex may refresh its own sign-in in `~/.codex/auth.json`.
+
+If **Claude Code quotas** stay stale because the CLI sign-in expired, run `claude auth status` under the same
+user account and check whether the next quota poll picks up a fresh sign-in. Some Claude Code versions refresh
+the sign-in during that command. If it reports that you are signed out, run `claude auth login`.
+You can schedule `claude auth status` hourly under your user account if it refreshes the sign-in in your setup.
+On Windows use Task Scheduler with the full path to the Claude CLI and select **Run only when user is logged on**.
+Redirect or discard the command's output if you do not want account details recorded.
 
 **Native Antigravity quotas** use a running app/hub's advertised HTTP port and CSRF token, the HTTPS port of newer IDE
 servers (2.32 picks it at start-up, so the agent tries the loopback ports that server process listens on and accepts
@@ -192,6 +207,7 @@ leaves LRCLIB alone for a while (1 minute, doubling up to 30, or as long as LRCL
 Songs without timed lyrics show their plain lyrics, unless you turn that off. A player that reports no position (no
 timeline in Now playing) gets the words as a page, with a note that the lines can't follow the song. *Timing offset*
 moves the lines earlier (positive) or later when a song's timing is off.
+*Timing offset per player* does the same for one player only, one `Name=ms` per line, where the name is the one **Now playing** shows for that player (for example `Spotify=-200` or `Apple Music=1000`): a song from that player uses its own value instead of the general offset, so a player that needs a lead does not shift the others. Names are not case sensitive; a player with no line, or a line without a number, uses the general offset. Values are held to ±5000 ms, like the general offset.
 
 ## Layout editor & settings
 
@@ -213,7 +229,8 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   vibration, the message when a session finishes, volume-key paging and the phone's sensors (brightness that follows the room, the night screen when the
   room goes dark, wave to wake it); [OLED burn-in protection](#appearance); [page switching](#rules) (home page, countdown, back home after);
   kiosk options (screen pinning, the panel as the phone's home screen so it starts after a reboot, keep the phone
-  awake on the charger, open the panel when the phone is plugged in, which you can turn off for a phone you also
+  awake on the charger (or let it sleep when the computer is gone: [power standby](#power-standby)), open the
+  panel when the phone is plugged in, which you can turn off for a phone you also
   use for app testing; no root needed); on macOS, optionally follow the computer lock (sleep the phone on lock,
   wake it and open PhoneBox on unlock, with an ADB connection; phones secured by a PIN or password must be unlocked
   manually). Lock sync needs the agent to run in the macOS GUI session; [battery care](#rules);
@@ -233,6 +250,33 @@ the phone picks up changes within a few seconds.
 Use UTF-8 when editing this file externally. Saved page and shortcut icons use JSON Unicode escapes to survive
 ANSI-based editors; the settings editor displays the actual symbols. On startup, known double-encoded forms of
 the four affected default icons are repaired, with the original file kept in `config.json.bak`.
+
+## Power standby
+
+By default the phone keeps its screen on while the panel runs. **Settings › General › Display › Power standby** lets a
+panel wired to one computer sleep once that computer is gone, and light up again when it comes back:
+
+- **Off** (default): the existing display and connection settings control wake, lock-screen and charging behavior.
+- **Sleep when USB charge is cut**: the phone sleeps when the computer stops charging it.
+- **Sleep when the agent stops answering**: the phone sleeps when the agent stops answering. This also covers a
+  charge-capped port, or a board that keeps 5 V alive after shutdown.
+
+**Standby grace (s)** (3 to 600, default 30) is how long PhoneBox waits first, so a reboot or a network hiccup does
+not put the phone to sleep. Android's own screen-off timeout does the sleeping; PhoneBox only stops holding the
+screen.
+
+When the computer is back, the agent wakes the phone and opens the panel. A swipe-only lock screen is dismissed, but
+only after a wake the agent started. If the phone is protected by a PIN, password or pattern, you still unlock it
+yourself.
+
+Standby only acts on the USB phone you chose under **Phone connection**. While it is on,
+PhoneBox turns off Android's *stay awake while charging* setting (`stay_on_while_plugged_in`), because that system
+setting would keep the screen on anyway. It saves the phone's original value and puts it back when you turn standby
+off or choose another phone. If **Keep awake** is enabled, PhoneBox then applies its normal charging setting to
+the selected phone.
+
+The phone app holds no `WAKE_LOCK` permission, so the phone relights through the agent's wake key or when USB power
+returns. A phone paired over Wi-Fi only (no USB) can stay dark until you touch it.
 
 ## Wake-on-LAN
 
@@ -290,8 +334,13 @@ installed with. A shorter time applies to the phone card at once; for a longer o
 again, or the hook gives up before the phone does. To have a reinstalled Cursor hook cover WSL as well, turn on **Also
 watch Cursor in WSL** and start the distro first: with the option off, *Install hook* writes only the Windows hook.
 
+With other Claude Code accounts set up (the folders under **Other Claude Code accounts**), *Install hook* and *Remove
+hook* also write the `settings.json` of each of those folders that exists, with the same backup. The settings list
+those files under the button before you press it, and a folder that doesn't exist is skipped, never created. Remove
+the hook before you delete an account: *Remove hook* only reaches the folders still in the list.
+
 WorkBuddy speaks the same hook protocol. Add the same `PermissionRequest` entry to `~/.workbuddy/settings.json` by
-hand: *Install hook* writes to `~/.claude/settings.json` only. WorkBuddy keeps its sessions in `~/.workbuddy`, so the
+hand: *Install hook* writes only to Claude Code's own folders (`~/.claude` and the other accounts'). WorkBuddy keeps its sessions in `~/.workbuddy`, so the
 card takes the project name from the workspace name WorkBuddy stores
 (`~/.workbuddy/workspace-display-names.json`) instead of the folder name.
 
@@ -413,7 +462,9 @@ With **only while it lasts**, the effect ends with the condition: the phone goes
 you moved on yourself) and stays on the rule's page instead of returning home when idle; a pushed value is removed
 again. The editor starts from examples (Claude needs me → AI page, music → Music page, on air during calls, CPU busy,
 away → Ambient, evenings → Calm, doorbell, quota warning, review requested, CI failed, workday mornings, low battery,
-too warm) and has a Test button for each rule.
+too warm). The Test button runs one-shot actions. Use **Show the night screen** to dim the phone while a
+rule is active, such as after five minutes away from the PC. A tap temporarily wakes the screen. The
+normal night schedule applies independently.
 
 **Battery care** (Settings › General) keeps the phone's battery between two levels, 50–80 % by default, so a panel
 that is always plugged in lasts longer. Phones cannot stop charging without root, so PhoneBox switches the power
@@ -449,10 +500,12 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   PhoneBox waits until Claude Code renews it.
 - **Codex quota and sessions** are read from local files in `~/.codex/sessions`. With the opt-in
   **Read live Codex quotas with the Codex CLI** setting (**Settings › General › AI quotas & CodexBar**, off by
-  default), PhoneBox also queries `codex app-server` about every 3 minutes (backing off on failures) while an enabled
-  page shows Codex quotas and fresh CodexBar data is not already winning; no coding session or inference prompt is
+  default), PhoneBox also queries `codex app-server` about every 3 minutes (backing off on failures) while Codex is
+  selected in the provider list and fresh CodexBar data is unavailable. No coding session or inference prompt is
   required, and local session quota stays as fallback. Claude Code sessions come from
-  `~/.claude/sessions`. OpenCode sessions (opt-in, off by default) come from its background service's local HTTP API —
+  `~/.claude/sessions`. Grok sessions come from local files under `~/.grok/sessions` (or `GROK_HOME`): the project
+  folder, status, model, reasoning effort and token counters. The chat, its title and the cost stay on this computer.
+  OpenCode sessions (opt-in, off by default) come from its background service's local HTTP API —
   the native one and each running WSL distro's — with the password OpenCode wrote to `~/.local/state/opencode/service.json`;
   only the session's folder, title, model, token counters, times and outcome are read, never prompts, replies or tool
   arguments. Cursor sessions (opt-in in **Settings › General › Cursor sessions**) come from recent agent transcripts

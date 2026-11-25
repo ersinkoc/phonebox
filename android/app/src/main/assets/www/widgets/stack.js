@@ -103,7 +103,7 @@ W.stack = {
           subBox.replaceChildren(h('div', 'empty', `${item.type}: ${err.message}`));
         }
       } else {
-        subBox.replaceChildren(h('div', 'empty', `Unknown widget: ${item.type}`));
+        subBox.replaceChildren(h('div', 'empty', tp('Unknown widget: ') + item.type));
       }
 
       // Children can narrow their needs for their current options.
