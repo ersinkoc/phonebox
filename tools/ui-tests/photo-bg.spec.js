@@ -41,12 +41,12 @@ test('settings: the photo background switch and dim are saved with the page', as
   await show(page, { pages: [PAGE(null)] });
   await page.setViewportSize({ width: 1280, height: 1000 });
   await page.goto('/settings/#pages');
-  const toggle = page.locator('#peRest input[type="checkbox"][aria-label="Photo background"]');
-  const switchLabel = page.locator('#peRest label.check', { hasText: 'Photo background' });
+  const toggle = page.locator('#peHead input[type="checkbox"][aria-label="Photo background"]');
+  const switchLabel = page.locator('#peHead label.check', { hasText: 'Photo background' });
   await expect(switchLabel).toBeVisible();
   await switchLabel.click();
   await expect(toggle).toBeChecked();
-  const slider = page.locator('#peRest input[type="range"][aria-label="Dim"]');
+  const slider = page.locator('#peHead input[type="range"][aria-label="Dim"]');
   await expect(slider).toBeVisible();
   await slider.evaluate((el) => { el.value = '75'; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect(slider).toHaveValue('75');
