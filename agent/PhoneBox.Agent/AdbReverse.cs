@@ -510,12 +510,46 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// standby off nothing here touches the phone; it is still remembered, so turning standby on later does
     /// not wake a panel that is already running.
     /// </summary>
-    private async Task LightIfNew(string device, string adb, string why, CancellationToken ct)
+    private async Task LightIfNew(
+    string device,
+    string adb,
+    string why,
+    CancellationToken ct)
     {
-        // _seen.Add stays first: with open-on-connect off the phone is still remembered, so turning
-        // it on later does not wake a panel that is already running.
-        if (_seen.Add(device) && StandbyOn(device) && cfg.Get().Display.OpenOnConnect)
-            await LightPanel(device, adb, why, ct);
+        // Remember the phone even when standby or OpenOnConnect is off.
+        if (!_seen.Add(device))
+            return;
+
+        if (!StandbyOn(device) || !cfg.Get().Display.OpenOnConnect)
+            return;
+
+        try
+        {
+            if (cfg.Get().Display.FollowComputerLock &&
+                OperatingSystem.IsMacOS())
+            {
+                await SyncSessionAsync(ct, force: true);
+            }
+            else
+            {
+                await LightPanel(device, adb, why, ct);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _seen.Remove(device);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning(
+                ex,
+                "{Device}: failed to wake phone ({Why})",
+                device,
+                why);
+
+            _seen.Remove(device);
+        }
     }
 
     private bool _standbyNoSerialLogged;
@@ -589,10 +623,25 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         }
     }
 
-    private void SaveOriginals()
+    private bool SaveOriginals()
     {
-        try { AppPaths.WriteAllTextPrivate(_originalsPath, JsonSerializer.Serialize(Originals)); }
-        catch (IOException ex) { log.LogWarning("could not save standby-originals.json ({Message})", ex.Message); }
+        try
+        {
+            AppPaths.WriteAllTextPrivate(
+                _originalsPath,
+                JsonSerializer.Serialize(Originals));
+
+            return true;
+        }
+        catch (Exception ex) when (
+            ex is IOException or UnauthorizedAccessException)
+        {
+            log.LogWarning(
+                "could not save standby-originals.json ({Message})",
+                ex.Message);
+
+            return false;
+        }
     }
 
     private async Task<bool> RememberStayOn(string adb, string d, CancellationToken ct)
@@ -605,13 +654,21 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             return false;                                // an error text is not a value
         }
         Originals[d] = v;
-        SaveOriginals();
-        return true;
+
+        if (SaveOriginals())
+            return true;
+
+        // Don't leave an unsaved value looking like a durable backup.
+        Originals.Remove(d);
+
+        return false;
     }
 
     private async Task RestoreStayOn(string adb, string d, CancellationToken ct)
     {
         if (!Originals.TryGetValue(d, out var v)) return;
+        _awakeSet.RemoveWhere(
+            k => k.StartsWith(d + ":", StringComparison.Ordinal));
         try
         {
             string[] restore = v == "null"
@@ -675,11 +732,28 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (problem is null && devices.Length > 0) log.LogInformation("USB: the phone is back on USB");
         }
         _missingApp = _missingApp.Where(devices.Contains).ToArray();
-        if (devices.Length == 0) { Report("no phone connected, waiting..."); return; }
+
+        // No phone has been processed yet, so this set is empty.
+        var unreachable = new HashSet<string>();
+
+        // Restore every attached phone that is no longer in standby.
+        // Use _all, not devices: devices has the selected-phone filter.
+        foreach (var d in _all.Where(d =>
+            Originals.ContainsKey(d) &&
+            !StandbyOn(d) &&
+            !unreachable.Contains(d)))
+        {
+            await RestoreStayOn(adb, d, ct);
+        }
+
+        if (devices.Length == 0)
+        {
+            Report("no phone connected, waiting...");
+            return;
+        }
 
         // A phone that did not answer "reverse --list" sits out the rest of this round (home screen, keep awake): one
         // more failure there would end the round before the phones after it. The next round tries it again.
-        var unreachable = new HashSet<string>();
         Dictionary<string, string>? transports = null; // read at most once a round, only for Android 5 and 6
         foreach (var d in devices)
         {
@@ -755,6 +829,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             if (_quiet.Remove(d) && Environment.TickCount64 < _quietUntil)
             {
                 log.LogInformation("{Device}: adb reverse set again after the adb server restart", d);
+                _seen.Add(d);
                 continue;
             }
             // A newly plugged-in phone must not light up while the computer is locked.
