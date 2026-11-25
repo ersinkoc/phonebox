@@ -110,9 +110,10 @@ public sealed class IosUsbBridgeTests
     }
 
     [Theory]
-    [InlineData(0)]
-    [InlineData(8)]
-    public async Task RelayTriesTheNextUsbDeviceAndPrefersTheLastWorkingDevice(int preferred)
+    [InlineData(0, 0, true)]
+    [InlineData(8, 2, false)]
+    [InlineData(0, 1, false)]
+    public async Task RelayTriesAnAvailableDeviceAndReservesAWorkerForOthers(int preferred, int index, bool firstRefuses)
     {
         const string token = "phonebox-test-token";
         var nonce = new string('a', 64);
@@ -135,7 +136,7 @@ public sealed class IosUsbBridgeTests
                 Assert.Contains("<string>ListDevices</string>", await ReceivePlist(peer, ct));
                 await SendMessage(peer, type: 8, Encoding.UTF8.GetBytes(devices), ct);
             }
-            if (preferred == 0)
+            if (firstRefuses)
             {
                 using var first = await listener.AcceptTcpClientAsync(ct);
                 var peer = first.GetStream();
@@ -169,7 +170,7 @@ public sealed class IosUsbBridgeTests
         }
 
         var daemon = RunDaemon();
-        var opened = await IosUsbBridge.OpenPipeAsync(Connect, token, preferred, ct);
+        var opened = await IosUsbBridge.OpenPipeAsync(Connect, token, preferred, index, ct);
         using var pipe = opened?.Stream;
         Assert.Equal(8, opened?.DeviceId);
         await daemon;

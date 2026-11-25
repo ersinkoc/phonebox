@@ -43,6 +43,7 @@ public sealed class IosUsbBridge(
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan AgentConnectTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan IdleRotation = TimeSpan.FromSeconds(30);
     private int _preferredDevice;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -71,7 +72,7 @@ public sealed class IosUsbBridge(
             var token = config.Get().Lan.Token;
             if (!string.IsNullOrEmpty(token))
             {
-                try { await RunPipeAsync(token, ct); }
+                try { await RunPipeAsync(index, token, ct); }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
                 catch (Exception ex) { log.LogDebug("iPhone USB: {Message}", ex.Message); }
             }
@@ -80,9 +81,9 @@ public sealed class IosUsbBridge(
         }
     }
 
-    private async Task RunPipeAsync(string token, CancellationToken ct)
+    private async Task RunPipeAsync(int index, string token, CancellationToken ct)
     {
-        if (await OpenPipeAsync(ConnectUsbmuxdAsync, token, Volatile.Read(ref _preferredDevice), ct) is not { } connected)
+        if (await OpenPipeAsync(ConnectUsbmuxdAsync, token, Volatile.Read(ref _preferredDevice), index, ct) is not { } connected)
             return;
         using var phone = connected.Stream;
         Volatile.Write(ref _preferredDevice, connected.DeviceId);
@@ -104,7 +105,7 @@ public sealed class IosUsbBridge(
     }
 
     internal static async Task<(int DeviceId, NetworkStream Stream)?> OpenPipeAsync(
-        Func<CancellationToken, Task<Socket>> connect, string token, int preferredDevice, CancellationToken ct)
+        Func<CancellationToken, Task<Socket>> connect, string token, int preferredDevice, int index, CancellationToken ct)
     {
         int[] candidates;
         using (var discovery = CancellationTokenSource.CreateLinkedTokenSource(ct))
@@ -116,7 +117,9 @@ public sealed class IosUsbBridge(
             candidates = UsbDevices(Encoding.UTF8.GetString(list.Payload));
         }
 
-        foreach (var deviceId in candidates.OrderByDescending(id => id == preferredDevice))
+        // Reserve a worker's first attempt for each device. Extra workers favor the last device that used a pipe.
+        var firstDevice = index < candidates.Length ? candidates[index] : preferredDevice;
+        foreach (var deviceId in candidates.OrderByDescending(id => id == firstDevice).ThenByDescending(id => id == preferredDevice))
         {
             using var handshake = CancellationTokenSource.CreateLinkedTokenSource(ct);
             handshake.CancelAfter(HandshakeTimeout);
@@ -130,8 +133,10 @@ public sealed class IosUsbBridge(
                 if (challenge is null || !TryParseChallenge(challenge, out var nonce)) continue;
                 await phone.WriteAsync(Encoding.ASCII.GetBytes($"AUTH {Auth(token, nonce)}\n"), handshake.Token);
 
-                // The phone sends GO only when the panel needs this idle pipe.
-                if (await ReadLineAsync(phone, 16, ct) != "GO") continue;
+                // The phone sends GO when it needs the pipe. Rotate idle pipes only if there are more devices than workers.
+                using var idle = candidates.Length > PipeCount ? CancellationTokenSource.CreateLinkedTokenSource(ct) : null;
+                idle?.CancelAfter(IdleRotation);
+                if (await ReadLineAsync(phone, 16, idle?.Token ?? ct) != "GO") continue;
                 var opened = phone;
                 phone = null;
                 return (deviceId, opened);
