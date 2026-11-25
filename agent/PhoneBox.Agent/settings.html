@@ -1544,6 +1544,11 @@ function renderPageEditor() {
   if (!p) { $('peHead').replaceChildren(h('p', { class: 'lead' }, t('s.js.noPages'))); $('peRest').replaceChildren(); return; }
   p.widgets ??= [];
   const move = (d) => { const j = selPage + d; [cfg.pages[selPage], cfg.pages[j]] = [cfg.pages[j], cfg.pages[selPage]]; selPage = j; renderPages(); changed(); };
+  const pb = p.photoBg;
+  const pbEnabled = !!(pb && pb.enabled);
+  const pbDim = pb?.dim ?? 45;
+  const pbOutput = h('output', { style: { fontVariantNumeric: 'tabular-nums' } }, pbDim + '%');
+  const pbRange = h('input', { type: 'range', min: 0, max: 90, step: 5, value: pbDim, 'aria-label': t('s.js.photoBgDim'), style: { flex: '1', minWidth: '120px' }, oninput: (e) => { p.photoBg.dim = Number(e.target.value); pbOutput.textContent = e.target.value + '%'; changed(); } });
   $('peHead').replaceChildren(
     h('div', { class: 'card' },
       h('div', { class: 'row', style: { gap: '10px' } },
@@ -1572,30 +1577,22 @@ function renderPageEditor() {
         h('button', { class: 'btn sm danger', disabled: cfg.pages.length === 1, onclick: () => {
           if (!confirm(t('s.js.deletePageConfirm', { title: p.title }))) return;
           cfg.pages.splice(selPage, 1); selWidget = -1; renderPages(); changed();
-        } }, t('s.js.deletePage')))));
+        } }, t('s.js.deletePage'))),
+      h('div', { class: 'row', style: { gap: '10px', alignItems: 'center', marginTop: '10px' } },
+        h('label', { class: 'check', title: t('s.js.photoBgHint') }, h('label', { class: 'switch' },
+          h('input', { type: 'checkbox', checked: pbEnabled, 'aria-label': t('s.js.photoBg'), onchange: (e) => {
+            p.photoBg = { enabled: e.target.checked, dim: pb?.dim ?? 45 };
+            changed(); renderPageEditor();
+          } }), h('span')), t('s.js.photoBg')),
+        ...(pbEnabled ? [h('span', { class: 'spacer' }), h('label', {}, t('s.js.photoBgDim')), pbRange, pbOutput] : []))));
   $('peHead').append(appearanceEditor(p, () => [cfg.display?.appearance], t('s.js.pageAppearance')));
-  // below the canvas, so it never pushes the layout down (a page's photo background, Settings › Pages)
-  const pb = p.photoBg;
-  const pbEnabled = !!(pb && pb.enabled);
-  const pbDim = pb?.dim ?? 45;
-  const pbOutput = h('output', { style: { fontVariantNumeric: 'tabular-nums' } }, pbDim + '%');
-  const pbRange = h('input', { type: 'range', min: 0, max: 90, step: 5, value: pbDim, 'aria-label': t('s.js.photoBgDim'), style: { flex: '1', minWidth: '120px' }, oninput: (e) => { p.photoBg.dim = Number(e.target.value); pbOutput.textContent = e.target.value + '%'; changed(); } });
-  const pbCard = h('div', { class: 'card', style: { marginTop: '12px' } },
-    h('div', { class: 'row', style: { gap: '10px', alignItems: 'center' } },
-      h('label', { class: 'check', title: t('s.js.photoBgHint') }, h('label', { class: 'switch' },
-        h('input', { type: 'checkbox', checked: pbEnabled, 'aria-label': t('s.js.photoBg'), onchange: (e) => {
-          p.photoBg = { enabled: e.target.checked, dim: pb?.dim ?? 45 };
-          changed(); renderPageEditor();
-        } }), h('span')), t('s.js.photoBg')),
-      ...(pbEnabled ? [h('span', { class: 'spacer' }), h('label', {}, t('s.js.photoBgDim')), pbRange, pbOutput] : [])));
   $('peRest').replaceChildren(
     h('p', { class: 'hint layout-hint', style: { margin: '6px 0 14px' } }, t('s.js.layoutHint')),
     h('div', { class: 'ed-cols' },
       h('div', { class: 'card', id: 'inspector' }),
       h('div', { class: 'card' }, h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '8px' } }, h('h3', { style: { margin: 0 } }, t('s.js.addWidget')),
         h('input', { type: 'search', id: 'palSearch', placeholder: t('s.js.searchWidgets', { n: catalog.widgets.length }), value: palQuery, style: { width: '210px' },
-          oninput: (e) => { palQuery = e.target.value; renderPalette(); } })), h('div', { class: 'palette', id: 'palette' }))),
-    pbCard);
+          oninput: (e) => { palQuery = e.target.value; renderPalette(); } })), h('div', { class: 'palette', id: 'palette' }))))
   renderCanvas();
   renderPalette();
   renderInspector();
