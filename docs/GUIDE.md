@@ -241,8 +241,7 @@ the four affected default icons are repaired, with the original file kept in `co
 By default the phone keeps its screen on while the panel runs. **Settings › General › Display › Power standby** lets a
 panel wired to one computer sleep once that computer is gone, and light up again when it comes back:
 
-- **Off** (default): today's behaviour. PhoneBox does not wake the phone, dismiss its lock screen or change any phone
-  setting.
+- **Off** (default): the existing display and connection settings control wake, lock-screen and charging behavior.
 - **Sleep when USB charge is cut**: the phone sleeps when the computer stops charging it.
 - **Sleep when the agent stops answering**: the phone sleeps when the agent stops answering. This also covers a
   charge-capped port, or a board that keeps 5 V alive after shutdown.
