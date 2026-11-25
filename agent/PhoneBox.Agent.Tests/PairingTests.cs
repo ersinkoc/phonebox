@@ -243,12 +243,14 @@ public sealed class PairingTests
             var icons = new ShortcutIconUploads(iconsDir);
             var png = Convert.FromHexString("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082");
 
-            var v1 = cfg.VersionText;
+            // Fix the initial version before the upload starts. A fast save on Windows can reuse the same clock tick.
+            File.SetLastWriteTimeUtc(cfgPath, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+            var v1 = cfg.Version;
             var enteredRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var releaseRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             using var gated = new GatedMemoryStream(png, enteredRead, releaseRead.Task);
 
-            var uploadTask = Program.UploadShortcutIconAsync("temp-sc", v1, gated, "image/png", cfg, icons);
+            var uploadTask = Program.UploadShortcutIconAsync("temp-sc", cfg.VersionText, gated, "image/png", cfg, icons);
             long savedV2;
             try
             {
@@ -256,10 +258,9 @@ public sealed class PairingTests
                 var first = await Task.WhenAny(enteredRead.Task, uploadTask).WaitAsync(TimeSpan.FromSeconds(10));
                 Assert.True(first == enteredRead.Task, "the upload finished before it read the body");
 
-                // Advance config timestamp deterministically and delete temp-sc while body read is suspended
-                File.SetLastWriteTimeUtc(cfgPath, new DateTime(cfg.Version, DateTimeKind.Utc).AddSeconds(-2));
-                _ = cfg.Get();
-                Assert.Null(cfg.Save("""{"shortcuts":[{"id":"keep-me","label":"Keep","cmd":"builtin:mute"}]}""", cfg.Version, out savedV2));
+                // Remove temp-sc while the upload is waiting for its body.
+                Assert.Null(cfg.Save("""{"shortcuts":[{"id":"keep-me","label":"Keep","cmd":"builtin:mute"}]}""", v1, out savedV2));
+                Assert.True(savedV2 > v1, "the settings save must advance the upload's version");
                 icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id));
             }
             finally
