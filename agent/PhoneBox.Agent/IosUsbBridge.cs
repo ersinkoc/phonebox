@@ -43,6 +43,7 @@ public sealed class IosUsbBridge(
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan AgentConnectTimeout = TimeSpan.FromSeconds(5);
+    private int _preferredDevice;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -81,27 +82,10 @@ public sealed class IosUsbBridge(
 
     private async Task RunPipeAsync(string token, CancellationToken ct)
     {
-        // Discovery, Connect and the challenge/AUTH exchange share one bounded budget. Waiting for GO has no
-        // deadline: an idle pipe is what the app's pool is made of.
-        using var handshake = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        handshake.CancelAfter(HandshakeTimeout);
-
-        using var socket = await ConnectUsbmuxdAsync(handshake.Token);
-        using var phone = new NetworkStream(socket, ownsSocket: false);
-
-        await SendPlistAsync(phone, ListDevicesXml, tag: 1, handshake.Token);
-        if (await ReadMessageAsync(phone, handshake.Token) is not { } list || list.Type != 8) return;
-        if (FirstUsbDevice(list.Payload) is not { } deviceId) return;
-
-        await SendPlistAsync(phone, ConnectPlist(deviceId), tag: 2, handshake.Token);
-        if (!ConnectSucceeded(await ReadMessageAsync(phone, handshake.Token))) return;
-
-        var challenge = await ReadLineAsync(phone, 256, handshake.Token);
-        if (challenge is null || !TryParseChallenge(challenge, out var nonce)) return;
-        await phone.WriteAsync(Encoding.ASCII.GetBytes($"AUTH {Auth(token, nonce)}\n"), handshake.Token);
-
-        var go = await ReadLineAsync(phone, 16, ct);
-        if (go != "GO") return;
+        if (await OpenPipeAsync(ConnectUsbmuxdAsync, token, Volatile.Read(ref _preferredDevice), ct) is not { } connected)
+            return;
+        using var phone = connected.Stream;
+        Volatile.Write(ref _preferredDevice, connected.DeviceId);
 
         using var agent = new TcpClient();
         using var connect = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -117,6 +101,52 @@ public sealed class IosUsbBridge(
         copy.Cancel();
         try { await Task.WhenAll(up, down); }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
+    }
+
+    internal static async Task<(int DeviceId, NetworkStream Stream)?> OpenPipeAsync(
+        Func<CancellationToken, Task<Socket>> connect, string token, int preferredDevice, CancellationToken ct)
+    {
+        int[] candidates;
+        using (var discovery = CancellationTokenSource.CreateLinkedTokenSource(ct))
+        {
+            discovery.CancelAfter(HandshakeTimeout);
+            using var mux = new NetworkStream(await connect(discovery.Token), ownsSocket: true);
+            await SendPlistAsync(mux, ListDevicesXml, tag: 1, discovery.Token);
+            if (await ReadMessageAsync(mux, discovery.Token) is not { Type: 8 } list) return null;
+            candidates = UsbDevices(Encoding.UTF8.GetString(list.Payload));
+        }
+
+        foreach (var deviceId in candidates.OrderByDescending(id => id == preferredDevice))
+        {
+            using var handshake = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            handshake.CancelAfter(HandshakeTimeout);
+            NetworkStream? phone = null;
+            try
+            {
+                phone = new NetworkStream(await connect(handshake.Token), ownsSocket: true);
+                await SendPlistAsync(phone, ConnectPlist(deviceId), tag: 2, handshake.Token);
+                if (!ConnectSucceeded(await ReadMessageAsync(phone, handshake.Token))) continue;
+                var challenge = await ReadLineAsync(phone, 256, handshake.Token);
+                if (challenge is null || !TryParseChallenge(challenge, out var nonce)) continue;
+                await phone.WriteAsync(Encoding.ASCII.GetBytes($"AUTH {Auth(token, nonce)}\n"), handshake.Token);
+
+                // The phone sends GO only when the panel needs this idle pipe.
+                if (await ReadLineAsync(phone, 16, ct) != "GO") continue;
+                var opened = phone;
+                phone = null;
+                return (deviceId, opened);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested &&
+                ex is IOException or SocketException or OperationCanceledException)
+            {
+                // The next USB device may have the relay even if this one refused or disconnected.
+            }
+            finally
+            {
+                phone?.Dispose();
+            }
+        }
+        return null;
     }
 
     // MARK: - usbmuxd
@@ -213,16 +243,16 @@ public sealed class IosUsbBridge(
         </dict></plist>
         """;
 
-    /// <summary>The first USB device in a ListDevices answer; a device without a ConnectionType is a fallback.</summary>
-    internal static int? FirstUsbDevice(byte[] payload) => FirstUsbDevice(Encoding.UTF8.GetString(payload));
-
-    internal static int? FirstUsbDevice(string xml)
+    /// <summary>Explicit USB devices first, then older usbmuxd entries without a transport type.</summary>
+    internal static int[] UsbDevices(string xml)
     {
-        var root = LoadPlist(xml);
-        if (root is null) return null;
+        var root = LoadPlist(xml)?.Element("dict");
+        if (root is null || !Pairs(root).TryGetValue("DeviceList", out var devices) || devices.Name != "array")
+            return [];
 
-        int? fallback = null;
-        foreach (var dict in root.Descendants("dict"))
+        var usb = new List<int>();
+        var fallback = new List<int>();
+        foreach (var dict in devices.Elements("dict"))
         {
             var fields = Pairs(dict);
             if (!fields.TryGetValue("DeviceID", out var idNode)
@@ -232,13 +262,13 @@ public sealed class IosUsbBridge(
                 var props = Pairs(properties);
                 if (props.TryGetValue("ConnectionType", out var type))
                 {
-                    if (type.Value == "USB") return id;
+                    if (type.Value == "USB") usb.Add(id);
                     continue; // explicitly Network (or another transport): not this bridge
                 }
             }
-            fallback ??= id; // older usbmuxd without a ConnectionType
+            fallback.Add(id);
         }
-        return fallback;
+        return usb.Concat(fallback).Distinct().ToArray();
     }
 
     /// <summary>A Connect answer: a plist Result with Number 0, or a raw result code of 0.</summary>

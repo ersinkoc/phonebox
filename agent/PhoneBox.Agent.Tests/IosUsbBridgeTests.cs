@@ -1,3 +1,7 @@
+using System.Buffers.Binary;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using PhoneBox.Agent;
 using Xunit;
 
@@ -69,9 +73,9 @@ public sealed class IosUsbBridgeTests
         """;
 
     [Fact]
-    public void FirstUsbDeviceIgnoresNetworkDevices()
+    public void UsbDevicesIgnoreExplicitNetworkDevices()
     {
-        Assert.Equal(7, IosUsbBridge.FirstUsbDevice(TwoDevices));
+        Assert.Equal([7], IosUsbBridge.UsbDevices(TwoDevices));
     }
 
     [Fact]
@@ -80,10 +84,10 @@ public sealed class IosUsbBridgeTests
         const string xml = """
             <plist version="1.0"><dict><key>DeviceList</key><array>
             <dict><key>DeviceID</key><integer>4</integer><key>Properties</key>
-            <dict><key>ConnectionType</key><string>Network</string></dict></dict>
+            <dict><key>DeviceID</key><integer>4</integer><key>ConnectionType</key><string>Network</string></dict></dict>
             </array></dict></plist>
             """;
-        Assert.Null(IosUsbBridge.FirstUsbDevice(xml));
+        Assert.Empty(IosUsbBridge.UsbDevices(xml));
     }
 
     [Fact]
@@ -94,14 +98,98 @@ public sealed class IosUsbBridgeTests
             <dict><key>DeviceID</key><integer>9</integer><key>MessageType</key><string>Attached</string></dict>
             </array></dict></plist>
             """;
-        Assert.Equal(9, IosUsbBridge.FirstUsbDevice(xml));
+        Assert.Equal([9], IosUsbBridge.UsbDevices(xml));
     }
 
     [Fact]
-    public void NoDevicesOrGarbageGivesNull()
+    public void NoDevicesOrGarbageGivesAnEmptyList()
     {
-        Assert.Null(IosUsbBridge.FirstUsbDevice("<plist version=\"1.0\"><dict><key>DeviceList</key><array/></dict></plist>"));
-        Assert.Null(IosUsbBridge.FirstUsbDevice("not a plist"));
-        Assert.Null(IosUsbBridge.FirstUsbDevice(""));
+        Assert.Empty(IosUsbBridge.UsbDevices("<plist version=\"1.0\"><dict><key>DeviceList</key><array/></dict></plist>"));
+        Assert.Empty(IosUsbBridge.UsbDevices("not a plist"));
+        Assert.Empty(IosUsbBridge.UsbDevices(""));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(8)]
+    public async Task RelayTriesTheNextUsbDeviceAndPrefersTheLastWorkingDevice(int preferred)
+    {
+        const string token = "phonebox-test-token";
+        var nonce = new string('a', 64);
+        var devices = TwoDevices.Replace("</array>", """
+            <dict><key>DeviceID</key><integer>8</integer>
+            <key>Properties</key><dict><key>ConnectionType</key><string>USB</string></dict></dict>
+            </array>
+            """, StringComparison.Ordinal);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var ct = timeout.Token;
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+
+        async Task RunDaemon()
+        {
+            using (var list = await listener.AcceptTcpClientAsync(ct))
+            {
+                var peer = list.GetStream();
+                Assert.Contains("<string>ListDevices</string>", await ReceivePlist(peer, ct));
+                await SendMessage(peer, type: 8, Encoding.UTF8.GetBytes(devices), ct);
+            }
+            if (preferred == 0)
+            {
+                using var first = await listener.AcceptTcpClientAsync(ct);
+                var peer = first.GetStream();
+                Assert.Contains("<key>DeviceID</key><integer>7</integer>", await ReceivePlist(peer, ct));
+                await SendMessage(peer, type: 1, [2, 0, 0, 0], ct);
+            }
+
+            using var relay = await listener.AcceptTcpClientAsync(ct);
+            var stream = relay.GetStream();
+            Assert.Contains("<key>DeviceID</key><integer>8</integer>", await ReceivePlist(stream, ct));
+            await SendMessage(stream, type: 1, [0, 0, 0, 0], ct);
+            await stream.WriteAsync(Encoding.ASCII.GetBytes($"PhoneBox-USB 1 {nonce}\n"), ct);
+            using var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
+            Assert.Equal($"AUTH {IosUsbBridge.Auth(token, nonce)}", await reader.ReadLineAsync(ct));
+            await stream.WriteAsync("GO\n"u8.ToArray(), ct);
+        }
+
+        async Task<Socket> Connect(CancellationToken cancel)
+        {
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            try
+            {
+                await socket.ConnectAsync(listener.LocalEndpoint, cancel);
+                return socket;
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
+            }
+        }
+
+        var daemon = RunDaemon();
+        var opened = await IosUsbBridge.OpenPipeAsync(Connect, token, preferred, ct);
+        using var pipe = opened?.Stream;
+        Assert.Equal(8, opened?.DeviceId);
+        await daemon;
+    }
+
+    private static async Task<string> ReceivePlist(NetworkStream stream, CancellationToken ct)
+    {
+        var header = new byte[16];
+        await stream.ReadExactlyAsync(header, ct);
+        var payload = new byte[BinaryPrimitives.ReadInt32LittleEndian(header) - header.Length];
+        await stream.ReadExactlyAsync(payload, ct);
+        return Encoding.UTF8.GetString(payload);
+    }
+
+    private static async Task SendMessage(NetworkStream stream, uint type, byte[] payload, CancellationToken ct)
+    {
+        var header = new byte[16];
+        BinaryPrimitives.WriteInt32LittleEndian(header, header.Length + payload.Length);
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(8), type);
+        await stream.WriteAsync(header, ct);
+        await stream.WriteAsync(payload, ct);
     }
 }
