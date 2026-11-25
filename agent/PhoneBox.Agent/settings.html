@@ -986,6 +986,7 @@ nav a.on::before { color: var(--accent); }
 <script src="../panel/locale-cs.js"></script>
 <script src="../panel/locale-ar.js"></script>
 <script src="../panel/locale-zh-Hant.js"></script>
+<script src="../panel/locale-zz-night.js"></script>
 <script src="../panel/i18n.js"></script>
 <script src="../panel/appearance.js"></script>
 <script>
@@ -2746,7 +2747,7 @@ const TRIGGERS = {
   'ping-high': { label: 'the network is slow', value: 'ms (or unreachable)', def: 150 },
   always: { label: 'always (use the days and hours below)' },
 };
-const ACTIONS = { goto: 'show the page', notify: 'show a notification', push: 'push a value', shortcut: 'run a shortcut' };
+const ACTIONS = { goto: 'show the page', notify: 'show a notification', push: 'push a value', shortcut: 'run a shortcut', night: 'show the night screen' };
 const DAYS = [['mon', 'Mo'], ['tue', 'Tu'], ['wed', 'We'], ['thu', 'Th'], ['fri', 'Fr'], ['sat', 'Sa'], ['sun', 'Su']];
 const PRIORITIES = { 2: 'low', 5: 'normal', 8: 'high' };
 const pageId = (...ids) => ids.find((id) => cfg.pages.some((p) => p.id === id)) || cfg.pages[0]?.id || '';
@@ -2757,6 +2758,7 @@ const RULE_PRESETS = [
   ['📆 In a meeting → on air', () => ({ name: 'In a meeting', when: 'calendar-event', then: 'push', key: 'onair', pushValue: '{detail}', whileActive: true })],
   ['🔥 CPU busy → notification', () => ({ name: 'CPU busy', when: 'cpu-above', value: 90, then: 'notify', text: '{detail} for a while', level: 'warn', whileActive: false })],
   ['🌙 Away → ambient page', () => ({ name: 'Away', when: 'idle', value: 10, then: 'goto', page: pageId('ambient', 'clock', 'calm'), whileActive: true })],
+  ['🌑 Away → night screen', () => ({ name: 'Away', when: 'idle', value: 5, then: 'night', whileActive: true })],
   ['🕙 Evenings → calm page', () => ({ name: 'Evenings', when: 'time', match: '22:00-07:00', then: 'goto', page: pageId('calm', 'clock', 'ambient'), whileActive: true })],
   ['🔔 Doorbell → notification', () => ({ name: 'Doorbell', when: 'push', match: 'doorbell', then: 'notify', text: 'Someone is at the door', level: 'warn', whileActive: false })],
   ['🎯 Quota above 80 % → warning', () => ({ name: 'Quota', when: 'quota-above', value: 80, then: 'notify', text: '{detail}', level: 'warn', whileActive: false, cooldownMin: 60 })],
@@ -2851,7 +2853,7 @@ function ruleCard(r, i) {
     h('div', { class: 'line' }, h('b', {}, t('s.r.when')), sel(r.when, TRIGGERS, (v) => { r.match = null; r.value = null; set('when', v, true); }), ...cond),
     h('div', { class: 'line' }, h('b', {}, t('s.r.then')), sel(r.then, ACTIONS, (v) => { if (v === 'goto' && !cfg.pages.some((p) => p.id === r.page)) r.page = cfg.pages[0]?.id || null; set('then', v, true); }), ...act),
     r.then !== 'notify' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: r.whileActive !== false, onchange: (e) => set('whileActive', e.target.checked) }),
-      r.then === 'goto' ? t('s.r.onlyWhileGoto') : r.then === 'shortcut' ? t('s.r.onlyWhileShortcut') : t('s.r.onlyWhileValue')) : null,
+      r.then === 'goto' ? t('s.r.onlyWhileGoto') : r.then === 'shortcut' ? t('s.r.onlyWhileShortcut') : r.then === 'night' ? t('s.r.onlyWhileNight') : t('s.r.onlyWhileValue')) : null,
     opts);
 }
 

@@ -8,8 +8,10 @@ namespace PhoneBox.Agent;
 
 /// <summary>
 /// Automation rules (Settings › Rules): checks every rule once a second and, when its condition starts to hold, switches
-/// the phone to a page, shows a notification or pushes a value. Rules marked "while active" undo their effect when the
-/// condition ends: the phone goes back to the page it was on and a pushed value is removed again.
+/// the phone to a page, shows a notification, pushes a value or shows the night screen (the "night" action has no event of
+/// its own: the phone shows the night screen while the rule is in its active list and goes back when it leaves it). Rules
+/// marked "while active" undo their effect when the condition ends: the phone goes back to the page it was on and a pushed
+/// value is removed again.
 /// </summary>
 public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonitor sessions, MediaMonitor media, SystemMonitor system,
     PrivacyMonitor privacy, CalendarMonitor calendar, ObsMonitor obs, QuotaMonitor quotas, GitHubMonitor github, BatteryMonitor batteries,
@@ -166,6 +168,10 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
                     && (target.Toggle || target.Cmd == "builtin:mute") && Shortcuts.State(target, push, audio) == true)
                     break;
                 if (Shortcuts.Run(cfgNow, r.Shortcut, log, push, audio) is { } error) log.LogWarning("rule {Id}: {Error}", r.Id, error);
+                break;
+            case "night":
+                // no event: the phone shows the night screen while the rule is in its active list and goes back when
+                // it leaves it (the list empties on a pause too, so the screen returns then as well)
                 break;
         }
     }

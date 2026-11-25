@@ -820,6 +820,7 @@
       's.r.onlyWhileGoto': 'Only while it lasts (then go back to the previous page)',
       's.r.onlyWhileShortcut': 'Only while it lasts (a toggle shortcut switches back off)',
       's.r.onlyWhileValue': 'Only while it lasts (then remove the value)',
+      's.r.onlyWhileNight': 'Only while it lasts (then the night screen turns off)',
       's.r.pickPage': '— pick a page —',
       's.r.pickShortcut': '— pick a shortcut —',
       's.r.namePlaceholder': 'Name (shown on notifications)',

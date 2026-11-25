@@ -103,8 +103,9 @@ public sealed class AgentConfig
             var pic = shortcutIcon?.Invoke(s);
             return new { s.Id, s.Label, s.Icon, s.Color, toggle = s.Toggle || s.Cmd is "builtin:mute" or PhoneDevices.MicCmd, hold = s.LongPress is not null, cycle = s.Cmd == "builtin:cycle" && s.Cycle is { Count: > 0 }, iconRev = pic?.Rev, iconUpload = pic?.Upload == true };
         }),
-        // names only (for the Rules widget); what a rule matches on stays here
-        rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When }),
+        // names, what a rule reacts to and its action (the phone keeps a rule's page and, for the "night" action,
+        // shows the night screen while the rule is active); what a rule matches on stays here
+        rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When, r.Then }),
         charge = new { Charge.Enabled, Charge.Min, Charge.Max },
         // OpenCode prompts: how long the Allow always button waits before it can be pressed (it saves a pattern)
         opencode = new { OpenCode.AlwaysCountdownSec },
@@ -400,7 +401,7 @@ public sealed class RuleConfig
     public string? Match { get; set; }
     /// <summary>CPU percent, or idle minutes.</summary>
     public double? Value { get; set; }
-    /// <summary>goto, notify or push.</summary>
+    /// <summary>goto, notify, push, shortcut or night (the phone shows its night screen while the rule is active).</summary>
     public string Then { get; set; } = "goto";
     public string? Page { get; set; }
     public string? Text { get; set; }
@@ -432,7 +433,7 @@ public sealed class RuleConfig
 
     public static readonly string[] Triggers = ["session-waiting", "session-busy", "media-playing", "process-running", "app-in-front", "mic-in-use", "camera-in-use", "obs-live", "calendar-event",
         "cpu-above", "idle", "time", "push", "quota-above", "review-requested", "ci-failed", "battery-low", "ping-high", "always"];
-    public static readonly string[] Actions = ["goto", "notify", "push", "shortcut"];
+    public static readonly string[] Actions = ["goto", "notify", "push", "shortcut", "night"];
 }
 
 /// <summary>Charge guard: keep the phone's battery between Min and Max by switching its power supply.</summary>
