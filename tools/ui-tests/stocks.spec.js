@@ -21,6 +21,7 @@ test('the stock watchlist and charts render and refresh', async ({ page }) => {
   await expect(charts.locator('.sc-pct').first()).toHaveText('+0.51%');
   await expect(charts.locator('.sc-pct').first()).toHaveCSS('color', 'rgb(34, 197, 94)');
   await expect(page.locator('.fx-list')).toContainText('Shanghai Composite');
+  await expect(page.locator('.fx-list .fx-v').first()).toHaveText('3,375.21');
   await page.evaluate(() => {
     const fetchDemo = window.fetch;
     window.minuteRequests = 0;

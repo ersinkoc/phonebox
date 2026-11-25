@@ -18,6 +18,7 @@ public sealed partial class StockService(ConfigStore config, ILogger<StockServic
     static StockService() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
     private readonly Lock _gate = new();
+    private readonly HttpClient _http = Http;
     private Dictionary<string, StockQuote> _cache = [];
     private long _lastAttempt;
     private long _updatedAt;
@@ -26,6 +27,9 @@ public sealed partial class StockService(ConfigStore config, ILogger<StockServic
 
     private static readonly HttpClient Http = new(new HttpClientHandler { AllowAutoRedirect = false })
         { Timeout = TimeSpan.FromMilliseconds(TimeoutMs), MaxResponseContentBufferSize = 2 * 1024 * 1024 };
+
+    internal StockService(ConfigStore config, ILogger<StockService> log, HttpClient http) : this(config, log)
+        => _http = http;
 
     [GeneratedRegex(@"v_(\w+)=""([^""]*)""")]
     private static partial Regex LineRe();
@@ -66,7 +70,7 @@ public sealed partial class StockService(ConfigStore config, ILogger<StockServic
         try
         {
             var url = "https://qt.gtimg.cn/q=" + string.Join(",", symbols.Select(Sanitize));
-            var bytes = Http.GetByteArrayAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
+            var bytes = _http.GetByteArrayAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
             // qt.gtimg.cn answers in GB18030 (some HK names use chars outside GB2312)
             var text = Encoding.GetEncoding("GB18030").GetString(bytes);
             var next = new Dictionary<string, StockQuote>();
@@ -81,8 +85,12 @@ public sealed partial class StockService(ConfigStore config, ILogger<StockServic
                 return;
             }
             foreach (var (code, q) in next) _cache[code] = q;
-            _updatedAt = now;
-            _error = null;
+            if (next.Count == symbols.Length)
+            {
+                _updatedAt = now;
+                _error = null;
+            }
+            else _error = "incomplete quotes";
         }
         catch (Exception ex)
         {
@@ -123,7 +131,7 @@ public sealed partial class StockService(ConfigStore config, ILogger<StockServic
         {
             // the proxy endpoint also returns the qt block with yesterday's close
             var url = "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/minute/query?code=" + Sanitize(code);
-            var json = await Http.GetStringAsync(url);
+            var json = await _http.GetStringAsync(url);
             using var doc = System.Text.Json.JsonDocument.Parse(json);
             var node = doc.RootElement.GetProperty("data").GetProperty(Sanitize(code));
             var root = node.GetProperty("data");
@@ -166,11 +174,6 @@ public sealed partial class StockService(ConfigStore config, ILogger<StockServic
             var name = f[1].Trim();
             var price = ParseD(f[3]);
             var prev = ParseD(f[4]);
-            if (price <= 0 && f.Length > 45)
-            {
-                // HK/US rows put the price further along; try a few known slots
-                price = ParseD(f[45]);
-            }
             if (price <= 0) return null;
             var change = ParseD(f[31]);
             var pct = ParseD(f[32]);

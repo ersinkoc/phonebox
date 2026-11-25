@@ -347,6 +347,7 @@ W.stocks = {
     // ---- list mode ----
     const list = h('div', 'fx-list', h('div', 'empty', t('w.loading')));
     box.append(h('div', 'w-title', stockText('Stocks'), h('span', 'w-sub', '')), list);
+    const price = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 8 });
     let last = '';
     const load = every(30_000, async () => {
       try {
@@ -364,7 +365,7 @@ W.stocks = {
           name.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
           const pct = h('span', null, quotePercent(q.changePct));
           pct.style.cssText = 'font-weight:600;min-width:56px;text-align:right';
-          const row = h('div', 'fx-i', name, h('span', 'fx-v', fmtNum(q.price)), pct,
+          const row = h('div', 'fx-i', name, h('span', 'fx-v', price.format(q.price)), pct,
             h('span', 'fx-c', (q.change > 0 ? '+' : '') + (q.change || 0).toFixed(2)));
           row.style.color = col;
           return row;
