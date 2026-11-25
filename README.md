@@ -77,7 +77,7 @@ works without either. Release agents include .NET, so you do not need to install
 
 ### 1. Install the desktop agent
 
-**Windows 10/11 x64** — paste into a normal PowerShell window:
+**Windows 10/11 x64 or Windows 11 ARM64** — paste into a normal PowerShell window:
 
 ```powershell
 irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1 | iex
@@ -163,8 +163,8 @@ Change fonts, size, spacing, corners and surfaces globally or for one page or wi
 | Agent interface | Tray icon + browser settings | Browser settings | Browser settings |
 
 Widgets depend on the host's hardware, installed tools and permissions. Advanced Control Deck features have
-[their own platform requirements](docs/CONTROL-DECK.md). Windows ARM and musl Linux (such as Alpine) do not have
-release builds. See the [full compatibility table](docs/SETUP.md#what-works-where).
+[their own platform requirements](docs/CONTROL-DECK.md). Windows on ARM requires Windows 11.
+Musl Linux (such as Alpine) has no release build. See the [full compatibility table](docs/SETUP.md#what-works-where).
 
 ## Documentation
 
@@ -230,7 +230,7 @@ Free code signing provided by [SignPath.io](https://about.signpath.io/), certifi
 
 - **Windows agent:** SignPath Foundation accepted the project and a test-signed build passed; releases stay unsigned
   until the Foundation's release certificate is issued.
-  The intended signing target is `PhoneBoxAgent.exe` in the `win-x64` release zip, built by the
+  The intended signing target is `PhoneBoxAgent.exe` in the `win-x64` and `win-arm64` release zips, built by the
   [release workflow](.github/workflows/release.yml). Every signing request requires manual approval.
   Bundled runtime and library notices are in [THIRD-PARTY-NOTICES.txt](agent/PhoneBox.Agent/THIRD-PARTY-NOTICES.txt).
 - **Android app:** release APKs use the project's own signing key, independently of SignPath.

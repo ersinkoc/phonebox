@@ -86,6 +86,7 @@ jobs:
       matrix:
         include:
           - { os: windows-latest, rid: win-x64, tfm: net10.0-windows10.0.19041.0 }
+          - { os: windows-11-arm, rid: win-arm64, tfm: net10.0-windows10.0.19041.0 }
           - { os: ubuntu-latest, rid: linux-x64, tfm: net10.0 }
           - { os: ubuntu-24.04-arm, rid: linux-arm64, tfm: net10.0 }
           - { os: macos-latest, rid: osx-arm64, tfm: net10.0 }
@@ -120,11 +121,12 @@ jobs:
       # and the Scoop/winget hash, which all cover the signed file. It is on while the repository variable
       # SIGNPATH_SIGNING_POLICY names a policy (release-signing); each request waits for a manual approval in SignPath.
       - name: Sign PhoneBoxAgent.exe (SignPath)
-        if: matrix.rid == 'win-x64' && vars.SIGNPATH_SIGNING_POLICY != ''
+        if: runner.os == 'Windows' && vars.SIGNPATH_SIGNING_POLICY != ''
         uses: ./.github/actions/sign-windows-agent
         with:
           exe: out/PhoneBoxAgent.exe
           signing-policy: ${{ vars.SIGNPATH_SIGNING_POLICY }}
+          artifact-suffix: ${{ matrix.rid }}
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           trusted: ${{ vars.SIGNPATH_SIGNING_POLICY == 'release-signing' }}
       - name: Smoke-test the published agent on its native architecture
@@ -204,8 +206,9 @@ jobs:
       - name: Checksums
         working-directory: dist
         run: |
-          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 10
-          test "$(find . -maxdepth 1 -type f -name '*.zip' | wc -l)" -eq 5
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 11
+          test "$(find . -maxdepth 1 -type f -name '*.zip' | wc -l)" -eq 6
+          test -f "PhoneBoxAgent-${{ needs.version.outputs.version }}-win-arm64.zip"
           test "$(find . -maxdepth 1 -type f -name '*.dmg' | wc -l)" -eq 2
           test "$(find . -maxdepth 1 -type f -name '*-setup.exe' | wc -l)" -eq 1
           test "$(find . -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 1

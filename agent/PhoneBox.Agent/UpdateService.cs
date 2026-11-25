@@ -12,7 +12,7 @@ public sealed record UpdateStatus(string AgentVersion, string? AppVersion, strin
 
 /// <summary>
 /// Keeps the agent and the phone app up to date from GitHub releases (PhoneBox-&lt;v&gt;.apk and
-/// PhoneBoxAgent-&lt;v&gt;-&lt;rid&gt;.zip, rid = win-x64, linux-x64, linux-arm64, osx-arm64 or osx-x64):
+/// PhoneBoxAgent-&lt;v&gt;-&lt;rid&gt;.zip, rid = win-x64, win-arm64, linux-x64, linux-arm64, osx-arm64 or osx-x64):
 ///  - phone: installed with "adb install -r" while the phone is on USB (no prompt on the phone). Android refuses
 ///    an APK signed with a different key, and the agent never uninstalls to force it.
 ///  - agent: files are swapped in place (running files are renamed to *.old, which Windows allows) and the agent

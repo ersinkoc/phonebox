@@ -12,7 +12,7 @@
     & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1))) -NoPhone
 
   What it does, asking first before anything outside the PhoneBox folders:
-    1. Checks this PC (Windows 10/11, x64) and finds the latest PhoneBox release.
+    1. Checks this PC (Windows 10/11 x64 or Windows 11 ARM64) and finds the latest PhoneBox release.
     2. Downloads the agent and checks its SHA-256 checksum (and its build provenance when the GitHub CLI is signed in).
     3. Installs adb (Android platform tools) when it is missing: with winget, or from Google's download.
     4. Installs the agent to %LOCALAPPDATA%\PhoneBox\app. Settings in %APPDATA%\PhoneBox are kept.
@@ -320,11 +320,13 @@ function Install-PhoneBox {
 
     Write-Step 'Checking this PC'
     $architecture = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
-    if ($architecture -eq 'ARM64') {
-        throw "There is no PhoneBox build for Windows on ARM yet: the x64 build would run, but could not update itself. Please ask for it in https://github.com/$Repo/issues."
+    $rid = switch ($architecture) {
+        'AMD64' { 'win-x64' }
+        'ARM64' { 'win-arm64' }
+        default { throw "PhoneBox needs 64-bit Windows (this PC reports $architecture)." }
     }
-    if ($architecture -ne 'AMD64') { throw "PhoneBox needs 64-bit Windows (this PC reports $architecture)." }
     $build = [Environment]::OSVersion.Version.Build
+    if ($rid -eq 'win-arm64' -and $build -lt 22000) { throw 'PhoneBox needs Windows 11 on ARM.' }
     if ($build -lt 19041) { Write-Caution "PhoneBox is built for Windows 10 version 2004 (build 19041) or later; this PC has build $build, so some parts may not work." }
     $identity = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
     if ($identity.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) -and -not $AllowAdministrator) {
@@ -338,7 +340,7 @@ function Install-PhoneBox {
     $exe = Join-Path $app 'PhoneBoxAgent.exe'
     $installed = $null
     if (Test-Path $exe) { $installed = ("$((Get-Item $exe).VersionInfo.ProductVersion)" -split '\+')[0] }
-    Write-Ok "Windows build $build, x64$(if ($installed) { ", PhoneBox $installed installed" })"
+    Write-Ok "Windows build $build, $rid$(if ($installed) { ", PhoneBox $installed installed" })"
     # Smart App Control (Windows 11) blocks programs that are neither signed nor known to Microsoft: 1 on, 2 evaluation
     $smartAppControl = 0
     try { $smartAppControl = [int](Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy' -ErrorAction Stop).VerifiedAndReputablePolicyState } catch { }
@@ -365,10 +367,13 @@ function Install-PhoneBox {
     New-Item -ItemType Directory -Force $temp | Out-Null
     try {
         Write-Step "Downloading PhoneBox $ver"
-        $zipName = "PhoneBoxAgent-$ver-win-x64.zip"
+        $zipName = "PhoneBoxAgent-$ver-$rid.zip"
         $sums = Join-Path $temp "SHA256SUMS-$ver.txt"
         $zip = Join-Path $temp $zipName
         try { Get-Download "$base/SHA256SUMS-$ver.txt" $sums } catch { throw "Release $ver was not found ($base). $($_.Exception.Message)" }
+        if ($rid -eq 'win-arm64' -and -not (Select-String -LiteralPath $sums -SimpleMatch $zipName -Quiet)) {
+            throw "PhoneBox $ver has no native Windows ARM64 package. See https://github.com/$Repo/blob/main/docs/SETUP.md#windows-on-arm for available options."
+        }
         Write-Info "$zipName (about 65 MB) ..."
         Get-Download "$base/$zipName" $zip
         Assert-Checksum $zip $sums

@@ -26,7 +26,7 @@ jobs:
               (root / directory).mkdir()
           # Deliberately invalid APK bytes: this is a CI transfer fixture, never a public release.
           (root / 'apk/probe.apk').write_bytes(b'PhoneBox artifact transfer fixture\n')
-          for rid in ('win-x64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64'):
+          for rid in ('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64'):
               with zipfile.ZipFile(root / f'agents/probe-{rid}.zip', 'w') as archive:
                   archive.writestr('payload.txt', rid)
           (root / 'intermediate/app-debug.apk').write_bytes(b'Must not enter the release directory')
@@ -91,7 +91,7 @@ jobs:
           expected = json.loads((root / 'expected/hashes.json').read_text())
           files = list((root / 'release').iterdir())
           assert {p.name for p in files} == set(expected) - {'artifact.tar'}, files
-          assert len(files) == 6
+          assert len(files) == 7
           for path in [*files, root / 'pages/artifact.tar']:
               assert hashlib.sha256(path.read_bytes()).hexdigest() == expected[path.name], path
           for path in (root / 'release').glob('*.zip'):

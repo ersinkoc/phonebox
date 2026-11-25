@@ -8,7 +8,7 @@
 
 ### 1. Install PhoneBox on the computer
 
-**Windows 10/11**: open PowerShell (a normal window, not *Run as administrator*) and paste:
+**Windows 10/11 x64 or Windows 11 ARM64**: open PowerShell (a normal window, not *Run as administrator*) and paste:
 
 ```powershell
 irm https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.ps1 | iex
@@ -22,7 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
 
 Setup installs the [latest release](https://github.com/ersinkoc/phonebox/releases/latest) and anything missing:
 
-1. **Checks the computer**: Windows x64; Linux x64 / ARM64 with glibc; macOS on Apple silicon or Intel.
+1. **Checks the computer**: Windows x64 / ARM64; Linux x64 / ARM64 with glibc; macOS on Apple silicon or Intel.
 2. **Downloads and checks the agent**: the download must match the release's SHA-256 checksums. With the
    [GitHub CLI](https://cli.github.com) 2.93.0 or later signed in, it also verifies the build provenance (`gh attestation verify`).
    No .NET to install: the agent is one self-contained program.
@@ -126,9 +126,18 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
   Google USB Driver; other brands have one on their support site.
 - **Scoop users**: setup stops if PhoneBox is installed with Scoop, so two copies don't fight over the same port.
   Keep using `scoop update phonebox`, or `scoop uninstall phonebox` first and then run setup.
-- **Windows on ARM** and **musl Linux** (Alpine) have no release build yet.
+- **musl Linux** (Alpine) has no release build yet.
 
 </details>
+
+#### Windows on ARM
+
+The first release with a native ARM64 package includes `PhoneBoxAgent-<version>-win-arm64.zip`.
+Run the Windows setup command above to install it, or extract the ZIP and run `PhoneBoxAgent.exe`.
+The setup script selects ARM64 even when PowerShell itself is running under emulation. Windows on ARM requires Windows 11.
+
+For older releases, try the portable `win-x64` ZIP using [Windows 11 x64 emulation](https://learn.microsoft.com/en-us/windows/arm/apps-on-arm-x86-emulation).
+Update a portable copy manually. Wi-Fi pairing below works without Android USB drivers.
 
 ### 2. Connect the phone
 
@@ -150,7 +159,7 @@ The settings are at <http://127.0.0.1:8765>, on Windows also from the tray icon.
 ### Other ways to install
 
 - **Manual download**: the [release](https://github.com/ersinkoc/phonebox/releases/latest) has the signed Android
-  APK and agents for Windows x64, Linux x64/ARM64 and macOS Apple silicon/Intel, with SHA-256 checksums and build
+  APK and agents for Windows x64/ARM64, Linux x64/ARM64 and macOS Apple silicon/Intel, with SHA-256 checksums and build
   provenance. Unzip the agent and run it. It can update itself only from the install folder in the table above. On a Mac,
   the `.dmg` holds `PhoneBox.app`: drag it to Applications (or `~/Applications`) and open it. It has no window; the settings
   are at http://127.0.0.1:8765. If you installed with `setup.sh`, that agent is already running and holds the port, so first quit it
@@ -167,7 +176,7 @@ The settings are at <http://127.0.0.1:8765>, on Windows also from the tray icon.
 
 - **winget**: a package (`ersinkoc.PhoneBox`) is prepared in [`packaging/winget`](../packaging/winget) for
   winget-pkgs. Once it is accepted, `winget install ersinkoc.PhoneBox` will install it.
-- **Windows installer**: `PhoneBox-<version>-win-x64-setup.exe` on the release installs for the current user (no
+- **Windows x64 installer**: `PhoneBox-<version>-win-x64-setup.exe` on the release installs for the current user (no
   administrator), into the folder the agent updates itself in, with a Start Menu shortcut and an optional *Start PhoneBox
   with Windows*. Uninstall it from *Settings › Apps*; your settings are kept. The agent updates itself from the release,
   so *Apps & features* keeps showing the version the installer wrote (the one first installed); *Settings › General ›

@@ -77,6 +77,7 @@ jobs:
       matrix:
         include:
           - { os: windows-latest, rid: win-x64, tfm: net10.0-windows10.0.19041.0 }
+          - { os: windows-11-arm, rid: win-arm64, tfm: net10.0-windows10.0.19041.0 }
           - { os: ubuntu-latest, rid: linux-x64, tfm: net10.0 }
           - { os: macos-latest, rid: osx-arm64, tfm: net10.0 }
     runs-on: ${{ matrix.os }}
@@ -99,7 +100,7 @@ jobs:
           ./tools/test-windows-setup-phone.ps1
           ./tools/test-windows-source-publish.ps1
       - name: Unix installer regression checks with the system Bash
-        if: matrix.rid != 'win-x64'
+        if: runner.os != 'Windows'
         run: |
           python3 tools/test-unix-installer.py --bash /bin/bash
           python3 tools/test-unix-autostart.py /bin/bash
@@ -182,14 +183,14 @@ jobs:
           ./tools/make-windows-installer.ps1 -Exe out/PhoneBoxAgent.exe -Version $version -OutDir "$env:RUNNER_TEMP/installer"
           ./tools/test-windows-installer.ps1 -Setup "$env:RUNNER_TEMP/installer/PhoneBox-$version-win-x64-setup.exe" -Version $version
       - name: Smoke test the single-file agent (Windows)
-        if: matrix.rid == 'win-x64'
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $version = ([regex]'<Version>([^<]+)</Version>').Match((Get-Content -Raw agent/PhoneBox.Agent/PhoneBox.Agent.csproj)).Groups[1].Value
           python tools/smoke-agent.py out/PhoneBoxAgent.exe --version $version
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Smoke test (starts, serves the API)
-        if: matrix.rid != 'win-x64'
+        if: runner.os != 'Windows'
         run: |
           chmod +x out/PhoneBoxAgent
           out/PhoneBoxAgent > agent.log 2>&1 &

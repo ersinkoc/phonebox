@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Windows 11 on ARM: native ARM64 agent ZIP and architecture-aware PowerShell setup (#602).
+
 **Widgets**
 - **Stocks**: a configurable stock watchlist and intraday charts widget (#595).
 - **East Money stock forum**: a stock forum widget (#594).
