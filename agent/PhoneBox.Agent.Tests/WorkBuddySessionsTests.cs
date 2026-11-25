@@ -31,6 +31,23 @@ public sealed class WorkBuddySessionsTests : IDisposable
         Assert.Equal("idle", Assert.Single(SessionMonitor.ReadWorkBuddy(_home, pid => pid != 49, nowMs: 90_201)).Status);
     }
 
+    [Theory]
+    [InlineData(true, true, true, true)]
+    [InlineData(true, true, false, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, true, false)]
+    public void ApprovalRequiresBothOptInsOnAnEnabledPage(bool setting, bool page, bool widget, bool expected)
+    {
+        var sessions = new WidgetConfig { Type = "sessions" };
+        sessions.Set("workBuddyApprovals", widget);
+        var cfg = new AgentConfig
+        {
+            WorkBuddy = new WorkBuddyConfig { PhoneApprovals = setting },
+            Pages = [new PageConfig { Enabled = page, Widgets = [sessions] }],
+        };
+        Assert.Equal(expected, WorkBuddyHook.Allowed(cfg));
+    }
+
     [Fact]
     public async Task WorkBuddyApprovalsDefaultOffEvenWhenClaudeApprovalsAreOn()
     {

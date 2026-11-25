@@ -111,8 +111,8 @@ The Water intake widget stores the current local day's total and the next remind
 It sends no intake data to the desktop agent or an external service.
 
 WorkBuddy sessions and phone approvals are off by default. When enabled, WorkBuddy session cards use local status files and
-workspace names. The installed WorkBuddy permission hook sends the same kind of prompt data over the same paired-phone
-approval channel described above for Claude Code.
+workspace names. The WorkBuddy permission hook needs an enabled AI sessions widget with phone approvals allowed.
+It sends prompt data through the paired-phone approval channel described above for Claude Code.
 
 ## Connections made by default
 

@@ -19,10 +19,21 @@ public static class ClaudeHook
     public static async Task<object?> HandleAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals, SessionMonitor sessions, CancellationToken aborted)
         => await HandlePermissionAsync(input, cfg, approvals, sessions, aborted, "Claude Code", "claude:", allowQuestions: true);
 
-    internal static Task<object?> HandleWorkBuddyAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
-        SessionMonitor sessions, CancellationToken aborted) =>
-        HandlePermissionAsync(input, cfg, approvals, sessions, aborted, "WorkBuddy", "workbuddy:", allowQuestions: true,
-            workBuddy: cfg.Get().WorkBuddy);
+    internal static async Task<object?> HandleWorkBuddyAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
+        SessionMonitor sessions, CancellationToken aborted)
+    {
+        var settings = cfg.Get();
+        if (!WorkBuddyHook.Allowed(settings))
+        {
+            approvals.Skipped("WorkBuddy", "No enabled AI sessions widget allows WorkBuddy phone approvals");
+            return null;
+        }
+
+        var answer = await HandlePermissionAsync(input, cfg, approvals, sessions, aborted, "WorkBuddy", "workbuddy:",
+            allowQuestions: true, workBuddy: settings.WorkBuddy);
+        // A widget may be disabled while the phone is deciding.
+        return answer is not null && WorkBuddyHook.Allowed(cfg.Get()) ? answer : null;
+    }
 
     /// <summary>Shared PermissionRequest protocol used by Claude Code, Codex and compatible agents.</summary>
     internal static async Task<object?> HandlePermissionAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,

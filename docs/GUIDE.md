@@ -340,6 +340,7 @@ those files under the button before you press it, and a folder that doesn't exis
 the hook before you delete an account: *Remove hook* only reaches the folders still in the list.
 
 WorkBuddy has its own controls under **Settings › General › AI coding agent permission prompts**.
+Turn on **Ask on the phone** in the WorkBuddy section. Enable **Allow WorkBuddy approvals on the phone** in an AI sessions widget on an enabled page.
 The WorkBuddy installer writes a command hook for the `PermissionRequest` event to `~/.workbuddy/settings.json`
 and keeps the existing settings. Restart WorkBuddy after installation and use its default permission mode to see prompts.
 To avoid duplicate prompts, remove any old PhoneBox entry you copied manually before installing this one.

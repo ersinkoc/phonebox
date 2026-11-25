@@ -13246,6 +13246,33 @@
     if (strings['s.opencode.sessions'])
       strings['s.workbuddy.sessions'] = strings['s.opencode.sessions'].replace('OpenCode', 'WorkBuddy');
   }
+  const WORKBUDDY_APPROVAL_LABEL = {
+    "tr": "WorkBuddy onaylarına telefonda izin ver",
+    "de": "WorkBuddy-Freigaben am Telefon erlauben",
+    "fr": "Autoriser les approbations WorkBuddy sur le téléphone",
+    "es": "Permitir aprobaciones de WorkBuddy en el teléfono",
+    "it": "Consenti le approvazioni WorkBuddy sul telefono",
+    "pt": "Permitir aprovações WorkBuddy no telemóvel",
+    "pt-BR": "Permitir aprovações do WorkBuddy no telefone",
+    "nl": "WorkBuddy-goedkeuringen op de telefoon toestaan",
+    "pl": "Zezwalaj na zatwierdzanie WorkBuddy na telefonie",
+    "ru": "Разрешить подтверждения WorkBuddy на телефоне",
+    "el": "Να επιτρέπονται οι εγκρίσεις WorkBuddy στο τηλέφωνο",
+    "vi": "Cho phép phê duyệt WorkBuddy trên điện thoại",
+    "zh": "允许在手机上审批 WorkBuddy 请求",
+    "ja": "スマートフォンで WorkBuddy の承認を許可",
+    "ko": "휴대폰에서 WorkBuddy 승인 허용",
+    "id": "Izinkan persetujuan WorkBuddy di ponsel",
+    "th": "อนุญาตให้อนุมัติ WorkBuddy บนโทรศัพท์",
+    "uk": "Дозволити підтвердження WorkBuddy на телефоні",
+    "hi": "फ़ोन पर WorkBuddy की मंज़ूरी देने दें",
+    "cs": "Povolit schvalování WorkBuddy na telefonu",
+    "ar": "السماح بموافقات WorkBuddy على الهاتف",
+    "zh-Hant": "允許在手機上審批 WorkBuddy 請求"
+  };
+  for (const [lang, label] of Object.entries(WORKBUDDY_APPROVAL_LABEL)) {
+    CATALOG[lang] = { ...CATALOG[lang], 'Allow WorkBuddy approvals on the phone': label };
+  }
   delete window.PhoneBoxLocaleData;
 
   let pref = 'auto';

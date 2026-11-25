@@ -12,6 +12,10 @@ public static class WorkBuddyHook
     public static readonly string SettingsPath = Path.Combine(Home, ".workbuddy", "settings.json");
     public const string Endpoint = "/api/hooks/workbuddy/permission";
 
+    internal static bool Allowed(AgentConfig cfg) =>
+        cfg.WorkBuddy.PhoneApprovals &&
+        cfg.Widgets(enabledPagesOnly: true).Any(w => w.Type == "sessions" && w.Bool("workBuddyApprovals") == true);
+
     public static bool Installed() => ClaudeHook.Installed(SettingsPath, Endpoint);
 
     /// <summary>Installs or removes the hook in ~/.workbuddy/settings.json. Returns an error message, or null on success.</summary>
