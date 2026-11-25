@@ -885,7 +885,10 @@ nav a.on::before { color: var(--accent); }
         <h3 data-i18n="s.bridge.title">Phone bridge</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.bridge.hint">Share what you copy between this Mac and the paired phone (off by default). The text goes only to your own phone over the PhoneBox link and is not stored. The PhoneBox app has its own Phone bridge switch, and both must be on.</p>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="bridge.clipboard" aria-labelledby="bridgeClipboardLabel"><span></span></label> <span id="bridgeClipboardLabel" data-i18n="s.bridge.clipboard">Share the clipboard with the phone (plain text, both ways)</span></div>
-        <p id="bridgeRefused" hidden style="margin:4px 0 0;font-size:13px;color:var(--warn)" data-i18n="s.bridge.refused">macOS gave PhoneBox no text from the clipboard, so what you copy is not reaching the phone. Allow PhoneBox to paste in System Settings › Privacy &amp; Security.</p>
+        <p id="bridgeRefused" hidden style="margin:4px 0 8px;font-size:13px;color:var(--warn)" data-i18n="s.bridge.refused">macOS gave PhoneBox no text from the clipboard, so what you copy is not reaching the phone. Allow PhoneBox to paste in System Settings › Privacy &amp; Security.</p>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" id="bridgeNotifications" data-bind="bridge.notifications" aria-labelledby="bridgeNotificationsLabel"><span></span></label> <span id="bridgeNotificationsLabel" data-i18n="s.bridge.notifications">Show phone notifications on this Mac (calls, messages and the apps you choose on the phone)</span></div>
+        <label class="check"><input type="checkbox" id="bridgeCopyCodes" data-bind="bridge.copyCodes"> <span data-i18n="s.bridge.copyCodes">Copy one-time codes from messages to this Mac's clipboard</span></label>
+        <div class="row" style="margin-top:8px"><button class="btn sm" id="bridgeTest" onclick="bridgeTest()" data-i18n="s.bridge.test">Send a test notification</button></div>
       </div>
 
       <div class="card">
@@ -3103,6 +3106,19 @@ function renderCharge() {
   for (const [id, key] of [['chargeOnSel', 'onShortcut'], ['chargeOffSel', 'offShortcut']])
     $(id).replaceChildren(h('option', { value: '' }, t('s.r.pickShortcut')), ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === cfg.charge[key] }, plain(`${s.icon || ''} ${s.label}`) || s.id)));
 }
+// the code switch and the test button only mean something while the notification switch is on
+function renderBridge() {
+  const on = !!(cfg.bridge && cfg.bridge.notifications);
+  $('bridgeCopyCodes').disabled = !on;
+  $('bridgeTest').disabled = !on;
+}
+// the agent reads the saved settings, so a test of unsaved ones would test the old ones
+async function bridgeTest() {
+  if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveThenTest'), true); return; }
+  const r = await fetch('/api/bridge/notification/test', { method: 'POST' });
+  const j = await r.json().catch(() => ({}));
+  toast(r.ok ? t('s.bridge.testSent') : j.error || 'Could not send', !r.ok);
+}
 async function chargeTest(action) {
   if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveThenTest'), true); return; }
   const r = await fetch(`/api/charge/test?action=${action}`, { method: 'POST' });
@@ -3933,12 +3949,14 @@ function bindForm() {
       $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
       if (p === 'charge.method') renderCharge();
       if (p === 'lan.enabled') renderLanStatus();
+      if (p === 'bridge.notifications') renderBridge();
       if (p === 'photos.source' || p === 'photos.immichUrl' || p === 'photos.immichKey') renderPhotoSource();
       changed();
     };
   });
   bindCodexBar();
   renderClaudeDirs();
+  renderBridge();
   renderPhotoSource();
   $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
 }

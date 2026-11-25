@@ -17,7 +17,18 @@ public sealed class BridgeApiTests : IDisposable
     private readonly FakePasteboard _pb = new();
     private readonly BridgeStream _stream = new();
     private readonly ClipboardBridge _bridge;
+    private readonly List<(string Title, string Subtitle, string Body)> _shown = [];
+    private readonly NotificationBridge _notifications;
     private int _stamp;
+
+    private sealed class RecordingNotifier(List<(string, string, string)> shown) : IMacNotifier
+    {
+        public Task<bool> PostAsync(string title, string subtitle, string body, byte[]? iconPng, string? replaceId, CancellationToken ct)
+        {
+            shown.Add((title, subtitle, body));
+            return Task.FromResult(true);
+        }
+    }
 
     public BridgeApiTests()
     {
@@ -26,11 +37,12 @@ public sealed class BridgeApiTests : IDisposable
         _store = new ConfigStore(_config);
         SetSwitch(true);
         _bridge = new ClipboardBridge(_pb, _store, _stream, NullLogger<ClipboardBridge>.Instance);
+        _notifications = new NotificationBridge(new RecordingNotifier(_shown), _store, _bridge, () => 1_000_000, NullLogger<NotificationBridge>.Instance, () => []);
     }
 
-    private void SetSwitch(bool on)
+    private void SetSwitch(bool on, bool notifications = false)
     {
-        File.WriteAllText(_config, "{\"bridge\":{\"clipboard\":" + (on ? "true" : "false") + "}}");
+        File.WriteAllText(_config, "{\"bridge\":{\"clipboard\":" + (on ? "true" : "false") + ",\"notifications\":" + (notifications ? "true" : "false") + "}}");
         File.SetLastWriteTimeUtc(_config, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(++_stamp));
     }
 
@@ -460,6 +472,107 @@ public sealed class BridgeApiTests : IDisposable
     public void ADeviceIdIsTakenOnlyWhenItLooksLikeOne(string header, string? expected) =>
         Assert.Equal(expected, BridgeApi.DeviceId(header));
 
+    // ---- POST /api/bridge/notification ----
+
+    private static PhoneNotification Note(string key = "k1") => new(key, "Messages", "com.example.messages", "Anna", "hi", "message", 1);
+
+    [Fact]
+    public async Task ANotificationIsOkAndIsShown()
+    {
+        SetSwitch(true, notifications: true);
+        Assert.Equal(200, Status(BridgeApi.PostNotification(_notifications, Note(), "phoneA")));
+        await _notifications.DrainAsync();
+        Assert.Equal([("Anna", "Messages", "hi")], _shown);
+    }
+
+    [Fact]
+    public void ADuplicateNotificationIsStillOk()
+    {
+        SetSwitch(true, notifications: true);
+        Assert.Equal(200, Status(BridgeApi.PostNotification(_notifications, Note(), "phoneA")));
+        Assert.Equal(200, Status(BridgeApi.PostNotification(_notifications, Note(), "phoneA")));
+    }
+
+    [Fact]
+    public void WhileTheNotificationSwitchIsOffTheAnswerIs403()
+    {
+        SetSwitch(true, notifications: false);
+        Assert.Equal(403, Status(BridgeApi.PostNotification(_notifications, Note(), "phoneA")));
+    }
+
+    [Fact]
+    public void NoBridgeIs501AndNoNotificationIs400()
+    {
+        SetSwitch(true, notifications: true);
+        Assert.Equal(501, Status(BridgeApi.PostNotification(null, Note(), "phoneA")));
+        Assert.Equal(400, Status(BridgeApi.PostNotification(_notifications, null, "phoneA")));
+    }
+
+    [Fact]
+    public void TheGateAnswers501Then403BeforeAnyBodyIsRead()
+    {
+        Assert.Equal(501, Status(BridgeApi.NotificationGate(null)!));
+        SetSwitch(true, notifications: false);
+        Assert.Equal(403, Status(BridgeApi.NotificationGate(_notifications)!));
+        SetSwitch(true, notifications: true);
+        Assert.Null(BridgeApi.NotificationGate(_notifications));
+    }
+
+    [Fact]
+    public async Task TheNotificationBodyIsReadWithUnicode()
+    {
+        var body = "{\"key\":\"k9\",\"app\":\"Μηνύματα\",\"package\":\"com.x\",\"title\":\"Άννα 🌍\",\"text\":\"Καλημέρα\\nline2\",\"category\":\"call\",\"time\":123}";
+        var (n, error) = await BridgeApi.ReadNotificationBody(Request(body));
+        Assert.Null(error);
+        Assert.Equal(new PhoneNotification("k9", "Μηνύματα", "com.x", "Άννα 🌍", "Καλημέρα\nline2", "call", 123), n);
+    }
+
+    [Fact]
+    public async Task MissingOptionalFieldsGetDefaults()
+    {
+        var (n, error) = await BridgeApi.ReadNotificationBody(Request("{\"key\":\"k\",\"title\":\"T\"}"));
+        Assert.Null(error);
+        Assert.Equal(new PhoneNotification("k", "", "", "T", "", "message", 0), n);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"title\":\"no key\"}")]
+    [InlineData("{\"key\":\"k\"}")]                       // neither a title nor a text
+    [InlineData("{\"key\":5,\"title\":\"T\"}")]           // a key that is not text
+    [InlineData("[\"x\"]")]
+    public async Task ABodyThatIsNotANotificationGivesNone(string body)
+    {
+        var (n, error) = await BridgeApi.ReadNotificationBody(Request(body));
+        Assert.Null(error);
+        Assert.Null(n);
+    }
+
+    [Fact]
+    public async Task ABrokenOrOversizedNotificationBodyIsARequestError()
+    {
+        var (_, broken) = await BridgeApi.ReadNotificationBody(Request("not json"));
+        Assert.Equal(400, Status(BridgeApi.BodyError(broken!)));
+        var big = "{\"key\":\"k\",\"title\":\"" + new string('a', BridgeApi.MaxNotificationBytes) + "\"}";
+        var (n, tooLarge) = await BridgeApi.ReadNotificationBody(Request(big));
+        Assert.Null(n);
+        Assert.Equal(BridgeApi.RequestTooLarge, tooLarge);
+    }
+
+    // ---- POST /api/bridge/notification/test (local only) ----
+
+    [Fact]
+    public async Task TheTestNotificationGoesThroughTheSwitch()
+    {
+        SetSwitch(true, notifications: false);
+        Assert.Equal(403, Status(BridgeApi.PostTestNotification(_notifications, 1)));
+        SetSwitch(true, notifications: true);
+        Assert.Equal(200, Status(BridgeApi.PostTestNotification(_notifications, 2)));
+        await _notifications.DrainAsync();
+        Assert.Equal("PhoneBox test", Assert.Single(_shown).Title);
+        Assert.Equal(501, Status(BridgeApi.PostTestNotification(null, 3)));
+    }
+
     // ---- what Wi-Fi can reach ----
 
     [Theory]
@@ -470,6 +583,9 @@ public sealed class BridgeApiTests : IDisposable
     [InlineData("/api/bridge/clipboard/x", false)]
     [InlineData("/api/bridgex", false)]
     [InlineData("/api/bridge-clipboard", false)]
+    [InlineData("/api/bridge/notification", true)]
+    [InlineData("/api/bridge/notification/test", false)]       // the settings page's test button: local only
+    [InlineData("/api/bridge/notification/test/x", false)]
     public void OnlyTheBridgePathsAreOpenOverWifi(string path, bool allowed) =>
         Assert.Equal(allowed, Lan.AllowedOverLan(new PathString(path)));
 

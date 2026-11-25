@@ -1,0 +1,69 @@
+name: ios
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "android/app/src/main/assets/www/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - "android/app/src/main/assets/www/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    name: iOS Simulator build
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Show the Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Pairing and proxy unit tests (no Xcode needed)
+        run: swift test --package-path ios/PhoneBox/PhoneBoxKit
+
+      - name: Generate the Xcode project
+        working-directory: ios/PhoneBox
+        run: xcodegen generate
+
+      - name: Build the Simulator app
+        working-directory: ios/PhoneBox
+        run: |
+          xcodebuild \
+            -project PhoneBox.xcodeproj \
+            -scheme PhoneBox \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Check the bundle (panel assets and shim copied in)
+        working-directory: ios/PhoneBox
+        run: |
+          set -eu
+          app="build/Build/Products/Debug-iphonesimulator/PhoneBox.app"
+          test -f "$app/Info.plist"
+          test -f "$app/PanelShim.js"
+          test -f "$app/www/index.html"
+          test -f "$app/www/main.js"
+          test -f "$app/www/widgets/basic.js"
+          test -f "$app/www/style.css"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: phonebox-ios-simulator
+          path: ios/PhoneBox/build/Build/Products/Debug-iphonesimulator/PhoneBox.app

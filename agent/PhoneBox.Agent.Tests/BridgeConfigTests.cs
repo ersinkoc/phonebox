@@ -22,7 +22,41 @@ public sealed class BridgeConfigTests : IDisposable
         using var stream = typeof(AgentConfig).Assembly.GetManifestResourceStream(name);
         Assert.NotNull(stream);
         using var doc = JsonDocument.Parse(stream, new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-        Assert.Equal(JsonValueKind.False, doc.RootElement.GetProperty("bridge").GetProperty("clipboard").ValueKind);
+        var bridge = doc.RootElement.GetProperty("bridge");
+        Assert.Equal(JsonValueKind.False, bridge.GetProperty("clipboard").ValueKind);
+        Assert.Equal(JsonValueKind.False, bridge.GetProperty("notifications").ValueKind);
+        Assert.Equal(JsonValueKind.False, bridge.GetProperty("copyCodes").ValueKind);
+    }
+
+    [Fact]
+    public void NotificationsAndCodesAreOffByDefault()
+    {
+        var bridge = new BridgeConfig();
+        Assert.False(bridge.Notifications);
+        Assert.False(bridge.CopyCodes);
+        Assert.False(bridge.CodesActive);
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]   // codes asked for, but notifications are off: nothing is copied
+    [InlineData(false, true, false)]
+    [InlineData(true, true, true)]
+    public void CodesAreActiveOnlyWithNotifications(bool copyCodes, bool notifications, bool expected) =>
+        Assert.Equal(expected, new BridgeConfig { CopyCodes = copyCodes, Notifications = notifications }.CodesActive);
+
+    [Fact]
+    public void ThePhoneSeesTheNotificationFlagsAndTheComputedPropertyIsNeverWritten()
+    {
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "config-notify.json");
+        File.WriteAllText(path, """{"bridge":{"notifications":true,"copyCodes":true}}""");
+        var config = new ConfigStore(path).Get();
+        using var pub = JsonDocument.Parse(JsonSerializer.Serialize(config.ToPublic(), ConfigStore.WriteOpts));
+        var bridge = pub.RootElement.GetProperty("bridge");
+        Assert.Equal(JsonValueKind.True, bridge.GetProperty("notifications").ValueKind);
+        Assert.Equal(JsonValueKind.True, bridge.GetProperty("copyCodes").ValueKind);
+        Assert.False(JsonSerializer.Serialize(config.Bridge, ConfigStore.WriteOpts).Contains("codesActive", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

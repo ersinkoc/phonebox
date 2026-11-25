@@ -18,8 +18,12 @@ namespace PhoneBox.Agent;
 internal sealed class RequestGate(int localPort, string[] sameOrigins, UsbLink usb, int? lanPort, ConfigStore config,
     Func<HttpContext, bool> spotifyCallback, ILogger log)
 {
-    /// <summary>The phone bridge's namespace: reached only through the USB tunnel or the Wi-Fi port, with the phone's key.</summary>
-    public static bool IsBridgePath(PathString path) => path.StartsWithSegments("/api/bridge");
+    /// <summary>
+    /// The phone bridge's phone-only namespace: reached only through the USB tunnel or the Wi-Fi port, with the phone's key.
+    /// <c>/api/bridge/notification/test</c> is the Settings page's local test button (not on the Wi-Fi allow-list in Lan.cs).
+    /// </summary>
+    public static bool IsBridgePath(PathString path) =>
+        path.StartsWithSegments("/api/bridge") && !path.Equals("/api/bridge/notification/test", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// True while a request on this port with this key may reach a phone path: the USB key check or the Wi-Fi check, the

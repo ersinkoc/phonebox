@@ -55,6 +55,20 @@ public sealed class ClipboardBridge : IHostedService, IDisposable
     }
 
     /// <summary>
+    /// Puts text on this computer's clipboard for the owner (a login code from a message) without handing it to the phones:
+    /// it is remembered like text received from a phone, so the next poll does not publish it. Needs no clipboard switch.
+    /// </summary>
+    public bool WriteLocalOnly(string text)
+    {
+        lock (_gate)
+        {
+            if (_pasteboard.WriteText(text) is not { } count) return false;
+            _lastReceived = (count, Hash(text));
+            return true;
+        }
+    }
+
+    /// <summary>
     /// One look at the Mac's clipboard (the timer calls this every 400 ms). A change is read one poll after it is seen, once the
     /// change counter has stayed put for that poll: the counter moves on clearContents, not on each setString:forType:, so a
     /// password manager that writes the password first and its concealed marker a moment later would otherwise be read in

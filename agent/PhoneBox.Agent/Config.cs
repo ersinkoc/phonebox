@@ -124,7 +124,7 @@ public sealed class AgentConfig
         opencode = new { OpenCode.AlwaysCountdownSec },
         // the bridge switches: the phone's Phone bridge screen follows them (nothing here is a secret). "supported" is what the
         // panel's Phone bridge button waits for: on Windows and Linux there is no bridge, and the screen could only say so.
-        bridge = new { Bridge.Clipboard, supported = bridgeExists ?? BridgeConfig.PlatformHasBridge },
+        bridge = new { Bridge.Clipboard, Bridge.Notifications, Bridge.CopyCodes, supported = bridgeExists ?? BridgeConfig.PlatformHasBridge },
     };
 
 
@@ -454,6 +454,16 @@ public sealed class BridgeConfig
 {
     /// <summary>Share copied text with the phone, both ways (plain text, up to 64 KiB).</summary>
     public bool Clipboard { get; set; }
+
+    /// <summary>Show the phone's call, message and app notifications as macOS notifications (the text of messages included).</summary>
+    public bool Notifications { get; set; }
+
+    /// <summary>Put a one-time code found in a message on this computer's clipboard. Does nothing unless <see cref="Notifications"/> is on.</summary>
+    public bool CopyCodes { get; set; }
+
+    /// <summary>True when codes are really copied: both switches on. Computed, never written to the config file.</summary>
+    [JsonIgnore]
+    public bool CodesActive => CopyCodes && Notifications;
 
     /// <summary>
     /// Whether this system has a bridge: macOS, where Program.cs creates it. A fact about the system, not a setting: it is

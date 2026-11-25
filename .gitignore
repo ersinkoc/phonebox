@@ -21,6 +21,12 @@ android/.kotlin/
 # Build output
 dist/
 
+# iOS / Xcode: the project is generated from ios/PhoneBox/project.yml by XcodeGen
+ios/PhoneBox/PhoneBox.xcodeproj/
+ios/PhoneBox/Support/Info.plist
+ios/PhoneBox/build/
+DerivedData/
+
 # Local tooling / personal data
 .temp_files/
 .playwright-mcp/

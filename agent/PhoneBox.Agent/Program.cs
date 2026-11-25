@@ -104,6 +104,13 @@ if (OperatingSystem.IsMacOS())
     builder.Services.AddSingleton(sp => new ClipboardBridge(sp.GetRequiredService<ITextPasteboard>(), sp.GetRequiredService<ConfigStore>(),
         sp.GetRequiredService<BridgeStream>(), sp.GetRequiredService<ILogger<ClipboardBridge>>()));
     builder.Services.AddHostedService(sp => sp.GetRequiredService<ClipboardBridge>());
+    // the PhoneBox icon and the phone app's icon when the small notifier program can be built here, osascript's plain one otherwise
+    builder.Services.AddSingleton<IMacNotifier>(sp => new FallbackNotifier(
+        MacAppNotifier.Create(Path.Combine(configDir, "notifier"), sp.GetRequiredService<ILoggerFactory>().CreateLogger("PhoneBox.Agent.MacAppNotifier")),
+        new OsaScriptNotifier()));
+    builder.Services.AddSingleton(sp => new NotificationBridge(sp.GetRequiredService<IMacNotifier>(), sp.GetRequiredService<ConfigStore>(),
+        sp.GetService<ClipboardBridge>(), () => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), sp.GetRequiredService<ILogger<NotificationBridge>>()));
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<NotificationBridge>());
 }
 #endif
 builder.Services.AddSingleton<CommandRunner>();
@@ -830,9 +837,9 @@ app.MapPost("/api/rules/test", (RuleConfig rule, RuleEngine rules) =>
     return Results.Ok(new { ok = true });
 });
 
-// Phone bridge: clipboard text from the phone, and the stream of text copied on this computer. Only through the USB
-// tunnel or the Wi-Fi port, with the phone's key (RequestGate refuses them on the local port); 403 while the switch in
-// Settings is off, and 501 where the bridge does not exist (everything but macOS).
+// Phone bridge: clipboard text, phone notifications, and the stream of text copied on this computer. Phone endpoints
+// are reachable only through the USB tunnel or the Wi-Fi port with the phone's key (RequestGate refuses them on the
+// local port); /api/bridge/notification/test is local only (Settings page). 403 while the switch is off, 501 off macOS.
 BridgeApi.Map(app, gate);
 
 // The phone reports its battery (charge guard); the settings show the guard's state and can switch the power to test it.

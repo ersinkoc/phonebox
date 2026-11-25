@@ -15,12 +15,16 @@ internal static class ToolProcess
 
     internal sealed record Result(int ExitCode, string Output, string Error);
 
-    public static async Task<Result> RunAsync(ProcessStartInfo start, TimeSpan timeout, CancellationToken ct)
+    public static Task<Result> RunAsync(ProcessStartInfo start, TimeSpan timeout, CancellationToken ct) => RunAsync(start, timeout, ct, null);
+
+    /// <param name="stdin">Text written to the program's standard input before it is closed; null leaves the input alone.</param>
+    public static async Task<Result> RunAsync(ProcessStartInfo start, TimeSpan timeout, CancellationToken ct, string? stdin)
     {
         ct.ThrowIfCancellationRequested();
         start.UseShellExecute = false;
         start.CreateNoWindow = true;
         start.RedirectStandardOutput = start.RedirectStandardError = true;
+        start.RedirectStandardInput = stdin is not null;
         start.WorkingDirectory = AppPaths.NeutralCwd;
         using var process = Process.Start(start) ?? throw new IOException("Could not start " + start.FileName);
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -29,6 +33,12 @@ internal static class ToolProcess
         var error = process.StandardError.ReadToEndAsync(deadline.Token);
         try
         {
+            if (stdin is not null)
+            {
+                // inside the deadline: a program that never reads its input must not hold the caller for ever
+                try { await process.StandardInput.WriteAsync(stdin.AsMemory(), deadline.Token); await process.StandardInput.FlushAsync(deadline.Token); process.StandardInput.Close(); }
+                catch (IOException) { } // the program ended before it read everything: its exit code says why
+            }
             await process.WaitForExitAsync(deadline.Token);
             await Task.WhenAll(output, error).WaitAsync(deadline.Token);
             return new Result(process.ExitCode, await output, await error);
