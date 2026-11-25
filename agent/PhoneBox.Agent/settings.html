@@ -755,15 +755,8 @@ nav a.on::before { color: var(--accent); }
         <div class="field" style="max-width:420px"><label data-i18n="s.display.orientation">Orientation</label>
           <select data-bind="display.orientation"><option value="landscape" data-i18n="s.display.orientation.landscape">Landscape</option><option value="portrait" data-i18n="s.display.orientation.portrait">Portrait</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select>
           <span class="hint" data-i18n="s.display.orientationHint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
-          <label class="check">
-            <input type="checkbox" data-bind="display.tabletRows" id="tabletRowsOpt">
-            <span data-i18n="s.display.tabletRows">More rows on a tablet</span>
-          </label>
-          <span class="hint" style="display:block;margin:-4px 0 10px"
-                data-i18n="s.display.tabletRowsHint">
-            A landscape tablet keeps the 12 columns and gets more rows (about 8 to 10, from its screen), so a page holds more widgets; upright, it packs 12 across. Widgets below the top 6 rows show only on a tablet: a phone leaves them out without a sign. Update the PhoneBox app on the tablet first, as an older app squeezes those widgets onto extra rows.
-          </span>
-
+        <label class="check"><input type="checkbox" data-bind="display.tabletRows" id="tabletRowsOpt"> <span data-i18n="s.display.tabletRows">More rows on a tablet</span></label>
+        <span class="hint" style="display:block;margin:-4px 0 10px" data-i18n="s.display.tabletRowsHint">A landscape tablet keeps the 12 columns and gets more rows (about 8 to 10, from its screen), so a page holds more widgets; upright, it packs 12 across. Widgets below the top 6 rows show only on a tablet: a phone leaves them out without a sign. Update the PhoneBox app on the tablet first, as an older app squeezes those widgets onto extra rows.</span>
           <div class="field" style="max-width:460px">
             <label data-i18n="s.display.standby">Power standby</label>
             <select data-bind="display.standby">
@@ -771,22 +764,14 @@ nav a.on::before { color: var(--accent); }
               <option value="power" data-i18n="s.display.standby.power">Sleep when USB charge is cut</option>
               <option value="data" data-i18n="s.display.standby.data">Sleep when the agent stops answering</option>
             </select>
-            <span class="hint" data-i18n="s.display.standbyHint">
-              When the computer comes back, PhoneBox wakes the phone and opens the panel. A swipe-only lock screen is dismissed automatically. If the phone is protected by a PIN or pattern, you must still unlock it yourself. While standby is on, PhoneBox turns off Android's stay-awake-while-charging setting and restores it when standby is turned off.
-            </span>
+            <span class="hint" data-i18n="s.display.standbyHint">When the computer comes back, PhoneBox wakes the phone and opens the panel. A swipe-only lock screen is dismissed automatically. If the phone is protected by a PIN or pattern, you must still unlock it yourself. While standby is on, PhoneBox turns off Android's stay-awake-while-charging setting and restores it when standby is turned off. Standby only acts on the phone named under Phone connection › Phone to use; with no phone chosen it does nothing.</span>
           </div>
-
           <div class="field" style="max-width:170px">
             <label data-i18n="s.display.standbyGrace">Standby grace (s)</label>
-            <input type="number" data-bind="display.standbyGraceSec"
-                   data-type="int" min="3" max="600" step="1">
-            <span class="hint" data-i18n="s.display.standbyGraceHint">
-              Absorbs a reboot or a network hiccup.
-            </span>
+            <input type="number" data-bind="display.standbyGraceSec" data-type="int" min="3" max="600" step="1">
+            <span class="hint" data-i18n="s.display.standbyGraceHint">Absorbs a reboot or a network hiccup.</span>
           </div>
-
-          <div class="field" style="max-width:420px">
-            <label data-i18n="s.display.timeFormat">Time format</label>
+          <div class="field" style="max-width:420px"><label data-i18n="s.display.timeFormat">Time format</label>
           <select data-bind="display.hour12" data-type="hour12"><option value="false" data-i18n="s.display.h24">24-hour (14:05)</option><option value="true" data-i18n="s.display.h12">12-hour (2:05 PM)</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select></div>
         <label class="check"><input type="checkbox" data-bind="display.showSeconds"> <span data-i18n="s.display.showSeconds">Show seconds on the clock</span></label>
         <label class="check"><input type="checkbox" data-bind="display.vibrate"> <span data-i18n="s.display.vibrate">Vibrate when a session finishes or needs input</span></label>
