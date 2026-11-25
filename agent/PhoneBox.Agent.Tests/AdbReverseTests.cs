@@ -778,6 +778,71 @@ public sealed class AdbReverseTests : IDisposable
             Calls());
     }
 
+    private static void WriteStandbyConfig(string path, string fake, string standby, bool keepAwake)
+        => File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            adbPath = fake,
+            deviceSerial = "FAKE1",
+            display = new { homeScreen = false, keepAwake, standby }
+        }));
+
+    [Fact]
+    public async Task UnreadableStayOnAnswerIsNeverReplacedByOurOwnZero()
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";
+        var path = Path.Combine(_dir, "config.json");
+
+        // Round 1: settings get returns an error text, so no original can be recorded.
+        var broken = FakeAdb(["FAKE1"], rule, null, stayOn: "Exception occurred while executing");
+        WriteStandbyConfig(path, broken, "power", keepAwake: true);
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        await Pass(adb);
+        Assert.DoesNotContain("-s FAKE1 shell settings put global stay_on_while_plugged_in 0", Calls());
+
+        // Round 2: the phone answers properly (3), the original is recorded, then 0 is written.
+        var healthy = FakeAdb(["FAKE1"], rule, null, stayOn: "3");
+        WriteStandbyConfig(path, healthy, "power", keepAwake: true);
+        await Pass(adb);
+        Assert.Contains("-s FAKE1 shell settings put global stay_on_while_plugged_in 0", Calls());
+
+        // Standby off: the user's 3 comes back, not our 0.
+        WriteStandbyConfig(path, healthy, "off", keepAwake: true);
+        await Pass(adb);
+        Assert.Contains("-s FAKE1 shell settings put global stay_on_while_plugged_in 3", Calls());
+    }
+
+    [Fact]
+    public async Task NullOriginalIsRestoredByDeletingTheSetting()
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";
+        var fake = FakeAdb(["FAKE1"], rule, null, stayOn: "null");
+        var path = Path.Combine(_dir, "config.json");
+        WriteStandbyConfig(path, fake, "power", keepAwake: true);
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        await Pass(adb);
+        Assert.Contains("-s FAKE1 shell settings put global stay_on_while_plugged_in 0", Calls());
+
+        WriteStandbyConfig(path, fake, "off", keepAwake: true);
+        await Pass(adb);
+        Assert.Contains("-s FAKE1 shell settings delete global stay_on_while_plugged_in", Calls());
+    }
+
+    [Fact]
+    public async Task StandbyWithKeepAwakeOffRecordsAndRestoresTheOriginal()
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";
+        var fake = FakeAdb(["FAKE1"], rule, null, stayOn: "3");
+        var path = Path.Combine(_dir, "config.json");
+        WriteStandbyConfig(path, fake, "power", keepAwake: false);
+        using var adb = new AdbReverse(new ConfigStore(path), NullLogger<AdbReverse>.Instance);
+        await Pass(adb);
+        Assert.Contains("-s FAKE1 shell settings put global stay_on_while_plugged_in 0", Calls());
+
+        WriteStandbyConfig(path, fake, "off", keepAwake: false);
+        await Pass(adb);
+        Assert.Contains("-s FAKE1 shell settings put global stay_on_while_plugged_in 3", Calls());
+    }
+
     [Fact]
     public async Task FailedReverseQueryDoesNotBlockNextPhone()
     {

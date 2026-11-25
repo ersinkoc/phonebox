@@ -37,7 +37,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     private readonly HashSet<string> _pending = [];
     private readonly string _originalsPath = Path.Combine(cfg.DataDir, "standby-originals.json");
     private Dictionary<string, string>? _originals;
-    private Dictionary<string, string> Originals =>_originals ??= LoadOriginals();
+    private Dictionary<string, string> Originals => _originals ??= LoadOriginals();
     internal const long KeyRetryMs = 30_000;
     // asked again now and then even when known: an app whose data was cleared has a new key and no pin, and can't say so
     internal const long KeyRefreshMs = 120_000;
@@ -452,8 +452,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     /// its own keyguard while the display is off, and Android 10+ may refuse the sleeping app's request to
     /// come forward ("Background activity start" is logged and blocked) - shell commands via adb are neither.
     /// </summary>
-    
-    
+
     private async Task LightPanel(
         string device,
         string adb,
@@ -594,9 +593,13 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
     private async Task RememberStayOn(string adb, string d, CancellationToken ct)
     {
-        if (Originals.ContainsKey(d)) return;            // never record our own 0
+        if (Originals.ContainsKey(d)) return true;       // already recorded, safe to write 0
         var v = (await Adb(adb, ["-s", d, "shell", "settings", "get", "global", "stay_on_while_plugged_in"], ct, anyExit: true)).Trim();
-        if (v != "null" && !int.TryParse(v, out _)) return;   // an error text is not a value
+        if (v != "null" && !int.TryParse(v, out _))
+        {
+            log.LogWarning("{Device}: could not read stay_on_while_plugged_in ({Value}); leaving it alone", d, v);
+            return false;                                // an error text is not a value
+        }
         Originals[d] = v;
         SaveOriginals();
     }
