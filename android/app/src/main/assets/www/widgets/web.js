@@ -1,4 +1,4 @@
-import { $, API, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, store, t, tick, toast, tp } from '../main.js';
+import { $, API, I18n, LOCALE, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, store, t, tick, toast, tp } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every, fmtNum, lines, pctSpan, sparkLine } from './helpers.js';
 
