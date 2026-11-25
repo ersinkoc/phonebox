@@ -387,15 +387,10 @@ read_usb_install_policy() {
   local config
   "$app/PhoneBoxAgent" --print-install-dir --write-ignored-usb "$1" >/dev/null 2>&1 || return 1
   [ -f "$1" ] && return 0
-  # Legacy agents do not write the file. If their settings mention an ignore list, skip USB installation.
+  # Legacy agents cannot validate an existing configuration.
   if [ "$os" = osx ]; then config="$HOME/Library/Application Support/PhoneBox/config.json"
   else config="${XDG_CONFIG_HOME:-$HOME/.config}/PhoneBox/config.json"; fi
-  if [ -e "$config" ]; then
-    [ -r "$config" ] || return 1
-    local matched=0
-    grep -iqF 'ignoredDeviceSerials' "$config" || matched=$?
-    [ "$matched" = 1 ] || return 1
-  fi
+  if [ -e "$config" ] || [ -L "$config" ]; then return 1; fi
   : > "$1"
 }
 

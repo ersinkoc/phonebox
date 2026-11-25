@@ -47,7 +47,8 @@ The agent installs for your user. System package managers may request administra
 on Linux, setup asks before using `sudo`. Run it again
 any time to update or repair PhoneBox; settings and pairings are kept. Both scripts skip devices listed under
 **Settings › General › Phone connection › Ignored USB devices**, even when passed an explicit serial. If the
-installer cannot read a saved ignore list, it installs the desktop agent and skips the phone app. Read [`setup.ps1`](../setup.ps1) or
+installer cannot verify the USB policy, it installs the desktop agent and skips the phone app.
+This also applies when an older agent cannot read the policy from an existing configuration. Read [`setup.ps1`](../setup.ps1) or
 [`setup.sh`](../setup.sh) before you run it if you like. With `-DryRun` / `--dry-run` it downloads and checks everything
 and changes nothing.
 

@@ -265,18 +265,16 @@ function Select-Phone([string]$Adb, [string[]]$Ignored) {
 }
 
 function Get-UsbInstallPolicy([string]$Agent, [string]$OutputPath) {
-    $probe = Invoke-Native $Agent @('--print-install-dir', '--write-ignored-usb', $OutputPath)
-    if ($probe.Code -ne 0) { return $null }
-    if (Test-Path -LiteralPath $OutputPath -PathType Leaf) {
-        return [pscustomobject]@{ Ignored = @(Get-Content -LiteralPath $OutputPath -Encoding UTF8) }
-    }
-    # Legacy agents exit after printing their install folder, before reading the new option.
-    $config = Join-Path $env:APPDATA 'PhoneBox\config.json'
-    if (Test-Path -LiteralPath $config) {
-        try {
-            if (Select-String -LiteralPath $config -SimpleMatch 'ignoredDeviceSerials' -Quiet -ErrorAction Stop) { return $null }
-        } catch { return $null }
-    }
+    try {
+        $probe = Invoke-Native $Agent @('--print-install-dir', '--write-ignored-usb', $OutputPath)
+        if ($probe.Code -ne 0) { return $null }
+        if (Test-Path -LiteralPath $OutputPath -PathType Leaf) {
+            return [pscustomobject]@{ Ignored = @(Get-Content -LiteralPath $OutputPath -Encoding UTF8 -ErrorAction Stop) }
+        }
+        # Legacy agents cannot validate an existing configuration.
+        $config = Join-Path $env:APPDATA 'PhoneBox\config.json'
+        if (Test-Path -LiteralPath $config -ErrorAction Stop) { return $null }
+    } catch { return $null }
     [pscustomobject]@{ Ignored = @() }
 }
 

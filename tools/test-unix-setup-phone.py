@@ -130,15 +130,17 @@ esac''')
             self.assertIn('could not read the USB ignore settings', result.stdout)
             self.assertFalse((root / 'phone-installed').exists())
 
-    def test_old_agent_without_policy_cannot_install_over_a_saved_ignore_list(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            config = root / '.config/PhoneBox/config.json'
-            config.parent.mkdir(parents=True)
-            config.write_text('{"ignoredDeviceSerials":["fixture-phone"]}', encoding='utf-8')
-            result = self.install('valid', root)
-            self.assertIn('could not read the USB ignore settings', result.stdout)
-            self.assertFalse((root / 'phone-installed').exists())
+    def test_old_agent_cannot_validate_an_existing_configuration(self):
+        for policy in ('{"ignoredDeviceSerials":["fixture-phone"]}',
+                       r'{"ignoredDevice\u0053erials":["fixture-phone"]}', '{'):
+            with self.subTest(policy=policy), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                config = root / '.config/PhoneBox/config.json'
+                config.parent.mkdir(parents=True)
+                config.write_text(policy, encoding='utf-8')
+                result = self.install('valid', root)
+                self.assertIn('could not read the USB ignore settings', result.stdout)
+                self.assertFalse((root / 'phone-installed').exists())
 
 
 if __name__ == '__main__':

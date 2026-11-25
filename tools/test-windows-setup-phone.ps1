@@ -17,6 +17,7 @@ function Get-Devices([string]$Adb) {
 }
 function Invoke-Native([string]$File, [string[]]$Arguments) {
     if ($Arguments[0] -eq '--print-install-dir') {
+        if ($mode -eq 'throws') { throw 'agent could not launch' }
         if ($mode -eq 'current') { [IO.File]::WriteAllLines($Arguments[2], @('reader')) }
         return [pscustomobject]@{ Code = if ($mode -eq 'error') { 1 } else { 0 } }
     }
@@ -38,10 +39,13 @@ try {
     $mode = 'legacy'
     $legacyOutput = Join-Path $fixture 'legacy'
     if (-not (Get-UsbInstallPolicy 'fake-agent' $legacyOutput)) { throw 'A legacy agent and no config must permit setup.' }
-    Set-Content -LiteralPath (Join-Path $configDir.FullName 'config.json') -Value '{"ignoredDeviceSerials":["reader"]}'
-    if (Get-UsbInstallPolicy 'fake-agent' $legacyOutput) { throw 'A legacy agent must skip phone setup when an ignore list exists.' }
-    $mode = 'error'
-    if (Get-UsbInstallPolicy 'fake-agent' $legacyOutput) { throw 'An unreadable policy must skip phone setup.' }
+    foreach ($config in '{"ignoredDeviceSerials":["reader"]}', '{"ignoredDevice\u0053erials":["reader"]}', '{') {
+        Set-Content -LiteralPath (Join-Path $configDir.FullName 'config.json') -Value $config
+        if (Get-UsbInstallPolicy 'fake-agent' $legacyOutput) { throw 'A legacy agent cannot validate an existing policy.' }
+    }
+    foreach ($mode in 'error', 'throws') {
+        if (Get-UsbInstallPolicy 'fake-agent' $legacyOutput) { throw 'An unreadable policy must skip phone setup.' }
+    }
     Write-Output 'PASS: the Windows setup respects the ignored USB list and handles older agents'
 } finally {
     $env:APPDATA = $prev
