@@ -30,7 +30,8 @@ internal sealed class RequestGate(int localPort, string[] sameOrigins, UsbLink u
         if (headers.TryGetValue("X-PhoneBox-Model", out var model))
         {
             var m = model.ToString().Trim();
-            if (m.StartsWith("iPhone", StringComparison.OrdinalIgnoreCase)
+            if (m.StartsWith("iOS ", StringComparison.OrdinalIgnoreCase)
+                || m.StartsWith("iPhone", StringComparison.OrdinalIgnoreCase)
                 || m.StartsWith("iPad", StringComparison.OrdinalIgnoreCase)
                 || m.StartsWith("iPod", StringComparison.OrdinalIgnoreCase))
                 return true;

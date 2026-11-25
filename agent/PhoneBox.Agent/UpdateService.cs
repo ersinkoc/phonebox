@@ -36,7 +36,7 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
     private volatile string[] _phoneRetry = [];
     private volatile string? _phoneRetryFor;
 
-    /// <summary>Phone app version, reported by the app on every request (X-PhoneBox-App header).</summary>
+    /// <summary>Android app version reported by the Android client.</summary>
     public static volatile string? AppVersion;
 
     public static bool RunningInstalled => SameFolder(AppContext.BaseDirectory, InstallDir);
@@ -82,13 +82,14 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
     private bool PhoneRetryPending => _latest?.Version is { } latest && _phoneRetryFor == latest
         && _phoneRetry.Any(cfg.Get().UsesUsbDevice);
 
-    public UpdateStatus Status()
+    public UpdateStatus Status(bool includeAndroid = true)
     {
         var latest = _latest?.Version;
-        var retry = PhoneRetryPending;
-        return new UpdateStatus(AppPaths.Version, AppVersion, latest, _latest?.Url,
+        var appVersion = includeAndroid ? AppVersion : null;
+        return new UpdateStatus(AppPaths.Version, appVersion, latest, _latest?.Url,
             latest is not null && Newer(latest, AppPaths.Version) && (RunningInBundle ? _latest!.AgentDmg : _latest!.AgentZip) is not null,
-            latest is not null && _latest!.Apk is not null && (AppVersion is not null && Newer(latest, AppVersion) || retry),
+            includeAndroid && latest is not null && _latest!.Apk is not null
+                && (appVersion is not null && Newer(latest, appVersion) || PhoneRetryPending),
             _lastCheck, _state, _error);
     }
 

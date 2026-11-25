@@ -16,7 +16,7 @@ struct RootView: View {
     }
 }
 
-/// The panel fills the screen. A small options button opens the paired computer's details and Forget.
+/// The panel shares the screen with a toolbar for the paired computer's details and Forget.
 private struct PanelScreen: View {
     let computer: PairedComputer
     @EnvironmentObject private var pairing: PairingStore
@@ -29,21 +29,23 @@ private struct PanelScreen: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            PanelView(computer: computer, usb: usb)
-                .ignoresSafeArea()
-
-            Button {
-                showingOptions = true
-            } label: {
-                Image(systemName: "ellipsis.circle.fill")
-                    .font(.system(size: 15))
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white.opacity(0.65), .black.opacity(0.35))
-                    .padding(.trailing, 8)
-                    .padding(.bottom, 6)
+        VStack(spacing: 0) {
+            HStack {
+                Spacer(minLength: 0)
+                Button {
+                    showingOptions = true
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 19))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Paired computer options")
             }
-            .accessibilityLabel("Paired computer options")
+            .padding(.horizontal, 4)
+            .background(.bar)
+            PanelView(computer: computer, usb: usb)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .sheet(isPresented: $showingOptions) {
             ComputerOptionsView(computer: computer, usb: usb) {
@@ -73,8 +75,7 @@ private struct ComputerOptionsView: View {
                         .font(.system(.caption, design: .monospaced))
                         .textSelection(.enabled)
                     LabeledContent("Check code") {
-                        Text(computer.checkCode)
-                            .font(.system(.body, design: .monospaced))
+                        Text(computer.checkCode).monospaced()
                     }
                 }
                 Section {

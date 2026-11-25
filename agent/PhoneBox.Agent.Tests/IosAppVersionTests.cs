@@ -7,6 +7,7 @@ public sealed class IosAppVersionTests
     [Theory]
     [InlineData("ios", null)]
     [InlineData("iOS", "Unknown")]
+    [InlineData(null, "iOS 27.2.1 iPhone")]
     [InlineData(null, "iPhone17,5")]
     [InlineData(null, "iPad14,1")]
     [InlineData(null, "iPod9,1")]

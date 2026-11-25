@@ -180,9 +180,8 @@ for each attached USB device when the pool has room, and favors the last working
   not launch it. Pair by scanning the QR code or pasting the link inside the app.
 - No app icon asset catalog is included yet (the Simulator build uses the default icon).
 - There is no automatic update mechanism, App Store release or TestFlight build.
-- The TLS pinning, local-network permission and panel rendering have not been exercised on a real device in
-  this repository's CI; the workflow only builds the Simulator app. Manual verification on a Mac/iPhone is
-  still required for pairing against a live agent.
+- CI builds the Simulator app. A [manual test on an iPhone 16e](https://github.com/ersinkoc/phonebox/issues/604)
+  confirmed pairing, panel rendering, and USB-to-Wi-Fi failover with a macOS agent.
 
 ## Layout
 
