@@ -324,6 +324,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.day": "Den",
       "w.euroAqi": "Evropský AQI",
       "w.ratesUnavailable": "Ceny nejsou k dispozici",
+      "w.chartUnknownMetrics": "Neznámé metriky: {metrics}. Zkontrolujte aktualizace aplikace.",
       "w.pricesUnavailable": "Ceny nejsou k dispozici",
       "w.setImageUrl": "Nastavte adresu obrázku (https://…) v nastavení",
       "w.tapToStart": "Klepnutím spustíte",

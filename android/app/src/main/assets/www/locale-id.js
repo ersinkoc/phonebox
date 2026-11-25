@@ -324,6 +324,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.day": "Hari",
       "w.euroAqi": "AQI Eropa",
       "w.ratesUnavailable": "Rate tidak tersedia",
+      "w.chartUnknownMetrics": "Metrik tidak dikenal: {metrics}. Periksa pembaruan aplikasi.",
       "w.pricesUnavailable": "Harga tidak tersedia",
       "w.setImageUrl": "Tetapkan alamat gambar (https://…) di pengaturan",
       "w.tapToStart": "Tap untuk mulai",

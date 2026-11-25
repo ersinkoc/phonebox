@@ -324,6 +324,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.day": "일",
       "w.euroAqi": "유럽 AQI",
       "w.ratesUnavailable": "요금은 이용할 수 없습니다",
+      "w.chartUnknownMetrics": "알 수 없는 지표: {metrics}. 앱 업데이트를 확인하세요.",
       "w.pricesUnavailable": "가격은 사용할 수 없습니다",
       "w.setImageUrl": "이미지 주소를 설정 (설정에서 https://…)",
       "w.tapToStart": "시작하려면 누르십시오",

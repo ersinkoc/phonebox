@@ -81,19 +81,28 @@ test('every widget in the catalogue builds and runs without errors', async ({ pa
   expect(errors).toEqual([]);
 });
 
-test('a chart whose metrics are all unknown falls back to cpu instead of failing', async ({ page }) => {
+test('charts explain unknown metrics and keep any known series', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/panel/');
   await page.evaluate(() => {
     const cfg = JSON.parse(localStorage.getItem('pb-demo-config') || 'null') || {};
     const pages = [{ id: 'p1', title: 'One', icon: '📊', enabled: true,
-      widgets: [{ id: 'c1', type: 'chart', x: 0, y: 0, w: 4, h: 3, options: { metrics: ['nosuchmetric'] } }] }];
+      widgets: [
+        { id: 'c1', type: 'chart', x: 0, y: 0, w: 4, h: 3, options: { metrics: ['nosuchmetric'] } },
+        { id: 'c2', type: 'chart', x: 4, y: 0, w: 4, h: 3, options: { metrics: ['gpupower', 'futuremetric'] } },
+        { id: 'c3', type: 'chart', x: 8, y: 0, w: 4, h: 3, options: { metrics: ['cpupower'] } },
+      ] }];
     localStorage.setItem('pb-demo-config', JSON.stringify({ ...cfg, pages, shortcuts: cfg.shortcuts || [] }));
   });
   await page.reload();
   const card = page.locator('.w-chart');
-  await expect(card.locator('canvas')).toBeVisible();
-  await expect(card.locator('.s-label')).toHaveText('Processor');
+  await expect(card.first().locator('canvas')).toBeVisible();
+  await expect(card.first().locator('.s-label')).toHaveText('Processor');
+  await expect(card.first().locator('.chart-missing')).toHaveText('Unknown metrics: nosuchmetric. Check for an app update.');
+  await expect(card.nth(1).locator('canvas')).toBeVisible();
+  await expect(card.nth(1).locator('.s-label')).toHaveText('GPU power');
+  await expect(card.nth(1).locator('.chart-missing')).toHaveText('Unknown metrics: futuremetric. Check for an app update.');
+  await expect(card.nth(2).locator('.chart-missing')).toHaveCount(0);
   expect(await page.locator('.w > .empty').count()).toBe(0);
   expect(errors).toEqual([]);
 });

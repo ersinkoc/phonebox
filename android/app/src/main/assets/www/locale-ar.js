@@ -324,6 +324,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "w.day": "يوم",
       "w.euroAqi": "مؤشر جودة الهواء الأوروبي",
       "w.ratesUnavailable": "المعدلات غير متاحة",
+      "w.chartUnknownMetrics": "مقاييس غير معروفة: {metrics}. تحقّق من وجود تحديث للتطبيق.",
       "w.pricesUnavailable": "الأسعار غير متاحة",
       "w.setImageUrl": "حدد عنوان الصورة (https://…) في الإعدادات",
       "w.tapToStart": "انقر للبدء",

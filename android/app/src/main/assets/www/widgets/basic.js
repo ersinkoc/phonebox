@@ -351,8 +351,10 @@ W.gauge = {
 W.chart = {
   needs: ['state'],
   create(box, { o }) {
-    // a list of only unknown names falls back like no list at all; own keys only, so "constructor" is unknown too
-    const keys = (Array.isArray(o.metrics) && o.metrics.length ? o.metrics : ['cpu']).filter((k) => Object.prototype.hasOwnProperty.call(METRICS, k));
+    const requested = Array.isArray(o.metrics) && o.metrics.length ? o.metrics : ['cpu'];
+    const known = k => Object.prototype.hasOwnProperty.call(METRICS, k);
+    const keys = requested.filter(known);
+    const missing = [...new Set(requested.filter(k => typeof k === 'string' && !known(k)))].join(', ');
     if (!keys.length) keys.push('cpu');
     const single = keys.length === 1 ? METRICS[keys[0]] : null;
     const isNet = keys.every((k) => k === 'down' || k === 'up');
@@ -362,6 +364,12 @@ W.chart = {
     const main = h('div', 's-main');
     const canvas = h('canvas');
     box.append(head, main, canvas);
+    if (missing) {
+      const message = t('w.chartUnknownMetrics', { metrics: missing });
+      const note = h('div', 'chart-missing', message);
+      note.title = message;
+      box.append(note);
+    }
     if (keys.includes('cpu') || keys.includes('ram')) bindProcessLink(box, keys.includes('cpu') ? 'cpu' : 'mem');
     return {
       update() {
