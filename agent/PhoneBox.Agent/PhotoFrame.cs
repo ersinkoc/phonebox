@@ -107,7 +107,12 @@ public sealed partial class PhotoFrame(ConfigStore config, ILogger<PhotoFrame> l
         return string.IsNullOrWhiteSpace(cfg.Folder) ? null : new FolderSource(this, log, cfg.Folder.Trim(), cfg.Subfolders);
     }
 
-    public bool Shown() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == WidgetType);
+    /// <summary>
+    /// An enabled page shows photos through the Photo frame widget or a page's photo background; with neither,
+    /// the folder is never scanned and no photo is served.
+    /// </summary>
+    public bool Shown() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == WidgetType)
+        || config.Get().Pages.Any(p => p.Enabled && p.PhotoBg is { Enabled: true });
 
     /// <summary>The photo ids, or an error the phone can show (never a local path).</summary>
     public (IReadOnlyList<string> Ids, string? Error, bool Scanning) List()

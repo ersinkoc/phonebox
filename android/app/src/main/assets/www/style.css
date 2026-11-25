@@ -68,6 +68,14 @@ body::before {
 /* the ambient glow would sit under the picture: the album-art tint is not drawn while there is a wallpaper */
 body.has-wallpaper::before { display: none; }
 
+/* a page's photo background (Settings › Pages): one dimmed picture from the Photo frame's folder behind a page's
+   widgets; the two layers crossfade like the Photo frame widget, and the grid paints above them */
+.page-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.page-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1s ease; }
+.page-bg-img.on { opacity: 1; }
+.page-bg-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, var(--pb-dim, .45)); }
+.grid { position: relative; z-index: 1; }
+
 button { font: inherit; color: inherit; background: none; border: 0; }
 .muted { color: var(--muted); }
 .empty { width: 100%; height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center; white-space: pre-line; padding: 8px; }
@@ -89,6 +97,7 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .page {
   flex: 0 0 100vw;
   height: 100vh;
+  position: relative;
   scroll-snap-align: start;
   scroll-snap-stop: always;
   padding: 10px var(--pad-r) 17px var(--pad-l);

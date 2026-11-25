@@ -19,13 +19,14 @@ public sealed class PhotoFrameTests : IDisposable
     public PhotoFrameTests() => Directory.CreateDirectory(Photos);
     public void Dispose() { try { Directory.Delete(_dir, true); } catch { } }
 
-    private PhotoFrame Frame(bool widget = true, bool pageEnabled = true, bool subfolders = true)
+    private PhotoFrame Frame(bool widget = true, bool pageEnabled = true, bool subfolders = true, bool photoBg = false)
     {
         var path = Path.Combine(_dir, "config.json");
         var widgets = widget ? """[{"id":"w","type":"photos","x":0,"y":0,"w":6,"h":4}]""" : "[]";
+        var bg = photoBg ? ",\"photoBg\":{\"enabled\":true,\"dim\":40}" : "";
         File.WriteAllText(path, $$"""
             {"photos":{"folder":{{JsonSerializer.Serialize(Photos)}},"subfolders":{{(subfolders ? "true" : "false")}}},
-             "pages":[{"id":"p","title":"P","enabled":{{(pageEnabled ? "true" : "false")}},"widgets":{{widgets}} },
+             "pages":[{"id":"p","title":"P","enabled":{{(pageEnabled ? "true" : "false")}},"widgets":{{widgets}}{{bg}}},
                       {"id":"q","title":"Q","widgets":[{"id":"c","type":"clock","x":0,"y":0,"w":6,"h":4}]}]}
             """);
         return new PhotoFrame(new ConfigStore(path), NullLogger<PhotoFrame>.Instance) { CacheDir = Path.Combine(_dir, "cache") };
@@ -206,6 +207,21 @@ public sealed class PhotoFrameTests : IDisposable
             Assert.NotNull(error);
             Assert.Null((await frame.Get(PhotoFrame.IdOf(Photos, "a.jpg"), CancellationToken.None)).Bytes);
         }
+    }
+
+    [Fact]
+    public async Task APhotoBackgroundOnAnEnabledPageListsAndServesWithoutTheWidget()
+    {
+        File.WriteAllBytes(Path.Combine(Photos, "a.jpg"), Jpeg);
+        // an enabled page with a photo background turns the frame on; a disabled page does not
+        Assert.True(Frame(widget: false, photoBg: true).Shown());
+        Assert.False(Frame(pageEnabled: false, photoBg: true).Shown());
+        var frame = Frame(widget: false, photoBg: true);
+        frame.ScanNow();
+        var (ids, error, _) = frame.List();
+        Assert.Single(ids);
+        Assert.Null(error);
+        Assert.NotNull((await frame.Get(PhotoFrame.IdOf(Photos, "a.jpg"), CancellationToken.None)).Bytes);
     }
 
     [Fact]

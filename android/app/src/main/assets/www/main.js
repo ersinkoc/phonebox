@@ -1532,6 +1532,12 @@ export function buildLayout() {
   mounted = [];
   closeSheet();
   pager.replaceChildren();
+  // the old layout's backgrounds are gone: release their pictures and stop their requests
+  for (const bg of photoBg.values()) {
+    for (const u of bg.urls) URL.revokeObjectURL(u);
+    bg.inflight?.abort();
+  }
+  photoBg.clear();
   pages.forEach((p, pi) => {
     const grid = h('div', 'grid');
     const pageAppearance = PhoneBoxAppearance.resolve(cfg.display?.appearance, p.appearance);
@@ -1556,6 +1562,20 @@ export function buildLayout() {
       mounted.push({ pi, def: inst.needs ? { ...def, needs: inst.needs, always: inst.always ?? def.always } : def, inst, ctx, dirty: true });
     }
     const sec = h('section', 'page', grid);
+    // a page's photo background (Settings › Pages): a dimmed picture from the Photo frame's folder behind the
+    // widgets; the layers crossfade like the Photo frame widget does
+    if (p.photoBg?.enabled) {
+      const dim = Math.max(0, Math.min(90, +p.photoBg.dim ?? 45));
+      const bg = h('div', 'page-bg');
+      const imgs = [h('img', 'page-bg-img'), h('img', 'page-bg-img')];
+      for (const im of imgs) { im.alt = ''; im.decoding = 'async'; }
+      const shade = h('div', 'page-bg-dim');
+      shade.style.setProperty('--pb-dim', String(dim / 100));
+      bg.append(...imgs, shade);
+      sec.prepend(bg);
+      // the tick drives the slideshow: fetch the list, then a new picture every minute on this page only
+      photoBg.set(p.id, { id: p.id, layer: imgs, front: 0, inflight: null, order: [], pos: 0, listAt: 0, nextAt: 0, every: 60_000, urls: new Set(), alive: true });
+    }
     PhoneBoxAppearance.page(sec, grid, pageAppearance);
     sec.dataset.id = p.id;
     pager.appendChild(sec);
@@ -1598,6 +1618,84 @@ export function setActive(all = false) {
       m.dirty = false;
       for (const k of m.def.needs) runUpdate(m, k);
     }
+  }
+}
+
+// ---------------------------------------------------------------- a page's photo background (Settings › Pages)
+// One dimmed picture from the Photo frame's folder behind a page's widgets. Like the Photo frame widget it keeps
+// its two layers crossfading and asks for the next picture on a timer; the only difference is that it is a layer of
+// the page itself, so the tick drives it directly instead of a widget emitter.
+const photoBg = new Map(); // page id -> { layer, front, inflight, nextAt, urls, alive }
+
+function bgVisible(id) {
+  // a neighbour page and the night screen keep ticking too: only the shown page may change its background
+  return !nightOn && pages[curPage]?.id === id;
+}
+
+async function bgNext(st) {
+  if (st.inflight || !st.order.length) return;
+  const id = st.order[st.pos];
+  st.pos = (st.pos + 1) % st.order.length;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20_000);
+  // aborting doesn't always settle a body that stalled half-way, so the read itself has a deadline that rejects
+  let late;
+  const deadline = new Promise((_, fail) => { late = setTimeout(() => fail(new Error('timeout')), 20_000); });
+  deadline.catch(() => {});
+  st.inflight = ctl;
+  try {
+    const r = await Promise.race([fetch(`${API}/photos/${encodeURIComponent(id)}`, { cache: 'no-store', headers: PANEL_HEADERS, signal: ctl.signal }), deadline]);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const url = URL.createObjectURL(await Promise.race([r.blob(), deadline]));
+    if (!st.alive || ctl.signal.aborted) { URL.revokeObjectURL(url); return; }
+    st.urls.add(url);
+    const next = st.layer[1 - st.front], prev = st.layer[st.front];
+    // the request stays in flight until the image has decoded, so a slow photo is never overtaken
+    const ok = await new Promise((done) => {
+      next.onload = () => done(true);
+      next.onerror = () => done(false);
+      ctl.signal.addEventListener('abort', () => done(false));
+      next.src = url;
+    });
+    next.onload = next.onerror = null;
+    // hidden while it loaded (another page or the night screen): drop it rather than change a hidden page
+    if (!ok || !st.alive || ctl.signal.aborted || !bgVisible(st.id)) {
+      if (next.src === url) next.removeAttribute('src');
+      URL.revokeObjectURL(url); st.urls.delete(url);
+      if (!ok) st.nextAt = Date.now() + 5000;
+      return;
+    }
+    next.classList.add('on'); prev.classList.remove('on');
+    st.front = 1 - st.front;
+    const old = st.shown; st.shown = url;
+    // the old image is released once the crossfade is over
+    if (old) setTimeout(() => { if (st.urls.delete(old)) URL.revokeObjectURL(old); }, 1200);
+  } catch (_) {
+    st.nextAt = Date.now() + 5000; // a missing or slow photo: try the next one soon
+  } finally { clearTimeout(timer); clearTimeout(late); st.inflight = null; }
+}
+
+function updatePhotoBg() {
+  if (nightOn) return;
+  for (const [id, st] of photoBg) {
+    if (!st.alive || !bgVisible(id)) continue;
+    const now = Date.now();
+    if (!st.listAt || now - st.listAt > 10 * 60_000) st.listAt = now, st.order = [], st.pos = 0, bgLoadList(st);
+    if (st.order.length && now >= st.nextAt) { st.nextAt = now + st.every; bgNext(st); }
+  }
+}
+
+async function bgLoadList(st) {
+  st.listAt = Date.now();
+  try {
+    const r = await api('/photos', 'GET', 10_000);
+    if (!st.alive) return;
+    if (r.scanning) { st.listAt = Date.now() - 9 * 60_000; return; } // ask again in a minute
+    const list = Array.isArray(r.ids) ? r.ids : [];
+    st.order = list; st.pos = 0;
+    if (!list.length) st.listAt = Date.now() - 9 * 60_000; // nothing to show: ask again in a minute
+  } catch (_) {
+    st.listAt = Date.now() - 9 * 60_000; // offline: ask again in a minute
   }
 }
 
@@ -2509,7 +2607,7 @@ export function tick() {
   applyBurnIn();
   document.body.classList.toggle('controls-top', cfg.display?.controlsTop === true);
   applyPageBar();
-  if (!nightOn) emit('tick');
+  if (!nightOn) { emit('tick'); updatePhotoBg(); }
   setTimeout(tick, 1000 - (Date.now() % 1000) + 5);
 }
 

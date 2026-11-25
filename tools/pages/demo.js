@@ -113,6 +113,8 @@
   const isObs = (type) => type === 'obs' || type.startsWith('obs-');
   // like AgentConfig.Widgets(enabledPagesOnly: true): what may control the computer comes from enabled pages only
   const shownWidgets = (c) => widgets({ ...c, pages: (c.pages || []).filter((p) => p.enabled !== false) });
+  // like PhotoFrame.Shown: a photos widget on an enabled page, or a page with a photo background turned on
+  const photosOn = (c) => shownWidgets(c).some((w) => w.type === 'photos') || (c.pages || []).some((p) => p.enabled !== false && p.photoBg?.enabled);
   // a saved config without a Discord section keeps the simulated connection; an explicit enabled: false turns it off
   const dcOn = (c) => c.discord?.enabled !== false;
   const dcControl = (c) => shownWidgets(c).some((w) => w.type === 'discord' && w.options?.control === true); // DiscordMonitor.WidgetControl
@@ -136,6 +138,8 @@
       // sets it also needs /agent/api/wallpaper mocked (see wallpaper.spec.js)
       wallpaperRev: c.wallpaperRev ?? null,
       pages: (c.pages || []).map((p) => ({ id: p.id, title: p.title, icon: p.icon, enabled: p.enabled !== false, idleSec: p.idleSec ?? null, appearance: p.appearance ?? null,
+        // like AgentConfig.ToPublic: the page's photo background options, without the folder (that stays with the agent)
+        photoBg: p.photoBg && p.photoBg.enabled ? { enabled: true, dim: p.photoBg.dim ?? 45 } : null,
         widgets: (p.widgets || []).map((w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, appearance: w.appearance ?? null, options: options(w) })) })),
       // iconRev / iconUpload: the agent sets them when a shortcut has a picture (and when the user uploaded it). The demo
       // has no uploads and serves no /agent/api/shortcuts/icon, so a config that sets them also needs that image mocked
@@ -786,10 +790,10 @@
       { name: 'Xbox Wireless Controller', level: 40, kind: 'controller', charging: null },
     ] });
     // photo frame: like the agent, ids from an enabled page's widget, then one image by id (generated pictures here)
-    if (path === '/api/photos') { const c = await config(); return json(shownWidgets(c).some((w) => w.type === 'photos') ? { ids: DEMO_PHOTOS.map((p) => p[0]), error: null, scanning: false } : { ids: [], error: 'Add a Photo frame widget to a page to show photos', scanning: false }); }
+    if (path === '/api/photos') { const c = await config(); return json(photosOn(c) ? { ids: DEMO_PHOTOS.map((p) => p[0]), error: null, scanning: false } : { ids: [], error: 'Add a Photo frame widget to a page to show photos', scanning: false }); }
     if (path.startsWith('/api/photos/')) {
       const p = DEMO_PHOTOS.find((x) => x[0] === decodeURIComponent(path.slice(12)));
-      if (!p || !shownWidgets(await config()).some((w) => w.type === 'photos')) return json({ error: 'Unknown photo' }, 404);
+      if (!p || !photosOn(await config())) return json({ error: 'Unknown photo' }, 404);
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000"><defs><linearGradient id="g" x2="1" y2="1"><stop offset="0" stop-color="${p[1]}"/><stop offset="1" stop-color="${p[2]}"/></linearGradient></defs><rect width="1600" height="1000" fill="url(#g)"/><circle cx="1220" cy="260" r="120" fill="#fff8" /><path d="M0 820 L420 520 L760 760 L1100 480 L1600 860 V1000 H0Z" fill="#0006"/></svg>`;
       return new Response(svg, { status: 200, headers: { 'Content-Type': 'image/svg+xml' } });
     }

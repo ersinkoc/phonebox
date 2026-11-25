@@ -101,7 +101,7 @@ public sealed class AgentConfig
         wallpaperRev = wallpaperRev?.ToString(System.Globalization.CultureInfo.InvariantCulture),
         pages = PagesFor(deviceId).Select(p => new
         {
-            p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance,
+            p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance, p.PhotoBg,
             widgets = (p.Widgets ?? []).Select(w => new
             {
                 w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance,
@@ -484,6 +484,8 @@ public sealed class PageConfig
     public int? IdleSec { get; set; }
     /// <summary>Widgets on a 12-column grid: 6 rows on a phone, more on a tablet (up to <see cref="Catalog.MaxRows"/>).</summary>
     public List<WidgetConfig>? Widgets { get; set; }
+    /// <summary>A dimmed photo behind this page's widgets, using the Photo frame's folder; null = off.</summary>
+    public PhotoBgConfig? PhotoBg { get; set; }
 
     /// <summary>Create the page from this template (templates.json) when it has no widgets yet.</summary>
     public string? Template { get; set; }
@@ -491,6 +493,17 @@ public sealed class PageConfig
     public string? Type { get; set; }
     /// <summary>Pre-0.6.2 page options; migrated to widget options on load.</summary>
     public Dictionary<string, JsonElement>? Options { get; set; }
+}
+
+/// <summary>
+/// A dimmed photo behind one page's widgets, from the Photo frame's folder (Settings › General › Photo frame).
+/// Only what the panel draws goes to the phone: whether it is on and how dark; the folder stays on this computer.
+/// </summary>
+public sealed class PhotoBgConfig
+{
+    public bool Enabled { get; set; }
+    /// <summary>How dark the photo is, 0–90 % (45 when unset), like the wallpaper's dim.</summary>
+    public int Dim { get; set; } = 45;
 }
 
 public sealed class WidgetConfig
@@ -1147,6 +1160,8 @@ public sealed partial class ConfigStore(string path)
             p.Icon = IconText.Repair(p.Icon);
             p.Title = p.Title.Trim();
             if (p.IdleSec is { } idleSec) p.IdleSec = Math.Clamp(idleSec, 0, 86400);
+            // a photo background is off unless enabled; its dim is a percentage like the wallpaper's
+            if (p.PhotoBg is { } photoBg) { photoBg.Dim = Math.Clamp(photoBg.Dim, 0, 90); if (!photoBg.Enabled) p.PhotoBg = null; }
             var originalId = p.Id;
             p.Id = reservedPages.TryGetValue(p, out var reservedPage)
                 ? reservedPage : UniqueLayoutId(LayoutId(tpl?.Id ?? p.Title, "page"), pageIds);
