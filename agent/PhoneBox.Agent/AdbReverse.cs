@@ -498,7 +498,9 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // Only standby wakes carry the marker that allows the app
         // to dismiss the keyguard.
         var startArguments = new List<string> { "-s", device, "shell", "am", "start", "-n", PanelActivity };
-        if (standby) startArguments.AddRange(["--ez", "agentWake", "true"]);
+        // Only a standby wake with Wake on unlock on may let the app dismiss the keyguard.
+        if (standby && cfg.Get().Display.WakeOnUnlock)
+            startArguments.AddRange(["--ez", "agentWake", "true"]);
 
         await Adb(adb, startArguments, ct);
 

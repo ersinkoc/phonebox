@@ -909,21 +909,21 @@ public sealed class AdbReverseTests : IDisposable
         Assert.Equal(openOnConnect, calls.Contains("-s FAKE1 shell input keyevent KEYCODE_WAKEUP"));
     }
 
-    /// <summary>Only a standby wake carries the mark that lets the app dismiss the keyguard.</summary>
+    /// <summary>The mark that lets the app dismiss the keyguard needs standby on AND Wake on unlock on.</summary>
     [Theory]
-    [InlineData("off", false)]
-    [InlineData("power", true)]
-    public async Task OnlyAStandbyWakeCarriesTheAgentWakeMark(string standby, bool marked)
+    [InlineData("off", true, false)]
+    [InlineData("power", false, false)]   // the review case: standby on, Wake on unlock off
+    [InlineData("power", true, true)]
+    public async Task AgentWakeMarkNeedsStandbyAndWakeOnUnlock(string standby, bool wakeOnUnlock, bool marked)
     {
         var fake = FakeAdb(["FAKE1"], "", homeRefused: null);
         var calls = await RunUntil(fake, new { adbPath = fake, deviceSerial = "FAKE1",
-                display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect = true, standby } },
+            display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect = true, standby, wakeOnUnlock } },
             null, c => c.Count(x => x == "devices") >= 2);
         const string plain = "-s FAKE1 shell am start -n net.oxog.phonebox.deskpanel/.MainActivity";
         Assert.Equal(!marked, calls.Contains(plain));
         Assert.Equal(marked, calls.Contains(plain + " --ez agentWake true"));
     }
-
     /// <summary>
     /// Android 5 and 6 (API 21-23) cannot list adb reverse rules: "reverse --list" fails with "protocol fault" and adb
     /// re-attaches the phone, and later it lists nothing although the rule is there. The rule then looked missing every
