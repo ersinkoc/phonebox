@@ -893,6 +893,13 @@ nav a.on::before { color: var(--accent); }
         <div class="field" style="max-width:260px;margin-top:12px"><label data-i18n="s.claude.timeout">Seconds to answer before the terminal takes over</label><input type="number" min="10" max="3600" data-bind="claude.timeoutSec" data-type="int"></div>
         <p class="hint" style="margin:4px 0 0" data-i18n="s.claude.timeoutReinstall">Each hook keeps the seconds it was installed with: after changing them, remove the hook and install it again.</p>
 
+        <div class="row" style="margin:14px 0 8px"><b style="min-width:92px">WorkBuddy</b><button class="btn" id="workbuddyHookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="workbuddyHookState"></span></div>
+        <label class="check"><input type="checkbox" data-bind="workBuddy.phoneApprovals"> <span data-i18n="s.claude.askOnPhone">Ask on the phone</span></label>
+        <label class="check"><input type="checkbox" data-bind="workBuddy.onlyWhenAway"> <span data-i18n="s.claude.onlyWhenAway">Only when I am away from the PC (no keyboard or mouse for a minute)</span></label>
+        <div class="field" style="max-width:260px;margin-top:12px"><label for="workBuddyTimeout" data-i18n="s.claude.timeout">Seconds to answer before the terminal takes over</label><input id="workBuddyTimeout" type="number" min="10" max="3600" data-bind="workBuddy.timeoutSec" data-type="int"></div>
+        <p class="hint" data-i18n="s.claude.timeoutReinstall">Each hook keeps the seconds it was installed with: after changing them, remove the hook and install it again.</p>
+        <label class="check"><input type="checkbox" data-bind="workBuddy.sessions"> <span data-i18n="s.workbuddy.sessions">Show WorkBuddy sessions</span></label>
+
         <div class="row" style="margin:14px 0 4px"><b style="min-width:92px">OpenCode</b></div>
         <p class="hint" style="margin:-2px 0 12px" data-i18n="s.opencode.hint">OpenCode permission prompts and agent questions reach the phone while its background service is running. Off until you turn it on here. Allow always saves the requested pattern for the project, so it arms only after a short countdown.</p>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="opencode.phoneApprovals"><span></span></label> <span data-i18n="s.opencode.askOnPhone">Ask on the phone</span></div>
@@ -4017,17 +4024,18 @@ async function loadInfo() {
     $('restartBtn').hidden = !lan.restartNeeded;
     renderUpdate(await (await fetch('/api/update')).json());
     renderWebhooks(lan);
-    const [claudeHook, codexHook, cursorHook] = await Promise.all([
+    const [claudeHook, codexHook, cursorHook, workbuddyHook] = await Promise.all([
       fetch('/api/claude/hook').then((r) => r.json()),
       fetch('/api/codex/hook').then((r) => r.json()),
       fetch('/api/cursor/hook').then((r) => r.json()),
+      fetch('/api/workbuddy/hook').then((r) => r.json()),
     ]);
     // Cursor's hook can sit in several places (Windows and each running WSL distro): list the ones that have it
     cursorHook.path = (cursorHook.paths || []).filter((p) => p.installed).map((p) => p.path).join(', ');
     renderClaudeHookTargets(claudeHook.paths || []);
     // with other accounts, "Installed in" names the files that have it, like Cursor's
     if ((claudeHook.paths || []).length > 1) claudeHook.path = claudeHook.paths.filter((p) => p.installed).map((p) => p.path).join(', ');
-    for (const [name, hk] of [['claude', claudeHook], ['codex', codexHook], ['cursor', cursorHook]]) {
+    for (const [name, hk] of [['claude', claudeHook], ['codex', codexHook], ['cursor', cursorHook], ['workbuddy', workbuddyHook]]) {
       $(`${name}HookState`).textContent = hk.installed ? t('s.claude.installedIn', { path: hk.path }) : t('s.claude.notInstalled');
       const btn = $(`${name}HookBtn`);
       btn.dataset.i18n = hk.installed ? 's.claude.removeHook' : 's.claude.installHook';
@@ -4053,6 +4061,7 @@ function fillDefaults() {
     showSeconds: true, weekStart: 'monday', vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', tabletRows: false, theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
   cfg.steam ??= { enabled: false };
+  cfg.workBuddy = { sessions: false, phoneApprovals: false, onlyWhenAway: false, timeoutSec: 90, ...cfg.workBuddy };
 }
 
 async function load() {
@@ -4180,7 +4189,7 @@ $('restartBtn').onclick = async () => {
   };
   setTimeout(wait, 1500);
 };
-for (const name of ['codex', 'claude', 'cursor']) $(`${name}HookBtn`).onclick = async () => {
+for (const name of ['codex', 'claude', 'cursor', 'workbuddy']) $(`${name}HookBtn`).onclick = async () => {
   // the agent installs with the saved settings (the seconds to answer, Cursor's "Also watch Cursor in WSL"): an
   // unsaved change would be silently left out
   if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveFirst'), true); return; }
@@ -4188,7 +4197,7 @@ for (const name of ['codex', 'claude', 'cursor']) $(`${name}HookBtn`).onclick = 
   const r = await fetch(`/api/${name}/hook`, { method: remove ? 'DELETE' : 'POST' });
   const j = await r.json().catch(() => ({}));
   const successKey = remove ? 's.approvals.hookRemoved' : name === 'codex' ? 's.approvals.codexHookInstalled' : 's.approvals.hookInstalled';
-  r.ok ? toast(t(successKey, { agent: { codex: 'Codex', cursor: 'Cursor' }[name] || 'Claude Code' }))
+  r.ok ? toast(t(successKey, { agent: { codex: 'Codex', cursor: 'Cursor', workbuddy: 'WorkBuddy' }[name] || 'Claude Code' }))
     : toast(j.error || t('s.approvals.hookError'), true);
   loadInfo();
 };

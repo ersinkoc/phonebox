@@ -24,6 +24,7 @@ public sealed class AgentConfig
     public UpdateConfig Updates { get; set; } = new();
     public ClaudeConfig Claude { get; set; } = new();
     /// <summary>Cursor agent-transcript sessions on the AI sessions widget (off by default).</summary>
+    public WorkBuddyConfig WorkBuddy { get; set; } = new();
     public CursorConfig Cursor { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
     public AntigravityConfig Antigravity { get; set; } = new();
@@ -393,6 +394,21 @@ public sealed class AntigravityConfig
     public bool Sessions { get; set; }
     /// <summary>Show each Antigravity chat's title from its local annotation file on the phone (off by default).</summary>
     public bool ShareSessionTitles { get; set; }
+}
+
+/// <summary>WorkBuddy: permission prompts reuse the Claude Code hook protocol (its own settings file),
+/// sessions come from ~/.workbuddy/sessions. Like Claude's, the hook is installed from Settings.</summary>
+public sealed class WorkBuddyConfig
+{
+    /// <summary>Show WorkBuddy permission prompts on the phone (uses the Claude hook protocol).</summary>
+    public bool PhoneApprovals { get; set; }
+    /// <summary>Show WorkBuddy's live sessions on the AI sessions widget (off by default: sharing
+    /// what you chat about is opt-in, like OpenCode's and Cursor's).</summary>
+    public bool Sessions { get; set; }
+    /// <summary>How long the phone may answer before WorkBuddy asks in its own UI.</summary>
+    public int TimeoutSec { get; set; } = 90;
+    /// <summary>Only use the phone when the PC has been idle for a minute.</summary>
+    public bool OnlyWhenAway { get; set; }
 }
 
 public sealed class OpenCodeConfig
@@ -827,6 +843,8 @@ public sealed partial class ConfigStore(string path)
             ? Cap(plexToken, 256) : null;
         c.IgnoredDeviceSerials = (c.IgnoredDeviceSerials ?? []).Select(s => s?.Trim())
             .OfType<string>().Where(s => s.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+        c.WorkBuddy ??= new();
+        c.WorkBuddy.TimeoutSec = Math.Clamp(c.WorkBuddy.TimeoutSec, 10, 3600);
         c.Display ??= new();
         c.Display.Appearance?.Normalize();
         c.Display.Hour12 = Hour12JsonConverter.Normalize(c.Display.Hour12);

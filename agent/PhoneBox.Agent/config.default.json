@@ -31,6 +31,7 @@
   // background service on 127.0.0.1. Off by default: set "phoneApprovals": true (or Settings › General) to let
   // the phone answer. "watchWsl" adds OpenCode inside running WSL distros, "shareSessionTitles" the session titles.
   "opencode": { "phoneApprovals": false, "sessions": false, "timeoutSec": 90, "alwaysCountdownSec": 10, "watchWsl": false, "shareSessionTitles": false },
+  "workBuddy": { "sessions": false, "phoneApprovals": false, "onlyWhenAway": false, "timeoutSec": 90 },
   // App console widget (Windows): keys and dial bindings per app, matched by the focused window's process name
   "console": { "profiles": [] },
   // Phone mic (Windows, off by default): the phone's microphone played into a virtual cable ("endpoint", e.g. VB-CABLE's CABLE Input),

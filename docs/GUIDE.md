@@ -339,10 +339,16 @@ hook* also write the `settings.json` of each of those folders that exists, with 
 those files under the button before you press it, and a folder that doesn't exist is skipped, never created. Remove
 the hook before you delete an account: *Remove hook* only reaches the folders still in the list.
 
-WorkBuddy speaks the same hook protocol. Add the same `PermissionRequest` entry to `~/.workbuddy/settings.json` by
-hand: *Install hook* writes only to Claude Code's own folders (`~/.claude` and the other accounts'). WorkBuddy keeps its sessions in `~/.workbuddy`, so the
-card takes the project name from the workspace name WorkBuddy stores
-(`~/.workbuddy/workspace-display-names.json`) instead of the folder name.
+WorkBuddy has its own controls under **Settings › General › AI coding agent permission prompts**.
+The WorkBuddy installer writes a command hook for the `PermissionRequest` event to `~/.workbuddy/settings.json`
+and keeps the existing settings. Restart WorkBuddy after installation and use its default permission mode to see prompts.
+To avoid duplicate prompts, remove any old PhoneBox entry you copied manually before installing this one.
+The event provides the session ID, working directory, tool name and tool input. The phone returns Allow or Deny.
+If the phone does not answer, WorkBuddy keeps its own approval flow.
+[Tencent hook reference](https://cloud.tencent.com/document/product/1831/137030#permissionrequest).
+
+**Show WorkBuddy sessions** is a separate switch. It reads the live process status files under `~/.workbuddy/sessions`
+and displays the workspace name and activity. No chat titles or conversation text are read from those files.
 
 Cursor has no permission-prompt hook; its `beforeShellExecution` and `beforeMCPExecution` hooks run before **every**
 shell command and MCP tool call of the agent, also the ones Cursor would run by itself. So Cursor prompts are off until

@@ -13242,6 +13242,10 @@
     if (data.catalog) CATALOG[lang] = { ...CATALOG[lang], ...data.catalog };
     if (data.panel) PANEL[lang] = { ...PANEL[lang], ...data.panel };
   }
+  for (const strings of Object.values(STRINGS)) {
+    if (strings['s.opencode.sessions'])
+      strings['s.workbuddy.sessions'] = strings['s.opencode.sessions'].replace('OpenCode', 'WorkBuddy');
+  }
   delete window.PhoneBoxLocaleData;
 
   let pref = 'auto';
