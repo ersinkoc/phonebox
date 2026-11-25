@@ -316,6 +316,10 @@ packet, it carries no password, so anyone on the same network who knows a MAC ad
 
 ## AI agent permission prompts
 
+Turn on **Sound when a permission prompt appears** in **Settings › General › Display** to hear two short
+beeps at the configured sound volume. The phone stays quiet on the night screen. A desktop browser may
+require a tap or click on the panel after opening it to allow audio.
+
 When Codex asks for permission (run a command, edit a file, use an MCP tool…), the phone shows the project, tool and
 operation with **Allow** and **Deny**. Turn it on in **Settings › General › AI coding agent permission prompts** and
 install the Codex hook. PhoneBox adds a `PermissionRequest` command hook to `~/.codex/hooks.json`, preserving other

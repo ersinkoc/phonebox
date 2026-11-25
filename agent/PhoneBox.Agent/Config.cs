@@ -222,6 +222,7 @@ public sealed class DisplayConfig
     /// <summary>Play a chime when a session finishes.</summary>
     public bool FinishSound { get; set; }
     /// <summary>Play a chime when a permission prompt appears on the phone, at the finish sound's volume.</summary>
+    [JsonConverter(typeof(OptInBoolJsonConverter))]
     public bool ApprovalSound { get; set; }
     /// <summary>Sound volume (% of the phone's media volume).</summary>
     public int FinishSoundVolume { get; set; } = 70;
@@ -1304,4 +1305,20 @@ internal sealed class Hour12JsonConverter : JsonConverter<string>
         else if (value == "auto") writer.WriteStringValue("auto");
         else writer.WriteBooleanValue(false);
     }
+}
+
+/// <summary>Only a JSON true enables the setting. A malformed value keeps the setting off.</summary>
+internal sealed class OptInBoolJsonConverter : JsonConverter<bool>
+{
+    public override bool HandleNull => true;
+
+    public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.True) return true;
+        reader.Skip();
+        return false;
+    }
+
+    public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) =>
+        writer.WriteBooleanValue(value);
 }

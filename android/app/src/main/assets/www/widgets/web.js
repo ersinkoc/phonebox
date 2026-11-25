@@ -1,4 +1,4 @@
-import { $, API, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, store, t, tick, toast, tp } from '../main.js';
+import { $, API, I18n, LOCALE, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, store, t, tick, toast, tp } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every, fmtNum, lines, pctSpan, sparkLine } from './helpers.js';
 
@@ -162,6 +162,48 @@ W.crypto = {
           return h('div', 'fx-i', h('b', null, (c.symbol || '').toUpperCase()), h('span', 'fx-v', fmtNum(c.current_price)), pctSpan(c.price_change_percentage_24h ?? 0), cv);
         }));
       } catch (_) { list.replaceChildren(h('div', 'empty', t('w.pricesUnavailable'))); return false; }
+    });
+    return { update: load };
+  },
+};
+
+// Guba (East Money stock forum): latest 10 posts for the stock configured
+// on the computer; the agent fetches guba.eastmoney.com and answers /agent/guba.
+W.guba = {
+  needs: ['tick'],
+  create(box, { o }) {
+    const code = String(o.code || '002317').trim();
+    if (!/^[0-9]{6}$/.test(code)) { box.append(h('div', 'empty', t('w.ratesUnavailable'))); return {}; }
+    const count = Math.max(1, Math.min(15, Number(o.count) || 10));
+    const list = h('div', 'gb-list', h('div', 'empty', t('w.loading')));
+    list.style.cssText = 'flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-evenly;gap:2px;overflow:hidden';
+    box.append(h('div', 'w-title', (I18n?.tc('Stock forum') ?? 'Stock forum') + ' · ' + code, h('span', 'w-sub', '')), list);
+    let last = '';
+    const load = every(300_000, async () => {
+      try {
+        const d = await api('/guba?code=' + code + '&count=' + count, 'GET', 8000);
+        const posts = d.posts || [];
+        if (!posts.length) { last = ''; list.replaceChildren(h('div', 'empty', t('w.offline'))); return false; }
+        const updated = d.updated ? new Date(d.updated).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }) : '';
+        box.querySelector('.w-sub').textContent = d.error === 'stale' ? [updated, t('w.offline')].filter(Boolean).join(' · ') : updated;
+        const key = JSON.stringify(posts);
+        if (key === last) return;
+        last = key;
+        list.replaceChildren(...posts.map((p) => {
+          const row = h('div', 'gb-i');
+          row.style.cssText = 'display:flex;flex-direction:column;min-height:0;overflow:hidden';
+          // one summary line: title (whole row clickable in a real browser; here just text)
+          const title = h('div', 'gb-t', String(p.title || '').slice(0, 40));
+          title.style.cssText = 'font-size:12px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+          const meta = h('div', 'gb-m');
+          meta.style.cssText = 'font-size:10px;color:var(--muted);display:flex;gap:8px';
+          const when = String(p.time || '').slice(5, 16); // "11-23 22:35"
+          meta.append(h('span', null, String(p.author || '').slice(0, 10)), h('span', null, when),
+            h('span', null, (I18n?.tc('Reads') ?? 'Reads') + ' ' + (p.reads || 0)), h('span', null, (I18n?.tc('Comments') ?? 'Comments') + ' ' + (p.comments || 0)));
+          row.append(title, meta);
+          return row;
+        }));
+      } catch (_) { if (!last) list.replaceChildren(h('div', 'empty', t('w.offline'))); return false; }
     });
     return { update: load };
   },
