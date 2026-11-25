@@ -1,4 +1,4 @@
-import { $, LOCALE, buzz, cfg, chime, fmtTime, h, en, haptic, icon, labelled, pad, r1, rich, store, t, tick, toast, tp } from '../main.js';
+import { $, I18n, LOCALE, PREVIEW, buzz, cfg, chime, fmtTime, h, en, haptic, icon, labelled, pad, r1, rich, store, t, tick, toast, tp } from '../main.js';
 import { W } from '../registry.js';
 import { dialEl, lines } from './helpers.js';
 const tr = (...args) => t(...args); // some widgets below name a local `t` (a timer element), which hides the translator
@@ -165,6 +165,88 @@ W.counter = {
     fresh();
     num.textContent = st.n;
     return { update: fresh };
+  },
+};
+
+W['water-intake'] = {
+  needs: ['tick'],
+  always: true,
+  create(box, { o, page, w }) {
+    const goal = Math.min(20_000, Math.max(1, Number.parseInt(o.goalMl, 10) || 2000));
+    const interval = Math.min(720, Math.max(0, Number.parseInt(o.reminderMinutes, 10) || 0)) * 60_000;
+    const key = 'water:' + page.id + '/' + w.id;
+    const text = source => I18n?.tc(source) ?? source;
+    const number = new Intl.NumberFormat(LOCALE);
+    const ml = n => number.format(n) + ' ml';
+    let state = PREVIEW ? null : store.get(key, null);
+    const save = () => { if (!PREVIEW) store.set(key, state); };
+    const total = h('strong', 'water-total');
+    const remaining = h('span', 'water-remaining');
+    const progress = h('progress', 'water-progress');
+    progress.max = goal;
+    progress.setAttribute('aria-label', text('Water intake'));
+    const render = () => {
+      total.textContent = ml(state.total) + ' / ' + ml(goal);
+      progress.value = Math.min(goal, state.total);
+      remaining.textContent = text('{amount} remaining').replace('{amount}', () => ml(Math.max(0, goal - state.total)));
+    };
+    const fresh = now => {
+      const day = now.toDateString();
+      if (state?.day === day && state.interval === interval) return;
+      state = { day, total: state?.day === day ? state.total : 0, interval, due: interval ? +now + interval : null };
+      save();
+      render();
+    };
+    const add = amount => {
+      const now = new Date();
+      fresh(now);
+      state.total += amount;
+      state.due = interval ? +now + interval : null;
+      save();
+      render();
+      if (!PREVIEW) haptic();
+    };
+    const quick = [250, 500].map(amount => {
+      const button = h('button', 'chip-btn', '+' + ml(amount));
+      button.type = 'button';
+      button.onclick = () => add(amount);
+      return button;
+    });
+    const custom = h('input', 'water-custom');
+    custom.type = 'number';
+    custom.inputMode = 'numeric';
+    custom.min = '1';
+    custom.max = '20000';
+    custom.step = '1';
+    custom.required = true;
+    custom.placeholder = 'ml';
+    custom.setAttribute('aria-label', text('Custom amount (ml)'));
+    const submit = h('button', 'chip-btn', text('Log water'));
+    submit.type = 'submit';
+    const form = h('form', 'water-form', custom, submit);
+    form.onsubmit = event => {
+      event.preventDefault();
+      if (custom.reportValidity()) {
+        add(custom.valueAsNumber);
+        custom.value = '';
+      }
+    };
+    box.append(h('div', 'w-title', text('Water intake')), total, progress, remaining,
+      h('div', 'water-quick', ...quick), form);
+    fresh(new Date());
+    render();
+    return {
+      update() {
+        const now = new Date();
+        fresh(now);
+        if (PREVIEW || !interval || state.total >= goal || +now < state.due) return;
+        state.due = +now + interval;
+        save();
+        buzz('0,180,110,180');
+        if (o.sound === true) chime(60);
+        toast(text('Time to drink water'), 'ok', '💧 ' + text('Water intake'), 6);
+      },
+    };
   },
 };
 

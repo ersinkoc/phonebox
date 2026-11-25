@@ -107,6 +107,9 @@ Last updated: 2026-11-20 (PhoneBox 0.9.6).
 remove the agent together with its settings, pushed data and log (without the switch, settings are kept). Uninstalling
 the Android app removes everything on the phone.
 
+The Water intake widget stores the current local day's total and the next reminder in panel storage on that device.
+It sends no intake data to the desktop agent or an external service.
+
 ## Connections made by default
 
 Each of these servers sees your IP address, like any web request. PhoneBox sends none of them an identifier for you

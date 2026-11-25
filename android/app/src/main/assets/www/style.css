@@ -499,6 +499,20 @@ body.offline .offline-msg { display: flex; }
 .g-sub { font-size: clamp(9px, 5.4cqh, 12px); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
 @container (max-height: 120px) { .w-gauge .g-sub { display: none; } .w-gauge .g-dial { height: 72cqh; } }
 
+.w-water-intake { padding: 9px 12px; display: grid; align-content: start; gap: 4px; }
+.water-total { font-size: clamp(12px, 10cqh, 24px); font-variant-numeric: tabular-nums; }
+.water-remaining { color: var(--muted); font-size: 11px; }
+.water-progress { width: 100%; height: 8px; accent-color: #38bdf8; }
+.water-quick, .water-form { display: flex; gap: 4px; min-width: 0; }
+.water-form > * { flex: 1; }
+.water-custom { width: 0; min-width: 36px; min-height: 26px; border: 1px solid var(--border);
+  border-radius: 6px; padding-inline: 5px; color: inherit; background: var(--card-bg, transparent); }
+.w-water-intake .chip-btn { min-height: 26px; line-height: 1; margin: 0; padding: 3px 5px; }
+@container (max-height: 115px) {
+  .w-water-intake { padding: 5px 7px; gap: 2px; }
+  .w-water-intake .chip-btn, .water-custom { min-height: 20px; }
+}
+
 /* ---------- chart & meters ---------- */
 .w-chart, .w-meters { padding: 9px 12px 0; display: flex; flex-direction: column; }
 .w-meters { padding-bottom: 10px; }

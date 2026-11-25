@@ -12919,6 +12919,254 @@
     Object.assign(CATALOG[lang], entries);
   }
 
+  const WATER_CATALOG = {
+    "tr": {
+      "Water intake": "Su tüketimi",
+      "Log daily water intake and get local reminders until you reach your goal.": "Günlük su tüketimini kaydedin, hedefinize ulaşana kadar cihazda hatırlatma alın.",
+      "Daily goal (ml)": "Günlük hedef (ml)",
+      "Reminder interval in minutes (0 = off)": "Hatırlatma aralığı dakika cinsinden (0 = kapalı)",
+      "Play a reminder sound": "Hatırlatma sesi çal",
+      "{amount} remaining": "{amount} kaldı",
+      "Custom amount (ml)": "Özel miktar (ml)",
+      "Log water": "Su ekle",
+      "Time to drink water": "Su içme zamanı"
+    },
+    "de": {
+      "Water intake": "Wasseraufnahme",
+      "Log daily water intake and get local reminders until you reach your goal.": "Erfasse, wie viel Wasser du täglich trinkst, und erhalte Erinnerungen bis zum Tagesziel.",
+      "Daily goal (ml)": "Tagesziel (ml)",
+      "Reminder interval in minutes (0 = off)": "Erinnerungsintervall in Minuten (0 = aus)",
+      "Play a reminder sound": "Erinnerungston abspielen",
+      "{amount} remaining": "Noch {amount}",
+      "Custom amount (ml)": "Eigene Menge (ml)",
+      "Log water": "Wasser erfassen",
+      "Time to drink water": "Zeit, Wasser zu trinken"
+    },
+    "fr": {
+      "Water intake": "Consommation d’eau",
+      "Log daily water intake and get local reminders until you reach your goal.": "Suivez votre consommation quotidienne d’eau et recevez des rappels jusqu’à votre objectif.",
+      "Daily goal (ml)": "Objectif quotidien (ml)",
+      "Reminder interval in minutes (0 = off)": "Intervalle de rappel en minutes (0 = désactivé)",
+      "Play a reminder sound": "Jouer un son de rappel",
+      "{amount} remaining": "Il reste {amount}",
+      "Custom amount (ml)": "Quantité personnalisée (ml)",
+      "Log water": "Ajouter de l’eau",
+      "Time to drink water": "Il est temps de boire de l’eau"
+    },
+    "es": {
+      "Water intake": "Consumo de agua",
+      "Log daily water intake and get local reminders until you reach your goal.": "Registra el agua que bebes cada día y recibe recordatorios hasta alcanzar tu objetivo.",
+      "Daily goal (ml)": "Objetivo diario (ml)",
+      "Reminder interval in minutes (0 = off)": "Intervalo de recordatorios en minutos (0 = desactivado)",
+      "Play a reminder sound": "Reproducir un sonido de aviso",
+      "{amount} remaining": "Quedan {amount}",
+      "Custom amount (ml)": "Cantidad personalizada (ml)",
+      "Log water": "Registrar agua",
+      "Time to drink water": "Es hora de beber agua"
+    },
+    "it": {
+      "Water intake": "Consumo d’acqua",
+      "Log daily water intake and get local reminders until you reach your goal.": "Registra quanta acqua bevi ogni giorno e ricevi promemoria fino al tuo obiettivo.",
+      "Daily goal (ml)": "Obiettivo giornaliero (ml)",
+      "Reminder interval in minutes (0 = off)": "Intervallo dei promemoria in minuti (0 = spento)",
+      "Play a reminder sound": "Riproduci un suono di promemoria",
+      "{amount} remaining": "Restano {amount}",
+      "Custom amount (ml)": "Quantità personalizzata (ml)",
+      "Log water": "Registra acqua",
+      "Time to drink water": "È ora di bere acqua"
+    },
+    "pt": {
+      "Water intake": "Consumo de água",
+      "Log daily water intake and get local reminders until you reach your goal.": "Registe a água que bebe diariamente e receba lembretes até atingir o seu objetivo.",
+      "Daily goal (ml)": "Objetivo diário (ml)",
+      "Reminder interval in minutes (0 = off)": "Intervalo do lembrete em minutos (0 = desligado)",
+      "Play a reminder sound": "Reproduzir um som de lembrete",
+      "{amount} remaining": "Faltam {amount}",
+      "Custom amount (ml)": "Quantidade personalizada (ml)",
+      "Log water": "Registar água",
+      "Time to drink water": "Está na hora de beber água"
+    },
+    "pt-BR": {
+      "Water intake": "Consumo de água",
+      "Log daily water intake and get local reminders until you reach your goal.": "Registre a água que você bebe por dia e receba lembretes até atingir sua meta.",
+      "Daily goal (ml)": "Meta diária (ml)",
+      "Reminder interval in minutes (0 = off)": "Intervalo de lembrete em minutos (0 = desativado)",
+      "Play a reminder sound": "Tocar um som de lembrete",
+      "{amount} remaining": "Faltam {amount}",
+      "Custom amount (ml)": "Quantidade personalizada (ml)",
+      "Log water": "Registrar água",
+      "Time to drink water": "Hora de beber água"
+    },
+    "nl": {
+      "Water intake": "Waterinname",
+      "Log daily water intake and get local reminders until you reach your goal.": "Houd bij hoeveel water je dagelijks drinkt en krijg herinneringen totdat je je doel bereikt.",
+      "Daily goal (ml)": "Dagdoel (ml)",
+      "Reminder interval in minutes (0 = off)": "Herinneringsinterval in minuten (0 = uit)",
+      "Play a reminder sound": "Een herinneringsgeluid afspelen",
+      "{amount} remaining": "Nog {amount}",
+      "Custom amount (ml)": "Aangepaste hoeveelheid (ml)",
+      "Log water": "Water registreren",
+      "Time to drink water": "Tijd om water te drinken"
+    },
+    "pl": {
+      "Water intake": "Spożycie wody",
+      "Log daily water intake and get local reminders until you reach your goal.": "Zapisuj dzienne spożycie wody i otrzymuj przypomnienia do osiągnięcia celu.",
+      "Daily goal (ml)": "Cel dzienny (ml)",
+      "Reminder interval in minutes (0 = off)": "Odstęp między przypomnieniami w minutach (0 = wył.)",
+      "Play a reminder sound": "Odtwórz dźwięk przypomnienia",
+      "{amount} remaining": "Pozostało {amount}",
+      "Custom amount (ml)": "Własna ilość (ml)",
+      "Log water": "Zapisz wodę",
+      "Time to drink water": "Czas napić się wody"
+    },
+    "ru": {
+      "Water intake": "Потребление воды",
+      "Log daily water intake and get local reminders until you reach your goal.": "Записывайте, сколько воды выпили за день, и получайте напоминания до достижения цели.",
+      "Daily goal (ml)": "Дневная цель (мл)",
+      "Reminder interval in minutes (0 = off)": "Интервал напоминаний в минутах (0 = выкл.)",
+      "Play a reminder sound": "Воспроизводить звук напоминания",
+      "{amount} remaining": "Осталось {amount}",
+      "Custom amount (ml)": "Свой объём (мл)",
+      "Log water": "Записать объём",
+      "Time to drink water": "Пора выпить воды"
+    },
+    "el": {
+      "Water intake": "Κατανάλωση νερού",
+      "Log daily water intake and get local reminders until you reach your goal.": "Καταγράψτε την ημερήσια κατανάλωση νερού και λάβετε υπενθυμίσεις μέχρι να φτάσετε στον στόχο σας.",
+      "Daily goal (ml)": "Ημερήσιος στόχος (ml)",
+      "Reminder interval in minutes (0 = off)": "Διάστημα υπενθύμισης σε λεπτά (0 = ανενεργό)",
+      "Play a reminder sound": "Αναπαραγωγή ήχου υπενθύμισης",
+      "{amount} remaining": "Απομένουν {amount}",
+      "Custom amount (ml)": "Προσαρμοσμένη ποσότητα (ml)",
+      "Log water": "Καταγραφή νερού",
+      "Time to drink water": "Ώρα να πιείτε νερό"
+    },
+    "vi": {
+      "Water intake": "Lượng nước uống",
+      "Log daily water intake and get local reminders until you reach your goal.": "Ghi lại lượng nước uống hằng ngày và nhận lời nhắc đến khi đạt mục tiêu.",
+      "Daily goal (ml)": "Mục tiêu hằng ngày (ml)",
+      "Reminder interval in minutes (0 = off)": "Số phút giữa các lời nhắc (0 = tắt)",
+      "Play a reminder sound": "Phát âm thanh nhắc nhở",
+      "{amount} remaining": "Còn lại {amount}",
+      "Custom amount (ml)": "Lượng tùy chỉnh (ml)",
+      "Log water": "Ghi lượng nước",
+      "Time to drink water": "Đến giờ uống nước"
+    },
+    "zh": {
+      "Water intake": "饮水量",
+      "Log daily water intake and get local reminders until you reach your goal.": "记录每天的饮水量，在达到目标前接收本地提醒。",
+      "Daily goal (ml)": "每日目标（毫升）",
+      "Reminder interval in minutes (0 = off)": "提醒间隔（分钟，0 为关闭）",
+      "Play a reminder sound": "播放提醒声音",
+      "{amount} remaining": "还差 {amount}",
+      "Custom amount (ml)": "自定义饮水量（毫升）",
+      "Log water": "记录饮水",
+      "Time to drink water": "该喝水了"
+    },
+    "ja": {
+      "Water intake": "水分摂取量",
+      "Log daily water intake and get local reminders until you reach your goal.": "毎日の水分摂取量を記録し、目標を達成するまで端末で通知します。",
+      "Daily goal (ml)": "1 日の目標（ml）",
+      "Reminder interval in minutes (0 = off)": "通知間隔（分、0 でオフ）",
+      "Play a reminder sound": "通知音を鳴らす",
+      "{amount} remaining": "残り {amount}",
+      "Custom amount (ml)": "任意の量（ml）",
+      "Log water": "飲水を記録",
+      "Time to drink water": "水を飲む時間です"
+    },
+    "ko": {
+      "Water intake": "물 섭취량",
+      "Log daily water intake and get local reminders until you reach your goal.": "매일 마신 물을 기록하고 목표를 달성할 때까지 기기에서 알림을 받으세요.",
+      "Daily goal (ml)": "일일 목표(ml)",
+      "Reminder interval in minutes (0 = off)": "알림 간격(분, 0 = 끔)",
+      "Play a reminder sound": "알림 소리 재생",
+      "{amount} remaining": "{amount} 남음",
+      "Custom amount (ml)": "직접 입력(ml)",
+      "Log water": "섭취량 기록",
+      "Time to drink water": "물을 마실 시간이에요"
+    },
+    "id": {
+      "Water intake": "Asupan air",
+      "Log daily water intake and get local reminders until you reach your goal.": "Catat jumlah air yang diminum dan terima pengingat hingga target harian tercapai.",
+      "Daily goal (ml)": "Target harian (ml)",
+      "Reminder interval in minutes (0 = off)": "Jeda pengingat dalam menit (0 = nonaktif)",
+      "Play a reminder sound": "Putar suara pengingat",
+      "{amount} remaining": "Tersisa {amount}",
+      "Custom amount (ml)": "Jumlah khusus (ml)",
+      "Log water": "Catat air",
+      "Time to drink water": "Waktunya minum air"
+    },
+    "th": {
+      "Water intake": "ปริมาณน้ำดื่ม",
+      "Log daily water intake and get local reminders until you reach your goal.": "บันทึกปริมาณน้ำดื่มในแต่ละวันและรับการแจ้งเตือนจนกว่าจะถึงเป้าหมาย",
+      "Daily goal (ml)": "เป้าหมายรายวัน (มล.)",
+      "Reminder interval in minutes (0 = off)": "ช่วงเวลาแจ้งเตือนเป็นนาที (0 = ปิด)",
+      "Play a reminder sound": "เล่นเสียงเตือน",
+      "{amount} remaining": "เหลือ {amount}",
+      "Custom amount (ml)": "ปริมาณที่กำหนดเอง (มล.)",
+      "Log water": "บันทึกการดื่มน้ำ",
+      "Time to drink water": "ได้เวลาดื่มน้ำแล้ว"
+    },
+    "uk": {
+      "Water intake": "Споживання води",
+      "Log daily water intake and get local reminders until you reach your goal.": "Записуйте, скільки води п’єте щодня, й отримуйте нагадування до досягнення мети.",
+      "Daily goal (ml)": "Щоденна мета (мл)",
+      "Reminder interval in minutes (0 = off)": "Інтервал нагадувань у хвилинах (0 = вимкнено)",
+      "Play a reminder sound": "Відтворювати звук нагадування",
+      "{amount} remaining": "Залишилося {amount}",
+      "Custom amount (ml)": "Власний об’єм (мл)",
+      "Log water": "Записати об’єм",
+      "Time to drink water": "Час випити води"
+    },
+    "hi": {
+      "Water intake": "पानी की मात्रा",
+      "Log daily water intake and get local reminders until you reach your goal.": "रोज़ पिए गए पानी की मात्रा दर्ज करें और लक्ष्य पूरा होने तक रिमाइंडर पाएँ।",
+      "Daily goal (ml)": "दैनिक लक्ष्य (मिलीलीटर)",
+      "Reminder interval in minutes (0 = off)": "रिमाइंडर का अंतराल मिनटों में (0 = बंद)",
+      "Play a reminder sound": "रिमाइंडर की ध्वनि चलाएँ",
+      "{amount} remaining": "{amount} बाकी",
+      "Custom amount (ml)": "अपनी मात्रा (मिलीलीटर)",
+      "Log water": "पानी दर्ज करें",
+      "Time to drink water": "पानी पीने का समय है"
+    },
+    "cs": {
+      "Water intake": "Příjem vody",
+      "Log daily water intake and get local reminders until you reach your goal.": "Zaznamenávejte denní příjem vody a dostávejte připomínky až do splnění cíle.",
+      "Daily goal (ml)": "Denní cíl (ml)",
+      "Reminder interval in minutes (0 = off)": "Interval připomínky v minutách (0 = vypnuto)",
+      "Play a reminder sound": "Přehrát zvuk připomínky",
+      "{amount} remaining": "Zbývá {amount}",
+      "Custom amount (ml)": "Vlastní množství (ml)",
+      "Log water": "Zaznamenat vodu",
+      "Time to drink water": "Je čas napít se vody"
+    },
+    "ar": {
+      "Water intake": "شرب الماء",
+      "Log daily water intake and get local reminders until you reach your goal.": "سجّل كمية الماء التي تشربها يوميًا وتلقّ تذكيرات حتى تصل إلى هدفك.",
+      "Daily goal (ml)": "الهدف اليومي (مل)",
+      "Reminder interval in minutes (0 = off)": "الفاصل بين التذكيرات بالدقائق (0 = إيقاف)",
+      "Play a reminder sound": "تشغيل صوت التذكير",
+      "{amount} remaining": "المتبقي {amount}",
+      "Custom amount (ml)": "كمية مخصصة (مل)",
+      "Log water": "تسجيل كمية الماء",
+      "Time to drink water": "حان وقت شرب الماء"
+    },
+    "zh-Hant": {
+      "Water intake": "飲水量",
+      "Log daily water intake and get local reminders until you reach your goal.": "記錄每日飲水量，並在達標前接收裝置提醒。",
+      "Daily goal (ml)": "每日目標（毫升）",
+      "Reminder interval in minutes (0 = off)": "提醒間隔（分鐘，0 為關閉）",
+      "Play a reminder sound": "播放提醒音效",
+      "{amount} remaining": "還差 {amount}",
+      "Custom amount (ml)": "自訂飲水量（毫升）",
+      "Log water": "記錄飲水",
+      "Time to drink water": "該喝水了"
+    }
+  };
+  for (const [lang, entries] of Object.entries(WATER_CATALOG)) {
+    CATALOG[lang] = { ...CATALOG[lang], ...entries };
+  }
+
   for (const [lang, data] of Object.entries(LOCALE_DATA)) {
     if (data.strings) STRINGS[lang] = { ...STRINGS[lang], ...data.strings };
     if (data.catalog) CATALOG[lang] = { ...CATALOG[lang], ...data.catalog };
