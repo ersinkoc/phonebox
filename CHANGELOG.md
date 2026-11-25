@@ -57,7 +57,10 @@
   [avery02072003-cmyk](https://github.com/avery02072003-cmyk)).
 
 **Agent**
-- **Phone bridge** (macOS, off by default; **Settings › Phone bridge**): opt-in two-way plain-text clipboard sharing over USB or paired Wi-Fi (#528, [Vasilispapg](https://github.com/Vasilispapg)), phone notifications on the Mac with optional one-time login code copying (#530, [Vasilispapg](https://github.com/Vasilispapg)), and a native macOS notifier showing the PhoneBox icon and each phone app's icon with `osascript` fallback (#534, [Vasilispapg](https://github.com/Vasilispapg)).
+- **Phone bridge** (macOS, off by default): enable two-way plain-text clipboard sharing over USB or paired
+  Wi-Fi in **Settings › Phone bridge** (#528). The Mac can receive phone notifications and optionally copy
+  one-time login codes (#530). Its native notifier shows the PhoneBox icon, can attach a phone app icon when
+  supplied, and falls back to `osascript` (#534, [Vasilispapg](https://github.com/Vasilispapg)).
 - **WorkBuddy** (off by default): opt-in WorkBuddy AI sessions and phone permission approvals (#596).
 - **Claude Code extra accounts**: support multiple Claude Code accounts with a `claude@<label>` quota card each, sessions from each account, and per-account hook installation listed before writing (#538, #567, #568, #570, [egin10](https://github.com/egin10)).
 - **Rules**: a new **Show the night screen** (`night`) rule action shows the night screen while a rule is active and returns when it ends (#330, #597, [Nero-Dark](https://github.com/Nero-Dark)).
@@ -154,6 +157,10 @@
 - The app keeps its connections to the computer open and reuses them, instead of opening a new encrypted connection
   for every request. On Android 6 each one held system resources until the app was stopped, which may be behind the
   crashes after some idle time in #389 (#508, [wahackr](https://github.com/wahackr)).
+
+**iOS app**
+- Experimental SwiftUI companion that reuses the PhoneBox panel and pairs with the desktop agent over
+  Wi-Fi or Tailscale (#599, [Hal33mm5](https://github.com/Hal33mm5)).
 
 **Setup**
 - Standalone setup now honors the ignored-device list (#587).
