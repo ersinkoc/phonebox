@@ -6,7 +6,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.standby.off": "끄기: 패널이 실행되는 동안 화면 유지",
       "s.display.standby.power": "USB 충전이 끊기면 절전",
       "s.display.standby.data": "에이전트가 응답하지 않으면 절전",
-      "s.display.standbyHint": "컴퓨터가 다시 돌아오면 PhoneBox가 휴대폰을 깨우고 패널을 엽니다. 밀기만 하면 되는 잠금 화면은 자동으로 해제됩니다. 휴대폰이 PIN이나 패턴으로 보호되어 있으면 직접 잠금을 해제해야 합니다. 대기 모드가 켜져 있는 동안 PhoneBox는 Android의 ‘화면 켜짐 상태 유지’ 설정을 끄고, 대기 모드를 끄면 원래대로 복원합니다.",
+      "s.display.standbyHint": "컴퓨터가 다시 돌아오면 PhoneBox가 휴대폰을 깨우고 패널을 엽니다. 밀기만 하면 되는 잠금 화면은 자동으로 해제됩니다. 휴대폰이 PIN이나 패턴으로 보호되어 있으면 직접 잠금을 해제해야 합니다. 대기 모드가 켜져 있는 동안 PhoneBox는 Android의 ‘화면 켜짐 상태 유지’ 설정을 끄고, 대기 모드를 끄면 원래대로 복원합니다. 대기 모드는 ‘전화 연결 › 사용할 전화’에 지정된 휴대폰에만 적용되며, 휴대폰을 선택하지 않으면 아무 동작도 하지 않습니다.",
       "s.display.standbyGrace": "대기 모드 유예 시간(초)",
       "s.display.standbyGraceHint": "재부팅이나 일시적인 네트워크 끊김을 흡수합니다.",
       "s.phoneMic.title": "휴대폰 마이크",

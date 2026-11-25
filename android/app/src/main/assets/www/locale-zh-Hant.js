@@ -6,7 +6,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.standby.off": "關閉：面板執行時保持螢幕恆亮",
       "s.display.standby.power": "USB 充電中斷時休眠",
       "s.display.standby.data": "代理程式停止回應時休眠",
-      "s.display.standbyHint": "電腦恢復後，PhoneBox 會喚醒手機並開啟面板。只需滑動解鎖的螢幕鎖定會自動解除。如果手機設有 PIN 碼或圖案鎖定，仍需由您自行解鎖。待機模式開啟期間，PhoneBox 會關閉 Android 的「保持清醒狀態」設定，並在待機模式關閉時還原。",
+      "s.display.standbyHint": "電腦恢復後，PhoneBox 會喚醒手機並開啟面板。只需滑動解鎖的螢幕鎖定會自動解除。如果手機設有 PIN 碼或圖案鎖定，仍需由您自行解鎖。待機模式開啟期間，PhoneBox 會關閉 Android 的「保持清醒狀態」設定，並在待機模式關閉時還原。待機模式僅對「手機連線 › 使用的手機」中指定的手機生效；未選擇手機時不執行任何動作。",
       "s.display.standbyGrace": "待機寬限時間（秒）",
       "s.display.standbyGraceHint": "可容忍重新啟動或短暫的網路中斷。",
       "s.phoneMic.title": "手機麥克風",

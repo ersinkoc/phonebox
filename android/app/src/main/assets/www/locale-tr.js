@@ -6,7 +6,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.standby.off": "Kapalı: panel çalışırken ekran açık kalır",
       "s.display.standby.power": "USB şarjı kesilince uyu",
       "s.display.standby.data": "Ajan yanıt vermeyi bırakınca uyu",
-      "s.display.standbyHint": "Bilgisayar geri geldiğinde PhoneBox telefonu uyandırır ve paneli açar. Yalnızca kaydırmayla açılan kilit ekranı otomatik olarak kapatılır. Telefon PIN veya desenle korunuyorsa kilidi yine kendiniz açmalısınız. Bekleme açıkken PhoneBox, Android'in şarj olurken ekranı açık tut ayarını kapatır ve bekleme kapatıldığında geri yükler.",
+      "s.display.standbyHint": "Bilgisayar geri geldiğinde PhoneBox telefonu uyandırır ve paneli açar. Yalnızca kaydırmayla açılan kilit ekranı otomatik olarak kapatılır. Telefon PIN veya desenle korunuyorsa kilidi yine kendiniz açmalısınız. Bekleme açıkken PhoneBox, Android'in şarj olurken ekranı açık tut ayarını kapatır ve bekleme kapatıldığında geri yükler. Bekleme yalnızca Phone connection › Phone to use altında belirtilen telefonda çalışır; telefon seçilmemişse hiçbir şey yapmaz.",
       "s.display.standbyGrace": "Bekleme toleransı (sn)",
       "s.display.standbyGraceHint": "Yeniden başlatmayı veya kısa bir ağ kesintisini tolere eder.",
       "s.feeds.import": "+ Beslemeleri içe aktar (OPML / toplu)",

@@ -6,7 +6,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.standby.off": "オフ：パネルの実行中は画面を点灯したままにする",
       "s.display.standby.power": "USB充電が切れたらスリープ",
       "s.display.standby.data": "エージェントが応答しなくなったらスリープ",
-      "s.display.standbyHint": "コンピューターが戻ると、PhoneBox がスマートフォンを起こしてパネルを開きます。スワイプだけで解除できるロック画面は自動的に解除されます。PIN やパターンで保護されている場合は、ご自身でロックを解除する必要があります。スタンバイがオンの間、PhoneBox は Android の「スリープモードにしない」設定をオフにし、スタンバイをオフにすると元に戻します。",
+      "s.display.standbyHint": "コンピューターが戻ると、PhoneBox がスマートフォンを起こしてパネルを開きます。スワイプだけで解除できるロック画面は自動的に解除されます。PIN やパターンで保護されている場合は、ご自身でロックを解除する必要があります。スタンバイがオンの間、PhoneBox は Android の「スリープモードにしない」設定をオフにし、スタンバイをオフにすると元に戻します。スタンバイは「電話接続 › 使用する電話」で指定したスマートフォンにのみ作用します。何も選択していない場合は何も行いません。",
       "s.display.standbyGrace": "スタンバイの猶予時間（秒）",
       "s.display.standbyGraceHint": "再起動や一時的なネットワークの途切れを吸収します。",
       "s.phoneMic.title": "スマホのマイク",

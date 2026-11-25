@@ -6,7 +6,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.standby.off": "Mati: pertahankan layar menyala selama panel berjalan",
       "s.display.standby.power": "Tidur saat pengisian daya USB diputus",
       "s.display.standby.data": "Tidur saat agen berhenti merespons",
-      "s.display.standbyHint": "Saat komputer kembali, PhoneBox membangunkan ponsel dan membuka panel. Layar kunci yang hanya perlu digeser akan dilewati otomatis. Jika ponsel dilindungi PIN atau pola, Anda tetap harus membukanya sendiri. Selama siaga aktif, PhoneBox mematikan pengaturan Android “Tetap aktif” saat mengisi daya dan memulihkannya saat siaga dimatikan.",
+      "s.display.standbyHint": "Saat komputer kembali, PhoneBox membangunkan ponsel dan membuka panel. Layar kunci yang hanya perlu digeser akan dilewati otomatis. Jika ponsel dilindungi PIN atau pola, Anda tetap harus membukanya sendiri. Selama siaga aktif, PhoneBox mematikan pengaturan Android “Tetap aktif” saat mengisi daya dan memulihkannya saat siaga dimatikan. Siaga hanya bekerja pada ponsel yang disebutkan di Sambungan telepon › Telepon yang akan digunakan; jika tidak ada ponsel yang dipilih, siaga tidak melakukan apa pun.",
       "s.display.standbyGrace": "Tenggang waktu siaga (dtk)",
       "s.display.standbyGraceHint": "Mengabaikan restart atau gangguan jaringan sesaat.",
       "s.phoneMic.title": "Mikrofon ponsel",
