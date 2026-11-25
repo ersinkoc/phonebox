@@ -21,6 +21,38 @@ public class BatteryTests
     public void DisconnectedWindowsDevicesAreExcluded(bool hasProperty, byte value, bool expected)
         => Assert.Equal(expected, BatteryMonitor.IncludeWindowsBatteryDevice(hasProperty, [value]));
 
+    [Fact]
+    public void ClassicAudioBatteryNodesUseTheConnectionOfTheirOwnBluetoothDevice()
+    {
+        var devices = BatteryMonitor.WindowsBluetoothBatteries([
+            new(@"BTHENUM\DEV_78C11D112233\A&BLUETOOTHDEVICE_78C11D112233", true),
+            new(@"BTHENUM\{0000111E-0000-1000-8000-00805f9b34fb}\DEV&78c11d112233_C00000000", false, "Hands-Free AG", 92),
+            new(@"BTHLE\DEV_78C11D112233\one", false, "Galaxy Buds4 Pro", 93),
+            new(@"BTHLE\DEV_78C11D112234\two", false, "Disconnected Buds", 42),
+            new(@"BTHLE\DEV_123456AABBCC\three", true, "M720 Triathlon", 100),
+            new(@"BTHLE\DEV_123456AABBDD\four", null, "Unknown connection mouse", 80),
+        ]);
+        Assert.Equal([new("Galaxy Buds4 Pro", 93, "headphones", null),
+            new("M720 Triathlon", 100, "mouse", null), new("Unknown connection mouse", 80, "mouse", null)], devices);
+    }
+
+    [Fact]
+    public void WindowsInstanceIdStopsAtTheFirstNulInTheReusedBuffer()
+        => Assert.Equal(@"BTHLE\DEV_123456AABBCC", BatteryMonitor.WindowsInstanceId("BTHLE\\DEV_123456AABBCC\0LEFTOVER\0"));
+
+    [Fact]
+    public void ClassicServiceSuffixMatchesTheAddressAndDistinguishesIdenticalModels()
+    {
+        var devices = BatteryMonitor.WindowsBluetoothBatteries([
+            new(@"BTHENUM\DEV_123456ABCDEF\parent", true),
+            new(@"BTHENUM\service\branch&123456ABCDEF_C00000000", false, "Bose headphones", 85),
+            new(@"BTHENUM\DEV_123456ABCDEC\parent", true),
+            new(@"BTHENUM\service\branch&123456ABCDEC_C00000000", false, "Bose headphones", 75),
+            new(@"BTHENUM\service\branch&123456ABCDED_C00000000", false, "Bose headphones", 40),
+        ]);
+        Assert.Equal(["Bose headphones (CDEF)", "Bose headphones (CDEC)"], devices.Select(d => d.Name));
+    }
+
     [Theory]
     [InlineData("WH-1000XM5", "headphones")]
     [InlineData("Galaxy Buds2 Pro", "headphones")]

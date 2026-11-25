@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace PhoneBox.Agent;
 
@@ -103,11 +104,47 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
     internal static bool IncludeWindowsBatteryDevice(bool hasConnectedProperty, ReadOnlySpan<byte> value)
         => !hasConnectedProperty || value.Length == 0 || value[0] != 0;
 
+    internal static string WindowsInstanceId(ReadOnlySpan<char> buffer)
+    {
+        var end = buffer.IndexOf('\0');
+        return new string(end < 0 ? buffer : buffer[..end]);
+    }
+
+    internal sealed record BluetoothBatteryNode(string Id, bool? Connected, string? Name = null, int? Level = null);
+
+    [GeneratedRegex(@"^(?:BTH(?:ENUM|LE)\\DEV_|BTHENUM\\[^\\]+\\[^\\]*&)([0-9A-F]{12})(?:_C[0-9A-F]{8}(?=$)|(?=\\|$))",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex BluetoothAddressPattern();
+
+    internal static List<DeviceBattery> WindowsBluetoothBatteries(IEnumerable<BluetoothBatteryNode> nodes)
+    {
+        var devices = nodes.Select(node =>
+            (Node: node, Address: BluetoothAddressPattern().Match(node.Id).Groups[1].Value)).ToList();
+        // The connected node of a classic Bluetooth device may have no battery reading of its own.
+        var connected = devices.Where(d => d.Node.Connected == true && d.Address.Length > 0)
+            .Select(d => d.Address).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var readings = devices.Where(d => d.Node.Level is >= 0 and <= 100
+                && (d.Node.Connected != false || connected.Contains(d.Address)))
+            .GroupBy(d => d.Address.Length == 0 ? d.Node.Id : d.Address, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderByDescending(d => d.Node.Connected == true)
+                .ThenByDescending(d => KindOf(d.Node.Name ?? "") != "other")
+                .ThenByDescending(d => !string.IsNullOrWhiteSpace(d.Node.Name)).First())
+            .Select(d => (Name: d.Node.Name ?? "Bluetooth device", Level: d.Node.Level!.Value, d.Address)).ToList();
+
+        return readings.Select(d =>
+        {
+            // The same model can be paired more than once. Show the address suffix in that case only.
+            var duplicate = readings.Count(x => string.Equals(x.Name, d.Name, StringComparison.OrdinalIgnoreCase)) > 1;
+            var name = duplicate && d.Address.Length > 0 ? $"{d.Name} ({d.Address[^4..]})" : d.Name;
+            return new DeviceBattery(name, d.Level, KindOf(d.Name), null);
+        }).ToList();
+    }
+
 #if WINDOWS
     // ---------------------------------------------------------------- Windows
     private static List<DeviceBattery> Windows()
     {
-        var found = new List<(string Name, int Level, string Id)>();
+        var found = new List<BluetoothBatteryNode>();
         var battery = new DEVPROPKEY { fmtid = new Guid("104EA319-6EE2-4701-BD47-8DDBF425BBE5"), pid = 2 };
         var friendly = new DEVPROPKEY { fmtid = new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"), pid = 14 };
         var connected = new DEVPROPKEY { fmtid = new Guid("83DA6326-97A6-4088-9453-A1923F573B29"), pid = 15 };
@@ -121,28 +158,24 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
             for (uint i = 0; SetupDiEnumDeviceInfo(set, i, ref data); i++)
             {
                 if (!SetupDiGetDeviceInstanceIdW(set, ref data, idBuf, idBuf.Length, out _)) continue;
-                var id = new string(idBuf).TrimEnd('\0');
+                var id = WindowsInstanceId(idBuf);
                 if (!id.StartsWith("BTH", StringComparison.OrdinalIgnoreCase)) continue;
                 var hasConnected = SetupDiGetDevicePropertyW(set, ref data, ref connected, out _, buf, (uint)buf.Length, out var connectedSize, 0);
-                if (!IncludeWindowsBatteryDevice(hasConnected, buf.AsSpan(0, (int)Math.Min(connectedSize, (uint)buf.Length)))) continue;
-                if (!SetupDiGetDevicePropertyW(set, ref data, ref battery, out _, buf, (uint)buf.Length, out var size, 0) || size < 1) continue;
+                bool? isConnected = hasConnected && connectedSize > 0 ? IncludeWindowsBatteryDevice(true, buf.AsSpan(0, 1)) : null;
+                if (!SetupDiGetDevicePropertyW(set, ref data, ref battery, out _, buf, (uint)buf.Length, out var size, 0) || size < 1)
+                {
+                    if (isConnected == true) found.Add(new BluetoothBatteryNode(id, true));
+                    continue;
+                }
                 int level = buf[0];
-                if (level > 100) continue;
                 var name = SetupDiGetDevicePropertyW(set, ref data, ref friendly, out _, buf, (uint)buf.Length, out size, 0)
-                    ? System.Text.Encoding.Unicode.GetString(buf, 0, (int)size).TrimEnd('\0') : "Bluetooth device";
-                found.Add((name, level, id));
+                    ? System.Text.Encoding.Unicode.GetString(buf, 0, (int)size).TrimEnd('\0') : null;
+                found.Add(new BluetoothBatteryNode(id, isConnected, name, level));
             }
         }
         finally { SetupDiDestroyDeviceInfoList(set); }
 
-        // the same model paired twice (e.g. a mouse on two Easy-Switch channels): tell them apart by the address
-        return found.Select(f =>
-        {
-            var dupes = found.Count(x => string.Equals(x.Name, f.Name, StringComparison.OrdinalIgnoreCase)) > 1;
-            var addr = System.Text.RegularExpressions.Regex.Match(f.Id, @"DEV_([0-9A-F]{12})", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            var name = dupes && addr.Success ? $"{f.Name} ({addr.Groups[1].Value[^4..]})" : f.Name;
-            return new DeviceBattery(name, f.Level, KindOf(f.Name), null);
-        }).ToList();
+        return WindowsBluetoothBatteries(found);
     }
 
     [DllImport("setupapi.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SetupDiGetClassDevsW(IntPtr guid, string? enumerator, IntPtr parent, uint flags);
