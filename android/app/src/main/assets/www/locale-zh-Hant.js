@@ -467,6 +467,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.vibrate": "工作階段結束或需要輸入時震動",
       "s.display.finishToast": "工作階段結束時顯示提示",
       "s.display.finishSound": "工作階段結束時播放提示音",
+      "s.display.approvalSound": "出現權限請求時播放提示音",
       "s.display.finishSoundVolume": "音量(佔手機媒體音量的百分比)",
       "s.display.volumeKeys": "使用手機音量鍵切換頁面",
       "s.display.autoBrightness": "亮度隨環境變化（光線感測器）",

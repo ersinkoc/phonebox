@@ -166,6 +166,13 @@ public class ConfigTests
     }
 
     [Fact]
+    public void DisplayApprovalSoundIsOffUntilTurnedOn()
+    {
+        Assert.False(Load("{}").Display.ApprovalSound);
+        Assert.True(Load("""{ "display": { "approvalSound": true } }""").Display.ApprovalSound);
+    }
+
+    [Fact]
     public void TemplatesExpandIntoWidgets()
     {
         var c = Load("""{ "pages": [ { "template": "music" }, { "template": "music" } ] }""");

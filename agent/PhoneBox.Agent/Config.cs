@@ -221,6 +221,8 @@ public sealed class DisplayConfig
     public bool FinishToast { get; set; } = true;
     /// <summary>Play a chime when a session finishes.</summary>
     public bool FinishSound { get; set; }
+    /// <summary>Play a chime when a permission prompt appears on the phone, at the finish sound's volume.</summary>
+    public bool ApprovalSound { get; set; }
     /// <summary>Sound volume (% of the phone's media volume).</summary>
     public int FinishSoundVolume { get; set; } = 70;
     /// <summary>The phone's volume keys switch pages.</summary>

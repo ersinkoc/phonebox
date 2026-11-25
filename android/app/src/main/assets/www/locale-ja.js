@@ -467,6 +467,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.vibrate": "セッションが終了したり入力が必要になったときに振動する(S)",
       "s.display.finishToast": "セッションが終了したときにメッセージを表示する(S)",
       "s.display.finishSound": "セッションが終了したときに音を鳴らす",
+      "s.display.approvalSound": "許可の確認が表示されたときに音を鳴らす",
       "s.display.finishSoundVolume": "音量 (携帯電話のメディア音量の %)",
       "s.display.volumeKeys": "電話のボリュームキーでページを切り替えます",
       "s.display.autoBrightness": "明るさは部屋に従う（光センサー）",

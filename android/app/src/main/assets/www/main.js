@@ -84,7 +84,7 @@ export const FALLBACK_PAGES = [{
 export const DEFAULT_CFG = {
   weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
-  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, pageBar: 'dots', pageBarSide: 'bottom' },
+  display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, finishSound: false, approvalSound: false, finishSoundVolume: 70, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, pageBar: 'dots', pageBarSide: 'bottom' },
   opencode: { alwaysCountdownSec: 10 },
   pages: FALLBACK_PAGES,
   shortcuts: [],
@@ -1301,6 +1301,8 @@ export function renderApproval() {
     approvalShown = a.id;
     lastTouch = Date.now();
     undim();
+    // before the night screen wakes: chime() keeps quiet at night, like the finish sound
+    if (cfg.display?.approvalSound) chime(cfg.display.finishSoundVolume ?? 70);
     if (nightOn) { wakeUntil = Date.now() + 60_000; setNight(false); }
     buzz('0,120,80,120,80,240');
     // A prompt whose answer is still in flight comes back locked: it can be shown again while its own post runs.
