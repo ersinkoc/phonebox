@@ -29,7 +29,7 @@ private struct PanelScreen: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .bottomTrailing) {
             PanelView(computer: computer, usb: usb)
                 .ignoresSafeArea()
 
@@ -37,10 +37,11 @@ private struct PanelScreen: View {
                 showingOptions = true
             } label: {
                 Image(systemName: "ellipsis.circle.fill")
-                    .font(.system(size: 17))
+                    .font(.system(size: 15))
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white.opacity(0.8), .black.opacity(0.45))
-                    .padding(10)
+                    .foregroundStyle(.white.opacity(0.65), .black.opacity(0.35))
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 6)
             }
             .accessibilityLabel("Paired computer options")
         }
@@ -71,8 +72,10 @@ private struct ComputerOptionsView: View {
                     Text(computer.fingerprint)
                         .font(.system(.caption, design: .monospaced))
                         .textSelection(.enabled)
-                    LabeledContent("Check code", value: computer.checkCode)
-                        .font(.system(.body, design: .monospaced))
+                    LabeledContent("Check code") {
+                        Text(computer.checkCode)
+                            .font(.system(.body, design: .monospaced))
+                    }
                 }
                 Section {
                     LabeledContent("USB cable", value: usb.isConnected ? "Connected" : "Not connected")

@@ -19,6 +19,26 @@ internal sealed class RequestGate(int localPort, string[] sameOrigins, UsbLink u
     Func<HttpContext, bool> spotifyCallback, ILogger log)
 {
     /// <summary>
+    /// True when the request came from the iOS companion app, either by the explicit <c>X-PhoneBox-Platform: ios</c>
+    /// header or by an Apple device identifier in <c>X-PhoneBox-Model</c> (for builds before the platform header existed).
+    /// </summary>
+    internal static bool IsIosApp(IHeaderDictionary headers)
+    {
+        if (headers.TryGetValue("X-PhoneBox-Platform", out var platform)
+            && string.Equals(platform.ToString().Trim(), "ios", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (headers.TryGetValue("X-PhoneBox-Model", out var model))
+        {
+            var m = model.ToString().Trim();
+            if (m.StartsWith("iPhone", StringComparison.OrdinalIgnoreCase)
+                || m.StartsWith("iPad", StringComparison.OrdinalIgnoreCase)
+                || m.StartsWith("iPod", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// The phone bridge's phone-only namespace: reached only through the USB tunnel or the Wi-Fi port, with the phone's key.
     /// <c>/api/bridge/notification/test</c> is the Settings page's local test button (not on the Wi-Fi allow-list in Lan.cs).
     /// </summary>
@@ -95,7 +115,9 @@ internal sealed class RequestGate(int localPort, string[] sameOrigins, UsbLink u
                 ctx.Connection.LocalPort == usb.Port ? "USB" : ctx.Connection.LocalPort == localPort ? "local" : "Wi-Fi", ctx.Request.Headers["X-PhoneBox-WebView"].ToString());
             if (problem is not null) log.LogWarning("WebView: {Problem}", problem);
         }
-        if (ctx.Request.Headers.TryGetValue("X-PhoneBox-App", out var appVersion) && appVersion.ToString().Length is > 0 and < 32)
+        // Only Android app versions are compared against the APK release in UpdateService.Status(): the iOS app has its
+        // own version (e.g. 0.1.0), and storing it here would show false update prompts and reinstall the Android APK (#604).
+        if (!IsIosApp(ctx.Request.Headers) && ctx.Request.Headers.TryGetValue("X-PhoneBox-App", out var appVersion) && appVersion.ToString().Length is > 0 and < 32)
             UpdateService.AppVersion = appVersion.ToString();
         ctx.Response.Headers.CacheControl = "no-store";
         // only the panel may be framed, and only by the settings page itself (the live preview)

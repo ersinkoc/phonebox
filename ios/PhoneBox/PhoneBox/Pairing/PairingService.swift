@@ -52,6 +52,7 @@ struct PairingService {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(DeviceIdentity.model, forHTTPHeaderField: "X-PhoneBox-Model")
             request.setValue(DeviceIdentity.appVersion, forHTTPHeaderField: "X-PhoneBox-App")
+            request.setValue("ios", forHTTPHeaderField: "X-PhoneBox-Platform")
             request.httpBody = try? JSONSerialization.data(withJSONObject: ["code": link.code])
 
             pinned.resetMismatch()

@@ -41,6 +41,7 @@ final class AgentClient {
             request.timeoutInterval = upper == "POST" ? 30 : 8
             request.setValue("Bearer \(computer.token)", forHTTPHeaderField: "Authorization")
             request.setValue(appVersion, forHTTPHeaderField: "X-PhoneBox-App")
+            request.setValue("ios", forHTTPHeaderField: "X-PhoneBox-Platform")
             request.setValue(deviceID, forHTTPHeaderField: "X-PhoneBox-Device")
             request.setValue(model, forHTTPHeaderField: "X-PhoneBox-Model")
             if let contentType { request.setValue(contentType, forHTTPHeaderField: "Content-Type") }
