@@ -125,6 +125,22 @@ public sealed class AdbReverseTests : IDisposable
     }
 
     [Fact]
+    public async Task IgnoredUsbDeviceIsListedButNeverBecomesAnInstallTarget()
+    {
+        var fake = FakeAdb(["PANEL", "READER"], "", null, installed: false);
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new { adbPath = fake, ignoredDeviceSerials = new[] { " READER ", "READER", "" } }));
+        var store = new ConfigStore(path);
+        using var adb = new AdbReverse(store, NullLogger<AdbReverse>.Instance);
+        var ensure = typeof(AdbReverse).GetMethod("Ensure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await (Task)ensure.Invoke(adb, [CancellationToken.None])!;
+        Assert.Equal(["READER"], store.Get().IgnoredDeviceSerials);
+        Assert.Equal(["PANEL", "READER"], adb.AllDevices);
+        Assert.Equal(["PANEL"], adb.MissingApp);
+        Assert.DoesNotContain(Calls(), call => call.StartsWith("-s READER ", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task StoppingAlsoTakesTheRuleOffAPhoneNoLongerSelected()
     {
         var fake = FakeAdb(["FAKE1", "FAKE2"], "", null); // no rule yet: the agent sets it on both

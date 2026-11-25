@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "uk": {
     "strings": {
+      "s.display.weekStart": "Перший день тижня",
+      "s.display.weekStart.monday": "Понеділок",
+      "s.display.weekStart.sunday": "Неділя",
+      "s.display.weekStart.auto": "За мовою інтерфейсу",
+      "s.conn.ignoredDevices": "Ігноровані пристрої USB",
+      "s.conn.connectedDevices": "Підключені пристрої USB",
+      "s.conn.addIgnoredDevice": "Ігнорувати пристрій",
+      "s.conn.ignoredDevicesHint": "Один серійний номер у рядку. Агент пропускає ці пристрої під час підключення через USB та встановлення застосунку. Збережіть зміни.",
+      "s.quotas.codexLiveProviderHint": "Запускає codex у фоновому режимі кожні кілька хвилин, якщо Codex вибрано в переліку постачальників (типово вимкнено). Codex CLI може поновлювати власний сеанс.",
       "s.phoneMic.title": "Мікрофон телефона",
       "s.phoneMic.enable": "Використовувати мікрофон телефона як мікрофон комп'ютера",
       "s.phoneMic.hint": "Звук з мікрофона телефона відтворюється у віртуальний кабель, наприклад VB-CABLE; застосунки вибирають інший кінець кабелю (CABLE Output) як мікрофон. «Налаштувати» перевіряє кабель, завантажує scrcpy-server 5.0.1 з GitHub, якщо його немає, і вмикає мікрофон. Телефон має бути під'єднаний через USB. Інші параметри: Додатково › JSON (phoneMic).",

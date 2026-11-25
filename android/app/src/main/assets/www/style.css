@@ -890,6 +890,39 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .chip-btn:active { background: var(--q); color: #06080b; }
 .ct-n { flex: 1; display: flex; align-items: center; font-size: min(48cqh, 30cqw); font-weight: 300; color: var(--q); line-height: 1; }
 
+.timer-layout { display: contents; }
+@container (min-aspect-ratio: 3/2) {
+  .timer-layout {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: repeat(3, auto);
+    align-content: center;
+    align-items: center;
+    justify-items: center;
+    column-gap: 6px;
+  }
+  .timer-layout > * { grid-column: 1; }
+  .timer-layout > :is(.pomo-btns, .tm-btns) {
+    grid-area: 1 / 2 / span 3;
+    flex-direction: column;
+    margin: 0;
+    gap: 3px;
+  }
+  .timer-layout > .tm-btns.presets {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(3, auto);
+  }
+  .timer-layout .pb { width: min(20cqh, 42px); height: min(20cqh, 42px); }
+  .timer-layout .chip-btn { padding: 2px 4px; }
+  .w-timer .timer-layout .g-dial { height: min(60cqh, 45cqw); }
+  .timer-layout > :is(.w-title, .sw-laps) { justify-self: stretch; }
+  .timer-layout .sw-laps { max-height: 25cqh; overflow-y: auto; }
+}
+
 /* ---------- breathe ---------- */
 .w-breathe { cursor: pointer; }
 .br-stage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; }

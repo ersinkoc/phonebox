@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ja": {
     "strings": {
+      "s.display.weekStart": "週の始まり",
+      "s.display.weekStart.monday": "月曜日",
+      "s.display.weekStart.sunday": "日曜日",
+      "s.display.weekStart.auto": "表示言語に従う",
+      "s.conn.ignoredDevices": "無視する USB デバイス",
+      "s.conn.connectedDevices": "接続済みの USB デバイス",
+      "s.conn.addIgnoredDevice": "デバイスを無視",
+      "s.conn.ignoredDevicesHint": "1 行に 1 つのシリアル番号を入力します。エージェントは USB 接続とアプリのインストール時にこれらのデバイスを除外します。保存すると反映されます。",
+      "s.quotas.codexLiveProviderHint": "プロバイダー一覧で Codex を選択すると、数分ごとにバックグラウンドで codex を実行します（既定ではオフ）。Codex CLI は自身のログインを更新することがあります。",
       "s.phoneMic.title": "スマホのマイク",
       "s.phoneMic.enable": "スマホのマイクをパソコンのマイクとして使う",
       "s.phoneMic.hint": "スマホのマイクの音は VB-CABLE などの仮想ケーブルに再生され、アプリはケーブルのもう一方の端(CABLE Output)をマイクとして選びます。「セットアップ」はケーブルを確認し、scrcpy-server 5.0.1 がなければ GitHub からダウンロードしてマイクをオンにします。スマホは USB で接続しておく必要があります。その他の設定: 詳細 › JSON(phoneMic)。",

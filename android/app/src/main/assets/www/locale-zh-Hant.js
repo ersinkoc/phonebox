@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "zh-Hant": {
     "strings": {
+      "s.display.weekStart": "每週第一天",
+      "s.display.weekStart.monday": "星期一",
+      "s.display.weekStart.sunday": "星期日",
+      "s.display.weekStart.auto": "依介面語言",
+      "s.conn.ignoredDevices": "忽略的 USB 裝置",
+      "s.conn.connectedDevices": "已連接的 USB 裝置",
+      "s.conn.addIgnoredDevice": "忽略裝置",
+      "s.conn.ignoredDevicesHint": "每行一個序號。代理程式會在建立 USB 連線和安裝應用程式時略過這些裝置。儲存後生效。",
+      "s.quotas.codexLiveProviderHint": "在供應商清單選取 Codex 後，每隔幾分鐘在背景執行 codex（預設關閉）。Codex CLI 可以自行更新登入狀態。",
       "s.phoneMic.title": "手機麥克風",
       "s.phoneMic.enable": "將手機的麥克風用作電腦麥克風",
       "s.phoneMic.hint": "手機麥克風的聲音會播放到虛擬音訊線(如 VB-CABLE)中;應用選擇音訊線的另一端(CABLE Output)作為麥克風。“設定”會檢查音訊線,如缺少則從 GitHub 下載 scrcpy-server 5.0.1,然後開啟麥克風。手機須透過 USB 連線。更多選項:進階 › JSON(phoneMic)。",

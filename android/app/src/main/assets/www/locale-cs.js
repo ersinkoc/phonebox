@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "cs": {
     "strings": {
+      "s.display.weekStart": "První den v týdnu",
+      "s.display.weekStart.monday": "Pondělí",
+      "s.display.weekStart.sunday": "Neděle",
+      "s.display.weekStart.auto": "Podle jazyka rozhraní",
+      "s.conn.ignoredDevices": "Ignorovaná zařízení USB",
+      "s.conn.connectedDevices": "Připojená zařízení USB",
+      "s.conn.addIgnoredDevice": "Ignorovat zařízení",
+      "s.conn.ignoredDevicesHint": "Jedno sériové číslo na řádek. Agent tato zařízení vynechá při připojení přes USB a instalaci aplikace. Změny uložte.",
+      "s.quotas.codexLiveProviderHint": "Spouští codex na pozadí každých několik minut, když je Codex vybraný v seznamu poskytovatelů (ve výchozím stavu vypnuto). Codex CLI může obnovit vlastní přihlášení.",
       "s.phoneMic.title": "Mikrofon telefonu",
       "s.phoneMic.enable": "Používat mikrofon telefonu jako mikrofon počítače",
       "s.phoneMic.hint": "Zvuk z mikrofonu telefonu se přehrává do virtuálního kabelu, například VB-CABLE; aplikace jako mikrofon vyberou druhý konec kabelu (CABLE Output). Nastavit zkontroluje kabel, stáhne scrcpy-server 5.0.1 z GitHubu, pokud chybí, a zapne mikrofon. Telefon musí být připojen přes USB. Další možnosti: Pokročilé › JSON (phoneMic).",

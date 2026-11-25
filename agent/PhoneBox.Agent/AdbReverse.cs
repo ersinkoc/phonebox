@@ -501,7 +501,6 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             return;
         }
 
-        var serial = cfg.Get().DeviceSerial;
         string listed;
         try { listed = await Adb(adb, "devices", ct); }
         catch (TimeoutException)
@@ -520,7 +519,7 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             .ToArray();
         _all = devices;
         foreach (var gone in _setHere.Keys.Except(devices).ToList()) _setHere.Remove(gone); // unplugged: adb dropped its rule
-        devices = devices.Where(s => string.IsNullOrEmpty(serial) || s == serial).ToArray();
+        devices = devices.Where(cfg.Get().UsesUsbDevice).ToArray();
 
         SetDevices(devices);
         usb?.Retain(devices);

@@ -1,5 +1,6 @@
 import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, pages, curPage, gotoPageRef } from '../main.js';
 import { W } from '../registry.js';
+import { weekStartDay } from './time.js';
 import { invalidateDeckState } from './controls.js';
 
 function bindProcessLink(box, sortTarget) {
@@ -996,31 +997,43 @@ W.calendar = {
     return {
       update() {
         const now = new Date();
-        const key = now.toDateString();
+        const firstDay = weekStartDay();
+        const key = now.toDateString() + '/' + firstDay;
         if (key === shown) return;
         shown = key;
         const y = now.getFullYear(), m = now.getMonth();
         const first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate();
-        const lead = (first.getDay() + 6) % 7; // Monday first
+        const lead = (first.getDay() - firstDay + 7) % 7;
         const weekday = new Intl.DateTimeFormat(LOCALE, { weekday: 'narrow' });
-        const cells = Array.from({ length: 7 }, (_, i) =>
-          h('span', 'cal-h' + (i > 4 ? ' we' : ''), weekday.format(new Date(2024, 0, i + 1)))); // Monday, Jan 1
+        const weekend = (day) => day === 0 || day === 6;
+        const cells = Array.from({ length: 7 }, (_, i) => {
+          const day = (firstDay + i) % 7;
+          return h('span', 'cal-h' + (weekend(day) ? ' we' : ''), weekday.format(new Date(2024, 0, 7 + day)));
+        });
         const prevDays = new Date(y, m, 0).getDate();
         for (let i = 0; i < lead; i++) cells.push(h('span', 'cal-d out', prevDays - lead + 1 + i));
         for (let d = 1; d <= days; d++) {
-          const wd = (lead + d - 1) % 7;
-          cells.push(h('span', 'cal-d' + (d === now.getDate() ? ' today' : '') + (wd > 4 ? ' we' : ''), d));
+          const wd = (first.getDay() + d - 1) % 7;
+          cells.push(h('span', 'cal-d' + (d === now.getDate() ? ' today' : '') + (weekend(wd) ? ' we' : ''), d));
         }
         const total = Math.ceil(cells.length / 7) * 7;
         for (let d = 1; cells.length < total; d++) cells.push(h('span', 'cal-d out', d));
         const grid = h('div', 'cal', cells);
         grid.style.gridTemplateRows = `auto repeat(${total / 7 - 1}, 1fr)`;
         box.replaceChildren(h('div', 'w-title', now.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' }),
-          h('span', 'w-sub', tp('Week ') + isoWeek(now))), grid);
+          h('span', 'w-sub', tp('Week ') + weekNumber(now, firstDay))), grid);
       },
     };
   },
 };
+
+function weekNumber(d, firstDay) {
+  if (firstDay === 1) return isoWeek(d);
+  const start = Date.UTC(d.getFullYear(), 0, 1);
+  const leadingDays = (new Date(start).getUTCDay() - firstDay + 7) % 7;
+  const elapsed = (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - start) / 86400000;
+  return 1 + Math.floor((elapsed + leadingDays) / 7);
+}
 
 export function isoWeek(d) {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -1088,7 +1101,7 @@ W.pomodoro = {
     const dial = h('div', 'g-dial'), time = h('div', 'g-val'), phase = h('div', 'g-label'), count = h('div', 'g-sub');
     const play = labelled(h('button', 'pb main', icon('play')), t('w.a.start')), reset = labelled(h('button', 'pb', icon('rotate-ccw')), t('w.a.restart')), skip = labelled(h('button', 'pb', icon('skip-forward')), t('w.a.skip'));
     dial.append(time);
-    box.append(dial, phase, count, h('div', 'pomo-btns', reset, play, skip));
+    box.append(h('div', 'timer-layout', dial, phase, count, h('div', 'pomo-btns', reset, play, skip)));
     let svg = null;
     const total = () => plan[st.step].ms;
     const remaining = () => (st.endsAt ? Math.max(0, st.endsAt - Date.now()) : st.left);

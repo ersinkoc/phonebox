@@ -758,6 +758,8 @@ nav a.on::before { color: var(--accent); }
           <span class="hint" data-i18n="s.display.orientationHint">You design pages in landscape; in portrait the panel arranges the widgets by itself, top to bottom. Tablets use the same pages, just bigger.</span></div>
         <label class="check"><input type="checkbox" data-bind="display.tabletRows" id="tabletRowsOpt"> <span data-i18n="s.display.tabletRows">More rows on a tablet</span></label>
         <span class="hint" style="display:block;margin:-4px 0 10px" data-i18n="s.display.tabletRowsHint">A landscape tablet keeps the 12 columns and gets more rows (about 8 to 10, from its screen), so a page holds more widgets; upright, it packs 12 across. Widgets below the top 6 rows show only on a tablet: a phone leaves them out without a sign. Update the PhoneBox app on the tablet first, as an older app squeezes those widgets onto extra rows.</span>
+        <div class="field" style="max-width:420px"><label for="weekStart" data-i18n="s.display.weekStart">First day of the week</label>
+          <select id="weekStart" data-bind="display.weekStart"><option value="monday" data-i18n="s.display.weekStart.monday">Monday</option><option value="sunday" data-i18n="s.display.weekStart.sunday">Sunday</option><option value="auto" data-i18n="s.display.weekStart.auto">Follow the display language</option></select></div>
         <div class="field" style="max-width:420px"><label data-i18n="s.display.timeFormat">Time format</label>
           <select data-bind="display.hour12" data-type="hour12"><option value="false" data-i18n="s.display.h24">24-hour (14:05)</option><option value="true" data-i18n="s.display.h12">12-hour (2:05 PM)</option><option value="auto" data-i18n="s.display.orientation.auto">Follow the phone</option></select></div>
         <label class="check"><input type="checkbox" data-bind="display.showSeconds"> <span data-i18n="s.display.showSeconds">Show seconds on the clock</span></label>
@@ -896,7 +898,7 @@ nav a.on::before { color: var(--accent); }
         </div>
         <div class="field" style="margin-top:10px">
           <label class="check"><input type="checkbox" data-bind="codexBar.codexLiveQuota"> <span data-i18n="s.quotas.codexLive">Read live Codex quotas with the Codex CLI</span></label>
-          <span class="hint" data-i18n="s.quotas.codexLiveHint">Runs codex in the background every few minutes while a page shows Codex quotas (off by default). The Codex CLI manages its own sign-in and may refresh it.</span>
+          <span class="hint" data-i18n="s.quotas.codexLiveProviderHint">Runs codex in the background every few minutes when Codex is selected in the provider list (off by default). The Codex CLI manages its own sign-in and may refresh it.</span>
         </div>
         <div class="row" style="gap:12px;margin-top:10px">
           <div class="field" style="max-width:180px"><label data-i18n="s.quotas.pageSize">Cards at a time</label><input type="number" min="0" max="6" data-bind="codexBar.pageSize" data-type="int"><span class="hint" data-i18n="s.quotas.pageSizeHint">0 = show all</span></div>
@@ -910,6 +912,15 @@ nav a.on::before { color: var(--accent); }
           <div class="field"><label data-i18n="s.conn.phoneToUse">Phone to use</label><select id="serial"></select><span class="hint" data-i18n="s.conn.phoneToUseHint">If several Android devices are connected, choose which one runs the panel.</span>
             <div class="row" id="appMissing" hidden style="margin-top:8px"><button class="btn primary sm" id="installApp" data-i18n="s.conn.installApp">Install the phone app</button><span class="hint" id="appMissingText"></span></div></div>
           <div class="field"><label data-i18n="s.conn.adbPath">Path to adb.exe (empty = auto-detect)</label><input type="text" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
+        </div>
+        <div class="field">
+          <label for="ignoredDeviceSerials" data-i18n="s.conn.ignoredDevices">Ignored USB devices</label>
+          <div class="row" style="gap:8px">
+            <select id="ignoreDevice" aria-label="Connected USB devices" data-i18n-aria="s.conn.connectedDevices"></select>
+            <button type="button" id="ignoreDeviceAdd" class="btn sm" data-i18n="s.conn.addIgnoredDevice">Ignore device</button>
+          </div>
+          <textarea id="ignoredDeviceSerials" rows="2" data-type="device-serials" data-bind="ignoredDeviceSerials"></textarea>
+          <span class="hint" data-i18n="s.conn.ignoredDevicesHint">One serial per line. The agent skips these devices for USB connections and app installs. Save to apply.</span>
         </div>
         <p id="usbProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
         <p id="webviewProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
@@ -3802,12 +3813,14 @@ function bindForm() {
     if (p === 'display.language') return;
     const v = getPath(cfg, p);
     if (el.type === 'checkbox') el.checked = !!v;
+    else if (type === 'device-serials') el.value = (Array.isArray(v) ? v : []).join('\n');
     else if (type === 'hour12') el.value = v === true || v === 'true' ? 'true' : v === 'auto' ? 'auto' : 'false';
     else el.value = v ?? '';
     el.oninput = el.onchange = () => {
       let val = el.type === 'checkbox' ? el.checked : el.value;
       if (type === 'num') val = parseFloat(val);
       if (type === 'int') val = parseInt(val || '0', 10);
+      if (type === 'device-serials') val = [...new Set(val.split('\n').map(s => s.trim()).filter(Boolean))];
       if (type === 'hour12') val = val === 'true' ? true : val === 'auto' ? 'auto' : false;
       if (p === 'adbPath' && val === '') val = null;
       setPath(cfg, p, val);
@@ -3897,6 +3910,18 @@ async function loadInfo() {
     if (cur && !i.devices.includes(cur)) opts.push([cur, cur + ' (not connected)']);
     sel.replaceChildren(...opts.map(([v, l]) => h('option', { value: v, selected: v === cur }, l)));
     sel.onchange = () => { cfg.deviceSerial = sel.value || null; changed(); };
+    const ignore = $('ignoreDevice'), addIgnore = $('ignoreDeviceAdd');
+    const selected = ignore.value;
+    const serials = i.devices.filter(d => !cfg.ignoredDeviceSerials?.includes(d));
+    ignore.replaceChildren(...serials.map(d => h('option', { value: d, selected: d === selected }, d)));
+    addIgnore.disabled = !ignore.value;
+    addIgnore.onclick = () => {
+      const field = $('ignoredDeviceSerials');
+      field.value = [field.value, ignore.value].filter(Boolean).join('\n');
+      field.dispatchEvent(new Event('input'));
+      ignore.selectedOptions[0]?.remove();
+      addIgnore.disabled = !ignore.value;
+    };
     const lan = await (await fetch('/api/lan')).json();
     $('lanHosts').textContent = lan.hosts.length
       ? lan.hosts.map((a) => a.startsWith('100.') ? a + ' (Tailscale)' : a).join(', ')
@@ -3936,7 +3961,7 @@ function fillDefaults() {
   cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.display.wallpaper ??= { dim: 45, blur: 0 }; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.claude.extraCredentialDirs ??= []; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity', 'grok'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
-    showSeconds: true, vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', tabletRows: false, theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
+    showSeconds: true, weekStart: 'monday', vibrate: true, finishToast: true, finishSound: false, finishSoundVolume: 70, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', tabletRows: false, theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
   cfg.steam ??= { enabled: false };
 }

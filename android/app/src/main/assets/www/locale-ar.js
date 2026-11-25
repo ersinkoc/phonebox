@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ar": {
     "strings": {
+      "s.display.weekStart": "أول أيام الأسبوع",
+      "s.display.weekStart.monday": "الاثنين",
+      "s.display.weekStart.sunday": "الأحد",
+      "s.display.weekStart.auto": "اتّباع لغة الواجهة",
+      "s.conn.ignoredDevices": "أجهزة USB المتجاهلة",
+      "s.conn.connectedDevices": "أجهزة USB المتصلة",
+      "s.conn.addIgnoredDevice": "تجاهل الجهاز",
+      "s.conn.ignoredDevicesHint": "أدخل رقمًا تسلسليًا واحدًا في كل سطر. يتجاوز الوكيل هذه الأجهزة عند الاتصال عبر USB وتثبيت التطبيق. احفظ التغييرات لتطبيقها.",
+      "s.quotas.codexLiveProviderHint": "يشغّل codex في الخلفية كل بضع دقائق عند اختيار Codex من قائمة المزوّدين (متوقف افتراضيًا). يمكن لواجهة Codex تجديد تسجيل دخولها.",
       "s.phoneMic.title": "ميكروفون الهاتف",
       "s.phoneMic.enable": "استخدام ميكروفون الهاتف كميكروفون للحاسوب",
       "s.phoneMic.hint": "يُشغَّل صوت ميكروفون الهاتف في كابل افتراضي مثل VB-CABLE، وتختار التطبيقات الطرف الآخر من الكابل (CABLE Output) ميكروفونًا لها. يتحقق «الإعداد» من وجود الكابل، وينزّل scrcpy-server 5.0.1 من GitHub إن لم يكن موجودًا، ثم يشغّل الميكروفون. يجب توصيل الهاتف عبر USB. خيارات أخرى: متقدم › JSON (phoneMic).",

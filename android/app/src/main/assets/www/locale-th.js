@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "th": {
     "strings": {
+      "s.display.weekStart": "วันแรกของสัปดาห์",
+      "s.display.weekStart.monday": "วันจันทร์",
+      "s.display.weekStart.sunday": "วันอาทิตย์",
+      "s.display.weekStart.auto": "ตามภาษาที่แสดง",
+      "s.conn.ignoredDevices": "อุปกรณ์ USB ที่ละเว้น",
+      "s.conn.connectedDevices": "อุปกรณ์ USB ที่เชื่อมต่อ",
+      "s.conn.addIgnoredDevice": "ละเว้นอุปกรณ์",
+      "s.conn.ignoredDevicesHint": "ป้อนหมายเลขซีเรียลหนึ่งหมายเลขต่อบรรทัด เอเจนต์จะข้ามอุปกรณ์เหล่านี้เมื่อเชื่อมต่อ USB หรือติดตั้งแอป บันทึกเพื่อใช้การตั้งค่า",
+      "s.quotas.codexLiveProviderHint": "เรียก codex เบื้องหลังทุกสองสามนาทีเมื่อเลือก Codex ในรายการผู้ให้บริการ (ปิดไว้โดยค่าเริ่มต้น) Codex CLI สามารถต่ออายุการลงชื่อเข้าใช้เองได้",
       "s.phoneMic.title": "ไมค์ของโทรศัพท์",
       "s.phoneMic.enable": "ใช้ไมโครโฟนของโทรศัพท์เป็นไมโครโฟนของคอมพิวเตอร์",
       "s.phoneMic.hint": "เสียงจากไมค์ของโทรศัพท์จะเล่นเข้าสายเสมือน เช่น VB-CABLE แล้วแอปจะเลือกปลายอีกด้านของสาย (CABLE Output) เป็นไมโครโฟน ปุ่มตั้งค่าจะตรวจสอบสาย ดาวน์โหลด scrcpy-server 5.0.1 จาก GitHub หากยังไม่มี แล้วเปิดไมค์ โทรศัพท์ต้องต่อผ่าน USB ตัวเลือกเพิ่มเติม: ขั้นสูง › JSON (phoneMic)",

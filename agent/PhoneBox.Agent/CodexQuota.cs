@@ -10,13 +10,13 @@ internal static class CodexQuota
 {
     internal static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
-    public static string? Find() => Find(Environment.GetEnvironmentVariable("PATH"), OperatingSystem.IsWindows());
+    public static string? Find() => Find(Environment.GetEnvironmentVariable("PATH"), OperatingSystem.IsWindows(), FindStoreCli);
 
     /// <summary>
     /// On Windows, npm writes a POSIX shell script named `codex` next to `codex.cmd`.
     /// Accept only `.exe` first and then `.cmd` on Windows so the shell script is never selected.
     /// </summary>
-    internal static string? Find(string? pathEnv, bool isWindows)
+    internal static string? Find(string? pathEnv, bool isWindows, Func<string?>? findStoreCli = null)
     {
         if (!isWindows) return ToolProcess.Find("codex");
         var dirs = (pathEnv ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
@@ -29,7 +29,26 @@ internal static class CodexQuota
                 var candidate = Path.Combine(dir, name);
                 if (File.Exists(candidate)) return candidate;
             }
+        return findStoreCli?.Invoke();
+    }
+
+    private static string? FindStoreCli()
+    {
+#if WINDOWS
+        const string family = "OpenAI.Codex_2p2nqsd0c76g0";
+        try
+        {
+            return new Windows.Management.Deployment.PackageManager().FindPackagesForUser(string.Empty, family)
+                .Select(p => Path.Combine(p.InstalledLocation.Path, "app", "resources", "codex.exe"))
+                .FirstOrDefault(File.Exists);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or COMException or IOException)
+        {
+            return null;
+        }
+#else
         return null;
+#endif
     }
 
     public static Task<QuotaProvider> ReadAsync(string path, CancellationToken ct) => ReadAsync(StartInfo(path), Timeout, ct);

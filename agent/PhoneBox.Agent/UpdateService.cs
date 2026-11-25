@@ -199,7 +199,7 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
     /// </summary>
     public async Task<string?> InstallAppAsync(CancellationToken ct = default)
     {
-        var targets = adb.MissingApp;
+        var targets = adb.MissingApp.Where(cfg.Get().UsesUsbDevice).ToArray();
         if (targets.Length == 0) return "no connected phone is missing the app";
         if (!await _gate.WaitAsync(0, ct)) return "an update is already running";
         try
@@ -214,6 +214,7 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
             {
                 try
                 {
+                    if (!cfg.Get().UsesUsbDevice(serial)) continue;
                     var output = await InstallAsync(adbExe, serial, apk, replace: false, ct);
                     if (!output.Contains("Success")) failed.Add($"installing on {serial} failed: {output.Trim().Split('\n').LastOrDefault()}");
                     else log.LogInformation("phone app {Version} installed on {Serial}", _latest.Version, serial);
@@ -256,6 +257,7 @@ public sealed class UpdateService(ConfigStore cfg, AdbReverse adb, IHostApplicat
                     log.LogInformation("phone app on {Serial} is already {Version}", serial, _latest.Version);
                     continue;
                 }
+                if (!cfg.Get().UsesUsbDevice(serial)) continue;
                 output = await InstallAsync(adbExe, serial, apk, replace: true, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)

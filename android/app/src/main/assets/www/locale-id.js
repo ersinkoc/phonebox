@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "id": {
     "strings": {
+      "s.display.weekStart": "Hari pertama dalam pekan",
+      "s.display.weekStart.monday": "Senin",
+      "s.display.weekStart.sunday": "Minggu",
+      "s.display.weekStart.auto": "Ikuti bahasa tampilan",
+      "s.conn.ignoredDevices": "Perangkat USB yang diabaikan",
+      "s.conn.connectedDevices": "Perangkat USB terhubung",
+      "s.conn.addIgnoredDevice": "Abaikan perangkat",
+      "s.conn.ignoredDevicesHint": "Satu nomor seri per baris. Agen melewati perangkat ini saat menghubungkan USB dan memasang aplikasi. Simpan untuk menerapkan.",
+      "s.quotas.codexLiveProviderHint": "Menjalankan codex di latar belakang setiap beberapa menit jika Codex dipilih dalam daftar penyedia (nonaktif secara bawaan). Codex CLI dapat memperbarui sesi masuknya.",
       "s.phoneMic.title": "Mikrofon ponsel",
       "s.phoneMic.enable": "Gunakan mikrofon ponsel sebagai mikrofon komputer",
       "s.phoneMic.hint": "Mikrofon ponsel diputar ke kabel virtual seperti VB-CABLE; aplikasi memilih ujung kabel yang lain (CABLE Output) sebagai mikrofon. Siapkan memeriksa kabel, mengunduh scrcpy-server 5.0.1 dari GitHub jika belum ada, lalu menyalakan mikrofon. Ponsel harus terhubung lewat USB. Opsi lain: Lanjutan › JSON (phoneMic).",

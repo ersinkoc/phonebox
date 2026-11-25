@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "hi": {
     "strings": {
+      "s.display.weekStart": "सप्ताह का पहला दिन",
+      "s.display.weekStart.monday": "सोमवार",
+      "s.display.weekStart.sunday": "रविवार",
+      "s.display.weekStart.auto": "इंटरफ़ेस की भाषा के अनुसार",
+      "s.conn.ignoredDevices": "अनदेखे USB उपकरण",
+      "s.conn.connectedDevices": "कनेक्ट किए गए USB उपकरण",
+      "s.conn.addIgnoredDevice": "उपकरण अनदेखा करें",
+      "s.conn.ignoredDevicesHint": "हर पंक्ति में एक सीरियल नंबर। एजेंट USB कनेक्शन और ऐप इंस्टॉलेशन के लिए इन उपकरणों को छोड़ देता है। लागू करने के लिए सहेजें।",
+      "s.quotas.codexLiveProviderHint": "प्रदाता सूची में Codex चुने जाने पर हर कुछ मिनट में पृष्ठभूमि में codex चलाता है (डिफ़ॉल्ट रूप से बंद)। Codex CLI अपना साइन-इन नवीनीकृत कर सकती है।",
       "s.phoneMic.title": "फ़ोन माइक",
       "s.phoneMic.enable": "फ़ोन के माइक्रोफ़ोन को कंप्यूटर के माइक्रोफ़ोन की तरह इस्तेमाल करें",
       "s.phoneMic.hint": "फ़ोन के माइक की आवाज़ VB-CABLE जैसी वर्चुअल केबल में चलाई जाती है; ऐप केबल के दूसरे सिरे (CABLE Output) को माइक्रोफ़ोन चुनते हैं। सेट अप केबल की जाँच करता है, scrcpy-server 5.0.1 न हो तो उसे GitHub से डाउनलोड करता है और माइक चालू करता है। फ़ोन USB से जुड़ा होना चाहिए। और विकल्प: उन्नत › JSON (phoneMic)।",

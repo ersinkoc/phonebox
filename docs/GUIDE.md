@@ -165,9 +165,18 @@ balance is shown in dollars only when the reply includes one. The included credi
 
 **Codex live quotas** are off by default (normally PhoneBox reads Codex's local session logs without running `codex`).
 Turn on **Read live Codex quotas with the Codex CLI** in **Settings › General › AI quotas & CodexBar** to query
-account-wide limits through `codex app-server` even when no Codex session is active. It runs every few minutes only
-while an enabled page shows Codex quotas and fresh CodexBar data is not already winning, and backs off on failures.
+account-wide limits through `codex app-server` even when no Codex session is active. It runs every few minutes while
+Codex is selected in the provider list and fresh CodexBar data is unavailable. A custom widget reading `/api/quotas`
+works without a built-in quota widget. On Windows the agent also looks for the CLI bundled with the Microsoft Store
+Codex app when it cannot find the CLI on PATH. Failed polls back off.
 Because it starts the Codex CLI, Codex may refresh its own sign-in in `~/.codex/auth.json`.
+
+If **Claude Code quotas** stay stale because the CLI sign-in expired, run `claude auth status` under the same
+user account and check whether the next quota poll picks up a fresh sign-in. Some Claude Code versions refresh
+the sign-in during that command. If it reports that you are signed out, run `claude auth login`.
+You can schedule `claude auth status` hourly under your user account if it refreshes the sign-in in your setup.
+On Windows use Task Scheduler with the full path to the Claude CLI and select **Run only when user is logged on**.
+Redirect or discard the command's output if you do not want account details recorded.
 
 **Native Antigravity quotas** use a running app/hub's advertised HTTP port and CSRF token, the HTTPS port of newer IDE
 servers (2.32 picks it at start-up, so the agent tries the loopback ports that server process listens on and accepts
@@ -456,8 +465,8 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   PhoneBox waits until Claude Code renews it.
 - **Codex quota and sessions** are read from local files in `~/.codex/sessions`. With the opt-in
   **Read live Codex quotas with the Codex CLI** setting (**Settings › General › AI quotas & CodexBar**, off by
-  default), PhoneBox also queries `codex app-server` about every 3 minutes (backing off on failures) while an enabled
-  page shows Codex quotas and fresh CodexBar data is not already winning; no coding session or inference prompt is
+  default), PhoneBox also queries `codex app-server` about every 3 minutes (backing off on failures) while Codex is
+  selected in the provider list and fresh CodexBar data is unavailable. No coding session or inference prompt is
   required, and local session quota stays as fallback. Claude Code sessions come from
   `~/.claude/sessions`. Grok sessions come from local files under `~/.grok/sessions` (or `GROK_HOME`): the project
   folder, status, model, reasoning effort and token counters. The chat, its title and the cost stay on this computer.

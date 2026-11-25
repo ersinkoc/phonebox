@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "tr": {
     "strings": {
+      "s.display.weekStart": "Haftanın ilk günü",
+      "s.display.weekStart.monday": "Pazartesi",
+      "s.display.weekStart.sunday": "Pazar",
+      "s.display.weekStart.auto": "Arayüz dilini izle",
+      "s.conn.ignoredDevices": "Yok sayılan USB cihazları",
+      "s.conn.connectedDevices": "Bağlı USB cihazları",
+      "s.conn.addIgnoredDevice": "Cihazı yok say",
+      "s.conn.ignoredDevicesHint": "Her satıra bir seri numarası girin. Agent bu cihazlara USB üzerinden bağlanmaz veya uygulama kurmaz. Uygulamak için kaydedin.",
+      "s.quotas.codexLiveProviderHint": "Sağlayıcı listesinde Codex seçiliyken birkaç dakikada bir arka planda codex çalışır (varsayılan olarak kapalı). Codex CLI oturumu yönetir ve yenileyebilir.",
       "s.feeds.import": "+ Beslemeleri içe aktar (OPML / toplu)",
       "s.feeds.importTitle": "RSS / Atom beslemelerini içe aktar",
       "s.feeds.importHint": "Bir OPML dışa aktarma dosyasından (Feedly, Inoreader, NetNewsWire vb.) kategorili beslemeleri içe aktarın ya da satır yapıştırın (Kategori | Ad | URL veya Ad | URL).",

@@ -268,7 +268,8 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     internal bool IsGrokEnabled() => config is null || config.Get().ShowGrokQuota();
 
     /// <summary>Returns true when live Codex CLI polling is opted in and an enabled page shows Codex quotas.</summary>
-    internal bool IsCodexLiveEnabled() => config is null || (config.Get() is { } c && c.CodexBar.CodexLiveQuota && c.ShowCodexQuota());
+    internal bool IsCodexLiveEnabled() => config is null
+        || (config.Get().CodexBar is { CodexLiveQuota: true } settings && settings.Providers.Contains("codex"));
 
     internal const long CodexLiveIntervalMs = 180_000;
     internal const long CodexLiveStaleMs = 360_000;

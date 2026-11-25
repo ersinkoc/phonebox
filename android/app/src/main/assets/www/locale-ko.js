@@ -2,6 +2,15 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ko": {
     "strings": {
+      "s.display.weekStart": "한 주의 시작 요일",
+      "s.display.weekStart.monday": "월요일",
+      "s.display.weekStart.sunday": "일요일",
+      "s.display.weekStart.auto": "표시 언어 따르기",
+      "s.conn.ignoredDevices": "무시할 USB 기기",
+      "s.conn.connectedDevices": "연결된 USB 기기",
+      "s.conn.addIgnoredDevice": "기기 무시",
+      "s.conn.ignoredDevicesHint": "한 줄에 일련번호 하나를 입력하세요. 에이전트는 USB 연결과 앱 설치 시 이 기기를 건너뜁니다. 저장하면 적용됩니다.",
+      "s.quotas.codexLiveProviderHint": "제공자 목록에서 Codex를 선택하면 몇 분마다 백그라운드에서 codex를 실행합니다(기본값은 꺼짐). Codex CLI는 자체 로그인 세션을 갱신할 수 있습니다.",
       "s.phoneMic.title": "휴대폰 마이크",
       "s.phoneMic.enable": "휴대폰 마이크를 컴퓨터 마이크로 사용",
       "s.phoneMic.hint": "휴대폰 마이크 소리는 VB-CABLE 같은 가상 케이블로 재생되고, 앱은 케이블의 반대쪽(CABLE Output)을 마이크로 선택합니다. 설정은 케이블을 확인하고, scrcpy-server 5.0.1이 없으면 GitHub에서 내려받은 뒤 마이크를 켭니다. 휴대폰은 USB로 연결되어 있어야 합니다. 추가 옵션: 고급 › JSON(phoneMic).",
