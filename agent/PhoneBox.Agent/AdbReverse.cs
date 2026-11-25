@@ -159,36 +159,43 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         // it may be one of those. Only a phone known to be newer is asked. A phone no longer selected keeps its level
         // in _setHere. Read here, before the phones run side by side: the sets are only ever touched from one thread
         // at a time.
-        int Level(string d) => _sdk.TryGetValue(d, out var sdk) && sdk > 0 ? sdk : _setHere.GetValueOrDefault(d);
-        var remembered = phones.ToDictionary(d => d, d => Level(d) > 23
-            ? (bool?)null
-            : _reverseSet.Contains(d) || _setHere.ContainsKey(d) || _pending.Contains(d));
+        var remembered = phones.ToDictionary(d => d, RememberedRule);
         // all phones at once, each with the whole budget: a slow phone must not leave the next one its stale rule
-        var removed = await Task.WhenAll(phones.Select(async d =>
+        var removed = await Task.WhenAll(phones.Select(d => RemoveOwnedRuleAsync(adb, d, remembered[d], limit.Token)));
+        var handedOver = phones.Where((_, index) => removed[index]).ToArray();
+        foreach (var d in handedOver) ForgetRule(d);
+        if (handedOver.Length > 0) WriteHandoff(handedOver);
+    }
+
+    private bool? RememberedRule(string device)
+    {
+        var sdk = _sdk.GetValueOrDefault(device);
+        return (sdk > 0 ? sdk : _setHere.GetValueOrDefault(device)) > 23 ? null
+            : _reverseSet.Contains(device) || _setHere.ContainsKey(device) || _pending.Contains(device);
+    }
+
+    private void ForgetRule(string device)
+    {
+        _reverseSet.Remove(device);
+        _setHere.Remove(device);
+        _pending.Remove(device);
+    }
+
+    private async Task<bool> RemoveOwnedRuleAsync(string adb, string device, bool? remembered, CancellationToken ct)
+    {
+        try
         {
-            try
-            {
-                // on the others the rule must still be this agent's: a newer agent may have taken the phone over
-                var ours = remembered[d] ?? HasOwnRule(await Adb(adb, ["-s", d, "reverse", "--list"], limit.Token));
-                if (!ours) return null;
-                await Adb(adb, ["-s", d, "reverse", "--remove", Rule], limit.Token);
-                log.LogInformation("{Device}: adb reverse removed (the agent is stopping)", d);
-                return d;
-            }
-            // Win32Exception: adb is there but can't be started; the other phones are still tried
-            catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
-            {
-                log.LogInformation("{Device}: could not remove adb reverse ({Message})", d, ex.Message);
-                return null;
-            }
-        }));
-        foreach (var d in removed.OfType<string>())
-        {
-            _reverseSet.Remove(d);
-            _setHere.Remove(d);
-            _pending.Remove(d);
+            // A newer agent may have taken the phone over. Never remove that agent's rule.
+            if (!(remembered ?? HasOwnRule(await Adb(adb, ["-s", device, "reverse", "--list"], ct)))) return false;
+            await Adb(adb, ["-s", device, "reverse", "--remove", Rule], ct);
+            log.LogInformation("{Device}: adb reverse removed", device);
+            return true;
         }
-        if (removed.OfType<string>().ToArray() is { Length: > 0 } handedOver) WriteHandoff(handedOver);
+        catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
+        {
+            log.LogInformation("{Device}: could not remove adb reverse ({Message})", device, ex.Message);
+            return false;
+        }
     }
 
     /// <summary>
@@ -519,10 +526,15 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             .ToArray();
         _all = devices;
         foreach (var gone in _setHere.Keys.Except(devices).ToList()) _setHere.Remove(gone); // unplugged: adb dropped its rule
-        devices = devices.Where(cfg.Get().UsesUsbDevice).ToArray();
+        var settings = cfg.Get();
+        var ignored = devices.Where(d => settings.IgnoredDeviceSerials.Contains(d, StringComparer.Ordinal)
+            && (_setHere.ContainsKey(d) || _reverseSet.Contains(d) || _pending.Contains(d))).ToArray();
+        devices = devices.Where(settings.UsesUsbDevice).ToArray();
 
         SetDevices(devices);
         usb?.Retain(devices);
+        foreach (var d in ignored)
+            if (await RemoveOwnedRuleAsync(adb, d, RememberedRule(d), ct)) ForgetRule(d);
         foreach (var gone in _keyTriedAt.Keys.Except(devices).ToList()) _keyTriedAt.Remove(gone); // plugged in again: ask at once
         _oldApp.IntersectWith(devices);
         // a request came with a key the agent doesn't know (the app was reinstalled, its data cleared): ask again
