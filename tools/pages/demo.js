@@ -931,7 +931,7 @@
       }
       return json(await config(), 200, { 'X-Config-Version': String(cfgVersion()) });
     }
-    if (path === '/api/info') return json({ version: VERSION, os: 'windows', configPath: 'browser storage (demo)', logPath: '—', adb: 'demo', connected: true, devices: ['DEMO0001'], appMissing: [], usbProblem: null, webviewProblem: null });
+    if (path === '/api/info') return json({ version: VERSION, os: 'windows', sensors: { lhm: 'connected' }, configPath: 'browser storage (demo)', logPath: '—', adb: 'demo', connected: true, devices: ['DEMO0001'], appMissing: [], usbProblem: null, webviewProblem: null });
     // Pairing over Wi-Fi: a placeholder pattern instead of real QR codes (the demo has no agent to pair with)
     if (path === '/api/pair/start' && method === 'POST') {
       const box = (label) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"><rect width="29" height="29" fill="#fff"/>${

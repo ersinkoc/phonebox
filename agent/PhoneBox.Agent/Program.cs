@@ -524,10 +524,11 @@ app.MapPost("/api/shortcuts/test", async (HttpRequest req, ConfigStore cfg, Push
     return err is null ? Results.Ok() : Results.BadRequest(new { error = err });
 });
 
-app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg) => Results.Json(new
+app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg, SystemMonitor monitor) => Results.Json(new
 {
     version = AppPaths.Version,
     os = AppPaths.Os,
+    sensors = new { lhm = monitor.LhmStatus },
     configPath = cfg.Path,
     logPath = AppPaths.LogPath,
     adb = AdbReverse.FindAdb(cfg.Get().AdbPath),

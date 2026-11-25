@@ -43,6 +43,13 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
     private long _seq;
     private readonly string _runId = Guid.NewGuid().ToString("N");
 
+#if WINDOWS
+    private volatile string _lhmStatus = "checking";
+    public string? LhmStatus => _lhmStatus;
+#else
+    public string? LhmStatus => null;
+#endif
+
     public PcSnapshot? Snapshot() => _snap;
 
     internal void PublishSample(PcSnapshot sample) =>
@@ -266,9 +273,13 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             try
             {
                 using var doc = JsonDocument.Parse(await _http.GetStringAsync("http://127.0.0.1:8085/data.json", ct));
-                failures = 0;
+                if (doc.RootElement.ValueKind != JsonValueKind.Object
+                    || !doc.RootElement.TryGetProperty("Children", out var children) || children.ValueKind != JsonValueKind.Array)
+                    throw new JsonException("LibreHardwareMonitor sensor tree is missing.");
                 _cpuTemp = FindCpuTemp(doc.RootElement);
                 _cpuPower = FindCpuPower(doc.RootElement);
+                failures = 0;
+                _lhmStatus = "connected";
                 try { _lhmGpus = Gpus.ParseLhm(doc.RootElement); }
                 catch (Exception ex)
                 {
@@ -280,7 +291,13 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             catch
             {
                 (var clear, delay) = LhmFailed(ref failures);
-                if (clear) { _cpuTemp = null; _cpuPower = null; _lhmGpus = null; }
+                if (clear)
+                {
+                    _cpuTemp = null;
+                    _cpuPower = null;
+                    _lhmGpus = null;
+                    _lhmStatus = "unavailable";
+                }
             }
             await Task.Delay(delay, ct);
         }

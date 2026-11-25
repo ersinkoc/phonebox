@@ -517,21 +517,20 @@ export function chart(canvas, series, opts = {}) {
     g.lineWidth = 1;
     for (let i = 1; i < 4; i++) { const y = Math.round((hh * i) / 4) + 0.5; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
   }
-  const top = 4 * dpr;
-  for (const s of series) {
-    const d = s.data;
-    if (d.length < 2) continue;
-    const max = s.max || 1;
-    const step = w / (HIST - 1);
-    const x0 = w - (d.length - 1) * step;
-    const y = (v) => hh - (Math.min(v, max) / max) * (hh - top);
+  const top = 4 * dpr, step = w / (HIST - 1);
+  const visible = series.filter(s => s.data.length >= 2);
+  const trace = ({ data, max = 1 }) => {
+    max = max || 1;
+    const x0 = w - (data.length - 1) * step;
+    const y = v => hh - (Math.min(v, max) / max) * (hh - top);
     g.beginPath();
-    g.moveTo(x0, y(d[0]));
-    for (let i = 1; i < d.length; i++) g.lineTo(x0 + i * step, y(d[i]));
-    g.lineWidth = 1.6 * dpr;
-    g.strokeStyle = s.color;
-    g.lineJoin = 'round';
-    g.stroke();
+    g.moveTo(x0, y(data[0]));
+    for (let i = 1; i < data.length; i++) g.lineTo(x0 + i * step, y(data[i]));
+    return x0;
+  };
+  // Draw all shading first so a higher series cannot paint over a different series' line.
+  for (const s of visible) {
+    const x0 = trace(s);
     g.lineTo(w, hh);
     g.lineTo(x0, hh);
     g.closePath();
@@ -540,6 +539,13 @@ export function chart(canvas, series, opts = {}) {
     grad.addColorStop(1, s.color + '00');
     g.fillStyle = grad;
     g.fill();
+  }
+  g.lineWidth = 1.6 * dpr;
+  g.lineJoin = 'round';
+  for (const s of visible) {
+    trace(s);
+    g.strokeStyle = s.color;
+    g.stroke();
   }
 }
 

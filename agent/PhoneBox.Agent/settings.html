@@ -515,6 +515,11 @@ nav a.on::before { color: var(--accent); }
       <p class="lead" data-i18n="s.pages.lead">Each page is a 12 × 6 grid of widgets. Pick a page on the left, arrange its widgets on the phone below and set their options.
         Drag pages to reorder them; the first one is the home page the panel returns to when idle. On the phone, swipe, use the volume keys,
         or tap a dot to go to its page (or slide along the dots to pick one); tap the current dot or the grid button next to the dots, or long-press an empty part of a page, for an overview of all pages.</p>
+      <p id="lhmHelp" class="hint" hidden>
+        <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases" target="_blank" rel="noopener">LibreHardwareMonitor</a>
+        <strong id="lhmStatus" role="status"></strong>
+        <span data-i18n="s.lhm.setup">For CPU temperature, CPU power and additional GPU readings on Windows, enable Options › Remote Web Server › Run on port 8085.</span>
+      </p>
       <div class="pages-layout">
         <div id="pageTabs"></div>
         <div id="pageEditor">
@@ -3969,6 +3974,13 @@ async function loadInfo() {
     pill.className = 'pill' + (i.connected ? ' on' : '');
     pill.querySelector('span').textContent = i.connected ? t('s.conn.connected') + (i.via ? ' · ' + i.via : '') : t('s.conn.notConnected');
     osName = i.os || 'windows';
+    $('lhmHelp').hidden = osName !== 'windows';
+    const lhm = i.sensors?.lhm;
+    const lhmStatus = $('lhmStatus');
+    const lhmKey = lhm === 'connected' ? 's.lhm.connected' : lhm === 'unavailable' ? 's.lhm.unavailable' : 's.lhm.checking';
+    const lhmText = t(lhmKey);
+    lhmStatus.dataset.i18n = lhmKey;
+    if (lhmStatus.textContent !== lhmText) lhmStatus.textContent = lhmText;
     if ($('phoneMicCard')) { $('phoneMicCard').hidden = osName !== 'windows'; if (osName === 'windows') renderPhoneMicState(); }
     $('followComputerLockOption').style.display = osName === 'macos' ? '' : 'none';
     $('adbFound').textContent = i.adb ? t('s.conn.adbFound', { path: i.adb }) : t('s.conn.adbNotFound') + ' — ' + ({ linux: 'sudo apt install adb', macos: 'brew install android-platform-tools' }[osName] || 'winget install Google.PlatformTools');
