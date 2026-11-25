@@ -14,6 +14,7 @@ using Xunit;
 /// v0.9.9 release (metadata from the GitHub API and its SHA256SUMS-0.9.9.txt), so a change to how release.yml names
 /// the assets shows up here before it can stop the updates of installed agents.
 /// </summary>
+[Collection("Approval request expiry")] // the iOS middleware cases write the shared PhoneLastSeen timestamp
 public class UpdateChecksumTests
 {
     private const string Release099 = """
@@ -211,6 +212,7 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
         var dir = Path.Combine(Path.GetTempPath(), "pb-upd-retry-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         var prevAppVer = UpdateService.AppVersion;
+        var prevLastSeen = Interlocked.Read(ref ApprovalStore.PhoneLastSeen);
         try
         {
             string fakeAdb;
@@ -324,6 +326,7 @@ b47da3d09583268d7bacef2d4375555313bf455af8a3ab16fd4d7ee95082826e  PhoneBoxAgent-
         finally
         {
             UpdateService.AppVersion = prevAppVer;
+            Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, prevLastSeen);
             try { Directory.Delete(dir, true); } catch { }
         }
     }
