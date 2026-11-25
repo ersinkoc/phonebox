@@ -495,8 +495,6 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
             }
         }
 
-        // Only standby wakes carry the marker that allows the app
-        // to dismiss the keyguard.
         var startArguments = new List<string> { "-s", device, "shell", "am", "start", "-n", PanelActivity };
         // Only a standby wake with Wake on unlock on may let the app dismiss the keyguard.
         if (standby && cfg.Get().Display.WakeOnUnlock)
@@ -507,13 +505,11 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
         log.LogInformation("{Device}: {Why}, panel opened", device, why);
     }
 
-
     /// <summary>
     /// Lights a phone only the first time this agent process sees it, and only while standby is on. With
     /// standby off nothing here touches the phone; it is still remembered, so turning standby on later does
     /// not wake a panel that is already running.
     /// </summary>
-
     private async Task LightIfNew(string device, string adb, string why, CancellationToken ct)
     {
         // _seen.Add stays first: with open-on-connect off the phone is still remembered, so turning

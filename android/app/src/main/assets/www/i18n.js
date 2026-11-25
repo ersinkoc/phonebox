@@ -537,7 +537,7 @@
       's.display.standby.off': 'Off: hold the screen while the panel runs',
       's.display.standby.power': 'Sleep when USB charge is cut',
       's.display.standby.data': 'Sleep when the agent stops answering',
-      's.display.standbyHint': 'When the computer comes back, PhoneBox wakes the phone and opens the panel. A swipe-only lock screen is dismissed automatically. If the phone is protected by a PIN or pattern, you must still unlock it yourself. While standby is on, PhoneBox turns off Android\'s stay-awake-while-charging setting and restores it when standby is turned off.',
+      's.display.standbyHint': 'When the computer comes back, PhoneBox wakes the phone and opens the panel. A swipe-only lock screen is dismissed automatically. If the phone is protected by a PIN or pattern, you must still unlock it yourself. While standby is on, PhoneBox turns off Android\'s stay-awake-while-charging setting and restores it when standby is turned off. Standby only acts on the phone named under Phone connection › Phone to use; with no phone chosen it does nothing.',
       's.display.standbyGrace': 'Standby grace (s)',
       's.display.standbyGraceHint': 'Absorbs a reboot or a network hiccup.',
       's.rules.countdown': 'Page switches count down on the phone and wait while you use it (General › Page switching).',

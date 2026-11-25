@@ -5,10 +5,6 @@ import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Context
-import java.util.concurrent.Executors
-import java.util.concurrent.RejectedExecutionException
-import android.os.Looper
-import android.os.Handler
 import android.content.BroadcastReceiver
 import android.app.KeyguardManager
 import android.content.Intent
@@ -20,6 +16,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Handler
+import android.os.Looper
 import android.os.BatteryManager
 import android.os.SystemClock
 import android.os.Bundle
@@ -52,6 +50,8 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.Locale
 
 /**
@@ -141,8 +141,7 @@ class MainActivity : Activity(), SensorEventListener {
         window.decorView.requestLayout()
     }
 
-    /** Take the criterion from whoever knows it: the panel pushes it when the setting changes, and the app reads
-     *  it from the agent itself after a cold start (see standbyLoadSetting). Same entry point either way. */
+    /** Take the criterion from whoever knows it: the panel pushes it when the setting changes */
     private fun applyStandbySetting(mode: String, graceSec: Int) {
         if (standbyDestroyed) return
         val m = when (mode.trim().lowercase()) { "power" -> "power"; "data" -> "data"; else -> "off" }
@@ -235,14 +234,19 @@ class MainActivity : Activity(), SensorEventListener {
         standbyScreenReceiver = screen
         standbyPowerReceiver = battery
         standbyUsbReceiver = usb
+        // SCREEN_OFF ends the agent's wake window (see onReceive above), so the receiver needs both actions.
+        val screenFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED)
             registerReceiver(usb, IntentFilter("android.hardware.usb.action.USB_STATE"), Context.RECEIVER_NOT_EXPORTED)
-            registerReceiver(screen, IntentFilter(Intent.ACTION_SCREEN_ON), Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(screen, screenFilter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             registerReceiver(usb, IntentFilter("android.hardware.usb.action.USB_STATE"))
-            registerReceiver(screen, IntentFilter(Intent.ACTION_SCREEN_ON))
+            registerReceiver(screen, screenFilter)
         }
         standbyPlugged = standbyPluggedFrom(registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)))
         standbyUsbLink = standbyReadUsbLink()
@@ -271,27 +275,6 @@ class MainActivity : Activity(), SensorEventListener {
 
         standbyHandler.removeCallbacks(standbyTick)
         standbyHandler.post(standbyTick)
-    }
-
-    /**
-     * Read our own setting from the agent once. The panel pushes display settings only on change, so a cold app
-     * start would otherwise never hear about it; and after a host reboot the panel's own polls are exactly what
-     * cannot run yet. A reply also proves the computer is up, so it feeds the criterion at the same time.
-     */
-    private fun standbyLoadSetting() {
-        standbyExecute {
-            try {
-                val r = link.request("GET", "/api/config")
-                if (r.code >= 400) { r.body.close(); return@standbyExecute }
-                val body = r.body.reader().use { it.readText() }
-                val d = org.json.JSONObject(body).optJSONObject("config")?.optJSONObject("display") ?: return@standbyExecute
-                standbyAgentDataAt = SystemClock.elapsedRealtime()
-                standbyFromAgent = true
-                applyStandbySetting(d.optString("standby", "off"), d.optInt("standbyGraceSec", 30))
-            } catch (e: Exception) {
-                Log.w("PhoneBox", "power standby: setting read failed: " + e)
-            }
-        }
     }
 
     /**
@@ -436,7 +419,6 @@ class MainActivity : Activity(), SensorEventListener {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         link = AgentLink(this)
-        standbyLoadSetting()
         stream = AgentStream(link) { event, data ->
             markHostAnswer()   // a beat on the live stream is proof of life too
             val js = "window.onAgentStream && window.onAgentStream(${JSONObject.quote(event)}, ${JSONObject.quote(data)})"
