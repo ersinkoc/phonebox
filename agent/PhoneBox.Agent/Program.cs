@@ -78,6 +78,14 @@ builder.Services.AddSingleton<AppCatalog>();
 builder.Services.AddSingleton(_ => new ShortcutIconUploads(Path.Combine(configDir, "icons")));
 builder.Services.AddSingleton(_ => new WallpaperStore(configDir));
 builder.Services.AddSingleton<PairingCodes>();
+// The iOS app's cable link: usbmuxd reaches the app's loopback relay, and each authenticated pipe carries the
+// panel's TLS to the Wi-Fi listener above (see IosUsbBridge). It starts on its own and is quiet without an iPhone.
+builder.Services.AddSingleton(sp => new IosUsbBridge(
+    sp.GetRequiredService<ConfigStore>(),
+    sp.GetRequiredService<AgentEndpoint>(),
+    lanCfg,
+    sp.GetRequiredService<ILogger<IosUsbBridge>>()));
+builder.Services.AddHostedService(sp => sp.GetRequiredService<IosUsbBridge>());
 builder.Services.AddSingleton<SpotifyControl>();
 builder.Services.AddSingleton<PlexControl>();
 builder.Services.AddSingleton<ControlDeck>();
