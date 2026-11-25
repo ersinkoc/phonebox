@@ -30,10 +30,15 @@ public sealed class ShTests
         {
             File.WriteAllText(release, "");
             await run.WaitAsync(TimeSpan.FromSeconds(16));
-            if (File.Exists(ready)) await WaitForFile(done);
-            File.Delete(ready);
-            File.Delete(release);
-            File.Delete(done);
+            // A late child can still create the ready file. Keep its release signal until it has finished.
+            try { await WaitForFile(done); }
+            catch (OperationCanceledException) { /* the readiness assertion carries the failure */ }
+            if (File.Exists(done))
+            {
+                File.Delete(ready);
+                File.Delete(release);
+                File.Delete(done);
+            }
         }
     }
 
