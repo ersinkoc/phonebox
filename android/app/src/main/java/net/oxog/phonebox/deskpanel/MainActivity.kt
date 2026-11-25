@@ -223,11 +223,10 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val screen = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
+                // The display went dark: the agent's wake is over, so the next screen-on must not
+                // dismiss a swipe lock on its account.
+                if (intent?.action == Intent.ACTION_SCREEN_OFF) { standbyAgentWakeAt = 0L; return }
                 if (standbyMode == "off") return
-                // The display just lit - wake key, touch, charger, whatever. On at least one ROM the activity
-                // is not paused while the screen sleeps, so this broadcast, not onResume, is the moment to
-                // look at the criterion. The keyguard is only touched inside a wake the agent started
-                // (standbyDismissKeyguard checks); a power button press with the computer gone leaves it alone.
                 standbyDismissKeyguard()
                 standbyHandler.removeCallbacks(standbyTick)
                 standbyHandler.post(standbyTick)

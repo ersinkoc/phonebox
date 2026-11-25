@@ -974,6 +974,20 @@ public sealed class AdbReverseTests : IDisposable
         Assert.Equal(openOnConnect, calls.Contains("-s FAKE1 shell input keyevent KEYCODE_WAKEUP"));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AReconnectedPhoneIsWokenByStandbyOnlyWhenOpenOnConnectIsOn(bool openOnConnect)
+    {
+        const string rule = "UsbFfs tcp:8765 tcp:8765";   // rule present, so Ensure takes the LightIfNew path
+        var fake = FakeAdb(["FAKE1"], rule, homeRefused: null);
+        var calls = await RunUntil(fake, new { adbPath = fake, deviceSerial = "FAKE1",
+            display = new { homeScreen = false, keepAwake = false, followComputerLock = false, openOnConnect, standby = "power" } },
+            null, c => c.Count(x => x == "devices") >= 2);
+        Assert.Equal(openOnConnect, calls.Any(c => c.StartsWith("-s FAKE1 shell am start -n net.oxog.phonebox.deskpanel/.MainActivity")));
+        Assert.Equal(openOnConnect, calls.Contains("-s FAKE1 shell input keyevent KEYCODE_WAKEUP"));
+    }
+
     /// <summary>The mark that lets the app dismiss the keyguard needs standby on AND Wake on unlock on.</summary>
     [Theory]
     [InlineData("off", true, false)]

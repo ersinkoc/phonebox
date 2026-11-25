@@ -516,7 +516,9 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
 
     private async Task LightIfNew(string device, string adb, string why, CancellationToken ct)
     {
-        if (_seen.Add(device) && StandbyOn(device))
+        // _seen.Add stays first: with open-on-connect off the phone is still remembered, so turning
+        // it on later does not wake a panel that is already running.
+        if (_seen.Add(device) && StandbyOn(device) && cfg.Get().Display.OpenOnConnect)
             await LightPanel(device, adb, why, ct);
     }
 
@@ -582,8 +584,13 @@ public sealed class AdbReverse(ConfigStore cfg, ILogger<AdbReverse> log, AgentEn
     internal TimeSpan SleepRoundWait { get; init; } = TimeSpan.FromSeconds(30);
     private Dictionary<string, string> LoadOriginals()
     {
+        if (!File.Exists(_originalsPath)) return [];   // nothing recorded yet: not worth a warning
         try { return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(_originalsPath)) ?? []; }
-        catch { return []; }   // missing or unreadable: nothing recorded
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            log.LogWarning("could not read standby-originals.json ({Message}); the phone's own stay_on_while_plugged_in value is lost and the next standby round records whatever it holds now", ex.Message);
+            return [];
+        }
     }
 
     private void SaveOriginals()
