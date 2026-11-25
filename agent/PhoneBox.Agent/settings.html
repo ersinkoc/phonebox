@@ -528,6 +528,7 @@ nav a.on::before { color: var(--accent); }
                 <button type="button" data-screen="wide" data-i18n="s.pages.screen.wide">Wide tablet</button>
               </div>
               <span class="hint" id="screenHint" data-i18n="s.pages.screenHint">A phone page is 12 × 6. A tablet keeps the 12 columns and adds rows, so the page holds more widgets. Widgets below the top 6 rows stay on the tablet; a phone shows the top 6.</span>
+              <select class="preview-device" hidden></select>
               <span class="hint" id="stageHint"></span>
             </div>
             <div class="canvas-wrap"><div class="phone"><div class="canvas" id="canvas"></div><div class="preview" id="previewBox" hidden></div></div></div>
@@ -1279,6 +1280,40 @@ if (!EDITOR_SCREENS[editorScreenId]) editorScreenId = 'phone';
 // Without Settings › Display › More rows on a tablet, every screen shows the phone page, so the editor does too.
 const tabletRowsOn = () => cfg?.display?.tabletRows === true;
 const editorScreen = () => EDITOR_SCREENS[tabletRowsOn() ? editorScreenId : 'phone'];
+let previewPhones = [], previewDeviceId = '', automaticPreviewDeviceId = '';
+function previewViewport(fallback) {
+  const phone = previewPhones.find(p => p.id === (previewDeviceId || automaticPreviewDeviceId));
+  return phone?.viewport ?? { width: fallback.previewW, height: fallback.previewH };
+}
+
+function syncPreviewDeviceSelectors() {
+  for (const select of document.querySelectorAll('.preview-device')) {
+    select.hidden = !previewPhones.length || (select.closest('#stage') && stageMode !== 'live');
+    select.setAttribute('aria-label', t('s.phones.title'));
+    select.replaceChildren(h('option', { value: '' }, tl('Automatic')),
+      ...previewPhones.map(p => h('option', { value: p.id }, p.name || p.model || p.id)));
+    select.value = previewDeviceId;
+    select.onchange = () => {
+      previewDeviceId = select.value;
+      syncPreviewViewports();
+    };
+  }
+}
+
+function syncPreviewViewports() {
+  syncPreviewDeviceSelectors();
+  fitPreview();
+  fitAppearancePreview();
+}
+
+function fitPreviewFrame(container, frame, viewport) {
+  if (!frame) return;
+  const { width, height } = viewport;
+  container.style.aspectRatio = `${width} / ${height}`;
+  frame.style.width = width + 'px';
+  frame.style.height = height + 'px';
+  frame.style.transform = `scale(${container.clientWidth / width})`;
+}
 const gridCols = () => editorScreen().cols;
 const gridRows = () => editorScreen().rows;
 let selPage = 0;
@@ -1508,6 +1543,8 @@ function setStage(mode) {
   $('canvas').hidden = live;
   $('previewBox').hidden = !live;
   $('pageEditor').classList.toggle('live', live);
+  const device = $('stage').querySelector('.preview-device');
+  device.hidden = !live || !previewPhones.length;
   updateStageText();
   if (live && !previewFrame) {
     previewFrame = h('iframe', { src: '../panel/?preview=1' });
@@ -1578,13 +1615,7 @@ function applyEditorScreen() {
     canvas.style.gridTemplateColumns = `repeat(${s.cols}, 1fr)`;
     canvas.style.gridTemplateRows = `repeat(${s.rows}, 1fr)`;
   }
-  const preview = $('previewBox');
-  if (preview) preview.style.aspectRatio = `${s.previewW} / ${s.previewH}`;
-  if (previewFrame) {
-    previewFrame.style.width = s.previewW + 'px';
-    previewFrame.style.height = s.previewH + 'px';
-    fitPreview();
-  }
+  fitPreview();
   const seg = $('screenSeg');
   if (seg) {
     seg.hidden = !tabletRowsOn();
@@ -1595,8 +1626,7 @@ function applyEditorScreen() {
 }
 
 function fitPreview() {
-  if (!previewFrame) return;
-  previewFrame.style.transform = `scale(${$('previewBox').clientWidth / editorScreen().previewW})`;
+  fitPreviewFrame($('previewBox'), previewFrame, previewViewport(editorScreen()));
 }
 
 function renderCanvas() {
@@ -2338,10 +2368,19 @@ async function pairOverWifi() {
 
 // ---------------------------------------------------------------- phones
 let phonesSeen = [];
-async function loadPhones() {
+async function loadPhones(renderList = true) {
   try { phonesSeen = await (await fetch('/api/phones')).json(); } catch (_) { return; }
-  renderPhones();
+  previewPhones = phonesSeen.filter(p => p.viewport && Date.now() - p.lastSeen < 45_000);
+  if (!previewPhones.some(p => p.id === previewDeviceId)) previewDeviceId = '';
+  if (!previewPhones.some(p => p.id === automaticPreviewDeviceId))
+    automaticPreviewDeviceId = previewPhones[0]?.id ?? '';
+  syncPreviewViewports();
+  if (renderList) renderPhones();
 }
+
+setInterval(() => {
+  if (stageMode === 'live' || appearancePreviewFrame?.parentElement?.hidden === false) loadPhones(false);
+}, 5000);
 function renderPhones() {
   cfg.phones ??= [];
   const ago = (ms) => { if (!ms) return tc('not seen since the agent started'); const s = (Date.now() - ms) / 1000; return s < 15 ? tc('connected now') : s < 3600 ? tcv('seen {n} min ago', { n: Math.round(s / 60) }) : tcv('seen {n} h ago', { n: Math.round(s / 3600) }); };
@@ -3697,6 +3736,11 @@ function appearanceEditor(owner, parents, label, widget = false) {
   render(); return root;
 }
 
+function fitAppearancePreview() {
+  if (appearancePreviewFrame)
+    fitPreviewFrame(appearancePreviewFrame.parentElement, appearancePreviewFrame, previewViewport(EDITOR_SCREENS.phone));
+}
+
 function renderAppearanceSettings() {
   const root = $('appearanceSettings');
   appearancePreviewObserver?.disconnect();
@@ -3712,14 +3756,16 @@ function renderAppearanceSettings() {
     if (!appearancePreviewFrame && !preview.hidden) {
       appearancePreviewFrame = h('iframe', { src: '../panel/?preview=1', title: 'Live appearance preview' });
       preview.append(appearancePreviewFrame);
-      const frame = appearancePreviewFrame;
-      appearancePreviewObserver = new ResizeObserver(() => { frame.style.transform = 'scale(' + preview.clientWidth / 780 + ')'; });
+      appearancePreviewObserver = new ResizeObserver(fitAppearancePreview);
       appearancePreviewObserver.observe(preview);
+      fitAppearancePreview();
     }
     queuePreview();
   } }, t('s.appearance.showPreview'));
   root.replaceChildren(h('h3', {}, t('s.appearance.title')), h('p', { class: 'hint' }, t('s.ap.lead')),
-    editor, h('div', { class: 'row', style: { gap: '10px', marginBottom: '12px' } }, selector, toggle), preview);
+    editor, h('div', { class: 'row', style: { gap: '10px', marginBottom: '12px' } }, selector, toggle,
+      h('select', { class: 'preview-device', hidden: true })), preview);
+  syncPreviewDeviceSelectors();
 }
 
 const t = (k, v) => (window.PhoneBoxI18n ? window.PhoneBoxI18n.t(k, v) : k);

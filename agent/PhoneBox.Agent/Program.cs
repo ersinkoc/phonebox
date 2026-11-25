@@ -826,7 +826,12 @@ app.MapPost("/api/rules/test", (RuleConfig rule, RuleEngine rules) =>
 });
 
 // The phone reports its battery (charge guard); the settings show the guard's state and can switch the power to test it.
-app.MapPost("/api/phone/battery", (int level, bool plugged, double? temp, string? source, string? usb) => { ChargeGuard.Report(level, plugged, temp, source, usb); return Results.Ok(); });
+app.MapPost("/api/phone/battery", (HttpRequest request, int level, bool plugged, double? temp, string? source, string? usb, int? viewWidth, int? viewHeight) =>
+{
+    ChargeGuard.Report(level, plugged, temp, source, usb);
+    PhoneRegistry.SetViewport(request.Headers["X-PhoneBox-Device"].ToString(), viewWidth, viewHeight);
+    return Results.Ok();
+});
 app.MapGet("/api/charge", (ChargeGuard guard) => Results.Json(guard.Status()));
 app.MapPost("/api/charge/test", async (string action, ChargeGuard guard, ConfigStore cfg) =>
 {
@@ -1062,6 +1067,7 @@ app.MapGet("/api/phones", (ConfigStore cfg) =>
         lastSeen = s?.LastSeen,
         via = s?.Via,
         webView = s?.WebView,
+        viewport = s?.Viewport,
         webviewProblem = s is null ? null : WebViewDoctor.Diagnose(s.WebView, s.Model),
         name = c.Phones.FirstOrDefault(p => p.Id == id)?.Name,
         pages = c.Phones.FirstOrDefault(p => p.Id == id)?.Pages,

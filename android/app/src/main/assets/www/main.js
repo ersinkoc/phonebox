@@ -2849,9 +2849,14 @@ function reportBattery() {
     const b = JSON.parse(bridge.battery());
     // the phone's view of its USB link lets the agent explain a cable that only charges (see UsbDoctor.cs)
     const usb = b.usb ? ['connected', 'configured', 'adb'].filter((k) => b.usb[k]).join(',') || 'none' : '';
-    if (b.level >= 0) api(`/phone/battery?level=${b.level}&plugged=${!!b.plugged}&temp=${b.temp || 0}&source=${b.source || ''}&usb=${usb}`, 'POST', 4000).catch(() => {});
+    if (b.level >= 0) api(`/phone/battery?level=${b.level}&plugged=${!!b.plugged}&temp=${b.temp || 0}&source=${b.source || ''}&usb=${usb}&viewWidth=${window.innerWidth}&viewHeight=${window.innerHeight}`, 'POST', 4000).catch(() => {});
   } catch (_) {}
 }
+let resizeReportTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeReportTimer);
+  resizeReportTimer = setTimeout(reportBattery, 300);
+});
 setInterval(reportBattery, 30_000);
 setTimeout(reportBattery, 5000);
 
