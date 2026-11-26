@@ -34,9 +34,6 @@ people who proposed or prototyped something are credited in the [changelog](../C
   from the phone is a separate per-widget option, off by default and asking first, and the agent starts only an
   installed game's app id through Steam's URL handler.
 
-- **Pomodoro focus history** ([#350](https://github.com/ersinkoc/phonebox/issues/350)): an option on the Pomodoro
-  widget, off by default, with a small line chart of finished focus minutes per day for the last seven days, kept on
-  the phone with the widget's own state.
 - **One "AI providers I use" setting** ([#351](https://github.com/ersinkoc/phonebox/issues/351)): a list in Settings ›
   General, all on by default, that the Clock's status line, Quotas and the Quota ring's picker follow unless a widget
   sets its own providers.

@@ -15,6 +15,9 @@
   agent. Wi-Fi stays off, and Settings › Wi-Fi and `agent.log` say why (#614, #624).
 - Control Deck on Linux and macOS: the application mixer, microphone, balance, push-to-talk and device switching say
   they are only on Windows for now, instead of showing an empty list (#613, #625).
+- A **Focus history** widget: the Pomodoro's finished focus minutes for each of the last seven days as a small line
+  chart, kept on the phone; tap a day (or pick it with the keyboard) to see its minutes (#350, #634,
+  [abdulah-x](https://github.com/abdulah-x)).
 - World clocks: the difference from the phone's time zone is exact, so Kathmandu shows `+5.75h` instead of `+5.8h`
   one way and `−5.7h` the other (#630, [KPuneethHarshaNaik](https://github.com/KPuneethHarshaNaik)).
 - Windows: LibreHardwareMonitor's port can be set below the preview in Settings › Pages (8085 by default), for a PC
