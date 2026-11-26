@@ -14,9 +14,9 @@ const files = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) 
 
 // syntax and the first Chromium that parses it
 const NEWER = [
-  [/(\|\||&&|\?\?)=/, 'logical assignment (||=, &&=, ??=), Chromium 85'],
-  [/(^|[;{}]\s*)(static\s+)?(async\s+)?(get\s+|set\s+)?#[A-Za-z_$][\w$]*\s*\(/m, 'private method, Chromium 84'],
-  [/\bstatic\s*\{/, 'class static block, Chromium 94'],
+  [/(\|\||&&|\?\?)=/g, 'logical assignment (||=, &&=, ??=), Chromium 85'],
+  [/(^|[;{}])\s*(static\s+)?(async\s+)?(get\s+|set\s+)?#[A-Za-z_$][\w$]*\s*\(/gm, 'private method, Chromium 84'],
+  [/\bstatic\s*\{/g, 'class static block, Chromium 94'],
 ];
 
 /**
@@ -30,7 +30,7 @@ function codeOnly(src) {
   let depth = 0;
   let prev = ''; // the last significant code character, to tell a regular expression from a division
   const blank = (s) => s.replace(/[^\n]/g, ' ');
-  const regexCanStart = () => !prev || /[(,=:[!&|?{};+\-*%<>~^]/.test(prev) || /\b(return|typeof|case|do|else|in|of|void|yield|await)$/.test(out.trimEnd());
+  const regexCanStart = () => !prev || /[(,=:[!&|?{};+\-*%<>~^]/.test(prev) || /\b(return|typeof|case|do|else|in|void|yield|await)$/.test(out.trimEnd());
   const template = () => { // from just after a backtick (or a closing `}` of `${`) to the closing backtick or the next `${`
     let s = '';
     while (i < src.length) {
@@ -75,8 +75,24 @@ function codeOnly(src) {
   return out;
 }
 
+/**
+ * Each use of newer syntax in a source: its line (1-based) and what it is. Matched over the whole source, so a
+ * construct split over lines (`static` and `{` on two lines) is found too.
+ */
+function newerSyntax(src) {
+  const code = codeOnly(src), found = [];
+  for (const [re, what] of NEWER) {
+    for (const m of code.matchAll(re)) {
+      // the line of the construct itself, past the delimiter and whitespace the pattern took before it
+      const at = m.index + Math.max(0, m[0].search(/[^\s;{}]/));
+      found.push({ line: code.slice(0, at).split('\n').length, what });
+    }
+  }
+  return found;
+}
+
 test('the lexer keeps code and drops what only looks like it', () => {
-  const found = (src) => NEWER.filter(([re]) => re.test(codeOnly(src))).map(([, what]) => what);
+  const found = (src) => newerSyntax(src).map((f) => f.what);
   // what CodeRabbit pointed out on #655: a `/*` in a string, and code inside `${…}`
   expect(found("const mime = 'image/*';\nlet a; a ||= 1;")).toHaveLength(1);
   expect(found('const label = `${a ||= Date.now()}`;')).toHaveLength(1);
@@ -87,15 +103,19 @@ test('the lexer keeps code and drops what only looks like it', () => {
   expect(found('class A { #run() {} }')).toHaveLength(1);
   expect(found('class A { static { } }')).toHaveLength(1);
   expect(found("const x = obj['#run'](); const y = '#run(';")).toEqual([]);
+  // more from CodeRabbit on #655: an indented private method after a field, `of` used as a name, and a static block
+  // whose brace is on the next line
+  expect(found('class A {\n  value = 1\n  #run() {}\n}')).toHaveLength(1);
+  expect(found('let a; const of = 4; of / (a ||= 1) / 2;')).toHaveLength(1);
+  expect(found('class A {\n  static\n  {}\n}')).toHaveLength(1);
+  expect(newerSyntax('const a = 1;\nlet b;\nb ||= 2;')).toEqual([{ line: 3, what: NEWER[0][1] }]);
 });
 
 test('the panel uses no syntax newer than Chromium 80', () => {
   const found = [];
   for (const file of files(WWW)) {
-    const raw = fs.readFileSync(file, 'utf8').split('\n');
-    codeOnly(fs.readFileSync(file, 'utf8')).split('\n').forEach((line, i) => {
-      for (const [re, what] of NEWER) if (re.test(line)) found.push(`${path.relative(WWW, file)}:${i + 1}: ${what}: ${raw[i].trim()}`);
-    });
+    const src = fs.readFileSync(file, 'utf8'), raw = src.split('\n');
+    for (const { line, what } of newerSyntax(src)) found.push(`${path.relative(WWW, file)}:${line}: ${what}: ${raw[line - 1].trim()}`);
   }
   expect(found).toEqual([]);
 });
