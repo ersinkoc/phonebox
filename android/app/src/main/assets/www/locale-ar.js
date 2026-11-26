@@ -1096,7 +1096,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "(generated on save)": "(يُنشأ عند الحفظ)",
       "Replace the widgets of \"{title}\"": "استبدال عناصر صفحة «{title}»",
       "New page": "صفحة جديدة",
-      "A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.": "قيمة تُرسل إلى /api/push/<key>. تُعدّ true أو on أو 1 حالة تشغيل. إذا تركت المفتاح فارغًا، يعرض الهاتف الحالة بعد كل نقرة.",
+      "A value pushed to /api/push/<key> (true / on / 1 = on), or <key>=<value> to be on while the key holds that value. Without it the phone shows the state after each tap.": "قيمة تُرسل إلى /api/push/<key>. تُعدّ true أو on أو 1 حالة تشغيل، أو اكتب <key>=<value> ليكون الزر في حالة تشغيل ما دام المفتاح يحمل هذه القيمة. إذا تركت المفتاح فارغًا، يعرض الهاتف الحالة بعد كل نقرة.",
       "Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, numpad0–numpad9, numpadenter, numpadadd, numpadsubtract, numpadmultiply, numpaddivide, numpaddecimal, playpause, next, prev, mute, volumeup, volumedown.": "استخدم + للجمع بين المفاتيح، والفاصلة للفصل بين التركيبات المتتابعة. المفاتيح المدعومة: Ctrl, Shift, Alt, Win (Cmd على Mac)، والحروف والأرقام، وF1–F24 وenter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, numpad0–numpad9, numpadenter, numpadadd, numpadsubtract, numpadmultiply, numpaddivide, numpaddecimal, playpause, next, prev, mute, volumeup, volumedown.",
       "Typed into whatever window has the focus": "يُكتب النص في النافذة النشطة",
       "auto-detected": "يُكتشف تلقائيًا",

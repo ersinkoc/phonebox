@@ -134,12 +134,20 @@ public static class Shortcuts
         return err;
     }
 
-    /// <summary>Whether the value pushed to /api/push/{key} is on: true, a number other than 0, or text other than 0 / false / off / no.</summary>
+    /// <summary>
+    /// Whether the value pushed to /api/push/{key} is on: true, a number other than 0, or text other than 0 / false / off / no.
+    /// "key=value" asks instead whether the key holds that value (letter case and surrounding spaces aside), so one pushed
+    /// value, such as a keyboard layout, can light one of several keys. Push keys cannot contain "=", so a plain key keeps
+    /// its meaning.
+    /// </summary>
     internal static bool PushIsOn(PushStore? push, string key)
     {
-        if (push?.Snapshot().TryGetValue(key, out var item) != true) return false;
+        string? want = null;
+        if (key.IndexOf('=') is var eq and >= 0) { want = key[(eq + 1)..].Trim(); key = key[..eq]; }
+        if (push?.Snapshot().TryGetValue(key.Trim(), out var item) != true) return false;
         var d = item!.Data;
         if (d.ValueKind == System.Text.Json.JsonValueKind.Object && d.TryGetProperty("value", out var v)) d = v;
+        if (want is not null) return PushEquals(d, want);
         return d.ValueKind switch
         {
             System.Text.Json.JsonValueKind.True => true,
@@ -148,6 +156,17 @@ public static class Shortcuts
             _ => false,
         };
     }
+
+    /// <summary>A pushed text, number or true / false compared with the wanted value: "RU" matches "ru", "2" matches 2.0.</summary>
+    private static bool PushEquals(System.Text.Json.JsonElement d, string want) => d.ValueKind switch
+    {
+        System.Text.Json.JsonValueKind.String => string.Equals(d.GetString()?.Trim(), want, StringComparison.OrdinalIgnoreCase),
+        System.Text.Json.JsonValueKind.Number => double.TryParse(want, System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var n) && d.GetDouble() == n,
+        System.Text.Json.JsonValueKind.True => want.Equals("true", StringComparison.OrdinalIgnoreCase),
+        System.Text.Json.JsonValueKind.False => want.Equals("false", StringComparison.OrdinalIgnoreCase),
+        _ => false,
+    };
 
     /// <summary>Tests record what a shortcut would press or type instead of sending it to the computer.</summary>
     internal static Action<string>? TestKeys, TestType;

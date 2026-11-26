@@ -8,7 +8,7 @@ namespace PhoneBox.Agent;
 ///   running:name   a program with that process name is running (without .exe)
 ///   muted          the computer's sound is muted
 ///   on:id          the on / off key with that shortcut id is on
-///   push:key       the value pushed to /api/push/key is on (true, 1, "on")
+///   push:key       the value pushed to /api/push/key is on (true, 1, "on"); push:key=value, it holds that value
 /// A leading ! turns a condition around: <c>if:!running:obs64</c>.
 /// </summary>
 internal static class MacroFlow

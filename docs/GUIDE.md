@@ -222,7 +222,9 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
 - **Rules**: automations, see [Rules](#rules).
 - **Shortcuts**: add, edit, reorder and test keys (label, emoji, colour). A key runs a program, presses a key
   combination (`ctrl+shift+m`), types text or runs a macro (keys, text, waits, other shortcuts); on / off keys show
-  their state on the phone (mute does by itself, others from a pushed value).
+  their state on the phone (mute does by itself, others from a pushed value). For a pushed value, `layout` is on
+  unless it is empty, `0`, `false`, `off` or `no`; `layout=RU` is on while it is `RU`, so one value pushed to
+  `/api/push/layout` can light one of several keys (one per keyboard layout, say).
 - **Webhooks**: the webhook key, copy-paste examples, test buttons and the values pushed so far.
 - **General**: weather location search, the temperature unit (°C or °F) and the forecast model; calendars (ICS links from Google, Outlook or iCloud), Home Assistant and OBS
   connections; night mode; theme and accent colour, orientation (landscape, portrait or follow the phone), clock seconds,

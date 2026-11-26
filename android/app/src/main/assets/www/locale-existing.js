@@ -12410,7 +12410,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Плейлисты Plex (ничего не отмечено = все)",
       "% (for 15 s)": "% (в течение 15 с)",
       "(generated on save)": "(создаётся при сохранении)",
-      "A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.": "Значение, переданное в /api/push/<key> (true / on / 1 = включено). Без него телефон показывает состояние после каждого нажатия.",
+      "A value pushed to /api/push/<key> (true / on / 1 = on), or <key>=<value> to be on while the key holds that value. Without it the phone shows the state after each tap.": "Значение, переданное в /api/push/<key> (true / on / 1 = включено), или <key>=<value>: включено, пока у ключа это значение. Без него телефон показывает состояние после каждого нажатия.",
       "Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, numpad0–numpad9, numpadenter, numpadadd, numpadsubtract, numpadmultiply, numpaddivide, numpaddecimal, playpause, next, prev, mute, volumeup, volumedown.": "Сочетания через +, несколько подряд через запятую. Ctrl, Shift, Alt, Win (Cmd на Mac), буквы, цифры, F1–F24, enter, tab, esc, space, стрелки, home, end, pageup, pagedown, delete, numpad0–numpad9, numpadenter, numpadadd, numpadsubtract, numpadmultiply, numpaddivide, numpaddecimal, playpause, next, prev, mute, volumeup, volumedown.",
       "Fr": "Пт",
       "Hello from the settings page": "Привет со страницы настроек",

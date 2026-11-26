@@ -700,7 +700,10 @@ public sealed class Shortcut
     public List<string>? Steps { get; set; }
     /// <summary>An on / off key: the phone shows its state.</summary>
     public bool Toggle { get; set; }
-    /// <summary>Where a toggle's state comes from: a pushed value (truthy = on). Empty: the agent remembers the last tap.</summary>
+    /// <summary>
+    /// Where a toggle's state comes from: a pushed value (truthy = on), or "key=value" (on while the key holds that value).
+    /// Empty: the agent remembers the last tap.
+    /// </summary>
     public string? StateKey { get; set; }
     /// <summary>For toggles: the command (and arguments) that switch it off; empty = the same as switching on.</summary>
     public string? OffCmd { get; set; }

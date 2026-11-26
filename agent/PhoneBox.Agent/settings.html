@@ -3407,7 +3407,7 @@ function actionFields(s, upd, text, cmdIn, preset) {
     isMute ? t('s.k.toggleLabelMute') : t('s.k.toggleLabel')));
   if (s.toggle && !isMute) {
     fields.push(text('stateKey', t('s.k.stateKey'), 'e.g. teams-muted',
-      tc('A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.')));
+      tc('A value pushed to /api/push/<key> (true / on / 1 = on), or <key>=<value> to be on while the key holds that value. Without it the phone shows the state after each tap.')));
     if (kind === 'run') fields.push(text('offCmd', t('s.cd.offCmdPlaceholder'), t('s.cd.offCmdHint')), text('offArgs', t('s.k.offArgs'), ''));
   }
   // holding the key on the phone runs another key (a key that was never saved has no id to point at yet)
