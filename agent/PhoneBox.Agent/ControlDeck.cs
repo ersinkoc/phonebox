@@ -24,6 +24,9 @@ public sealed partial class ControlDeck : BackgroundService
     // Microphones panic or "Mics off, camera off" closed while they were open (guarded by _pttGate): "mics-on" (#645)
     // opens these again, and only these, so a microphone the user keeps muted stays muted.
     private readonly HashSet<string> _micsToReopen = [];
+    // Bumped whenever panic or "Mics off" records microphones (under _pttGate), so a prune based on an older device
+    // reading never removes a newer record.
+    private int _micsRecorded;
     private readonly PowerConfirmations _power = new(() => Environment.TickCount64);
     private readonly SemaphoreSlim _profiles = new(1, 1);
     private readonly SemaphoreSlim _listeners = new(2, 2);
@@ -279,6 +282,7 @@ public sealed partial class ControlDeck : BackgroundService
                         // its original and reopen the microphone when it ends.
                         var held = _ptt.AbandonAll();
                         var atRest = MicMutes();
+                        _micsRecorded++;
                         ok = true;
                         foreach (var d in controllable)
                         {
@@ -344,6 +348,7 @@ public sealed partial class ControlDeck : BackgroundService
             {
                 var held = _ptt.AbandonAll();
                 var atRest = MicMutes();
+                _micsRecorded++;
                 foreach (var mic in mics)
                 {
                     if (OpenAtRest(mic.Id, held, atRest)) _micsToReopen.Add(mic.Id);
@@ -409,13 +414,16 @@ public sealed partial class ControlDeck : BackgroundService
     {
         // the set is copied under the gate, and the devices read outside it: panic holds the gate across slow mutes
         string[] ids;
-        lock (_pttGate) ids = [.. _micsToReopen];
+        int recorded;
+        lock (_pttGate) { ids = [.. _micsToReopen]; recorded = _micsRecorded; }
         if (ids.Length == 0) return 0;
         var audio = Audio();
         if (!audio.Available) return 0; // nothing can be opened now, but the list is kept for when the devices are back
         var present = audio.Devices.Where(d => d.CanControl && d.Direction == "input" && ids.Contains(d.Id)).Select(d => d.Id).ToHashSet();
         // a microphone that is gone is forgotten, so it is not opened if it comes back later
-        if (present.Count < ids.Length) lock (_pttGate) _micsToReopen.RemoveWhere(id => ids.Contains(id) && !present.Contains(id));
+        // (only if nothing was recorded since the copy: a microphone plugged back in and closed again meanwhile is newer)
+        if (present.Count < ids.Length)
+            lock (_pttGate) if (recorded == _micsRecorded) _micsToReopen.RemoveWhere(id => ids.Contains(id) && !present.Contains(id));
         return present.Count;
     }
 
