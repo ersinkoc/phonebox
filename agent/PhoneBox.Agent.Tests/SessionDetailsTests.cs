@@ -519,6 +519,31 @@ public sealed class SessionDetailsTests : IDisposable
     }
 
     [Fact]
+    public void Antigravity_ChunksThatRepeatTheWholeTranscript_KeepTheTokenCounts()
+    {
+        // agy 1.5.x (#658): chunks/transcript/00000000.jsonl is written from the first turn, and transcript.jsonl still
+        // holds the whole conversation, so the counts in it are complete
+        var monitor = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
+        var id = "66666666-aaaa-bbbb-cccc-dddddddddddd";
+        var t0 = DateTimeOffset.UtcNow.AddSeconds(-30).ToString("O");
+        var t1 = DateTimeOffset.UtcNow.AddSeconds(-10).ToString("O");
+        var lines =
+            $$$"""{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT","status":"DONE","created_at":"{{{t0}}}"}""" + "\n" +
+            $$$"""{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE","status":"DONE","created_at":"{{{t1}}}","model":"gemini-4-hydrogen-high","input_tokens":10572,"cache_read_tokens":0,"output_tokens":49}""" + "\n";
+        var file = WriteAntigravityTranscript(id, lines, isCli: true, writeUtc: DateTime.UtcNow.AddSeconds(-10));
+        var chunkDir = Path.Combine(Path.GetDirectoryName(file)!, "chunks", "transcript");
+        Directory.CreateDirectory(chunkDir);
+        File.WriteAllText(Path.Combine(chunkDir, "00000000.jsonl"), lines);
+
+        var s = Assert.Single(monitor.ReadAntigravity(_root));
+        Assert.Equal("gemini-4-hydrogen-high", s.Model);
+        Assert.Equal(10572, s.InputTokens);
+        Assert.Equal(49, s.OutputTokens);
+        Assert.Equal(0, s.CachedInputTokens);
+        Assert.Equal(10621, s.TotalTokens);
+    }
+
+    [Fact]
     public void Antigravity_UnchangedTranscript_ReusesCachedDetailsAndUpdatesOnAppend()
     {
         var monitor = new SessionMonitor(NullLogger<SessionMonitor>.Instance);

@@ -30,6 +30,9 @@
   (#647, [Prajjwal2404](https://github.com/Prajjwal2404)).
 - Quotas: a card with two or three rings (Antigravity has three) keeps them the same size and on one line, and long
   labels wrap inside their own column instead of running into the next (#650, [avery-404](https://github.com/avery-404)).
+- AI sessions: Antigravity sessions show their token counts again with current agy (1.5.x), which keeps the whole
+  conversation in `transcript.jsonl` and also writes it in chunks from the first turn; only a transcript that starts
+  later than its first chunk is still treated as incomplete (#658, reported by [ahmdngi](https://github.com/ahmdngi)).
 - World clocks: the difference from the phone's time zone is exact, so Kathmandu shows `+5.75h` instead of `+5.8h`
   one way and `−5.7h` the other (#630, [KPuneethHarshaNaik](https://github.com/KPuneethHarshaNaik)).
 - Windows: LibreHardwareMonitor's port can be set below the preview in Settings › Pages (8085 by default), for a PC

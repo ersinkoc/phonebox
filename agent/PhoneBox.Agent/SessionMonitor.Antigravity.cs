@@ -39,6 +39,9 @@ public sealed partial class SessionMonitor
     private long _nextAgyDiscovery;
     private AgyCandidate[] _agyCandidates = [];
     private readonly ConcurrentDictionary<string, AgyHeader> _agyHeaders = new();
+    // Whether a transcript lacks the conversation's start (an older agy kept only the tail in transcript.jsonl and the
+    // start in chunks); settled once per conversation, as both first lines never change once written.
+    private readonly ConcurrentDictionary<string, bool> _agyTruncated = new();
     private readonly ConcurrentDictionary<string, AgyAnnotation> _agyAnnotations = new();
     private readonly ConcurrentDictionary<string, (DateTime LastWriteUtc, long Length, AgyDetails Details)> _agyDetails = new();
     private string? _agyCliHistoryPath;
@@ -112,7 +115,9 @@ public sealed partial class SessionMonitor
                 activePaths.Add(f.FullName);
 
                 var chunk0Path = Path.Combine(Path.GetDirectoryName(f.FullName)!, "chunks", "transcript", "00000000.jsonl");
-                var hasPriorChunks = File.Exists(chunk0Path);
+                // current agy (1.5.x) writes chunks from the first turn and keeps the whole conversation in
+                // transcript.jsonl too (#658): only a transcript that starts later than chunk 0 is missing turns
+                var hasPriorChunks = File.Exists(chunk0Path) && TranscriptStartsLater(f.FullName, chunk0Path);
                 var header = ReadAntigravityHeaderCached(f.FullName, hasPriorChunks ? chunk0Path : f.FullName);
                 if (header is null || !header.IsUser) continue;
 
@@ -174,6 +179,8 @@ public sealed partial class SessionMonitor
             _agyDetails.TryRemove(old, out _);
         foreach (var old in _agyHeaders.Keys.Where(p => !activePaths.Contains(p)))
             _agyHeaders.TryRemove(old, out _);
+        foreach (var old in _agyTruncated.Keys.Where(p => !activePaths.Contains(p)))
+            _agyTruncated.TryRemove(old, out _);
         foreach (var old in _agyAnnotations.Keys.Where(p => !activeAnnotations.Contains(p)))
             _agyAnnotations.TryRemove(old, out _);
 
@@ -208,6 +215,47 @@ public sealed partial class SessionMonitor
         if (parsed is not null)
             _agyHeaders[cacheKey] = parsed;
         return parsed;
+    }
+
+    /// <summary>
+    /// Whether transcript.jsonl begins later than the conversation does: its first line is not chunk 0's first line.
+    /// While either first line is still being written, the answer is "later" (no token counts this pass) and is asked
+    /// again on the next one.
+    /// </summary>
+    private bool TranscriptStartsLater(string transcriptPath, string chunk0Path)
+    {
+        if (_agyTruncated.TryGetValue(transcriptPath, out var known)) return known;
+        var a = ReadFirstLine(transcriptPath);
+        var b = ReadFirstLine(chunk0Path);
+        if (a is null || b is null) return true;
+        var later = !a.AsSpan().SequenceEqual(b);
+        _agyTruncated[transcriptPath] = later;
+        return later;
+    }
+
+    /// <summary>The bytes of a file's first complete line, or null when it has none yet (or it is too long).</summary>
+    private static byte[]? ReadFirstLine(string path)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var buf = new byte[Math.Min(64 * 1024, (int)Math.Min(fs.Length, AgyMaxHeaderBytes))];
+            int len = 0, nl = -1;
+            while (nl < 0)
+            {
+                if (len == buf.Length)
+                {
+                    if (buf.Length >= AgyMaxHeaderBytes || buf.Length == 0) return null;
+                    Array.Resize(ref buf, Math.Min(buf.Length * 2, AgyMaxHeaderBytes));
+                }
+                var n = fs.Read(buf, len, buf.Length - len);
+                if (n <= 0) return null;
+                nl = Array.IndexOf(buf, (byte)'\n', len, n);
+                len += n;
+            }
+            return buf[..nl];
+        }
+        catch { return null; }
     }
 
     private static AgyHeader? ReadAntigravityHeader(string path)
