@@ -15,6 +15,12 @@
   agent. Wi-Fi stays off, and Settings › Wi-Fi and `agent.log` say why (#614, #624).
 - Control Deck on Linux and macOS: the application mixer, microphone, balance, push-to-talk and device switching say
   they are only on Windows for now, instead of showing an empty list (#613, #625).
+- World clocks: the difference from the phone's time zone is exact, so Kathmandu shows `+5.75h` instead of `+5.8h`
+  one way and `−5.7h` the other (#630, [KPuneethHarshaNaik](https://github.com/KPuneethHarshaNaik)).
+- Windows: LibreHardwareMonitor's port can be set below the preview in Settings › Pages (8085 by default), for a PC
+  where another service already uses 8085 (#628, [DaliBerr](https://github.com/DaliBerr)).
+- README: the PhoneBox Keyboard Add-on joins the Community add-ons list: global Windows shortcuts for pages (#616,
+  #631, [Ultraalmir](https://github.com/Ultraalmir)).
 - README: the Games Tab add-on's row lists its Steam store lookup (#612, [lucasaz](https://github.com/lucasaz)).
 - Development: an `.editorconfig` with the style the code already follows, and the agent builds without warnings on
   Windows (#615, [elong365](https://github.com/elong365)).
