@@ -466,6 +466,9 @@
     const id = q.get('id'), op = q.get('op'), value = q.has('value') ? +q.get('value') : null;
     const c = await config();
     if (kind === 'device' || kind === 'session') {
+      // the first output follows the computer's volume (/api/volume, the mute key): start from its current state, so a
+      // mute-only command keeps the volume and a volume-only one keeps the mute
+      Object.assign(deck.audio.devices[0], { volume: audio.volume, muted: audio.muted });
       // like PortableDeckNative: off Windows the only device is "default", the system output (deckState's first device),
       // with no sessions and no per-channel volume
       const portable = (window.__demoOs || 'windows') !== 'windows';

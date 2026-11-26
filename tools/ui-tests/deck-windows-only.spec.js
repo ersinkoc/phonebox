@@ -41,3 +41,15 @@ test('device-volume controls the system output on Linux', async ({ page }) => {
   // the command reached the demo agent's "default" device, which follows the computer's volume
   await expect.poll(() => page.evaluate(async () => (await (await fetch('/agent/api/controls/state')).json()).audio.devices[0].volume)).toBe(before - 1);
 });
+
+test('a mute-only device command keeps a volume set elsewhere on Linux', async ({ page }) => {
+  await show(page, 'device-volume', 'linux');
+  await expect(page.getByRole('slider', { name: 'System output volume', exact: true })).toBeVisible();
+  const after = await page.evaluate(async () => {
+    const post = (p) => fetch(p, { method: 'POST' }).then((r) => r.json());
+    await post('/agent/api/volume?level=23');                                      // e.g. the volume keys
+    await post('/agent/api/controls/command/device?id=default&muted=true');       // mute only
+    return (await (await fetch('/agent/api/controls/state')).json()).audio.devices[0];
+  });
+  expect(after).toMatchObject({ volume: 23, muted: true });
+});
