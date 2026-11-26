@@ -28,6 +28,10 @@ Open **Settings → General → Control Deck** to define computer-side bindings 
 matching widgets in Pages. Executable shortcuts and macros are configured in Shortcuts first; phone requests contain
 only configured IDs. PC audio listening and hold-to-confirm power buttons require separate desktop opt-ins.
 
+The audio device list, microphone controls, per-application volume, balance and switching the default device use
+Windows Core Audio, so for now they work only on Windows; on Linux and macOS the deck controls the system output's
+volume and mute and the media player, and those widgets say "only on Windows for now".
+
 **Emergency mute** mutes the computer's outputs and microphones. **Mics off, camera off** mutes only the microphones
 and stops the OBS virtual camera; the speakers stay as they are. It needs OBS connected for the camera part, and tells
 you on the phone when the camera could not be turned off. A physical webcam is not turned off.
