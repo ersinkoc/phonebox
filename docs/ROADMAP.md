@@ -55,6 +55,16 @@ people who proposed or prototyped something are credited in the [changelog](../C
 - **A white theme and an e-ink option** ([#383](https://github.com/ersinkoc/phonebox/issues/383)), in two pull
   requests: a pure white theme, then an "E-ink screen" option, off by default, with no pulsing or animations and a
   slower refresh for fast widgets.
+- **LCD image retention protection** ([#642](https://github.com/ersinkoc/phonebox/issues/642)): an option next to OLED
+  burn-in protection, off by default, that mirrors the grid every 10 minutes (by the widgets' grid positions, so the
+  inside of each widget is untouched) and shifts the page up to ±4 px every 2 minutes. No per-card flip.
+- **The whole title on the media widget** ([#643](https://github.com/ersinkoc/phonebox/issues/643)): the title's font
+  shrinks to fit (never below 11 px, then an ellipsis) instead of cutting at two lines, also on the Control Deck
+  media remote. The default, with no option.
+- **Three small additions** ([#644](https://github.com/ersinkoc/phonebox/issues/644)), each its own pull request: the
+  phone's battery time left or time to full; an estimated GPU power (marked "≈", on the tile only, never seen by
+  rules or history as a reading) when the card reports none; and an Automatic / Dark / Light switch on the desktop
+  settings page.
 
 ## Open for a contributor
 
