@@ -51,12 +51,16 @@ internal sealed class MicrophoneLeases(Func<string, bool?> read, Func<string, bo
             foreach (var device in _original.Keys.ToArray()) Restore(device);
         }
     }
-    public void AbandonAll()
+    /// <summary>Drops every hold without restoring anything, and returns the mute state each held microphone had before
+    /// its hold (true = muted), so a caller can tell a microphone open at rest from one only a hold opened.</summary>
+    public IReadOnlyDictionary<string, bool> AbandonAll()
     {
         lock (_gate)
         {
+            var original = new Dictionary<string, bool>(_original);
             _leases.Clear();
             _original.Clear();
+            return original;
         }
     }
     private void Restore(string device)

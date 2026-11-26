@@ -68,6 +68,15 @@ async function micsCameraOff() {
   catch (e) { if (!e.result?.camera) throw e; toast(micsCameraText(e.result), 'err', '', 6); return; }
   toast(micsCameraText(result), 'ok', '', 4);
 }
+// "Unmute microphones" (#645): opens again only the microphones the emergency mute or "Mics off" closed
+async function micsOn() {
+  let r;
+  try { r = await deckCommand('mics-on'); }
+  catch (e) { if (!e.result?.mics) throw e; r = e.result; }
+  const text = r.mics === 'unmuted' ? tp('Microphones unmuted') : r.mics === 'none' ? tp('No microphone muted by PhoneBox to unmute')
+    : tp('A microphone could not be unmuted');
+  toast(text, r.ok ? 'ok' : 'err', '', 4);
+}
 function slider(label, send, max = 100) {
   const input = h('input', 'deck-slider'); input.type = 'range'; input.min = 0; input.max = max; input.step = 1;
   input.setAttribute('aria-label', label);
@@ -619,8 +628,13 @@ export function registerDeckWidget(type, title, mode = type) {
       else if (mode === 'ptt') component = hold(box, o);
       else if (mode === 'listen') component = listening(box);
       else if (['remote', 'seek', 'modes'].includes(mode)) render = mediaView(box, o, mode);
-      else if (mode === 'panic') box.append(button(tp('Mute audio + microphones'), () => deckCommand('panic')));
-      else if (mode === 'mics-camera-off') box.append(button(tp('Mute microphones + stop OBS camera'), micsCameraOff));
+      else if (mode === 'panic' || mode === 'mics-camera-off') {
+        box.append(mode === 'panic' ? button(tp('Mute audio + microphones'), () => deckCommand('panic'))
+          : button(tp('Mute microphones + stop OBS camera'), micsCameraOff));
+        // shown only while there is something to open again, so the widget looks as before until it is used
+        const unmute = button(tp('Unmute microphones'), micsOn); unmute.hidden = true; box.append(unmute);
+        render = data => { unmute.hidden = !(data.micsToUnmute > 0); };
+      }
       else if (mode === 'desktops') box.append(button(tp('← Desktop'), () => deckCommand('desktop', { value: -1 })), button(tp('Desktop →'), () => deckCommand('desktop', { value: 1 })));
       else if (mode === 'system') box.append(button(tp('Lock'), () => deckCommand('lock')), button(tp('Display off'), () => deckCommand('monitor-off')));
       else if (mode === 'power') {

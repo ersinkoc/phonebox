@@ -21,6 +21,9 @@ public sealed partial class ControlDeck : BackgroundService
     private readonly Lock _pttGate = new();
     // Microphones panic could not mute; retried until the mute lands or the user sets the device's mute state.
     private readonly HashSet<string> _panicPending = [];
+    // Microphones panic or "Mics off, camera off" closed while they were open (guarded by _pttGate): "mics-on" (#645)
+    // opens these again, and only these, so a microphone the user keeps muted stays muted.
+    private readonly HashSet<string> _micsToReopen = [];
     private readonly PowerConfirmations _power = new(() => Environment.TickCount64);
     private readonly SemaphoreSlim _profiles = new(1, 1);
     private readonly SemaphoreSlim _listeners = new(2, 2);
@@ -145,6 +148,7 @@ public sealed partial class ControlDeck : BackgroundService
             profiles = c.Controls.Profiles.Select(p => new DeckItem(p.Id, p.Label, "profile")),
             allowListening = c.Controls.AllowListening, allowPower = c.Controls.AllowPower,
             ducking = _duckPercent is not null,
+            micsToUnmute = MicsToUnmute(),
             sleep,
         };
     }
@@ -206,7 +210,8 @@ public sealed partial class ControlDeck : BackgroundService
                         lock (_pttGate)
                         {
                             ok = _native.Device(id, value, muted, op is "left" ? 0 : op is "right" ? 1 : null);
-                            if (ok) _panicPending.Remove(id);
+                            // the user's own choice also ends what "Unmute microphones" would do for this microphone
+                            if (ok) { _panicPending.Remove(id); _micsToReopen.Remove(id); }
                         }
                         break;
                     }
@@ -272,10 +277,11 @@ public sealed partial class ControlDeck : BackgroundService
                     {
                         // Held across the mutes: a hold that began in between would save the still-open state as
                         // its original and reopen the microphone when it ends.
-                        _ptt.AbandonAll();
+                        var held = _ptt.AbandonAll();
                         ok = true;
                         foreach (var d in controllable)
                         {
+                            if (d.Direction == "input" && OpenAtRest(d, held)) _micsToReopen.Add(d.Id);
                             var mutedNow = TryMute(d.Id);
                             // the leases no longer restore anything, so a microphone left open keeps a pending mute
                             if (mutedNow) _panicPending.Remove(d.Id);
@@ -285,6 +291,7 @@ public sealed partial class ControlDeck : BackgroundService
                     }
                     break;
                 case "mics-camera-off": return await MicsCameraOff(ct);
+                case "mics-on": return MicsOn();
                 case "sound-stop":
                     if (string.IsNullOrEmpty(id)) { StopAllRadios(clearLast: true); _native.StopSound(null); }
                     else { StopRadio(id, clearLast: true); }
@@ -334,9 +341,10 @@ public sealed partial class ControlDeck : BackgroundService
             // the same gate as panic: no push-to-talk hold can begin, or reopen a microphone, between the mutes
             lock (_pttGate)
             {
-                _ptt.AbandonAll();
+                var held = _ptt.AbandonAll();
                 foreach (var mic in mics)
                 {
+                    if (OpenAtRest(mic, held)) _micsToReopen.Add(mic.Id);
                     var mutedNow = TryMute(mic.Id);
                     if (mutedNow) _panicPending.Remove(mic.Id);
                     else _panicPending.Add(mic.Id); // retried, and push-to-talk refused, until the mute lands
@@ -371,6 +379,53 @@ public sealed partial class ControlDeck : BackgroundService
         };
         _log.LogInformation("Mics off, camera off: {Mics}; {Camera}", micText, cameraText);
         return new(ok, ok ? null : micText + " · " + cameraText, Mics: micState, Camera: cameraState);
+    }
+
+    /// <summary>
+    /// Whether a microphone was open before a hold opened it: a push-to-talk hold's own opening is not the user's state
+    /// (<paramref name="held"/> is what <see cref="MicrophoneLeases.AbandonAll"/> returned).
+    /// </summary>
+    private static bool OpenAtRest(DeckDevice mic, IReadOnlyDictionary<string, bool> held) =>
+        held.TryGetValue(mic.Id, out var mutedBeforeHold) ? !mutedBeforeHold : !mic.Muted;
+
+    /// <summary>How many microphones "Unmute microphones" would open: the ones panic or "Mics off" closed, still present.</summary>
+    private int MicsToUnmute()
+    {
+        // the set is copied under the gate, and the devices read outside it: panic holds the gate across slow mutes
+        string[] ids;
+        lock (_pttGate) ids = [.. _micsToReopen];
+        if (ids.Length == 0) return 0;
+        return Audio().Devices.Count(d => d.CanControl && d.Direction == "input" && ids.Contains(d.Id));
+    }
+
+    /// <summary>
+    /// "Unmute microphones" (#645): opens the microphones panic or "Mics off, camera off" closed while they were open,
+    /// and no other; a pending mute for them is dropped first so the retry cannot close them again.
+    /// </summary>
+    private DeckResult MicsOn()
+    {
+        var audio = _native.Audio();
+        lock (_pttGate)
+        {
+            var mics = audio.Available
+                ? audio.Devices.Where(d => d.CanControl && d.Direction == "input" && _micsToReopen.Contains(d.Id)).ToArray() : [];
+            // microphones that are gone are forgotten, so they are not opened if they come back later
+            _micsToReopen.IntersectWith(mics.Select(m => m.Id));
+            if (mics.Length == 0) return new(false, "No microphone muted by PhoneBox to unmute", Mics: "none");
+            var all = true;
+            foreach (var mic in mics)
+            {
+                _panicPending.Remove(mic.Id);
+                bool opened;
+                try { opened = _native.Device(mic.Id, null, false); }
+                catch (Exception ex) { _log.LogDebug(ex, "Unmuting {Id} failed", mic.Id); opened = false; }
+                if (opened) _micsToReopen.Remove(mic.Id);
+                all &= opened;
+            }
+            Invalidate();
+            _log.LogInformation("Unmute microphones: {Count} opened again{Failed}", mics.Length - _micsToReopen.Count, all ? "" : ", some failed");
+            return new(all, all ? null : "A microphone could not be unmuted", Mics: all ? "unmuted" : "failed");
+        }
     }
 
     private async Task<DeckResult> Profile(string id, CancellationToken ct)

@@ -430,9 +430,21 @@
       actions: (controls.actions || []).filter((a) => a.enabled !== false).map((a) => ({ id: a.id, name: a.label, kind: a.kind, state: actionState[a.id] ?? (/^(app|project|shortcut|focus)$/.test(a.kind) ? (c.shortcuts.some((x) => x.id === a.target) ? 'Ready' : 'Shortcut is missing') : null),
         available: !/^(app|project|shortcut|focus)$/.test(a.kind) || c.shortcuts.some((x) => x.id === a.target) })),
       shortcuts: (c.shortcuts || []).map((x) => ({ id: x.id, name: x.label, kind: { 'builtin:keys': 'keys', 'builtin:text': 'text', 'builtin:macro': 'macro' }[x.cmd] || (String(x.cmd).startsWith('builtin:') ? 'shortcut' : 'app'), state: null, available: true })),
-      profiles: (controls.profiles || []).map((x) => ({ id: x.id, name: x.label, kind: 'profile', state: null, available: true })) };
+      profiles: (controls.profiles || []).map((x) => ({ id: x.id, name: x.label, kind: 'profile', state: null, available: true })),
+      micsToUnmute: portable ? 0 : deck.audio.devices.filter((d) => d.direction === 'input' && deckReopen.has(d.id)).length };
   }
   const deckLeases = new Map();
+  // ControlDeck._micsToReopen (#645): the microphones panic or "Mics off" closed while they were open; a held
+  // push-to-talk key's own opening does not count, like MicrophoneLeases.AbandonAll's originals
+  const deckReopen = new Set();
+  const closeMics = () => {
+    const held = new Map([...deckLeases.values()].map((l) => [l.mic.id, l.muted]));
+    deckLeases.clear();
+    deck.audio.devices.filter((d) => d.direction === 'input').forEach((d) => {
+      if (!(held.has(d.id) ? held.get(d.id) : d.muted)) deckReopen.add(d.id);
+      d.muted = true;
+    });
+  };
   // one made-up OBS behind both the OBS widget (/api/obs) and the Control Deck's OBS widgets (/api/controls/obs)
   const deckObsExtra = { inputs: [{ id: 'Desktop Audio', name: 'Desktop Audio', volume: 70, muted: false }, { id: 'Mic/Aux', name: 'Mic/Aux', volume: 80, muted: false }],
     sources: { Desk: [{ id: 1, name: 'Webcam', enabled: true }, { id: 2, name: 'Screen capture', enabled: true }, { id: 3, name: 'Lower third', enabled: false }],
@@ -479,7 +491,7 @@
         if(kind==='device' && (op==='left'||op==='right'))item.channelVolumes[op==='left'?0:1]=value;
         else item.volume = Math.max(0, Math.min(100, value));
       }
-      if (q.has('muted')) item.muted = q.get('muted') === 'true';
+      if (q.has('muted')) { item.muted = q.get('muted') === 'true'; if (kind === 'device') deckReopen.delete(item.id); }
       if (item === deck.audio.devices[0]) Object.assign(audio, { volume: item.volume, muted: item.muted });
     } else if (kind === 'default') {
       const item = deck.audio.devices.find(d => d.id === id); if (!item) return { ok: false, error: 'Device unavailable' };
@@ -503,12 +515,18 @@
       if (op === 'end') { lease.mic.muted = lease.muted; deckLeases.delete(q.get('lease')); }
     } else if (kind === 'duck') deck.ducking = op !== 'off';
     else if (kind === 'brightness') deck.monitors[0].brightness = Math.max(0, Math.min(100, value));
-    else if (kind === 'panic') { deck.audio.devices.forEach(d => d.muted = true); audio.muted = true; }
+    else if (kind === 'panic') { closeMics(); deck.audio.devices.forEach(d => d.muted = true); audio.muted = true; }
+    else if (kind === 'mics-on') {
+      // ControlDeck.MicsOn: only the microphones panic or "Mics off" closed
+      const mics = deck.audio.devices.filter((d) => d.direction === 'input' && deckReopen.has(d.id));
+      if (!mics.length || (window.__demoOs || 'windows') !== 'windows') return { ok: false, error: 'No microphone muted by PhoneBox to unmute', mics: 'none' };
+      mics.forEach((d) => { d.muted = false; deckReopen.delete(d.id); });
+      return { ok: true, mics: 'unmuted' };
+    }
     else if (kind === 'mics-camera-off') {
       // ControlDeck.MicsCameraOff: the microphones only, then the OBS virtual camera (not connected when OBS is off)
       // like the agent, held push-to-talk leases are dropped first, so ending one can't reopen a microphone
-      deckLeases.clear();
-      deck.audio.devices.filter(d => d.direction === 'input').forEach(d => d.muted = true);
+      closeMics();
       if (c.obs?.enabled === false) return { ok: false, error: 'Microphones muted · Camera not turned off: OBS is not connected', mics: 'muted', camera: 'not-connected' };
       const camera = deckObsExtra.cameraActive ? 'stopped' : 'off'; deckObsExtra.cameraActive = false;
       return { ok: true, mics: 'muted', camera };

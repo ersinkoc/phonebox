@@ -52,8 +52,8 @@ public sealed record DeckAudio(bool Available, string? Error, IReadOnlyList<Deck
 public sealed record DeckMedia(string Id, string Name, string Title, bool Playing, long Position, long Duration,
     bool CanSeek, bool CanShuffle, bool CanRepeat, bool Shuffle, string Repeat);
 public sealed record DeckMonitor(string Id, string Name, int? Brightness, int Width, int Height, int Hz);
-/// <summary>A control's answer. <see cref="Mics"/> and <see cref="Camera"/> are set only by "mics-camera-off", so the
-/// phone can say in its own language what happened to each.</summary>
+/// <summary>A control's answer. <see cref="Mics"/> and <see cref="Camera"/> are set only by "mics-camera-off" (and
+/// <see cref="Mics"/> by "mics-on"), so the phone can say in its own language what happened to each.</summary>
 public sealed record DeckResult(bool Ok, string? Error = null, string? Lease = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Mics = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Camera = null);

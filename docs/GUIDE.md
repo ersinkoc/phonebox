@@ -34,7 +34,10 @@ volume and mute and the media player, and those widgets say "only on Windows for
 
 **Emergency mute** mutes the computer's outputs and microphones. **Mics off, camera off** mutes only the microphones
 and stops the OBS virtual camera; the speakers stay as they are. It needs OBS connected for the camera part, and tells
-you on the phone when the camera could not be turned off. A physical webcam is not turned off.
+you on the phone when the camera could not be turned off. A physical webcam is not turned off. After either one, an
+**Unmute microphones** button appears on the widget: it turns back on only the microphones that were on before the
+mute, so a microphone you keep muted stays muted, and the speakers are left as they are. Changing a microphone's mute
+by hand takes it off that list, and the list is forgotten when the agent restarts.
 
 Spotify queue, library and playlist controls need a Spotify Developer Client ID and a connection through the
 settings screen. OBS needs obs-websocket and widget control permission. Application routing uses an installed
