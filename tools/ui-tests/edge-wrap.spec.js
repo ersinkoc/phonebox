@@ -69,11 +69,16 @@ test('a swipe the WebView ends with a touchcancel still wraps', async ({ page })
   await expect.poll(() => active(page)).toBe(0);
 });
 
-test('a cancelled touch that barely moved, or began at the screen edge (the back gesture), does not wrap', async ({ page }) => {
+test('a cancelled touch that barely moved, came back, or began at the screen edge (the back gesture), does not wrap', async ({ page }) => {
   const key = await open(page);
   await key.evaluate((node) => {
     const mk = (type, x) => { const e = new Event(type, { bubbles: true }); const t = { clientX: x, clientY: 200 }; e.touches = type === 'touchcancel' ? [] : [t]; e.changedTouches = [t]; return e; };
     node.dispatchEvent(mk('touchstart', 400)); node.dispatchEvent(mk('touchmove', 390)); node.dispatchEvent(mk('touchcancel', 390));
+  });
+  // the cancel itself says the finger came back: its position counts, not the last move's
+  await key.evaluate((node) => {
+    const mk = (type, x) => { const e = new Event(type, { bubbles: true }); const t = { clientX: x, clientY: 200 }; e.touches = type === 'touchcancel' ? [] : [t]; e.changedTouches = [t]; return e; };
+    node.dispatchEvent(mk('touchstart', 400)); node.dispatchEvent(mk('touchmove', 240)); node.dispatchEvent(mk('touchcancel', 390));
   });
   await swipeLeftCancelled(key, 790); // starts 10 px from the right edge of the 800 px screen
   await page.waitForTimeout(300);

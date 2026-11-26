@@ -2443,10 +2443,13 @@ pager.addEventListener('touchend', (e) => {
 // Some WebViews (a Galaxy M52 on Android 13, #651) hand a swipe at the first or last page to their own overscroll and
 // end it with a touchcancel instead of a touchend: the swipe is judged by where the finger was last seen.
 // A touch that began at the screen's very edge is left alone: Android's back gesture ends with a touchcancel too.
-pager.addEventListener('touchcancel', () => {
+pager.addEventListener('touchcancel', (e) => {
   if (!swipeTracking) return;
   if (swipeStartX < 24 || swipeStartX > window.innerWidth - 24) { swipeTracking = false; return; }
-  finishSwipe(swipeLastX, swipeLastY);
+  // the cancelled touch's own last position when the event has it, else the last move seen
+  const t = e.changedTouches?.length === 1 ? e.changedTouches[0] : null;
+  if (t && Number.isFinite(t.clientX) && Number.isFinite(t.clientY)) finishSwipe(t.clientX, t.clientY);
+  else finishSwipe(swipeLastX, swipeLastY);
 }, { passive: true });
 
 /** Called by the Android shell (volume keys) and by arrow keys in a desktop browser. */
