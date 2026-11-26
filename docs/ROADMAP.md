@@ -126,6 +126,14 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   Realtek USB 2.5GbE adapter; [#636](https://github.com/ersinkoc/phonebox/issues/636): about 6x on Windows Ethernet):
   the rate is bytes per second and shown as MB/s correctly, so the likely cause is the same traffic counted on more
   than one adapter. Which adapters Settings › General › Ping counts is needed to confirm it.
+- **Claude Code prompts not reaching the phone** ([#497](https://github.com/ersinkoc/phonebox/issues/497)): the hook
+  gets an empty answer in a few milliseconds while the panel looks connected. Since 0.9.30 `agent.log` says why a
+  prompt was left to the computer; that line, the `live stream opened (…)` lines, and whether two `PhoneBoxAgent.exe`
+  run (a sandboxed copy has its own instance lock) are needed.
+- **Home Assistant tiles not vibrating on one phone** ([#464](https://github.com/ersinkoc/phonebox/issues/464)): the
+  panel calls the same 14 ms haptic for every widget, and `dumpsys vibrator` showed no vibration from the app at all,
+  so whether the phone drops short vibrations needs `adb shell dumpsys vibrator` right after a shortcut tap and an HA
+  tap, and MIUI's touch-vibration setting.
 
 ## How to help
 
