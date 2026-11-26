@@ -94,9 +94,6 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   list, the default microphone, switching the default device and per-app volume through `pactl` (sinks, sources and
   sink inputs; PipeWire answers it too), with a forced C locale for parsing. Today these are Windows-only and the
   Linux agent controls only the system output.
-- **Next and previous page from the computer** ([#616](https://github.com/ersinkoc/phonebox/issues/616)):
-  `POST /api/goto/next` and `/api/goto/prev`, resolved by the phone, since only the phone knows which page it shows,
-  so a keyboard add-on needs no position of its own.
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
 
