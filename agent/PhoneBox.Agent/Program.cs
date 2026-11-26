@@ -47,6 +47,7 @@ var lanCfg = configStore.Get().Lan;
 // instead, and Settings says why (/api/lan "portProblem")
 var lanPortProblem = lanCfg.Enabled && lanCfg.Port != Port ? Lan.PortProblem(lanCfg.Port) : null;
 var lanCert = lanCfg.Enabled && lanCfg.Port != Port && lanPortProblem is null ? Lan.Certificate(configDir) : null;
+var activeLanPort = lanCert is not null ? lanCfg.Port : (int?)null;
 // USB uses the same certificate as Wi-Fi; the agent hands its fingerprint to the app over adb (see UsbLink.cs)
 var usbCert = lanCert ?? Lan.Certificate(configDir);
 var usb = new UsbLink(UsbLink.FreeLoopbackPort(), Lan.Fingerprint(usbCert));
@@ -85,8 +86,7 @@ builder.Services.AddSingleton<PairingCodes>();
 // panel's TLS to the Wi-Fi listener above (see IosUsbBridge). It starts on its own and is quiet without an iPhone.
 builder.Services.AddSingleton(sp => new IosUsbBridge(
     sp.GetRequiredService<ConfigStore>(),
-    sp.GetRequiredService<AgentEndpoint>(),
-    lanCfg,
+    activeLanPort,
     sp.GetRequiredService<ILogger<IosUsbBridge>>()));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<IosUsbBridge>());
 builder.Services.AddSingleton<SpotifyControl>();
@@ -275,7 +275,7 @@ app.MapGet("/api/latency", () => Results.Json(timings.Summary()));
 
 // Security: who may reach what, by the port a request came in on (local, the phone's USB tunnel, the optional Wi-Fi
 // port). See RequestGate.
-var gate = new RequestGate(Port, SameOrigins, usb, lanCert is not null ? lanCfg.Port : null, configStore,
+var gate = new RequestGate(Port, SameOrigins, usb, activeLanPort, configStore,
     ctx => ctx.Request.Method == "GET" && ctx.Request.Path == "/api/controls/spotify/callback"
         && app.Services.GetRequiredService<SpotifyControl>().HasPendingState(ctx.Request.Query["state"]),
     app.Logger);
