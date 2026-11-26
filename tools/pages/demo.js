@@ -466,7 +466,11 @@
     const id = q.get('id'), op = q.get('op'), value = q.has('value') ? +q.get('value') : null;
     const c = await config();
     if (kind === 'device' || kind === 'session') {
-      const item = (kind === 'device' ? deck.audio.devices : deck.audio.sessions).find(x => x.id === id);
+      // like PortableDeckNative: off Windows the only device is "default", the system output (deckState's first device),
+      // with no sessions and no per-channel volume
+      const portable = (window.__demoOs || 'windows') !== 'windows';
+      const item = portable ? (kind === 'device' && id === 'default' && op !== 'left' && op !== 'right' ? deck.audio.devices[0] : null)
+        : (kind === 'device' ? deck.audio.devices : deck.audio.sessions).find(x => x.id === id);
       if (!item) return { ok: false, error: 'Device unavailable' };
       if (value != null) {
         if(kind==='device' && (op==='left'||op==='right'))item.channelVolumes[op==='left'?0:1]=value;
