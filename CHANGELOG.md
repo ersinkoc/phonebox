@@ -22,6 +22,9 @@
   the microphones that were on before, and only those; a microphone kept muted stays muted (#645).
 - Page swipes: the wrap from the last page to the first (and back) also works on WebViews that end a swipe at either
   end with a cancel instead of a release, and the pager no longer stretches or glows at its ends (#651).
+- Older Android WebViews (Chromium 80 to 84): the panel starts again. Since 0.9.30 one line of the Discord widget
+  used syntax those versions can't read, so the panel stopped with "Unexpected token '='"; a new test keeps newer
+  syntax out of the panel (#654).
 - World clocks: the difference from the phone's time zone is exact, so Kathmandu shows `+5.75h` instead of `+5.8h`
   one way and `−5.7h` the other (#630, [KPuneethHarshaNaik](https://github.com/KPuneethHarshaNaik)).
 - Windows: LibreHardwareMonitor's port can be set below the preview in Settings › Pages (8085 by default), for a PC

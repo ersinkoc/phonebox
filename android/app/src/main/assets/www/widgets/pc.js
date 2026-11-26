@@ -582,7 +582,7 @@ W['discord-bar'] = {
         if (canHide) {
           if (!data) return; // still hidden until the agent answers
           if (!shownIn) { lastKey = ''; hide(true); return; }
-          awaySince ||= Date.now();
+          awaySince = awaySince || Date.now(); // not ||= : that is Chromium 85, and the panel runs from 80
           if (Date.now() - awaySince < GRACE) return; // keep what is drawn for now
           shownIn = false; lastKey = ''; hide(true); return;
         }
