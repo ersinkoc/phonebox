@@ -2381,6 +2381,7 @@ let swipeStartY = 0;
 let swipeStartPage = 0;
 let swipeStartTime = 0;
 let swipeTracking = false;
+let swipeLastX = 0, swipeLastY = 0;
 
 /**
  * Whether a sideways swipe that starts on el turns the page, as the browser decides it from touch-action: the wrap at
@@ -2405,17 +2406,22 @@ pager.addEventListener('touchstart', (e) => {
   swipeStartY = e.touches[0].clientY;
   swipeStartPage = curPage;
   swipeStartTime = Date.now();
+  swipeLastX = swipeStartX; swipeLastY = swipeStartY;
   swipeTracking = true;
 }, { passive: true });
 
-pager.addEventListener('touchend', (e) => {
-  if (!swipeTracking || !e.changedTouches || e.changedTouches.length !== 1 || pages.length < 2) {
-    swipeTracking = false;
-    return;
-  }
+// the last place the finger was seen, for a swipe whose end comes as a touchcancel (#651)
+pager.addEventListener('touchmove', (e) => {
+  if (!swipeTracking || e.touches.length !== 1) return;
+  swipeLastX = e.touches[0].clientX; swipeLastY = e.touches[0].clientY;
+}, { passive: true });
+
+/** Wraps to the other end when a quick sideways swipe that began on the first or last page ended at (x, y). */
+function finishSwipe(x, y) {
   swipeTracking = false;
-  const dx = e.changedTouches[0].clientX - swipeStartX;
-  const dy = e.changedTouches[0].clientY - swipeStartY;
+  if (pages.length < 2) return;
+  const dx = x - swipeStartX;
+  const dy = y - swipeStartY;
   const dt = Date.now() - swipeStartTime;
 
   if (dt < 700 && Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.3) {
@@ -2427,9 +2433,21 @@ pager.addEventListener('touchend', (e) => {
       goPage(pages.length - 1, true);
     }
   }
+}
+
+pager.addEventListener('touchend', (e) => {
+  if (!swipeTracking || !e.changedTouches || e.changedTouches.length !== 1) { swipeTracking = false; return; }
+  finishSwipe(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
 }, { passive: true });
 
-pager.addEventListener('touchcancel', () => { swipeTracking = false; }, { passive: true });
+// Some WebViews (a Galaxy M52 on Android 13, #651) hand a swipe at the first or last page to their own overscroll and
+// end it with a touchcancel instead of a touchend: the swipe is judged by where the finger was last seen.
+// A touch that began at the screen's very edge is left alone: Android's back gesture ends with a touchcancel too.
+pager.addEventListener('touchcancel', () => {
+  if (!swipeTracking) return;
+  if (swipeStartX < 24 || swipeStartX > window.innerWidth - 24) { swipeTracking = false; return; }
+  finishSwipe(swipeLastX, swipeLastY);
+}, { passive: true });
 
 /** Called by the Android shell (volume keys) and by arrow keys in a desktop browser. */
 window.onAndroidKey = (k) => {

@@ -90,6 +90,8 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   overscroll-behavior: contain;
+  /* no stretch or glow at the first and last page: the wrap-around swipe takes that gesture instead (#651) */
+  overscroll-behavior-x: none;
 }
 #pager::-webkit-scrollbar { display: none; }
 #pager { transition: opacity .32s ease, filter .32s ease; }

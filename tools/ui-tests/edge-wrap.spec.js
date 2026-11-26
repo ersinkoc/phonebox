@@ -47,3 +47,40 @@ test('a swipe that starts on something that keeps sideways moves does not wrap',
   await page.waitForTimeout(300);
   expect(await active(page)).toBe(2);
 });
+
+// Some WebViews end a swipe at the first or last page with a touchcancel instead of a touchend (#651)
+const swipeLeftCancelled = (el, from = 400) => el.evaluate((node, from) => {
+  const mk = (type, x) => {
+    const e = new Event(type, { bubbles: true, cancelable: true });
+    const touch = { clientX: x, clientY: 200 };
+    e.touches = type === 'touchcancel' ? [] : [touch];
+    e.changedTouches = [touch];
+    return e;
+  };
+  node.dispatchEvent(mk('touchstart', from));
+  node.dispatchEvent(mk('touchmove', from - 80));
+  node.dispatchEvent(mk('touchmove', from - 160));
+  node.dispatchEvent(mk('touchcancel', from - 160));
+}, from);
+
+test('a swipe the WebView ends with a touchcancel still wraps', async ({ page }) => {
+  const key = await open(page);
+  await swipeLeftCancelled(key);
+  await expect.poll(() => active(page)).toBe(0);
+});
+
+test('a cancelled touch that barely moved, or began at the screen edge (the back gesture), does not wrap', async ({ page }) => {
+  const key = await open(page);
+  await key.evaluate((node) => {
+    const mk = (type, x) => { const e = new Event(type, { bubbles: true }); const t = { clientX: x, clientY: 200 }; e.touches = type === 'touchcancel' ? [] : [t]; e.changedTouches = [t]; return e; };
+    node.dispatchEvent(mk('touchstart', 400)); node.dispatchEvent(mk('touchmove', 390)); node.dispatchEvent(mk('touchcancel', 390));
+  });
+  await swipeLeftCancelled(key, 790); // starts 10 px from the right edge of the 800 px screen
+  await page.waitForTimeout(300);
+  expect(await active(page)).toBe(2);
+});
+
+test('the pager has no overscroll effect of its own at the ends', async ({ page }) => {
+  await open(page);
+  expect(await page.locator('#pager').evaluate((el) => getComputedStyle(el).overscrollBehaviorX)).toBe('none');
+});
