@@ -278,10 +278,11 @@ public sealed partial class ControlDeck : BackgroundService
                         // Held across the mutes: a hold that began in between would save the still-open state as
                         // its original and reopen the microphone when it ends.
                         var held = _ptt.AbandonAll();
+                        var atRest = MicMutes();
                         ok = true;
                         foreach (var d in controllable)
                         {
-                            if (d.Direction == "input" && OpenAtRest(d, held)) _micsToReopen.Add(d.Id);
+                            if (d.Direction == "input" && OpenAtRest(d.Id, held, atRest)) _micsToReopen.Add(d.Id);
                             var mutedNow = TryMute(d.Id);
                             // the leases no longer restore anything, so a microphone left open keeps a pending mute
                             if (mutedNow) _panicPending.Remove(d.Id);
@@ -342,9 +343,10 @@ public sealed partial class ControlDeck : BackgroundService
             lock (_pttGate)
             {
                 var held = _ptt.AbandonAll();
+                var atRest = MicMutes();
                 foreach (var mic in mics)
                 {
-                    if (OpenAtRest(mic, held)) _micsToReopen.Add(mic.Id);
+                    if (OpenAtRest(mic.Id, held, atRest)) _micsToReopen.Add(mic.Id);
                     var mutedNow = TryMute(mic.Id);
                     if (mutedNow) _panicPending.Remove(mic.Id);
                     else _panicPending.Add(mic.Id); // retried, and push-to-talk refused, until the mute lands
@@ -383,10 +385,24 @@ public sealed partial class ControlDeck : BackgroundService
 
     /// <summary>
     /// Whether a microphone was open before a hold opened it: a push-to-talk hold's own opening is not the user's state
-    /// (<paramref name="held"/> is what <see cref="MicrophoneLeases.AbandonAll"/> returned).
+    /// (<paramref name="held"/> is what <see cref="MicrophoneLeases.AbandonAll"/> returned). <paramref name="atRest"/> is
+    /// read after the holds were dropped, under the gate: a hold that expired just before has restored its microphone by
+    /// then, so an earlier reading would still show it open. A microphone missing from it counts as muted.
     /// </summary>
-    private static bool OpenAtRest(DeckDevice mic, IReadOnlyDictionary<string, bool> held) =>
-        held.TryGetValue(mic.Id, out var mutedBeforeHold) ? !mutedBeforeHold : !mic.Muted;
+    private static bool OpenAtRest(string id, IReadOnlyDictionary<string, bool> held, IReadOnlyDictionary<string, bool> atRest) =>
+        held.TryGetValue(id, out var mutedBeforeHold) ? !mutedBeforeHold : atRest.TryGetValue(id, out var muted) && !muted;
+
+    /// <summary>Each microphone's mute state now (empty when the devices cannot be read).</summary>
+    private Dictionary<string, bool> MicMutes()
+    {
+        try
+        {
+            var audio = _native.Audio();
+            return audio.Available
+                ? audio.Devices.Where(d => d.Direction == "input").DistinctBy(d => d.Id).ToDictionary(d => d.Id, d => d.Muted) : [];
+        }
+        catch (Exception ex) { _log.LogDebug(ex, "Reading the microphones failed"); return []; }
+    }
 
     /// <summary>How many microphones "Unmute microphones" would open: the ones panic or "Mics off" closed, still present.</summary>
     private int MicsToUnmute()
@@ -395,7 +411,12 @@ public sealed partial class ControlDeck : BackgroundService
         string[] ids;
         lock (_pttGate) ids = [.. _micsToReopen];
         if (ids.Length == 0) return 0;
-        return Audio().Devices.Count(d => d.CanControl && d.Direction == "input" && ids.Contains(d.Id));
+        var audio = Audio();
+        if (!audio.Available) return 0; // nothing can be opened now, but the list is kept for when the devices are back
+        var present = audio.Devices.Where(d => d.CanControl && d.Direction == "input" && ids.Contains(d.Id)).Select(d => d.Id).ToHashSet();
+        // a microphone that is gone is forgotten, so it is not opened if it comes back later
+        if (present.Count < ids.Length) lock (_pttGate) _micsToReopen.RemoveWhere(id => ids.Contains(id) && !present.Contains(id));
+        return present.Count;
     }
 
     /// <summary>
@@ -407,8 +428,9 @@ public sealed partial class ControlDeck : BackgroundService
         var audio = _native.Audio();
         lock (_pttGate)
         {
-            var mics = audio.Available
-                ? audio.Devices.Where(d => d.CanControl && d.Direction == "input" && _micsToReopen.Contains(d.Id)).ToArray() : [];
+            // the list is kept when the devices cannot be read, so a later tap can still open them
+            if (!audio.Available) return new(false, "Audio is unavailable", Mics: "failed");
+            var mics = audio.Devices.Where(d => d.CanControl && d.Direction == "input" && _micsToReopen.Contains(d.Id)).ToArray();
             // microphones that are gone are forgotten, so they are not opened if they come back later
             _micsToReopen.IntersectWith(mics.Select(m => m.Id));
             if (mics.Length == 0) return new(false, "No microphone muted by PhoneBox to unmute", Mics: "none");
@@ -419,7 +441,8 @@ public sealed partial class ControlDeck : BackgroundService
                 bool opened;
                 try { opened = _native.Device(mic.Id, null, false); }
                 catch (Exception ex) { _log.LogDebug(ex, "Unmuting {Id} failed", mic.Id); opened = false; }
-                if (opened) _micsToReopen.Remove(mic.Id);
+                // a talk key held right now would otherwise close it again when released
+                if (opened) { _micsToReopen.Remove(mic.Id); _ptt.Reopened(mic.Id); }
                 all &= opened;
             }
             Invalidate();

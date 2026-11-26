@@ -63,6 +63,11 @@ internal sealed class MicrophoneLeases(Func<string, bool?> read, Func<string, bo
             return original;
         }
     }
+    /// <summary>The microphone was opened for good while held ("Unmute microphones"): ending the hold keeps it open.</summary>
+    public void Reopened(string device)
+    {
+        lock (_gate) if (_original.ContainsKey(device)) _original[device] = false;
+    }
     private void Restore(string device)
     {
         if (_leases.Values.Any(l => l.Device == device)) return;

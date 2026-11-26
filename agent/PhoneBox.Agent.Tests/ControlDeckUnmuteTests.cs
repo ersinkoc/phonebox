@@ -151,6 +151,52 @@ public sealed class ControlDeckUnmuteTests : IDisposable
         Assert.True(native.Muted("desk"));
     }
 
+    [Fact]
+    public async Task AHoldThatEndsJustBeforeTheMuteDoesNotCountAsOpen()
+    {
+        // the first reading still shows the microphone open, but by the time the mute runs a hold that just expired has
+        // closed it again (MicrophoneLeases.Sweep): the reading taken under the gate is the one that counts
+        var native = new MicsNative(("desk", false));
+        var reads = 0;
+        native.OnAudio = () => { if (++reads == 2) native.Plug("desk", muted: true); };
+        using var deck = Deck(native);
+        await Act(deck, "panic");
+        Assert.True(native.Muted("desk"));
+        Assert.Equal(0, await ToUnmute(deck));
+    }
+
+    [Fact]
+    public async Task TheListIsKeptWhileTheDevicesCannotBeRead()
+    {
+        var native = new MicsNative(("desk", false));
+        using var deck = Deck(native);
+        await Act(deck, "panic");
+
+        native.Available = false;
+        Assert.Equal(0, await ToUnmute(deck));
+        var failed = await Act(deck, "mics-on");
+        Assert.False(failed.Ok);
+        Assert.Equal("failed", failed.Mics);
+
+        // the devices are back (the deck's own reading is cached for 400 ms, so the tap is what reads them again)
+        native.Available = true;
+        Assert.True((await Act(deck, "mics-on")).Ok);
+        Assert.False(native.Muted("desk"));
+    }
+
+    [Fact]
+    public async Task AHeldTalkKeyDoesNotCloseAMicrophoneUnmutedWhileHeld()
+    {
+        var native = new MicsNative(("desk", false));
+        using var deck = Deck(native);
+        await Act(deck, "panic");
+        var hold = await Act(deck, "ptt", "desk", "begin"); // saves "muted" as the state to go back to
+        Assert.True(hold.Ok);
+        Assert.True((await Act(deck, "mics-on")).Ok);
+        Assert.True((await Act(deck, "ptt", "desk", "end", lease: hold.Lease)).Ok);
+        Assert.False(native.Muted("desk"));
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_dir, recursive: true); } catch (IOException) { }
@@ -168,6 +214,8 @@ public sealed class ControlDeckUnmuteTests : IDisposable
         private readonly Dictionary<string, bool> _mics = [];
         private bool _speakerMuted;
         public volatile bool FailMute, FailUnmute;
+        public volatile bool Available = true;
+        public Action? OnAudio;
         public System.Collections.Concurrent.ConcurrentQueue<(string Id, bool? Muted)> Calls { get; } = new();
 
         public MicsNative(params (string Id, bool Muted)[] mics)
@@ -181,8 +229,9 @@ public sealed class ControlDeckUnmuteTests : IDisposable
 
         public DeckAudio Audio()
         {
+            OnAudio?.Invoke();
             lock (_gate)
-                return new(true, null,
+                return new(Available, null,
                     [new("spk", "Speakers", "output", true, 60, _speakerMuted, 0, 2, CanControl: true),
                      .. _mics.Select(m => new DeckDevice(m.Key, m.Key, "input", false, 80, m.Value, 0, 1, CanControl: true))], []);
         }
