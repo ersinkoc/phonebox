@@ -36,7 +36,8 @@
 - Now playing (Android): the **music playing on the phone itself** can show in the Now playing widget, with play / pause, next,
   previous and seeking, and a computer | phone switch when both play. Off by default: turn it on in the app's Phone
   bridge screen; the phone's song never leaves the phone and never reaches Custom HTML widgets (#629,
-  [Vasilispapg](https://github.com/Vasilispapg)).
+  [Vasilispapg](https://github.com/Vasilispapg)). A cover the phone cannot turn into a picture shows no cover instead
+  of a broken one (#664, reported by [trungduc22](https://github.com/trungduc22)).
 - Webhooks: `POST /api/goto/next` and `POST /api/goto/prev` turn the phone to the next or previous page, stopping at
   the first and last (#616, #646, [Nero-Dark](https://github.com/Nero-Dark)).
 - Rules: two new conditions, **the CPU temperature** at or above a limit for 15 s (85 °C by default) and **the phone's

@@ -211,14 +211,27 @@ object PhoneMediaMonitor {
         return 0
     }
 
-    /** A small JPEG (at most 256 px) as a data URL: the panel shows it in a card a few centimetres wide. Runs off the main thread. */
-    private fun encode(src: Bitmap): String? = try {
-        val side = maxOf(src.width, src.height)
-        val scaled = if (side > 256) Bitmap.createScaledBitmap(src, maxOf(1, src.width * 256 / side), maxOf(1, src.height * 256 / side), true) else src
-        val out = ByteArrayOutputStream()
-        scaled.compress(Bitmap.CompressFormat.JPEG, 80, out)
-        "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
-    } catch (_: Exception) { null }
+    /** A small JPEG (at most 256 px) as a data URL: the panel shows it in a card a few centimetres wide. Runs off the main thread.
+     * Null (no cover) when the bitmap cannot be encoded: compress() reports some failures by returning false with nothing written. */
+    private fun encode(src: Bitmap): String? {
+        if (src.isRecycled || src.width <= 0 || src.height <= 0) return null
+        val made = ArrayList<Bitmap>(2) // bitmaps made here; src belongs to the media session
+        return try {
+            var bmp = src
+            // A hardware bitmap cannot be drawn into a software canvas (scaling it fails before Android 9): copy it first.
+            if (Build.VERSION.SDK_INT >= 26 && bmp.config == Bitmap.Config.HARDWARE)
+                bmp = bmp.copy(Bitmap.Config.ARGB_8888, false)?.also { made += it } ?: return null
+            val side = maxOf(bmp.width, bmp.height)
+            if (side > 256) {
+                val scaled = Bitmap.createScaledBitmap(bmp, maxOf(1, bmp.width * 256 / side), maxOf(1, bmp.height * 256 / side), true)
+                if (scaled !== bmp && scaled !== src) made += scaled
+                bmp = scaled
+            }
+            val out = ByteArrayOutputStream()
+            if (!bmp.compress(Bitmap.CompressFormat.JPEG, 80, out) || out.size() == 0) null
+            else "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+        } catch (_: Exception) { null } finally { made.forEach { it.recycle() } }
+    }
 
     /** The app's name, asked of the package manager once per app. */
     private fun label(app: Context, pkg: String): String = labels.getOrPut(pkg) {
