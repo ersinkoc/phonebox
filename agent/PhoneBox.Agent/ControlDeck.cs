@@ -433,9 +433,11 @@ public sealed partial class ControlDeck : BackgroundService
     /// </summary>
     private DeckResult MicsOn()
     {
-        var audio = _native.Audio();
         lock (_pttGate)
         {
+            // read under the gate, like panic: a microphone panic records meanwhile is in this reading, so the
+            // reconciliation below cannot drop it
+            var audio = _native.Audio();
             // the list is kept when the devices cannot be read, so a later tap can still open them
             if (!audio.Available) return new(false, "Audio is unavailable", Mics: "failed");
             var mics = audio.Devices.Where(d => d.CanControl && d.Direction == "input" && _micsToReopen.Contains(d.Id)).ToArray();
