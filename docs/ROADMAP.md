@@ -116,7 +116,7 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
 - **Network widget several times too high** ([#169](https://github.com/ersinkoc/phonebox/issues/169): about 4x on a
   Realtek USB 2.5GbE adapter; [#636](https://github.com/ersinkoc/phonebox/issues/636): about 6x on Windows Ethernet):
   the rate is bytes per second and shown as MB/s correctly, so the likely cause is the same traffic counted on more
-  than one adapter. Which adapters Settings › Ping & network counts is needed to confirm it.
+  than one adapter. Which adapters Settings › General › Ping counts is needed to confirm it.
 
 ## How to help
 
