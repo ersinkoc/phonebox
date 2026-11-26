@@ -62,6 +62,11 @@ people who proposed or prototyped something are credited in the [changelog](../C
   phone's battery time left or time to full; an estimated GPU power (marked "≈", on the tile only, never seen by
   rules or history as a reading) when the card reports none; and an Automatic / Dark / Light switch on the desktop
   settings page.
+- **The phone as a computer camera** ([#661](https://github.com/ersinkoc/phonebox/issues/661)), Windows, off by
+  default: the phone's camera over USB through the scrcpy-server the phone microphone already uses (#472), decoded
+  with Windows' own H.264 decoder and delivered as an OBS source or a Windows 11 virtual camera (not by writing into
+  OBS's virtual camera); no new downloads, and start, stop and state visible on the phone. A small prototype and a
+  design note first.
 
 ## Open for a contributor
 
