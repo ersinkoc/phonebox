@@ -85,6 +85,8 @@ function newerSyntax(src) {
     for (const m of code.matchAll(re)) {
       // the line of the construct itself, past the delimiter and whitespace the pattern took before it
       const at = m.index + Math.max(0, m[0].search(/[^\s;{}]/));
+      // `this.` and `#run()` on two lines is a call of a private field (Chromium 74), not a method declaration
+      if (what.startsWith('private') && /\.\s*$/.test(code.slice(0, at))) continue;
       found.push({ line: code.slice(0, at).split('\n').length, what });
     }
   }
@@ -108,6 +110,7 @@ test('the lexer keeps code and drops what only looks like it', () => {
   expect(found('class A {\n  value = 1\n  #run() {}\n}')).toHaveLength(1);
   expect(found('let a; const of = 4; of / (a ||= 1) / 2;')).toHaveLength(1);
   expect(found('class A {\n  static\n  {}\n}')).toHaveLength(1);
+  expect(found('class A {\n  #run = () => {};\n  call() {\n    this.\n      #run();\n  }\n}')).toEqual([]);
   expect(newerSyntax('const a = 1;\nlet b;\nb ||= 2;')).toEqual([{ line: 3, what: NEWER[0][1] }]);
 });
 

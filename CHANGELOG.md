@@ -23,8 +23,8 @@
 - Page swipes: the wrap from the last page to the first (and back) also works on WebViews that end a swipe at either
   end with a cancel instead of a release, and the pager no longer stretches or glows at its ends (#651).
 - Older Android WebViews (Chromium 80 to 84): the panel starts again. Since 0.9.30 one line of the Discord widget
-  used syntax those versions can't read, so the panel stopped with "Unexpected token '='"; a new test keeps newer
-  syntax out of the panel (#654).
+  used syntax those versions can't read, so the panel stopped with "Unexpected token '='"; a new test checks the panel for
+  that syntax and a few other newer forms (#654).
 - Trackpad: a **Double-tap to drag** option, off by default: tap, then touch again and move to hold the left button
   and drag, instead of holding a finger still; the long-press vibration of the WebView itself is gone from the panel
   (#647, [Prajjwal2404](https://github.com/Prajjwal2404)).
