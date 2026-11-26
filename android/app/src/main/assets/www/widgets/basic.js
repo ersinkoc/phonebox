@@ -989,7 +989,7 @@ W.worldclock = {
           const [hm, ap] = fmtClock(+p.hour % 24, +p.minute).split(' ');
           it.t.replaceChildren(hm, ap ? h('span', 'wc-ap', ' ' + ap) : '');
           const zoneUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
-          const diffH = Math.round((zoneUtc - localUtc) / 360000) / 10;
+          const diffH = (zoneUtc - localUtc) / 3600000;
           const dayDiff = Math.round((Date.UTC(+p.year, +p.month - 1, +p.day) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
           const day = dayDiff > 0 ? t('time.tomorrow') : dayDiff < 0 ? t('time.yesterday') : t('time.today');
           it.s.textContent = diffH === 0 ? day : `${day}, ${diffH > 0 ? '+' : '−'}${Math.abs(diffH)}h`;

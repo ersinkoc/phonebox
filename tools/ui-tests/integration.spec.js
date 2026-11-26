@@ -211,6 +211,20 @@ test('stack pause button, dots hold, heldDots reset, and vertical swipe over quo
   await expect(page.locator('.stack-item.active .w-clock')).toHaveCount(1);
 });
 
+for (const [timezoneId, zones, subtitles] of [
+  ['UTC', ['Asia/Kathmandu', 'Asia/Kolkata', 'UTC'], ['Tomorrow, +5.75h', 'Tomorrow, +5.5h', 'Today']],
+  ['Asia/Kathmandu', ['UTC'], ['Yesterday, −5.75h']],
+]) {
+  test(`world clocks show exact offsets from ${timezoneId}`, async ({ browser, baseURL }) => {
+    const ctx = await browser.newContext({ baseURL, timezoneId });
+    const page = await ctx.newPage();
+    await page.clock.setFixedTime(new Date('2026-01-15T20:00:00Z'));
+    await layout(page, [widget('worldclock', { zones })]);
+    await expect(page.locator('.wc-s')).toHaveText(subtitles);
+    await ctx.close();
+  });
+}
+
 for (const hour12 of [false, true]) {
   test(`clock times follow display.hour12 (${hour12})`, async ({ browser, baseURL }) => {
     const ctx = await browser.newContext({ baseURL, viewport: { width: 780, height: 360 }, timezoneId: 'UTC' });
