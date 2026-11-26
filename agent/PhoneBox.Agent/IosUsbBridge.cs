@@ -105,6 +105,7 @@ public sealed class IosUsbBridge : BackgroundService
         if (await OpenPipeAsync(_connectUsbmuxd, token, Volatile.Read(ref _preferredDevice), index, ct) is not { } connected)
             return;
         using var phone = connected.Stream;
+        if (!_config.Get().Lan.Enabled) return;
         Volatile.Write(ref _preferredDevice, connected.DeviceId);
 
         using var agent = new TcpClient();

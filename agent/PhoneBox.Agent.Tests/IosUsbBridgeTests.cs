@@ -375,6 +375,150 @@ public sealed class IosUsbBridgeTests
         }
     }
 
+    [Fact]
+    public async Task DropsOpenedPipeWithoutDialingWhenWifiIsDisabledBeforeGo()
+    {
+        const string token = "phonebox-test-token";
+        var dir = Directory.CreateTempSubdirectory("phonebox-ios-usb-");
+        try
+        {
+            var path = Path.Combine(dir.FullName, "config.json");
+            File.WriteAllText(path, JsonSerializer.Serialize(new
+            {
+                lan = new { enabled = true, port = 8766, token },
+            }));
+            var store = new ConfigStore(path);
+
+            using var activeTarget = new TcpListener(IPAddress.Loopback, 0);
+            activeTarget.Start();
+            var activePort = ((IPEndPoint)activeTarget.LocalEndpoint).Port;
+
+            using var fakeMux = new TcpListener(IPAddress.Loopback, 0);
+            fakeMux.Start();
+
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var ct = timeout.Token;
+            var targetAccepted = 0;
+            var pipeClosedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var targetAcceptTask = Task.Run(async () =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    try
+                    {
+                        using var client = await activeTarget.AcceptTcpClientAsync(ct);
+                        Interlocked.Increment(ref targetAccepted);
+                    }
+                    catch (OperationCanceledException) { break; }
+                    catch (ObjectDisposedException) { break; }
+                }
+            }, ct);
+
+            const string singleUsbDevice = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+                <plist version="1.0"><dict>
+                <key>DeviceList</key><array>
+                <dict>
+                <key>DeviceID</key><integer>7</integer>
+                <key>Properties</key><dict><key>ConnectionType</key><string>USB</string></dict>
+                </dict>
+                </array>
+                </dict></plist>
+                """;
+            var nonce = new string('c', 64);
+            var claimedConnect = 0;
+
+            var muxTask = Task.Run(async () =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    TcpClient peer;
+                    try { peer = await fakeMux.AcceptTcpClientAsync(ct); }
+                    catch (OperationCanceledException) { break; }
+                    catch (ObjectDisposedException) { break; }
+
+                    _ = Task.Run(async () =>
+                    {
+                        using var client = peer;
+                        var stream = client.GetStream();
+                        var plist = await ReceivePlist(stream, ct);
+                        if (plist.Contains("<string>ListDevices</string>", StringComparison.Ordinal))
+                        {
+                            await SendMessage(stream, type: 8, Encoding.UTF8.GetBytes(singleUsbDevice), ct);
+                            return;
+                        }
+                        if (Interlocked.CompareExchange(ref claimedConnect, 1, 0) != 0)
+                        {
+                            await SendMessage(stream, type: 1, [2, 0, 0, 0], ct);
+                            return;
+                        }
+
+                        await SendMessage(stream, type: 1, [0, 0, 0, 0], ct);
+                        await stream.WriteAsync(Encoding.ASCII.GetBytes($"PhoneBox-USB 1 {nonce}\n"), ct);
+                        var authLine = await ReadAsciiLineAsync(stream, ct);
+                        Assert.Equal($"AUTH {IosUsbBridge.Auth(token, nonce)}", authLine);
+
+                        // Turn Wi-Fi off before the phone asks for the pipe with GO.
+                        Assert.Null(store.Save(JsonSerializer.Serialize(new
+                        {
+                            lan = new { enabled = false, port = 8766, token },
+                        })));
+                        await stream.WriteAsync("GO\n"u8.ToArray(), ct);
+
+                        try
+                        {
+                            var buf = new byte[1];
+                            while (await stream.ReadAsync(buf, ct) > 0) { }
+                            pipeClosedTcs.TrySetResult(true);
+                        }
+                        catch (Exception ex) when (ex is IOException or SocketException)
+                        {
+                            pipeClosedTcs.TrySetResult(true);
+                        }
+                    }, ct);
+                }
+            }, ct);
+
+            async Task<Socket> ConnectFakeUsbmuxd(CancellationToken cancel)
+            {
+                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                try
+                {
+                    await socket.ConnectAsync(fakeMux.LocalEndpoint, cancel);
+                    return socket;
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
+            }
+
+            using var bridge = new IosUsbBridge(
+                store,
+                activePort,
+                NullLogger<IosUsbBridge>.Instance,
+                ConnectFakeUsbmuxd);
+
+            await bridge.StartAsync(ct);
+            var closed = await pipeClosedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+            await Task.Delay(100, ct);
+            Assert.True(closed);
+            Assert.Equal(0, Volatile.Read(ref targetAccepted));
+
+            await bridge.StopAsync(CancellationToken.None);
+            timeout.Cancel();
+            try { await muxTask; } catch (OperationCanceledException) { }
+            try { await targetAcceptTask; } catch (OperationCanceledException) { }
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
     private static async Task<string> ReadAsciiLineAsync(NetworkStream stream, CancellationToken ct)
     {
         var one = new byte[1];
