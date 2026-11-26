@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.31 — 2026-11-27
+
 - Pages: a dimmed **photo background** per page, from the Photo frame's source (a folder or an Immich album). A new
   picture fades in every minute, only on the page being shown; the dim level is set in the page editor, and the folder
   path and the Immich key never reach the phone (#288, #611, [Nero-Dark](https://github.com/Nero-Dark)).
