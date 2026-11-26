@@ -27,9 +27,13 @@ public static class StateSignal
     public static bool MediaChanged(MediaSnapshot? before, MediaSnapshot? after)
     {
         if (before is null || after is null) return before is not null || after is not null;
+        var beforeRate = MediaTimeline.NormalizePlaybackRate(before.PlaybackRate);
+        var afterRate = MediaTimeline.NormalizePlaybackRate(after.PlaybackRate);
         if (before.Title != after.Title || before.Artist != after.Artist || before.App != after.App
-            || before.Playing != after.Playing || before.DurMs != after.DurMs || before.ArtId != after.ArtId) return true;
+            || before.Playing != after.Playing || before.DurMs != after.DurMs || before.ArtId != after.ArtId
+            || Math.Abs(beforeRate - afterRate) > 0.001) return true;
         // a seek: the position moved by clearly more than the second or two of playback between two readings
-        return Math.Abs(after.PosMs - before.PosMs) > 3000;
+        var maxStepMs = Math.Max(3000, (long)Math.Ceiling(3000 * afterRate));
+        return Math.Abs(after.PosMs - before.PosMs) > maxStepMs;
     }
 }

@@ -42,6 +42,10 @@ public sealed class StateSignalTests
         Assert.True(StateSignal.MediaChanged(a, a with { Playing = false }));          // pause
         Assert.True(StateSignal.MediaChanged(a, a with { Title = "Two", PosMs = 0 })); // next track
         Assert.True(StateSignal.MediaChanged(a, a with { PosMs = 90_000 }));           // a seek, not 1 s of playback
+        Assert.True(StateSignal.MediaChanged(a, a with { PlaybackRate = 2.0 }));       // speed change reaches the phone now
+        var fast = a with { PlaybackRate = 2.0 };
+        Assert.False(StateSignal.MediaChanged(fast, fast with { PosMs = 5_000 }));     // 2 s at 2x is normal playback
+        Assert.True(StateSignal.MediaChanged(fast, fast with { PosMs = 20_000 }));     // real seek at 2x
         Assert.True(StateSignal.MediaChanged(null, a));
         Assert.True(StateSignal.MediaChanged(a, null));
         Assert.False(StateSignal.MediaChanged(null, null));

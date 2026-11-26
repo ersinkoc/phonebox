@@ -1,4 +1,4 @@
-import { D, api, h, icon, media, t } from '../main.js';
+import { D, api, h, icon, media, mediaPosMs, t } from '../main.js';
 import { W } from '../registry.js';
 
 // ---------------------------------------------------------------- lyrics (LRCLIB, asked by the agent)
@@ -105,7 +105,7 @@ W.lyrics = {
     };
     const follow = (jump = false) => {
       if (!rows.length || !media) return;
-      const pos = media.posMs + (media.playing ? performance.now() - media.at : 0) + offsetFor(perPlayer, media.app, offset);
+      const pos = mediaPosMs(media) + offsetFor(perPlayer, media.app, offset);
       const at = lyricAt(lines, pos);
       if (at === shown && !jump) return;
       shown = at;

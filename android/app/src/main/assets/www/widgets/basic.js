@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, pages, curPage, gotoPageRef } from '../main.js';
+import { $, API, D, LEVEL_COLOR, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, mediaPosMs, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, pages, curPage, gotoPageRef } from '../main.js';
 import { W } from '../registry.js';
 import { weekStartDay } from './time.js';
 import { invalidateDeckState } from './controls.js';
@@ -124,6 +124,7 @@ W.media = {
       haptic();
       const action = btn.dataset.media;
       if (action === 'playpause' && media) {
+        media.posMs = mediaPosMs(media);
         media.playing = !media.playing; // optimistic update
         media.at = performance.now();
         box.classList.toggle('playing', media.playing);
@@ -147,7 +148,7 @@ W.media = {
       bar.setAttribute('aria-valuenow', Math.round(ms / 1000));
       bar.setAttribute('aria-valuetext', fmtTime(ms));
     };
-    const nowMs = () => Math.min(media.durMs, media.posMs + (media.playing ? performance.now() - media.at : 0));
+    const nowMs = () => mediaPosMs(media);
     const msFrom = (clientX) => {
       const r = bar.getBoundingClientRect();
       return Math.round(Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * media.durMs);
@@ -225,12 +226,12 @@ W.media = {
         if (kind === 'fast') {
           if (!media || scrub) return; // while the bar is held it shows the chosen time, not the song's
           if (media.durMs > 0) {
-            const pos = Math.min(media.durMs, media.posMs + (media.playing ? performance.now() - media.at : 0));
+            const pos = mediaPosMs(media);
             q('.fill').style.width = (pos / media.durMs) * 100 + '%';
             q('.m-pos').textContent = fmtTime(pos);
             if (Math.floor(pos / 1000) !== ariaSec) { ariaSec = Math.floor(pos / 1000); paintAria(pos); } // once a second, not every 250 ms
           } else if (media.app === 'Internet Radio') {
-            const pos = Math.max(0, (media.posMs || 0) + (media.playing ? performance.now() - media.at : 0));
+            const pos = mediaPosMs(media);
             q('.fill').style.width = media.playing ? '100%' : '0';
             q('.m-pos').textContent = fmtTime(pos);
           }

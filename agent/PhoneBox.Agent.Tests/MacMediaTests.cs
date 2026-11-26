@@ -21,11 +21,33 @@ public sealed class MacMediaTests
         Assert.Equal(12000, paused.PosMs);
     }
 
+    [Fact]
+    public void SystemMetadataWithoutTimestampScalesElapsedTimeByPlaybackRate()
+    {
+        var monitor = new MediaMonitor(NullLogger<MediaMonitor>.Instance);
+        const string fastJson = """{"kMRMediaRemoteNowPlayingInfoTitle":"Track","kMRMediaRemoteNowPlayingInfoClientBundleIdentifier":"test.player","kMRMediaRemoteNowPlayingInfoDuration":120,"kMRMediaRemoteNowPlayingInfoElapsedTime":10,"kMRMediaRemoteNowPlayingInfoPlaybackRate":2}""";
+        const string slowJson = """{"kMRMediaRemoteNowPlayingInfoTitle":"Track","kMRMediaRemoteNowPlayingInfoClientBundleIdentifier":"test.player","kMRMediaRemoteNowPlayingInfoDuration":120,"kMRMediaRemoteNowPlayingInfoElapsedTime":10,"kMRMediaRemoteNowPlayingInfoPlaybackRate":0.5}""";
+        var t0 = DateTimeOffset.UtcNow;
+        var initial = monitor.ReadMacSystemMedia(fastJson, t0).Item1!;
+        Assert.Equal(10000, initial.PosMs);
+        Assert.Equal(2.0, initial.PlaybackRate);
+        var fast = monitor.ReadMacSystemMedia(fastJson, t0.AddSeconds(2)).Item1!;
+        Assert.Equal(14000, fast.PosMs);
+        Assert.Equal(2.0, fast.PlaybackRate);
+        var slow = monitor.ReadMacSystemMedia(slowJson, t0.AddSeconds(4)).Item1!;
+        Assert.Equal(15000, slow.PosMs);
+        Assert.Equal(0.5, slow.PlaybackRate);
+        var paused = monitor.ReadMacSystemMedia(fastJson.Replace("PlaybackRate\":2", "PlaybackRate\":0"), t0.AddSeconds(6)).Item1!;
+        Assert.False(paused.Playing);
+        Assert.Equal(15000, paused.PosMs);
+        Assert.Equal(1.0, paused.PlaybackRate);
+    }
+
     private const string StampedTemplate = """{"kMRMediaRemoteNowPlayingInfoTitle":"Track","kMRMediaRemoteNowPlayingInfoClientBundleIdentifier":"test.player","kMRMediaRemoteNowPlayingInfoDuration":600,"kMRMediaRemoteNowPlayingInfoElapsedTime":__ELAPSED__,"kMRMediaRemoteNowPlayingInfoPlaybackRate":__RATE__,"kMRMediaRemoteNowPlayingInfoTimestamp":__STAMP__}""";
 
-    private static string Stamped(double elapsed, int rate, string stamp) =>
+    private static string Stamped(double elapsed, double rate, string stamp) =>
         StampedTemplate.Replace("__ELAPSED__", elapsed.ToString(System.Globalization.CultureInfo.InvariantCulture))
-            .Replace("__RATE__", rate.ToString()).Replace("__STAMP__", stamp);
+            .Replace("__RATE__", rate.ToString(System.Globalization.CultureInfo.InvariantCulture)).Replace("__STAMP__", stamp);
 
     [Fact]
     public void PositionIsExtrapolatedFromWhenTheSourcePublishedIt()
@@ -40,6 +62,9 @@ public sealed class MacMediaTests
             var pos = new MediaMonitor(NullLogger<MediaMonitor>.Instance).ReadMacSystemMedia(Stamped(0, 1, stamp), now).Item1!.PosMs;
             Assert.InRange(pos, 14000, 16000); // the ISO form is whole seconds
         }
+        var fast = new MediaMonitor(NullLogger<MediaMonitor>.Instance).ReadMacSystemMedia(Stamped(10, 1.5, epoch), now).Item1!;
+        Assert.InRange(fast.PosMs, 32000, 33000);
+        Assert.Equal(1.5, fast.PlaybackRate);
     }
 
     [Fact]

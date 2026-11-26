@@ -900,6 +900,16 @@ export function setVolDragging(control, dragging) {
 // the agent says how old the position was when it sent it (it was read up to a second before the 1 s tick sent it);
 // counting from "that long before it arrived" keeps the bar from running behind. Capped: a bogus age must not jump it.
 const mediaSampleAt = (m) => performance.now() - Math.min(Math.max(Number(m?.ageMs) || 0, 0), 5000);
+export const mediaRate = (m) => {
+  const r = Number(m?.playbackRate);
+  return Number.isFinite(r) && r > 0 ? r : 1;
+};
+export const mediaPosMs = (m, now = performance.now()) => {
+  if (!m) return 0;
+  const elapsed = m.playing ? Math.max(0, now - m.at) * mediaRate(m) : 0;
+  const pos = (Number(m.posMs) || 0) + elapsed;
+  return m.durMs > 0 ? Math.min(m.durMs, Math.max(0, pos)) : Math.max(0, pos);
+};
 // The next sample of the same track is not trusted blindly: the bar is counted on the phone between samples, and each
 // sample is a second old and read at a slightly different moment, so taking it as is makes the time stutter. A bar
 // within 0.3 s of the sample stays as it is, up to 1.5 s off it moves 30 % of the way, and anything bigger (a seek, a
@@ -911,12 +921,16 @@ export function mediaFrom(prev, m) {
   // just after the user moved the position bar the agent's samples still hold the old position for a moment: keep the
   // chosen one until a sample agrees with it (or the hold runs out)
   if (prev?.hold > now && prev.title === m.title && prev.app === m.app) {
-    const target = prev.posMs + (prev.playing ? now - prev.at : 0);
-    if (Math.abs(next.posMs + (m.playing ? now - next.at : 0) - target) >= 1500) return { ...next, posMs: prev.posMs, at: prev.at, hold: prev.hold };
+    const target = mediaPosMs(prev, now);
+    if (Math.abs(mediaPosMs(next, now) - target) >= 1500) {
+      return mediaRate(prev) === mediaRate(next)
+        ? { ...next, posMs: prev.posMs, at: prev.at, hold: prev.hold }
+        : { ...next, posMs: target, at: now, hold: prev.hold };
+    }
   }
-  if (!prev || !prev.playing || !m.playing || prev.title !== m.title || prev.app !== m.app || prev.durMs !== m.durMs) return next;
-  const shown = prev.posMs + (now - prev.at);
-  const off = next.posMs + (now - next.at) - shown;
+  if (!prev || !prev.playing || !m.playing || prev.title !== m.title || prev.app !== m.app || prev.durMs !== m.durMs || mediaRate(prev) !== mediaRate(next)) return next;
+  const shown = mediaPosMs(prev, now);
+  const off = mediaPosMs(next, now) - shown;
   if (Math.abs(off) < 300) return { ...next, posMs: prev.posMs, at: prev.at };
   if (Math.abs(off) < 1500) return { ...next, posMs: shown + off * 0.3, at: now };
   return next;

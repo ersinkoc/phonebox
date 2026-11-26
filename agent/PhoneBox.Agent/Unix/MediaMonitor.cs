@@ -205,7 +205,10 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
             if (_macSource.Length > 0) app = _macSource;
 
             var duration = Math.Max(0, Num("Duration"));
-            var playing = Num("PlaybackRate") > 0;
+            var durationMs = (long)(duration * 1000);
+            var rawRate = Num("PlaybackRate");
+            var playing = rawRate > 0;
+            var playbackRate = MediaTimeline.NormalizePlaybackRate(rawRate);
             var rawPosition = (long)(Math.Max(0, Num("ElapsedTime")) * 1000);
             var positionKey = sourceKey + "\n" + Num("UniqueIdentifier").ToString(CultureInfo.InvariantCulture);
             var now = sampledAt ?? DateTimeOffset.UtcNow;
@@ -219,7 +222,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
             }
             else
             {
-                var predicted = _macPositionMs + (playing ? (long)(now - _macPositionAt).TotalMilliseconds : 0);
+                var predicted = MediaTimeline.AdvancePositionMs(_macPositionMs, (now - _macPositionAt).TotalMilliseconds, playing, playbackRate, durationMs);
                 _macPositionMs = rawPosition != _macLastRawPositionMs ? rawPosition : predicted;
                 _macLastRawPositionMs = rawPosition;
             }
@@ -227,8 +230,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
             // pause and seek, not while playing), so the real position is that plus the time since, at the playback rate
             if (MacPublishedAt(data, prefix + "Timestamp", now) is { } publishedAt)
             {
-                var rate = Num("PlaybackRate");
-                _macPositionMs = rawPosition + (playing ? (long)(Math.Max(0, (now - publishedAt).TotalMilliseconds) * rate) : 0);
+                _macPositionMs = MediaTimeline.AdvancePositionMs(rawPosition, (now - publishedAt).TotalMilliseconds, playing, playbackRate, durationMs);
                 _macLastRawPositionMs = rawPosition;
             }
             else if (bundle is "com.spotify.client" or "com.apple.Music")
@@ -245,7 +247,6 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
                 }
             }
             _macPositionAt = now;
-            var durationMs = (long)(duration * 1000);
             if (durationMs > 0) _macPositionMs = Math.Min(_macPositionMs, durationMs);
 
             var artKey = positionKey;
@@ -272,7 +273,7 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
                 }
             }
             return (new MediaSnapshot(app, title, Str("Artist"), Str("Album"), playing,
-                _macPositionMs, durationMs, Art is null ? 0 : _artId, duration > 0), "");
+                _macPositionMs, durationMs, Art is null ? 0 : _artId, duration > 0, playbackRate), "");
         }
         catch (JsonException) { _macPositionKey = ""; return (null, ""); }
     }
