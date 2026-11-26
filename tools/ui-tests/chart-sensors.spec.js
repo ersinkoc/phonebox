@@ -50,19 +50,22 @@ test('the Windows sensor port rejects invalid values and stays set after Save', 
   const port = page.locator('#lhmPort');
   const hint = page.locator('#lhmSetup');
   const save = page.locator('#save');
+  const savedPort = () => page.evaluate(async () => (await (await fetch('/api/settings')).json()).libreHardwareMonitorPort);
   await expect(port).toBeVisible();
   await expect(port).toHaveValue('8085');
+  const originalPort = await savedPort();
 
   await port.fill('65536');
   await save.click();
   expect(await port.evaluate(input => input.validity.rangeOverflow)).toBe(true);
   await expect(save).toBeEnabled();
-  expect(await page.evaluate(async () => (await (await fetch('/api/settings')).json()).libreHardwareMonitorPort)).toBe(8085);
+  expect(await savedPort()).toBe(originalPort);
 
   await port.fill('18085');
   await expect(hint).toContainText('port 18085');
   await save.click();
   await expect(save).toBeDisabled();
+  expect(await savedPort()).toBe(18085);
   await page.reload();
   await expect(port).toHaveValue('18085');
   await expect(hint).toContainText('port 18085');
