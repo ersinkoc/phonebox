@@ -161,12 +161,22 @@ public static class Shortcuts
     private static bool PushEquals(System.Text.Json.JsonElement d, string want) => d.ValueKind switch
     {
         System.Text.Json.JsonValueKind.String => string.Equals(d.GetString()?.Trim(), want, StringComparison.OrdinalIgnoreCase),
-        System.Text.Json.JsonValueKind.Number => double.TryParse(want, System.Globalization.NumberStyles.Float,
-            System.Globalization.CultureInfo.InvariantCulture, out var n) && d.GetDouble() == n,
+        System.Text.Json.JsonValueKind.Number => JsonNumber(want) is { } n && System.Text.Json.JsonElement.DeepEquals(d, n),
         System.Text.Json.JsonValueKind.True => want.Equals("true", StringComparison.OrdinalIgnoreCase),
         System.Text.Json.JsonValueKind.False => want.Equals("false", StringComparison.OrdinalIgnoreCase),
         _ => false,
     };
+
+    /// <summary>The wanted value as a JSON number, compared digit for digit (no rounding through double); null if it is none.</summary>
+    private static System.Text.Json.JsonElement? JsonNumber(string want)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(want);
+            return doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Number ? doc.RootElement.Clone() : null;
+        }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
 
     /// <summary>Tests record what a shortcut would press or type instead of sending it to the computer.</summary>
     internal static Action<string>? TestKeys, TestType;

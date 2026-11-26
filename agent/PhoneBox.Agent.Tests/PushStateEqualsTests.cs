@@ -38,6 +38,11 @@ public sealed class PushStateEqualsTests : IDisposable
         Assert.Equal(true, On("profile=2.0"));
         Assert.Equal(false, On("profile=3"));
         Assert.Equal(false, On("profile=two"));
+        Assert.Equal(false, On("profile="));
+        // large ids are compared digit for digit, not rounded through double
+        _push.Set("id", PushStore.ParseValue("9007199254740992"), null);
+        Assert.Equal(true, On("id=9007199254740992"));
+        Assert.Equal(false, On("id=9007199254740993"));
         _push.Set("flag", PushStore.ParseValue("false"), null);
         Assert.Equal(true, On("flag=false"));
         Assert.Equal(false, On("flag=true"));
