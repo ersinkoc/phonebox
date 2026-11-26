@@ -459,12 +459,13 @@ export const fmtClock = (H, M, period = H < 12 ? 'AM' : 'PM') => (hour12() ? `${
 const fmtNightClock = (d) => fmtClock(d.getHours(), d.getMinutes(), clockPeriod(d));
 export const fmtHM = (d) => fmtClock(d.getHours(), d.getMinutes());
 export const fmtTime = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + pad(s % 60); };
+// bps is bytes/second (the agent's netDownBps/netUpBps), so divide by 8 to show megabytes, not megabits.
 export function fmtRate(bps) {
   if (bps == null) return ['—', ''];
-  if (bps >= 1e9) return [(bps / 1e9).toFixed(1), tp('GB/s')];
-  if (bps >= 1e6) return [(bps / 1e6).toFixed(bps >= 1e8 ? 0 : 1), tp('MB/s')];
-  if (bps >= 1e3) return [(bps / 1e3).toFixed(0), tp('KB/s')];
-  return [Math.round(bps).toString(), tp('B/s')];
+  if (bps >= 8e9) return [(bps / 8e9).toFixed(1), tp('GB/s')];
+  if (bps >= 8e6) return [(bps / 8e6).toFixed(bps >= 8e8 ? 0 : 1), tp('MB/s')];
+  if (bps >= 8e3) return [(bps / 8e3).toFixed(0), tp('KB/s')];
+  return [Math.round(bps / 8).toString(), tp('B/s')];
 }
 export const rateStr = (b) => fmtRate(b).join(' ');
 export function fmtDur(ms) {
