@@ -33,7 +33,7 @@
 - AI sessions: Antigravity sessions show their token counts again with current agy (1.5.x), which keeps the whole
   conversation in `transcript.jsonl` and also writes it in chunks from the first turn; only a transcript that starts
   later than its first chunk is still treated as incomplete (#658, reported by [ahmdngi](https://github.com/ahmdngi)).
-- Now playing: the **music playing on the phone itself** can show in the Now playing widget, with play / pause, next,
+- Now playing (Android): the **music playing on the phone itself** can show in the Now playing widget, with play / pause, next,
   previous and seeking, and a computer | phone switch when both play. Off by default: turn it on in the app's Phone
   bridge screen; the phone's song never leaves the phone and never reaches Custom HTML widgets (#629,
   [Vasilispapg](https://github.com/Vasilispapg)).
@@ -42,8 +42,8 @@
 - Rules: two new conditions, **the CPU temperature** at or above a limit for 15 s (85 °C by default) and **the phone's
   battery temperature** at or above a limit (40 °C by default, Android app only) (#641,
   [YgorCollpy](https://github.com/YgorCollpy)).
-- Approvals: when a Claude Code permission prompt is answered on the computer, its card on the phone goes away. This
-  needs three more Claude Code hooks: after updating, Settings shows **Install hook** again; press it once (#639,
+- Approvals: when a Claude Code permission prompt is answered on the computer, its card on the phone goes away once
+  the tool has run (or the turn ends). This needs three more Claude Code hooks: after updating, Settings shows **Install hook** again; press it once (#639,
   [YgorCollpy](https://github.com/YgorCollpy)).
 - World clocks: the difference from the phone's time zone is exact, so Kathmandu shows `+5.75h` instead of `+5.8h`
   one way and `−5.7h` the other (#630, [KPuneethHarshaNaik](https://github.com/KPuneethHarshaNaik)).
