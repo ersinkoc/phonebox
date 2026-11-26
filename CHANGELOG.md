@@ -18,6 +18,8 @@
 - A **Focus history** widget: the Pomodoro's finished focus minutes for each of the last seven days as a small line
   chart, kept on the phone; tap a day (or pick it with the keyboard) to see its minutes (#350, #634,
   [abdulah-x](https://github.com/abdulah-x)).
+- Control Deck: after **Emergency mute** or **Mics off, camera off**, an **Unmute microphones** button turns back on
+  the microphones that were on before, and only those; a microphone kept muted stays muted (#645).
 - World clocks: the difference from the phone's time zone is exact, so Kathmandu shows `+5.75h` instead of `+5.8h`
   one way and `−5.7h` the other (#630, [KPuneethHarshaNaik](https://github.com/KPuneethHarshaNaik)).
 - Windows: LibreHardwareMonitor's port can be set below the preview in Settings › Pages (8085 by default), for a PC
