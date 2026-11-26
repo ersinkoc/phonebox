@@ -63,14 +63,13 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
 - **Typing from the phone's keyboard**: a text field and a row of keys (Enter, Backspace, Esc, Tab, arrows, optionally
   Ctrl / Alt / Shift) on the Dictation widget, behind its **Type the text on the computer** switch and through
   `/api/dictate`; nothing logged or stored ([#320](https://github.com/ersinkoc/phonebox/issues/320)).
-- **Photo frame pictures as the page background** ([#288](https://github.com/ersinkoc/phonebox/issues/288)): a
-  per-page background from the photo frame's folder, dimmed under the widgets, using the same `/api/photos` feed.
 - **Android screen saver (DreamService)** ([#287](https://github.com/ersinkoc/phonebox/issues/287)): show the panel as
   the phone's screen saver while it charges or docks, with the lock screen left in place. With Keep awake on, the
   agent turns the phone's screen saver off over adb, so that has to follow the new setting.
 - **Headless Linux server and container image** ([#281](https://github.com/ersinkoc/phonebox/issues/281)): a documented
   way to run the Linux agent without a desktop session, an address to advertise for Wi-Fi pairing from behind
-  container networking, and persistent data. Remote access to the settings page needs its own sign-in first; until
+  container networking (also for a LAN outside the private address ranges, which the agent does not offer by itself:
+  [#614](https://github.com/ersinkoc/phonebox/issues/614)), and persistent data. Remote access to the settings page needs its own sign-in first; until
   then an SSH tunnel to the loopback port is the safe way.
 - **Pushed values without refetching the whole list** ([#329](https://github.com/ersinkoc/phonebox/issues/329)): the
   change event carries the key and its new value, and the phone fetches all of `/api/push` again only when it missed a
@@ -80,6 +79,13 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   the timed lyric of the current track and follows the playback position. The agent looks the track up on LRCLIB
   (title, artist, album, duration) only when the user turns the lookup on and only while such a widget is on an enabled
   page; results stay in memory, and the phone never contacts LRCLIB.
+- **Audio devices and app volume on Linux** ([#613](https://github.com/ersinkoc/phonebox/issues/613)): the device
+  list, the default microphone, switching the default device and per-app volume through `pactl` (sinks, sources and
+  sink inputs; PipeWire answers it too), with a forced C locale for parsing. Today these are Windows-only and the
+  Linux agent controls only the system output.
+- **Next and previous page from the computer** ([#616](https://github.com/ersinkoc/phonebox/issues/616)):
+  `POST /api/goto/next` and `/api/goto/prev`, resolved by the phone, since only the phone knows which page it shows,
+  so a keyboard add-on needs no position of its own.
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
 

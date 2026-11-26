@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Pages: a dimmed **photo background** per page, from the Photo frame's folder. A new picture fades in every minute,
+  only on the page being shown; the dim level is set in the page editor, and the folder path never reaches the phone
+  (#288, #611, [Nero-Dark](https://github.com/Nero-Dark)).
+- README: the Games Tab add-on's row lists its Steam store lookup (#612, [lucasaz](https://github.com/lucasaz)).
+- Development: an `.editorconfig` with the style the code already follows, and the agent builds without warnings on
+  Windows (#615, [elong365](https://github.com/elong365)).
+
 ## 0.9.30 — 2026-11-25
 
 - Windows 11 on ARM: native ARM64 agent ZIP and architecture-aware PowerShell setup (#602).
