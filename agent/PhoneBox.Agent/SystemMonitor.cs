@@ -248,7 +248,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             Vendor: "apple", Source: "ioreg", Integrated: true);
     }
 
-    // CPU temperature: Windows from LibreHardwareMonitor's web server (port 8085), when it is running; Linux from hwmon;
+    // CPU temperature: Windows from LibreHardwareMonitor's web server, when it is running; Linux from hwmon;
     // macOS on Apple silicon from the SMC (CPU and GPU). The same LibreHardwareMonitor answer carries the GPU sensors
     // too (hot spot, board power, fan, clocks).
     private async Task CpuTempLoop(CancellationToken ct)
@@ -267,12 +267,20 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
 #else
 #pragma warning disable CS0162
         var failures = 0;
+        int? previousPort = null;
         while (!ct.IsCancellationRequested)
         {
+            var port = config?.Get().LibreHardwareMonitorPort ?? AgentConfig.DefaultLibreHardwareMonitorPort;
+            if (previousPort is { } oldPort && oldPort != port)
+            {
+                failures = 0;
+                ClearLhmReadings("checking");
+            }
+            previousPort = port;
             var delay = TimeSpan.FromSeconds(2);
             try
             {
-                using var doc = JsonDocument.Parse(await _http.GetStringAsync("http://127.0.0.1:8085/data.json", ct));
+                using var doc = JsonDocument.Parse(await _http.GetStringAsync(LhmDataUrl(port), ct));
                 if (doc.RootElement.ValueKind != JsonValueKind.Object
                     || !doc.RootElement.TryGetProperty("Children", out var children) || children.ValueKind != JsonValueKind.Array)
                     throw new JsonException("LibreHardwareMonitor sensor tree is missing.");
@@ -291,18 +299,24 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             catch
             {
                 (var clear, delay) = LhmFailed(ref failures);
-                if (clear)
-                {
-                    _cpuTemp = null;
-                    _cpuPower = null;
-                    _lhmGpus = null;
-                    _lhmStatus = "unavailable";
-                }
+                if (clear) ClearLhmReadings("unavailable");
             }
             await Task.Delay(delay, ct);
         }
 #endif
     }
+
+    internal static string LhmDataUrl(int port) => $"http://127.0.0.1:{port}/data.json";
+
+#if WINDOWS
+    private void ClearLhmReadings(string status)
+    {
+        _cpuTemp = null;
+        _cpuPower = null;
+        _lhmGpus = null;
+        _lhmStatus = status;
+    }
+#endif
 
     /// <summary>
     /// After a failed LibreHardwareMonitor read: a slow answer now and then keeps the last values and asks again soon;

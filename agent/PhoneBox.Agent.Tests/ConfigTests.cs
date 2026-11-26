@@ -31,6 +31,22 @@ public class ConfigTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData("{}", 8085)]
+    [InlineData("""{"libreHardwareMonitorPort": 18085}""", 18085)]
+    [InlineData("""{"libreHardwareMonitorPort": 1}""", 1)]
+    [InlineData("""{"libreHardwareMonitorPort": 65535}""", 65535)]
+    [InlineData("""{"libreHardwareMonitorPort": 0}""", 8085)]
+    [InlineData("""{"libreHardwareMonitorPort": 65536}""", 8085)]
+    public void LibreHardwareMonitorUsesTheDesktopPortOnLoopback(string json, int expectedPort)
+    {
+        var config = Load(json);
+        Assert.Equal(expectedPort, config.LibreHardwareMonitorPort);
+        Assert.Equal($"http://127.0.0.1:{expectedPort}/data.json", SystemMonitor.LhmDataUrl(config.LibreHardwareMonitorPort));
+        var publicConfig = JsonSerializer.SerializeToElement(config.ToPublic(), ConfigStore.WriteOpts);
+        Assert.False(publicConfig.TryGetProperty("libreHardwareMonitorPort", out _));
+    }
+
     [Fact]
     public void ExtraClaudeCredentialDirsDropBlankAndRepeatedEntries()
     {

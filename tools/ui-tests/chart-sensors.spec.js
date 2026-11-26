@@ -44,3 +44,26 @@ test('Pages shows Windows sensor setup and the state reported by the agent', asy
   await report('linux', null);
   await expect(help).toBeHidden();
 });
+
+test('the Windows sensor port rejects invalid values and stays set after Save', async ({ page }) => {
+  await page.goto('/settings/');
+  const port = page.locator('#lhmPort');
+  const hint = page.locator('#lhmSetup');
+  const save = page.locator('#save');
+  await expect(port).toBeVisible();
+  await expect(port).toHaveValue('8085');
+
+  await port.fill('65536');
+  await save.click();
+  expect(await port.evaluate(input => input.validity.rangeOverflow)).toBe(true);
+  await expect(save).toBeEnabled();
+  expect(await page.evaluate(async () => (await (await fetch('/api/settings')).json()).libreHardwareMonitorPort)).toBe(8085);
+
+  await port.fill('18085');
+  await expect(hint).toContainText('port 18085');
+  await save.click();
+  await expect(save).toBeDisabled();
+  await page.reload();
+  await expect(port).toHaveValue('18085');
+  await expect(hint).toContainText('port 18085');
+});

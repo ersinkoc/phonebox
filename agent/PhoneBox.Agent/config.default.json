@@ -5,6 +5,7 @@
   // Only use the phone with this serial number (null = every connected Android device)
   "deviceSerial": null,
   "ignoredDeviceSerials": [],
+  "libreHardwareMonitorPort": 8085,
   // Path to adb.exe (null = searched in PATH, the Android SDK and winget locations)
   "adbPath": null,
 

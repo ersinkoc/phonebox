@@ -257,25 +257,25 @@ On macOS, `nowplaying-cli` supplies system media metadata and cover art. The age
 </details>
 
 Optional extras that light up more widgets: the [GitHub CLI](https://cli.github.com) (`gh auth login`), Claude Code,
-Codex, and [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) with its web server on
-port 8085 for the CPU temperature and, on AMD and Intel graphics cards, the hot spot, memory temperature, board power in
+Codex, and [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) with its web server
+running for CPU temperature and, on AMD and Intel graphics cards, the hot spot, memory temperature, board power in
 watts, fan speed and clocks. Without it Windows still reports any GPU's load, VRAM, temperature and power share; NVIDIA
 cards get the full set from `nvidia-smi`. A PC with two GPUs (a graphics card and the processor's integrated one) shows
 both: the card is the main GPU, the GPU details widget can show either.
 
 #### LibreHardwareMonitor on Windows
 
-PhoneBox reads LibreHardwareMonitor's sensor list from `http://127.0.0.1:8085/data.json` whenever it is there; there
-is nothing to turn on in PhoneBox.
+PhoneBox reads LibreHardwareMonitor's sensor list from `http://127.0.0.1:8085/data.json` by default.
 
 1. Download the latest release from
    [LibreHardwareMonitor's releases](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases), unzip it
    to a folder of its own and start `LibreHardwareMonitor.exe` **as administrator** (CPU temperatures and several GPU
    sensors need it).
-2. In its menu choose **Options › Remote Web Server › Run**. The port stays **8085** (PhoneBox only looks there).
-3. Check it in a browser on the PC: <http://127.0.0.1:8085/data.json> should show a long JSON text. Within a few
-   seconds the CPU temperature, the CPU power (when your CPU reports a package power there) and the extra GPU values
-   appear on the phone.
+2. In its menu choose **Options › Remote Web Server › Run**. If you use a different port, set the same port in
+   the **LibreHardwareMonitor** section below the preview in PhoneBox Settings › Pages, then click **Save**.
+3. Check `http://127.0.0.1:<port>/data.json` in a browser on the PC. PhoneBox shows the CPU temperature, package power
+   and extra GPU values as your hardware reports them. If the previous port was unavailable, the next reading can take
+   up to 30 seconds.
 4. To keep it running: **Options › Start Minimized**, **Minimize To Tray** and **Run On Windows Startup**.
 
 The web server answers on every network the PC is on. If Windows Firewall asks, PhoneBox only needs it on this
@@ -364,7 +364,7 @@ a charger of its own works without drops.
 
 <details><summary><b>Some widgets show "—" or "No data".</b></summary>
 
-GPU values come from Windows itself (the temperature, as in Task Manager, needs Windows 10 2004 or later and a WDDM 2.4 driver), `nvidia-smi` for NVIDIA cards, `amdgpu` sysfs on Linux, an Intel card's DRM usage counters on Linux, or IORegistry on Apple Silicon. An Intel card's load on Linux needs a kernel whose driver exposes busy counters in fdinfo (`i915` from kernel 5.19, `xe`); a card whose programs never report them shows no load. A program that starts using the GPU is picked up within about 30 seconds and counts from the reading after that, and programs of other users are counted only when Linux lets the agent read them (normally as root or with `CAP_SYS_PTRACE`). The GPU hot spot and an AMD or Intel card's watts, fan and clocks need LibreHardwareMonitor. CPU temperature needs LibreHardwareMonitor's web server on port 8085,
+GPU values come from Windows itself (the temperature, as in Task Manager, needs Windows 10 2004 or later and a WDDM 2.4 driver), `nvidia-smi` for NVIDIA cards, `amdgpu` sysfs on Linux, an Intel card's DRM usage counters on Linux, or IORegistry on Apple Silicon. An Intel card's load on Linux needs a kernel whose driver exposes busy counters in fdinfo (`i915` from kernel 5.19, `xe`); a card whose programs never report them shows no load. A program that starts using the GPU is picked up within about 30 seconds and counts from the reading after that, and programs of other users are counted only when Linux lets the agent read them (normally as root or with `CAP_SYS_PTRACE`). The GPU hot spot and an AMD or Intel card's watts, fan and clocks need LibreHardwareMonitor. Windows CPU temperature needs LibreHardwareMonitor's web server,
 GitHub needs `gh auth login`, quotas and sessions need Claude Code / Codex to have been used on this PC.
 </details>
 

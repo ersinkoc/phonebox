@@ -533,11 +533,17 @@ nav a.on::before { color: var(--accent); }
             </div>
             <div class="canvas-wrap"><div class="phone"><div class="canvas" id="canvas"></div><div class="preview" id="previewBox" hidden></div></div></div>
           </div>
-          <p id="lhmHelp" class="hint" hidden>
-            <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases" target="_blank" rel="noopener">LibreHardwareMonitor</a>
-            <strong id="lhmStatus" role="status"></strong>
-            <span data-i18n="s.lhm.setup">For CPU temperature, CPU power and additional GPU readings on Windows, enable Options › Remote Web Server › Run on port 8085.</span>
-          </p>
+          <div id="lhmHelp" hidden>
+            <p class="hint">
+              <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases" target="_blank" rel="noopener">LibreHardwareMonitor</a>
+              <strong id="lhmStatus" role="status"></strong>
+              <span id="lhmSetup"></span>
+            </p>
+            <div class="field" style="max-width:160px">
+              <label for="lhmPort" data-i18n="s.lhm.port">Port</label>
+              <input id="lhmPort" type="number" min="1" max="65535" required data-bind="libreHardwareMonitorPort">
+            </div>
+          </div>
           <div id="peRest"></div>
         </div>
       </div>
@@ -3866,6 +3872,10 @@ function renderAppearanceSettings() {
 
 const t = (k, v) => (window.PhoneBoxI18n ? window.PhoneBoxI18n.t(k, v) : k);
 const tc = (s) => (window.PhoneBoxI18n?.tc ? window.PhoneBoxI18n.tc(s) : s);
+function renderLhmSetup() {
+  const port = cfg?.libreHardwareMonitorPort;
+  if (Number.isInteger(port) && port >= 1 && port <= 65535) $('lhmSetup').textContent = t('s.lhm.setup', { port });
+}
 // tc() with {name} placeholders filled in after the lookup; a declaration so code above may call it too
 function tcv(s, vars) { return Object.entries(vars).reduce((r, [k, v]) => r.split(`{${k}}`).join(String(v)), tc(s)); }
 
@@ -3903,6 +3913,7 @@ function applyLanguageUi(langPref) {
   if ($('langSel')) $('langSel').value = I18n.getPref();
   if ($('displayLangSel')) $('displayLangSel').value = I18n.getPref();
   I18n.applyDom();
+  renderLhmSetup();
   updateStageText();
   $('chargeRangeAnd').textContent = tc('and');
   if ($('advancedVersionLabel')) $('advancedVersionLabel').textContent = tc('Version');
@@ -3953,11 +3964,13 @@ function bindForm() {
       let val = el.type === 'checkbox' ? el.checked : el.value;
       if (type === 'num') val = parseFloat(val);
       if (type === 'int') val = parseInt(val || '0', 10);
+      if (p === 'libreHardwareMonitorPort') val = el.valueAsNumber;
       if (type === 'device-serials') val = [...new Set(val.split('\n').map(s => s.trim()).filter(Boolean))];
       if (type === 'stock-symbols') val = [...new Set(val.toLowerCase().split(/[\n,;]+/).map(s => s.trim()).filter(Boolean))];
       if (type === 'hour12') val = val === 'true' ? true : val === 'auto' ? 'auto' : false;
       if (p === 'adbPath' && val === '') val = null;
       setPath(cfg, p, val);
+      if (p === 'libreHardwareMonitorPort') renderLhmSetup();
       $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
       if (p === 'charge.method') renderCharge();
       if (p === 'lan.enabled') renderLanStatus();
@@ -4107,6 +4120,7 @@ async function loadInfo() {
 // The form reads every section it binds and renders, so a config without one — an older export, or a
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
+  cfg.libreHardwareMonitorPort ??= 8085;
   cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.display.wallpaper ??= { dim: 45, blur: 0 }; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.claude.extraCredentialDirs ??= []; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity', 'grok'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
@@ -4149,6 +4163,7 @@ function save() {
   return saving;
 }
 async function doSave() {
+  if (!$('lhmHelp').hidden && !$('lhmPort').reportValidity()) return false;
   const headers = { 'Content-Type': 'application/json' };
   if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
   let r;

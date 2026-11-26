@@ -8,6 +8,8 @@ namespace PhoneBox.Agent;
 
 public sealed class AgentConfig
 {
+    internal const int DefaultLibreHardwareMonitorPort = 8085;
+
     public CodexBarConfig CodexBar { get; set; } = new();
     public ControlDeckConfig Controls { get; set; } = new();
     public string? DeviceSerial { get; set; }
@@ -16,6 +18,7 @@ public sealed class AgentConfig
     internal bool UsesUsbDevice(string serial) => (string.IsNullOrEmpty(DeviceSerial) || DeviceSerial == serial)
         && !IgnoredDeviceSerials.Contains(serial, StringComparer.Ordinal);
     public string? AdbPath { get; set; }
+    public int LibreHardwareMonitorPort { get; set; } = DefaultLibreHardwareMonitorPort;
     public WeatherConfig Weather { get; set; } = new();
     public PingConfig Ping { get; set; } = new();
     public NightConfig Night { get; set; } = new();
@@ -874,6 +877,8 @@ public sealed partial class ConfigStore(string path)
     /// <summary>Fills in defaults: builds pages from templates, migrates old pages, generates unique ids.</summary>
     private static AgentConfig Normalize(AgentConfig c, IReadOnlySet<string>? staleIds = null)
     {
+        if (c.LibreHardwareMonitorPort is < 1 or > 65535)
+            c.LibreHardwareMonitorPort = AgentConfig.DefaultLibreHardwareMonitorPort;
         c.Weather ??= new();
         c.Weather.Unit = WeatherUnitJsonConverter.Normalize(c.Weather.Unit);
         c.Weather.Model = WeatherModelJsonConverter.Normalize(c.Weather.Model);
