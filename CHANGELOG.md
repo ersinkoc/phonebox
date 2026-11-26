@@ -2,9 +2,19 @@
 
 ## Unreleased
 
-- Pages: a dimmed **photo background** per page, from the Photo frame's folder. A new picture fades in every minute,
-  only on the page being shown; the dim level is set in the page editor, and the folder path never reaches the phone
-  (#288, #611, [Nero-Dark](https://github.com/Nero-Dark)).
+- Pages: a dimmed **photo background** per page, from the Photo frame's source (a folder or an Immich album). A new
+  picture fades in every minute, only on the page being shown; the dim level is set in the page editor, and the folder
+  path and the Immich key never reach the phone (#288, #611, [Nero-Dark](https://github.com/Nero-Dark)).
+- Now playing and Synced lyrics: the time follows the player's playback speed (0.5x, 1.5x, 2x…) instead of drifting
+  between updates; Windows and macOS report the speed, and Linux keeps 1x (#617, #621,
+  [brixtonpham](https://github.com/brixtonpham)).
+- Shortcuts: an on / off key's **State from a pushed value** can be `key=value`, such as `layout=RU`, to be on while
+  that key holds that value, so one pushed value can light one of several keys; macro conditions take the same form,
+  `if:push:layout=RU` (#622, #623).
+- Wi-Fi: a port the agent cannot open (one Windows reserves, or one another program holds) no longer stops the whole
+  agent. Wi-Fi stays off, and Settings › Wi-Fi and `agent.log` say why (#614, #624).
+- Control Deck on Linux and macOS: the application mixer, microphone, balance, push-to-talk and device switching say
+  they are only on Windows for now, instead of showing an empty list (#613, #625).
 - README: the Games Tab add-on's row lists its Steam store lookup (#612, [lucasaz](https://github.com/lucasaz)).
 - Development: an `.editorconfig` with the style the code already follows, and the agent builds without warnings on
   Windows (#615, [elong365](https://github.com/elong365)).
