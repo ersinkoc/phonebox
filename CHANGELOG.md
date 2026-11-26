@@ -25,6 +25,11 @@
 - Older Android WebViews (Chromium 80 to 84): the panel starts again. Since 0.9.30 one line of the Discord widget
   used syntax those versions can't read, so the panel stopped with "Unexpected token '='"; a new test keeps newer
   syntax out of the panel (#654).
+- Trackpad: a **Double-tap to drag** option, off by default: tap, then touch again and move to hold the left button
+  and drag, instead of holding a finger still; the long-press vibration of the WebView itself is gone from the panel
+  (#647, [Prajjwal2404](https://github.com/Prajjwal2404)).
+- Quotas: a card with two or three rings (Antigravity has three) keeps them the same size and on one line, and long
+  labels wrap inside their own column instead of running into the next (#650, [avery-404](https://github.com/avery-404)).
 - World clocks: the difference from the phone's time zone is exact, so Kathmandu shows `+5.75h` instead of `+5.8h`
   one way and `−5.7h` the other (#630, [KPuneethHarshaNaik](https://github.com/KPuneethHarshaNaik)).
 - Windows: LibreHardwareMonitor's port can be set below the preview in Settings › Pages (8085 by default), for a PC
