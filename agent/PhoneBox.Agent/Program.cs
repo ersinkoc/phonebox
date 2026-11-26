@@ -43,7 +43,10 @@ AppPaths.RestrictConfig(configPath);
 var configStore = new ConfigStore(configPath);
 configStore.PersistGenerated(); // keep the Wi-Fi token stable across restarts
 var lanCfg = configStore.Get().Lan;
-var lanCert = lanCfg.Enabled && lanCfg.Port != Port ? Lan.Certificate(configDir) : null;
+// a port Windows reserves or another program holds would stop the whole agent when it starts listening: Wi-Fi stays off
+// instead, and Settings says why (/api/lan "portProblem")
+var lanPortProblem = lanCfg.Enabled && lanCfg.Port != Port ? Lan.PortProblem(lanCfg.Port) : null;
+var lanCert = lanCfg.Enabled && lanCfg.Port != Port && lanPortProblem is null ? Lan.Certificate(configDir) : null;
 // USB uses the same certificate as Wi-Fi; the agent hands its fingerprint to the app over adb (see UsbLink.cs)
 var usbCert = lanCert ?? Lan.Certificate(configDir);
 var usb = new UsbLink(UsbLink.FreeLoopbackPort(), Lan.Fingerprint(usbCert));
@@ -343,7 +346,11 @@ app.MapGet("/api/lan", (ConfigStore cfg) => Results.Json(new
     configured = cfg.Get().Lan.Enabled,
     active = lanCert is not null,
     port = lanCfg.Port,
-    restartNeeded = cfg.Get().Lan.Enabled != (lanCert is not null) || (lanCert is not null && cfg.Get().Lan.Port != lanCfg.Port),
+    // with a port that could not be opened, only a new port (or turning Wi-Fi on again later) needs a restart
+    restartNeeded = lanPortProblem is not null
+        ? cfg.Get().Lan.Enabled && cfg.Get().Lan.Port != lanCfg.Port
+        : cfg.Get().Lan.Enabled != (lanCert is not null) || (lanCert is not null && cfg.Get().Lan.Port != lanCfg.Port),
+    portProblem = lanPortProblem,
     hosts = Lan.Addresses(),
     fingerprint = lanCert is null ? null : Lan.Fingerprint(lanCert),
 }));
@@ -1242,6 +1249,12 @@ app.MapDelete("/api/settings/shortcut-icon", (string id, HttpRequest req, Config
 app.Lifetime.ApplicationStarted.Register(() =>
     app.Logger.LogInformation("PhoneBox agent {Version} ready on http://127.0.0.1:{Port}, phone USB port {UsbPort} (config: {Path})",
         AppPaths.Version, Port, usb.Port, configPath));
+if (lanPortProblem is not null)
+    app.Lifetime.ApplicationStarted.Register(() => app.Logger.LogWarning(
+        "Wi-Fi is off: port {LanPort} could not be opened ({Problem}). Choose another port in Settings › Wi-Fi{Hint}",
+        lanCfg.Port, lanPortProblem,
+        OperatingSystem.IsWindows() && lanPortProblem == "reserved"
+            ? "; `netsh interface ipv4 show excludedportrange protocol=tcp` lists the ports Windows reserves" : ""));
 
 // macOS, running as PhoneBox.app: the main thread belongs to the menu bar icon and the host runs beside it (MenuBarHost)
 if (!MenuBarHost.TryRun(app, args, endpoint, configDir)) app.Run();

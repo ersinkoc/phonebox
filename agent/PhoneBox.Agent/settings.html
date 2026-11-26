@@ -4020,6 +4020,8 @@ function renderLanStatus() {
     : !want && lanInfo.configured ? t('s.wifi.saveToTurnOff')
     // saved as off: the agent refuses Wi-Fi requests at once, even though the port is only released by a restart
     : !lanInfo.configured ? t('s.wifi.off')
+    // the port could not be opened when the agent started, so it left Wi-Fi off rather than stop
+    : lanInfo.portProblem ? t({ reserved: 's.wifi.portReserved', 'in-use': 's.wifi.portInUse' }[lanInfo.portProblem] || 's.wifi.portFailed', { port: lanInfo.port })
     : lanInfo.active ? t('s.wifi.listening', { port: lanInfo.port }) : t('s.wifi.restartToListen');
 }
 

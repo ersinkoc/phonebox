@@ -38,6 +38,31 @@ public static class Lan
 
     public static string Fingerprint(X509Certificate2 cert) => Convert.ToHexString(SHA256.HashData(cert.RawData)).ToLowerInvariant();
 
+    /// <summary>
+    /// Why the Wi-Fi port cannot be opened, or null when it can: "reserved" (access denied: a port range Windows keeps
+    /// for itself, or a program that holds the port exclusively), "in-use" (another program listens on it) or "failed".
+    /// Checked before the agent starts listening, so a bad port turns Wi-Fi off instead of stopping the whole agent.
+    /// </summary>
+    public static string? PortProblem(int port)
+    {
+        try
+        {
+            var probe = new TcpListener(IPAddress.Any, port);
+            probe.Start();
+            probe.Stop();
+            return null;
+        }
+        catch (SocketException ex)
+        {
+            return ex.SocketErrorCode switch
+            {
+                SocketError.AccessDenied => "reserved",
+                SocketError.AddressAlreadyInUse => "in-use",
+                _ => "failed",
+            };
+        }
+    }
+
     /// <summary>Addresses the phone can try: private LAN IPv4 addresses first, then Tailscale (100.64.0.0/10).</summary>
     public static IReadOnlyList<string> Addresses()
     {
