@@ -7,6 +7,8 @@
     flat: { radius: 12, gap: 12, padding: 12, border: false, shadow: false },
     borderless: { radius: 0, gap: 12, padding: 12, border: false, shadow: false },
     seamless: { radius: 0, gap: 0, padding: 12, border: true, shadow: false },
+    // border and shadow stay unset: the glass surface draws its own rim and depth (appearance.css)
+    glass: { radius: 20, gap: 10, padding: 12 },
   });
   const fonts = Object.freeze({
     default: '',

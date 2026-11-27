@@ -23,6 +23,16 @@ public class ConfigTests
         Assert.False(ConfigStore.PreserveSteamApiKey(proposed, null));
     }
 
+    [Theory]
+    [InlineData("glass", "glass")]
+    [InlineData("Glass", null)]
+    public void GlassAppearanceStyleSurvivesNormalizationAndUnknownSpellingsDoNot(string style, string? expected)
+    {
+        var appearance = new AppearanceConfig { Style = style };
+        appearance.Normalize();
+        Assert.Equal(expected, appearance.Style);
+    }
+
     private static AgentConfig Load(string json)
     {
         var path = Path.Combine(Path.GetTempPath(), $"phonebox-cfg-{Guid.NewGuid():N}.json");
