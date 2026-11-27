@@ -26,6 +26,7 @@ body[data-theme="midnight"] { --bg: #060a17; --card: rgba(120, 150, 255, 0.07); 
 body[data-theme="warm"] { --bg: #0e0907; --card: rgba(255, 196, 150, 0.06); --card-hi: rgba(255, 196, 150, 0.1); --line: rgba(255, 196, 150, 0.1); --text: #f6ede5; --muted: #a8968a; --dim: #6f6259; }
 body[data-theme="graphite"] { --bg: #16181c; --card: rgba(255, 255, 255, 0.06); --card-hi: rgba(255, 255, 255, 0.09); --line: rgba(255, 255, 255, 0.1); }
 body[data-theme="graphite"]::before { opacity: .45; }
+body[data-theme="crimson"] { --bg: #110608; --card: rgba(239, 68, 68, 0.08); --card-hi: rgba(239, 68, 68, 0.14); --line: rgba(239, 68, 68, 0.22); --muted: #fca5a5; }
 #dots i.on { background: color-mix(in srgb, var(--accent, #fff) 55%, white); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

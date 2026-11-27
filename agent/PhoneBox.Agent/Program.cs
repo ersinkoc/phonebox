@@ -722,13 +722,17 @@ app.MapPost("/api/immich/albums", async (ImmichAlbumsRequest body, PhotoFrame ph
 // Dictation (widget): text the phone recognized, typed into the app in front (only if that widget allows it).
 // The text is in the query: the phone's WebView sees no request bodies, so its transport (USB and Wi-Fi) sends POSTs
 // without one, like every other panel request. Kestrel's request line (16 KB) bounds it; request URLs aren't logged.
-app.MapPost("/api/dictate", async (string? widget, string? text, bool? assistant, HttpRequest req, Dictation dictation, VoiceAssistant voice, CancellationToken ct) =>
+app.MapPost("/api/dictate", async (string? widget, string? text, bool? assistant, bool? confirmed, HttpRequest req, Dictation dictation, VoiceAssistant voice, CancellationToken ct) =>
 {
     var dev = req.Headers["X-PhoneBox-Device"].ToString();
     if (assistant != false)
     {
-        var (handled, vStatus, msg) = await voice.TryExecuteAsync(dev, widget, text, ct);
-        if (handled) return vStatus == 200 ? Results.Ok(new { ok = true, action = msg }) : Results.Json(new { error = msg }, statusCode: vStatus);
+        var (handled, vStatus, msg, confirmRequired) = await voice.TryExecuteAsync(dev, widget, text, ct, confirmed == true);
+        if (handled)
+        {
+            if (confirmRequired) return Results.Ok(new { ok = true, confirmRequired = true, action = msg });
+            return vStatus == 200 ? Results.Ok(new { ok = true, action = msg }) : Results.Json(new { error = msg }, statusCode: vStatus);
+        }
     }
     var (status, error) = await dictation.TypeAsync(dev, widget, text, ct);
     return error is null ? Results.Ok(new { ok = true }) : Results.Json(new { error }, statusCode: status);
@@ -1237,6 +1241,21 @@ app.MapPost("/api/procs/kill", (string? name, int? pid, ProcessMonitor procs, Co
 
 app.MapPost("/api/run/{id}", (string id, bool? hold, ConfigStore cfg, PushStore push, AudioControl audio, ILogger<Program> log) =>
     RunShortcutForPhone(cfg.Get(), id, log, push, audio, hold == true));
+
+app.MapPost("/api/shortcuts/close/{id}", (string id, ConfigStore cfg, ProcessMonitor procs, PushStore push, AudioControl audio, ILogger<Program> log) =>
+{
+    var c = cfg.Get();
+    if (!c.AllowKill())
+        return Results.Json(new KillResult(0, 0, "Terminating processes is disabled in the settings"), statusCode: 403);
+    if (c.Shortcuts.Any(s => s.Id == "close-" + id))
+        return RunShortcutForPhone(c, "close-" + id, log, push, audio, false);
+    if (c.Shortcuts.FirstOrDefault(s => s.Id == id) is not { } sc || string.IsNullOrWhiteSpace(sc.Cmd))
+        return Results.NotFound();
+    var name = Path.GetFileNameWithoutExtension(sc.Cmd.Trim().Trim('"'));
+    if (string.IsNullOrWhiteSpace(name)) return Results.BadRequest(new { error = "No process name for shortcut" });
+    var r = procs.Kill(name);
+    return r.Killed > 0 ? Results.Json(r) : Results.Json(r, statusCode: 409);
+});
 
 // Real icon for a shortcut: an image the user uploaded (settings page) takes priority; otherwise its program's own
 // icon, when its command is an actual file on disk. 404 when neither exists (shell addresses, protocol handlers,

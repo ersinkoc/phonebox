@@ -30,18 +30,30 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
     [GeneratedRegex(@"^(?:close|quit|exit|kill)\s+(?<target>.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex CloseAppRx();
 
-    public Task<(bool Handled, int Status, string? Message)> TryExecuteAsync(string? deviceId, string? widget, string? text, CancellationToken ct)
+    public Task<(bool Handled, int Status, string? Message, bool ConfirmRequired)> TryExecuteAsync(
+        string? deviceId, string? widget, string? text, CancellationToken ct, bool confirmed = false)
     {
         var w = PanelWidgets.Find(config.Get(), deviceId, widget, Dictation.WidgetType);
-        if (w is null) return Task.FromResult((false, 404, (string?)null));
+        if (w is null) return Task.FromResult((false, 404, (string?)null, false));
         var assistantOn = w.Bool("assistant") == true;
         if (!assistantOn || w.Bool("control") != true)
-            return Task.FromResult((false, 200, (string?)null));
+            return Task.FromResult((false, 200, (string?)null, false));
 
         var raw = PrefixRx().Replace(Dictation.Clean(text).Trim(), "").Trim();
-        if (raw.Length == 0) return Task.FromResult((false, 400, (string?)null));
+        if (raw.Length == 0) return Task.FromResult((false, 400, (string?)null, false));
 
         var cfg = config.Get();
+        var needsConfirm = w.Bool("confirm") != false && !confirmed;
+
+        // 0. User-configured voice macros
+        var macro = cfg.VoiceMacros.FirstOrDefault(x =>
+            !string.IsNullOrWhiteSpace(x.Phrase) &&
+            raw.Equals(x.Phrase.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (macro is not null)
+        {
+            var err = Shortcuts.Run(cfg, macro.ShortcutId, log, push, audio);
+            return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? $"Ran {macro.Phrase}"), false));
+        }
 
         // 1. "open <app> and search <query>"
         var m = OpenAndSearchRx().Match(raw);
@@ -54,8 +66,8 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
                 : "https://www.google.com/search?q=" + Uri.EscapeDataString(query);
             var err = OpenUrlInApp(cfg, app, url);
             return Task.FromResult(err is null
-                ? (true, 200, (string?)$"Searching {query}")
-                : (true, 500, (string?)err));
+                ? (true, 200, (string?)$"Searching {query}", false)
+                : (true, 500, (string?)err, false));
         }
 
         // 2. "youtube <query>" / "search youtube <query>"
@@ -65,8 +77,8 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             var query = m.Groups["query"].Value.Trim();
             var err = OpenUrlInApp(cfg, "chrome", "https://www.youtube.com/results?search_query=" + Uri.EscapeDataString(query));
             return Task.FromResult(err is null
-                ? (true, 200, (string?)$"YouTube: {query}")
-                : (true, 500, (string?)err));
+                ? (true, 200, (string?)$"YouTube: {query}", false)
+                : (true, 500, (string?)err, false));
         }
 
         // 3. "search <query>" / "google <query>"
@@ -76,8 +88,8 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             var query = m.Groups["query"].Value.Trim();
             var err = OpenUrlInApp(cfg, "chrome", "https://www.google.com/search?q=" + Uri.EscapeDataString(query));
             return Task.FromResult(err is null
-                ? (true, 200, (string?)$"Searching {query}")
-                : (true, 500, (string?)err));
+                ? (true, 200, (string?)$"Searching {query}", false)
+                : (true, 500, (string?)err, false));
         }
 
         // 4. Built-in quick commands
@@ -88,7 +100,7 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             if (micSc is not null)
             {
                 var err = Shortcuts.Run(cfg, micSc.Id, log, push, audio);
-                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Toggled mic")));
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Toggled mic"), false));
             }
         }
         if (lower is "mute" or "unmute" or "toggle mute")
@@ -97,22 +109,23 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             if (muteSc is not null)
             {
                 var err = Shortcuts.Run(cfg, muteSc.Id, log, push, audio);
-                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Toggled mute")));
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Toggled mute"), false));
             }
         }
         if (lower is "lock" or "lock pc" or "lock computer")
         {
+            if (needsConfirm) return Task.FromResult((true, 200, (string?)"Lock PC", true));
             var lockSc = cfg.Shortcuts.FirstOrDefault(s => s.Cmd == "builtin:lock");
             if (lockSc is not null)
             {
                 var err = Shortcuts.Run(cfg, lockSc.Id, log, push, audio);
-                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Locked PC")));
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Locked PC"), false));
             }
         }
         if (lower is "screenshot" or "snip" or "take screenshot")
         {
             Launch("ms-screenclip:", null);
-            return Task.FromResult((true, 200, (string?)"Opened Snip"));
+            return Task.FromResult((true, 200, (string?)"Opened Snip", false));
         }
 
         // 5. "open <app>"
@@ -126,7 +139,7 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
                 var err = sc.Cmd.StartsWith("builtin:", StringComparison.OrdinalIgnoreCase)
                     ? Shortcuts.Run(cfg, sc.Id, log, push, audio)
                     : Launch(sc.Cmd, sc.Args);
-                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? $"Opened {sc.Label}")));
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? $"Opened {sc.Label}"), false));
             }
         }
 
@@ -135,20 +148,21 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
         if (m.Success)
         {
             var target = m.Groups["target"].Value.Trim();
+            if (needsConfirm) return Task.FromResult((true, 200, (string?)$"Close {target}", true));
             var sc = FindShortcut(cfg, target, isClose: true);
             if (sc is not null)
             {
                 var err = Launch(sc.Cmd, sc.Args);
-                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? $"Closed {target}")));
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? $"Closed {target}"), false));
             }
             if (cfg.AllowKill())
             {
                 var kr = procs.Kill(target);
-                if (kr.Killed > 0) return Task.FromResult((true, 200, (string?)$"Closed {target}"));
+                if (kr.Killed > 0) return Task.FromResult((true, 200, (string?)$"Closed {target}", false));
             }
         }
 
-        return Task.FromResult((false, 200, (string?)null));
+        return Task.FromResult((false, 200, (string?)null, false));
     }
 
     private static Shortcut? FindShortcut(AgentConfig cfg, string query, bool isClose)

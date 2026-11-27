@@ -41,7 +41,7 @@ W.dictate = {
     const guard = () => { if (session && !visible()) { bridge.cancelListening(session); done(); say('w.dictate.tap'); } };
     const say = (key) => { note.textContent = key ? t(key) : ''; };
 
-    async function send(text) {
+    async function send(text, confirmed = false) {
       if (o.control !== true) { say('w.dictate.controlOff'); return; }
       // in the query: the app's transport sends no request bodies. Nothing is cut short: a text the agent wouldn't take
       // whole (Dictation.MaxChars, its 16 KB request line) isn't sent at all
@@ -52,7 +52,8 @@ W.dictate = {
       const timer = setTimeout(() => ctl.abort(), 30_000);
       try {
         const asst = o.assistant === true ? '&assistant=1' : '';
-        const r = await fetch(`${API}/dictate?${wq}&text=${query}${asst}`, { method: 'POST', cache: 'no-store', signal: ctl.signal,
+        const conf = confirmed ? '&confirmed=1' : '';
+        const r = await fetch(`${API}/dictate?${wq}&text=${query}${asst}${conf}`, { method: 'POST', cache: 'no-store', signal: ctl.signal,
           headers: PANEL_HEADERS });
         if (!r.ok) {
           let error = 'HTTP ' + r.status;
@@ -62,6 +63,14 @@ W.dictate = {
         let body = null;
         try { body = await r.json(); } catch (_) {}
         if (alive) {
+          if (body && body.confirmRequired) {
+            if (window.confirm((body.action || 'Run command') + '?')) {
+              await send(text, true);
+              return;
+            }
+            say('w.dictate.tap');
+            return;
+          }
           if (body && body.action) note.textContent = body.action;
           else say('w.dictate.sent');
         }

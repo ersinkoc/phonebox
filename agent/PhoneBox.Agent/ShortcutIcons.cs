@@ -133,7 +133,12 @@ internal static class ShortcutIcons
     /// </summary>
     private static bool IsResolvedProgram(string path)
     {
-        try { return File.Exists(path) && !File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint); }
+        try
+        {
+            if (!File.Exists(path)) return false;
+            if (path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)) return true;
+            return !File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint);
+        }
         catch { return false; }
     }
 #else

@@ -956,9 +956,58 @@ W.shortcuts = {
       return {};
     }
     const cols = Math.min(8, Math.max(1, o.columns || 4));
-    const grid = h('div', 'deck-grid', ...list.map(keyButton));
-    grid.style.gridTemplateColumns = `repeat(${Math.min(cols, list.length)}, 1fr)`;
-    grid.style.gridTemplateRows = `repeat(${Math.ceil(list.length / cols)}, 1fr)`;
+    const tapMode = o.tapMode || 'instant';
+    let query = '';
+    const grid = h('div', 'deck-grid');
+
+    function makeDeckKey(s) {
+      const btn = keyButton(s);
+      if (tapMode === 'instant') return btn;
+      let timer = 0;
+      const openMenu = () => {
+        const choice = window.prompt(`${s.label}\nType 1 to Open, 2 to Close, or Cancel:`, '1');
+        if (choice === '1') api('/run/' + encodeURIComponent(s.id), 'POST', 5000).catch(() => toast(t('panel.pcNoAnswer'), 'err'));
+        else if (choice === '2') api('/shortcuts/close/' + encodeURIComponent(s.id), 'POST', 5000).catch((e) => toast(e?.message || t('panel.pcNoAnswer'), 'err'));
+      };
+      btn.addEventListener('click', (e) => {
+        e.stopImmediatePropagation();
+        haptic();
+        if (tapMode === 'double-tap') {
+          if (timer) {
+            clearTimeout(timer);
+            timer = 0;
+            api('/run/' + encodeURIComponent(s.id), 'POST', 5000).catch(() => toast(t('panel.pcNoAnswer'), 'err'));
+            return;
+          }
+          timer = setTimeout(() => { timer = 0; openMenu(); }, 320);
+        } else {
+          openMenu();
+        }
+      }, true);
+      return btn;
+    }
+
+    function renderGrid() {
+      const shown = query ? list.filter((s) => (s.label || '').toLowerCase().includes(query)) : list;
+      grid.replaceChildren(...shown.map(makeDeckKey));
+      grid.style.gridTemplateColumns = `repeat(${Math.min(cols, Math.max(1, shown.length))}, 1fr)`;
+      grid.style.gridTemplateRows = `repeat(${Math.max(1, Math.ceil(shown.length / cols))}, 1fr)`;
+    }
+
+    if (o.search === true) {
+      const inp = h('input', 'deck-search');
+      inp.type = 'search';
+      inp.placeholder = tp('Search shortcuts...');
+      inp.style.cssText = 'width:100%;margin-bottom:6px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,0.06);color:var(--text);font-size:12px;outline:none;user-select:text;';
+      inp.addEventListener('input', () => { query = inp.value.trim().toLowerCase(); renderGrid(); });
+      box.style.display = 'flex';
+      box.style.flexDirection = 'column';
+      grid.style.flex = '1';
+      grid.style.minHeight = '0';
+      box.append(inp);
+    }
+
+    renderGrid();
     box.append(grid);
     return { update: () => applyToggles(box) };
   },

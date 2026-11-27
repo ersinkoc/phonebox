@@ -41,6 +41,8 @@ public sealed class AgentConfig
     public OpenCodeConfig OpenCode { get; set; } = new();
     public List<PageConfig> Pages { get; set; } = [];
     public List<Shortcut> Shortcuts { get; set; } = [];
+    /// <summary>Optional spoken phrase -> shortcut mappings for Voice Assistant mode.</summary>
+    public List<VoiceMacro> VoiceMacros { get; set; } = [];
     public List<RuleConfig> Rules { get; set; } = [];
     public ChargeConfig Charge { get; set; } = new();
     /// <summary>Per-phone settings when several phones use this agent: a name and which pages each one shows.</summary>
@@ -680,6 +682,12 @@ public sealed class CalendarSource
     public string Name { get; set; } = "";
     public string Url { get; set; } = "";
     public string? Color { get; set; }
+}
+
+public sealed class VoiceMacro
+{
+    public string Phrase { get; set; } = "";
+    public string ShortcutId { get; set; } = "";
 }
 
 public sealed class Shortcut
