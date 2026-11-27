@@ -1,4 +1,4 @@
-import { D, api, h, icon, media, mediaPosMs, t } from '../main.js';
+import { D, api, h, haptic, icon, media, mediaPosMs, t } from '../main.js';
 import { W } from '../registry.js';
 
 // ---------------------------------------------------------------- lyrics (LRCLIB, asked by the agent)
@@ -103,8 +103,22 @@ W.lyrics = {
       }
       list.scrollTop = 0;
     };
+    // a tap on a line plays the song from that line (#744), when the computer's player lets the agent move its position
+    const canSeek = () => !!(media && !media.phone && media.canSeek && Number(media.durMs) > 0 && trackKey(media) === track);
+    list.addEventListener('click', (e) => {
+      const i = rows.indexOf(e.target.closest('.ly-line'));
+      if (i < 0 || !canSeek()) return;
+      // the line is lit when the position plus the offset reaches it, so the song goes to its time minus the offset
+      const ms = Math.round(Math.max(0, Math.min(Number(media.durMs) - 1000, lines[i].ms - offsetFor(perPlayer, media.app, offset))));
+      haptic();
+      // like the media bar: the new position stays until the agent's next samples have caught up with it
+      media.posMs = ms; media.at = performance.now(); media.hold = performance.now() + 2500;
+      api('/media/seek?ms=' + ms, 'POST').catch(() => {});
+      follow(true);
+    });
     const follow = (jump = false) => {
       if (!rows.length || !media) return;
+      box.classList.toggle('seekable', canSeek());
       const pos = mediaPosMs(media) + offsetFor(perPlayer, media.app, offset);
       const at = lyricAt(lines, pos);
       if (at === shown && !jump) return;

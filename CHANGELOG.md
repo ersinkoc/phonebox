@@ -40,6 +40,9 @@
 - Gauge: the ring is redrawn only when its value changes, not on every state frame, which saves work on slow phones
   (#736).
 
+- Synced lyrics: a tap on a line plays the song from that line, when the computer's player lets PhoneBox move its
+  position (the same players whose media bar can be dragged); the widget's timing offset is taken into account (#744).
+
 ## 0.9.32 — 2026-11-27
 
 - Pi agent sessions in the AI sessions widget: model, thinking level, last tool, token counters, the current context
