@@ -34,6 +34,9 @@
   widget's settings, with what Home Assistant needs. The widget hides Home Assistant's header and sidebar with
   kiosk-mode. While the server does not answer, the widget says so and tries again. See
   [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md) (#620, [dancho12](https://github.com/dancho12)).
+- Android: the notice for a WebView too old to run the panel names the version in use, such as `(version 37)`. On
+  Android 5 and 6 a phone maker's own WebView can stay in use although Google's is installed from Google Play, and the
+  version shows which one the panel got (#689).
 
 ## 0.9.31 — 2026-11-27
 
