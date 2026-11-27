@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "अधिकतम",
       "s.k.valueStep": "चरण",
       "s.k.valueHint": "संख्या आख़िरी आर्ग्युमेंट बनती है, या जहाँ {value} अकेला हो वहाँ उसकी जगह लेती है। सीमा से बाहर या चरण से हटकर आई संख्याएँ अस्वीकार होती हैं, और एक सेकंड में अधिकतम 4 ली जाती हैं।",
+      "s.k.valueAddress": "प्रोग्राम को संख्या एक अलग आर्ग्युमेंट के रूप में मिलती है और वह शेल के बिना शुरू होता है। किसी पते (https:, shell:…) के लिए {value} को पते में ही रखें।",
       "s.cd.stationCount": "स्टेशन गणना",
       "s.appearance.originalWidgetFont": "मूल विजेट फ़ॉन्ट",
       "s.appearance.originalWidgetDefault": "मूल विजेट डिफ़ॉल्ट",

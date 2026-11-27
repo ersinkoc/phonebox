@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "最大",
       "s.k.valueStep": "刻み",
       "s.k.valueHint": "数値は最後の引数として渡されるか、単独で置かれた {value} と置き換わります。範囲外や刻みに合わない数値は拒否され、受け付けるのは1秒に最大4回です。",
+      "s.k.valueAddress": "プログラムは数値を独立した引数として受け取り、シェルを使わずに起動します。アドレス（https:、shell:…）の場合は、アドレス自体に {value} を入れてください。",
       "s.cd.stationCount": "駅数",
       "s.appearance.originalWidgetFont": "オリジナルウィジェットフォント",
       "s.appearance.originalWidgetDefault": "元のウィジェットデフォルト",

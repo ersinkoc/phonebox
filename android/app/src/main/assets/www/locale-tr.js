@@ -407,6 +407,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "En yüksek",
       "s.k.valueStep": "Adım",
       "s.k.valueHint": "Sayı son bağımsız değişken olur ya da tek başına duran {value} yerine geçer. Aralığın dışındaki veya adıma uymayan sayılar reddedilir ve saniyede en fazla 4 sayı alınır.",
+      "s.k.valueAddress": "Bir program sayıyı ayrı bir bağımsız değişken olarak alır ve kabuk olmadan başlar. Bir adres için (https:, shell:…), {value} değerini adresin içine koyun.",
       "s.cd.stationCount": "İstasyon sayısını",
       "s.appearance.originalWidgetFont": "Orijinal widget yazı tipi",
       "s.appearance.originalWidgetDefault": "Orijinal widget varsayımı",

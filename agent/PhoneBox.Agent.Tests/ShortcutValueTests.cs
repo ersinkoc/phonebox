@@ -23,8 +23,13 @@ public sealed class ShortcutValueTests : IDisposable
         Directory.Delete(_dir, recursive: true);
     }
 
-    private static Shortcut Seek(string? args = "--seek", double min = 0, double max = 100, double step = 1) =>
-        new() { Id = "seek-" + Guid.NewGuid().ToString("N"), Label = "Seek", Cmd = "player", Args = args, Value = new() { Min = min, Max = max, Step = step } };
+    // a program every test machine has: the key starts it directly (the test hook records it instead of starting it)
+    private static readonly string Prog = OperatingSystem.IsWindows() ? Path.Combine(Environment.SystemDirectory, "cmd.exe") : "/bin/sh";
+
+    private static Shortcut Seek(string? args = "--seek", double min = 0, double max = 100, double step = 1, string? cmd = null) =>
+        new() { Id = "seek-" + Guid.NewGuid().ToString("N"), Label = "Seek", Cmd = cmd ?? Prog, Args = args, Value = new() { Min = min, Max = max, Step = step } };
+
+    private static string[] Argv(ProcessStartInfo psi) => [.. psi.ArgumentList];
 
     private static string? Checked(Shortcut s, string raw) => ShortcutValues.Check(s, raw, out var v) is null ? v!.Text : null;
 
@@ -77,6 +82,7 @@ public sealed class ShortcutValueTests : IDisposable
     {
         var s = Load("""{ "id": "k", "label": "K", "cmd": "mpv", "value": { "min": 0.1234567890123456, "max": 0.1234567890123456, "step": 0.0000015 } }""");
         Assert.Equal((0.123457, 0.123457, 0.000002), (s.Value!.Min, s.Value.Max, s.Value.Step));
+        s.Cmd = Prog;
         Assert.Equal("0.123457", Checked(s, "0.123457"));
         Assert.Null(Checked(s, "0.1234567890123456"));
     }
@@ -162,16 +168,24 @@ public sealed class ShortcutValueTests : IDisposable
     // ---------------------------------------------------------------- where the number goes
 
     [Theory]
-    [InlineData("--seek", "--seek 37")]
-    [InlineData("--seek   ", "--seek 37")]
+    [InlineData("--seek", "--seek|37")]
+    [InlineData("--seek   ", "--seek|37")]
     [InlineData(null, "37")]
-    [InlineData("seek {value} --fast", "seek 37 --fast")]
-    [InlineData("{value} a {value}", "37 a 37")]
-    public void TheNumberIsAddedOrTakesThePlaceOfAWholePlaceholder(string? args, string expected)
+    [InlineData("seek {value} --fast", "seek|37|--fast")]
+    [InlineData("{value} a {value}", "37|a|37")]
+    [InlineData("--title \"a b\" {value}", "--title|a b|37")]   // a closed quote before the placeholder is fine
+    [InlineData("--say \\\" {value}", "--say|\"|37")]          // \" is a literal quote, not the start of a quoted part
+    [InlineData("\"C:\\Program Files\\x\\\\\" {value}", "C:\\Program Files\\x\\|37")] // 2n backslashes before a quote: n
+    [InlineData("--title \"a\"\"b\" {value}", "--title|a\"b|37")]   // inside quotes, "" is a literal quote
+    [InlineData("\"a\\\\\"\"b\" {value}", "a\\\"b|37")]         // ...also after an even run of backslashes
+    public void TheNumberIsItsOwnArgumentAfterSplitting(string? args, string expected)
     {
         var sc = Seek(args);
         Assert.Null(ShortcutValues.Check(sc, "37", out var v));
-        Assert.Equal(expected, Shortcuts.StartInfo(sc, v).Arguments);
+        var psi = Shortcuts.StartInfo(sc, v);
+        Assert.False(psi.UseShellExecute);
+        Assert.Equal(Prog, psi.FileName);
+        Assert.Equal(expected.Split('|'), Argv(psi));
     }
 
     [Theory]
@@ -187,14 +201,15 @@ public sealed class ShortcutValueTests : IDisposable
 
     [Theory]
     [InlineData("--seek", "--seek")]
-    [InlineData("seek {value} --fast", "seek  --fast")]
+    [InlineData("seek {value} --fast", "seek|--fast")]
     [InlineData("{value}", "")]
-    public void RunWithoutANumberTheKeyLeavesThePlaceholderOut(string args, string expected) =>
-        Assert.Equal(expected, Shortcuts.StartInfo(Seek(args), null).Arguments);
-
-    [Fact]
-    public void AQuoteEscapedWithABackslashDoesNotOpenAQuotedArgument() =>
-        Assert.Equal("--say \\\" 37", Shortcuts.StartInfo(Seek("--say \\\" {value}"), Check("37", Seek("--say \\\" {value}"))).Arguments);
+    [InlineData("--title \"hello", "--title|hello")] // an open quote still runs as before when no number is added
+    public void RunWithoutANumberTheKeyLeavesThePlaceholderOut(string args, string expected)
+    {
+        var psi = Shortcuts.StartInfo(Seek(args), null);
+        Assert.False(psi.UseShellExecute);
+        Assert.Equal(expected.Length == 0 ? [] : expected.Split('|'), Argv(psi));
+    }
 
     [Theory]
     [InlineData("--title \"hello")]          // the number would be appended inside the open quote
@@ -202,33 +217,171 @@ public sealed class ShortcutValueTests : IDisposable
     public void AnOpenQuoteIsRefused(string args)
     {
         Assert.NotNull(ShortcutValues.Check(Seek(args), "37", out _));
-        Assert.Throws<InvalidOperationException>(() => ShortcutValues.Apply(args, new CheckedValue("37")));
+        Assert.Throws<InvalidOperationException>(() => ShortcutValues.Arguments(args, new CheckedValue("37")));
     }
 
     [Fact]
-    public void AClosedQuoteBeforeThePlaceholderIsFine() =>
-        Assert.Equal("--title \"a b\" 37", Shortcuts.StartInfo(Seek("--title \"a b\" {value}"), Check("37", Seek("--title \"a b\" {value}"))).Arguments);
+    public void AKeyThatTakesNoValueStartsAsItAlwaysDid()
+    {
+        var plain = new Shortcut { Id = "plain", Label = "Plain", Cmd = Prog, Args = "{value} stays" };
+        var psi = Shortcuts.StartInfo(plain, null);
+        Assert.True(psi.UseShellExecute);
+        Assert.Equal("{value} stays", psi.Arguments);
+        Assert.Empty(psi.ArgumentList);
+    }
+
+    // ---------------------------------------------------------------- programs and addresses
+
+    [Theory]
+    [InlineData("https://example.org/seek?t={value}", "https://example.org/seek?t=37")]
+    [InlineData("myplayer://seek/{value}", "myplayer://seek/37")]
+    [InlineData("shell:AppsFolder\\X?{value}", "shell:AppsFolder\\X?37")]
+    public void AnAddressTakesTheNumberInPlaceOfValueInTheAddress(string cmd, string opened)
+    {
+        var sc = Seek(null, cmd: cmd);
+        Assert.Null(ShortcutValues.Check(sc, "37", out var v));
+        var psi = Shortcuts.StartInfo(sc, v);
+        Assert.True(psi.UseShellExecute); // the system opens an address; its opener passes no arguments on
+        Assert.Equal(opened, psi.FileName);
+        Assert.Equal("", psi.Arguments);
+    }
+
+    [Theory]
+    [InlineData("https://example.org", "--seek {value}")] // the opener would drop the argument: refused, not lost
+    [InlineData("ms-settings:", null)]
+    public void AnAddressWithoutValueInItRefusesANumber(string cmd, string? args) =>
+        Assert.StartsWith("This shortcut opens an address", ShortcutValues.Check(Seek(args, cmd: cmd), "37", out _));
+
+    [Fact]
+    public void NeitherAProgramHereNorAnAddressRefusesANumber()
+    {
+        var doc = Path.Combine(_dir, "notes.txt");
+        File.WriteAllText(doc, "x");
+        foreach (var cmd in new[] { "no-such-program-677", Prog + "{value}", doc, _dir, "file:///bin/echo?t={value}" })
+            Assert.StartsWith("This shortcut takes a number only when it starts a program found on this computer",
+                ShortcutValues.Check(Seek(cmd: cmd), "37", out _));
+    }
+
+    [Fact]
+    public void AProgramDoesNotTakeValueInItsName()
+    {
+        if (OperatingSystem.IsWindows()) return; // a file name with braces in it, made executable: Unix only
+        var odd = Path.Combine(_dir, "run{value}");
+        File.WriteAllText(odd, "#!/bin/sh\n");
+        File.SetUnixFileMode(odd, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Assert.Contains("goes in the arguments", ShortcutValues.Check(Seek(cmd: odd), "37", out _) ?? "");
+    }
+
+    [Fact]
+    public void AnAddressRunWithoutANumberLeavesValueOut()
+    {
+        var psi = Shortcuts.StartInfo(Seek("{value}", cmd: "https://example.org/?t={value}"), null);
+        Assert.Equal("https://example.org/?t=", psi.FileName);
+        Assert.Equal("", psi.Arguments);
+    }
+
+    [Fact]
+    public void OnlyAFileThatCanRunIsAProgram()
+    {
+        Assert.Equal(Prog, ShortcutValues.Program(Prog));
+        Assert.Null(ShortcutValues.Program("https://example.org"));
+        Assert.Null(ShortcutValues.Program("ms-settings:"));
+        Assert.Null(ShortcutValues.Program(""));
+        var doc = Path.Combine(_dir, "notes.txt");
+        File.WriteAllText(doc, "x");
+        Assert.Null(ShortcutValues.Program(doc));     // a document opens through the system
+        Assert.Null(ShortcutValues.Program(_dir));    // a folder (or a macOS .app bundle) is not a program
+        if (OperatingSystem.IsWindows()) return;
+        Assert.NotNull(ShortcutValues.Program("sh")); // a bare name found on the PATH
+        var script = Path.Combine(_dir, "run.sh");
+        File.WriteAllText(script, "#!/bin/sh\n");
+        Assert.Null(ShortcutValues.Program(script));  // not executable
+        File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Assert.Equal(script, ShortcutValues.Program(script));
+    }
+
+    [Fact]
+    public void ARelativeProgramIsFoundFromTheKeysWorkingFolder()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var bin = Directory.CreateDirectory(Path.Combine(_dir, "media")).FullName;
+        var player = Path.Combine(bin, "player");
+        File.WriteAllText(player, "#!/bin/sh\n");
+        File.SetUnixFileMode(player, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var sc = Seek("--seek", cmd: "./player");
+        sc.Cwd = bin;
+        Assert.Null(ShortcutValues.Check(sc, "37", out var v));
+        Assert.Equal(player, Shortcuts.StartInfo(sc, v).FileName);
+    }
+
+    [Fact]
+    public void AnExecuteBitForOthersOnlyIsNotAProgramForTheAgent()
+    {
+        if (OperatingSystem.IsWindows() || geteuid() == 0) return; // root may run any file with an execute bit
+        var file = Path.Combine(_dir, "others-only");
+        File.WriteAllText(file, "#!/bin/sh\n");
+        File.SetUnixFileMode(file, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherExecute); // 0641
+        Assert.Null(ShortcutValues.Program(file));
+    }
+
+    [Fact]
+    public void AProgramThatWentAwayAfterTheCheckFailsInsteadOfDroppingTheNumber()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var file = Path.Combine(_dir, "gone");
+        File.WriteAllText(file, "#!/bin/sh\n");
+        File.SetUnixFileMode(file, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var sc = Seek("--seek {value}", cmd: file);
+        var v = Check("37", sc);
+        File.Delete(file);
+        Assert.Throws<InvalidOperationException>(() => Shortcuts.StartInfo(sc, v));
+    }
+
+    [System.Runtime.InteropServices.DllImport("libc")] private static extern uint geteuid();
+
+    [Fact]
+    public void AProgramFoundOnThePathIsGivenAsAFullPath()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var found = ShortcutValues.Program("sh");
+        Assert.NotNull(found);
+        Assert.True(Path.IsPathRooted(found));
+    }
 
     private static CheckedValue Check(string raw, Shortcut s) { Assert.Null(ShortcutValues.Check(s, raw, out var v)); return v!; }
-
-    [Fact]
-    public void AKeyThatTakesNoValueKeepsItsArgumentsAsTheyAre()
-    {
-        var plain = new Shortcut { Id = "plain", Label = "Plain", Cmd = "echo", Args = "{value} stays" };
-        Assert.Equal("{value} stays", Shortcuts.StartInfo(plain, null).Arguments);
-    }
 
     // ---------------------------------------------------------------- the phone's request
 
     [Fact]
-    public void AValueReachesTheProgramAsItsOwnArgument()
+    public void AValueReachesTheProgramAsItsOwnArgumentWithoutTheShell()
     {
         var sc = Seek("--seek {value} --quiet", step: 0.5);
         var (r, started) = Run(sc, "37.50");
         Assert.Equal(200, Status(r));
-        Assert.Equal("--seek 37.5 --quiet", Assert.Single(started).Arguments);
-        Assert.Equal("player", started[0].FileName);
-        Assert.True(started[0].UseShellExecute);
+        var psi = Assert.Single(started);
+        Assert.Equal(["--seek", "37.5", "--quiet"], Argv(psi));
+        Assert.Equal(Prog, psi.FileName);
+        Assert.False(psi.UseShellExecute);
+    }
+
+    [Fact]
+    public async Task AProgramReallyGetsTheNumberAsOneArgument()
+    {
+        if (OperatingSystem.IsWindows()) return; // a shell script records its arguments; Unix only
+        var log = Path.Combine(_dir, "args.txt");
+        var script = Path.Combine(_dir, "record.sh");
+        File.WriteAllText(script, "#!/bin/sh\nfor a in \"$@\"; do printf '[%s]' \"$a\" >> \"" + log + "\"; done\n");
+        File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var sc = Seek("--title \"a b\" {value} --x", cmd: script, step: 0.5);
+        Assert.Equal(200, Status(Program.RunShortcutForPhone(new AgentConfig { Shortcuts = [sc] }, sc.Id, NullLogger.Instance, _push, _audio, value: "37.50", gate: new ValueRateGate())));
+        // the script writes one argument at a time: wait for the last one, not just for the file
+        var text = "";
+        for (var i = 0; i < 200 && !text.EndsWith("[--x]", StringComparison.Ordinal); i++)
+        {
+            await Task.Delay(25);
+            text = File.Exists(log) ? File.ReadAllText(log) : "";
+        }
+        Assert.Equal("[--title][a b][37.5][--x]", text);
     }
 
     [Fact]
@@ -236,7 +389,7 @@ public sealed class ShortcutValueTests : IDisposable
     {
         var (r, started) = Run(Seek("--seek {value}"), null);
         Assert.Equal(200, Status(r));
-        Assert.Equal("--seek", Assert.Single(started).Arguments);
+        Assert.Equal(["--seek"], Argv(Assert.Single(started)));
     }
 
     [Fact]
@@ -251,7 +404,7 @@ public sealed class ShortcutValueTests : IDisposable
     [Fact]
     public void AKeyWithoutARangeRefusesAValue()
     {
-        var sc = new Shortcut { Id = "open-" + Guid.NewGuid().ToString("N"), Label = "Open", Cmd = "player", Args = "--seek" };
+        var sc = new Shortcut { Id = "open-" + Guid.NewGuid().ToString("N"), Label = "Open", Cmd = Prog, Args = "--seek" };
         var (r, started) = Run(sc, "5");
         Assert.Equal(400, Status(r));
         Assert.StartsWith("This shortcut takes no value.", Error(r));

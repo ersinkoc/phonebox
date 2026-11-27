@@ -254,6 +254,11 @@
     const r = sc.value, cmd = String(sc.cmd || '').trim(), args = String(sc.args || '');
     if (hold) return 'A long press takes no value.';
     if (!r || sc.toggle || !cmd || /^builtin:/i.test(cmd)) return 'This shortcut takes no value.';
+    // an address (a scheme of two letters or more) takes the number only in place of {value} in the address; the demo
+    // has no files, so any other command counts as a program found on the computer
+    if (/^file:/i.test(cmd)) return 'This shortcut takes a number only when it starts a program or opens an address.';
+    if (/^[A-Za-z][A-Za-z0-9+.\-]+:/.test(cmd)) { if (!cmd.includes('{value}')) return 'This shortcut opens an address, which takes no arguments.'; }
+    else if (cmd.includes('{value}')) return '{value} goes in the arguments of a program, not in its name.';
     let quoted = false, embedded = false;
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '"') { let n = 0; for (let j = i - 1; j >= 0 && args[j] === '\\'; j--) n++; if (n % 2 === 0) quoted = !quoted; }

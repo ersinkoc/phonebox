@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "Найбільше",
       "s.k.valueStep": "Крок",
       "s.k.valueHint": "Число стає останнім аргументом або замінює {value} там, де він стоїть окремо. Числа поза діапазоном або не на кроці відхиляються, і приймається не більше 4 на секунду.",
+      "s.k.valueAddress": "Програма отримує число окремим аргументом і запускається без оболонки. Для адреси (https:, shell:…) поставте {value} у саму адресу.",
       "s.cd.stationCount": "Кількість станцій",
       "s.appearance.originalWidgetFont": "Початковий шрифт віджета",
       "s.appearance.originalWidgetDefault": "Початковий типовий віджет",

@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "Tertinggi",
       "s.k.valueStep": "Langkah",
       "s.k.valueHint": "Angka menjadi argumen terakhir, atau menggantikan {value} di tempat ia berdiri sendiri. Angka di luar rentang atau di luar langkah ditolak, dan paling banyak 4 per detik yang diterima.",
+      "s.k.valueAddress": "Program menerima angka sebagai argumen tersendiri dan dimulai tanpa shell. Untuk alamat (https:, shell:…), taruh {value} di dalam alamat itu sendiri.",
       "s.cd.stationCount": "Jumlah stasiun",
       "s.appearance.originalWidgetFont": "Fonta widget asli",
       "s.appearance.originalWidgetDefault": "Widget default asli",

@@ -235,9 +235,17 @@ From a script or another program on the computer, the same run is `POST /api/run
   ±1,000,000,000,000 and 6 decimals, with a step of at least 0.000001.
 - **Written by the agent.** It writes the number itself, with a dot for decimals on every computer and whole numbers
   without one (`37.50` becomes `37.5`, `40.0` becomes `40`), so only digits, a minus sign and a dot reach the command.
-- **Its own argument.** The number goes in place of each `{value}` in the arguments, or else at the end as one more
-  argument. `{value}` must stand on its own, outside quotes, with a space before and after it: `--percent {value}`
-  works, while `--percent={value}` and `"at {value}"` are refused.
+- **Its own argument.** A key with a range that names a program (a file the agent can run, by its path, a relative
+  one from the key's working folder, or on the `PATH`; on Windows an `.exe` or `.com`) starts it directly, without the shell, with each argument passed on its own. The number goes
+  in place of each `{value}` in the arguments, or else at the end as one more argument. `{value}` must stand on its
+  own, outside quotes, with a space before and after it: `--percent {value}` works, while `--percent={value}` and
+  `"at {value}"` are refused.
+- **An address.** An address (`https:`, `shell:`, `ms-settings:`, a custom scheme…) opens through the system, which
+  passes no arguments on, so it takes the number only in place of `{value}` in the address itself:
+  `"cmd": "https://example.org/watch?t={value}"`. A key with a range whose command is neither a program found on the
+  computer nor an address (a document, a folder, a `file:` address, a macOS `.app` bundle) refuses a number. To send
+  one to an app, name a program or script that passes it on in the way the app understands (its command-line tool,
+  or a script that controls it).
 - **Refused with a reason.** A key without a range, an on / off key, a long press and the built-in keys (keys, text,
   macros, lock…) refuse a number with a 400, and the panel shows *The PC refused this number*. Run without a number
   (a tap on the key, a rule, a macro step), the key leaves `{value}` out and adds nothing.

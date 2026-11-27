@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "สูงสุด",
       "s.k.valueStep": "ช่วงเพิ่ม",
       "s.k.valueHint": "ตัวเลขจะเป็นอาร์กิวเมนต์ตัวสุดท้าย หรือแทนที่ {value} ในตำแหน่งที่อยู่แยกเดี่ยว ตัวเลขที่อยู่นอกช่วงหรือไม่ตรงช่วงเพิ่มจะถูกปฏิเสธ และรับได้ไม่เกิน 4 ครั้งต่อวินาที",
+      "s.k.valueAddress": "โปรแกรมจะได้รับตัวเลขเป็นอาร์กิวเมนต์แยกของตัวเองและเริ่มทำงานโดยไม่ผ่านเชลล์ สำหรับที่อยู่ (https:, shell:…) ให้ใส่ {value} ไว้ในที่อยู่นั้นเลย",
       "s.cd.stationCount": "จำนวนสถานี",
       "s.appearance.originalWidgetFont": "แบบอักษรวิดเจ็ตดั้งเดิม",
       "s.appearance.originalWidgetDefault": "วิดเจ็ตปริยายดั้งเดิม",

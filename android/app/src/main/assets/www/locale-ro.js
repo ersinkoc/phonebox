@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "Maxim",
       "s.k.valueStep": "Pas",
       "s.k.valueHint": "Numărul devine ultimul argument sau ia locul lui {value} acolo unde stă singur. Numerele din afara intervalului sau dintre pași sunt refuzate și se primesc cel mult 4 pe secundă.",
+      "s.k.valueAddress": "Un program primește numărul ca argument separat și pornește fără shell. Pentru o adresă (https:, shell:…), pune {value} chiar în adresă.",
       "s.cd.stationCount": "Număr de posturi",
       "s.appearance.originalWidgetFont": "Fontul original al widgetului",
       "s.appearance.originalWidgetDefault": "Valoarea implicită originală a widgetului",

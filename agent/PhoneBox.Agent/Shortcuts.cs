@@ -353,13 +353,30 @@ public static class Shortcuts
     internal static readonly AsyncLocal<Action<ProcessStartInfo>?> TestStart = new();
 
     /// <summary>
-    /// What a key starts. The arguments are the configured text; a key that takes a value gets the agent's own text for
-    /// the checked number as an argument of its own (<see cref="ShortcutValues.Apply"/>), never text from a request.
+    /// What a key starts. A key without a range starts as it always did: through the shell, with its configured text.
+    /// A key with a range that names a program starts it directly, without the shell, with one argument each, and the
+    /// agent's own text for the checked number as an argument of its own (<see cref="ShortcutValues.Arguments"/>). A key
+    /// with a range that opens an address gets the number in place of {value} in the address. No text from a request
+    /// reaches either.
     /// </summary>
     internal static ProcessStartInfo StartInfo(Shortcut sc, CheckedValue? value)
     {
-        var args = sc.Value is null ? sc.Args : ShortcutValues.Apply(sc.Args, value);
-        var psi = new ProcessStartInfo(Home(sc.Cmd), Home(args ?? "")) { UseShellExecute = true };
+        ProcessStartInfo psi;
+        if (sc.Value is null) psi = new ProcessStartInfo(Home(sc.Cmd), Home(sc.Args ?? "")) { UseShellExecute = true };
+        else if (ShortcutValues.Program(sc.Cmd, sc.Cwd) is { } program)
+        {
+            psi = new ProcessStartInfo(program) { UseShellExecute = false };
+            foreach (var arg in ShortcutValues.Arguments(sc.Args, value)) psi.ArgumentList.Add(Home(arg));
+        }
+        else
+        {
+            // checked as a program or an address a moment ago: if it is neither now (the file went away), fail rather than
+            // open it without the number
+            if (value is not null && !(ShortcutValues.IsAddress(sc.Cmd) && sc.Cmd.Contains(ShortcutValues.Placeholder, StringComparison.Ordinal)))
+                throw new InvalidOperationException("the shortcut's program is not there any more");
+            var address = sc.Cmd.Replace(ShortcutValues.Placeholder, value?.Text ?? "", StringComparison.Ordinal);
+            psi = new ProcessStartInfo(Home(address), Home(ShortcutValues.WithoutPlaceholder(sc.Args) ?? "")) { UseShellExecute = true };
+        }
         if (!string.IsNullOrEmpty(sc.Cwd)) psi.WorkingDirectory = Home(sc.Cwd);
         return psi;
     }
@@ -423,7 +440,7 @@ public static class Shortcuts
     };
 
     /// <summary>"~" at the start of a path means the home folder (Linux / macOS style).</summary>
-    private static string Home(string s) =>
+    internal static string Home(string s) =>
         s == "~" || s.StartsWith("~/") ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + s[1..] : s.Replace(" ~/", " " + Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "/");
 
 #if WINDOWS

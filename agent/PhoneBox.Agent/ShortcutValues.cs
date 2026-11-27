@@ -47,6 +47,20 @@ public static partial class ShortcutValues
         value = null;
         if (s.Value is not { } range || !CanTake(s))
             return "This shortcut takes no value. Only a key that starts a program or opens an address, with a value range in its settings, takes one.";
+        // a program gets the number as an argument of its own; an address or a file opens through the system, which
+        // passes no arguments on, so there the number can only go in place of {value} in the address itself
+        if (Program(s.Cmd, s.Cwd) is not null)
+        {
+            if (s.Cmd.Contains(Placeholder, StringComparison.Ordinal))
+                return $"{Placeholder} goes in the arguments of a program, not in its name.";
+        }
+        else if (IsAddress(s.Cmd))
+        {
+            if (!s.Cmd.Contains(Placeholder, StringComparison.Ordinal))
+                return $"This shortcut opens an address, which takes no arguments. Put {Placeholder} in the address to send it the number.";
+        }
+        else
+            return $"This shortcut takes a number only when it starts a program found on this computer, or opens an address with {Placeholder} in it.";
         if (Embedded(s.Args))
             return $"In this shortcut's arguments, {Placeholder} must be an argument of its own, with a space before and after it.";
         if (OpenQuote(s.Args))
@@ -103,19 +117,144 @@ public static partial class ShortcutValues
     private static bool Gap(char c) => c is ' ' or '\t';
 
     /// <summary>
-    /// The arguments of a key that takes a value: the number in place of each {value} that stands on its own, or else
-    /// added as the last argument. Run without a value (a tap on a Shortcuts key, a rule, a macro step), the key leaves
-    /// {value} out and adds nothing.
+    /// The arguments of a program key that takes a value, one entry each: the configured text split as Windows and .NET
+    /// split a command line (the rules <see cref="Scan"/> checks against), then the number in place of each {value}
+    /// that stands on its own, or else added as the last argument. The number is put in after splitting, so it is
+    /// always an argument of its own. Run without a number (a tap, a rule, a macro step), {value} is left out.
     /// </summary>
-    public static string? Apply(string? args, CheckedValue? value)
+    public static List<string> Arguments(string? args, CheckedValue? value)
     {
+        // an open quote matters only when a number is added: it would land inside the quoted argument
         if (Embedded(args) || (value is not null && OpenQuote(args))) throw new InvalidOperationException($"{Placeholder} must be an argument of its own");
-        var text = args ?? "";
-        if (!text.Contains(Placeholder, StringComparison.Ordinal))
-            return value is null ? args : text.Length == 0 ? value.Text : text.TrimEnd() + " " + value.Text;
-        var replaced = text.Replace(Placeholder, value?.Text ?? "", StringComparison.Ordinal).Trim();
-        return replaced.Length == 0 ? null : replaced;
+        var list = new List<string>();
+        var placed = false;
+        foreach (var arg in Split(args ?? ""))
+        {
+            if (arg.Placeholder) { placed = true; if (value is not null) list.Add(value.Text); }
+            else list.Add(arg.Text);
+        }
+        if (!placed && value is not null) list.Add(value.Text);
+        return list;
     }
+
+    /// <summary>
+    /// Splits a command line as .NET and Windows do: spaces and tabs part arguments outside quotes; a quote opens or
+    /// closes a quoted part, and inside one "" is a literal quote; 2n backslashes before a quote give n backslashes,
+    /// 2n+1 give n and a literal quote; other backslashes stay. An argument counts as the placeholder only when it is
+    /// exactly {value} with no quotes in it.
+    /// </summary>
+    internal static List<(string Text, bool Placeholder)> Split(string args)
+    {
+        var list = new List<(string, bool)>();
+        var current = new System.Text.StringBuilder();
+        bool quoted = false, any = false, hadQuote = false;
+        for (var i = 0; i < args.Length; i++)
+        {
+            var c = args[i];
+            if (c == '\\')
+            {
+                var n = 0;
+                while (i + n < args.Length && args[i + n] == '\\') n++;
+                if (i + n < args.Length && args[i + n] == '"')
+                {
+                    current.Append('\\', n / 2);
+                    i += n; // at the quote
+                    if (n % 2 == 1) current.Append('"');
+                    // even: the quote is a quote of its own, so "" inside quotes is still a literal quote (as .NET does)
+                    else if (quoted && i + 1 < args.Length && args[i + 1] == '"') { current.Append('"'); i++; }
+                    else quoted = !quoted;
+                    hadQuote = true;
+                }
+                else { current.Append('\\', n); i += n - 1; }
+                any = true;
+            }
+            else if (c == '"')
+            {
+                if (quoted && i + 1 < args.Length && args[i + 1] == '"') { current.Append('"'); i++; }
+                else quoted = !quoted;
+                hadQuote = any = true;
+            }
+            else if (!quoted && Gap(c))
+            {
+                if (any) list.Add(Done());
+            }
+            else { current.Append(c); any = true; }
+        }
+        if (any) list.Add(Done());
+        return list;
+
+        (string, bool) Done()
+        {
+            var text = current.ToString();
+            var item = (text, text == Placeholder && !hadQuote);
+            current.Clear();
+            any = hadQuote = false;
+            return item;
+        }
+    }
+
+    /// <summary>
+    /// The arguments of an address key without a number: the configured text with {value} left out (an address takes
+    /// its number in the address, never in its arguments).
+    /// </summary>
+    internal static string? WithoutPlaceholder(string? args)
+    {
+        if (args is null || !args.Contains(Placeholder, StringComparison.Ordinal)) return args;
+        var text = args.Replace(Placeholder, "", StringComparison.Ordinal).Trim();
+        return text.Length == 0 ? null : text;
+    }
+
+    /// <summary>
+    /// The program a key with a range starts directly, without the shell, as a full path: a file the agent can run,
+    /// given by its path (a relative one from the key's working folder) or found on the PATH (Windows: an .exe or
+    /// .com). Null for an address (https:, shell:, ms-settings:…), a document, a folder or an app bundle, which the
+    /// system opens and which take no arguments.
+    /// </summary>
+    internal static string? Program(string? cmd, string? cwd = null)
+    {
+        // not trimmed: a space at the end can be part of a file's name, and the launch uses the command as written
+        var c = Shortcuts.Home(cmd ?? "");
+        if (string.IsNullOrWhiteSpace(c) || IsAddress(c)) return null;
+        var hasDir = c.Contains('/') || c.Contains(Path.DirectorySeparatorChar);
+        if (hasDir && !Path.IsPathRooted(c) && !string.IsNullOrEmpty(cwd)) c = Path.Combine(Shortcuts.Home(cwd), c);
+        // Windows PATH entries may be quoted or padded; on Unix a space or a quote is part of the folder's name
+        var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Select(d => OperatingSystem.IsWindows() ? d.Trim().Trim('"') : d).Where(d => d.Length > 0);
+        if (OperatingSystem.IsWindows())
+        {
+            string[] runnable = [".exe", ".com"];
+            var ext = Path.GetExtension(c).ToLowerInvariant();
+            if (ext.Length > 0 && !runnable.Contains(ext)) return null;
+            var names = ext.Length > 0 ? [c] : runnable.Select(e => c + e).ToArray();
+            foreach (var name in names)
+            {
+                if (hasDir || Path.IsPathRooted(name)) { if (File.Exists(name)) return Path.GetFullPath(name); }
+                else if (dirs.Select(d => Path.Combine(d, name)).FirstOrDefault(File.Exists) is { } found) return Path.GetFullPath(found);
+            }
+            return null;
+        }
+        if (hasDir) return CanRun(c) ? Path.GetFullPath(c) : null;
+        // a full path: a relative PATH entry would otherwise be resolved again at the start, maybe to another file
+        return dirs.Select(d => Path.Combine(d, c)).FirstOrDefault(CanRun) is { } hit ? Path.GetFullPath(hit) : null;
+    }
+
+    // the agent itself may run it (access(2) with X_OK): a mode bit for another user is not enough
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    private static bool CanRun(string path) => File.Exists(path) && access(path, 1 /* X_OK */) == 0;
+
+    [System.Runtime.InteropServices.DllImport("libc", SetLastError = true)]
+    private static extern int access(string path, int mode);
+
+    /// <summary>
+    /// An address the system opens: a scheme of two letters or more ("https:", "shell:", "ms-settings:"), so a drive
+    /// letter ("C:\") is not one. Not "file:": .NET starts a file URI as the program it names, which would drop the
+    /// number.
+    /// </summary>
+    internal static bool IsAddress(string? cmd) =>
+        Address().IsMatch(cmd ?? "") && !(cmd ?? "").StartsWith("file:", StringComparison.OrdinalIgnoreCase);
+
+    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9+.\-]+:", RegexOptions.CultureInvariant)]
+    private static partial Regex Address();
 }
 
 /// <summary>A value that passed <see cref="ShortcutValues.Check"/>: only the agent's own text for a number in range.</summary>

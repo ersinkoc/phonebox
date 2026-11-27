@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "الأعلى",
       "s.k.valueStep": "الخطوة",
       "s.k.valueHint": "يصبح الرقم آخر وسيط، أو يحل محل {value} حيث يقف وحده. تُرفض الأرقام خارج النطاق أو التي لا تقع على الخطوات، ولا يُقبل أكثر من 4 في الثانية.",
+      "s.k.valueAddress": "يتلقى البرنامج الرقم كوسيط مستقل ويبدأ دون الصدفة (shell). بالنسبة إلى عنوان (https:، shell:…)، ضع {value} داخل العنوان نفسه.",
       "s.cd.stationCount": "عدد المحطات",
       "s.appearance.originalWidgetFont": "الخط الأصلي",
       "s.appearance.originalWidgetDefault": "الإعداد الافتراضي للعنصر",

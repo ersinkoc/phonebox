@@ -1037,6 +1037,7 @@
       's.k.valueMax': 'Highest',
       's.k.valueStep': 'Step',
       's.k.valueHint': 'The number becomes the last argument, or takes the place of {value} where it stands on its own. Numbers outside the range or off the steps are refused, and at most 4 a second are taken.',
+      's.k.valueAddress': 'A program gets the number as an argument of its own and starts without the shell. For an address (https:, shell:…), put {value} in the address itself.',
       's.cd.stationCount': 'Station count',
       's.appearance.originalWidgetFont': 'Original widget font',
       's.appearance.originalWidgetDefault': 'Original widget default',
@@ -5669,6 +5670,7 @@
       's.k.valueMax': 'Máximo',
       's.k.valueStep': 'Passo',
       's.k.valueHint': 'O número vira o último argumento ou substitui {value} onde ele aparece sozinho. Números fora do intervalo ou fora dos passos são recusados, e no máximo 4 por segundo são aceitos.',
+      's.k.valueAddress': 'Um programa recebe o número como um argumento próprio e inicia sem o shell. Para um endereço (https:, shell:…), coloque {value} no próprio endereço.',
     },
 
     nl: {
@@ -8387,6 +8389,7 @@
       's.k.valueMax': 'Μέγιστο',
       's.k.valueStep': 'Βήμα',
       's.k.valueHint': 'Ο αριθμός γίνεται το τελευταίο όρισμα ή μπαίνει στη θέση του {value} όπου αυτό στέκεται μόνο του. Αριθμοί εκτός εύρους ή εκτός βημάτων απορρίπτονται, και γίνονται δεκτοί το πολύ 4 το δευτερόλεπτο.',
+      's.k.valueAddress': 'Ένα πρόγραμμα παίρνει τον αριθμό ως δικό του όρισμα και ξεκινά χωρίς το shell. Για μια διεύθυνση (https:, shell:…), βάλε το {value} μέσα στη διεύθυνση.',
       's.cd.stationCount': 'Αριθμός σταθμών',
       's.appearance.originalWidgetFont': 'Η αρχική γραμματοσειρά του widget',
       's.appearance.originalWidgetDefault': 'Η προεπιλογή του widget',
@@ -9473,6 +9476,7 @@
       's.k.valueMax': 'Cao nhất',
       's.k.valueStep': 'Bước',
       's.k.valueHint': 'Số này trở thành đối số cuối cùng, hoặc thay cho {value} ở nơi nó đứng riêng. Số nằm ngoài khoảng hoặc lệch bước sẽ bị từ chối, và mỗi giây chỉ nhận tối đa 4 số.',
+      's.k.valueAddress': 'Một chương trình nhận số này như một đối số riêng và khởi chạy không qua shell. Với một địa chỉ (https:, shell:…), hãy đặt {value} ngay trong địa chỉ.',
       's.cd.stationCount': 'Số đài',
       's.appearance.originalWidgetFont': 'Phông chữ gốc của widget',
       's.appearance.originalWidgetDefault': 'Mặc định gốc của widget',

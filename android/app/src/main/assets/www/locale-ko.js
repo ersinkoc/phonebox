@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "최대",
       "s.k.valueStep": "간격",
       "s.k.valueHint": "숫자는 마지막 인수가 되거나, 단독으로 놓인 {value} 자리를 대신합니다. 범위를 벗어나거나 간격에 맞지 않는 숫자는 거부되며, 초당 최대 4개까지 받습니다.",
+      "s.k.valueAddress": "프로그램은 숫자를 별도의 인수로 받아 셸 없이 시작합니다. 주소(https:, shell:…)의 경우 주소 자체에 {value}를 넣으세요.",
       "s.cd.stationCount": "방송국 수",
       "s.appearance.originalWidgetFont": "원래 위젯 글꼴",
       "s.appearance.originalWidgetDefault": "원래 위젯 기본값",

@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "最大值",
       "s.k.valueStep": "間距",
       "s.k.valueHint": "數字會成為最後一個引數，或在 {value} 單獨出現的位置取代它。超出範圍或不在間距上的數字會被拒絕，每秒最多接受 4 個。",
+      "s.k.valueAddress": "程式會把數字當作獨立的引數接收，並且不經過 shell 啟動。對於位址（https:、shell:…），請把 {value} 放在位址本身中。",
       "s.cd.stationCount": "站點數量",
       "s.appearance.originalWidgetFont": "原始小工具字體",
       "s.appearance.originalWidgetDefault": "原始小工具預設",

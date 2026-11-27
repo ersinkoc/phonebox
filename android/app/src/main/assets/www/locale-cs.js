@@ -976,6 +976,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.k.valueMax": "Nejvyšší",
       "s.k.valueStep": "Krok",
       "s.k.valueHint": "Číslo se stane posledním argumentem, nebo nahradí {value} tam, kde stojí samostatně. Čísla mimo rozsah nebo mimo kroky se odmítnou a přijmou se nejvýše 4 za sekundu.",
+      "s.k.valueAddress": "Program dostane číslo jako samostatný argument a spustí se bez shellu. U adresy (https:, shell:…) vložte {value} přímo do adresy.",
       "s.cd.stationCount": "Počet stanic",
       "s.appearance.originalWidgetFont": "Původní widget font",
       "s.appearance.originalWidgetDefault": "Původní widget default",
