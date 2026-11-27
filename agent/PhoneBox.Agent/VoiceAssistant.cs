@@ -10,6 +10,8 @@ namespace PhoneBox.Agent;
 /// </summary>
 public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor procs, PushStore push, AudioControl audio, ILogger<VoiceAssistant> log)
 {
+    internal Func<string, string?, string?> Launch { get; set; } = StartShell;
+
     [GeneratedRegex(@"^(?:(?:hey|hi|hello|yo|ok|okay|bro|please|can you|could you)\s+)+", RegexOptions.IgnoreCase)]
     private static partial Regex PrefixRx();
 
@@ -86,7 +88,7 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             if (micSc is not null)
             {
                 var err = Shortcuts.Run(cfg, micSc.Id, log, push, audio);
-                return Task.FromResult((true, err is null ? 200 : 500, err ?? "Toggled mic"));
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Toggled mic")));
             }
         }
         if (lower is "mute" or "unmute" or "toggle mute")
@@ -95,7 +97,7 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             if (muteSc is not null)
             {
                 var err = Shortcuts.Run(cfg, muteSc.Id, log, push, audio);
-                return Task.FromResult((true, err is null ? 200 : 500, err ?? "Toggled mute"));
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Toggled mute")));
             }
         }
         if (lower is "lock" or "lock pc" or "lock computer")
@@ -104,12 +106,12 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             if (lockSc is not null)
             {
                 var err = Shortcuts.Run(cfg, lockSc.Id, log, push, audio);
-                return Task.FromResult((true, err is null ? 200 : 500, err ?? "Locked PC"));
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? "Locked PC")));
             }
         }
         if (lower is "screenshot" or "snip" or "take screenshot")
         {
-            StartShell("ms-screenclip:", null);
+            Launch("ms-screenclip:", null);
             return Task.FromResult((true, 200, (string?)"Opened Snip"));
         }
 
@@ -121,8 +123,10 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             var sc = FindShortcut(cfg, target, isClose: false);
             if (sc is not null)
             {
-                var err = Shortcuts.Run(cfg, sc.Id, log, push, audio);
-                return Task.FromResult((true, err is null ? 200 : 500, err ?? $"Opened {sc.Label}"));
+                var err = sc.Cmd.StartsWith("builtin:", StringComparison.OrdinalIgnoreCase)
+                    ? Shortcuts.Run(cfg, sc.Id, log, push, audio)
+                    : Launch(sc.Cmd, sc.Args);
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? $"Opened {sc.Label}")));
             }
         }
 
@@ -134,8 +138,8 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
             var sc = FindShortcut(cfg, target, isClose: true);
             if (sc is not null)
             {
-                var err = Shortcuts.Run(cfg, sc.Id, log, push, audio);
-                return Task.FromResult((true, err is null ? 200 : 500, err ?? $"Closed {target}"));
+                var err = Launch(sc.Cmd, sc.Args);
+                return Task.FromResult((true, err is null ? 200 : 500, (string?)(err ?? $"Closed {target}")));
             }
             if (cfg.AllowKill())
             {
@@ -162,9 +166,9 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
         if (sc is not null && !string.IsNullOrWhiteSpace(sc.Cmd) && !sc.Cmd.StartsWith("builtin:", StringComparison.OrdinalIgnoreCase))
         {
             var args = string.IsNullOrWhiteSpace(sc.Args) ? $"\"{url}\"" : $"{sc.Args} \"{url}\"";
-            return StartShell(sc.Cmd, args);
+            return Launch(sc.Cmd, args);
         }
-        return StartShell(url, null);
+        return Launch(url, null);
     }
 
     private static string? StartShell(string file, string? args)
