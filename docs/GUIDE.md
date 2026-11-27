@@ -303,7 +303,7 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   *Takes a number from a Custom HTML page or a script* and give the lowest and highest number and the step. See
   [Numbers for a shortcut](#numbers-for-a-shortcut).
 - **Webhooks**: the webhook key, copy-paste examples, test buttons and the values pushed so far.
-- **General**: weather location search, the temperature unit (°C or °F) and the forecast model; calendars (ICS links from Google, Outlook or iCloud), Home Assistant and OBS
+- **General**: weather location search, the temperature unit (°C or °F) and the forecast model; calendars (ICS links from Google, Outlook or iCloud), Home Assistant, OBS and [MQTT](MQTT.md)
   connections; night mode; theme and accent colour, orientation (landscape, portrait or follow the phone), clock seconds,
   vibration, the message when a session finishes, volume-key paging and the phone's sensors (brightness that follows the room, the night screen when the
   room goes dark, wave to wake it); [OLED burn-in protection](#appearance); [page switching](#rules) (home page, countdown, back home after);

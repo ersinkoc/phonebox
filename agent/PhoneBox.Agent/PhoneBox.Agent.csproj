@@ -47,6 +47,8 @@
   <ItemGroup>
     <!-- QR codes for pairing a phone over Wi-Fi (settings page) -->
     <PackageReference Include="QRCoder" Version="1.9.0" />
+    <!-- the MQTT client (Settings › General › MQTT); exact version, the broker package is test-only -->
+    <PackageReference Include="MQTTnet" Version="[5.2.0.1603]" />
   </ItemGroup>
 
   <ItemGroup>

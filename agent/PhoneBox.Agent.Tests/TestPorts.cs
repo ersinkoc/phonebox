@@ -14,6 +14,20 @@ static class TestPorts
         l.Stop();
         return port;
     }
+    /// <summary>A free loopback port nobody else in this test run has been given, for a fixture that binds it itself (an MQTT broker).</summary>
+    public static int Reserve()
+    {
+        lock (Gate)
+        {
+            for (var attempt = 0; attempt < 32; attempt++)
+            {
+                var port = Free();
+                if (Issued.Add(port)) return port;
+            }
+            throw new IOException("Could not find a distinct free local port after 32 attempts");
+        }
+    }
+
     public static HttpListener Listen()
     {
         lock (Gate)

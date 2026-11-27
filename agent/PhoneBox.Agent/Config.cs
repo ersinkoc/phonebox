@@ -70,6 +70,8 @@ public sealed class AgentConfig
     public ConsoleConfig Console { get; set; } = new();
     /// <summary>Steam friends presence (the Web API key stays on this computer and is never sent to the phone).</summary>
     public SteamConfig Steam { get; set; } = new();
+    /// <summary>An MQTT broker the agent connects to (off by default). Like the Home Assistant token, none of it goes to the phone.</summary>
+    public MqttConfig Mqtt { get; set; } = new();
     /// <summary>The phone's microphone, played into a virtual audio cable (Windows; off by default).</summary>
     public PhoneMicConfig PhoneMic { get; set; } = new();
 
@@ -1076,6 +1078,7 @@ public sealed partial class ConfigStore(string path)
         c.Ping ??= new();
         c.Ping.Adapters = (c.Ping.Adapters ?? []).Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(16).ToList();
         c.Obs ??= new();
+        c.Mqtt = MqttConfig.Normalized(c.Mqtt);
         c.PhoneMic ??= new();
         var mic = c.PhoneMic;
         if (!ScrcpyAudio.MicSources.Contains(mic.Source)) mic.Source = "mic-camcorder";

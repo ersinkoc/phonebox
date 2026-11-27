@@ -52,6 +52,11 @@
   "phoneMic": { "enabled": false, "source": "mic-camcorder", "endpoint": "CABLE Input", "latencyMs": 50, "maxBufferMs": 150, "gain": 1, "serverPath": null, "startMuted": false },
   // Steam friends widget: enter your SteamID64 and a user Web API key in Settings › General (see docs/STEAM.md)
   "steam": { "enabled": false, "steamId": null, "apiKey": null },
+  // MQTT broker (off by default; Settings › General › MQTT, see docs/MQTT.md). The agent connects, the phone never sees any of it.
+  // "transport" is "tcp" or "websocket" (then "webSocketPath"). A broker with its own certificate is trusted only through "caFile" or
+  // "pinnedFingerprint" (SHA-256); there is no way to skip the check. "password" is write-only in Settings. "willRetain" stays off
+  // unless you want the last will delivered again to every device that connects
+  "mqtt": { "enabled": false, "host": null, "port": 1883, "transport": "tcp", "webSocketPath": "/mqtt", "tls": false, "caFile": null, "pinnedFingerprint": null, "clientId": null, "username": null, "keepAliveSec": 60, "cleanSession": true, "willTopic": null, "willPayload": null, "willQos": 0, "willRetain": false },
 
   // Night mode: between these times the screen dims and only the clock stays. Tap to wake it for 30 s.
   "night": { "enabled": true, "start": "00:30", "end": "07:30", "brightness": 0.02 },
