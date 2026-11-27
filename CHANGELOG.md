@@ -10,10 +10,10 @@
   default). Turned off, `nvidia-smi` is never started, and LibreHardwareMonitor or Windows' GPU counters supply the GPU
   readings: on some drivers its queries make the screens go black for a moment (#716).
 - AI quotas: the Clock's status line, AI quotas and CodexBar widgets follow **Tracked AI services** (Settings ›
-  General) unless a widget has its own Providers list; the Quota ring's picker offers only those (plus Cursor, and
-  the provider a ring already shows). A widget saved with its own list keeps it. A config from before Grok support may
-  still hold the old default without Grok: tick Grok there to see it on the Home clock again (#351, #725,
-  [abdulah-x](https://github.com/abdulah-x)).
+  General) unless a widget has its own Providers list, and the Quota ring's picker leaves out the services switched
+  off there (a ring keeps the provider it already shows). A widget saved with its own list keeps it. A config from
+  before Grok support may still hold the old default without Grok: tick Grok there to see it on the Home clock again
+  (#351, #725, [abdulah-x](https://github.com/abdulah-x)).
 - Quota ring: the reset shows as a clock time in the phone's own time zone and language, then the time left
   (`Sat 01:29 · in 4 h 3 min`) (#726, [jassu-Workspace](https://github.com/jassu-Workspace)).
 
