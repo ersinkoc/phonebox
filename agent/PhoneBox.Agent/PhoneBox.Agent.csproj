@@ -21,7 +21,7 @@
     <!-- no console window; lives in the system tray -->
     <OutputType>WinExe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
-    <SatelliteResourceLanguages>en;tr;de;fr;es;it;pt;pt-BR;nl;pl;ru;el;vi;zh-Hans;ja;ko;id;th;uk;hi;cs;ar;zh-Hant</SatelliteResourceLanguages>
+    <SatelliteResourceLanguages>en;tr;de;fr;es;it;pt;pt-BR;ro;nl;pl;ru;el;vi;zh-Hans;ja;ko;id;th;uk;hi;cs;ar;zh-Hant</SatelliteResourceLanguages>
     <ApplicationIcon>phonebox.ico</ApplicationIcon>
   </PropertyGroup>
 

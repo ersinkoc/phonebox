@@ -200,6 +200,15 @@ window.PhoneBoxLocaleData = Object.assign(pbNightMerge(window.PhoneBoxLocaleData
       "🌑 Away → night screen": "🌑 Nejsu doma → noční obrazovka"
     }
   },
+  "ro": {
+    "strings": {
+      "s.r.onlyWhileNight": "Doar cât durează (apoi ecranul de noapte se oprește)"
+    },
+    "catalog": {
+      "show the night screen": "arată ecranul de noapte",
+      "🌑 Away → night screen": "🌑 Plecat → ecran de noapte"
+    }
+  },
   "ar": {
     "strings": {
       "s.r.onlyWhileNight": "طوال تحقق الشرط فقط، ثم يُطفأ الشاشة الليلية"

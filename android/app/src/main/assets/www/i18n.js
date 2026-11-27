@@ -12,6 +12,7 @@
     { code: 'it', name: 'Italian', nativeName: 'Italiano', locale: 'it-IT' },
     { code: 'pt', name: 'Portuguese', nativeName: 'Português', locale: 'pt-PT' },
     { code: 'pt-BR', name: 'Portuguese (Brazil)', nativeName: 'Português (Brasil)', locale: 'pt-BR' },
+    { code: 'ro', name: 'Romanian', nativeName: 'Română', locale: 'ro-RO' },
     { code: 'nl', name: 'Dutch', nativeName: 'Nederlands', locale: 'nl-NL' },
     { code: 'pl', name: 'Polish', nativeName: 'Polski', locale: 'pl-PL' },
     { code: 'ru', name: 'Russian', nativeName: 'Русский', locale: 'ru-RU' },
@@ -13383,6 +13384,17 @@
       "Log water": "Zaznamenat vodu",
       "Time to drink water": "Je čas napít se vody"
     },
+    "ro": {
+      "Water intake": "Consum de apă",
+      "Log daily water intake and get local reminders until you reach your goal.": "Notează câtă apă bei zilnic și primește mementouri până îți atingi obiectivul.",
+      "Daily goal (ml)": "Obiectiv zilnic (ml)",
+      "Reminder interval in minutes (0 = off)": "Intervalul mementourilor în minute (0 = oprit)",
+      "Play a reminder sound": "Redă un sunet de memento",
+      "{amount} remaining": "Mai rămân {amount}",
+      "Custom amount (ml)": "Cantitate personalizată (ml)",
+      "Log water": "Notează apa",
+      "Time to drink water": "E timpul să bei apă"
+    },
     "ar": {
       "Water intake": "شرب الماء",
       "Log daily water intake and get local reminders until you reach your goal.": "سجّل كمية الماء التي تشربها يوميًا وتلقّ تذكيرات حتى تصل إلى هدفك.",
@@ -13731,6 +13743,21 @@
       "Red on rise": "Červená při růstu",
       "Green on rise": "Zelená při růstu"
     },
+    "ro": {
+      "Some data may be stale": "Unele date pot fi învechite",
+      "Stocks": "Acțiuni",
+      "Quotes and intraday charts for your watchlist.": "Cotații și grafice intraday pentru lista ta de urmărire.",
+      "Display mode": "Mod de afișare",
+      "Price list": "Listă de cotații",
+      "Intraday charts": "Grafice intraday",
+      "Chart grid (rows × columns)": "Grilă de grafice (rânduri × coloane)",
+      "Stock watchlist": "Listă de urmărire a acțiunilor",
+      "Symbols (one per line, up to 20)": "Simboluri (unul pe rând, maximum 20)",
+      "Use sh, sz or bj for mainland China, hk for Hong Kong, and us for US stocks.": "Folosește sh, sz sau bj pentru China continentală, hk pentru Hong Kong și us pentru acțiunile din SUA.",
+      "Price colours": "Culorile cotațiilor",
+      "Red on rise": "Roșu la creștere",
+      "Green on rise": "Verde la creștere"
+    },
     "ar": {
       "Some data may be stale": "قد تكون بعض البيانات قديمة",
       "Stocks": "الأسهم",
@@ -13795,6 +13822,7 @@
     "uk": "Дозволити підтвердження WorkBuddy на телефоні",
     "hi": "फ़ोन पर WorkBuddy की मंज़ूरी देने दें",
     "cs": "Povolit schvalování WorkBuddy na telefonu",
+    "ro": "Permite aprobările WorkBuddy pe telefon",
     "ar": "السماح بموافقات WorkBuddy على الهاتف",
     "zh-Hant": "允許在手機上審批 WorkBuddy 請求"
   };
@@ -13969,6 +13997,14 @@
       "Posts to show": "Počet zobrazených příspěvků",
       "Reads": "Zobrazení",
       "Comments": "Komentáře"
+    },
+    "ro": {
+      "Stock forum": "Forum de acțiuni",
+      "Recent East Money forum posts for a stock.": "Postări recente despre o acțiune pe forumul East Money.",
+      "Six-digit stock code": "Codul acțiunii din șase cifre",
+      "Posts to show": "Postări afișate",
+      "Reads": "Citiri",
+      "Comments": "Comentarii"
     },
     "ar": {
       "Stock forum": "منتدى الأسهم",
