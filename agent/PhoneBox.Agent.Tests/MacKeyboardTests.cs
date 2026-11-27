@@ -38,6 +38,19 @@ public class MacKeyboardTests
     }
 
     [Fact]
+    public void ALetterWithMoreMarksThanOneEventHoldsIsSplitWithoutLosingAny()
+    {
+        // one text element longer than an event: q + 20 combining tildes, and one with astral combining marks
+        foreach (var text in new[] { "q" + new string('̃', 20), "x" + string.Concat(Enumerable.Repeat("\U0001D167", 15)) + "y" })
+        {
+            var pieces = MacKeyboard.Pieces(text);
+            Assert.Equal(text, Joined(pieces));
+            Assert.All(pieces, p => Assert.InRange(p.Text!.Length, 1, MacKeyboard.MaxUnitsPerEvent));
+            Assert.All(pieces, p => Assert.False(char.IsLowSurrogate(p.Text![0])));
+        }
+    }
+
+    [Fact]
     public void LineBreaksAndTabsArePressedAsKeys()
     {
         var pieces = MacKeyboard.Pieces("a\r\nb\nc\rd\te");

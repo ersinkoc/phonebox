@@ -50,9 +50,17 @@ internal static class MacKeyboard
             var element = (string)e.Current;
             if (element is "\r\n" or "\r" or "\n") { Flush(); pieces.Add(new Piece(null, ReturnKey)); continue; }
             if (element == "\t") { Flush(); pieces.Add(new Piece(null, TabKey)); continue; }
-            // a character with many combining marks can be longer than one event: it is still sent whole
-            if (run.Length > 0 && run.Length + element.Length > MaxUnitsPerEvent) Flush();
-            run.Append(element);
+            if (run.Length + element.Length > MaxUnitsPerEvent) Flush();
+            if (element.Length <= MaxUnitsPerEvent) { run.Append(element); continue; }
+            // a letter with more combining marks than one event holds: split it between code points, so nothing is
+            // lost and no surrogate pair is broken (the marks after the cut may then draw on their own)
+            for (var i = 0; i < element.Length;)
+            {
+                var n = Math.Min(MaxUnitsPerEvent, element.Length - i);
+                if (i + n < element.Length && char.IsLowSurrogate(element[i + n])) n--;
+                pieces.Add(new Piece(element.Substring(i, n), 0));
+                i += n;
+            }
         }
         Flush();
         return pieces;
