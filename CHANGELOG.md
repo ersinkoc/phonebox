@@ -11,6 +11,9 @@
 - Stocks: US and Hong Kong stocks show their English names (`Amazon.Com, Inc.`, `TENCENT`) when the panel language
   is not Chinese and the quote feed has one; a Chinese panel keeps the Chinese names (#678, #679,
   [Seyamalam](https://github.com/Seyamalam)).
+- Steam library: a cover cache folder (`appcache/librarycache`) that is itself a symbolic link or junction is refused,
+  like the folders below it, so covers are never served from outside Steam's cache (#684,
+  [Seyamalam](https://github.com/Seyamalam)).
 
 ## 0.9.31 — 2026-11-27
 
