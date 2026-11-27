@@ -39,7 +39,6 @@
   wireless debugging, not only plugged in (#736).
 - Gauge: the ring is redrawn only when its value changes, not on every state frame, which saves work on slow phones
   (#736).
-
 - Pomodoro: widgets with the same sequence share one timer, so starting, pausing, restarting or skipping on one page
   does the same on the others; a widget with another sequence keeps its own. Focus history shows today's running or
   paused focus step as it goes, and the minutes drop out again when that step is restarted or skipped (#741).
