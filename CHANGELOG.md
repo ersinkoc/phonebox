@@ -9,7 +9,8 @@
   page never gets it back, and it never reaches the phone, the log or the status), and a retained last will is
   off with a warning. `GET /api/mqtt/status` reports only the state, the time of the last message and a kind of
   error, and is local only. Nothing is subscribed or published yet; subscriptions, a widget and publish actions
-  follow in separate steps. The agent now includes the MQTTnet client library (#732).
+  follow in separate steps. The agent now includes the MQTTnet client library (#732, #739,
+  [t7spotter](https://github.com/t7spotter)).
 - Android: a request that takes the computer several seconds to answer no longer reads as "Computer connection
   unavailable". The app gave up on every request after 4 seconds, even when the panel was willing to wait longer:
   the Control Deck's sound widgets (Output selection, Device volume, Emergency mute) wait up to 15 seconds for a

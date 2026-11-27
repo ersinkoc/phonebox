@@ -27,7 +27,8 @@ people who proposed or prototyped something are credited in the [changelog](../C
   connection held by the agent (MQTTnet; off by default, credentials never leave the computer), subscriptions that
   feed the push store under fixed keys with a cap and a throttle, a read-only MQTT widget, then publish actions
   defined on the computer and triggered from the phone by id only, behind the widget's `control` option with "ask
-  first" on and retain off by default. In small pull requests, starting with the connection and its settings.
+  first" on and retain off by default. In small pull requests; the connection and its settings are in
+  ([#739](https://github.com/ersinkoc/phonebox/pull/739)), subscriptions to the push store come next.
 - **Rules for pushed values**: a "not updated for N seconds" condition, `>=` / `<=`, and a separate release threshold
   ([#242](https://github.com/ersinkoc/phonebox/issues/242), pull request
   [#245](https://github.com/ersinkoc/phonebox/pull/245), in 0.9.21, did the first two).
