@@ -14,6 +14,33 @@
 - Steam library: a cover cache folder (`appcache/librarycache`) that is itself a symbolic link or junction is refused,
   like the folders below it, so covers are never served from outside Steam's cache (#684,
   [Seyamalam](https://github.com/Seyamalam)).
+- Custom HTML: **Web page address** shows a web page instead of your own HTML, such as a Home Assistant dashboard,
+  Grafana or a camera on the home network (Android 7 or later). Plain http addresses work too (the panel is now served
+  over http inside the app, so the page and its pictures are not blocked as mixed content). The page runs in its own
+  origin and keeps its sign-in, cannot reach the panel or navigate it away, and is not clipped to the card's rounded
+  corners, because Android WebView then drops the rounded corners the page draws itself. Inside the http panel an https
+  page is not a secure context, so the few pages that need `crypto.subtle` or a service worker do not work there (#619,
+  [dancho12](https://github.com/dancho12)).
+- Trackpad: a two-finger scroll no longer nudges the cursor when the fingers land or lift a moment apart, and a tap
+  no longer moves it by a few pixels. **Inertial scrolling** (on by default, in the widget's Scrolling settings) lets a
+  two-finger flick coast on and slow down (#676, [Prajjwal2404](https://github.com/Prajjwal2404)).
+- Night screen: touching or dragging keeps it from turning on under your finger. Every touch restarts the 30-second
+  dark-room countdown and wake hold, so a scheduled night, a dark room or a rule's night action waits until 30 seconds
+  after you let go; the Stay and Go now buttons of a page switch do not count (#670,
+  [Prajjwal2404](https://github.com/Prajjwal2404)).
+- **Home Assistant dashboard**: a Home Assistant dashboard as it is, with its own cards (Android 7 or later). The phone
+  opens it from the server in Settings › General (or an address of its own) and signs in to Home Assistant itself, once,
+  as a Home Assistant user; the token stays on the computer and only lists the dashboards and views to pick from in the
+  widget's settings, with what Home Assistant needs. The widget hides Home Assistant's header and sidebar with
+  kiosk-mode. While the server does not answer, the widget says so and tries again. See
+  [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md) (#620, [dancho12](https://github.com/dancho12)).
+- Android: the notice for a WebView too old to run the panel names the version in use, such as `(version 37)`. On
+  Android 5 and 6 a phone maker's own WebView can stay in use although Google's is installed from Google Play, and the
+  version shows which one the panel got (#689).
+- macOS: when the sound goes to an output macOS cannot control in software (a monitor or soundbar over HDMI), the
+  agent reads its volume every 10 seconds instead of every second. Each reading starts `osascript`, and at one a
+  second WindowServer ran out of resources after a few days and logged the user out (#693,
+  [AlphaRishi1229](https://github.com/AlphaRishi1229)).
 
 ## 0.9.31 — 2026-11-27
 

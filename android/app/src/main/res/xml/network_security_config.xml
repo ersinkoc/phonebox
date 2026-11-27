@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cleartext HTTP is allowed only for the local agent reached over USB (adb reverse). -->
+<!-- Cleartext HTTP is allowed for web pages: a page that the Custom HTML widget shows by address is often plain http on
+     a home network, at an address only the user types (a Home Assistant server, a router, a camera), so no list of
+     hosts can name it. The app's own connections to the agent do not depend on this: AgentLink uses https with the
+     agent's certificate pinned, over USB and over Wi-Fi.
+
+     The panel's own host is the exception. The panel is served from http://appassets.androidplatform.net, but only by
+     WebViewAssetLoader inside the app (shouldInterceptRequest); it is never on the network. A redirect is not
+     intercepted, so without this rule a framed http page could redirect to that host and someone on the network
+     could answer it as the panel. With cleartext refused here, WebView never sends such a request. -->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <domain includeSubdomains="false">localhost</domain>
+    <base-config cleartextTrafficPermitted="true" />
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">appassets.androidplatform.net</domain>
     </domain-config>
 </network-security-config>

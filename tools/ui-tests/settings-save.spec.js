@@ -151,6 +151,7 @@ test('a widget option that needs another is shown only while that one is on', as
   const inspector = page.locator('#inspector');
   const ticks = inspector.getByText('Tick while scrolling');
   const haptics = inspector.locator('.field', { hasText: 'Haptic feedback' }).locator('select');
+  const inertial = inspector.locator('label.check', { hasText: 'Inertial scrolling' }).locator('input[type="checkbox"]');
   const doubleTap = inspector.locator('label.check', { hasText: 'Double-tap to drag' }).locator('input[type="checkbox"]');
   const holdInput = inspector.locator('.field', { hasText: /Drag hold duration|Double-tap interval/ }).locator('label');
   // the Trackpad's options come in groups, each under its own heading, with the switch that allows control first
@@ -162,6 +163,7 @@ test('a widget option that needs another is shown only while that one is on', as
   await doubleTap.uncheck();
   await expect(holdInput).toHaveText('Drag hold duration (ms)');
   await expect(haptics).toHaveValue('normal');
+  await expect(inertial).toBeChecked();
   await expect(ticks).toBeVisible();
   await haptics.selectOption('off');
   await expect(ticks).toHaveCount(0);

@@ -826,6 +826,7 @@ W.trackpad = {
     const acceleration = o.acceleration !== false;
     const scrollSpeed = Number(o.scrollSpeed) || 1.0;
     const natural = Boolean(o.naturalScroll);
+    const inertialScroll = o.inertialScroll !== false;
     const doubleTapDrag = Boolean(o.doubleTapDrag);
     const holdDuration = Math.max(100, Number(o.holdDuration) || 350);
     const scrollBar = o.scrollBar || 'right';
@@ -922,6 +923,12 @@ W.trackpad = {
     }
 
     let accDx = 0, accDy = 0, moveScheduled = false;
+    let initMoveDx = 0, initMoveDy = 0, landingTimer = null;
+    const LANDING_GRACE_MS = 40;
+    function clearPendingInitMove() {
+      if (landingTimer) { clearTimeout(landingTimer); landingTimer = null; }
+      initMoveDx = 0; initMoveDy = 0;
+    }
     function queueMove(dx, dy) {
       accDx += dx; accDy += dy;
       if (!moveScheduled) {
@@ -941,6 +948,77 @@ W.trackpad = {
     }
 
     let accScrollX = 0, accScrollY = 0, scrollScheduled = false;
+    let scrollSamples = [], inertiaRaf = 0, inertiaVx = 0, inertiaVy = 0, inertiaLastTime = 0;
+    const SCROLL_VEL_WINDOW_MS = 90;
+    const SCROLL_INERTIA_TAU_MS = 230;
+    const SCROLL_INERTIA_MIN_START = 1.2 * scrollSpeed;
+    const SCROLL_INERTIA_MIN_STOP = 0.12;
+    const SCROLL_INERTIA_MAX_V = 45;
+    const SCROLL_INERTIA_MAX_GAP_MS = 200;
+    function cancelInertia() {
+      if (inertiaRaf) { cancelAnimationFrame(inertiaRaf); inertiaRaf = 0; }
+      inertiaVx = 0; inertiaVy = 0;
+      scrollSamples.length = 0;
+    }
+    function recordScrollSample(dx, dy) {
+      if (dx === 0 && dy === 0) return;
+      const now = performance.now();
+      scrollSamples.push({ t: now, dx, dy });
+      while (scrollSamples.length > 0 && now - scrollSamples[0].t > SCROLL_VEL_WINDOW_MS) {
+        scrollSamples.shift();
+      }
+    }
+    function startInertia() {
+      if (!inertialScroll || destroyed || scrollSamples.length === 0) { scrollSamples.length = 0; return; }
+      const now = performance.now();
+      const newestT = scrollSamples[scrollSamples.length - 1].t;
+      if (now - newestT > SCROLL_VEL_WINDOW_MS) { scrollSamples.length = 0; return; }
+      const cutoff = newestT - SCROLL_VEL_WINDOW_MS;
+      let sumDx = 0, sumDy = 0, oldestT = newestT;
+      for (const s of scrollSamples) {
+        if (s.t >= cutoff) {
+          sumDx += s.dx; sumDy += s.dy;
+          if (s.t < oldestT) oldestT = s.t;
+        }
+      }
+      scrollSamples.length = 0;
+      const span = Math.max(24, newestT - oldestT);
+      let vx = sumDx / span, vy = sumDy / span;
+      const speed = Math.hypot(vx, vy);
+      if (speed < SCROLL_INERTIA_MIN_START) return;
+      if (speed > SCROLL_INERTIA_MAX_V) {
+        const k = SCROLL_INERTIA_MAX_V / speed;
+        vx *= k; vy *= k;
+      }
+      inertiaVx = vx; inertiaVy = vy; inertiaLastTime = now;
+      const tick = (t) => {
+        if (destroyed || !inertiaRaf) return;
+        const dt = t - inertiaLastTime;
+        inertiaLastTime = t;
+        if (dt <= 0) {
+          inertiaRaf = requestAnimationFrame(tick);
+          return;
+        }
+        if (dt > SCROLL_INERTIA_MAX_GAP_MS) {
+          inertiaRaf = 0; inertiaVx = 0; inertiaVy = 0;
+          accScrollX = 0; accScrollY = 0;
+          return;
+        }
+        const decay = Math.exp(-dt / SCROLL_INERTIA_TAU_MS);
+        const stepDx = inertiaVx * SCROLL_INERTIA_TAU_MS * (1 - decay);
+        const stepDy = inertiaVy * SCROLL_INERTIA_TAU_MS * (1 - decay);
+        inertiaVx *= decay; inertiaVy *= decay;
+        accScrollX += stepDx; accScrollY += stepDy;
+        flushScroll();
+        if (Math.hypot(inertiaVx, inertiaVy) < SCROLL_INERTIA_MIN_STOP) {
+          inertiaRaf = 0;
+          accScrollX = 0; accScrollY = 0;
+          return;
+        }
+        inertiaRaf = requestAnimationFrame(tick);
+      };
+      inertiaRaf = requestAnimationFrame(tick);
+    }
     function queueScroll(dx, dy) {
       accScrollX += dx;
       accScrollY += dy;
@@ -973,7 +1051,7 @@ W.trackpad = {
     }
 
     const activePointers = new Map();
-    let maxActivePointers = 0, moved = false, tapFired = false;
+    let maxActivePointers = 0, moved = false, tapFired = false, sequenceCancelled = false;
     let isDragging = false, holdTimer = null;
     let pendingTapTimer = null, lastTapUpTime = 0;
     function flushPendingTap() {
@@ -1040,6 +1118,7 @@ W.trackpad = {
       if (!type) return;
       gestureFired = true;
       clearTimeout(gestureQuietTimer);
+      cancelInertia();
       moved = true;
       send({ type });
       feel(type.startsWith('swipe') ? 'swipe' : type);
@@ -1048,6 +1127,7 @@ W.trackpad = {
     pad.addEventListener('pointerdown', (e) => {
       e.stopPropagation(); e.preventDefault();
       try { pad.setPointerCapture(e.pointerId); } catch (_) {}
+      cancelInertia();
       const isBar = scrollBarEl && (e.target === scrollBarEl || scrollBarEl.contains(e.target));
       if (isBar) scrollBarEl.classList.add('is-scrolling');
       const now = performance.now();
@@ -1061,6 +1141,8 @@ W.trackpad = {
       });
       maxActivePointers = Math.max(maxActivePointers, activePointers.size);
       if (activePointers.size > 1) {
+        clearPendingInitMove();
+        accDx = 0; accDy = 0; moveScheduled = false;
         if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
         if (pendingTapTimer) { clearTimeout(pendingTapTimer); pendingTapTimer = null; }
         if (isDragging) {
@@ -1070,6 +1152,7 @@ W.trackpad = {
         scrollAxis = null;
         cumScrollX = 0;
         cumScrollY = 0;
+        if (activePointers.size >= 3) scrollSamples.length = 0;
       }
       if (isBar && pendingTapTimer) flushPendingTap();
       if (!isBar) rebase();
@@ -1096,6 +1179,7 @@ W.trackpad = {
           holdTimer = setTimeout(() => {
             if (!moved && !tapFired && maxActivePointers === 1 && activePointers.size === 1 && !isDragging) {
               isDragging = true;
+              clearPendingInitMove();
               flushMove();
               send({ type: 'mousedown' });
               feel('drag');
@@ -1138,10 +1222,11 @@ W.trackpad = {
         gestureQuietTimer = setTimeout(() => { if (!destroyed && gestureBase && !gestureFired) checkGesture(true); }, 90);
       }
 
-      if (activePointers.size === 1) {
+      // Never move the cursor once a second finger has been part of this touch sequence
+      if (activePointers.size === 1 && maxActivePointers === 1) {
+        const now = performance.now();
         let gain = 1.0;
         if (acceleration) {
-          const now = performance.now();
           const elapsed = now - pt.lastMoveTime;
           if (elapsed > 60) {
             const dt = Math.max(12, Math.min(35, elapsed));
@@ -1167,7 +1252,30 @@ W.trackpad = {
           }
           pt.lastMoveTime = now;
         }
-        queueMove(rawDx * gain * sensitivity, rawDy * gain * sensitivity);
+        const moveDx = rawDx * gain * sensitivity, moveDy = rawDy * gain * sensitivity;
+        // Keep <=6 px tap jitter buffered until movement intent (>6 px) is established, and defer initial moves briefly for 2-finger landings
+        if (!isDragging && (!moved || now - pt.downTime < LANDING_GRACE_MS)) {
+          initMoveDx += moveDx;
+          initMoveDy += moveDy;
+          if (!landingTimer && moved) {
+            landingTimer = setTimeout(() => {
+              landingTimer = null;
+              if (destroyed || maxActivePointers !== 1 || activePointers.size !== 1 || (!moved && !isDragging)) {
+                initMoveDx = 0; initMoveDy = 0;
+                return;
+              }
+              if (initMoveDx !== 0 || initMoveDy !== 0) {
+                queueMove(initMoveDx, initMoveDy);
+                initMoveDx = 0; initMoveDy = 0;
+              }
+            }, Math.max(0, LANDING_GRACE_MS - (now - pt.downTime)));
+          }
+        } else {
+          if (landingTimer) { clearTimeout(landingTimer); landingTimer = null; }
+          const totalDx = initMoveDx + moveDx, totalDy = initMoveDy + moveDy;
+          initMoveDx = 0; initMoveDy = 0;
+          queueMove(totalDx, totalDy);
+        }
       } else if (activePointers.size === 2) {
         if (isDragging) {
           isDragging = false;
@@ -1204,15 +1312,17 @@ W.trackpad = {
           }
         }
 
+        let sendX = 0, sendY = 0;
         if (scrollAxis === 'y') {
-          queueScroll(0, dyDelta);
+          sendY = dyDelta;
         } else if (scrollAxis === 'x') {
-          queueScroll(dxDelta, 0);
+          sendX = dxDelta;
         } else {
-          const sendX = Math.abs(rawDx) >= 1.5 ? dxDelta : 0;
-          const sendY = Math.abs(rawDy) >= 1.5 ? dyDelta : 0;
-          queueScroll(sendX, sendY);
+          sendX = Math.abs(rawDx) >= 1.5 ? dxDelta : 0;
+          sendY = Math.abs(rawDy) >= 1.5 ? dyDelta : 0;
         }
+        queueScroll(sendX, sendY);
+        recordScrollSample(sendX, sendY);
       }
     });
 
@@ -1220,6 +1330,17 @@ W.trackpad = {
       e.stopPropagation(); e.preventDefault();
       try { pad.releasePointerCapture(e.pointerId); } catch (_) {}
       if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      if (e.type === 'pointercancel') {
+        sequenceCancelled = true;
+        scrollSamples.length = 0;
+      }
+      if (activePointers.size === 1 && maxActivePointers === 1) {
+        if (landingTimer) { clearTimeout(landingTimer); landingTimer = null; }
+        if ((moved || isDragging) && e.type !== 'pointercancel' && (initMoveDx !== 0 || initMoveDy !== 0)) {
+          accDx += initMoveDx; accDy += initMoveDy;
+        }
+        initMoveDx = 0; initMoveDy = 0;
+      }
       // a quick flick can lift in the frame of its last move: judge the fingers now, before the one that lifts is gone
       if (e.type === 'pointerup' && gestureBase && !gestureFired) checkGesture(true);
       const pt = activePointers.get(e.pointerId);
@@ -1264,10 +1385,13 @@ W.trackpad = {
         cumScrollY = 0;
       }
       if (activePointers.size === 0) {
-        maxActivePointers = 0; moved = false; tapFired = false;
+        const shouldCoast = !sequenceCancelled && e.type !== 'pointercancel' && !gestureFired && maxActivePointers === 2 && moved;
+        maxActivePointers = 0; moved = false; tapFired = false; sequenceCancelled = false;
         gestureFired = false; gestureBase = null; scrollSince = 0;
         if (scrollBarEl) scrollBarEl.classList.remove('is-scrolling');
         flushMove(); flushScroll();
+        if (shouldCoast) startInertia();
+        else scrollSamples.length = 0;
       }
     };
 
@@ -1289,6 +1413,9 @@ W.trackpad = {
         scrollAxis = null;
         cumScrollX = 0;
         cumScrollY = 0;
+        clearPendingInitMove();
+        cancelInertia();
+        sequenceCancelled = false;
         if (reconnectTimer) clearTimeout(reconnectTimer);
         if (holdTimer) clearTimeout(holdTimer);
         if (pendingTapTimer) { clearTimeout(pendingTapTimer); pendingTapTimer = null; }

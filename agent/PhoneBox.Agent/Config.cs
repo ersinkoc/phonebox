@@ -128,6 +128,10 @@ public sealed class AgentConfig
         // the bridge switches: the phone's Phone bridge screen follows them (nothing here is a secret). "supported" is what the
         // panel's Phone bridge button waits for: on Windows and Linux there is no bridge, and the screen could only say so.
         bridge = new { Bridge.Clipboard, Bridge.Notifications, Bridge.CopyCodes, supported = bridgeExists ?? BridgeConfig.PlatformHasBridge },
+        // Home Assistant dashboard widget: the server's address, which the phone opens itself; the token stays here.
+        // Sent only while a page this phone shows has such a widget; with a .local name, its IP addresses to try too (HaAddress).
+        homeAssistant = PagesFor(deviceId).SelectMany(p => p.Widgets ?? []).SelectMany(w => new[] { w }.Concat(StackWidgets.Children(w)
+            .Select(c => new WidgetConfig { Type = c.Type }))).Any(w => w.Type == "hadash") ? new { url = HaAddress.ForPhone(HomeAssistant.Url), alternatives = HaAddress.Alternatives(HaAddress.ForPhone(HomeAssistant.Url)) } : null,
     };
 
 

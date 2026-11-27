@@ -444,6 +444,71 @@ public class ConfigTests
         Assert.Contains("\"T\"", json);
     }
 
+    // The Home Assistant dashboard widget opens the server from the phone: the phone gets the address, only while one of
+    // its pages has such a widget (also inside a Smart Stack), and never the token.
+    [Theory]
+    [InlineData("""{ "type": "hadash", "x": 0, "y": 0, "w": 12, "h": 6 }""", true)]
+    [InlineData("""{ "type": "stack", "x": 0, "y": 0, "w": 6, "h": 3, "options": { "widgets": [ { "id": "a", "type": "hadash" } ] } }""", true)]
+    [InlineData("""{ "type": "ha", "x": 0, "y": 0, "w": 6, "h": 3 }""", false)]
+    public void ThePhoneGetsTheHomeAssistantAddressOnlyForADashboardWidget(string widget, bool sent)
+    {
+        var c = Load($$"""
+        { "homeAssistant": { "url": "http://192.168.1.10:8123", "token": "secret-ha-token" },
+          "pages": [ { "id": "p", "title": "P", "widgets": [ {{widget}} ] } ] }
+        """);
+        var pub = JsonSerializer.SerializeToElement(c.ToPublic(), ConfigStore.WriteOpts);
+        Assert.DoesNotContain("secret-ha-token", pub.GetRawText());
+        var ha = pub.TryGetProperty("homeAssistant", out var x) ? x : default;
+        if (sent) Assert.Equal("http://192.168.1.10:8123", ha.GetProperty("url").GetString());
+        else Assert.True(ha.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined);
+    }
+
+    // Some Android versions cannot find a .local name (mDNS) in a WebView: the phone may also try the addresses the name
+    // has on this computer (after the name itself: this computer may be on another network than the phone).
+    [Theory]
+    [InlineData("http://homeassistant.local:8123", "http://192.168.1.10:8123|http://172.31.0.5:8123")]
+    [InlineData("http://homeassistant.local:8123/", "http://192.168.1.10:8123/|http://172.31.0.5:8123/")]
+    [InlineData("https://HA.local", "https://192.168.1.10|https://172.31.0.5")]
+    [InlineData("http://192.168.1.20:8123", "")]           // an address needs nothing else
+    [InlineData("https://ha.example.com", "")]             // nor does a name in DNS
+    [InlineData("homeassistant.local:8123", "")]           // not a URL
+    public void ALocalNameComesWithTheAddressesItHasHere(string url, string expected) =>
+        Assert.Equal(expected, string.Join('|', HaAddress.Alternatives(url, host => host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ? ["192.168.1.10", "172.31.0.5"] : [])));
+
+    [Fact]
+    public void ALocalNameThatCannotBeFoundHasNoAlternatives() =>
+        Assert.Empty(HaAddress.Alternatives("http://nowhere.local:8123", _ => []));
+
+    // The dashboard widget signs in with Home Assistant's own sign-in: the phone gets the server's address, never the token.
+    [Fact]
+    public void TheDashboardWidgetNeverGetsTheToken()
+    {
+        var c = Load("""
+        { "homeAssistant": { "url": "http://192.168.1.10:8123", "token": "secret-ha-token" },
+          "pages": [ { "id": "p", "title": "P", "widgets": [ { "id": "d", "type": "hadash", "x": 0, "y": 0, "w": 12, "h": 6 } ] } ] }
+        """);
+        var pub = JsonSerializer.Serialize(c.ToPublic());
+        Assert.Contains("192.168.1.10:8123", pub);
+        Assert.DoesNotContain("secret-ha-token", pub);
+    }
+
+    // A user name or password written into the address stays on the computer too.
+    [Theory]
+    [InlineData("http://alice:secret-pass@ha.example.com:8123", "http://ha.example.com:8123")]
+    [InlineData("https://alice@ha.example.com/", "https://ha.example.com")]
+    [InlineData("http://192.168.1.10:8123", "http://192.168.1.10:8123")]
+    [InlineData("ftp://ha.example.com", null)]
+    public void TheDashboardWidgetGetsTheAddressWithoutUserInfo(string url, string? expected)
+    {
+        var c = Load($$"""
+        { "homeAssistant": { "url": "{{url}}" },
+          "pages": [ { "id": "p", "title": "P", "widgets": [ { "id": "d", "type": "hadash", "x": 0, "y": 0, "w": 12, "h": 6 } ] } ] }
+        """);
+        var ha = JsonSerializer.SerializeToElement(c.ToPublic()).GetProperty("homeAssistant");
+        Assert.Equal(expected, ha.GetProperty("url").GetString());
+        Assert.DoesNotContain("alice", ha.ToString());
+    }
+
     [Fact]
     public void ThePhoneLearnsWhichShortcutPicturesAreUploads()
     {

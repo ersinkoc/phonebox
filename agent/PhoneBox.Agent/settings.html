@@ -2192,6 +2192,76 @@ function optionField(w, o, onValChange) {
       } }), rich(`${p.icon || ''} ${p.title || p.id}`.trim())))));
     }
     case 'ha-items': return haItemsEditor(w, o, set);
+    case 'ha-dashboard': {
+      // The dashboards and views Home Assistant lists, to pick from; "Another path…" takes any "dashboard/view". Under
+      // it: what the phone will open (the widget's own address, or the one the agent sends), and how to set it all up.
+      const OTHER = '\u0001other';
+      let value = String(v ?? '').trim(), views = [], answer = null, loaded = false;
+      const custom = h('input', { type: 'text', value, placeholder: 'dashboard/view', spellcheck: 'false', oninput: (e) => { value = e.target.value.trim(); set(o.key, value); opensLine(); } });
+      custom.hidden = true;
+      const select = h('select', { style: { flex: '1', minWidth: '0' }, onchange: (e) => {
+        if (e.target.value === OTHER) { custom.hidden = false; custom.focus(); return; }
+        custom.hidden = true; value = e.target.value; custom.value = value; set(o.key, value); opensLine();
+      } });
+      const status = h('div', { class: 'hint' });
+      const opens = h('div', { class: 'hint' });
+      // as the phone does: the widget's own address, or the one from Settings and then the addresses the computer found
+      // for a .local name (the first that answers on the phone is used)
+      const opensLine = () => {
+        const own = String(w.options?.address || '').trim();
+        const bases = (own ? [own] : [answer?.phoneUrl, ...(answer?.alternatives || [])]).filter(Boolean).map((b) => b.replace(/\/+$/, ''));
+        const page = '/' + (value.replace(/^\/+|\/+$/g, '') || 'lovelace') + (w.options?.kiosk !== false ? '?kiosk' : '');
+        opens.replaceChildren(...(bases.length ? [t('s.hadash.opens') + ': ', ...bases.flatMap((b, i) => [i ? ' · ' : '', h('code', {}, b + page)])] : []));
+      };
+      // Until Home Assistant answers, only the saved path shows (not "Another path…" with its field, which would flicker
+      // away once the list arrives).
+      const fill = () => {
+        if (!loaded) {
+          select.replaceChildren(h('option', { value }, value || t('s.hadash.pick')));
+          custom.hidden = true;
+          opensLine();
+          return;
+        }
+        const known = views.some((x) => x.path === value);
+        const pick = h('option', { value: '' }, t('s.hadash.pick'));
+        pick.disabled = true;
+        const other = h('option', { value: OTHER }, value && !known ? `${t('s.hadash.other')} ${value}` : t('s.hadash.other'));
+        select.replaceChildren(pick, ...views.map((x) => h('option', { value: x.path }, `${x.name} (${x.path})`)), other);
+        select.value = !value ? '' : known ? value : OTHER;
+        custom.hidden = !value || known;
+        opensLine();
+      };
+      const load = () => fetch('/api/ha/dashboards').then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      }).then((d) => {
+        answer = d; views = d.views || []; loaded = true;
+        status.textContent = d.configured === false ? t('s.hadash.noServer') : d.error || '';
+        fill();
+      }).catch(() => {
+        // the list stays as it was, with a line saying it could not be refreshed; Refresh tries again
+        loaded = true; status.textContent = t('s.phoneMic.setupFailed'); fill();
+      });
+      fill();
+      load();
+      // the widget's own address and the kiosk switch are other fields of the same inspector: follow the address as it
+      // is typed, and the switch on change (its own handler stores the value first, the event then bubbles up here)
+      queueMicrotask(() => {
+        const inspector = select.closest('.field')?.parentElement;
+        inspector?.addEventListener('input', opensLine);
+        inspector?.addEventListener('change', opensLine);
+      });
+      // what Home Assistant needs: two add-ons (from its Marketplace or HACS) and one setting
+      // configuration.yaml, not text to translate: two lines, as it is pasted
+      const FRAME_SETTING = ['http:', '  use_x_frame_options: false'].join('\n');
+      const link = (href, text) => h('a', { href, target: '_blank', rel: 'noopener' }, text);
+      const needs = h('ul', { style: { margin: '4px 0', paddingLeft: '18px' } },
+        h('li', {}, link('https://github.com/dancho12/ha-phonebox-embed', 'PhoneBox embed'), ' — ', t('s.hadash.embedWhat')),
+        h('li', {}, link('https://github.com/NemesisRE/kiosk-mode', 'kiosk-mode'), ' — ', t('s.hadash.kioskWhat')),
+        h('li', {}, h('pre', { style: { margin: '2px 0', userSelect: 'all' } }, FRAME_SETTING), t('s.hadash.frameWhat')));
+      return field(h('div', { class: 'row', style: { gap: '8px' } }, select, h('button', { class: 'btn sm', onclick: load }, t('s.js.refresh'))), custom, status, opens,
+        h('div', { class: 'hint' }, t('s.hadash.help'), needs, link('https://github.com/ersinkoc/phonebox/blob/main/docs/HOME-ASSISTANT.md', t('s.hadash.guide'))));
+    }
     case 'steam-games': return steamGamesEditor(w, o, set);
     case 'plex-playlists': return plexPlaylistsEditor(w, o, set);
     case 'shortcuts': {

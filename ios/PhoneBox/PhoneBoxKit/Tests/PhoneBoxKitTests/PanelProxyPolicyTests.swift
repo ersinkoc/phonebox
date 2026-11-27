@@ -38,9 +38,13 @@ final class PanelProxyPolicyTests: XCTestCase {
             PanelProxyPolicy.agentRequest(method: "GET", pathAndQuery: "/agent/api/art?rev=4", hasPanelHeader: false),
             "/api/art?rev=4"
         )
+        XCTAssertNil(
+            PanelProxyPolicy.agentRequest(method: "GET", pathAndQuery: "/agent/api/procs/icon?name=steam", hasPanelHeader: false),
+            "process icons need the panel header"
+        )
         XCTAssertEqual(
-            PanelProxyPolicy.agentRequest(method: "GET", pathAndQuery: "/agent/api/procs/icon?pid=12", hasPanelHeader: false),
-            "/api/procs/icon?pid=12"
+            PanelProxyPolicy.agentRequest(method: "GET", pathAndQuery: "/agent/api/procs/icon?name=steam", hasPanelHeader: true),
+            "/api/procs/icon?name=steam"
         )
         XCTAssertNil(
             PanelProxyPolicy.agentRequest(method: "POST", pathAndQuery: "/agent/api/art", hasPanelHeader: false),

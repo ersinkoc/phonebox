@@ -58,7 +58,8 @@ import java.util.Locale
  * Full-screen desk panel. The UI is plain HTML/JS bundled in assets/www.
  * The UI calls "/agent/..." URLs; they are intercepted here and forwarded to the PhoneBox agent on the PC,
  * over USB (adb reverse) or, once paired, over Wi-Fi / Tailscale (see AgentLink). The WebView itself therefore
- * never makes local-network requests (no CORS, mixed-content or local-network-access issues).
+ * never makes local-network requests for the panel (no CORS, mixed-content or local-network-access issues); only a web
+ * page that a Custom HTML widget shows by address loads from the network, in its own frame and origin.
  */
 class MainActivity : Activity(), SensorEventListener {
 
@@ -88,6 +89,11 @@ class MainActivity : Activity(), SensorEventListener {
 
     private val assetLoader by lazy {
         WebViewAssetLoader.Builder()
+            // The panel is served over http: a web page shown by address (Custom HTML widget) may be plain http on the
+            // home network, and inside an https panel WebView would block its images as mixed content. The panel never
+            // goes to the network (the asset loader answers), uses no API that needs a secure context, and the agent
+            // calls are still guarded by the key only the panel receives.
+            .setHttpAllowed(true)
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
     }
@@ -448,6 +454,9 @@ class MainActivity : Activity(), SensorEventListener {
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_NO_CACHE
             textZoom = 100
+            // the panel is http, so a plain http page in a frame is not mixed content; this only matters for an
+            // https page that loads http parts
+            mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         }
         web.isVerticalScrollBarEnabled = false
         web.isHorizontalScrollBarEnabled = false
@@ -467,21 +476,30 @@ class MainActivity : Activity(), SensorEventListener {
                 val r = assetLoader.shouldInterceptRequest(url)
                 // the panel is made of ES modules, which need a JavaScript MIME type
                 if (r != null && url.path?.endsWith(".js") == true) r.mimeType = "text/javascript"
+                // A panel page only as the app's own page, never inside a frame: a widget's page (allow-same-origin)
+                // could otherwise open a copy of the panel in a frame of its own, which the asset loader answers
+                // without the network, and that copy would run in the panel's origin.
+                if (r != null && !request.isForMainFrame && r.mimeType in DOCUMENT_TYPES) return FORBIDDEN()
+                // The panel's own host never goes to the network: over plain http someone on the network could answer
+                // it, and such a page would run in the panel's origin (with the bridge key).
+                if (r == null && url.host == ASSET_HOST) return FORBIDDEN()
                 return r
             }
 
             // Old WebView without document-start scripts: hand the bridge key to the main frame only (evaluateJavascript
             // never runs in iframes), and only when it shows the panel. Bridge calls before it arrives get nothing.
             override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) = giveKey(view, url)
-            override fun onPageFinished(view: WebView, url: String?) = giveKey(view, url)
+            override fun onPageFinished(view: WebView, url: String?) {
+                if (storageMove != 0) moveStorageStep(view, url) else giveKey(view, url)
+            }
         }
         if (documentStartKey)
-            WebViewCompat.addDocumentStartJavaScript(web, panelBootstrap(), setOf("https://$ASSET_HOST"))
+            WebViewCompat.addDocumentStartJavaScript(web, panelBootstrap(), setOf(PANEL_ORIGIN))
         web.addJavascriptInterface(Bridge(), "Android")
         // Lets you debug the panel from the computer via chrome://inspect.
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
-        web.loadUrl("https://$ASSET_HOST/assets/www/index.html")
+        if (panelPreferences.getBoolean(STORAGE_MOVED, false)) loadPanel() else moveStorage()
         hideSystemUi()
         if (savedInstanceState == null) standbyNoteAgentWake(intent)   // not again after a configuration change
         handlePairingLink(intent)
@@ -536,7 +554,8 @@ class MainActivity : Activity(), SensorEventListener {
      * Only the panel itself may reach the agent. Every frame of the WebView comes through here, including the sandboxed
      * iframe of a Custom HTML widget, which is meant to talk to the panel through postMessage only. The panel sends
      * X-PhoneBox-Panel on its requests; a sandboxed frame cannot add it without a CORS preflight, which is refused.
-     * Images (album art, process icons) cannot carry headers, but they are read-only GETs.
+     * Images (album art, shortcut icons) cannot carry headers, but they are read-only GETs. Process icons are fetched
+     * with the header, since whether one loads tells which programs run on the computer.
      */
     private fun fromPanel(req: WebResourceRequest): Boolean =
         req.requestHeaders.keys.any { it.equals(PANEL_HEADER, ignoreCase = true) } ||
@@ -551,7 +570,18 @@ class MainActivity : Activity(), SensorEventListener {
         val mime = ct.substringBefore(';').trim()
         val charset = if (ct.contains("charset=")) ct.substringAfter("charset=").trim() else null
         val status = if (r.code in 100..599 && r.code !in 300..399) r.code else 502
-        return WebResourceResponse(mime, charset, status, if (status < 400) "OK" else "Error", NO_STORE, r.body)
+        // The agent's own protection headers go along: a frame can open an image route as a document, and an uploaded
+        // SVG icon would then run its script in the panel's origin without the CSP sandbox. The image routes need no
+        // panel header, so they get a sandbox even if the agent sends none.
+        val headers = NO_STORE.toMutableMap()
+        r.headers.forEach { (name, value) -> if (name.lowercase() in PASSED_HEADERS) headers[name] = value }
+        if (req.url.path in READ_ONLY_IMAGES) {
+            if (headers.keys.none { it.equals("Content-Security-Policy", ignoreCase = true) })
+                headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+            if (headers.keys.none { it.equals("X-Content-Type-Options", ignoreCase = true) })
+                headers["X-Content-Type-Options"] = "nosniff"
+        }
+        return WebResourceResponse(mime, charset, status, if (status < 400) "OK" else "Error", headers, r.body)
     }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
@@ -770,11 +800,58 @@ class MainActivity : Activity(), SensorEventListener {
             @Suppress("DEPRECATION")
             languages.put(configuration.locale.toLanguageTag())
         }
-        return "window.__phoneboxKey='$bridgeKey';window.__phoneboxLanguages=$languages;"
+        // only the panel itself, never a frame: a widget's frame keeps the panel's origin with allow-same-origin if its
+        // page navigates to the panel's own address, and the origin rule alone would give that frame the key too
+        return "if(window.top===window){window.__phoneboxKey='$bridgeKey';window.__phoneboxLanguages=$languages;}"
+    }
+
+    private fun loadPanel() = web.loadUrl("$PANEL_ORIGIN/assets/www/index.html")
+
+    // The panel used to be served from https://$ASSET_HOST. Its localStorage (the settings kept for an offline start,
+    // counters, timers, checklists) belongs to that origin, so it is copied over once, before the panel first starts on
+    // http: read on an empty page of the old origin, written on one of the new, keeping anything already there. After a
+    // failed attempt the old entries not yet copied win: what the new origin has for them was written after that failure
+    // (a counter that started over), and the old value must not be lost. Entries already copied are listed under
+    // MOVED_KEYS in the new origin and are never written again, so a change made since is kept.
+    private var storageMove = 0 // 1: reading the old origin, 2: writing to the new one, 0: done
+    private var movedStorage = "null"
+
+    private fun moveStorage() {
+        storageMove = 1
+        web.loadUrl("https://$ASSET_HOST/assets/www/storage-move.html")
+    }
+
+    private fun moveStorageStep(view: WebView, url: String?) {
+        if (storageMove == 1 && url?.startsWith("https://$ASSET_HOST/") == true) {
+            storageMove = 2
+            view.evaluateJavascript("JSON.stringify(Object.fromEntries(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k)])))") { saved ->
+                if (destroyed) return@evaluateJavascript
+                movedStorage = saved ?: "null" // a JSON string literal holding the JSON of the entries, or null
+                view.loadUrl("$PANEL_ORIGIN/assets/www/storage-move.html")
+            }
+        } else if (storageMove == 2 && url?.startsWith("$PANEL_ORIGIN/") == true) {
+            storageMove = 0
+            val overwrite = panelPreferences.getBoolean(STORAGE_MOVE_FAILED, false)
+            val write = "(() => { try { const old = JSON.parse($movedStorage) || {};" +
+                " const done = new Set(JSON.parse(localStorage.getItem('$MOVED_KEYS') || '[]'));" +
+                " for (const [k, v] of Object.entries(old)) {" +
+                "  if (k === '$MOVED_KEYS' || done.has(k)) continue;" +
+                "  if ($overwrite || localStorage.getItem(k) === null) localStorage.setItem(k, v);" +
+                "  done.add(k); localStorage.setItem('$MOVED_KEYS', JSON.stringify([...done])); }" +
+                " localStorage.removeItem('$MOVED_KEYS'); return true; } catch (_) { return false; } })()"
+            view.evaluateJavascript(write) { written ->
+                if (destroyed) return@evaluateJavascript
+                // done only when the old entries were read and all written; otherwise the next start tries again, and
+                // then the old entries overwrite what the new origin got meanwhile
+                if (movedStorage != "null" && written == "true") panelPreferences.edit().putBoolean(STORAGE_MOVED, true).apply()
+                else panelPreferences.edit().putBoolean(STORAGE_MOVE_FAILED, true).apply()
+                loadPanel()
+            }
+        }
     }
 
     private fun giveKey(view: WebView, url: String?) {
-        if (!documentStartKey && url?.startsWith("https://$ASSET_HOST/") == true)
+        if (!documentStartKey && url?.startsWith("$PANEL_ORIGIN/") == true)
             view.evaluateJavascript(panelBootstrap(), null)
     }
 
@@ -1036,10 +1113,16 @@ class MainActivity : Activity(), SensorEventListener {
 
     companion object {
         private const val ASSET_HOST = "appassets.androidplatform.net"
+        private const val PANEL_ORIGIN = "http://$ASSET_HOST"
+        private const val STORAGE_MOVED = "storage-moved-to-http"
+        private const val STORAGE_MOVE_FAILED = "storage-move-to-http-failed"
+        private const val MOVED_KEYS = "phonebox-storage-move-done"
         private val NO_STORE = mapOf("Cache-Control" to "no-store")
         private const val PANEL_HEADER = "X-PhoneBox-Panel"
-        private val READ_ONLY_IMAGES = setOf("/agent/api/art", "/agent/api/procs/icon", "/agent/api/controls/radio-logo", "/agent/api/apps/icon", "/agent/api/discord/img", "/agent/api/shortcuts/icon",
+        private val READ_ONLY_IMAGES = setOf("/agent/api/art", "/agent/api/controls/radio-logo", "/agent/api/apps/icon", "/agent/api/discord/img", "/agent/api/shortcuts/icon",
             "/agent/api/steam/cover", "/agent/api/wallpaper")
+        private val PASSED_HEADERS = setOf("content-security-policy", "x-content-type-options")
+        private val DOCUMENT_TYPES = setOf("text/html", "application/xhtml+xml", "image/svg+xml", "text/xml", "application/xml")
         private fun FORBIDDEN() = WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", NO_STORE, java.io.ByteArrayInputStream(ByteArray(0)))
     }
 }

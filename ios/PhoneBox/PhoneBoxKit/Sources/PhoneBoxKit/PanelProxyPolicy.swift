@@ -6,14 +6,15 @@ import Foundation
 /// Two rules, copied from the Android app:
 /// - a request must carry the panel's `X-PhoneBox-Panel` header (a sandboxed Custom HTML widget cannot add it
 ///   without a CORS preflight the proxy refuses), or
-/// - it is a read-only GET for one of the panel's images (album art, process icons, …), which cannot carry headers.
+/// - it is a read-only GET for one of the panel's images (album art, app icons, …), which cannot carry headers.
+///   Process icons are not among them: the panel fetches those with the header, so a framed page cannot use them
+///   to tell whether a program runs on the computer.
 ///
 /// Everything else — other origins, other methods, settings or pairing endpoints — is refused.
 public enum PanelProxyPolicy {
     /// The panel's image endpoints, without the `/agent` prefix. Same list as MainActivity.READ_ONLY_IMAGES.
     public static let readOnlyImagePaths: Set<String> = [
         "/api/art",
-        "/api/procs/icon",
         "/api/controls/radio-logo",
         "/api/apps/icon",
         "/api/discord/img",

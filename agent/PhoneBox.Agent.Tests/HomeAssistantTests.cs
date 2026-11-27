@@ -211,6 +211,18 @@ public sealed class HomeAssistantTests : IDisposable
     }
 
     [Fact]
+    public async Task TheDashboardListShowsTheAddressThePhoneGets()
+    {
+        // nothing answers on port 9, so the list comes back with an error, and still with the phone's address
+        File.WriteAllText(_configPath, """{"homeAssistant":{"url":"http://user:pass@127.0.0.1:9","token":"secret"}}""");
+        var ha = new HomeAssistant(new ConfigStore(_configPath), NullLogger<HomeAssistant>.Instance);
+        var list = Json(await ha.ListDashboardsAsync());
+        Assert.False(string.IsNullOrEmpty(list.GetProperty("error").GetString()));
+        Assert.Equal("http://127.0.0.1:9", list.GetProperty("phoneUrl").GetString());
+        Assert.DoesNotContain("pass", list.GetRawText());
+    }
+
+    [Fact]
     public async Task TestReportsABadToken()
     {
         Assert.Equal("Connected", await HomeAssistant.TestAsync(_url, "secret"));

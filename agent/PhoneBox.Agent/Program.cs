@@ -706,6 +706,8 @@ app.MapGet("/api/network/adapters", (ConfigStore cfg) => Results.Json(SystemMoni
 
 // Settings › widget › Home Assistant entities: the picker's list (local only, not on the Wi-Fi allow-list)
 app.MapGet("/api/ha/entities", async (HomeAssistant ha) => Results.Json(await ha.ListEntitiesAsync()));
+// Settings › widget › Home Assistant dashboard: the dashboards and views to pick from (local only, like the entities)
+app.MapGet("/api/ha/dashboards", async (HomeAssistant ha) => Results.Json(await ha.ListDashboardsAsync()));
 // Settings › General › Home Assistant › Test (local only)
 app.MapPost("/api/ha/test", async (HomeAssistantConfig body) =>
     Results.Json(new { result = await HomeAssistant.TestAsync(body.Url ?? "", body.Token ?? "") }));

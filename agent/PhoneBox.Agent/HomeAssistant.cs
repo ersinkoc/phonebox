@@ -9,9 +9,60 @@ public sealed record HaListing(string Id, string Name, bool Switchable);
 public sealed record HaEntity(string Id, string State, string Name, string? Unit, string? DeviceClass, string? Icon, long Changed);
 
 /// <summary>
+/// Other addresses the phone may try for Home Assistant (Home Assistant dashboard widget). A ".local" name
+/// (homeassistant.local, which Home Assistant suggests) is found by mDNS, which some Android versions cannot do in a
+/// WebView; the phone then tries the IPv4 addresses the name has on this computer. They come second, after the name
+/// itself: this computer may be on another network than the phone (a VPN, a second Wi-Fi), with an address the phone
+/// cannot reach.
+/// </summary>
+public static class HaAddress
+{
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string[] Ips, DateTime At)> Resolved = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The address as the phone gets it: http or https only, and never a user name or password written into it.</summary>
+    public static string? ForPhone(string? url)
+    {
+        var text = url?.Trim();
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var u) || u.Scheme is not ("http" or "https")) return null;
+        if (u.UserInfo.Length == 0) return text;
+        var clean = new UriBuilder(u) { UserName = "", Password = "" }.Uri.ToString();
+        return text!.EndsWith('/') ? clean : clean.TrimEnd('/');
+    }
+
+    public static string[] Alternatives(string? url, Func<string, string[]>? resolve = null)
+    {
+        if (!Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var u) || u.Scheme is not ("http" or "https")
+            || !u.Host.EndsWith(".local", StringComparison.OrdinalIgnoreCase)) return [];
+        var slash = url!.Trim().EndsWith('/');
+        return (resolve ?? Lookup)(u.Host).Select(ip =>
+        {
+            var phone = new UriBuilder(u) { Host = ip }.Uri.ToString();
+            return slash ? phone : phone.TrimEnd('/');
+        }).Distinct().ToArray();
+    }
+
+    // remembered for 10 minutes (a failure for 1), so building the phone's config rarely waits for a lookup
+    private static string[] Lookup(string host)
+    {
+        if (Resolved.TryGetValue(host, out var r) && DateTime.UtcNow - r.At < TimeSpan.FromMinutes(r.Ips.Length == 0 ? 1 : 10)) return r.Ips;
+        string[] ips = [];
+        try
+        {
+            var task = System.Net.Dns.GetHostAddressesAsync(host);
+            if (task.Wait(TimeSpan.FromSeconds(2)))
+                ips = task.Result.Where(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !System.Net.IPAddress.IsLoopback(a))
+                    .Select(a => a.ToString()).ToArray();
+        }
+        catch { /* not found: the phone has only the name */ }
+        Resolved[host] = (ips, DateTime.UtcNow);
+        return ips;
+    }
+}
+
+/// <summary>
 /// Home Assistant over its REST API with a long-lived access token (Settings › General). The phone only sees the
-/// entities listed in its Home Assistant widgets, and may only switch those whose widget allows it. The token never
-/// leaves this computer.
+/// entities listed in its Home Assistant widgets, and may only switch those whose widget allows it.
+/// The token never leaves this computer.
 /// </summary>
 public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log)
 {
@@ -159,6 +210,117 @@ public sealed class HomeAssistant(ConfigStore config, ILogger<HomeAssistant> log
             return new { configured = true, error = (string?)null, entities = list.OrderBy(x => x.Id, StringComparer.Ordinal).ToList() };
         }
         catch (Exception ex) { return new { configured = true, error = ex is TaskCanceledException ? "Home Assistant did not answer" : ex.Message, entities = Array.Empty<object>() }; }
+    }
+
+    /// <summary>
+    /// The dashboards and their views ("dashboard/view" paths with a name), for the Home Assistant dashboard widget's
+    /// picker in Settings. Read over Home Assistant's WebSocket API, the only one that lists dashboards (which needs an
+    /// administrator's token). Local only: the phone never gets this.
+    /// </summary>
+    public async Task<object> ListDashboardsAsync()
+    {
+        var ha = config.Get().HomeAssistant;
+        if (string.IsNullOrWhiteSpace(ha.Url) || string.IsNullOrWhiteSpace(ha.Token)
+            || !Uri.TryCreate(ha.Url.TrimEnd('/') + "/api/websocket", UriKind.Absolute, out var http) || http.Scheme is not ("http" or "https"))
+            return new { configured = false, error = "Set up Home Assistant in Settings › General", views = Array.Empty<object>() };
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var ct = timeout.Token;
+        try
+        {
+            using var ws = new System.Net.WebSockets.ClientWebSocket();
+            await ws.ConnectAsync(new UriBuilder(http) { Scheme = http.Scheme == "https" ? "wss" : "ws" }.Uri, ct);
+            var nextId = 0;
+            async Task<JsonElement> Receive()
+            {
+                using var buffer = new MemoryStream();
+                var chunk = new byte[16 * 1024];
+                System.Net.WebSockets.WebSocketReceiveResult r;
+                do
+                {
+                    r = await ws.ReceiveAsync(chunk, ct);
+                    if (r.MessageType == System.Net.WebSockets.WebSocketMessageType.Close) throw new InvalidOperationException("Home Assistant closed the connection");
+                    buffer.Write(chunk, 0, r.Count);
+                    if (buffer.Length > 8 * 1024 * 1024) throw new InvalidOperationException("Home Assistant sent too much");
+                } while (!r.EndOfMessage);
+                using var doc = JsonDocument.Parse(buffer.ToArray());
+                return doc.RootElement.Clone();
+            }
+            Task Send(Dictionary<string, object?> message) =>
+                ws.SendAsync(JsonSerializer.SerializeToUtf8Bytes(message), System.Net.WebSockets.WebSocketMessageType.Text, true, ct);
+            // the result, or the error's code and message when Home Assistant refused the command
+            async Task<(JsonElement? Result, string? Code, string? Error)> Call(Dictionary<string, object?> command)
+            {
+                var id = ++nextId;
+                command["id"] = id;
+                await Send(command);
+                while (true)
+                {
+                    var m = await Receive();
+                    if (!m.TryGetProperty("id", out var mid) || mid.ValueKind != JsonValueKind.Number || mid.GetInt32() != id) continue;
+                    if (m.TryGetProperty("success", out var ok) && ok.ValueKind == JsonValueKind.True)
+                        return (m.TryGetProperty("result", out var result) ? result : null, null, null);
+                    var e = m.TryGetProperty("error", out var err) && err.ValueKind == JsonValueKind.Object ? err : default;
+                    string? Field(string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var f) && f.ValueKind == JsonValueKind.String ? f.GetString() : null;
+                    return (null, Field("code") ?? "unknown_error", Field("message") ?? "no reason given");
+                }
+            }
+            string? problem = null; // a refused command: the list is shown, with this next to it
+
+            await Receive(); // auth_required
+            await Send(new() { ["type"] = "auth", ["access_token"] = ha.Token });
+            var auth = await Receive();
+            if (!auth.TryGetProperty("type", out var authType) || authType.GetString() != "auth_ok")
+                return new { configured = true, error = "The token was rejected", phoneUrl = HaAddress.ForPhone(ha.Url), alternatives = HaAddress.Alternatives(HaAddress.ForPhone(ha.Url)), views = Array.Empty<object>() };
+
+            // the default dashboard (at /lovelace, read without a url_path) and the ones added in Settings › Dashboards.
+            // Newer Home Assistant versions list the default one too, with the title it was given.
+            var dashboards = new List<(string? Path, string Name)> { (null, "Overview") };
+            var dashboardList = await Call(new() { ["type"] = "lovelace/dashboards/list" });
+            if (dashboardList.Error is { } listError) problem = "Home Assistant did not list its dashboards: " + listError;
+            if (dashboardList.Result is { ValueKind: JsonValueKind.Array } list)
+                foreach (var d in list.EnumerateArray())
+                    if (d.TryGetProperty("url_path", out var p) && p.GetString() is { Length: > 0 } path)
+                    {
+                        var name = d.TryGetProperty("title", out var n) && n.GetString() is { Length: > 0 } title ? title : path;
+                        if (path == "lovelace") dashboards[0] = (null, name);
+                        else dashboards.Add((path, name));
+                    }
+
+            var views = new List<object>();
+            foreach (var (path, name) in dashboards)
+            {
+                var root = path ?? "lovelace";
+                var command = new Dictionary<string, object?> { ["type"] = "lovelace/config" };
+                if (path is not null) command["url_path"] = path;
+                var listed = 0;
+                var read = await Call(command);
+                // config_not_found: a dashboard made by a strategy, which has no configuration of its own (see below)
+                if (read.Error is { } readError && read.Code != "config_not_found") problem ??= $"Home Assistant did not give the views of {name}: {readError}";
+                if (read.Result is { ValueKind: JsonValueKind.Object } conf && conf.TryGetProperty("views", out var vs) && vs.ValueKind == JsonValueKind.Array)
+                    foreach (var v in vs.EnumerateArray())
+                    {
+                        var key = v.TryGetProperty("path", out var vp) && vp.GetString() is { Length: > 0 } viewPath ? viewPath : listed.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        var title = v.TryGetProperty("title", out var vt) && vt.GetString() is { Length: > 0 } viewTitle ? viewTitle : key;
+                        views.Add(new { path = $"{root}/{key}", name = $"{name} › {title}" });
+                        listed++;
+                    }
+                // a dashboard made by a strategy (the default one, until it is taken over) has no views of its own to list
+                if (listed == 0) views.Add(new { path = root, name });
+            }
+            // closing is a courtesy: at most two seconds, and the views are returned either way
+            try
+            {
+                using var closing = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await ws.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.NormalClosure, null, closing.Token);
+            }
+            catch { /* the server did not answer the close in time */ }
+            return new { configured = true, error = problem, phoneUrl = HaAddress.ForPhone(ha.Url), alternatives = HaAddress.Alternatives(HaAddress.ForPhone(ha.Url)), views };
+        }
+        catch (Exception ex)
+        {
+            log.LogDebug(ex, "Home Assistant dashboards");
+            return new { configured = true, error = ex is OperationCanceledException ? "Home Assistant did not answer" : ex.Message, phoneUrl = HaAddress.ForPhone(ha.Url), alternatives = HaAddress.Alternatives(HaAddress.ForPhone(ha.Url)), views = Array.Empty<object>() };
+        }
     }
 
     private static bool Switchable(string domain) => domain is "light" or "switch" or "fan" or "input_boolean" or "automation" or "siren" or "humidifier"

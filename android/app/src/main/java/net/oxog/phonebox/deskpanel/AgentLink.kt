@@ -36,7 +36,7 @@ import javax.net.ssl.X509TrustManager
  */
 class AgentLink(private val context: Context) {
 
-    class Reply(val code: Int, val contentType: String?, val body: InputStream)
+    class Reply(val code: Int, val contentType: String?, val body: InputStream, val headers: Map<String, String> = emptyMap())
 
     enum class Route { USB, WIFI, NONE }
 
@@ -398,7 +398,9 @@ class AgentLink(private val context: Context) {
             return Reply(502, "application/json", ByteArrayInputStream("""{"error":"unexpected response"}""".toByteArray()))
         }
         val body = (if (code >= 400) c.errorStream else c.inputStream) ?: ByteArrayInputStream(ByteArray(0))
-        return Reply(code, c.contentType, body)
+        val headers = listOf("Content-Security-Policy", "X-Content-Type-Options")
+            .mapNotNull { name -> c.getHeaderField(name)?.let { name to it } }.toMap()
+        return Reply(code, c.contentType, body, headers)
     }
 
     private fun unknownPost(c: HttpURLConnection): Reply {
