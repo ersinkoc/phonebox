@@ -1,4 +1,4 @@
-import { $, API, D, curPage, pages, PANEL_HEADERS, PREVIEW, LOCALE, Q_STYLE, api, bridge, cfg, cfgVersion, configMark, configReadSince, localWriteStored, loadConfig, color, cssVar, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtHM, fmtMem, gotoPageRef, gpuMem, gpusOf, h, en, haptic, icon, openSheet, paceInfo, pad, pairedPcs, quotaProviders, r1, shortDur, shortGpu, store, switchPc, t, tick, toast, transport, emo, labelled, rich, tp, tpv, quotaText } from '../main.js';
+import { $, API, D, curPage, pages, PANEL_HEADERS, PREVIEW, LOCALE, Q_STYLE, api, bridge, cfg, cfgVersion, configMark, configReadSince, localWriteStored, loadConfig, color, cssVar, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtHM, fmtMem, fmtReset, gotoPageRef, gpuMem, gpusOf, h, en, haptic, icon, openSheet, paceInfo, pad, pairedPcs, quotaProviders, r1, shortDur, shortGpu, store, switchPc, t, tick, toast, transport, emo, labelled, rich, tp, tpv, quotaText } from '../main.js';
 import { W } from '../registry.js';
 import { canKillAnywhere, dialEl, every } from './helpers.js';
 
@@ -1930,7 +1930,7 @@ W.quotaring = {
       dial.style.setProperty('--qc', l.percent >= 95 ? '#ef4444' : l.percent >= 80 ? '#f59e0b' : 'var(--q)');
       dial.set(l.percent, Math.round(l.percent), '%', pace?.elapsed);
       label.textContent = `${st.logo} ${p.name} · ${quotaText(l.label)}`;
-      sub.textContent = l.resetsAt ? 'resets in ' + fmtDur(l.resetsAt - Date.now()) : '';
+      sub.textContent = fmtReset(l.resetsAt); // clock time in the phone's zone and language, then the time left
       sub.className = 'g-sub ' + (pace?.cls === 'over' ? 'hot' : '');
     };
     return { update(kind) { if (kind === 'tick' && Date.now() - last < 30_000) return; last = Date.now(); render(); } };
