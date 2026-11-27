@@ -166,7 +166,8 @@ export async function api(path, method = 'GET', timeout = 2500) {
   const deadline = new Promise((_, fail) => setTimeout(() => fail(new Error('timeout')), timeout));
   try {
     const work = (async () => {
-      const r = await fetch(API + path, { method, signal: ctl.signal, cache: 'no-store', headers: PANEL_HEADERS });
+      // the app's bridge waits as long as this call does (X-PhoneBox-Timeout), not its own 4 s (#720)
+      const r = await fetch(API + path, { method, signal: ctl.signal, cache: 'no-store', headers: { ...PANEL_HEADERS, 'X-PhoneBox-Timeout': String(timeout) } });
       if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { status: r.status });
       const ct = r.headers.get('content-type') || '';
       // Awaited on purpose: the timer is cleared in finally, so returning the promise unawaited let a response that
