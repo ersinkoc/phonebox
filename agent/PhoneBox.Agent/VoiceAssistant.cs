@@ -10,6 +10,9 @@ namespace PhoneBox.Agent;
 /// </summary>
 public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor procs, PushStore push, AudioControl audio, ILogger<VoiceAssistant> log)
 {
+    [GeneratedRegex(@"^(?:(?:hey|hi|hello|yo|ok|okay|bro|please|can you|could you)\s+)+", RegexOptions.IgnoreCase)]
+    private static partial Regex PrefixRx();
+
     [GeneratedRegex(@"^(?:open|launch|start)\s+(?<app>.+?)\s+(?:and\s+)?search(?:\s+for)?\s+(?<query>.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex OpenAndSearchRx();
 
@@ -33,7 +36,7 @@ public sealed partial class VoiceAssistant(ConfigStore config, ProcessMonitor pr
         if (!assistantOn || w.Bool("control") != true)
             return Task.FromResult((false, 200, (string?)null));
 
-        var raw = Dictation.Clean(text).Trim();
+        var raw = PrefixRx().Replace(Dictation.Clean(text).Trim(), "").Trim();
         if (raw.Length == 0) return Task.FromResult((false, 400, (string?)null));
 
         var cfg = config.Get();
