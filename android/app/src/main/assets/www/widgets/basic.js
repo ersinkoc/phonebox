@@ -1119,6 +1119,25 @@ function addFocusMinutes(endedAt, minutes) {
   store.set(FOCUS_KEY, hist);
 }
 
+/**
+ * The timers of the Pomodoro widgets, one per sequence (#741): widgets with the same sequence share one timer, so
+ * starting, pausing, restarting or skipping on one page does the same on the others. owners counts the widgets on it.
+ */
+const POMO = new Map();
+/**
+ * Focus minutes of the focus steps that are running or paused, not yet in the history: the Focus history shows them as
+ * they go, and they drop out again when the step is restarted or skipped (#741).
+ */
+function liveFocusMinutes(now = Date.now()) {
+  let ms = 0;
+  for (const { st } of POMO.values()) {
+    if (st.phase !== 'focus' || !(st.stepMs > 0)) continue;
+    const left = st.endsAt ? Math.max(0, st.endsAt - now) : +st.left || 0;
+    ms += Math.min(st.stepMs, Math.max(0, st.stepMs - left));
+  }
+  return ms / 60_000;
+}
+
 W.pomodoro = {
   needs: ['tick'],
   always: true, // the alarm goes off on whatever page is showing
@@ -1153,8 +1172,19 @@ W.pomodoro = {
     }
     if (!(st.step >= 0 && st.step < plan.length)) st.step = 0;
     if (st.day !== today) { st.count = 0; st.day = today; }
-    const save = () => { st.phase = plan[st.step].kind; store.set(key, st); };
-    save();
+    // one timer per sequence: the first widget brings its state; after a reload the state saved last wins
+    let shared = POMO.get(sig);
+    if (!shared) POMO.set(sig, shared = { st, owners: 0 });
+    else if ((st.saved || 0) > (shared.st.saved || 0)) Object.assign(shared.st, st);
+    shared.owners++;
+    st = shared.st;
+    const save = (changed = true) => {
+      st.phase = plan[st.step].kind;
+      st.stepMs = plan[st.step].ms;
+      if (changed) st.saved = Date.now();
+      store.set(key, st);
+    };
+    save(false);
     const dial = h('div', 'g-dial'), time = h('div', 'g-val'), phase = h('div', 'g-label'), count = h('div', 'g-sub');
     const play = labelled(h('button', 'pb main', icon('play')), t('w.a.start')), reset = labelled(h('button', 'pb', icon('rotate-ccw')), t('w.a.restart')), skip = labelled(h('button', 'pb', icon('skip-forward')), t('w.a.skip'));
     dial.append(time);
@@ -1234,7 +1264,10 @@ W.pomodoro = {
       st.endsAt = null; st.left = total(); save(); render();
     });
     skip.addEventListener('click', () => { haptic(); advance(true); render(); });
-    return { update: render };
+    return {
+      update: render,
+      destroy() { if (--shared.owners <= 0 && POMO.get(sig) === shared) POMO.delete(sig); },
+    };
   },
 };
 
@@ -1306,7 +1339,9 @@ W.focushistory = {
       update() {
         week = lastWeek();
         const keys = week.map(dayKey), hist = keys[6] === shown.slice(0, 10) ? store.get(FOCUS_KEY, {}) || {} : focusWeek();
-        mins = keys.map((k) => Math.round(+hist[k] || 0));
+        // today also shows the focus step that is still going
+        const live = liveFocusMinutes();
+        mins = keys.map((k, i) => Math.round((+hist[k] || 0) + (i === 6 ? live : 0)));
         const sig = keys[6] + '|' + mins.join(',') + '|' + LOCALE;
         if (sig === shown) return;
         shown = sig;
