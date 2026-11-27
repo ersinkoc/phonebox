@@ -9,7 +9,7 @@ the panel, its widgets and its translations.
 
 ## Requirements
 
-- macOS with Xcode 16 or newer (iOS 16+ simulator or device)
+- macOS with Xcode 16 or newer (iOS 15+ simulator or device, so iPhones and iPads that stop at iOS/iPadOS 15 run it)
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 - The desktop agent with **Wi-Fi & Tailscale** enabled, and the phone on the same Wi-Fi or Tailscale network
   for the first pairing (USB reuses that pairing)
@@ -174,6 +174,10 @@ for each attached USB device when the pool has room, and favors the last working
   the phone's own battery, dictation, haptics, notification buzz, volume-key page flipping, screen pinning,
   home-screen role, forced orientation, Wake-on-LAN, the trackpad and switching computers. The panel loads and
   works without `window.Android`; those widgets show their unavailable state.
+- **On iOS 15 widgets don't scale fully.** Safari 15 has no container queries or container units (they came in
+  Safari 16), so, as on an Android WebView older than Chrome 105, small widgets keep details they would hide and
+  some sizes don't follow the widget. The panel itself runs: keep its code free of syntax Safari 15 rejects, such
+  as regex lookbehind (`(?<=`, `(?<!`, Safari 16.4), which stops `main.js` from loading at all.
 - The panel does not force landscape on iPhone; every orientation is allowed and the panel lays itself out.
 - The app is a foreground panel. iOS suspends it in the background; polling resumes when it is frontmost.
 - PhoneBox does not register the `phonebox://` URL scheme on iOS, so a pairing link opened from another app does
