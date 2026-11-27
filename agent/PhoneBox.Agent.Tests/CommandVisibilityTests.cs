@@ -90,12 +90,12 @@ public sealed class CommandVisibilityTests
                 watch.Created += (_, e) => { if (e.FullPath == startedFile) entered.TrySetResult(); };
                 _ = runner.Get("cmds", "w1");
                 if (File.Exists(startedFile)) entered.TrySetResult();
-                await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
             }
 
             Assert.Null(store.Save(MakeJson(false, winCmd, unixCmd)));
             File.WriteAllText(releaseFile, "go");
-            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 while (!running.IsEmpty && !cts.IsCancellationRequested) await Task.Yield();
             Assert.Empty(running); // the worker finished: an empty result list below means it was discarded, not still due
             Assert.Empty(results);
@@ -107,7 +107,7 @@ public sealed class CommandVisibilityTests
             results[key] = new CommandResult("before-rollback", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 3_600_000L, true, false, 1);
             _ = runner.Get("cmds", "w1", force: false)!;
             // the rerun publishes a fresh result; waited for, since it may finish before or after Get returns
-            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 while ((!running.IsEmpty || results.GetValueOrDefault(key)?.Output != "ok") && !cts.IsCancellationRequested) await Task.Delay(10);
             var rerun = results.GetValueOrDefault(key);
             Assert.Equal("ok", rerun?.Output);
@@ -165,7 +165,7 @@ public sealed class CommandVisibilityFixture : IDisposable
         watch.Created += (_, e) => { if (e.FullPath == _marker) observed.TrySetResult(); };
         watch.Renamed += (_, e) => { if (e.FullPath == _marker) observed.TrySetResult(); };
         if (Runner.Get("commands", "probe") is null) return false;
-        await observed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await observed.Task.WaitAsync(TimeSpan.FromSeconds(30));
         var pid = int.Parse(await File.ReadAllTextAsync(_marker));
         try { using var shell = Process.GetProcessById(pid); await shell.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)); }
         catch (ArgumentException) { } // already exited

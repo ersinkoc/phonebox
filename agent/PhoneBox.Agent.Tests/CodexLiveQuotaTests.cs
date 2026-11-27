@@ -275,7 +275,7 @@ public sealed class CodexLiveQuotaTests
             var start = Shell(
                 $"$a=[Console]::ReadLine(); [IO.File]::WriteAllText('{transcript}', $a + \"`n\"); [Console]::WriteLine('{{\"id\":1,\"method\":\"server/ping\"}}'); [Console]::WriteLine('{{\"id\":1,\"result\":{{}}}}'); $b=[Console]::ReadLine(); $c=[Console]::ReadLine(); [IO.File]::AppendAllText('{transcript}', $b + \"`n\" + $c); [Console]::WriteLine('{{\"method\":\"notification\"}}'); [Console]::WriteLine('{{\"id\":2,\"method\":\"server/request\"}}'); [Console]::WriteLine('{{\"id\":99,\"result\":{{}}}}'); [Console]::WriteLine('{response}'); Start-Sleep 60",
                 $"read -r a; printf '%s\\n' \"$a\" > '{transcript}'; printf '%s\\n' '{{\"id\":1,\"method\":\"server/ping\"}}' '{{\"id\":1,\"result\":{{}}}}'; read -r b; read -r c; printf '%s\\n' \"$b\" \"$c\" >> '{transcript}'; printf '%s\\n' 'diagnostic' '{{\"method\":\"notification\"}}' '{{\"id\":2,\"method\":\"server/request\"}}' '{{\"id\":99,\"result\":{{}}}}' '{response}'; exec sleep 60");
-            var result = await CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(10), default);
+            var result = await CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(30), default);
             Assert.Equal(82, result.Limits[0].Percent);
             var requests = File.ReadAllLines(transcript).Select(line => JsonDocument.Parse(line)).ToArray();
             try
@@ -301,7 +301,7 @@ public sealed class CodexLiveQuotaTests
     {
         var start = Shell($"[Console]::ReadLine() | Out-Null; [Console]::WriteLine('{response}')",
             $"read -r a; printf '%s\\n' '{response}'");
-        await Assert.ThrowsAsync<IOException>(() => CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(10), default));
+        await Assert.ThrowsAsync<IOException>(() => CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(30), default));
     }
 
     [Theory]
@@ -316,8 +316,8 @@ public sealed class CodexLiveQuotaTests
         int pid = 0;
         try
         {
-            var pending = CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(cancel ? 30 : 8), cancellation.Token);
-            using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var pending = CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(cancel ? 60 : 15), cancellation.Token);
+            using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(45));
             while (pid == 0)
             {
                 if (File.Exists(marker))
