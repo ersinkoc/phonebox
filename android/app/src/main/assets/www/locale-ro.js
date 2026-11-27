@@ -2013,7 +2013,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Recent tool": "Instrument recent",
       "Recorded tokens": "Tokenuri înregistrate",
       "Recording ": "Înregistrare ",
-      "Release to restore the microphone": "Eliberează pentru a reactiva microfonul",
+      "Release to restore the microphone": "Eliberează pentru a restabili microfonul",
       "Repeat: ": "Repetare: ",
       "Reset": "Resetează",
       "Resume": "Reia",

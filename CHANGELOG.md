@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Romanian** (Română) joins the interface languages: the panel, the settings page, the widget and template catalog,
+  the Windows tray, the Android pairing and phone-bridge dialogs, and a Romanian README. Pick it in Settings › General ›
+  Language, or it follows a phone set to Romanian (#671, [GabrielUlici](https://github.com/GabrielUlici)).
+- Stocks: A-share names such as 上证指数 show in full instead of two characters and an ellipsis; the name column fits
+  the longest name in the list, and exchange and crypto rows keep their layout (#674,
+  [elong365](https://github.com/elong365)).
+
 ## 0.9.31 — 2026-11-27
 
 - Pages: a dimmed **photo background** per page, from the Photo frame's source (a folder or an Immich album). A new

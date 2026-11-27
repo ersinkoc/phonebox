@@ -67,6 +67,17 @@ people who proposed or prototyped something are credited in the [changelog](../C
   with Windows' own H.264 decoder and delivered as an OBS source or a Windows 11 virtual camera (not by writing into
   OBS's virtual camera); no new downloads, and start, stop and state visible on the phone. A small prototype and a
   design note first.
+- **The playing app's volume in Now playing** ([#673](https://github.com/ersinkoc/phonebox/issues/673)), Windows, the
+  first of two pull requests: a widget option that makes the slider control the Core Audio session of the app behind
+  the media session (a browser's own session; a WebView2 app through its parent process), with the master volume as a
+  second slider below it. The source icon may show a known site taken from the browser's window title; the title
+  itself stays on the computer. No mixer column inside Now playing: the Application mixer widget already does that.
+- **A preview of the computer's own cameras** ([#673](https://github.com/ersinkoc/phonebox/issues/673)), Windows, the
+  second pull request: webcams through `MediaCapture` in shared read-only mode (never taking the camera from another
+  app), and DirectShow-only virtual cameras through ffmpeg's `dshow` input, as about 5 JPEG frames a second at 640 px
+  in the Camera widget. Off by default behind a switch in Settings on the computer (the phone cannot turn it on),
+  only while the widget is on screen, and the camera closes a few seconds after the last request so its light goes
+  off. Frames are not stored or logged.
 
 ## Open for a contributor
 
@@ -99,6 +110,10 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   list, the default microphone, switching the default device and per-app volume through `pactl` (sinks, sources and
   sink inputs; PipeWire answers it too), with a forced C locale for parsing. Today these are Windows-only and the
   Linux agent controls only the system output.
+- **Synced lyrics from files on the computer** ([#669](https://github.com/ersinkoc/phonebox/issues/669)): `.lrc`
+  files from a folder chosen in Settings on the computer, matched by artist and title, as a source before or instead
+  of LRCLIB in the Synced lyrics widget. Off until a folder is set; the agent reads only `.lrc` files inside that
+  folder (no path patterns from the phone), and the folder's path never goes to the phone.
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
 
@@ -134,6 +149,11 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   panel calls the same 14 ms haptic for every widget, and `dumpsys vibrator` showed no vibration from the app at all,
   so whether the phone drops short vibrations needs `adb shell dumpsys vibrator` right after a shortcut tap and an HA
   tap, and MIUI's touch-vibration setting.
+- **Spotify queue: a tapped track still replaces what is playing in 0.9.31**
+  ([#668](https://github.com/ersinkoc/phonebox/issues/668)): since 0.9.30 a tapped track starts inside the playing
+  playlist or album, but the Web API takes a starting track only there, so Liked Songs, an artist, a radio or mix and
+  hand-queued tracks still play it on its own. Where the music was playing from, and `agent.log` right after a tap,
+  are needed.
 
 ## How to help
 
