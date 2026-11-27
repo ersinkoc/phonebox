@@ -26,6 +26,9 @@ final class AgentClient {
     private var probing = false
     private var lastProbe = Date.distantPast
     private var invalidated = false
+    /// Counts answers from the active computer. A probe started before one of them is stale: the active computer is
+    /// back, so whatever the probe finds must not take its place.
+    private var activeAnswers = 0
     private static let probeInterval: TimeInterval = 4
 
     init(computer: PairedComputer, others: [PairedComputer] = [], onSwitch: @escaping @MainActor (PairedComputer) -> Void = { _ in }) {
@@ -42,7 +45,7 @@ final class AgentClient {
     /// usual 503 "offline"). Only GET and POST are accepted.
     func request(method: String, pathAndQuery: String, body: Data? = nil, contentType: String? = nil) async -> AgentReply? {
         let reply = await send(method: method, pathAndQuery: pathAndQuery, body: body, contentType: contentType)
-        if reply == nil { lookForAnotherComputer() }
+        if reply == nil { lookForAnotherComputer() } else { activeAnswered() }
         return reply
     }
 
@@ -110,11 +113,18 @@ final class AgentClient {
 
     // MARK: - Another paired computer
 
+    private func activeAnswered() {
+        probeLock.lock()
+        activeAnswers &+= 1
+        probeLock.unlock()
+    }
+
     private func lookForAnotherComputer() {
         guard !others.isEmpty else { return }
         probeLock.lock()
         guard !probing, Date().timeIntervalSince(lastProbe) >= Self.probeInterval else { probeLock.unlock(); return }
         probing = true
+        let startedAt = activeAnswers
         probeLock.unlock()
 
         Task.detached(priority: .utility) { [self] in
@@ -127,18 +137,20 @@ final class AgentClient {
                 }
                 return nil
             }
-            // A panel that went away meanwhile (the user picked another computer) must not be overruled.
-            if finishProbe(), let found { await onSwitch(found) }
+            // A panel that went away meanwhile (the user picked another computer, or the pairings changed) must not be
+            // overruled, and neither may an active computer that answered again while the probe ran.
+            if finishProbe(startedAt: startedAt), let found { await onSwitch(found) }
         }
     }
 
-    /// Ends a probe; false when this client was invalidated while it ran.
-    private func finishProbe() -> Bool {
+    /// Ends a probe; false when its result must be dropped: this client was invalidated, or the active computer
+    /// answered after the probe started.
+    private func finishProbe(startedAt: Int) -> Bool {
         probeLock.lock()
         defer { probeLock.unlock() }
         probing = false
         lastProbe = Date()
-        return !invalidated
+        return !invalidated && activeAnswers == startedAt
     }
 
     /// Whether a paired computer answers on one of its Wi-Fi/Tailscale addresses with its own certificate and

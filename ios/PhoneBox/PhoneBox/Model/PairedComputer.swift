@@ -3,7 +3,7 @@ import PhoneBoxKit
 
 /// A computer this iPhone is paired with. The whole record (including the agent token) lives in the iOS Keychain;
 /// it is never written to preferences or given to the WebView.
-struct PairedComputer: Codable, Equatable, Identifiable {
+struct PairedComputer: Codable, Hashable, Identifiable {
     let name: String
     let hosts: [String]
     let port: Int

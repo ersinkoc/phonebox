@@ -64,14 +64,24 @@ final class PairingStore: ObservableObject {
         UserDefaults.standard.set(id, forKey: Self.activeKey)
     }
 
-    func forget(_ id: String) {
-        let next = computers.filter { $0.id != id }
-        try? keychain.save(next)
+    /// Forgets several computers at once (one Keychain write). Nothing changes when the write fails: the error is
+    /// shown and the computers stay paired, rather than coming back after the next launch.
+    func forget(_ ids: Set<String>) {
+        let next = computers.filter { !ids.contains($0.id) }
+        guard next.count != computers.count else { return }
+        do {
+            try keychain.save(next)
+        } catch {
+            errorMessage = (error as? KeychainError)?.errorDescription ?? "Could not forget the computer: \(error.localizedDescription)"
+            return
+        }
         computers = next
-        if activeID == id {
+        if let active = activeID, ids.contains(active) {
             activeID = next.first?.id
             UserDefaults.standard.set(activeID, forKey: Self.activeKey)
         }
         errorMessage = nil
     }
+
+    func forget(_ id: String) { forget([id]) }
 }

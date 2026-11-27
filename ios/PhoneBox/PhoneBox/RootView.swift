@@ -7,9 +7,11 @@ struct RootView: View {
     var body: some View {
         Group {
             if let computer = pairing.computer {
-                // A new id rebuilds the panel: switching computers starts a fresh page with that computer's layout.
+                // A new identity rebuilds the panel with a fresh client and USB link: switching computers (a page with
+                // that computer's layout), pairing or forgetting one (the others to ask), or pairing the same computer
+                // again (new addresses or token). An outstanding probe of the old client is discarded.
                 PanelScreen(computer: computer, others: pairing.others)
-                    .id(computer.id)
+                    .id([computer] + pairing.computers)
             } else {
                 UnpairedView()
             }
@@ -69,6 +71,12 @@ private struct ComputerOptionsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let message = pairing.errorMessage {
+                    Section {
+                        Label(message, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
+                }
                 Section {
                     ForEach(pairing.computers) { item in
                         Button {
@@ -90,7 +98,8 @@ private struct ComputerOptionsView: View {
                         }
                     }
                     .onDelete { offsets in
-                        for index in offsets { pairing.forget(pairing.computers[index].id) }
+                        // offsets point into the list as it is now: turn them into ids before anything is removed
+                        pairing.forget(Set(offsets.map { pairing.computers[$0].id }))
                     }
                     Button {
                         addingComputer = true
@@ -123,7 +132,7 @@ private struct ComputerOptionsView: View {
                 Section {
                     Button("Forget this computer", role: .destructive) {
                         pairing.forget(computer.id)
-                        dismiss()
+                        if pairing.errorMessage == nil { dismiss() }
                     }
                 } footer: {
                     Text("Pairings live in the iOS Keychain. Forgetting one removes that computer's agent token from this iPhone.")
