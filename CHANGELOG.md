@@ -24,9 +24,9 @@
 - Trackpad: a two-finger scroll no longer nudges the cursor when the fingers land or lift a moment apart, and a tap
   no longer moves it by a few pixels. **Inertial scrolling** (on by default, in the widget's Scrolling settings) lets a
   two-finger flick coast on and slow down (#676, [Prajjwal2404](https://github.com/Prajjwal2404)).
-- Night screen: touching or dragging keeps it from turning on under your finger. The dark-room countdown and the
-  30-second wake hold start again 30 seconds after the last interaction, so a scheduled night, a dark room or a rule's
-  night action waits until you have let go; the Stay and Go now buttons of a page switch do not count (#670,
+- Night screen: touching or dragging keeps it from turning on under your finger. Every touch restarts the 30-second
+  dark-room countdown and wake hold, so a scheduled night, a dark room or a rule's night action waits until 30 seconds
+  after you let go; the Stay and Go now buttons of a page switch do not count (#670,
   [Prajjwal2404](https://github.com/Prajjwal2404)).
 
 ## 0.9.31 — 2026-11-27
