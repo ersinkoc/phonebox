@@ -457,6 +457,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "Certifikát brokeru nebyl přijat. Zadejte soubor jeho CA nebo otisk.",
       "s.mqtt.err.auth": "Broker odmítl uživatelské jméno nebo heslo.",
       "s.mqtt.err.other": "Připojení se nezdařilo. Zkontrolujte přenos, cestu WebSocket a soubor CA.",
+      "s.mqtt.err.config": "Adresu nebo soubor CA nelze použít. Zadejte prostý název hostitele nebo IP adresu (bez mqtt:// a bez cesty) a čitelný soubor CA.",
       "s.ha.pickIcon": "Vybrat ikonu",
       "s.ha.close": "Close",
       "s.ha.iconTitle": "Vyberte ikonu",

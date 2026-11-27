@@ -457,6 +457,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "broker 的憑證未被接受。請填寫其 CA 檔案或指紋。",
       "s.mqtt.err.auth": "broker 拒絕了使用者名稱或密碼。",
       "s.mqtt.err.other": "連線失敗。請檢查傳輸方式、WebSocket 路徑和 CA 檔案。",
+      "s.mqtt.err.config": "無法使用該位址或 CA 檔案。請填寫單純的主機名稱或 IP 位址（不要帶 mqtt:// 和路徑）以及可讀取的 CA 檔案。",
       "s.ha.pickIcon": "選擇圖示",
       "s.ha.close": "關閉",
       "s.ha.iconTitle": "選擇一個圖示",

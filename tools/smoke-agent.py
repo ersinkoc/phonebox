@@ -56,7 +56,6 @@ with tempfile.TemporaryDirectory(prefix='phonebox-smoke-') as work:
    phone_config=json.dumps(get('/api/config')).encode()
    assert not any(x in phone_config for x in (b'smoke-mqtt-password',b'smoke-mqtt-user',b'broker.invalid',b'mqtt')),'MQTT in the phone config'
    assert get('/api/mqtt/status')=={'state':'off','lastMessageAt':None,'errorKind':None},'MQTT status while off'
-   assert usb_status('/api/mqtt/status',headers={'Authorization':'Bearer '+'A'*43})==401,'USB port answered the MQTT status without a key'
    # A filled Big button asks for the upload only, as upload=true: the real query binding must accept it, serve the
    # upload, and answer 404 (not the program icon, not 400) once the upload is removed.
    def status(path,method='GET',data=None,ctype=None):

@@ -86,11 +86,19 @@ test('Test sends the page\'s settings without the saved-password flag, and shows
   sent = await page.evaluate(() => window.__mqttCalls[1]);
   expect(sent.password).toBe('typed');
 
-  for (const [kind, text] of [['refused', 'could not be reached'], ['dns', 'could not be reached'], ['timeout', 'could not be reached'], ['tls', 'certificate was not accepted'], ['protocol', 'The connection failed'], ['config', 'The connection failed']]) {
+  for (const [kind, text] of [['config', 'cannot be used'], ['refused', 'could not be reached'], ['dns', 'could not be reached'], ['timeout', 'could not be reached'], ['tls', 'certificate was not accepted'], ['protocol', 'The connection failed']]) {
     await page.evaluate((k) => { window.__mqttAnswer = { ok: false, errorKind: k }; }, kind);
     await page.locator('#mqttTest').click();
     await expect(page.locator('#mqttState')).toContainText(text);
   }
+});
+
+test('Revert brings the password field back to what is saved', async ({ page }) => {
+  await open(page, config({ enabled: true, host: 'broker.local', passwordSet: true }));
+  await page.locator('#mqttPassword').fill('typed-then-reverted');
+  await page.locator('#revert').click();
+  await expect(page.locator('#mqttPassword')).toHaveValue('');
+  expect(await page.evaluate(() => 'password' in cfg.mqtt)).toBe(false);
 });
 
 test('the card is translated (German)', async ({ page }) => {

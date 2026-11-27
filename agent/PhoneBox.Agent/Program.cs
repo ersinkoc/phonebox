@@ -433,7 +433,7 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
     if (ConfigStore.PreserveSteamApiKey(proposed, cfg.Get().Steam.ApiKey))
         body = JsonSerializer.Serialize(proposed, ConfigStore.WriteOpts);
     // the page never has the MQTT password: a save without one keeps it, an empty one removes it
-    if (MqttConfig.KeepPassword(proposed, cfg.Get().Mqtt.Password))
+    if (MqttConfig.KeepPassword(proposed, cfg.Get().Mqtt))
         body = JsonSerializer.Serialize(proposed, ConfigStore.WriteOpts);
     if (proposed?.Steam is { } steam)
     {

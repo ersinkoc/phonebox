@@ -501,6 +501,7 @@
       's.mqtt.err.tls': 'The broker\'s certificate was not accepted. Enter its CA file or its fingerprint.',
       's.mqtt.err.auth': 'The broker refused the user name or password.',
       's.mqtt.err.other': 'The connection failed. Check the transport, the WebSocket path and the CA file.',
+      's.mqtt.err.config': 'The address or the CA file cannot be used. Enter a plain host name or IP address (no mqtt:// and no path) and a CA file that can be read.',
       's.ha.pickIcon': 'Pick icon',
       's.ha.close': 'Close',
       's.ha.iconTitle': 'Choose an icon',

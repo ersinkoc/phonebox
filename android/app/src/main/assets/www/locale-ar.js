@@ -457,6 +457,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "لم تُقبل شهادة الوسيط. أدخل ملف CA الخاص به أو بصمته.",
       "s.mqtt.err.auth": "رفض الوسيط اسم المستخدم أو كلمة المرور.",
       "s.mqtt.err.other": "فشل الاتصال. تحقق من وسيلة النقل ومسار WebSocket وملف CA.",
+      "s.mqtt.err.config": "لا يمكن استخدام العنوان أو ملف CA. أدخل اسم مضيف بسيطًا أو عنوان IP (دون mqtt:// ودون مسار) وملف CA يمكن قراءته.",
       "s.ha.pickIcon": "اختار رمز",
       "s.ha.close": "إغلاق",
       "s.ha.iconTitle": "اختار رمزاً",

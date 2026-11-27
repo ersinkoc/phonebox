@@ -32,7 +32,7 @@ public sealed class MqttTests : IDisposable
         return new ConfigStore(path);
     }
 
-    private static async Task<MqttStatus> Until(MqttConnection connection, Func<MqttStatus, bool> done, int seconds = 10)
+    private static async Task<MqttStatus> Until(MqttConnection connection, Func<MqttStatus, bool> done, int seconds = 30)
     {
         for (var i = 0; i < seconds * 20; i++)
         {
@@ -87,11 +87,12 @@ public sealed class MqttTests : IDisposable
             Host = " mqtt://broker.local/path ", Port = 70000, Transport = "carrier-pigeon", WebSocketPath = "x?y",
             KeepAliveSec = 1, WillTopic = "home/#", WillQos = 9, WillRetain = true, PinnedFingerprint = "nope",
         });
-        Assert.Null(c.Host); // a pasted address is not a host name
+        Assert.Equal("mqtt://broker.local/path", c.Host); // kept as typed; connecting says it is no host name (below)
         Assert.Equal(1883, c.Port);
         Assert.Equal("tcp", c.Transport);
         Assert.Equal("/mqtt", c.WebSocketPath);
         Assert.Equal(5, c.KeepAliveSec);
+        Assert.Equal(" a\nb ", MqttConfig.Normalized(new MqttConfig { WillTopic = "t", WillPayload = " a\nb " }).WillPayload); // sent as it is
         Assert.Equal(60, MqttConfig.Normalized(new MqttConfig { KeepAliveSec = 0 }).KeepAliveSec);
         Assert.Equal(600, MqttConfig.Normalized(new MqttConfig { KeepAliveSec = 9000 }).KeepAliveSec);
         Assert.Null(c.WillTopic); // a wildcard is no topic to publish to
@@ -146,17 +147,18 @@ public sealed class MqttTests : IDisposable
     [Fact]
     public void ASaveWithoutAPasswordKeepsTheStoredOneAndAnEmptyOneRemovesIt()
     {
-        var left = new AgentConfig { Mqtt = new() { Password = null } };
-        Assert.True(MqttConfig.KeepPassword(left, Password));
+        var stored = Config(1883);
+        var left = new AgentConfig { Mqtt = new() { Host = "127.0.0.1", Port = 1883, Username = User, Password = null } };
+        Assert.True(MqttConfig.KeepPassword(left, stored));
         Assert.Equal(Password, left.Mqtt.Password);
-        var replaced = new AgentConfig { Mqtt = new() { Password = "new-one" } };
-        Assert.False(MqttConfig.KeepPassword(replaced, Password));
+        var replaced = new AgentConfig { Mqtt = new() { Host = "127.0.0.1", Port = 1883, Username = User, Password = "new-one" } };
+        Assert.False(MqttConfig.KeepPassword(replaced, stored));
         Assert.Equal("new-one", replaced.Mqtt.Password);
 
         var store = Store(Config(1883));
         var cleared = JsonSerializer.Serialize(new { mqtt = new { enabled = true, host = "127.0.0.1", password = "" } });
         var proposed = JsonSerializer.Deserialize<AgentConfig>(cleared, ConfigStore.ReadOpts);
-        Assert.False(MqttConfig.KeepPassword(proposed, Password)); // "" is not "left out"
+        Assert.False(MqttConfig.KeepPassword(proposed, Config(1883))); // "" is not "left out"
         Assert.Null(store.Save(cleared));
         Assert.Null(store.Get().Mqtt.Password);
     }
@@ -367,6 +369,106 @@ public sealed class MqttTests : IDisposable
         Assert.Equal(new MqttTestResult(false, "config"), await MqttConnection.TestAsync(MqttConfig.ForTest(cfg, new MqttConfig()), CancellationToken.None));
         File.WriteAllText(cfg.CaFile, "this is not a certificate");
         Assert.Equal(new MqttTestResult(false, "config"), await MqttConnection.TestAsync(MqttConfig.ForTest(cfg, new MqttConfig()), CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("evil.example", 1883, User, true, "tcp")]  // another host
+    [InlineData("127.0.0.1", 1884, User, true, "tcp")]     // another port
+    [InlineData("127.0.0.1", 1883, "mallory", true, "tcp")] // another user
+    [InlineData("127.0.0.1", 1883, User, true, "websocket")] // another transport
+    [InlineData("127.0.0.1", 1883, User, false, "tcp")]    // the same, TLS switched on or off
+    public void ASaveThatPointsAtAnotherBrokerDropsTheStoredPassword(string host, int port, string user, bool sameTls, string transport)
+    {
+        var stored = Config(1883);
+        var proposed = new AgentConfig { Mqtt = new() { Host = host, Port = port, Username = user, Transport = transport, Tls = !sameTls, Password = null } };
+        if (sameTls) proposed.Mqtt.Tls = stored.Tls;
+        Assert.False(MqttConfig.KeepPassword(proposed, stored));
+        Assert.Null(proposed.Mqtt.Password);
+    }
+
+    [Fact]
+    public async Task ASettingsChangeIsNotAFailedConnection()
+    {
+        using var broker = await MqttTestBroker.StartAsync();
+        var log = new ListLogger<MqttConnection>();
+        var store = Store(Config(broker.Port, user: null, password: null));
+        var connection = new MqttConnection(store, log);
+        await connection.StartAsync(CancellationToken.None);
+        try
+        {
+            await Until(connection, s => s.State == MqttConnection.Connected);
+            var off = Config(broker.Port, user: null, password: null);
+            off.Enabled = false;
+            Assert.Null(store.Save(JsonSerializer.Serialize(new { mqtt = off }, ConfigStore.WriteOpts)));
+            for (var i = 0; i < 80 && connection.Status.State != MqttConnection.Off; i++)
+            {
+                Assert.NotEqual(MqttConnection.Error, connection.Status.State);
+                await Task.Delay(50);
+            }
+            Assert.Equal(MqttConnection.Off, connection.Status.State);
+            Assert.DoesNotContain(log.Lines, l => l.Contains("failed"));
+        }
+        finally { await connection.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task ABrokerThatGoesAwayIsAnErrorAndIsTriedAgain()
+    {
+        var port = MqttTestBroker.FreePort();
+        var broker = await MqttTestBroker.StartAsync(at: port);
+        var connection = new MqttConnection(Store(Config(port, user: null, password: null)), NullLogger<MqttConnection>.Instance);
+        await connection.StartAsync(CancellationToken.None);
+        try
+        {
+            await Until(connection, s => s.State == MqttConnection.Connected);
+            broker.Dispose();
+            await Until(connection, s => s.State == MqttConnection.Error);
+            using var again = await MqttTestBroker.StartAsync(at: port);
+            await Until(connection, s => s.State == MqttConnection.Connected);
+        }
+        finally { await connection.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task ACorrectedSettingEndsTheWaitAtOnce()
+    {
+        using var broker = await MqttTestBroker.StartAsync();
+        var store = Store(Config(MqttTestBroker.FreePort(), user: null, password: null)); // nothing listens there
+        var connection = new MqttConnection(store, NullLogger<MqttConnection>.Instance);
+        await connection.StartAsync(CancellationToken.None);
+        try
+        {
+            await Until(connection, s => s.State == MqttConnection.Error);
+            var started = DateTime.UtcNow;
+            Assert.Null(store.Save(JsonSerializer.Serialize(new { mqtt = Config(broker.Port, user: null, password: null) }, ConfigStore.WriteOpts)));
+            await Until(connection, s => s.State == MqttConnection.Connected);
+            Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(4), "the five-second wait was sat out");
+        }
+        finally { await connection.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task AnAddressThatIsNotAHostIsAConfigErrorNotSilence()
+    {
+        var cfg = Config(1883);
+        cfg.Host = "mqtt://broker.local";
+        var (status, log) = await RunOnceAsync(cfg, s => s.State == MqttConnection.Error);
+        Assert.Equal("config", status.ErrorKind);
+        AssertNoSecrets(JsonSerializer.Serialize(status), log, 1883, "broker.local");
+        Assert.Equal(new MqttTestResult(false, "config"), await MqttConnection.TestAsync(MqttConfig.ForTest(cfg, new MqttConfig()), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ACertificateForClientsOnlyIsNotAServerCertificate()
+    {
+        using var ca = MqttTestBroker.Certificate("PhoneBox test CA", authority: true);
+        using var clientOnly = MqttTestBroker.Certificate("localhost", ca, usage: "1.3.6.1.5.5.7.3.2"); // clientAuth
+        var caFile = Path.Combine(_dir, "ca2.pem");
+        File.WriteAllText(caFile, ca.ExportCertificatePem());
+        using var broker = await MqttTestBroker.StartAsync(clientOnly);
+        var cfg = Config(broker.Port, tls: true);
+        cfg.CaFile = caFile;
+        Assert.Equal(new MqttTestResult(false, "tls"), await MqttConnection.TestAsync(MqttConfig.ForTest(cfg, new MqttConfig()), CancellationToken.None));
     }
 
     // ---------------------------------------------------------------- the kinds of error

@@ -76,6 +76,8 @@ internal sealed class MqttTrust
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
         chain.ChainPolicy.CustomTrustStore.AddRange(_roots);
         chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        // the certificate must be one for a server (a client certificate from the same CA is not)
+        chain.ChainPolicy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.1"));
         if (presented is not null)
             foreach (var element in presented.ChainElements.Skip(1)) chain.ChainPolicy.ExtraStore.Add(element.Certificate);
         using var leaf = X509CertificateLoader.LoadCertificate(certificate.GetRawCertData());
@@ -108,17 +110,18 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        var wait = TimeSpan.FromSeconds(5);
+        var first = TimeSpan.FromSeconds(5);
+        var wait = first;
         string? lastKind = null;
         while (!ct.IsCancellationRequested)
         {
             var cfg = config.Get().Mqtt;
-            if (!cfg.Configured) { _status = new(Off, null, null); lastKind = null; await Pause(TimeSpan.FromSeconds(2), ct); continue; }
+            if (!cfg.Configured) { _status = new(Off, null, null); lastKind = null; await Pause(TimeSpan.FromSeconds(2), null, ct); continue; }
+            var signature = Signature(cfg);
             try
             {
-                await RunAsync(cfg, ct);
-                wait = TimeSpan.FromSeconds(5);
-                lastKind = null;
+                // returns when the settings changed or the agent stops: connect again at once, with what is saved now
+                await RunAsync(cfg, signature, ct, () => { wait = first; lastKind = null; });
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
             catch (Exception ex)
@@ -128,24 +131,31 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
                 // only the kind is logged, once per change: the text of the error would name the broker
                 if (kind != lastKind) log.LogInformation("mqtt: connection failed ({Kind})", kind);
                 lastKind = kind;
-                await Pause(wait, ct);
-                wait = TimeSpan.FromSeconds(Math.Min(wait.TotalSeconds * 2, 60));
-                continue;
+                // a corrected setting ends the wait: no need to sit out a minute for it
+                wait = await Pause(wait, signature, ct) ? first : TimeSpan.FromSeconds(Math.Min(wait.TotalSeconds * 2, 60));
             }
-            await Pause(wait, ct);
         }
         _status = new(Off, null, null);
     }
 
-    private static async Task Pause(TimeSpan time, CancellationToken ct)
+    /// <summary>Waits, or until the settings differ from <paramref name="signature"/>; true when they did.</summary>
+    private async Task<bool> Pause(TimeSpan time, string? signature, CancellationToken ct)
     {
-        try { await Task.Delay(time, ct); } catch (OperationCanceledException) { }
+        try
+        {
+            for (var left = time; left > TimeSpan.Zero; left -= TimeSpan.FromMilliseconds(500))
+            {
+                if (signature is not null && Signature(config.Get().Mqtt) != signature) return true;
+                await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+            }
+        }
+        catch (OperationCanceledException) { }
+        return false;
     }
 
-    /// <summary>Connects and stays connected until the connection drops or the settings change; returns then.</summary>
-    private async Task RunAsync(MqttConfig cfg, CancellationToken ct)
+    /// <summary>Connects and stays connected until the connection drops (an exception) or the settings change (a return).</summary>
+    private async Task RunAsync(MqttConfig cfg, string signature, CancellationToken ct, Action connected)
     {
-        var signature = Signature(cfg);
         Interlocked.Exchange(ref _lastMessage, 0);
         _status = new(Connecting, null, null);
         var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -155,11 +165,15 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
             c.ApplicationMessageReceivedAsync += _ => { Interlocked.Exchange(ref _lastMessage, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()); return Task.CompletedTask; };
         });
         _status = new(Connected, null, null);
+        connected(); // a connection that held resets the wait, so a drop after days is retried in seconds
         log.LogInformation("mqtt: connected");
+        var dropped = false;
         try
         {
             while (!ct.IsCancellationRequested && !lost.Task.IsCompleted && Signature(config.Get().Mqtt) == signature)
                 await Task.WhenAny(lost.Task, Task.Delay(1000, ct));
+            // read before our own goodbye below: MQTTnet reports that one as a disconnect too
+            dropped = lost.Task.IsCompleted;
         }
         catch (OperationCanceledException) { }
         finally
@@ -170,8 +184,8 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
                 try { await client.DisconnectAsync(new MqttClientDisconnectOptions(), closing.Token); } catch { /* the broker did not answer the goodbye in time */ }
             }
         }
-        // dropped by the broker or the network (not by a settings change or the agent stopping): try again, with a wait
-        if (!ct.IsCancellationRequested && lost.Task.IsCompleted) throw new MqttFailure("other");
+        // dropped by the broker or the network, not by a settings change or the agent stopping
+        if (dropped && !ct.IsCancellationRequested) throw new MqttFailure("other");
     }
 
     // the settings the connection was made with, to notice a change; compared in memory and never logged
@@ -200,6 +214,8 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
     /// <summary>A connected client. Throws <see cref="MqttFailure"/> (a kind only) when the connection cannot be made.</summary>
     internal static async Task<IMqttClient> OpenAsync(MqttConfig cfg, string idSuffix, CancellationToken ct, Action<IMqttClient>? attach = null)
     {
+        // the saved text may be anything (a pasted mqtt:// address): only a plain host name or IP address is connected to
+        if (MqttConfig.CleanHost(cfg.Host) is null) throw new MqttFailure("config");
         var trust = new MqttTrust(cfg);
         var client = new MqttClientFactory().CreateMqttClient();
         try
@@ -234,7 +250,7 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
         if (cfg.WillTopic is { } topic)
             b.WithWillTopic(topic).WithWillPayload(cfg.WillPayload ?? "").WithWillRetain(cfg.WillRetain)
                 .WithWillQualityOfServiceLevel((MqttQualityOfServiceLevel)cfg.WillQos);
-        var host = cfg.Host!;
+        var host = MqttConfig.CleanHost(cfg.Host)!;
         if (cfg.Transport == MqttConfig.WebSocket)
         {
             var name = host.Contains(':') ? $"[{host}]" : host;

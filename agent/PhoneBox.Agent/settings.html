@@ -2793,6 +2793,8 @@ $('haTest').onclick = async () => {
 // without one keeps the stored one. "Remove" sends an empty one.
 function renderMqtt() {
   const saved = !!cfg.mqtt.passwordSet && cfg.mqtt.password !== '';
+  // what is on the page is what is sent: after Revert the field shows a typed password again, or nothing
+  $('mqttPassword').value = typeof cfg.mqtt.password === 'string' ? cfg.mqtt.password : '';
   $('mqttPassword').placeholder = saved ? '••••••••' : '';
   $('mqttPasswordRemove').hidden = !saved;
 }
@@ -2802,7 +2804,7 @@ $('mqttPassword').oninput = () => {
   changed();
 };
 $('mqttPasswordRemove').onclick = () => { cfg.mqtt.password = ''; $('mqttPassword').value = ''; renderMqtt(); changed(); };
-const mqttError = (kind) => t('s.mqtt.err.' + (['dns', 'refused', 'timeout'].includes(kind) ? 'network' : ['tls', 'auth'].includes(kind) ? kind : 'other'));
+const mqttError = (kind) => t('s.mqtt.err.' + (['dns', 'refused', 'timeout'].includes(kind) ? 'network' : ['tls', 'auth', 'config'].includes(kind) ? kind : 'other'));
 let mqttTestedAt = 0;
 $('mqttTest').onclick = async () => {
   mqttTestedAt = Date.now();
@@ -2818,7 +2820,9 @@ async function renderMqttState() {
   // a test's answer stays for a while before the live state takes the line over again
   if (document.hidden || !cfg?.mqtt?.enabled || Date.now() - mqttTestedAt < 15000) return;
   try {
+    const asked = mqttTestedAt;
     const s = await (await fetch('/api/mqtt/status', { cache: 'no-store' })).json();
+    if (asked !== mqttTestedAt) return; // a test ran while this was on its way: its answer stays
     $('mqttState').textContent = s.state === 'connected' ? t('s.cd.connected') : s.state === 'connecting' ? t('panel.connecting') : s.state === 'error' ? mqttError(s.errorKind) : '';
   } catch (_) { $('mqttState').textContent = ''; }
 }

@@ -457,6 +457,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "ブローカーの証明書が受け入れられませんでした。その CA ファイルかフィンガープリントを入力してください。",
       "s.mqtt.err.auth": "ブローカーがユーザー名またはパスワードを拒否しました。",
       "s.mqtt.err.other": "接続に失敗しました。トランスポート、WebSocket のパス、CA ファイルを確認してください。",
+      "s.mqtt.err.config": "アドレスまたは CA ファイルを使用できません。mqtt:// やパスを含まないホスト名または IP アドレスと、読み取れる CA ファイルを入力してください。",
       "s.ha.pickIcon": "アイコンを選択",
       "s.ha.close": "閉じる",
       "s.ha.iconTitle": "アイコンを選択",

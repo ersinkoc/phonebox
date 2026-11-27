@@ -457,6 +457,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "Certificatul brokerului nu a fost acceptat. Indică fișierul CA sau amprenta sa.",
       "s.mqtt.err.auth": "Brokerul a refuzat numele de utilizator sau parola.",
       "s.mqtt.err.other": "Conexiunea a eșuat. Verifică transportul, calea WebSocket și fișierul CA.",
+      "s.mqtt.err.config": "Adresa sau fișierul CA nu poate fi folosit. Introdu un simplu nume de gazdă sau o adresă IP (fără mqtt:// și fără cale) și un fișier CA care poate fi citit.",
       "s.ha.pickIcon": "Alege pictograma",
       "s.ha.close": "Închide",
       "s.ha.iconTitle": "Alege o pictogramă",

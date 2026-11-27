@@ -22,8 +22,8 @@ internal sealed class MqttTestBroker : IDisposable
             var factory = new MqttServerFactory();
             var builder = factory.CreateServerOptionsBuilder();
             // loopback IPv4 only: a broker on every interface would show up twice in what ListeningPortsTests counts for this process
-            if (cert is null) builder.WithDefaultEndpoint().WithDefaultEndpointPort(port).WithDefaultEndpointBoundIPAddress(IPAddress.Loopback);
-            else builder.WithoutDefaultEndpoint().WithEncryptedEndpoint().WithEncryptedEndpointPort(port).WithEncryptedEndpointBoundIPAddress(IPAddress.Loopback).WithEncryptionCertificate(cert);
+            if (cert is null) builder.WithDefaultEndpoint().WithDefaultEndpointPort(port).WithDefaultEndpointBoundIPAddress(IPAddress.Loopback).WithDefaultEndpointBoundIPV6Address(IPAddress.None);
+            else builder.WithoutDefaultEndpoint().WithEncryptedEndpoint().WithEncryptedEndpointPort(port).WithEncryptedEndpointBoundIPAddress(IPAddress.Loopback).WithEncryptedEndpointBoundIPV6Address(IPAddress.None).WithEncryptionCertificate(cert);
             var server = factory.CreateMqttServer(builder.Build());
             var broker = new MqttTestBroker(server, port);
             server.ValidatingConnectionAsync += e =>
@@ -43,7 +43,7 @@ internal sealed class MqttTestBroker : IDisposable
     public void Dispose() { try { _server.StopAsync().GetAwaiter().GetResult(); } catch { } _server.Dispose(); }
 
     /// <summary>A certificate for 127.0.0.1 / localhost (or another name), self-signed or signed by <paramref name="issuer"/>.</summary>
-    public static X509Certificate2 Certificate(string name = "localhost", X509Certificate2? issuer = null, bool authority = false)
+    public static X509Certificate2 Certificate(string name = "localhost", X509Certificate2? issuer = null, bool authority = false, string usage = "1.3.6.1.5.5.7.3.1")
     {
         using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var request = new CertificateRequest($"CN={name}", key, HashAlgorithmName.SHA256);
@@ -51,7 +51,7 @@ internal sealed class MqttTestBroker : IDisposable
         if (authority) request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.DigitalSignature, true));
         else
         {
-            request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1")], false));
+            request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid(usage)], false));
             var san = new SubjectAlternativeNameBuilder();
             san.AddDnsName(name);
             if (name == "localhost") san.AddIpAddress(IPAddress.Loopback);

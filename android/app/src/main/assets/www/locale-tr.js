@@ -22,6 +22,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "Broker'ın sertifikası kabul edilmedi. CA dosyasını veya parmak izini girin.",
       "s.mqtt.err.auth": "Broker kullanıcı adını veya parolayı reddetti.",
       "s.mqtt.err.other": "Bağlantı başarısız oldu. Aktarımı, WebSocket yolunu ve CA dosyasını kontrol edin.",
+      "s.mqtt.err.config": "Adres veya CA dosyası kullanılamıyor. Düz bir ana makine adı ya da IP adresi (mqtt:// ve yol olmadan) ve okunabilen bir CA dosyası girin.",
       "s.display.weekStart": "Haftanın ilk günü",
       "s.display.weekStart.monday": "Pazartesi",
       "s.display.weekStart.sunday": "Pazar",

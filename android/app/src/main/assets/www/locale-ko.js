@@ -457,6 +457,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "브로커의 인증서가 거부되었습니다. CA 파일이나 지문을 입력하세요.",
       "s.mqtt.err.auth": "브로커가 사용자 이름 또는 비밀번호를 거부했습니다.",
       "s.mqtt.err.other": "연결에 실패했습니다. 전송 방식, WebSocket 경로, CA 파일을 확인하세요.",
+      "s.mqtt.err.config": "주소 또는 CA 파일을 사용할 수 없습니다. mqtt://나 경로가 없는 호스트 이름 또는 IP 주소와 읽을 수 있는 CA 파일을 입력하세요.",
       "s.ha.pickIcon": "아이콘 선택",
       "s.ha.close": "닫기",
       "s.ha.iconTitle": "아이콘 선택",

@@ -41,7 +41,8 @@ public sealed class MqttConfig
     internal static MqttConfig Normalized(MqttConfig? c)
     {
         c ??= new();
-        c.Host = CleanHost(c.Host);
+        // kept as typed (trimmed): an unusable address is reported when connecting ("config"), not silently emptied
+        c.Host = Clean(c.Host, 253);
         c.Port = c.Port is >= 1 and <= 65535 ? c.Port : 1883;
         c.Transport = string.Equals(c.Transport?.Trim(), WebSocket, StringComparison.OrdinalIgnoreCase) ? WebSocket : Tcp;
         var path = c.WebSocketPath?.Trim() ?? "";
@@ -60,7 +61,8 @@ public sealed class MqttConfig
         // a topic to publish to has no wildcard
         var will = Clean(c.WillTopic, 256);
         c.WillTopic = will is not null && !will.Any(ch => ch is '+' or '#' or '\0') ? will : null;
-        c.WillPayload = c.WillTopic is null ? null : Clean(c.WillPayload, 1024);
+        // the message is sent as it is: no trimming, new lines stay
+        c.WillPayload = c.WillTopic is null || string.IsNullOrEmpty(c.WillPayload) ? null : c.WillPayload.Length > 1024 ? c.WillPayload[..1024] : c.WillPayload;
         c.WillQos = Math.Clamp(c.WillQos, 0, 2);
         if (c.WillTopic is null) c.WillRetain = false;
         return c;
@@ -105,11 +107,24 @@ public sealed class MqttConfig
     }
 
     /// <summary>A saved configuration without a password (the page never had it) keeps the stored one; "" clears it.</summary>
-    internal static bool KeepPassword(AgentConfig? proposed, string? stored)
+    internal static bool KeepPassword(AgentConfig? proposed, MqttConfig stored)
     {
-        if (proposed?.Mqtt is not { Password: null } mqtt || stored is null) return false;
-        mqtt.Password = stored;
+        // only for the broker it was saved for (the same rule as the test): a save that points the connection somewhere
+        // else must not carry the password along to it
+        if (proposed?.Mqtt is not { Password: null } mqtt || stored.Password is null || !SameBroker(mqtt, stored)) return false;
+        mqtt.Password = stored.Password;
         return true;
+    }
+
+    /// <summary>Whether two settings reach the same broker as the same user, the way a password is tied to it.</summary>
+    internal static bool SameBroker(MqttConfig a, MqttConfig b)
+    {
+        static (string?, int, string?, string, string, bool) Identity(MqttConfig c)
+        {
+            var n = Normalized(new MqttConfig { Host = c.Host, Port = c.Port, Username = c.Username, Transport = c.Transport, WebSocketPath = c.WebSocketPath, Tls = c.Tls });
+            return (n.Host, n.Port, n.Username, n.Transport, n.WebSocketPath, n.Tls);
+        }
+        return Identity(a) == Identity(b);
     }
 
     /// <summary>
@@ -120,9 +135,7 @@ public sealed class MqttConfig
     {
         var typed = sent.Password is not null; // "" is a password that was removed on the page, not one left out
         var test = Normalized(sent);
-        var sameBroker = test.Host == stored.Host && test.Port == stored.Port && test.Username == stored.Username
-            && test.Transport == stored.Transport && test.WebSocketPath == stored.WebSocketPath && test.Tls == stored.Tls;
-        if (!typed && sameBroker) test.Password = stored.Password;
+        if (!typed && SameBroker(test, stored)) test.Password = stored.Password;
         test.Enabled = true;
         return test;
     }

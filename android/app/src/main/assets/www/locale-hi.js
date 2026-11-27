@@ -457,6 +457,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "ब्रोकर का प्रमाणपत्र स्वीकार नहीं किया गया। उसकी CA फ़ाइल या फ़िंगरप्रिंट दर्ज करें।",
       "s.mqtt.err.auth": "ब्रोकर ने यूज़र नाम या पासवर्ड अस्वीकार कर दिया।",
       "s.mqtt.err.other": "कनेक्शन विफल रहा। ट्रांसपोर्ट, WebSocket पाथ और CA फ़ाइल जाँचें।",
+      "s.mqtt.err.config": "पता या CA फ़ाइल उपयोग नहीं की जा सकती। सादा होस्ट नाम या IP पता (mqtt:// और पाथ के बिना) और पढ़ी जा सकने वाली CA फ़ाइल दर्ज करें।",
       "s.ha.pickIcon": "प्रतीक चुनें",
       "s.ha.close": "बंद करें",
       "s.ha.iconTitle": "प्रतीक चुनें",

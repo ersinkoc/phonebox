@@ -457,6 +457,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.err.tls": "ไม่ยอมรับใบรับรองของโบรกเกอร์ โปรดระบุไฟล์ CA หรือลายนิ้วมือของโบรกเกอร์",
       "s.mqtt.err.auth": "โบรกเกอร์ปฏิเสธชื่อผู้ใช้หรือรหัสผ่าน",
       "s.mqtt.err.other": "การเชื่อมต่อล้มเหลว โปรดตรวจสอบการส่งข้อมูล พาธ WebSocket และไฟล์ CA",
+      "s.mqtt.err.config": "ใช้ที่อยู่หรือไฟล์ CA ไม่ได้ โปรดกรอกชื่อโฮสต์หรือที่อยู่ IP แบบธรรมดา (ไม่มี mqtt:// และไม่มีพาธ) และไฟล์ CA ที่อ่านได้",
       "s.ha.pickIcon": "เลือกไอคอน",
       "s.ha.close": "ปิด",
       "s.ha.iconTitle": "เลือกไอคอน",
