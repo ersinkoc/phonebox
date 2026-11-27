@@ -77,6 +77,7 @@ public sealed class CodexLiveQuotaTests
             File.WriteAllText(Path.Combine(dir1, "codex"), "#!/bin/sh\n");
             var cmd = Path.Combine(dir1, "codex.cmd");
             File.WriteAllText(cmd, "@echo off\r\n");
+            Directory.CreateDirectory(Path.Combine(dir1, "node_modules", "@openai", "codex")); // npm's shim
             var pathEnv = dir1 + Path.PathSeparator + dir2;
             Assert.Equal(cmd, CodexQuota.Find(pathEnv, isWindows: true));
 
@@ -94,6 +95,32 @@ public sealed class CodexLiveQuotaTests
         {
             Directory.Delete(dir1, recursive: true);
             Directory.Delete(dir2, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void WindowsDiscoveryPassesOverAUsersOwnCodexCmdForTheDesktopApp()
+    {
+        // #709: a codex.cmd of the user's own (forwarding to the desktop app's CLI) cannot be started without cmd.exe
+        var wrapperDir = Directory.CreateTempSubdirectory("pb-codex-wrapper-").FullName;
+        var npmDir = Directory.CreateTempSubdirectory("pb-codex-npm-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(wrapperDir, "codex.cmd"), "@echo off\r\n\"%LOCALAPPDATA%\\OpenAI\\Codex\\bin\\codex.exe\" %*\r\n");
+            const string desktop = @"C:\Program Files\WindowsApps\OpenAI.Codex\app\resources\codex.exe";
+            Assert.Equal(desktop, CodexQuota.Find(wrapperDir, isWindows: true, () => desktop));
+            Assert.Null(CodexQuota.Find(wrapperDir, isWindows: true));
+
+            // an npm install later on PATH still wins over the desktop app
+            var npmCmd = Path.Combine(npmDir, "codex.cmd");
+            File.WriteAllText(npmCmd, "@echo off\r\n");
+            Directory.CreateDirectory(Path.Combine(npmDir, "node_modules", "@openai", "codex"));
+            Assert.Equal(npmCmd, CodexQuota.Find(wrapperDir + Path.PathSeparator + npmDir, isWindows: true, () => desktop));
+        }
+        finally
+        {
+            Directory.Delete(wrapperDir, recursive: true);
+            Directory.Delete(npmDir, recursive: true);
         }
     }
 

@@ -51,6 +51,9 @@
   agent checks the number and writes it itself. A program starts without the shell with the number as its own argument
   (in place of `{value}`, or at the end), an address takes it in place of `{value}` in the address, and at most 4
   numbers a second reach one shortcut (#677, #687, [mayankbohradev](https://github.com/mayankbohradev)).
+- Windows: the live Codex quota finds the Codex desktop app's CLI even when a `codex.cmd` of your own (a wrapper that
+  forwards to it) is on `PATH`. Only npm's `codex.cmd` is used now; another one used to stop the search with "Could not
+  locate the npm Codex binary" (#709, [harafuhub](https://github.com/harafuhub)).
 
 ## 0.9.31 — 2026-11-27
 
