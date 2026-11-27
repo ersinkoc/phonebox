@@ -21,8 +21,9 @@ internal sealed class MqttTestBroker : IDisposable
             var port = at ?? FreePort();
             var factory = new MqttServerFactory();
             var builder = factory.CreateServerOptionsBuilder();
-            if (cert is null) builder.WithDefaultEndpoint().WithDefaultEndpointPort(port);
-            else builder.WithoutDefaultEndpoint().WithEncryptedEndpoint().WithEncryptedEndpointPort(port).WithEncryptionCertificate(cert);
+            // loopback IPv4 only: a broker on every interface would show up twice in what ListeningPortsTests counts for this process
+            if (cert is null) builder.WithDefaultEndpoint().WithDefaultEndpointPort(port).WithDefaultEndpointBoundIPAddress(IPAddress.Loopback);
+            else builder.WithoutDefaultEndpoint().WithEncryptedEndpoint().WithEncryptedEndpointPort(port).WithEncryptedEndpointBoundIPAddress(IPAddress.Loopback).WithEncryptionCertificate(cert);
             var server = factory.CreateMqttServer(builder.Build());
             var broker = new MqttTestBroker(server, port);
             server.ValidatingConnectionAsync += e =>
@@ -57,7 +58,8 @@ internal sealed class MqttTestBroker : IDisposable
             request.CertificateExtensions.Add(san.Build());
         }
         var from = DateTimeOffset.UtcNow.AddDays(-1);
-        var to = DateTimeOffset.UtcNow.AddDays(30);
+        // a certificate may not outlive the one that signed it (macOS refuses to create it)
+        var to = issuer is null ? DateTimeOffset.UtcNow.AddDays(30) : new DateTimeOffset(issuer.NotAfter).AddHours(-1);
         using var made = issuer is null
             ? request.CreateSelfSigned(from, to)
             : request.Create(issuer, from, to, RandomNumberGenerator.GetBytes(16)).CopyWithPrivateKey(key);
