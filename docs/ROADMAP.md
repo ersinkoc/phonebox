@@ -83,6 +83,12 @@ people who proposed or prototyped something are credited in the [changelog](../C
   (`value: { min, max, step }`). The agent checks and formats the number itself and passes it as its own argument
   (or a whole `{value}` placeholder) to shortcuts that start a program or open an address; others refuse a value. At
   most about 4 values a second per shortcut, so a dragged slider can't start hundreds of processes.
+- **WorkBuddy follow-ups** ([#700](https://github.com/ersinkoc/phonebox/issues/700), pull requests
+  [#701](https://github.com/ersinkoc/phonebox/pull/701), [#702](https://github.com/ersinkoc/phonebox/pull/702),
+  [#703](https://github.com/ersinkoc/phonebox/pull/703)): session rows that never look healthy on a lost feed (an
+  `unknown` state when the heartbeat is old) and a WorkBuddy self-check; approval cards with a countdown, the full
+  detail, and a second tap for high-risk tools decided on the agent; and, off by default, notifications and a rule
+  trigger when a WorkBuddy chat fails or finishes.
 
 ## Open for a contributor
 
