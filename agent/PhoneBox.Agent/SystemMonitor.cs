@@ -182,14 +182,24 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
     /// <summary>macOS has no nvidia-smi; the GPU's load and memory come from the IOAccelerator entry of ioreg.</summary>
     private async Task AppleGpuLoop(CancellationToken ct)
     {
-        // A discrete card (an Intel Mac's Radeon) has memory of its own; its name and size sit on its PCI device and
-        // don't change while the agent runs, so they are read once.
+        // A discrete card (an Intel Mac's Radeon) has memory of its own; its name and size sit on its PCI device. They
+        // rarely change, so the PCI devices are read again only every few minutes (an eGPU can be plugged in later),
+        // sooner while none was found, and a failed read keeps the last good list.
         IReadOnlyList<MacPciGpu> cards = [];
-        try { cards = ParseMacPciGpus(await RunIoreg(ct, "-r", "-d", "1", "-w", "0", "-c", "IOPCIDevice")); }
-        catch (OperationCanceledException) { return; }
-        catch (Exception ex) { log.LogDebug("apple-gpu pci: {Msg}", ex.Message); }
+        var nextPciRead = DateTime.MinValue;
         while (!ct.IsCancellationRequested)
         {
+            if (DateTime.UtcNow >= nextPciRead)
+            {
+                try
+                {
+                    var pci = await RunIoreg(ct, "-r", "-d", "1", "-w", "0", "-c", "IOPCIDevice");
+                    if (pci.Length > 0) cards = ParseMacPciGpus(pci); // "" after a timeout: keep what we had
+                }
+                catch (OperationCanceledException) { return; }
+                catch (Exception ex) { log.LogDebug("apple-gpu pci: {Msg}", ex.Message); }
+                nextPciRead = DateTime.UtcNow + (cards.Count > 0 ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(1));
+            }
             try
             {
                 // "" after a timeout: no GPU this round
