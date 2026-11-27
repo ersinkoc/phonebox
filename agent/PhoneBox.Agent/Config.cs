@@ -19,6 +19,11 @@ public sealed class AgentConfig
         && !IgnoredDeviceSerials.Contains(serial, StringComparer.Ordinal);
     public string? AdbPath { get; set; }
     public int LibreHardwareMonitorPort { get; set; } = DefaultLibreHardwareMonitorPort;
+    /// <summary>
+    /// Read NVIDIA cards through nvidia-smi (on by default). Off, nvidia-smi is never started, and LibreHardwareMonitor
+    /// or the OS supply the GPU readings: on some drivers its queries make the screens go black for a moment (#716).
+    /// </summary>
+    public bool NvidiaSmi { get; set; } = true;
     public WeatherConfig Weather { get; set; } = new();
     public PingConfig Ping { get; set; } = new();
     public NightConfig Night { get; set; } = new();

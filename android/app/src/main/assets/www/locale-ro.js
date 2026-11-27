@@ -402,6 +402,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.lhm.connected": "Sursa senzorilor e conectată",
       "s.lhm.unavailable": "Sursa senzorilor nu e disponibilă",
       "s.lhm.setup": "Pentru temperatura CPU, puterea CPU și citiri GPU suplimentare pe Windows, activează Options › Remote Web Server › Run on port {port}.",
+      "s.gpu.nvidiaSmi": "Citește plăcile NVIDIA cu nvidia-smi",
+      "s.gpu.nvidiaSmiHint": "Dezactivează opțiunea dacă ecranele se înnegresc pentru o clipă cât timp rulează PhoneBox. nvidia-smi nu mai este pornit, iar valorile GPU vin de la LibreHardwareMonitor (sau Windows).",
       "s.lhm.port": "Port",
       "s.pages.screenHidden": "Widgeturi pe rânduri pe care acest ecran nu le arată: {n}.",
       "s.display.tabletRows": "Mai multe rânduri pe tabletă",

@@ -109,11 +109,19 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         return NvidiaLoop(ct);
     }
 
-    // Keeps nvidia-smi running and reads one line per GPU per second.
+    // Keeps nvidia-smi running and reads one line per GPU per second, unless Settings turned it off (#716): then it is
+    // never started, and a running one is stopped within a second.
     private async Task NvidiaLoop(CancellationToken ct)
     {
+        bool Allowed() => config?.Get().NvidiaSmi != false;
         while (!ct.IsCancellationRequested)
         {
+            if (!Allowed())
+            {
+                _nvidia = null;
+                try { await Task.Delay(TimeSpan.FromSeconds(5), ct); } catch (OperationCanceledException) { return; }
+                continue;
+            }
             try
             {
                 var names = Gpus.ParseNvidiaNames(await RunAsync("nvidia-smi", "--query-gpu=index,name,driver_version --format=csv,noheader", ct));
@@ -127,6 +135,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
                 var cards = new SortedDictionary<int, GpuInfo>();
                 while (await p.StandardOutput.ReadLineAsync(ct) is { } line)
                 {
+                    if (!Allowed()) { try { p.Kill(); } catch { } break; }
                     if (Gpus.ParseNvidiaLine(line, names) is not { } row) continue;
                     cards[row.Index] = row.Gpu;
                     _nvidia = cards.Values.ToList();

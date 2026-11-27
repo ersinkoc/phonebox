@@ -402,6 +402,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.lhm.connected": "Sumber sensor tersambung",
       "s.lhm.unavailable": "Sumber sensor tidak tersedia",
       "s.lhm.setup": "Untuk suhu dan daya CPU serta pembacaan GPU tambahan di Windows, aktifkan Options › Remote Web Server › Run pada port {port}.",
+      "s.gpu.nvidiaSmi": "Baca kartu NVIDIA dengan nvidia-smi",
+      "s.gpu.nvidiaSmiHint": "Matikan ini jika layar Anda sesaat menjadi hitam saat PhoneBox berjalan. nvidia-smi lalu tidak pernah dijalankan, dan LibreHardwareMonitor (atau Windows) menyediakan pembacaan GPU.",
       "s.lhm.port": "Port",
       "s.pages.screenHidden": "{n} widget berada di baris yang tidak ditampilkan layar ini.",
       "s.display.tabletRows": "Lebih banyak baris di tablet",

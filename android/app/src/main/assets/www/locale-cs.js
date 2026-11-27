@@ -402,6 +402,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.lhm.connected": "Zdroj dat ze snímačů je připojen",
       "s.lhm.unavailable": "Zdroj dat ze snímačů není dostupný",
       "s.lhm.setup": "Pro teplotu a příkon CPU a další údaje GPU ve Windows zapněte Options › Remote Web Server › Run na portu {port}.",
+      "s.gpu.nvidiaSmi": "Číst karty NVIDIA pomocí nvidia-smi",
+      "s.gpu.nvidiaSmiHint": "Vypněte, pokud vaše obrazovky na okamžik zčernají, když PhoneBox běží. nvidia-smi se pak nikdy nespustí a hodnoty GPU dodá LibreHardwareMonitor (nebo Windows).",
       "s.lhm.port": "Port",
       "s.pages.screenHidden": "Widgety na řádcích, které tato obrazovka nezobrazuje: {n}.",
       "s.display.tabletRows": "Více řádků na tabletu",

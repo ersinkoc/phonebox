@@ -402,6 +402,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.lhm.connected": "센서 소스 연결됨",
       "s.lhm.unavailable": "센서 소스에 연결할 수 없음",
       "s.lhm.setup": "Windows에서 CPU 온도, CPU 전력 및 추가 GPU 지표를 읽으려면 포트 {port}에서 Options › Remote Web Server › Run을 켜세요.",
+      "s.gpu.nvidiaSmi": "nvidia-smi로 NVIDIA 그래픽카드 읽기",
+      "s.gpu.nvidiaSmiHint": "PhoneBox가 실행되는 동안 화면이 잠깐 검게 변하면 이 옵션을 끄세요. 그러면 nvidia-smi가 실행되지 않고, GPU 값은 LibreHardwareMonitor(또는 Windows)가 제공합니다.",
       "s.lhm.port": "포트",
       "s.pages.screenHidden": "위젯 {n}개가 이 화면에 표시되지 않는 행에 있습니다.",
       "s.display.tabletRows": "태블릿에서 행 늘리기",

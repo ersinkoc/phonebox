@@ -47,6 +47,18 @@ public class ConfigTests
         Assert.False(publicConfig.TryGetProperty("libreHardwareMonitorPort", out _));
     }
 
+    [Theory]
+    [InlineData("{}", true)] // older configs keep reading NVIDIA cards as before
+    [InlineData("""{"nvidiaSmi": true}""", true)]
+    [InlineData("""{"nvidiaSmi": false}""", false)]
+    public void NvidiaSmiIsOnUnlessTurnedOffAndStaysOnTheComputer(string json, bool expected)
+    {
+        var config = Load(json);
+        Assert.Equal(expected, config.NvidiaSmi);
+        var publicConfig = JsonSerializer.SerializeToElement(config.ToPublic(), ConfigStore.WriteOpts);
+        Assert.False(publicConfig.TryGetProperty("nvidiaSmi", out _));
+    }
+
     [Fact]
     public void ExtraClaudeCredentialDirsDropBlankAndRepeatedEntries()
     {

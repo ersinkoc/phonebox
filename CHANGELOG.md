@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Windows: **Read NVIDIA cards with nvidia-smi** (Settings › Pages, in the LibreHardwareMonitor section, on by
+  default). Turned off, `nvidia-smi` is never started, and LibreHardwareMonitor or Windows' GPU counters supply the GPU
+  readings: on some drivers its queries make the screens go black for a moment (#716).
 ## 0.9.32 — 2026-11-27
 
 - Pi agent sessions in the AI sessions widget: model, thinking level, last tool, token counters, the current context

@@ -402,6 +402,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.lhm.connected": "सेंसर स्रोत जुड़ा है",
       "s.lhm.unavailable": "सेंसर स्रोत उपलब्ध नहीं है",
       "s.lhm.setup": "Windows पर CPU तापमान, CPU पावर और अतिरिक्त GPU रीडिंग के लिए पोर्ट {port} पर Options › Remote Web Server › Run चालू करें।",
+      "s.gpu.nvidiaSmi": "NVIDIA कार्ड nvidia-smi से पढ़ें",
+      "s.gpu.nvidiaSmiHint": "अगर PhoneBox चलते समय आपकी स्क्रीन पल भर के लिए काली हो जाती है, तो इसे बंद करें। तब nvidia-smi कभी शुरू नहीं होगा, और GPU की रीडिंग LibreHardwareMonitor (या Windows) देगा।",
       "s.lhm.port": "पोर्ट",
       "s.pages.screenHidden": "{n} विजेट उन पंक्तियों पर हैं जिन्हें यह स्क्रीन नहीं दिखाती।",
       "s.display.tabletRows": "टैबलेट पर ज़्यादा पंक्तियाँ",

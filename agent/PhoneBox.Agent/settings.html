@@ -543,6 +543,8 @@ nav a.on::before { color: var(--accent); }
               <label for="lhmPort" data-i18n="s.lhm.port">Port</label>
               <input id="lhmPort" type="number" min="1" max="65535" required data-bind="libreHardwareMonitorPort">
             </div>
+            <div class="row" style="margin:12px 0 4px"><label class="switch"><input type="checkbox" data-bind="nvidiaSmi" aria-labelledby="nvidiaSmiLabel"><span></span></label> <span id="nvidiaSmiLabel" data-i18n="s.gpu.nvidiaSmi">Read NVIDIA cards with nvidia-smi</span></div>
+            <p class="hint" data-i18n="s.gpu.nvidiaSmiHint">Turn this off if your screens go black for a moment while PhoneBox runs. nvidia-smi is then never started, and LibreHardwareMonitor (or Windows) supplies the GPU readings.</p>
           </div>
           <div id="peRest"></div>
         </div>
@@ -4246,6 +4248,7 @@ async function loadInfo() {
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
   cfg.libreHardwareMonitorPort ??= 8085;
+  cfg.nvidiaSmi ??= true;
   cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.display.wallpaper ??= { dim: 45, blur: 0 }; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.claude.extraCredentialDirs ??= []; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity', 'grok'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,

@@ -6,6 +6,8 @@
   "deviceSerial": null,
   "ignoredDeviceSerials": [],
   "libreHardwareMonitorPort": 8085,
+  // Read NVIDIA cards with nvidia-smi (false: never start it; LibreHardwareMonitor or the OS read the GPU instead)
+  "nvidiaSmi": true,
   // Path to adb.exe (null = searched in PATH, the Android SDK and winget locations)
   "adbPath": null,
 
