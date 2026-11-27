@@ -78,6 +78,11 @@ people who proposed or prototyped something are credited in the [changelog](../C
   in the Camera widget. Off by default behind a switch in Settings on the computer (the phone cannot turn it on),
   only while the widget is on screen, and PhoneBox lets go of the camera a few seconds after the last request (its
   light stays on only if another app is using it). Frames are not stored or logged.
+- **A number from a Custom HTML page to a shortcut** ([#677](https://github.com/ersinkoc/phonebox/issues/677)):
+  `phonebox.run(id, value)` and `POST /api/run/{id}?value=…` for shortcuts that opt in with a range
+  (`value: { min, max, step }`). The agent checks and formats the number itself and passes it as its own argument
+  (or a whole `{value}` placeholder) to shortcuts that start a program or open an address; others refuse a value. At
+  most about 4 values a second per shortcut, so a dragged slider can't start hundreds of processes.
 
 ## Open for a contributor
 

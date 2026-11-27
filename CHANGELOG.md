@@ -8,6 +8,8 @@
 - Stocks: A-share names such as 上证指数 show in full instead of two characters and an ellipsis; the name column fits
   the longest name in the list, and exchange and crypto rows keep their layout (#674,
   [elong365](https://github.com/elong365)).
+- Stocks: US and Hong Kong stocks show their English names (`Amazon.Com, Inc.`, `TENCENT`) when the panel language
+  is not Chinese; a Chinese panel keeps the Chinese names (#678, #679, [Seyamalam](https://github.com/Seyamalam)).
 
 ## 0.9.31 — 2026-11-27
 
