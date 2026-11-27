@@ -17,6 +17,11 @@
 - Quota ring: the reset shows as a clock time in the phone's own time zone and language, then the time left
   (`Sat 01:29 · in 4 h 3 min`) (#726, [jassu-Workspace](https://github.com/jassu-Workspace)).
 
+- Windows: an AMD card's temperature limit no longer reads 11 °C, which turned the GPU details bar red at any
+  temperature. The Adrenalin driver reports the limit in whole degrees, not in tenths as Windows documents; the agent
+  now takes whichever reading is a plausible limit (50 to 150 °C) and leaves out anything else (#736,
+  [Braveras](https://github.com/Braveras)).
+
 ## 0.9.32 — 2026-11-27
 
 - Pi agent sessions in the AI sessions widget: model, thinking level, last tool, token counters, the current context

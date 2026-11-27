@@ -140,7 +140,7 @@ internal sealed partial class WindowsGpu : IDisposable
             var caps = new byte[40];
             var capsOk = Query(a.hAdapter, 63 /*ADAPTERPERFDATA_CAPS*/, caps) == 0;
             var maxFan = BinaryPrimitives.ReadUInt32LittleEndian(caps.AsSpan(24));
-            var tempMax = BinaryPrimitives.ReadUInt32LittleEndian(caps.AsSpan(28)) / 10.0;
+            var tempMax = capsOk ? Gpus.TempMaxFromCaps(BinaryPrimitives.ReadUInt32LittleEndian(caps.AsSpan(28))) : null;
             var hybridIntegrated = (type & (1u << 5)) != 0;
 
             _adapters.Add(new Adapter(
@@ -152,7 +152,7 @@ internal sealed partial class WindowsGpu : IDisposable
                 DedicatedGb: segOk && dedicated > 0 ? Math.Round(dedicated / GiB, 2) : null,
                 SharedGb: segOk && shared > 0 ? Math.Round(shared / GiB, 2) : null,
                 Driver: drivers.GetValueOrDefault(name),
-                TempMax: capsOk && tempMax > 0 ? tempMax : null,
+                TempMax: tempMax,
                 HasFan: capsOk && maxFan > 0));
         }
     }
