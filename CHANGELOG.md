@@ -37,6 +37,10 @@
 - Android: the notice for a WebView too old to run the panel names the version in use, such as `(version 37)`. On
   Android 5 and 6 a phone maker's own WebView can stay in use although Google's is installed from Google Play, and the
   version shows which one the panel got (#689).
+- macOS: when the sound goes to an output macOS cannot control in software (a monitor or soundbar over HDMI), the
+  agent reads its volume every 10 seconds instead of every second. Each reading starts `osascript`, and at one a
+  second WindowServer ran out of resources after a few days and logged the user out (#693,
+  [AlphaRishi1229](https://github.com/AlphaRishi1229)).
 
 ## 0.9.31 — 2026-11-27
 
