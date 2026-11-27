@@ -265,3 +265,33 @@ test('the audio output is let go a moment after the chime, and the next chime ta
   expect(await page.evaluate(() => window.__audio.state)).toBe('running');
   expect((await tones(page)).length).toBeGreaterThan(0);
 });
+
+test('Pomodoro widgets with the same sequence share one timer across pages, and another sequence keeps its own (#741)', async ({ page }) => {
+  await page.clock.install({ time: NOON });
+  await page.goto('/panel/style.css');
+  await page.evaluate(() => {
+    localStorage.clear();
+    const pomo = (id, options) => ({ id, type: 'pomodoro', x: 0, y: 0, w: 6, h: 6, options });
+    localStorage.setItem('pb-demo-config', JSON.stringify({
+      night: { enabled: false }, rules: [], shortcuts: [], display: { idleReturnSec: 0 },
+      pages: [{ id: 'a', title: 'A', widgets: [pomo('one', { focus: 25, break: 5 })] },
+        { id: 'b', title: 'B', widgets: [pomo('two', { focus: 25, break: 5 }), { ...pomo('other', { focus: 50, break: 10 }), x: 6 }] }],
+    }));
+  });
+  await page.goto('/panel/');
+  const one = page.locator('.page').nth(0).locator('.w-pomodoro');
+  const two = page.locator('.page').nth(1).locator('.w-pomodoro').nth(0);
+  const other = page.locator('.page').nth(1).locator('.w-pomodoro').nth(1);
+  await expect(one).toBeVisible();
+  await one.locator('.pb.main').click();
+  await page.clock.fastForward(MIN);
+  await expect(two).toHaveClass(/\brun\b/);
+  await expect(two.locator('.g-val')).toHaveText('24:00');
+  await expect(other).not.toHaveClass(/\brun\b/);
+  await expect(other.locator('.g-val')).toHaveText('50:00');
+  // the state saved last survives a reload, whichever widget it was saved by
+  await two.evaluate((el) => el.querySelector('.pb.main').click()); // paused from page B
+  await page.reload();
+  await expect(page.locator('.page').nth(0).locator('.w-pomodoro .g-val')).toHaveText('24:00');
+  await expect(page.locator('.page').nth(0).locator('.w-pomodoro')).not.toHaveClass(/\brun\b/);
+});
