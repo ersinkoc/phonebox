@@ -9,7 +9,8 @@
   the longest name in the list, and exchange and crypto rows keep their layout (#674,
   [elong365](https://github.com/elong365)).
 - Stocks: US and Hong Kong stocks show their English names (`Amazon.Com, Inc.`, `TENCENT`) when the panel language
-  is not Chinese; a Chinese panel keeps the Chinese names (#678, #679, [Seyamalam](https://github.com/Seyamalam)).
+  is not Chinese and the quote feed has one; a Chinese panel keeps the Chinese names (#678, #679,
+  [Seyamalam](https://github.com/Seyamalam)).
 
 ## 0.9.31 — 2026-11-27
 
