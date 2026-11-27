@@ -63,23 +63,22 @@ private struct ComputerOptionsView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        CompatNavigation {
             Form {
                 Section("Computer") {
-                    LabeledContent("Name", value: computer.name)
-                    LabeledContent("Addresses", value: computer.hosts.joined(separator: ", "))
-                    LabeledContent("Port", value: String(computer.port))
+                    InfoRow("Name", value: computer.name)
+                    InfoRow("Addresses", value: computer.hosts.joined(separator: ", "))
+                    InfoRow("Port", value: String(computer.port))
                 }
                 Section("Certificate") {
                     Text(computer.fingerprint)
                         .font(.system(.caption, design: .monospaced))
                         .textSelection(.enabled)
-                    LabeledContent("Check code") {
-                        Text(computer.checkCode).monospaced()
-                    }
+                    InfoRow("Check code", value: computer.checkCode)
+                        .font(.system(.body, design: .monospaced))
                 }
                 Section {
-                    LabeledContent("USB cable", value: usb.isConnected ? "Connected" : "Not connected")
+                    InfoRow("USB cable", value: usb.isConnected ? "Connected" : "Not connected")
                 } footer: {
                     Text("The desktop agent carries the cable link automatically; keep it running. USB reuses this pairing's certificate and token, so no Wi-Fi network is needed once the app is paired.")
                 }
@@ -100,6 +99,6 @@ private struct ComputerOptionsView: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .compatMediumLargeDetents()
     }
 }

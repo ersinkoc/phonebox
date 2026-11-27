@@ -412,7 +412,9 @@ export function icon(name, cls = '') {
    so the panel draws the same line icons everywhere and unknown characters (a custom emoji or text) stay as typed. */
 const EMOJI_ICON = { '🏠': 'house', '☀': 'sun', '🌙': 'moon', '🌤': 'cloud-sun', '⛅': 'cloud-sun', '☁': 'cloudy', '🌫': 'cloud-fog', '🌦': 'cloud-sun-rain', '🌧': 'cloud-rain', '🌨': 'cloud-snow', '❄': 'snowflake', '⛈': 'cloud-lightning', '🌡': 'thermometer', '📱': 'smartphone', '⚡': 'zap', '📹': 'video', '🎙': 'mic', '📶': 'signal', '🎛': 'sliders-horizontal', '💬': 'message-square', '🔋': 'battery', '⏭': 'skip-forward', '⏮': 'skip-back', '⏯': 'play', '🔤': 'type', '🕒': 'clock', '🎵': 'music', '📈': 'trending-up', '⏲': 'timer', '⏱': 'timer', '📊': 'chart-column', '💾': 'hard-drive', '🎮': 'gamepad-2', '✳': 'asterisk', '🤖': 'bot', '🐙': 'github', '⚙': 'settings', '🔘': 'circle-dot', '🌍': 'globe', '🌐': 'globe', '📅': 'calendar', '🍅': 'timer', '⏳': 'hourglass', '📝': 'notebook-pen', '💻': 'laptop', '📡': 'radio-tower', '📬': 'mailbox', '🕰': 'alarm-clock', '📆': 'calendar-days', '🔢': 'hash', '🫁': 'wind', '✅': 'circle-check', '🔥': 'flame', '🎯': 'target', '🔊': 'volume-2', '🌅': 'sunrise', '🍃': 'leaf', '📰': 'newspaper', '🗞': 'newspaper', '🖼': 'image', '💱': 'arrow-left-right', '🪙': 'coins', '🖥': 'monitor', '🎧': 'headphones', '🖱': 'mouse', '⌨': 'keyboard', '🖊': 'pen', '🔇': 'volume-x', '🔕': 'bell-off', '📞': 'phone', '💡': 'lightbulb', '🔌': 'plug', '🌀': 'fan', '🪟': 'app-window', '📜': 'scroll-text', '🎬': 'clapperboard', '🧑': 'user', '🧹': 'brush', '📷': 'camera', '💧': 'droplet', '🚪': 'door-open', '🏃': 'footprints', '🧍': 'person-standing', '🫧': 'cloudy', '🔒': 'lock', '📳': 'vibrate', '🔓': 'lock-open', '⚠': 'warn', '🔴': 'radio', '🕙': 'clock-10', '👀': 'eye', '❌': 'circle-x', '⏸': 'pause', '🔔': 'bell', '📧': 'mail', '🧮': 'calculator', '✂': 'scissors', '🚀': 'rocket', '🐳': 'container', '🧪': 'flask-conical', '🛠': 'wrench', '📦': 'package', '⭐': 'star', '🦊': 'cat', '📁': 'folder', '📺': 'tv', '🚿': 'shower-head', '🛋': 'sofa', '🛏': 'bed', '🍳': 'egg-fried', '☕': 'coffee', '🌱': 'sprout', '🪴': 'flower-2', '🚗': 'car', '🧺': 'washing-machine', '🖨': 'printer', '📻': 'radio', '➕': 'plus', '⬆': 'arrow-up', '◻': 'square', '👋': 'hand', '🧭': 'compass', '🗓': 'calendar-range', '🏖': 'umbrella', '🧩': 'puzzle', '🗂': 'folders', '🎚': 'sliders-vertical', '🔉': 'volume-1', '⏩': 'fast-forward', '🔀': 'shuffle', '📂': 'folder-open', '📽': 'projector', '🎶': 'music-2', '🎹': 'piano', '🎨': 'palette', '🗑': 'trash-2' };
 // A mapped emoji only counts when it stands alone: not part of a longer sequence (skin tone, joined with U+200D, or a combining mark: keycap, either variation selector); a selector that is not ours to take must not be given back.
-const EMOJI_RE = new RegExp('(?<!\\u200D)(' + Object.keys(EMOJI_ICON).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\uFE0F?(?![\\u{1F3FB}-\\u{1F3FF}\\u200D\\p{M}])', 'gu');
+// No lookbehind for the preceding U+200D: Safari before 16.4 (iOS 15 and older iPads) rejects it and the module
+// fails to load. rich() skips a match that follows U+200D instead, which is the same rule.
+const EMOJI_RE = new RegExp('(' + Object.keys(EMOJI_ICON).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\uFE0F?(?![\\u{1F3FB}-\\u{1F3FF}\\u200D\\p{M}])', 'gu');
 export const emojiIcon = (e) => EMOJI_ICON[String(e == null ? '' : e).replace(/\uFE0F/g, '').trim()];
 /** A node for one emoji: its icon when we have one, otherwise the text as typed. */
 /** Names a control that holds only an icon (the icons are aria-hidden), and gives it a tooltip. */
@@ -424,6 +426,10 @@ export function rich(text) {
   let last = 0, m;
   EMOJI_RE.lastIndex = 0;
   while ((m = EMOJI_RE.exec(s))) {
+    if (m.index > 0 && s.charCodeAt(m.index - 1) === 0x200D) {
+      EMOJI_RE.lastIndex = m.index + (s.codePointAt(m.index) > 0xFFFF ? 2 : 1);
+      continue;
+    }
     if (m.index > last) frag.append(s.slice(last, m.index));
     frag.append(icon(EMOJI_ICON[m[1]], 'm'));
     last = m.index + m[0].length;

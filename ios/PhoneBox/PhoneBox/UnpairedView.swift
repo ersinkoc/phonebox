@@ -146,12 +146,22 @@ struct UnpairedView: View {
         .foregroundStyle(.secondary)
     }
 
+    @ViewBuilder
+    private var pasteField: some View {
+        if #available(iOS 16, *) {
+            TextField("phonebox://pair?v=1&…", text: $pastedLink, axis: .vertical)
+                .lineLimit(3...6)
+        } else {
+            TextEditor(text: $pastedLink)
+                .frame(minHeight: 88)
+        }
+    }
+
     private var pasteSheet: some View {
-        NavigationStack {
+        CompatNavigation {
             Form {
                 Section("Pairing link") {
-                    TextField("phonebox://pair?v=1&…", text: $pastedLink, axis: .vertical)
-                        .lineLimit(3...6)
+                    pasteField
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .font(.system(.footnote, design: .monospaced))
@@ -175,7 +185,7 @@ struct UnpairedView: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .compatMediumLargeDetents()
     }
 
     private func accept(_ value: String) {

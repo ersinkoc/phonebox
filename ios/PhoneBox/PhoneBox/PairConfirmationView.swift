@@ -20,8 +20,8 @@ struct PairConfirmationView: View {
                         .font(.title2.weight(.semibold))
 
                     Group {
-                        LabeledContent("Addresses", value: link.hosts.joined(separator: ", "))
-                        LabeledContent("Port", value: String(link.port))
+                        InfoRow("Addresses", value: link.hosts.joined(separator: ", "))
+                        InfoRow("Port", value: String(link.port))
                     }
                     .font(.subheadline)
 

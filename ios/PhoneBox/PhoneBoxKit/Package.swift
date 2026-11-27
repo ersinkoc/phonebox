@@ -5,7 +5,7 @@ import PackageDescription
 // AgentLink.kt) and the allowlist used by the native /agent proxy. The app target links this package.
 let package = Package(
     name: "PhoneBoxKit",
-    platforms: [.iOS(.v16), .macOS(.v12)],
+    platforms: [.iOS(.v15), .macOS(.v12)],
     products: [
         .library(name: "PhoneBoxKit", targets: ["PhoneBoxKit"]),
     ],
