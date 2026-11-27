@@ -16,7 +16,12 @@
   (#351, #725, [abdulah-x](https://github.com/abdulah-x)).
 - Quota ring: the reset shows as a clock time in the phone's own time zone and language, then the time left
   (`Sat 01:29 · in 4 h 3 min`) (#726, [jassu-Workspace](https://github.com/jassu-Workspace)).
-
+- Forecast: in the tall layout the day, icon, temperature and rain line up in columns from row to row; a rain chance
+  or a longer day name no longer moves the others sideways (#737, [Captain-Sangam](https://github.com/Captain-Sangam)).
+- Windows: an AMD card's temperature limit no longer reads 11 °C, which turned the GPU details bar red at any
+  temperature. The Adrenalin driver reports the limit in whole degrees, not in tenths as Windows documents; the agent
+  now takes whichever reading is a plausible limit (50 to 150 °C) and leaves out anything else (#736,
+  [Braveras](https://github.com/Braveras)).
 - Windows: the default Spotify shortcut opens `spotify:`, so it starts the desktop Spotify as well as the Microsoft
   Store one; it named the Store app only and failed with "cannot find the file specified" otherwise. Existing
   shortcuts keep what they have: change the command to `spotify:` in Settings › Shortcuts to get the same (#736,

@@ -522,6 +522,95 @@ test('a forecast whose last days are null shows only the days it has', async ({ 
   await expect(page.locator('.fc-v', { hasText: /^0°/ })).toHaveCount(0);
 });
 
+// A tall forecast stacks its days (or hours) as rows: the day, icon, temperature and rain columns line up from row to
+// row whatever the text widths of each row, in both writing directions, and "Weather unavailable" keeps the full width.
+for (const [mode, rainy] of [['daily', true], ['hourly', true], ['daily', false]]) {
+  for (const language of ['en', 'ar']) {
+    test(`a tall forecast keeps its columns in line: ${mode}, ${rainy ? 'mixed rain' : 'no rain'}, ${language}`, async ({ page }) => {
+      const now = new Date();
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const days = [0, 1, 2, 3, 4, 5, 6].map((k) => iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() + k, 12)));
+      const hours = Array.from({ length: 24 }, (_, k) => new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + k))
+        .map((d) => `${iso(d)}T${String(d.getHours()).padStart(2, '0')}:00`);
+      const rain = (list) => (rainy ? list : list.map(() => null));
+      let fail = false;
+      await page.route('https://api.open-meteo.com/**', (route) => (fail ? route.abort() : route.fulfill({ json: {
+        current: { time: hours[0], temperature_2m: 5, apparent_temperature: 5, weather_code: 3, is_day: 1 },
+        daily: { time: days, weather_code: [0, 61, 3, 95, 71, 2, 45], temperature_2m_max: [24, -12, 3, 31, 0, -5, 17],
+          temperature_2m_min: [8, -18, -1, 22, -9, -11, 10], precipitation_probability_max: rain([null, 62, 10, 100, null, 25, 0]) },
+        hourly: { time: hours, weather_code: hours.map((_, k) => [0, 61, 3, 95][k % 4]), temperature_2m: hours.map((_, k) => [5, -12, 0, 23, -3][k % 5]),
+          precipitation_probability: rain(hours.map((_, k) => [null, 62, 10, 100, 0, 25][k % 6])), is_day: hours.map(() => 1) },
+      } })));
+      await layout(page, [{ ...widget('forecast', { mode }), w: 4, h: 6 }], { weather: { city: 'Alpha', lat: 10, lon: 10 }, display: { language } });
+      const fc = page.locator('.fc');
+      await expect(fc).toHaveClass(/\bvert\b/);
+      await expect(page.locator('.fc-i').nth(3)).toBeAttached();
+      if (language === 'ar') await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+
+      // Measure the cells, not the rows. The inline direction comes from .fc: .fc-v is always left to right.
+      const m = await fc.evaluate((el) => ({
+        rtl: getComputedStyle(el).direction === 'rtl',
+        box: el.getBoundingClientRect().toJSON(),
+        rows: [...el.querySelectorAll('.fc-i')].map((row) => [...row.children].map((c) => ({ ...c.getBoundingClientRect().toJSON(), text: c.textContent }))),
+      }));
+      // Inline edges as distances from the inline start, so the checks read the same in both directions.
+      const start = (b) => (m.rtl ? -b.right : b.left), end = (b) => (m.rtl ? -b.left : b.right);
+      const spread = (xs) => Math.max(...xs) - Math.min(...xs);
+      const wet = m.rows.filter((cells) => cells[3]?.text);
+      expect(m.rtl).toBe(language === 'ar');
+      expect(m.rows.length).toBeGreaterThanOrEqual(4);
+      expect(m.rows.map((cells) => cells.length)).toEqual(m.rows.map(() => 4));
+      expect(wet.length > 0 && wet.length < m.rows.length).toBe(rainy);
+
+      expect(spread(m.rows.map(([day]) => start(day))), 'day start').toBeLessThanOrEqual(1);
+      expect(spread(m.rows.map(([, icon]) => (icon.left + icon.right) / 2)), 'icon centre').toBeLessThanOrEqual(1);
+      expect(spread(m.rows.map(([, , temp]) => end(temp))), 'temperature end').toBeLessThanOrEqual(1);
+      if (rainy) expect(spread(wet.map(([, , , r]) => end(r))), 'rain end').toBeLessThanOrEqual(1);
+      expect(Math.abs(start(m.rows[0][0]) - start(m.box)), 'day column at the inline start').toBeLessThanOrEqual(1);
+      m.rows.forEach((cells, i) => {
+        cells.slice(1).forEach((c, k) => expect(start(c), `row ${i} cell ${k + 1} order`).toBeGreaterThanOrEqual(end(cells[k]) - 1));
+        if (i) expect(Math.min(...cells.map((c) => c.top)), `row ${i} below row ${i - 1}`).toBeGreaterThanOrEqual(Math.max(...m.rows[i - 1].map((c) => c.bottom)) - 1);
+        for (const c of cells) {
+          expect(c.left, `row ${i} inside`).toBeGreaterThanOrEqual(m.box.left - 1);
+          expect(c.right, `row ${i} inside`).toBeLessThanOrEqual(m.box.right + 1);
+          expect(c.top, `row ${i} inside`).toBeGreaterThanOrEqual(m.box.top - 1);
+          expect(c.bottom, `row ${i} inside`).toBeLessThanOrEqual(m.box.bottom + 1);
+        }
+      });
+
+      // The weather becomes unavailable while the container keeps "vert": the message takes the whole width.
+      fail = true;
+      await page.evaluate(async () => {
+        const c = JSON.parse(localStorage.getItem('pb-demo-config'));
+        localStorage.setItem('pb-demo-config', JSON.stringify({ ...c, weather: { city: 'Beta', lat: 20, lon: 20 } }));
+        const main = await import('./main.js');
+        await main.loadConfig();
+      });
+      await expect(page.locator('.fc > .empty')).toHaveText(language === 'ar' ? 'الطقس غير متاح' : 'Weather unavailable');
+      await expect(fc).toHaveClass(/\bvert\b/);
+      const [outer, inner] = await page.evaluate(() => ['.fc', '.fc > .empty'].map((s) => document.querySelector(s).getBoundingClientRect().width));
+      expect(Math.abs(outer - inner), 'unavailable message width').toBeLessThanOrEqual(1);
+    });
+  }
+}
+
+// At a large font scale the icon, temperature and rain tracks must not take the whole width: the day names stay readable.
+test('a narrow tall forecast at a large font scale keeps room for the day names', async ({ page }) => {
+  const now = new Date();
+  const day = (k) => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k, 12); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const hour = `${day(0)}T${String(now.getHours()).padStart(2, '0')}:00`;
+  await page.route('https://api.open-meteo.com/**', (route) => route.fulfill({ json: {
+    current: { time: hour, temperature_2m: 20, apparent_temperature: 22, weather_code: 3, is_day: 1 },
+    daily: { time: [0, 1, 2, 3, 4, 5, 6].map(day), weather_code: [3, 3, 3, 3, 80, 3, 3], temperature_2m_max: [28, 27, 27, 29, 29, 29, 28],
+      temperature_2m_min: [20, 18, 16, 16, 20, 17, 19], precipitation_probability_max: [0, 0, 0, 0, 62, 0, 0] },
+    hourly: { time: [hour], weather_code: [3], temperature_2m: [20], precipitation_probability: [0], is_day: [1] },
+  } }));
+  await layout(page, [{ ...widget('forecast', { mode: 'daily' }), w: 3, h: 6 }], { weather: { city: 'Alpha', lat: 10, lon: 10 }, display: { language: 'en', appearance: { fontScale: 150 } } });
+  await expect(page.locator('.fc')).toHaveClass(/\bvert\b/);
+  await expect(page.locator('.fc-t').nth(3)).toBeAttached();
+  for (const width of await page.locator('.fc-t').evaluateAll((cells) => cells.map((c) => c.getBoundingClientRect().width))) expect(width, 'day cell width').toBeGreaterThan(20);
+});
+
 // PRIVACY.md: the phone sends the weather location to Open-Meteo only while a page has a widget that uses the weather.
 test('the weather is fetched only while a widget needs it', async ({ page }) => {
   const asked = [];
