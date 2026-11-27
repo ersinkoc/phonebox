@@ -725,7 +725,7 @@ app.MapPost("/api/immich/albums", async (ImmichAlbumsRequest body, PhotoFrame ph
 app.MapPost("/api/dictate", async (string? widget, string? text, bool? assistant, HttpRequest req, Dictation dictation, VoiceAssistant voice, CancellationToken ct) =>
 {
     var dev = req.Headers["X-PhoneBox-Device"].ToString();
-    if (assistant == true)
+    if (assistant != false)
     {
         var (handled, vStatus, msg) = await voice.TryExecuteAsync(dev, widget, text, ct);
         if (handled) return vStatus == 200 ? Results.Ok(new { ok = true, action = msg }) : Results.Json(new { error = msg }, statusCode: vStatus);
