@@ -257,10 +257,12 @@
     // an address (a scheme of two letters or more) takes the number only in place of {value} in the address; the demo
     // has no files, so any other command counts as a program found on the computer
     if (/^file:/i.test(cmd)) return 'This shortcut takes a number only when it starts a program or opens an address.';
-    if (/^[A-Za-z][A-Za-z0-9+.\-]+:/.test(cmd)) { if (!cmd.includes('{value}')) return 'This shortcut opens an address, which takes no arguments.'; }
+    const address = /^[A-Za-z][A-Za-z0-9+.\-]+:/.test(cmd);
+    if (address) { if (!cmd.includes('{value}')) return 'This shortcut opens an address, which takes no arguments.'; }
     else if (cmd.includes('{value}')) return '{value} goes in the arguments of a program, not in its name.';
+    // where {value} stands in the arguments matters only for a program: an address takes the number in the address
     let quoted = false, embedded = false;
-    for (let i = 0; i < args.length; i++) {
+    for (let i = 0; !address && i < args.length; i++) {
       if (args[i] === '"') { let n = 0; for (let j = i - 1; j >= 0 && args[j] === '\\'; j--) n++; if (n % 2 === 0) quoted = !quoted; }
       else if (args.startsWith('{value}', i)) {
         const end = i + 7;
@@ -707,14 +709,16 @@
       // on / off keys flip in the demo; the mute key mutes the made-up computer
       const id = decodeURIComponent(path.slice(9)), shortcuts = (await config()).shortcuts;
       let sc = shortcuts.find((s) => s.id === id);
+      // ?hold=: read once, like the agent's bool binding ("True" is true), for the value check and the long press
+      const hold = (q.get('hold') || '').toLowerCase() === 'true';
       // ?value=: only a key that starts a program or opens an address and has a range takes a number, inside it and on
       // a step from its lowest; never with a long press (the agent's own check, ShortcutValues; no rate limit here)
       if (sc && q.has('value')) {
-        const refused = valueRefusal(sc, q.get('value'), q.get('hold') === 'true');
+        const refused = valueRefusal(sc, q.get('value'), hold);
         if (refused) return json({ error: refused }, 400);
       }
       // ?hold=true runs the key's long-press shortcut instead (the agent resolves it; the phone sends only the held key's id)
-      if (sc && q.get('hold') === 'true') sc = sc.longPress && sc.longPress !== sc.id ? shortcuts.find((s) => s.id === sc.longPress) : null;
+      if (sc && hold) sc = sc.longPress && sc.longPress !== sc.id ? shortcuts.find((s) => s.id === sc.longPress) : null;
       if (!sc) return json({ title: 'An error occurred while processing your request.', status: 500, detail: 'unknown shortcut' }, 500);
       if (sc.cmd === 'builtin:cycle') {
         const list = JSON.stringify(sc.cycle || []), n = (sc.cycle || []).length;

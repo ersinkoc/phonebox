@@ -235,11 +235,12 @@ From a script or another program on the computer, the same run is `POST /api/run
   ±1,000,000,000,000 and 6 decimals, with a step of at least 0.000001.
 - **Written by the agent.** It writes the number itself, with a dot for decimals on every computer and whole numbers
   without one (`37.50` becomes `37.5`, `40.0` becomes `40`), so only digits, a minus sign and a dot reach the command.
-- **Its own argument.** A key with a range that names a program (a file the agent can run, by its path, a relative
-  one from the key's working folder, or on the `PATH`; on Windows an `.exe` or `.com`) starts it directly, without the shell, with each argument passed on its own. The number goes
-  in place of each `{value}` in the arguments, or else at the end as one more argument. `{value}` must stand on its
-  own, outside quotes, with a space before and after it: `--percent {value}` works, while `--percent={value}` and
-  `"at {value}"` are refused.
+- **Its own argument.** A key with a range that names a program starts it directly, without the shell, with each
+  argument passed on its own. The program is found by its path (a relative one from the key's working folder) or on
+  the `PATH`; a bare name is looked up on the `PATH` only, not in the working folder. On Windows it is an `.exe` or
+  `.com`. The number goes in place of each `{value}` in the arguments, or else at the end as one more argument.
+  `{value}` must be an unquoted argument of its own, with a space or a tab between it and the next argument; it may
+  start or end the arguments: `--percent {value}` works, while `--percent={value}` and `"at {value}"` are refused.
 - **An address.** An address (`https:`, `shell:`, `ms-settings:`, a custom scheme…) opens through the system, which
   passes no arguments on, so it takes the number only in place of `{value}` in the address itself:
   `"cmd": "https://example.org/watch?t={value}"`. A key with a range whose command is neither a program found on the

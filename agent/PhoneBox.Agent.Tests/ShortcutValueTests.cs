@@ -197,7 +197,7 @@ public sealed class ShortcutValueTests : IDisposable
     [InlineData("--seek\u00a0{value}")]       // a no-break space does not separate arguments
     [InlineData("--seek\n{value}")]
     public void APlaceholderInsideAWordIsRefused(string args) =>
-        Assert.Contains("must be an argument of its own", ShortcutValues.Check(Seek(args), "37", out _));
+        Assert.Contains("an unquoted argument of its own", ShortcutValues.Check(Seek(args), "37", out _));
 
     [Theory]
     [InlineData("--seek", "--seek")]
@@ -270,6 +270,16 @@ public sealed class ShortcutValueTests : IDisposable
         File.WriteAllText(odd, "#!/bin/sh\n");
         File.SetUnixFileMode(odd, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         Assert.Contains("goes in the arguments", ShortcutValues.Check(Seek(cmd: odd), "37", out _) ?? "");
+    }
+
+    [Theory]
+    [InlineData("--caption={value}")] // the number goes in the address, so where {value} stands in Args does not matter
+    [InlineData("--title \"open")]
+    public void AnAddressKeysArgumentsAreNotCheckedForThePlaceholder(string args)
+    {
+        var sc = Seek(args, cmd: "https://example.org/watch?t={value}");
+        Assert.Null(ShortcutValues.Check(sc, "37", out var v));
+        Assert.Equal("https://example.org/watch?t=37", Shortcuts.StartInfo(sc, v).FileName);
     }
 
     [Fact]
@@ -370,18 +380,21 @@ public sealed class ShortcutValueTests : IDisposable
         if (OperatingSystem.IsWindows()) return; // a shell script records its arguments; Unix only
         var log = Path.Combine(_dir, "args.txt");
         var script = Path.Combine(_dir, "record.sh");
-        File.WriteAllText(script, "#!/bin/sh\nfor a in \"$@\"; do printf '[%s]' \"$a\" >> \"" + log + "\"; done\n");
+        // a fixed relative name in the key's working folder, so the temp path never enters the script's source; "[end]"
+        // after the loop, so the test compares only a complete record
+        File.WriteAllText(script, "#!/bin/sh\nfor a in \"$@\"; do printf '[%s]' \"$a\" >> args.txt; done\nprintf '[end]' >> args.txt\n");
         File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         var sc = Seek("--title \"a b\" {value} --x", cmd: script, step: 0.5);
+        sc.Cwd = _dir;
         Assert.Equal(200, Status(Program.RunShortcutForPhone(new AgentConfig { Shortcuts = [sc] }, sc.Id, NullLogger.Instance, _push, _audio, value: "37.50", gate: new ValueRateGate())));
-        // the script writes one argument at a time: wait for the last one, not just for the file
+        // the script writes one argument at a time: wait for its end marker, not just for the file
         var text = "";
-        for (var i = 0; i < 200 && !text.EndsWith("[--x]", StringComparison.Ordinal); i++)
+        for (var i = 0; i < 200 && !text.EndsWith("[end]", StringComparison.Ordinal); i++)
         {
             await Task.Delay(25);
             text = File.Exists(log) ? File.ReadAllText(log) : "";
         }
-        Assert.Equal("[--title][a b][37.5][--x]", text);
+        Assert.Equal("[--title][a b][37.5][--x][end]", text);
     }
 
     [Fact]

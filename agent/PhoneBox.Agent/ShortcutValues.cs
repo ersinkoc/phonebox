@@ -53,6 +53,11 @@ public static partial class ShortcutValues
         {
             if (s.Cmd.Contains(Placeholder, StringComparison.Ordinal))
                 return $"{Placeholder} goes in the arguments of a program, not in its name.";
+            // where the number goes in the arguments: only a program gets them
+            if (Embedded(s.Args))
+                return $"In this shortcut's arguments, {Placeholder} must be an unquoted argument of its own, with a space or a tab between it and the next argument.";
+            if (OpenQuote(s.Args))
+                return "This shortcut's arguments leave a quote open, so the number would not be an argument of its own.";
         }
         else if (IsAddress(s.Cmd))
         {
@@ -61,10 +66,6 @@ public static partial class ShortcutValues
         }
         else
             return $"This shortcut takes a number only when it starts a program found on this computer, or opens an address with {Placeholder} in it.";
-        if (Embedded(s.Args))
-            return $"In this shortcut's arguments, {Placeholder} must be an argument of its own, with a space before and after it.";
-        if (OpenQuote(s.Args))
-            return "This shortcut's arguments leave a quote open, so the number would not be an argument of its own.";
         if (raw is null || !PlainNumber().IsMatch(raw)
             || !decimal.TryParse(raw, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var n))
             return "The value must be a plain number, such as 37 or -2.5.";
