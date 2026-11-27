@@ -407,8 +407,13 @@ body.night #navCard, body.night #navChip { display: none; }
 .fc-v { font-weight: 500; white-space: nowrap; }
 .fc-v small { color: var(--muted); font-weight: 400; }
 .fc-r { font-size: .78em; color: #7dd3fc; min-height: 1.1em; white-space: nowrap; }
-.fc.vert { flex-direction: column; }
-.fc.vert .fc-i { flex-direction: row; justify-content: space-between; gap: 6px; }
+/* Tall: one grid whose rows share the four column tracks, so a long day name or a rain value cannot move the other columns. */
+.fc.vert { display: grid; grid-template-columns: minmax(1.5em, 1fr) auto auto auto; grid-auto-rows: minmax(0, 1fr); align-items: center; column-gap: 4px; }
+.fc.vert .fc-i { display: contents; }
+.fc.vert .fc-t { overflow: hidden; text-overflow: ellipsis; }
+.fc.vert .fc-ic { justify-self: center; }
+.fc.vert .fc-v, .fc.vert .fc-r { justify-self: end; }
+.fc.vert > .empty { grid-column: 1 / -1; }
 .fc.vert .fc-ic { font-size: 1.2em; }
 
 /* ---------- media ---------- */
