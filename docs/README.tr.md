@@ -54,13 +54,13 @@ PhoneBox, tam ekran bir **Android uygulamasını** küçük bir **masaüstü aja
 
 ## Neler yapabilirsiniz?
 
-| Kullanım alanı            | Telefonda görünenler                                                                                                                                              |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PC izleme**             | CPU, GPU, RAM, diskler, ağ ve ping; grafikler, GPU detayları ve işlem kontrolleri                                                                                 |
-| **Yapay zekâ kodlama**    | Claude, Codex ve Antigravity kotaları, sıfırlama süreleri ve tüketim tahminleri; yerel Claude Code ve Codex oturumları; GitHub incelemeleri ve CI durumu          |
+| Kullanım alanı | Telefonda görünenler |
+|---|---|
+| **PC izleme** | CPU, GPU, RAM, diskler, ağ ve ping; grafikler, GPU detayları ve işlem kontrolleri |
+| **Yapay zekâ kodlama** | Claude, Codex ve Antigravity kotaları, sıfırlama süreleri ve tüketim tahminleri; yerel Claude Code ve Codex oturumları; GitHub incelemeleri ve CI durumu |
 | **Dokunmatik kontroller** | Uygulama ve URL kısayolları, tuş kombinasyonları ve makrolar; [Control Deck](CONTROL-DECK.md) üzerinden uygulama sesi, mikrofon, medya, OBS ve sistem kontrolleri |
-| **Günlük kullanım**       | Şimdi Oynatılıyor, internet radyosu, saatler, hava durumu, takvimler, notlar, kontrol listeleri, pomodoro ve zamanlayıcılar                                       |
-| **Otomasyon**             | Webhook değerleri ve bildirimler, Home Assistant kontrolleri ve bilgisayardaki etkinliğe tepki veren kurallar                                                     |
+| **Günlük kullanım** | Şimdi Oynatılıyor, internet radyosu, saatler, hava durumu, takvimler, notlar, kontrol listeleri, pomodoro ve zamanlayıcılar |
+| **Otomasyon** | Webhook değerleri ve bildirimler, Home Assistant kontrolleri ve bilgisayardaki etkinliğe tepki veren kurallar |
 
 Model, zamanlama ve token ayrıntıları için bir yapay zekâ oturumuna dokunun. Telefondan **İzin ver** veya **Reddet** yanıtı vermek için Claude Code izin istemlerini etkinleştirin. İsteğe bağlı [CodexBar entegrasyonu](GUIDE.md#widgets) kota sağlayıcıları ve maliyet özeti ekler.
 
@@ -94,10 +94,10 @@ Kurulum en son sürümü indirir, SHA-256 sağlama toplamını doğrular, eksik 
 
 ### 2. Telefonu bağlayın
 
-| USB                                                                                                                                                                                                                                              | Yalnızca Wi-Fi                                                                                                                                                                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| USB | Yalnızca Wi-Fi |
+|---|---|
 | **Geliştirici seçenekleri → USB hata ayıklama**'yı açın, veri kablosunu bağlayın ve telefondaki yetkilendirme istemini onaylayın. Kurulumun uygulamayı yüklemesine izin verin veya **Ayarlar → Genel → Telefon uygulamasını yükle**'yi kullanın. | [Son sürümden](https://github.com/ersinkoc/phonebox/releases/latest) APK'yı yükleyin. **Ayarlar → Genel → Wi-Fi & Tailscale**'i etkinleştirin, istendiğinde ajanı yeniden başlatın ve **Telefonu Wi-Fi ile eşleştir**'i seçin. Eşleştirme QR kodunu tarayın ve doğrulama kodunu onaylayın. |
-| Bağlandığında ekranı uyandırır ve paneli açar; adb üzerinden uygulama güncellemelerini destekler.                                                                                                                                                | adb veya geliştirici seçenekleri gerekmez; daha sonra USB yapılandırmadıkça uygulama güncellemelerini elle yükleyin.                                                                                                                                                                       |
+| Bağlandığında ekranı uyandırır ve paneli açar; adb üzerinden uygulama güncellemelerini destekler. | adb veya geliştirici seçenekleri gerekmez; daha sonra USB yapılandırmadıkça uygulama güncellemelerini elle yükleyin. |
 
 Otomatik USB/Wi-Fi geçişi için Wi-Fi'yi etkinleştirin ve telefonu bir kez USB üzerinden bağlayın.
 [Bağlantı ayrıntıları ve Tailscale kurulumu →](SETUP.md#wi-fi--tailscale)
@@ -111,38 +111,38 @@ Sayfalar arasında gezinmek için kaydırın, sayfa noktalarına dokunun veya te
 
 Home, System, AI quotas, Sessions, Music, Planner, Automation veya Control Deck şablonlarıyla başlayın, ardından 12 × 6 ızgarayı telefonunuza göre uyarlayın. Dikey ve yatay düzenler desteklenir. Smart Stack tek bir yuvaya 12 adede kadar widget yerleştirir.
 
-| Ana Sayfa                                                          | Yapay zekâ oturumları                                                                |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| ![Saat, hava durumu, medya ve PC metrikleri](screenshots/home.png) | ![Kodlama oturumları ve GitHub etkinliği](screenshots/work.png)                      |
-| **Sistem**                                                         | **Düzen düzenleyici**                                                                |
-| ![CPU, GPU, bellek ve ağ grafikleri](screenshots/system.png)       | ![Görsel düzenleyicide sayfalar ve widget ayarları](screenshots/settings-editor.png) |
+| Ana Sayfa | Yapay zekâ oturumları |
+|---|---|
+| ![Saat, hava durumu, medya ve PC metrikleri](screenshots/home.png) | ![Kodlama oturumları ve GitHub etkinliği](screenshots/work.png) |
+| **Sistem** | **Düzen düzenleyici** |
+| ![CPU, GPU, bellek ve ağ grafikleri](screenshots/system.png) | ![Görsel düzenleyicide sayfalar ve widget ayarları](screenshots/settings-editor.png) |
 
 Ekran görüntüleri demo verileri kullanır. [Şablon galerisi ve widget'lara göz atın](GUIDE.md#pages--templates).
 [Görünüm kılavuzu](APPEARANCE.md) ile yazı tiplerini, boyutları, boşlukları, köşeleri ve yüzeyleri genel veya sayfa/widget bazında değiştirin.
 
 ## Platform desteği
 
-|                                 | Windows                                                                           | Linux                         | macOS                                       |
-| ------------------------------- | --------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------- |
-| Sürüm derlemeleri               | x64                                                                               | x64 / ARM64, glibc            | Apple Silicon / Intel                       |
-| CPU, RAM, diskler, ağ, işlemler | ✓                                                                                 | ✓                             | ✓                                           |
-| GPU verisi                      | Windows sayaçları; `nvidia-smi` ile NVIDIA; LibreHardwareMonitor ile ek sensörler | NVIDIA / AMD; Intel saat hızı | macOS tarafından sunulduğunda Apple Silicon |
-| Medya                           | Sistem medya oturumları                                                           | `playerctl`                   | `nowplaying-cli`; Spotify / Music yedeği    |
-| Ses düzeyi                      | Yerel                                                                             | `wpctl` / `pactl`             | Sistem çıkışı; cihaza göre değişir          |
-| Ajan arayüzü                    | Tepsi simgesi + tarayıcı ayarları                                                 | Tarayıcı ayarları             | Tarayıcı ayarları                           |
+| | Windows | Linux | macOS |
+|---|---|---|---|
+| Sürüm derlemeleri | x64 | x64 / ARM64, glibc | Apple Silicon / Intel |
+| CPU, RAM, diskler, ağ, işlemler | ✓ | ✓ | ✓ |
+| GPU verisi | Windows sayaçları; `nvidia-smi` ile NVIDIA; LibreHardwareMonitor ile ek sensörler | NVIDIA / AMD; Intel saat hızı | macOS tarafından sunulduğunda Apple Silicon |
+| Medya | Sistem medya oturumları | `playerctl` | `nowplaying-cli`; Spotify / Music yedeği |
+| Ses düzeyi | Yerel | `wpctl` / `pactl` | Sistem çıkışı; cihaza göre değişir |
+| Ajan arayüzü | Tepsi simgesi + tarayıcı ayarları | Tarayıcı ayarları | Tarayıcı ayarları |
 
 ## Belgeler
 
-| Kılavuz                               | İçerik                                                                                                               |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| [Kurulum ve bağlantılar](SETUP.md)    | Kurulum seçenekleri, uyarılar, elle ve kaynaktan kurulum, USB, Wi-Fi, Tailscale, güncellemeler, kaldırma             |
-| [Kullanıcı kılavuzu](GUIDE.md)        | Şablon galerisi, widget'lar, yapay zekâ entegrasyonları, düzenleyici, Claude Code istemleri, webhook'lar ve kurallar |
-| [Görünüm](APPEARANCE.md)              | Yazı tipleri, yüzeyler, ön ayarlar, kalıtım ve canlı önizleme                                                        |
-| [Control Deck](CONTROL-DECK.md)       | Ses, medya, OBS, kısayollar, görevler, protokoller ve platform sınırları                                             |
-| [Geliştirme](DEVELOPMENT.md)          | Mimari, yerel demo, derlemeler, testler ve izole ajan çalıştırma                                                     |
-| [Katkıda bulunma](../CONTRIBUTING.md) | Katkı kapsamı, inceleme beklentileri, gizlilik ve zorunlu kontroller                                                 |
-| [Değişiklik günlüğü](../CHANGELOG.md) | Sürüm geçmişi ve yayınlanmamış değişiklikler                                                                         |
-| [Sürüm kontrol listesi](RELEASING.md) | Bakımcı derleme, imzalama ve yayınlama iş akışı                                                                      |
+| Kılavuz | İçerik |
+|---|---|
+| [Kurulum ve bağlantılar](SETUP.md) | Kurulum seçenekleri, uyarılar, elle ve kaynaktan kurulum, USB, Wi-Fi, Tailscale, güncellemeler, kaldırma |
+| [Kullanıcı kılavuzu](GUIDE.md) | Şablon galerisi, widget'lar, yapay zekâ entegrasyonları, düzenleyici, Claude Code istemleri, webhook'lar ve kurallar |
+| [Görünüm](APPEARANCE.md) | Yazı tipleri, yüzeyler, ön ayarlar, kalıtım ve canlı önizleme |
+| [Control Deck](CONTROL-DECK.md) | Ses, medya, OBS, kısayollar, görevler, protokoller ve platform sınırları |
+| [Geliştirme](DEVELOPMENT.md) | Mimari, yerel demo, derlemeler, testler ve izole ajan çalıştırma |
+| [Katkıda bulunma](../CONTRIBUTING.md) | Katkı kapsamı, inceleme beklentileri, gizlilik ve zorunlu kontroller |
+| [Değişiklik günlüğü](../CHANGELOG.md) | Sürüm geçmişi ve yayınlanmamış değişiklikler |
+| [Sürüm kontrol listesi](RELEASING.md) | Bakımcı derleme, imzalama ve yayınlama iş akışı |
 
 ## Güvenlik ve gizlilik
 

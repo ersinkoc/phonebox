@@ -54,13 +54,13 @@ PhoneBox koppelt een schermvullende **Android-app** aan een lichte **desktop-age
 
 ## Wat je kunt doen
 
-| Gebruik               | Wat er op de telefoon verschijnt                                                                                  |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **Pc-monitoring**     | CPU, GPU, RAM, schijven, netwerk en ping; grafieken, GPU-details en procesbeheer                                  |
-| **AI-coderen**        | Claude-, Codex- en Antigravity-quota; lokale Claude Code- en Codex-sessies; GitHub-reviews en CI-status           |
-| **Aanraakbediening**  | App- en URL-snelkoppelingen, macro's; audio, microfoon, media, OBS en systeem via [Control Deck](CONTROL-DECK.md) |
-| **Dagelijks gebruik** | Nu aan het spelen, internetradio, klokken, weer, agenda's, notities, checklijsten, pomodoro en timers             |
-| **Automatisering**    | Webhooks, meldingen, Home Assistant en reactieve regels                                                           |
+| Gebruik | Wat er op de telefoon verschijnt |
+|---|---|
+| **Pc-monitoring** | CPU, GPU, RAM, schijven, netwerk en ping; grafieken, GPU-details en procesbeheer |
+| **AI-coderen** | Claude-, Codex- en Antigravity-quota; lokale Claude Code- en Codex-sessies; GitHub-reviews en CI-status |
+| **Aanraakbediening** | App- en URL-snelkoppelingen, macro's; audio, microfoon, media, OBS en systeem via [Control Deck](CONTROL-DECK.md) |
+| **Dagelijks gebruik** | Nu aan het spelen, internetradio, klokken, weer, agenda's, notities, checklijsten, pomodoro en timers |
+| **Automatisering** | Webhooks, meldingen, Home Assistant en reactieve regels |
 
 ## Snelstart
 
@@ -82,8 +82,8 @@ De instellingen openen op <http://127.0.0.1:8765>. Zie de [installatiehandleidin
 
 ### 2. Telefoon verbinden
 
-| USB                                                                                 | Alleen Wi-Fi                                                                                                                                            |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| USB | Alleen Wi-Fi |
+|---|---|
 | Schakel **Opties voor ontwikkelaars → USB-foutopsporing** in en sluit de kabel aan. | Installeer de APK van de [nieuwste release](https://github.com/ersinkoc/phonebox/releases/latest), schakel **Wi-Fi & Tailscale** in en scan de QR-code. |
 
 ### 3. Aanpassen
@@ -92,14 +92,14 @@ Open <http://127.0.0.1:8765>, kies een sjabloon onder **Pagina's**, plaats widge
 
 ## Documentatie
 
-| Gids                                    | Inhoud                                                         |
-| --------------------------------------- | -------------------------------------------------------------- |
-| [Installatie en verbindingen](SETUP.md) | Opties, USB, Wi-Fi, Tailscale, updates en probleemoplossing    |
-| [Gebruikershandleiding](GUIDE.md)       | Sjablonen, widgets, AI-integraties, editor, webhooks en regels |
-| [Weergave](APPEARANCE.md)               | Lettertypen, oppervlakken, voorinstellingen en voorbeeld       |
-| [Control Deck](CONTROL-DECK.md)         | Audio, media, OBS, snelkoppelingen en taken                    |
-| [Ontwikkeling](DEVELOPMENT.md)          | Architectuur, lokale demo, builds en tests                     |
-| [Privacy](../PRIVACY.md)                | Uitgaande verbindingen en beveiliging                          |
+| Gids | Inhoud |
+|---|---|
+| [Installatie en verbindingen](SETUP.md) | Opties, USB, Wi-Fi, Tailscale, updates en probleemoplossing |
+| [Gebruikershandleiding](GUIDE.md) | Sjablonen, widgets, AI-integraties, editor, webhooks en regels |
+| [Weergave](APPEARANCE.md) | Lettertypen, oppervlakken, voorinstellingen en voorbeeld |
+| [Control Deck](CONTROL-DECK.md) | Audio, media, OBS, snelkoppelingen en taken |
+| [Ontwikkeling](DEVELOPMENT.md) | Architectuur, lokale demo, builds en tests |
+| [Privacy](../PRIVACY.md) | Uitgaande verbindingen en beveiliging |
 
 ## Licentie
 

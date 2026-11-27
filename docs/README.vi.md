@@ -54,13 +54,13 @@ PhoneBox ghép nối một **ứng dụng Android** toàn màn hình với một
 
 ## Bạn có thể làm gì
 
-| Dùng để                | Những gì hiển thị trên điện thoại                                                                                                                                 |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Giám sát PC**        | CPU, GPU, RAM, ổ đĩa, mạng và ping; biểu đồ, chi tiết GPU và điều khiển tiến trình                                                                                |
-| **Lập trình bằng AI**  | Hạn mức của Claude, Codex và Antigravity, thời gian đặt lại và dự báo tốc độ tiêu thụ; các phiên Claude Code và Codex cục bộ; trạng thái review và CI trên GitHub |
-| **Điều khiển cảm ứng** | Phím tắt ứng dụng và URL, tổ hợp phím và macro; điều khiển âm thanh ứng dụng, micro, đa phương tiện, OBS và hệ thống thông qua [Control Deck](CONTROL-DECK.md)    |
-| **Dùng hằng ngày**     | Đang phát, radio trên internet, đồng hồ, thời tiết, lịch, ghi chú, danh sách kiểm tra, pomodoro và hẹn giờ                                                        |
-| **Tự động hóa**        | Giá trị và thông báo qua webhook, điều khiển Home Assistant và các quy tắc phản ứng theo hoạt động trên máy tính                                                  |
+| Dùng để | Những gì hiển thị trên điện thoại |
+|---|---|
+| **Giám sát PC** | CPU, GPU, RAM, ổ đĩa, mạng và ping; biểu đồ, chi tiết GPU và điều khiển tiến trình |
+| **Lập trình bằng AI** | Hạn mức của Claude, Codex và Antigravity, thời gian đặt lại và dự báo tốc độ tiêu thụ; các phiên Claude Code và Codex cục bộ; trạng thái review và CI trên GitHub |
+| **Điều khiển cảm ứng** | Phím tắt ứng dụng và URL, tổ hợp phím và macro; điều khiển âm thanh ứng dụng, micro, đa phương tiện, OBS và hệ thống thông qua [Control Deck](CONTROL-DECK.md) |
+| **Dùng hằng ngày** | Đang phát, radio trên internet, đồng hồ, thời tiết, lịch, ghi chú, danh sách kiểm tra, pomodoro và hẹn giờ |
+| **Tự động hóa** | Giá trị và thông báo qua webhook, điều khiển Home Assistant và các quy tắc phản ứng theo hoạt động trên máy tính |
 
 Chạm vào một phiên AI để xem chi tiết về mô hình, thời gian và token của nó. Bật tùy chọn nhắc cấp quyền của Claude Code để trả lời **Cho phép (Allow)** hoặc **Từ chối (Deny)** ngay từ điện thoại. Tích hợp tùy chọn [CodexBar](GUIDE.md#widgets) bổ sung các nhà cung cấp hạn mức và tổng quan chi phí.
 
@@ -97,10 +97,10 @@ Hãy đọc các script trước khi chạy chúng: [Windows](../setup.ps1) · [
 
 ### 2. Kết nối điện thoại
 
-| USB                                                                                                                                                                                                    | Chỉ Wi-Fi                                                                                                                                                                                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| USB | Chỉ Wi-Fi |
+|---|---|
 | Bật **Tùy chọn nhà phát triển → Gỡ lỗi USB**, cắm cáp dữ liệu và chấp nhận lời nhắc cấp quyền trên điện thoại. Để trình cài đặt cài ứng dụng, hoặc dùng **Cài đặt → Chung → Cài ứng dụng điện thoại**. | Cài APK từ [bản phát hành mới nhất](https://github.com/ersinkoc/phonebox/releases/latest). Bật **Cài đặt → Chung → Wi-Fi & Tailscale**, khởi động lại agent khi được yêu cầu, rồi chọn **Ghép nối điện thoại qua Wi-Fi**. Quét mã QR ghép nối và xác nhận mã kiểm tra trùng khớp. |
-| Đánh thức và mở bảng điều khiển khi kết nối; hỗ trợ cập nhật ứng dụng qua adb.                                                                                                                         | Không cần adb hay tùy chọn nhà phát triển; cài bản cập nhật ứng dụng thủ công trừ khi bạn cấu hình USB về sau.                                                                                                                                                                    |
+| Đánh thức và mở bảng điều khiển khi kết nối; hỗ trợ cập nhật ứng dụng qua adb. | Không cần adb hay tùy chọn nhà phát triển; cài bản cập nhật ứng dụng thủ công trừ khi bạn cấu hình USB về sau. |
 
 Để tự động dự phòng USB/Wi-Fi, hãy bật Wi-Fi và kết nối điện thoại qua USB một lần.
 [Chi tiết kết nối và thiết lập Tailscale →](SETUP.md#wi-fi--tailscale)
@@ -131,25 +131,25 @@ Vuốt, chạm vào các chấm chỉ trang hoặc dùng phím âm lượng củ
 
 Bắt đầu với mẫu Trang chủ, Hệ thống, Hạn mức AI, Phiên, Nhạc, Lập kế hoạch, Tự động hóa hoặc Control Deck, rồi tùy chỉnh lưới 12 × 6 cho vừa điện thoại của bạn. Hỗ trợ cả bố cục dọc và ngang. Smart Stack đặt tối đa 12 widget vào một ô duy nhất.
 
-| Trang chủ                                                                  | Phiên AI                                                                                    |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| ![Đồng hồ, thời tiết, đa phương tiện và thông số PC](screenshots/home.png) | ![Các phiên lập trình và hoạt động GitHub](screenshots/work.png)                            |
-| **Hệ thống**                                                               | **Trình chỉnh sửa bố cục**                                                                  |
-| ![Biểu đồ CPU, GPU, bộ nhớ và mạng](screenshots/system.png)                | ![Trang và cài đặt widget trong trình chỉnh sửa trực quan](screenshots/settings-editor.png) |
+| Trang chủ | Phiên AI |
+|---|---|
+| ![Đồng hồ, thời tiết, đa phương tiện và thông số PC](screenshots/home.png) | ![Các phiên lập trình và hoạt động GitHub](screenshots/work.png) |
+| **Hệ thống** | **Trình chỉnh sửa bố cục** |
+| ![Biểu đồ CPU, GPU, bộ nhớ và mạng](screenshots/system.png) | ![Trang và cài đặt widget trong trình chỉnh sửa trực quan](screenshots/settings-editor.png) |
 
 Ảnh chụp màn hình sử dụng dữ liệu demo. [Duyệt thư viện mẫu và widget](GUIDE.md#pages--templates).
 Thay đổi phông chữ, kích thước, khoảng cách, góc bo và bề mặt trên toàn cục hoặc cho riêng một trang hay widget bằng [hướng dẫn giao diện](APPEARANCE.md).
 
 ## Hỗ trợ nền tảng
 
-|                                   | Windows                                                                                                                         | Linux                         | macOS                                        |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------------------------------------------- |
-| Bản dựng phát hành                | x64                                                                                                                             | x64 / ARM64, glibc            | Apple silicon / Intel                        |
-| CPU, RAM, ổ đĩa, mạng, tiến trình | ✓                                                                                                                               | ✓                             | ✓                                            |
-| Dữ liệu GPU                       | Bộ đếm của Windows; NVIDIA qua `nvidia-smi`; thêm cảm biến qua [LibreHardwareMonitor](SETUP.md#librehardwaremonitor-on-windows) | NVIDIA / AMD; xung nhịp Intel | Apple silicon, khi macOS cung cấp dữ liệu đó |
-| Đa phương tiện                    | Các phiên media của hệ thống                                                                                                    | `playerctl`                   | `nowplaying-cli`; dự phòng Spotify / Music   |
-| Âm lượng                          | Nguyên bản                                                                                                                      | `wpctl` / `pactl`             | Đầu ra hệ thống; tùy thuộc vào thiết bị      |
-| Giao diện agent                   | Biểu tượng khay hệ thống + cài đặt trên trình duyệt                                                                             | Cài đặt trên trình duyệt      | Cài đặt trên trình duyệt                     |
+| | Windows | Linux | macOS |
+|---|---|---|---|
+| Bản dựng phát hành | x64 | x64 / ARM64, glibc | Apple silicon / Intel |
+| CPU, RAM, ổ đĩa, mạng, tiến trình | ✓ | ✓ | ✓ |
+| Dữ liệu GPU | Bộ đếm của Windows; NVIDIA qua `nvidia-smi`; thêm cảm biến qua [LibreHardwareMonitor](SETUP.md#librehardwaremonitor-on-windows) | NVIDIA / AMD; xung nhịp Intel | Apple silicon, khi macOS cung cấp dữ liệu đó |
+| Đa phương tiện | Các phiên media của hệ thống | `playerctl` | `nowplaying-cli`; dự phòng Spotify / Music |
+| Âm lượng | Nguyên bản | `wpctl` / `pactl` | Đầu ra hệ thống; tùy thuộc vào thiết bị |
+| Giao diện agent | Biểu tượng khay hệ thống + cài đặt trên trình duyệt | Cài đặt trên trình duyệt | Cài đặt trên trình duyệt |
 
 Widget phụ thuộc vào phần cứng, công cụ đã cài và quyền của máy chủ. Các tính năng nâng cao của Control Deck có
 [yêu cầu nền tảng riêng](CONTROL-DECK.md). Windows ARM và Linux musl (như Alpine) không có
@@ -157,17 +157,17 @@ bản dựng phát hành. Xem [bảng tương thích đầy đủ](SETUP.md#what
 
 ## Tài liệu
 
-| Hướng dẫn                                    | Nội dung                                                                                                                |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| [Cài đặt và kết nối](SETUP.md)               | Tùy chọn cài đặt, cảnh báo, cài thủ công và từ mã nguồn, USB, Wi-Fi, Tailscale, cập nhật, gỡ cài đặt và khắc phục sự cố |
-| [Hướng dẫn sử dụng](GUIDE.md)                | Thư viện mẫu, widget, tích hợp AI, trình chỉnh sửa, lời nhắc của Claude Code, webhook và quy tắc tự động hóa            |
-| [Giao diện](APPEARANCE.md)                   | Phông chữ, bề mặt, preset, kế thừa và xem trước trực tiếp                                                               |
-| [Control Deck](CONTROL-DECK.md)              | Âm thanh, đa phương tiện, OBS, phím tắt, tác vụ, giao thức, thành phần phụ thuộc và giới hạn nền tảng                   |
-| [Widget Discord](DISCORD.md)                 | Tạo ứng dụng Discord, kết nối, điều khiển và khắc phục sự cố                                                            |
-| [Phát triển](DEVELOPMENT.md)                 | Kiến trúc, demo cục bộ, bản dựng, kiểm thử, nguồn widget và chạy agent tách biệt                                        |
-| [Đóng góp](../CONTRIBUTING.md)               | Phạm vi đóng góp, kỳ vọng khi review, quyền riêng tư và các kiểm tra bắt buộc                                           |
-| [Nhật ký thay đổi](../CHANGELOG.md)          | Lịch sử phát hành và các thay đổi chưa phát hành                                                                        |
-| [Danh sách kiểm tra phát hành](RELEASING.md) | Quy trình dựng, ký số và công bố của người bảo trì                                                                      |
+| Hướng dẫn | Nội dung |
+|---|---|
+| [Cài đặt và kết nối](SETUP.md) | Tùy chọn cài đặt, cảnh báo, cài thủ công và từ mã nguồn, USB, Wi-Fi, Tailscale, cập nhật, gỡ cài đặt và khắc phục sự cố |
+| [Hướng dẫn sử dụng](GUIDE.md) | Thư viện mẫu, widget, tích hợp AI, trình chỉnh sửa, lời nhắc của Claude Code, webhook và quy tắc tự động hóa |
+| [Giao diện](APPEARANCE.md) | Phông chữ, bề mặt, preset, kế thừa và xem trước trực tiếp |
+| [Control Deck](CONTROL-DECK.md) | Âm thanh, đa phương tiện, OBS, phím tắt, tác vụ, giao thức, thành phần phụ thuộc và giới hạn nền tảng |
+| [Widget Discord](DISCORD.md) | Tạo ứng dụng Discord, kết nối, điều khiển và khắc phục sự cố |
+| [Phát triển](DEVELOPMENT.md) | Kiến trúc, demo cục bộ, bản dựng, kiểm thử, nguồn widget và chạy agent tách biệt |
+| [Đóng góp](../CONTRIBUTING.md) | Phạm vi đóng góp, kỳ vọng khi review, quyền riêng tư và các kiểm tra bắt buộc |
+| [Nhật ký thay đổi](../CHANGELOG.md) | Lịch sử phát hành và các thay đổi chưa phát hành |
+| [Danh sách kiểm tra phát hành](RELEASING.md) | Quy trình dựng, ký số và công bố của người bảo trì |
 
 Các [tiện ích bổ sung cho UMIDIGI BISON](../extras/umidigi-bison) chứa bản tinh chỉnh có thể hoàn tác, không cần root, từng được dùng trên chiếc điện thoại phát triển gốc.
 

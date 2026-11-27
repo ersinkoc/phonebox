@@ -54,13 +54,13 @@ PhoneBox associe une **application Android** plein écran à un léger **agent d
 
 ## Ce que vous pouvez faire
 
-| Usage                  | Ce qui s'affiche sur le téléphone                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Suivi PC**           | CPU, GPU, RAM, disques, réseau et ping ; graphiques, détails GPU et gestion des processus                          |
-| **Codage IA**          | Quotas Claude, Codex et Antigravity, sessions locales Claude Code et Codex, revues GitHub et statut CI             |
+| Usage | Ce qui s'affiche sur le téléphone |
+|---|---|
+| **Suivi PC** | CPU, GPU, RAM, disques, réseau et ping ; graphiques, détails GPU et gestion des processus |
+| **Codage IA** | Quotas Claude, Codex et Antigravity, sessions locales Claude Code et Codex, revues GitHub et statut CI |
 | **Commandes tactiles** | Raccourcis d'applications et URL, macros ; audio, micro, média, OBS et système via [Control Deck](CONTROL-DECK.md) |
-| **Quotidien**          | Lecture en cours, radio internet, horloges, météo, calendriers, notes, listes, pomodoro et minuteurs               |
-| **Automatisation**     | Webhooks, notifications, Home Assistant et règles réactives                                                        |
+| **Quotidien** | Lecture en cours, radio internet, horloges, météo, calendriers, notes, listes, pomodoro et minuteurs |
+| **Automatisation** | Webhooks, notifications, Home Assistant et règles réactives |
 
 ## Démarrage rapide
 
@@ -82,8 +82,8 @@ L'installation ouvre les paramètres sur <http://127.0.0.1:8765>. Voir le [guide
 
 ### 2. Connecter le téléphone
 
-| USB                                                                            | Wi-Fi uniquement                                                                                                                                         |
-| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| USB | Wi-Fi uniquement |
+|---|---|
 | Activez **Options pour les développeurs → Débogage USB** et branchez le câble. | Installez l'APK depuis la [dernière version](https://github.com/ersinkoc/phonebox/releases/latest), activez **Wi-Fi & Tailscale** et scannez le QR code. |
 
 ### 3. Personnaliser
@@ -92,14 +92,14 @@ Ouvrez <http://127.0.0.1:8765>, choisissez un modèle sous **Pages**, disposez v
 
 ## Documentation
 
-| Guide                                  | Contenu                                                   |
-| -------------------------------------- | --------------------------------------------------------- |
+| Guide | Contenu |
+|---|---|
 | [Installation et connexions](SETUP.md) | Options, USB, Wi-Fi, Tailscale, mises à jour et dépannage |
-| [Guide utilisateur](GUIDE.md)          | Modèles, widgets, IA, éditeur, webhooks et règles         |
-| [Apparence](APPEARANCE.md)             | Polices, surfaces, préréglages et aperçu                  |
-| [Control Deck](CONTROL-DECK.md)        | Audio, média, OBS, raccourcis et tâches                   |
-| [Développement](DEVELOPMENT.md)        | Architecture, démo locale, compilation et tests           |
-| [Confidentialité](../PRIVACY.md)       | Connexions sortantes et sécurité                          |
+| [Guide utilisateur](GUIDE.md) | Modèles, widgets, IA, éditeur, webhooks et règles |
+| [Apparence](APPEARANCE.md) | Polices, surfaces, préréglages et aperçu |
+| [Control Deck](CONTROL-DECK.md) | Audio, média, OBS, raccourcis et tâches |
+| [Développement](DEVELOPMENT.md) | Architecture, démo locale, compilation et tests |
+| [Confidentialité](../PRIVACY.md) | Connexions sortantes et sécurité |
 
 ## Licence
 
