@@ -4,6 +4,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
+// Starts real processes against a deadline: run apart from other collections, so a busy two-core runner cannot
+// push a child's start past it (see ShTests).
+[Collection("Process deadline")]
 public sealed class CodexLiveQuotaTests
 {
     private const string Rate = """{"primary":{"usedPercent":82,"windowDurationMins":300,"resetsAt":4102444800},"secondary":{"usedPercent":7,"windowDurationMins":10080,"resetsAt":4102444900},"planType":"plus","credits":{"hasCredits":true,"balance":"12.5"}}""";

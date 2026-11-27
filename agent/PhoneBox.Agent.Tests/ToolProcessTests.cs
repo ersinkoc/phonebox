@@ -2,6 +2,9 @@ using System.Diagnostics;
 using PhoneBox.Agent;
 using Xunit;
 
+// Starts real processes against a deadline: run apart from other collections, so a busy two-core runner cannot
+// push a child's start past it (see ShTests).
+[Collection("Process deadline")]
 public sealed class ToolProcessTests
 {
     private static ProcessStartInfo Shell(string windows, string unix)

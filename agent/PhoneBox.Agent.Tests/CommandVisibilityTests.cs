@@ -4,6 +4,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
+// Starts real processes against a deadline: run apart from other collections, so a busy two-core runner cannot
+// push a child's start past it (see ShTests).
+[Collection("Process deadline")]
 public sealed class CommandVisibilityTests
 {
     [Fact]

@@ -9,6 +9,9 @@ using Xunit;
 /// Regression tests from the 2026-11-08 audit (F3/F4 pushed values, F5 rules, F8 command widgets). Every test works on
 /// its own temporary files; nothing touches the real config.json or data.json.
 /// </summary>
+// Starts real processes against a deadline: run apart from other collections, so a busy two-core runner cannot
+// push a child's start past it (see ShTests).
+[Collection("Process deadline")]
 public sealed class AuditRegressionTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "phonebox-tests-" + Guid.NewGuid().ToString("N"));
