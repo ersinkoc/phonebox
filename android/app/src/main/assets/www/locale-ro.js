@@ -1350,6 +1350,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "Umple butonul cu imaginea încărcată a scurtăturii",
       "Fill the widget (crop)": "Umple widgetul (decupat)",
       "Fire (red · orange · yellow)": "Foc (roșu · portocaliu · galben)",
+      "Album colours (follow the cover)": "Culorile albumului (după copertă)",
       "First (5-hour session / weekly)": "Prima (sesiunea de 5 ore / săptămânală)",
       "Fit": "Încadrează",
       "Flat surfaces": "Suprafețe plane",

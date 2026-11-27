@@ -1385,6 +1385,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "ملء الزر مع الصورة الملغاة",
       "Fill the widget (crop)": "ملء الوسيلة (القطع)",
       "Fire (red · orange · yellow)": "النار (الأحمر، البرتقالي، الأصفر)",
+      "Album colours (follow the cover)": "ألوان الألبوم (تتبع الغلاف)",
       "First (5-hour session / weekly)": "الأولى (جلسة مدتها 5 ساعات/أسبوعيا)",
       "Fit": "تناسب",
       "Flat surfaces": "الأسطح المسطحة",

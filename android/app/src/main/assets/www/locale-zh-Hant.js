@@ -1350,6 +1350,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "用快捷方式上傳的圖片填充按鈕",
       "Fill the widget (crop)": "填充小工具 (裁剪)",
       "Fire (red · orange · yellow)": "火 (紅色 、 橙色 、 黃色)",
+      "Album colours (follow the cover)": "專輯顏色（跟隨封面）",
       "First (5-hour session / weekly)": "第一 (每週5小時)",
       "Fit": "適合",
       "Flat surfaces": "平坦的表面",

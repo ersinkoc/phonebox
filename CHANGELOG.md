@@ -40,6 +40,9 @@
 - Gauge: the ring is redrawn only when its value changes, not on every state frame, which saves work on slow phones
   (#736).
 
+- Spectrum bars: **Album colours** follow the cover of the song that is playing, the colour the background tint takes,
+  dark at the bottom and light at the top, and change with the next song (#745).
+
 ## 0.9.32 — 2026-11-27
 
 - Pi agent sessions in the AI sessions widget: model, thinking level, last tool, token counters, the current context

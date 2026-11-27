@@ -727,6 +727,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "Düğmeyi kısayolun yüklenmiş resmiyle doldur",
       "Fill the widget (crop)": "Widget'i doldur (kestir)",
       "Fire (red · orange · yellow)": "Ateş (kırmızı · turuncu · sarı)",
+      "Album colours (follow the cover)": "Albüm renkleri (kapağa göre)",
       "First (5-hour session / weekly)": "İlk (5 saatlik oturum / haftada bir)",
       "Fit": "Uygun",
       "Flat surfaces": "Düz yüzeyler",

@@ -1350,6 +1350,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "단축키의 업로드된 이미지로 버튼을 채웁니다.",
       "Fill the widget (crop)": "위젯 채우기 (자르기)",
       "Fire (red · orange · yellow)": "불 (빨간색 · 오렌지색 · 노란색)",
+      "Album colours (follow the cover)": "앨범 색상 (커버를 따름)",
       "First (5-hour session / weekly)": "첫번째 (5시간 세션 / 주당)",
       "Fit": "맞춤",
       "Flat surfaces": "평평한 표면",

@@ -117,3 +117,27 @@ test('spectrum bars on the next page do not animate the frames meant for this on
   await expect.poll(() => litOf(0)).toBeGreaterThan(500);
   expect(await litOf(1)).toBe(0);
 });
+
+test('album colours take the cover colour, dark at the bottom and light at the top, and follow a new song (#745)', async ({ page }) => {
+  const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+  await show(page, { style: 'album', segments: false, peaks: false });
+  const stops = await page.evaluate(async () => {
+    const { ambientStops } = await import('/panel/widgets/spectrum.js');
+    return { red: ambientStops('200, 40, 40'), bad: ambientStops('nonsense') };
+  });
+  expect(stops.red).toEqual([[0, '#5a1212'], [0.6, '#c82828'], [1, '#e9a9a9']]);
+  expect(stops.bad).toEqual([[0, '#145f56'], [0.6, '#2dd4bf'], [1, '#abeee5']]); // the panel's default teal
+  await expect.poll(() => lit(page)).toBeGreaterThan(500);
+  // the brightest lit pixel's colour leans to the cover colour; a new cover changes it
+  const tint = () => page.locator('.w-spectrum canvas').evaluate((c) => {
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let r = 0, g = 0, b = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+    return r > g && r > b ? 'red' : b > r && b > g ? 'blue' : g > r && g > b ? 'green' : 'mixed';
+  });
+  await page.evaluate(() => document.documentElement.style.setProperty('--ambient', '220, 30, 30'));
+  await expect.poll(tint).toBe('red');
+  await page.evaluate(() => document.documentElement.style.setProperty('--ambient', '30, 60, 230'));
+  await expect.poll(tint).toBe('blue');
+  expect(errors).toEqual([]);
+});
