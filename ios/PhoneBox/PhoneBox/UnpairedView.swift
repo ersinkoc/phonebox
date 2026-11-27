@@ -7,6 +7,14 @@ struct UnpairedView: View {
     @State private var showScanner = false
     @State private var showPaste = false
     @State private var pastedLink = ""
+    /// Shown from the paired computers sheet to add one more computer, with a way back.
+    private let addingAnother: Bool
+    private let onDone: () -> Void
+
+    init(addingAnother: Bool = false, onDone: @escaping () -> Void = {}) {
+        self.addingAnother = addingAnother
+        self.onDone = onDone
+    }
 
     var body: some View {
         Group {
@@ -69,9 +77,11 @@ struct UnpairedView: View {
                 Text("PhoneBox")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
             }
-            Text("This iPhone is not paired with a computer yet.")
+            Text(addingAnother ? "Pair another computer." : "This iPhone is not paired with a computer yet.")
                 .font(.title3.weight(.medium))
-            Text("Pair a computer to show its PhoneBox panel here, full screen.")
+            Text(addingAnother
+                 ? "Another PC, or the other operating system of a dual-boot PC. The panel switches to whichever paired computer answers."
+                 : "Pair a computer to show its PhoneBox panel here, full screen.")
                 .foregroundStyle(.secondary)
         }
     }
@@ -134,6 +144,14 @@ struct UnpairedView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+
+            if addingAnother {
+                Button("Cancel") {
+                    pairing.errorMessage = nil
+                    onDone()
+                }
+                .controlSize(.large)
+            }
         }
     }
 
@@ -202,7 +220,11 @@ struct UnpairedView: View {
     private func startPairing(_ link: PairLink) {
         Task { @MainActor in
             await pairing.pair(with: link)
-            if pairing.computer == nil { pendingLink = nil }
+            if pairing.errorMessage != nil || pairing.computer == nil {
+                pendingLink = nil
+            } else if addingAnother {
+                onDone()
+            }
         }
     }
 }

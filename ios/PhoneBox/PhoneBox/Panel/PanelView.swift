@@ -9,9 +9,12 @@ import WebKit
 /// and both use the native AgentClient, which adds the Bearer token and pins the certificate.
 struct PanelView: UIViewRepresentable {
     let computer: PairedComputer
+    /// The other paired computers, asked when this one stops answering.
+    let others: [PairedComputer]
     let usb: USBLink
+    let onSwitch: @MainActor (PairedComputer) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(computer: computer, usb: usb) }
+    func makeCoordinator() -> Coordinator { Coordinator(computer: computer, others: others, usb: usb, onSwitch: onSwitch) }
 
     func makeUIView(context: Context) -> WKWebView {
         context.coordinator.makeWebView()
@@ -32,8 +35,8 @@ struct PanelView: UIViewRepresentable {
         private var webView: WKWebView?
         private var loaded = false
 
-        init(computer: PairedComputer, usb: USBLink) {
-            let client = AgentClient(computer: computer)
+        init(computer: PairedComputer, others: [PairedComputer], usb: USBLink, onSwitch: @escaping @MainActor (PairedComputer) -> Void) {
+            let client = AgentClient(computer: computer, others: others, onSwitch: onSwitch)
             let key = UUID().uuidString
             self.client = client
             self.usb = usb

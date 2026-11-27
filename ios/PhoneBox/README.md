@@ -158,8 +158,12 @@ for each attached USB device when the pool has room, and favors the last working
 
 ## Current limitations
 
-- **One computer per iPhone.** Choosing between several paired computers (the Android page overview) is not
-  implemented. Forget the current computer and pair another.
+- **Several computers, one on screen.** Pair more from the panel's `⋯` → **Pair another computer**; the list there
+  switches between them and swipes one away to forget it. When the computer on screen stops answering, the app asks
+  the others (every few seconds, on their Wi-Fi/Tailscale addresses) and shows the first that answers, so a
+  dual-boot PC paired once from each operating system follows whichever one is running. It doesn't switch while the
+  one on screen answers, and never resends a request to another computer. The Android page overview is not
+  implemented.
 - **USB needs a first pairing over Wi-Fi/Tailscale and the desktop agent.** There is no USB-only pairing. The
   agent must be running with its Wi-Fi listener enabled (for the certificate and token it lends to USB) and
   needs usbmuxd: Apple Mobile Device Support on Windows, libimobiledevice on Linux, built in on macOS. Without
