@@ -25,4 +25,13 @@ class PanelReadTimeoutTest {
         assertEquals(AgentLink.REQUEST_READ_TIMEOUT, AgentLink.panelReadTimeout("-1"))
         assertEquals(AgentLink.MAX_REQUEST_READ_TIMEOUT, AgentLink.panelReadTimeout("600000"))
     }
+
+    @Test
+    fun usbLeavesTheWifiAttemptTimeInsideTheDeadline() {
+        // a 15 s deadline: a stalled tunnel gives up at 11 s, so Wi-Fi still has 4 s
+        assertEquals(11000, AgentLink.usbReadTimeout(15000))
+        // the usual 4 s request keeps its 4 s over USB, as before
+        assertEquals(AgentLink.REQUEST_READ_TIMEOUT, AgentLink.usbReadTimeout(AgentLink.REQUEST_READ_TIMEOUT))
+        assertEquals(AgentLink.REQUEST_READ_TIMEOUT, AgentLink.usbReadTimeout(6000))
+    }
 }

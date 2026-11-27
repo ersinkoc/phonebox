@@ -199,7 +199,9 @@ class AgentLink(private val context: Context) {
                 readTimeoutMs: Int = REQUEST_READ_TIMEOUT): Reply {
         if (method == "POST" && pathAndQuery == "/api/bridge/clipboard")
             return sendBridgeClipboard(pathAndQuery, body, contentType)
-        usb(method, pathAndQuery, readTimeoutMs, body, contentType)?.let {
+        // USB is tried first; a tunnel that accepts and then stalls must leave the Wi-Fi attempt time to answer inside
+        // the panel's deadline, so USB gets that deadline minus the usual 4 s (never less than 4 s itself)
+        usb(method, pathAndQuery, usbReadTimeout(readTimeoutMs), body, contentType)?.let {
             route = Route.USB
             maybePair()
             return it
@@ -747,6 +749,10 @@ class AgentLink(private val context: Context) {
          * endpoint (the Control Deck's audio devices can take several seconds, #720) was cut off at 4 s while the
          * panel was still willing to wait 15, and the widget said the computer was unreachable.
          */
+        /** USB's share of a request's read timeout: room is left for the Wi-Fi attempt after a stalled tunnel. */
+        fun usbReadTimeout(readTimeoutMs: Int): Int =
+            (readTimeoutMs - REQUEST_READ_TIMEOUT).coerceAtLeast(REQUEST_READ_TIMEOUT)
+
         fun panelReadTimeout(header: String?): Int =
             header?.trim()?.toIntOrNull()?.coerceIn(REQUEST_READ_TIMEOUT, MAX_REQUEST_READ_TIMEOUT) ?: REQUEST_READ_TIMEOUT
         /** The paired computers' preferences. Each AgentLink reads them once, so the clipboard service watches them for changes. */
