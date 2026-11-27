@@ -200,6 +200,57 @@ failures retain the last measurements with an error.
 Tap an AI session to see its model, timing and token details. Token counters describe the local session rather than
 the account allowance. Prompt/response text and tool arguments are not included in this panel data.
 
+**Custom HTML** runs your own HTML, CSS and JavaScript in a sandbox. It cannot reach the panel, the agent or the
+phone; it gets their data through `window.phonebox`: `phonebox.on('state' | 'push' | 'weather' | 'work' | 'quotas', fn)`
+calls `fn` with each update (and `phonebox.data` holds the latest), `phonebox.goto('page')` switches the page,
+`phonebox.run('shortcut-id')` runs a shortcut, and `phonebox.run('shortcut-id', 37)` sends it a number, for a key
+that takes one ([Numbers for a shortcut](#numbers-for-a-shortcut)).
+
+### Numbers for a shortcut
+
+A seek bar, a volume slider or a page number needs a number, not just a tap. Give a shortcut a range in its settings
+(**Shortcuts** › *Takes a number from a Custom HTML page or a script*). It is saved in `config.json` like this, with
+0, 100 and 1 when a field is left out:
+
+```json
+{ "id": "seek", "label": "Seek", "cmd": "/usr/local/bin/seek-video", "args": "--percent {value}",
+  "value": { "min": 0, "max": 100, "step": 0.5 } }
+```
+
+**A seek bar** in a Custom HTML widget then needs one key instead of one per position:
+
+```html
+<input id="bar" type="range" min="0" max="100" step="0.5" value="0" style="width:96%">
+<script>
+  bar.addEventListener('input', () => phonebox.run('seek', Number(bar.value)));
+</script>
+```
+
+From a script or another program on the computer, the same run is `POST /api/run/seek?value=37`
+(`curl -X POST "http://127.0.0.1:8765/api/run/seek?value=37"`). What happens with the number:
+
+- **Checked on the computer.** The agent takes only a plain number: digits with an optional `-` and decimal part (up
+  to 12 decimals), no `+`, exponent, spaces or thousands separators. It must be from the lowest to the highest
+  number, on a step counted from the lowest one (with `min: 1, step: 2`: 1, 3, 5…). A range keeps to
+  ±1,000,000,000,000 and 6 decimals, with a step of at least 0.000001.
+- **Written by the agent.** It writes the number itself, with a dot for decimals on every computer and whole numbers
+  without one (`37.50` becomes `37.5`, `40.0` becomes `40`), so only digits, a minus sign and a dot reach the command.
+- **Its own argument.** The number goes in place of each `{value}` in the arguments, or else at the end as one more
+  argument. `{value}` must stand on its own, outside quotes, with a space before and after it: `--percent {value}`
+  works, while `--percent={value}` and `"at {value}"` are refused.
+- **Refused with a reason.** A key without a range, an on / off key, a long press and the built-in keys (keys, text,
+  macros, lock…) refuse a number with a 400, and the panel shows *The PC refused this number*. Run without a number
+  (a tap on the key, a rule, a macro step), the key leaves `{value}` out and adds nothing.
+- **At most 4 a second.** Each run can start a program, so a key takes at most 4 numbers a second; more answer 429.
+  The page sends a dragged slider's newest number at most every 300 ms per key, and the last one when the slider
+  stops. The panel sends one at a time per key, in order and at most every 300 ms even when several widgets drive
+  the same key, and drops a number asked for before one it already sent. A number refused as too fast (another page or script used
+  that key's 4 a second) is tried once more a second later, unless a newer one went out; refused again, the panel
+  shows *The PC refused this number*.
+
+A negative range gives arguments such as `-5`, which some programs read as an option: use a range from 0 when the
+program would.
+
 ## Synced lyrics
 
 The **Synced lyrics** widget shows the words of the song playing on the computer, the sung line lit and kept in the
@@ -232,6 +283,9 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   their state on the phone (mute does by itself, others from a pushed value). For a pushed value, `layout` is on
   unless it is empty, `0`, `false`, `off` or `no`; `layout=RU` is on while it is `RU`, so one value pushed to
   `/api/push/layout` can light one of several keys (one per keyboard layout, say).
+  A key that runs a program or opens an address can also **take a number** (a seek position, a volume, a page): tick
+  *Takes a number from a Custom HTML page or a script* and give the lowest and highest number and the step. See
+  [Numbers for a shortcut](#numbers-for-a-shortcut).
 - **Webhooks**: the webhook key, copy-paste examples, test buttons and the values pushed so far.
 - **General**: weather location search, the temperature unit (°C or °F) and the forecast model; calendars (ICS links from Google, Outlook or iCloud), Home Assistant and OBS
   connections; night mode; theme and accent colour, orientation (landscape, portrait or follow the phone), clock seconds,
@@ -575,7 +629,8 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   `Origin` (CSRF) are rejected; only the settings page itself is accepted from browsers.
 - The optional Wi-Fi port (8766) only serves the panel API, only over TLS pinned to the paired certificate, and only
   with the paired key. Settings, shortcut tests and pairing stay local. **New key** in the settings unpairs all phones.
-- The phone only ever sends a shortcut **id**; commands are defined on the PC. Command widgets work the same way:
+- The phone only ever sends a shortcut **id** (and, for a key that takes one, a number the agent checks and writes
+  out itself); commands are defined on the PC. Command widgets work the same way:
   the phone asks for a widget's output and never sees the command.
 - `config.json` (with the Wi-Fi, webhook and Home Assistant keys), its backup and the pushed data are readable only by
   your user on macOS and Linux (0600); on Windows they live in your profile folder.

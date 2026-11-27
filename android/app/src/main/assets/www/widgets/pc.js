@@ -5,15 +5,63 @@ import { canKillAnywhere, dialEl, every } from './helpers.js';
 // ---------------------------------------------------------------- phone & PC
 // Your own HTML / CSS / JavaScript in a sandboxed iframe (no access to the panel, the agent or the phone). It gets
 // the panel's data through window.phonebox: phonebox.on('state' | 'push' | 'weather' | 'work' | 'quotas', fn),
-// phonebox.data, and may ask for phonebox.run(shortcutId) or phonebox.goto(page).
+// phonebox.data, and may ask for phonebox.run(shortcutId), phonebox.run(shortcutId, number) (for a key whose settings
+// give a value range, #677) or phonebox.goto(page).
+// A dragged slider calls run(id, value) for every move. The prelude sends one value per key at most every VALUE_GAP ms,
+// always the newest, and the last one when the moves stop, so the key ends where the slider did. The agent itself
+// refuses more than 4 values a second for one key (429). The pace runs on performance.now(), so a change of the wall
+// clock cannot hold a value back; each value carries when it was asked for (timeOrigin + now, a time every frame
+// shares, and never the same twice in one frame), so the panel can drop one that another widget has already overtaken. A value still held back when the
+// widget goes away (the layout is rebuilt on a turn of the phone) is sent as the frame unloads.
+export const VALUE_GAP = 300;
 export const HTML_PRELUDE = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark"><style>:root{color-scheme:dark}html,body{margin:0;height:100%;background:transparent;color:#eef2f6;font-family:Roboto,"Segoe UI",system-ui,sans-serif;overflow:hidden}</style>
-<script>(function(){var subs={},data={};window.phonebox={data:data,
+<script>(function(){var subs={},data={},vals=Object.create(null),last=0,post=function(m){m.frame='__PB_FRAME__';parent.postMessage(m,'*')};window.phonebox={data:data,
 on:function(k,f){(subs[k]=subs[k]||[]).push(f);if(data[k]!==undefined)try{f(data[k])}catch(e){console.error(e)}},
-run:function(id){parent.postMessage({phonebox:'run',id:String(id)},'*')},
+run:function(id,v){id=String(id);if(v===undefined||v===null)return post({phonebox:'run',id:id});v=Number(v);if(!isFinite(v))return;
+var now=performance.now(),q=vals[id]||(vals[id]={at:-1e9});q.v=v;q.asked=last=Math.max(performance.timeOrigin+now,last+0.001);if(q.timer)return;var wait=q.at+${VALUE_GAP}-now;
+if(wait<=0){q.at=now;return post({phonebox:'run',id:id,value:v,asked:q.asked})}
+q.timer=setTimeout(function(){q.timer=0;q.at=performance.now();post({phonebox:'run',id:id,value:q.v,asked:q.asked})},wait)},
 goto:function(p){parent.postMessage({phonebox:'goto',page:p},'*')}};
+addEventListener('pagehide',function(){for(var id in vals){var q=vals[id];if(q.timer){clearTimeout(q.timer);q.timer=0;post({phonebox:'run',id:id,value:q.v,asked:q.asked})}}});
 addEventListener('message',function(e){var m=e.data;if(!m||m.phonebox!=='data')return;data[m.kind]=m.value;(subs[m.kind]||[]).forEach(function(f){try{f(m.value)}catch(err){console.error(err)}})});})();<\/script>`;
 export const HTML_KINDS = ['state', 'push', 'weather', 'work', 'quotas'];
+
+// The value runs of each key, shared by every Custom HTML widget (two widgets can drive the same key). A value asked
+// for before one already taken is dropped. One request at a time, at most one every VALUE_GAP ms whichever widget sent
+// it, and only the newest waits, so the agent runs them in order and the key ends on the latest. A value the agent
+// refused as too fast (429: another page or script used the key's 4 a second) is tried once more a second later, when
+// that window has passed, unless a newer value came meanwhile; refused again, the panel says so instead of dropping it
+// unseen. A widget that goes away leaves its last value to finish.
+const valueRuns = new Map(); // shortcut id -> { asked, sent, busy, timer, next }
+function runValue(id, value, asked) {
+  let st = valueRuns.get(id);
+  if (!st) valueRuns.set(id, st = { asked: -Infinity, sent: -Infinity, busy: false, timer: 0, next: null });
+  // a tie (two widgets in the same clock tick) goes to the value already taken
+  if (Number.isFinite(asked)) { if (asked <= st.asked) return; st.asked = asked; }
+  st.next = { value };
+  pumpValue(id, st);
+}
+function pumpValue(id, st) {
+  if (st.busy || st.timer || !st.next) return;
+  const wait = st.sent + VALUE_GAP - performance.now();
+  if (wait > 0) { st.timer = setTimeout(() => { st.timer = 0; pumpValue(id, st); }, wait); return; }
+  const { value, retry = false } = st.next;
+  st.next = null;
+  if (!retry && performance.now() - st.sent > 1000) haptic(); // once when a drag starts
+  const sentAt = st.sent = performance.now();
+  st.busy = true;
+  // the page's arithmetic can leave 0.30000000000000004: twelve decimals are kept, as the agent takes
+  api('/run/' + encodeURIComponent(id) + '?value=' + encodeURIComponent(String(+value.toFixed(12))), 'POST', 5000)
+    .then(() => null, (err) => err?.status ?? 0)
+    .then((status) => {
+      st.busy = false;
+      if (st.next) { pumpValue(id, st); return; }
+      if (status === 429 && !retry) setTimeout(() => { if (st.sent === sentAt && !st.busy && !st.next) { st.next = { value, retry: true }; pumpValue(id, st); } }, 1000);
+      else if (status === 400 || status === 429) toast(t('panel.valueRefused'), 'err');
+      else if (status !== null) toast(t('panel.pcNoAnswer'), 'err');
+    });
+}
 
 W.html = {
   needs: HTML_KINDS,
@@ -22,19 +70,29 @@ W.html = {
     const frame = h('iframe', 'html-frame');
     frame.setAttribute('sandbox', 'allow-scripts');
     frame.setAttribute('referrerpolicy', 'no-referrer');
-    frame.srcdoc = HTML_PRELUDE + (o.html || '');
+    // a token of this frame's own in its prelude: its messages are known by it even once the iframe is gone (a removed
+    // frame has no contentWindow left to compare), and no other widget's page can read it
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+    frame.srcdoc = HTML_PRELUDE.replace('__PB_FRAME__', token) + (o.html || '');
     box.append(frame);
     const send = (kind) => { if (D[kind] != null) try { frame.contentWindow?.postMessage({ phonebox: 'data', kind, value: D[kind] }, '*'); } catch (_) {} };
     frame.addEventListener('load', () => HTML_KINDS.forEach(send));
+    let gone = false;
     const onMsg = (e) => {
-      if (e.source !== frame.contentWindow || !e.data) return;
-      if (e.data.phonebox === 'run' && (cfg.shortcuts || []).some((s) => s.id === e.data.id)) { haptic(); api('/run/' + encodeURIComponent(e.data.id), 'POST', 5000).catch(() => toast(t('panel.pcNoAnswer'), 'err')); }
-      if (e.data.phonebox === 'goto') gotoPageRef(e.data.page);
+      if (!e.data || (e.source !== frame.contentWindow && e.data.frame !== token)) return;
+      const m = e.data;
+      if (gone && !(m.phonebox === 'run' && 'value' in m)) return;
+      if (m.phonebox === 'run' && (cfg.shortcuts || []).some((s) => s.id === m.id)) {
+        if (!('value' in m)) { haptic(); api('/run/' + encodeURIComponent(m.id), 'POST', 5000).catch(() => toast(t('panel.pcNoAnswer'), 'err')); }
+        else if (typeof m.value === 'number' && Number.isFinite(m.value)) runValue(m.id, m.value, m.asked);
+      }
+      if (m.phonebox === 'goto') gotoPageRef(m.page);
     };
     window.addEventListener('message', onMsg);
     return {
       update(kind) { if (HTML_KINDS.includes(kind)) send(kind); },
-      destroy() { window.removeEventListener('message', onMsg); },
+      // a moment more for the value a removed frame sends as it unloads
+      destroy() { gone = true; setTimeout(() => window.removeEventListener('message', onMsg), 1000); },
     };
   },
 };

@@ -1228,8 +1228,9 @@ app.MapPost("/api/procs/kill", (string? name, int? pid, ProcessMonitor procs, Co
     return r.Killed > 0 ? Results.Json(r) : Results.Json(r, statusCode: 409);
 });
 
-app.MapPost("/api/run/{id}", (string id, bool? hold, ConfigStore cfg, PushStore push, AudioControl audio, ILogger<Program> log) =>
-    RunShortcutForPhone(cfg.Get(), id, log, push, audio, hold == true));
+// ?value=37: a number for a key that takes one (its settings give a range); see ShortcutValues
+app.MapPost("/api/run/{id}", (string id, bool? hold, string? value, ConfigStore cfg, PushStore push, AudioControl audio, ILogger<Program> log) =>
+    RunShortcutForPhone(cfg.Get(), id, log, push, audio, hold == true, value));
 
 // Real icon for a shortcut: an image the user uploaded (settings page) takes priority; otherwise its program's own
 // icon, when its command is an actual file on disk. 404 when neither exists (shell addresses, protocol handlers,
@@ -1418,9 +1419,22 @@ public partial class Program
     /// <summary>
     /// POST /api/run/{id}. Why a shortcut failed stays in the agent log: an exception text can carry the configured
     /// command, its arguments, a key sequence or a working folder (Process.Start names the program and the folder).
+    /// A refused value answers 400 with the agent's own reason (it names no configured text), and too many values for
+    /// one key in a second answer 429.
     /// </summary>
-    internal static IResult RunShortcutForPhone(AgentConfig cfg, string id, ILogger log, PushStore push, AudioControl audio, bool hold = false) =>
-        Shortcuts.Run(cfg, id, log, push, audio, hold) is { } error ? Results.Problem(HintOrGeneric(error)) : Results.Ok();
+    internal static IResult RunShortcutForPhone(AgentConfig cfg, string id, ILogger log, PushStore push, AudioControl audio, bool hold = false,
+        string? value = null, ValueRateGate? gate = null)
+    {
+        CheckedValue? number = null;
+        if (value is not null && cfg.Shortcuts.FirstOrDefault(s => s.Id == id) is { } sc)
+        {
+            if (hold) return Results.BadRequest(new { error = "A long press takes no value." });
+            if (ShortcutValues.Check(sc, value, out number) is { } refusal) return Results.BadRequest(new { error = refusal });
+            if (!(gate ?? ValueRateGate.Shared).TryTake(id))
+                return Results.Json(new { error = $"At most {ValueRateGate.PerSecond} values a second for one shortcut." }, statusCode: StatusCodes.Status429TooManyRequests);
+        }
+        return Shortcuts.Run(cfg, id, log, push, audio, hold, number) is { } error ? Results.Problem(HintOrGeneric(error)) : Results.Ok();
+    }
 
     /// <summary>
     /// What the phone may see of a failed shortcut: an error can carry configured command text, so only the agent's own

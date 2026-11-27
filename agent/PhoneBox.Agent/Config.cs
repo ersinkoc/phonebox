@@ -716,6 +716,23 @@ public sealed class Shortcut
     /// <summary>builtin:cycle: ids of the shortcuts to run one after another, a tap each; the key shows the one that ran last.</summary>
     public List<string>? Cycle { get; set; }
     public const int MaxCycle = 20;
+    /// <summary>
+    /// The number a Custom HTML page (<c>phonebox.run(id, value)</c>) or a script (<c>POST /api/run/{id}?value=</c>) may
+    /// send with a run, and its range. Only for keys that start a program or open an address; null = no value accepted.
+    /// </summary>
+    public ShortcutValue? Value { get; set; }
+}
+
+/// <summary>The range a shortcut's value must be in: from <see cref="Min"/> to <see cref="Max"/>, in steps of <see cref="Step"/> from Min.</summary>
+public sealed class ShortcutValue
+{
+    public double Min { get; set; }
+    public double Max { get; set; } = 100;
+    public double Step { get; set; } = 1;
+
+    // bounds that keep every value exact as a decimal and short as text: within ±1e12, at most 6 decimals
+    internal const double Limit = 1e12, MinStep = 1e-6;
+    internal const int Decimals = 6;
 }
 
 /// <summary>Reads/writes config.json; external edits are picked up on the next request.</summary>
@@ -1025,6 +1042,8 @@ public sealed partial class ConfigStore(string path)
             // a cycle key runs the next key, not a command of its own: an on / off setting would bypass the cycle
             if (s.Cmd == "builtin:cycle") { s.Toggle = false; s.StateKey = null; s.OffCmd = null; s.OffArgs = null; }
         }
+        // a value goes only to a key that starts a program or opens an address, and never to an on / off key
+        foreach (var s in c.Shortcuts) s.Value = ShortcutValues.Normalize(s);
         c.Phones = (c.Phones ?? []).Where(p => p is not null && !string.IsNullOrWhiteSpace(p.Id)).GroupBy(p => p.Id).Select(g => g.First()).Take(20).ToList();
         foreach (var ph in c.Phones)
         {

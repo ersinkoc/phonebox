@@ -248,6 +248,44 @@
 
   const toggles = {};
   let cycleLists = {}; // cycle key id -> its list now, as JSON
+  // ShortcutValues.Check in the agent, for the demo: why a number sent with a run is refused, or null. As exact as the
+  // agent's decimals: numbers are compared as whole counts of 10^-12.
+  function valueRefusal(sc, v, hold) {
+    const r = sc.value, cmd = String(sc.cmd || '').trim(), args = String(sc.args || '');
+    if (hold) return 'A long press takes no value.';
+    if (!r || sc.toggle || !cmd || /^builtin:/i.test(cmd)) return 'This shortcut takes no value.';
+    let quoted = false, embedded = false;
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '"') { let n = 0; for (let j = i - 1; j >= 0 && args[j] === '\\'; j--) n++; if (n % 2 === 0) quoted = !quoted; }
+      else if (args.startsWith('{value}', i)) {
+        const end = i + 7;
+        if (quoted || (i > 0 && !/[ \t]/.test(args[i - 1])) || (end < args.length && !/[ \t]/.test(args[end]))) embedded = true;
+        i = end - 1;
+      }
+    }
+    if (embedded || quoted) return '{value} must be an argument of its own.';
+    if (!/^-?[0-9]{1,15}(\.[0-9]{1,12})?$/.test(v)) return 'The value must be a plain number.';
+    const scaled = (x) => { const [w, f = ''] = x.replace('-', '').split('.'); const n = BigInt(w + (f + '000000000000').slice(0, 12)); return x.startsWith('-') ? -n : n; };
+    // the range as the agent saves it (ShortcutValues.Normalize): finite, within ±1e12, ordered, step >= 0.000001, and
+    // rounded like .NET's Math.Round((decimal)x, 6): the double read as 15 significant digits, a tie to the even digit.
+    // (Bounds of 16 or more digits, which the agent's double then rounds once more, are not copied.)
+    const bound = (x) => {
+      const d = Number.isFinite(+x) ? Math.min(Math.max(+x, -1e12), 1e12) : 0;
+      if (d === 0) return 0n;
+      const [m, e] = d.toExponential(14).split('e'), digits = BigInt(m.replace(/[-.]/g, '')), p = +e - 14 + 20;
+      const n = p >= 0 ? digits * 10n ** BigInt(p) : digits / 10n ** BigInt(-p); // in 10^-20
+      const unit = 10n ** 14n, r = n % unit;
+      let q = n / unit;                                                              // in 10^-6
+      if (2n * r > unit || (2n * r === unit && q % 2n === 1n)) q += 1n;
+      return (m.startsWith('-') ? -q : q) * 1000000n;                                // in 10^-12, like scaled()
+    };
+    let min = bound(r.min ?? 0), max = bound(r.max ?? 100);
+    if (max < min) [min, max] = [max, min];
+    const s0 = +(r.step ?? 1), step = Number.isFinite(s0) && s0 > 0 ? bound(Math.max(s0, 0.000001)) : bound(1), n = scaled(v);
+    if (n < min || n > max) return 'The value is outside the range.';
+    if ((n - min) % step !== 0n) return 'The value is not on a step.';
+    return null;
+  }
   const cycles = {}, cyclePos = {}; // cycle keys: { target id, list } of the key that ran last, and its position in the list
   let muteKeys = ['mute']; // ids of the shortcuts whose command is builtin:mute; their state is the computer's
 
@@ -664,6 +702,12 @@
       // on / off keys flip in the demo; the mute key mutes the made-up computer
       const id = decodeURIComponent(path.slice(9)), shortcuts = (await config()).shortcuts;
       let sc = shortcuts.find((s) => s.id === id);
+      // ?value=: only a key that starts a program or opens an address and has a range takes a number, inside it and on
+      // a step from its lowest; never with a long press (the agent's own check, ShortcutValues; no rate limit here)
+      if (sc && q.has('value')) {
+        const refused = valueRefusal(sc, q.get('value'), q.get('hold') === 'true');
+        if (refused) return json({ error: refused }, 400);
+      }
       // ?hold=true runs the key's long-press shortcut instead (the agent resolves it; the phone sends only the held key's id)
       if (sc && q.get('hold') === 'true') sc = sc.longPress && sc.longPress !== sc.id ? shortcuts.find((s) => s.id === sc.longPress) : null;
       if (!sc) return json({ title: 'An error occurred while processing your request.', status: 500, detail: 'unknown shortcut' }, 500);

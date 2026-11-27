@@ -3385,6 +3385,7 @@ function actionFields(s, upd, text, cmdIn, preset) {
       s.cmd = k === 'run' ? '' : 'builtin:' + k;
       if (k !== 'macro') delete s.steps;
       if (k !== 'cycle') delete s.cycle; else s.cycle ??= [];
+      if (k !== 'run') delete s.value; // only a key that starts a program or opens an address takes a value
       if (k === 'cycle') s.toggle = false;
       s.args = null; s.cwd = null;
       changed(); renderEditor();
@@ -3422,8 +3423,23 @@ function actionFields(s, upd, text, cmdIn, preset) {
 
   const isMute = s.cmd === 'builtin:mute';
   if (kind !== 'cycle') fields.push(h('label', { class: 'check', style: { marginTop: '4px' } },
-    h('input', { type: 'checkbox', checked: !!s.toggle || isMute, disabled: isMute, onchange: (e) => { s.toggle = e.target.checked; changed(); renderEditor(); } }),
+    h('input', { type: 'checkbox', checked: !!s.toggle || isMute, disabled: isMute, onchange: (e) => { s.toggle = e.target.checked; if (s.toggle) delete s.value; changed(); renderEditor(); } }),
     isMute ? t('s.k.toggleLabelMute') : t('s.k.toggleLabel')));
+  if (kind === 'run' && !s.toggle) {
+    // the agent gives a number only to a key that starts a program or opens an address: a built-in command (lock,
+    // wake…), typed or picked as a preset, has no range
+    const box = h('div', {});
+    let shown = null;
+    const fill = () => {
+      const can = !/^\s*builtin:/i.test(s.cmd || '');
+      if (!can) delete s.value;
+      if (can !== shown) { shown = can; box.replaceChildren(...(can ? valueFields(s) : [])); }
+    };
+    cmdIn.addEventListener('input', fill);
+    preset.addEventListener('change', fill);
+    fill();
+    fields.push(box);
+  }
   if (s.toggle && !isMute) {
     fields.push(text('stateKey', t('s.k.stateKey'), 'e.g. teams-muted',
       tc('A value pushed to /api/push/<key> (true / on / 1 = on), or <key>=<value> to be on while the key holds that value. Without it the phone shows the state after each tap.')));
@@ -3436,6 +3452,22 @@ function actionFields(s, upd, text, cmdIn, preset) {
       h('option', { value: '' }, t('s.k.longPressNone')),
       ...others.map((o) => h('option', { value: o.id, selected: o.id === s.longPress }, o.label || o.id))),
     h('span', { class: 'hint' }, t('s.k.longPressHint'))));
+  return fields;
+}
+
+// A number sent with a run (phonebox.run(id, value) on a Custom HTML page, or POST /api/run/<id>?value=): off unless
+// the key gives a range. The agent checks the number against it and passes it as an argument of its own.
+function valueFields(s) {
+  const on = !!s.value;
+  const fields = [h('label', { class: 'check', style: { marginTop: '4px' } },
+    h('input', { type: 'checkbox', checked: on, onchange: (e) => { if (e.target.checked) s.value = { min: 0, max: 100, step: 1 }; else delete s.value; changed(); renderEditor(); } }),
+    t('s.k.valueTakes'))];
+  if (!on) return fields;
+  const num = (key, label) => h('div', { class: 'field' }, h('label', {}, label),
+    h('input', { type: 'number', step: 'any', class: 'technical-input', value: s.value[key] ?? '', 'aria-label': label,
+      oninput: (e) => { const v = e.target.value.trim(); if (v === '' || !Number.isFinite(Number(v))) delete s.value[key]; else s.value[key] = Number(v); changed(); } }));
+  fields.push(h('div', { class: 'row', style: { gap: '8px' } }, num('min', t('s.k.valueMin')), num('max', t('s.k.valueMax')), num('step', t('s.k.valueStep'))),
+    h('span', { class: 'hint' }, t('s.k.valueHint')));
   return fields;
 }
 
