@@ -45,6 +45,12 @@
   and read again at once when another output is chosen (#695, #697, [AlphaRishi1229](https://github.com/AlphaRishi1229)).
 - macOS: Now playing asks Spotify or Music through `osascript` only while one of them runs, checked in-process, so an
   idle Mac no longer starts that helper every few seconds (#695, #699, [AlphaRishi1229](https://github.com/AlphaRishi1229)).
+- Custom HTML: a page can send a number with a run, `phonebox.run('seek', 37)`, and a script can call
+  `POST /api/run/seek?value=37`, so a seek bar or a slider needs one shortcut instead of one per position. A shortcut
+  takes a number only when its settings give it a range (*Takes a number from a Custom HTML page or a script*); the
+  agent checks the number and writes it itself. A program starts without the shell with the number as its own argument
+  (in place of `{value}`, or at the end), an address takes it in place of `{value}` in the address, and at most 4
+  numbers a second reach one shortcut (#677, #687, [mayankbohradev](https://github.com/mayankbohradev)).
 
 ## 0.9.31 — 2026-11-27
 
