@@ -51,14 +51,20 @@ W.dictate = {
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), 30_000);
       try {
-        const r = await fetch(`${API}/dictate?${wq}&text=${query}`, { method: 'POST', cache: 'no-store', signal: ctl.signal,
+        const asst = o.assistant === true ? '&assistant=1' : '';
+        const r = await fetch(`${API}/dictate?${wq}&text=${query}${asst}`, { method: 'POST', cache: 'no-store', signal: ctl.signal,
           headers: PANEL_HEADERS });
         if (!r.ok) {
           let error = 'HTTP ' + r.status;
           try { error = (await r.json()).error || error; } catch (_) {}
           throw new Error(error);
         }
-        if (alive) say('w.dictate.sent');
+        let body = null;
+        try { body = await r.json(); } catch (_) {}
+        if (alive) {
+          if (body && body.action) note.textContent = body.action;
+          else say('w.dictate.sent');
+        }
       } catch (e) {
         if (alive) { say(''); toast(e?.message || t('w.offline'), 'err'); }
       } finally { clearTimeout(timer); }

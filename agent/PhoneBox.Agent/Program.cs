@@ -121,6 +121,7 @@ builder.Services.AddSingleton<ApprovalStore>();
 builder.Services.AddSingleton<HomeAssistant>();
 builder.Services.AddSingleton<AppConsole>();
 builder.Services.AddSingleton<Dictation>();
+builder.Services.AddSingleton<VoiceAssistant>();
 builder.Services.AddSingleton<SpectrumAnalyzer>();
 AddMonitor<SystemMonitor>(builder.Services);
 AddMonitor<MediaMonitor>(builder.Services);
@@ -721,9 +722,15 @@ app.MapPost("/api/immich/albums", async (ImmichAlbumsRequest body, PhotoFrame ph
 // Dictation (widget): text the phone recognized, typed into the app in front (only if that widget allows it).
 // The text is in the query: the phone's WebView sees no request bodies, so its transport (USB and Wi-Fi) sends POSTs
 // without one, like every other panel request. Kestrel's request line (16 KB) bounds it; request URLs aren't logged.
-app.MapPost("/api/dictate", async (string? widget, string? text, HttpRequest req, Dictation dictation, CancellationToken ct) =>
+app.MapPost("/api/dictate", async (string? widget, string? text, bool? assistant, HttpRequest req, Dictation dictation, VoiceAssistant voice, CancellationToken ct) =>
 {
-    var (status, error) = await dictation.TypeAsync(req.Headers["X-PhoneBox-Device"].ToString(), widget, text, ct);
+    var dev = req.Headers["X-PhoneBox-Device"].ToString();
+    if (assistant == true)
+    {
+        var (handled, vStatus, msg) = await voice.TryExecuteAsync(dev, widget, text, ct);
+        if (handled) return vStatus == 200 ? Results.Ok(new { ok = true, action = msg }) : Results.Json(new { error = msg }, statusCode: vStatus);
+    }
+    var (status, error) = await dictation.TypeAsync(dev, widget, text, ct);
     return error is null ? Results.Ok(new { ok = true }) : Results.Json(new { error }, statusCode: status);
 });
 
