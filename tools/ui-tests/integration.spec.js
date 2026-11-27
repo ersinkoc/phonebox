@@ -1189,7 +1189,13 @@ test('the Trackpad widget does not drift the cursor during staggered 2-finger sc
   const coastEvents = await events();
   expect(coastEvents.length).toBeGreaterThan(2);
   expect(coastEvents.every((e) => e.type === 'scroll')).toBe(true);
-  expect(Math.abs(coastEvents[0].delta)).toBeGreaterThan(Math.abs(coastEvents.at(-1).delta));
+  // Decaying: the next 140 ms coast less than the first. Compared as sums over a window, not event by event: a step is
+  // the distance of one frame, so on a busy runner a long frame after a short one sends a larger step while the speed
+  // still falls. The distance over a window does not depend on how the frames split it.
+  await page.waitForTimeout(140);
+  const laterCoast = await events();
+  const distance = (list) => list.reduce((sum, e) => sum + Math.abs(e.delta), 0);
+  expect(distance(coastEvents)).toBeGreaterThan(distance(laterCoast));
 
   // Touching down during inertial coasting cancels inertia immediately without moving the cursor.
   await play([['pointerdown', 20, 220, 180], ['wait', 10], ['pointermove', 20, 223, 182], ['pointerup', 20, 223, 182]]);
