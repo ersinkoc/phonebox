@@ -7,8 +7,8 @@ namespace PhoneBox.Agent;
 /// "playpause"; several combos separated by commas are pressed one after another.
 ///  - Windows: SendInput.
 ///  - Linux: xdotool (X11), or wtype then ydotool (Wayland; GNOME needs ydotool), xdotool only when neither is installed.
-///  - macOS: System Events via osascript (needs the Accessibility permission for the agent). The mouse (Trackpad
-///    widget) is Quartz events, see Unix/MacMouse.cs.
+///  - macOS: key combinations through System Events via osascript; text and the mouse (Trackpad widget) as Quartz
+///    events in-process, see Unix/MacKeyboard.cs and Unix/MacMouse.cs. All need the Accessibility permission.
 /// </summary>
 public static class KeySender
 {
@@ -405,19 +405,16 @@ public static class KeySender
     }
 
     /// <summary>
-    /// Types the text; false when the tool failed (macOS throws when it refuses). The tool gets time for the whole text
-    /// (xdotool types a character every 8 ms, ydotool 0.1.x every 12 ms) and is killed when <paramref name="ct"/> is cancelled.
+    /// Types the text; false when the tool failed or <paramref name="ct"/> stopped it (macOS throws when it refuses). The
+    /// tool gets time for the whole text (xdotool types a character every 8 ms, ydotool 0.1.x every 12 ms) and is killed
+    /// when <paramref name="ct"/> is cancelled.
     /// </summary>
     public static bool TryTypeText(string text, CancellationToken ct)
     {
         var timeout = TimeSpan.FromMilliseconds(3000 + 20L * text.Length);
         ToolRun Run(string tool, params string[] args) => RunTool(tool, args, timeout, ct).Run;
-        if (OperatingSystem.IsMacOS())
-        {
-            if (Run("osascript", "-e", $"tell application \"System Events\" to keystroke \"{text.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"") != ToolRun.Ok)
-                throw new InvalidOperationException(AccessibilityHint);
-            return true;
-        }
+        // Quartz events carrying the text itself: independent of the keyboard layout, and no helper process (#706)
+        if (OperatingSystem.IsMacOS()) return MacKeyboard.TypeText(text, ct);
         if (!OnWayland() && FindTool("xdotool") is not null) return Run("xdotool", "type", "--delay", "8", "--", text) == ToolRun.Ok;
         var lf = text.Replace("\r\n", "\n"); // clipboard text can have Windows line endings, and ydotool can't type \r
         return RunOnWayland(() => Run("wtype", "--", text), YdotoolCanType(lf) ? () => Run("ydotool", "type", "--", lf) : null,

@@ -51,6 +51,10 @@
   agent checks the number and writes it itself. A program starts without the shell with the number as its own argument
   (in place of `{value}`, or at the end), an address takes it in place of `{value}` in the address, and at most 4
   numbers a second reach one shortcut (#677, #687, [mayankbohradev](https://github.com/mayankbohradev)).
+- macOS: Dictation and the Text action of shortcut keys type the text itself, whatever the keyboard layout. They used
+  System Events' `keystroke`, which looks each character up as a key of the current layout: on Brazilian ABNT2 every
+  accented vowel came out as `a` (`não, você` typed `nao, voca`). Text now goes as Quartz keyboard events from the
+  agent, so no `osascript` starts for it either (#706).
 
 ## 0.9.31 — 2026-11-27
 
