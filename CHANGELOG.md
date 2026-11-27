@@ -41,6 +41,8 @@
   agent reads its volume every 10 seconds instead of every second. Each reading starts `osascript`, and at one a
   second WindowServer ran out of resources after a few days and logged the user out (#693,
   [AlphaRishi1229](https://github.com/AlphaRishi1229)).
+- macOS: an output whose volume `osascript` can never read (HDMI) is tried less and less often, up to every 5 minutes,
+  and read again at once when another output is chosen (#695, #697, [AlphaRishi1229](https://github.com/AlphaRishi1229)).
 
 ## 0.9.31 — 2026-11-27
 
