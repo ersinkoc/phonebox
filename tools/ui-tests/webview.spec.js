@@ -67,7 +67,8 @@ test('panel shows dismissible notice only when container query units are unsuppo
 });
 
 test('panel says the WebView is too old to run it, and keeps the notice up', async ({ browser }) => {
-  const ctx = await browser.newContext();
+  // the version is the one in use: a phone maker's own WebView reports its own, whatever Google Play installed
+  const ctx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Linux; Android 5.0; GEM-701L) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/37.0.0.0 Safari/537.36' });
   try {
     const oldPage = await ctx.newPage();
     // a WebView before Chromium 80 can't parse ?. — the inline check compiles a snippet with new Function
@@ -82,7 +83,7 @@ test('panel says the WebView is too old to run it, and keeps the notice up', asy
     await oldPage.goto('/panel/');
     const warn = oldPage.locator('#webviewWarn');
     await expect(warn).toBeVisible();
-    await expect(warn).toContainText('too old to run the panel');
+    await expect(warn).toContainText('This Android System WebView (version 37) is too old to run the panel');
     await expect(warn).toContainText('version 80 or later');
     await expect(oldPage.locator('#webviewWarnClose')).toBeHidden();
     // the boot-failure box would only bury the notice under syntax errors

@@ -88,7 +88,11 @@
       var text = el.querySelector('span');
       if (text) {
         text.removeAttribute('data-i18n');
-        text.textContent = 'This Android System WebView is too old to run the panel. Update Android System WebView or '
+        // the version in use, not the one installed: on Android 5 and 6 a phone maker's WebView can stay in use while
+        // Google's from Google Play is installed and never used
+        var ver = /Chrome\/(\d+)/.exec(navigator.userAgent);
+        text.textContent = 'This Android System WebView' + (ver ? ' (version ' + ver[1] + ')' : '')
+          + ' is too old to run the panel. Update Android System WebView or '
           + 'Google Chrome from Google Play (version 80 or later), then open PhoneBox again.';
       }
       if (btn) btn.style.display = 'none';
