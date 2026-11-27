@@ -119,6 +119,11 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   files from a folder chosen in Settings on the computer, matched by artist and title, as a source before or instead
   of LRCLIB in the Synced lyrics widget. Off until a folder is set; the agent reads only `.lrc` files inside that
   folder (no path patterns from the phone), and the folder's path never goes to the phone.
+- **Another agent port than 8765** ([#682](https://github.com/ersinkoc/phonebox/issues/682)): one saved port the
+  installed agent reads at startup (`--port` stays the development option). Setup offers a free port only when 8765
+  is taken, or takes `-Port` / `--port` for scripted installs, and keeps it on update. Changing it later updates the
+  autostart entry and the Claude Code and Cursor hooks, and warns that the Spotify redirect URI changes too. The
+  phones are unaffected: USB maps the phone's 8765 to the agent, and Wi-Fi has its own port.
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
 
