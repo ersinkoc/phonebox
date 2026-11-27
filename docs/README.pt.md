@@ -11,6 +11,7 @@
   <a href="README.it.md">Italiano</a> ·
   <b>Português</b> ·
   <a href="README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="README.ro.md">Română</a> ·
   <a href="README.nl.md">Nederlands</a> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
@@ -53,13 +54,13 @@ O PhoneBox combina uma **aplicação Android** em ecrã inteiro com um pequeno *
 
 ## O que pode fazer
 
-| Utilização | O que aparece no telemóvel |
-|---|---|
-| **Monitorização do PC** | CPU, GPU, RAM, discos, rede e ping; gráficos, detalhes da GPU e controlo de processos |
-| **Programação com IA** | Quotas de Claude, Codex e Antigravity; sessões locais de Claude Code e Codex; revisões GitHub e estado CI |
-| **Controlos táteis** | Atalhos de apps e URL, macros; áudio, microfone, multimédia, OBS e sistema via [Control Deck](CONTROL-DECK.md) |
-| **Uso diário** | A reproduzir, rádio na internet, relógios, meteorologia, calendários, notas, listas, pomodoro e temporizadores |
-| **Automação** | Webhooks, notificações, Home Assistant e regras reativas |
+| Utilização              | O que aparece no telemóvel                                                                                     |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Monitorização do PC** | CPU, GPU, RAM, discos, rede e ping; gráficos, detalhes da GPU e controlo de processos                          |
+| **Programação com IA**  | Quotas de Claude, Codex e Antigravity; sessões locais de Claude Code e Codex; revisões GitHub e estado CI      |
+| **Controlos táteis**    | Atalhos de apps e URL, macros; áudio, microfone, multimédia, OBS e sistema via [Control Deck](CONTROL-DECK.md) |
+| **Uso diário**          | A reproduzir, rádio na internet, relógios, meteorologia, calendários, notas, listas, pomodoro e temporizadores |
+| **Automação**           | Webhooks, notificações, Home Assistant e regras reativas                                                       |
 
 ## Início rápido
 
@@ -81,8 +82,8 @@ As definições abrem em <http://127.0.0.1:8765>. Consulte o [guia de instalaç�
 
 ### 2. Ligar o telemóvel
 
-| USB | Apenas Wi-Fi |
-|---|---|
+| USB                                                             | Apenas Wi-Fi                                                                                                                            |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Ative **Opções de programador → Depuração USB** e ligue o cabo. | Instale o APK da [última versão](https://github.com/ersinkoc/phonebox/releases/latest), ative **Wi-Fi & Tailscale** e leia o código QR. |
 
 ### 3. Personalizar
@@ -91,14 +92,14 @@ Abra <http://127.0.0.1:8765>, escolha um modelo em **Páginas**, organize os wid
 
 ## Documentação
 
-| Guia | Conteúdo |
-|---|---|
+| Guia                              | Conteúdo                                                             |
+| --------------------------------- | -------------------------------------------------------------------- |
 | [Instalação e ligações](SETUP.md) | Opções, USB, Wi-Fi, Tailscale, atualizações e resolução de problemas |
-| [Guia do utilizador](GUIDE.md) | Modelos, widgets, integrações de IA, editor, webhooks e regras |
-| [Aparência](APPEARANCE.md) | Tipos de letra, superfícies, predefinições e pré-visualização |
-| [Control Deck](CONTROL-DECK.md) | Áudio, multimédia, OBS, atalhos e tarefas |
-| [Desenvolvimento](DEVELOPMENT.md) | Arquitetura, demonstração local, compilação e testes |
-| [Privacidade](../PRIVACY.md) | Ligações de saída e segurança |
+| [Guia do utilizador](GUIDE.md)    | Modelos, widgets, integrações de IA, editor, webhooks e regras       |
+| [Aparência](APPEARANCE.md)        | Tipos de letra, superfícies, predefinições e pré-visualização        |
+| [Control Deck](CONTROL-DECK.md)   | Áudio, multimédia, OBS, atalhos e tarefas                            |
+| [Desenvolvimento](DEVELOPMENT.md) | Arquitetura, demonstração local, compilação e testes                 |
+| [Privacidade](../PRIVACY.md)      | Ligações de saída e segurança                                        |
 
 ## Licença
 

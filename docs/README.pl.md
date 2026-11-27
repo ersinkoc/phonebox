@@ -11,6 +11,7 @@
   <a href="README.it.md">Italiano</a> ·
   <a href="README.pt.md">Português</a> ·
   <a href="README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="README.ro.md">Română</a> ·
   <a href="README.nl.md">Nederlands</a> ·
   <b>Polski</b> ·
   <a href="README.ru.md">Русский</a> ·
@@ -53,13 +54,13 @@ PhoneBox łączy pełnoekranową **aplikację Android** z lekkim **agentem na ko
 
 ## Możliwości
 
-| Zastosowanie | Co wyświetla telefon |
-|---|---|
-| **Monitoring PC** | CPU, GPU, RAM, dyski, sieć i ping; wykresy, szczegóły GPU i zarządzanie procesami |
-| **Kodowanie AI** | Limity Claude, Codex i Antigravity; lokalne sesje Claude Code i Codex; przeglądy GitHub i status CI |
+| Zastosowanie            | Co wyświetla telefon                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Monitoring PC**       | CPU, GPU, RAM, dyski, sieć i ping; wykresy, szczegóły GPU i zarządzanie procesami                               |
+| **Kodowanie AI**        | Limity Claude, Codex i Antigravity; lokalne sesje Claude Code i Codex; przeglądy GitHub i status CI             |
 | **Sterowanie dotykowe** | Skróty aplikacji i URL, makra; dźwięk, mikrofon, multimedia, OBS i system przez [Control Deck](CONTROL-DECK.md) |
-| **Na co dzień** | Odtwarzacz, radio internetowe, zegary, pogoda, kalendarze, notatki, listy, pomodoro i minutniki |
-| **Automatyzacja** | Webhooki, powiadomienia, Home Assistant i reguły reaktywne |
+| **Na co dzień**         | Odtwarzacz, radio internetowe, zegary, pogoda, kalendarze, notatki, listy, pomodoro i minutniki                 |
+| **Automatyzacja**       | Webhooki, powiadomienia, Home Assistant i reguły reaktywne                                                      |
 
 ## Szybki start
 
@@ -81,8 +82,8 @@ Ustawienia otworzą się pod adresem <http://127.0.0.1:8765>. Zobacz [przewodnik
 
 ### 2. Połącz telefon
 
-| USB | Tylko Wi-Fi |
-|---|---|
+| USB                                                                | Tylko Wi-Fi                                                                                                                                  |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Włącz **Opcje programistyczne → Debugowanie USB** i podłącz kabel. | Zainstaluj APK z [najnowszego wydania](https://github.com/ersinkoc/phonebox/releases/latest), włącz **Wi-Fi & Tailscale** i zeskanuj kod QR. |
 
 ### 3. Dostosuj
@@ -91,14 +92,14 @@ Otwórz <http://127.0.0.1:8765>, wybierz szablon w sekcji **Strony**, ułóż wi
 
 ## Dokumentacja
 
-| Przewodnik | Zawartość |
-|---|---|
+| Przewodnik                          | Zawartość                                                            |
+| ----------------------------------- | -------------------------------------------------------------------- |
 | [Instalacja i połączenia](SETUP.md) | Opcje, USB, Wi-Fi, Tailscale, aktualizacje i rozwiązywanie problemów |
-| [Podręcznik użytkownika](GUIDE.md) | Szablony, widżety, integracje AI, edytor, webhooki i reguły |
-| [Wygląd](APPEARANCE.md) | Czcionki, powierzchnie, presety i podgląd |
-| [Control Deck](CONTROL-DECK.md) | Dźwięk, multimedia, OBS, skróty i zadania |
-| [Rozwój](DEVELOPMENT.md) | Architektura, lokalne demo, budowanie i testy |
-| [Prywatność](../PRIVACY.md) | Połączenia wychodzące i bezpieczeństwo |
+| [Podręcznik użytkownika](GUIDE.md)  | Szablony, widżety, integracje AI, edytor, webhooki i reguły          |
+| [Wygląd](APPEARANCE.md)             | Czcionki, powierzchnie, presety i podgląd                            |
+| [Control Deck](CONTROL-DECK.md)     | Dźwięk, multimedia, OBS, skróty i zadania                            |
+| [Rozwój](DEVELOPMENT.md)            | Architektura, lokalne demo, budowanie i testy                        |
+| [Prywatność](../PRIVACY.md)         | Połączenia wychodzące i bezpieczeństwo                               |
 
 ## Licencja
 

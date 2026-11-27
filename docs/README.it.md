@@ -11,6 +11,7 @@
   <b>Italiano</b> ·
   <a href="README.pt.md">Português</a> ·
   <a href="README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="README.ro.md">Română</a> ·
   <a href="README.nl.md">Nederlands</a> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
@@ -53,13 +54,13 @@ PhoneBox abbina un'**app Android** a schermo intero a un piccolo **agente deskto
 
 ## Cosa puoi fare
 
-| Utilizzo | Cosa appare sul telefono |
-|---|---|
-| **Monitoraggio PC** | CPU, GPU, RAM, dischi, rete e ping; grafici, dettagli GPU e gestione processi |
-| **Coding IA** | Quote Claude, Codex e Antigravity; sessioni locali Claude Code e Codex; review GitHub e stato CI |
+| Utilizzo            | Cosa appare sul telefono                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Monitoraggio PC** | CPU, GPU, RAM, dischi, rete e ping; grafici, dettagli GPU e gestione processi                                |
+| **Coding IA**       | Quote Claude, Codex e Antigravity; sessioni locali Claude Code e Codex; review GitHub e stato CI             |
 | **Controlli touch** | Scorciatoie app e URL, macro; audio, microfono, media, OBS e sistema tramite [Control Deck](CONTROL-DECK.md) |
-| **Uso quotidiano** | In riproduzione, radio internet, orologi, meteo, calendari, note, liste, pomodoro e timer |
-| **Automazione** | Webhook, notifiche, Home Assistant e regole reattive |
+| **Uso quotidiano**  | In riproduzione, radio internet, orologi, meteo, calendari, note, liste, pomodoro e timer                    |
+| **Automazione**     | Webhook, notifiche, Home Assistant e regole reattive                                                         |
 
 ## Avvio rapido
 
@@ -81,8 +82,8 @@ Le impostazioni si aprono su <http://127.0.0.1:8765>. Vedi la [guida all'install
 
 ### 2. Collega il telefono
 
-| USB | Solo Wi-Fi |
-|---|---|
+| USB                                                             | Solo Wi-Fi                                                                                                                                          |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Abilita **Opzioni sviluppatore → Debug USB** e collega il cavo. | Installa l'APK dall'[ultima versione](https://github.com/ersinkoc/phonebox/releases/latest), attiva **Wi-Fi & Tailscale** e scansiona il codice QR. |
 
 ### 3. Personalizza
@@ -91,14 +92,14 @@ Apri <http://127.0.0.1:8765>, scegli un modello in **Pagine**, disponi i widget 
 
 ## Documentazione
 
-| Guida | Contenuto |
-|---|---|
+| Guida                                   | Contenuto                                                            |
+| --------------------------------------- | -------------------------------------------------------------------- |
 | [Installazione e connessioni](SETUP.md) | Opzioni, USB, Wi-Fi, Tailscale, aggiornamenti e risoluzione problemi |
-| [Guida utente](GUIDE.md) | Modelli, widget, integrazioni IA, editor, webhook e regole |
-| [Aspetto](APPEARANCE.md) | Font, superfici, preimpostazioni e anteprima |
-| [Control Deck](CONTROL-DECK.md) | Audio, media, OBS, scorciatoie e attività |
-| [Sviluppo](DEVELOPMENT.md) | Architettura, demo locale, build e test |
-| [Privacy](../PRIVACY.md) | Connessioni in uscita e sicurezza |
+| [Guida utente](GUIDE.md)                | Modelli, widget, integrazioni IA, editor, webhook e regole           |
+| [Aspetto](APPEARANCE.md)                | Font, superfici, preimpostazioni e anteprima                         |
+| [Control Deck](CONTROL-DECK.md)         | Audio, media, OBS, scorciatoie e attività                            |
+| [Sviluppo](DEVELOPMENT.md)              | Architettura, demo locale, build e test                              |
+| [Privacy](../PRIVACY.md)                | Connessioni in uscita e sicurezza                                    |
 
 ## Licenza
 

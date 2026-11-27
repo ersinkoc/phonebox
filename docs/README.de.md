@@ -11,6 +11,7 @@
   <a href="README.it.md">Italiano</a> ·
   <a href="README.pt.md">Português</a> ·
   <a href="README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="README.ro.md">Română</a> ·
   <a href="README.nl.md">Nederlands</a> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
@@ -53,13 +54,13 @@ PhoneBox verbindet eine Vollbild-**Android-App** mit einem schlanken **Desktop-A
 
 ## Funktionen
 
-| Einsatzbereich | Anzeige auf dem Telefon |
-|---|---|
-| **PC-Überwachung** | CPU, GPU, RAM, Laufwerke, Netzwerk und Ping; Diagramme, GPU-Details und Prozesssteuerung |
-| **KI-Coding** | Kontingente für Claude, Codex und Antigravity, Reset-Zeiten und Verbrauchsprognosen; lokale Claude-Code- und Codex-Sitzungen; GitHub-Reviews und CI-Status |
-| **Touch-Steuerung** | App- und URL-Verknüpfungen, Tastenkombinationen und Makros; App-Audio, Mikrofon, Medien, OBS und Systemsteuerung über [Control Deck](CONTROL-DECK.md) |
-| **Alltag** | Aktuelle Wiedergabe, Internetradio, Uhren, Wetter, Kalender, Notizen, Checklisten, Pomodoro und Timer |
-| **Automatisierung** | Webhook-Werte und Benachrichtigungen, Home-Assistant-Steuerung und Regeln, die auf PC-Aktivität reagieren |
+| Einsatzbereich      | Anzeige auf dem Telefon                                                                                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PC-Überwachung**  | CPU, GPU, RAM, Laufwerke, Netzwerk und Ping; Diagramme, GPU-Details und Prozesssteuerung                                                                   |
+| **KI-Coding**       | Kontingente für Claude, Codex und Antigravity, Reset-Zeiten und Verbrauchsprognosen; lokale Claude-Code- und Codex-Sitzungen; GitHub-Reviews und CI-Status |
+| **Touch-Steuerung** | App- und URL-Verknüpfungen, Tastenkombinationen und Makros; App-Audio, Mikrofon, Medien, OBS und Systemsteuerung über [Control Deck](CONTROL-DECK.md)      |
+| **Alltag**          | Aktuelle Wiedergabe, Internetradio, Uhren, Wetter, Kalender, Notizen, Checklisten, Pomodoro und Timer                                                      |
+| **Automatisierung** | Webhook-Werte und Benachrichtigungen, Home-Assistant-Steuerung und Regeln, die auf PC-Aktivität reagieren                                                  |
 
 ## Schnellstart
 
@@ -83,8 +84,8 @@ Das Setup lädt das neueste Release herunter, prüft die SHA-256-Prüfsumme und 
 
 ### 2. Telefon verbinden
 
-| USB | Nur WLAN |
-|---|---|
+| USB                                                                                                     | Nur WLAN                                                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Entwickleroptionen → USB-Debugging** aktivieren, Datenkabel anschließen und Autorisierung bestätigen. | APK aus dem [neuesten Release](https://github.com/ersinkoc/phonebox/releases/latest) installieren, **Einstellungen → Allgemein → WLAN & Tailscale** aktivieren und QR-Code scannen. |
 
 ### 3. Anpassen
@@ -93,15 +94,15 @@ Das Setup lädt das neueste Release herunter, prüft die SHA-256-Prüfsumme und 
 
 ## Dokumentation
 
-| Leitfaden | Inhalt |
-|---|---|
-| [Installation & Verbindungen](SETUP.md) | Setup-Optionen, USB, WLAN, Tailscale, Updates, Deinstallation |
-| [Benutzerhandbuch](GUIDE.md) | Vorlagen, Widgets, KI-Integrationen, Editor, Webhooks und Regeln |
-| [Erscheinungsbild](APPEARANCE.md) | Schriftarten, Oberflächen, Voreinstellungen und Live-Vorschau |
-| [Control Deck](CONTROL-DECK.md) | Audio, Medien, OBS, Verknüpfungen, Aufgaben und Systemlimits |
-| [Entwicklung](DEVELOPMENT.md) | Architektur, lokale Demo, Builds und Tests |
-| [Mitwirken](../CONTRIBUTING.md) | Beitragsrichtlinien und Datenschutz |
-| [Änderungsprotokoll](../CHANGELOG.md) | Versionsverlauf |
+| Leitfaden                               | Inhalt                                                           |
+| --------------------------------------- | ---------------------------------------------------------------- |
+| [Installation & Verbindungen](SETUP.md) | Setup-Optionen, USB, WLAN, Tailscale, Updates, Deinstallation    |
+| [Benutzerhandbuch](GUIDE.md)            | Vorlagen, Widgets, KI-Integrationen, Editor, Webhooks und Regeln |
+| [Erscheinungsbild](APPEARANCE.md)       | Schriftarten, Oberflächen, Voreinstellungen und Live-Vorschau    |
+| [Control Deck](CONTROL-DECK.md)         | Audio, Medien, OBS, Verknüpfungen, Aufgaben und Systemlimits     |
+| [Entwicklung](DEVELOPMENT.md)           | Architektur, lokale Demo, Builds und Tests                       |
+| [Mitwirken](../CONTRIBUTING.md)         | Beitragsrichtlinien und Datenschutz                              |
+| [Änderungsprotokoll](../CHANGELOG.md)   | Versionsverlauf                                                  |
 
 ## Sicherheit & Datenschutz
 

@@ -11,6 +11,7 @@
   <a href="docs/README.it.md">Italiano</a> ·
   <a href="docs/README.pt.md">Português</a> ·
   <a href="docs/README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="docs/README.ro.md">Română</a> ·
   <a href="docs/README.nl.md">Nederlands</a> ·
   <a href="docs/README.pl.md">Polski</a> ·
   <a href="docs/README.ru.md">Русский</a> ·
@@ -55,13 +56,13 @@ their own layouts, or switch one phone between paired computers.
 
 ## What you can do
 
-| Use it for | What appears on the phone |
-|---|---|
-| **PC monitoring** | CPU, GPU, RAM, disks, network and ping; charts, GPU details and process controls |
-| **AI coding** | Claude, Codex and Antigravity quotas, reset times and burn-rate forecasts; local Claude Code, Codex and OpenCode sessions (native and inside WSL); GitHub reviews and CI status |
-| **Touch controls** | App and URL shortcuts, key combinations and macros; application audio, microphone, media, OBS and system controls through [Control Deck](docs/CONTROL-DECK.md) |
-| **Everyday use** | Now Playing, internet radio, clocks, weather, calendars, notes, checklists, pomodoro and timers |
-| **Automation** | Webhook values and notifications, Home Assistant controls and rules that react to activity on the computer |
+| Use it for         | What appears on the phone                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PC monitoring**  | CPU, GPU, RAM, disks, network and ping; charts, GPU details and process controls                                                                                                |
+| **AI coding**      | Claude, Codex and Antigravity quotas, reset times and burn-rate forecasts; local Claude Code, Codex and OpenCode sessions (native and inside WSL); GitHub reviews and CI status |
+| **Touch controls** | App and URL shortcuts, key combinations and macros; application audio, microphone, media, OBS and system controls through [Control Deck](docs/CONTROL-DECK.md)                  |
+| **Everyday use**   | Now Playing, internet radio, clocks, weather, calendars, notes, checklists, pomodoro and timers                                                                                 |
+| **Automation**     | Webhook values and notifications, Home Assistant controls and rules that react to activity on the computer                                                                      |
 
 Tap an AI session for its model, timing and token details. Opt in to Codex, Claude Code or OpenCode permission prompts
 to answer **Allow**, **Deny** (and **Always allow** for OpenCode) from the phone. Optional
@@ -102,10 +103,10 @@ The [installation guide](docs/SETUP.md) covers options, dependencies, install pa
 
 ### 2. Connect the phone
 
-| USB | Wi-Fi only |
-|---|---|
+| USB                                                                                                                                                                                               | Wi-Fi only                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Enable **Developer options → USB debugging**, connect a data cable and accept the phone's authorization prompt. Let setup install the app, or use **Settings → General → Install the phone app**. | Install the APK from the [latest release](https://github.com/ersinkoc/phonebox/releases/latest). Wi-Fi is off by default: open the settings page (tray icon, or `http://127.0.0.1:8765`), turn on **General → Wi-Fi & Tailscale → Let the phone connect without the USB cable**, click **Save**, then **Restart to apply** at the top. Choose **Pair a phone over Wi-Fi**, scan the pairing QR code and confirm the matching check code. |
-| Wakes and opens the panel on connection; supports app updates over adb. | No adb or developer options needed; install app updates manually unless you later configure USB. |
+| Wakes and opens the panel on connection; supports app updates over adb.                                                                                                                           | No adb or developer options needed; install app updates manually unless you later configure USB.                                                                                                                                                                                                                                                                                                                                         |
 
 The phone app is not in any app store; it comes only from this repository's releases. It runs on Android 5.0 and
 newer. An experimental iOS companion (SwiftUI, built from source with Xcode) is documented in
@@ -142,10 +143,10 @@ Swipe, tap the page dots or use the phone's volume keys to move between pages.
 Start with Home, System, AI quotas, Sessions, Music, Planner, Automation or a Control Deck template, then adapt the
 12 × 6 grid to your phone. Portrait and landscape layouts are supported. Smart Stack puts up to 12 widgets in one slot.
 
-| Home | AI sessions |
-|---|---|
-| ![Clock, weather, media and PC metrics](docs/screenshots/home.png) | ![Coding sessions and GitHub activity](docs/screenshots/work.png) |
-| **System** | **Layout editor** |
+| Home                                                                | AI sessions                                                                             |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| ![Clock, weather, media and PC metrics](docs/screenshots/home.png)  | ![Coding sessions and GitHub activity](docs/screenshots/work.png)                       |
+| **System**                                                          | **Layout editor**                                                                       |
 | ![CPU, GPU, memory and network charts](docs/screenshots/system.png) | ![Pages and widget settings in the visual editor](docs/screenshots/settings-editor.png) |
 
 Screenshots use demo data. [Browse the template gallery and widgets](docs/GUIDE.md#pages--templates).
@@ -153,14 +154,14 @@ Change fonts, size, spacing, corners and surfaces globally or for one page or wi
 
 ## Platform support
 
-| | Windows | Linux | macOS |
-|---|---|---|---|
-| Release builds | x64 | x64 / ARM64, glibc | Apple silicon / Intel |
-| CPU, RAM, disks, network, processes | ✓ | ✓ | ✓ |
-| GPU data | Windows counters; NVIDIA via `nvidia-smi`; extra sensors via [LibreHardwareMonitor](docs/SETUP.md#librehardwaremonitor-on-windows) | NVIDIA / AMD; Intel clock | Apple silicon, when exposed by macOS |
-| Media | System media sessions | `playerctl` | `nowplaying-cli`; Spotify / Music fallback |
-| Volume | Native | `wpctl` / `pactl` | System output; availability varies by device |
-| Agent interface | Tray icon + browser settings | Browser settings | Browser settings |
+|                                     | Windows                                                                                                                            | Linux                     | macOS                                        |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | -------------------------------------------- |
+| Release builds                      | x64                                                                                                                                | x64 / ARM64, glibc        | Apple silicon / Intel                        |
+| CPU, RAM, disks, network, processes | ✓                                                                                                                                  | ✓                         | ✓                                            |
+| GPU data                            | Windows counters; NVIDIA via `nvidia-smi`; extra sensors via [LibreHardwareMonitor](docs/SETUP.md#librehardwaremonitor-on-windows) | NVIDIA / AMD; Intel clock | Apple silicon, when exposed by macOS         |
+| Media                               | System media sessions                                                                                                              | `playerctl`               | `nowplaying-cli`; Spotify / Music fallback   |
+| Volume                              | Native                                                                                                                             | `wpctl` / `pactl`         | System output; availability varies by device |
+| Agent interface                     | Tray icon + browser settings                                                                                                       | Browser settings          | Browser settings                             |
 
 Widgets depend on the host's hardware, installed tools and permissions. Advanced Control Deck features have
 [their own platform requirements](docs/CONTROL-DECK.md). Windows on ARM requires Windows 11.
@@ -168,17 +169,17 @@ Musl Linux (such as Alpine) has no release build. See the [full compatibility ta
 
 ## Documentation
 
-| Guide | Contents |
-|---|---|
+| Guide                                         | Contents                                                                                                           |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | [Installation and connections](docs/SETUP.md) | Setup options, warnings, manual and source installs, USB, Wi-Fi, Tailscale, updates, uninstall and troubleshooting |
-| [User guide](docs/GUIDE.md) | Template gallery, widgets, AI integrations, editor, Claude Code prompts, webhooks and automation rules |
-| [Appearance](docs/APPEARANCE.md) | Fonts, surfaces, presets, inheritance and live preview |
-| [Control Deck](docs/CONTROL-DECK.md) | Audio, media, OBS, shortcuts, tasks, protocols, dependencies and platform limits |
-| [Discord widget](docs/DISCORD.md) | Creating the Discord application, connecting it, controls and troubleshooting |
-| [Development](docs/DEVELOPMENT.md) | Architecture, local demo, builds, tests, widget sources and isolated agent runs |
-| [Contributing](CONTRIBUTING.md) | Contribution scope, review expectations, privacy and required checks |
-| [Changelog](CHANGELOG.md) | Release history and unreleased changes |
-| [Release checklist](docs/RELEASING.md) | Maintainer build, signing and publication workflow |
+| [User guide](docs/GUIDE.md)                   | Template gallery, widgets, AI integrations, editor, Claude Code prompts, webhooks and automation rules             |
+| [Appearance](docs/APPEARANCE.md)              | Fonts, surfaces, presets, inheritance and live preview                                                             |
+| [Control Deck](docs/CONTROL-DECK.md)          | Audio, media, OBS, shortcuts, tasks, protocols, dependencies and platform limits                                   |
+| [Discord widget](docs/DISCORD.md)             | Creating the Discord application, connecting it, controls and troubleshooting                                      |
+| [Development](docs/DEVELOPMENT.md)            | Architecture, local demo, builds, tests, widget sources and isolated agent runs                                    |
+| [Contributing](CONTRIBUTING.md)               | Contribution scope, review expectations, privacy and required checks                                               |
+| [Changelog](CHANGELOG.md)                     | Release history and unreleased changes                                                                             |
+| [Release checklist](docs/RELEASING.md)        | Maintainer build, signing and publication workflow                                                                 |
 
 The [UMIDIGI BISON extras](extras/umidigi-bison) contain the reversible, no-root tune-up used on the original development phone.
 
@@ -188,11 +189,11 @@ Add-ons are written and maintained by their authors. PhoneBox doesn't review or 
 rights on the computer and can change PhoneBox settings through `PUT /api/settings`, so read what an add-on does
 before you install it.
 
-| Add-on | What it does | What it sends outside the PC |
-|---|---|---|
-| [PhoneBox Games Tab](https://github.com/lucasaz/phonebox-games-tab) (Windows) | A Games page with live FPS, cover art and play time, through the push API and a Custom HTML widget | Store / Xbox apps' package names, with the Windows display language and region, to the Microsoft Store catalog (`displaycatalog.mp.microsoft.com`); Steam games' app IDs to the Steam store (`store.steampowered.com`), for the cover address; the phone loads cover images from Microsoft's image servers and from Steam's, whose URL contains the game's Steam app ID |
-| [PhoneBox for GNOME](https://github.com/Gabrielmororo180/phonebox-gnome) (Linux, GNOME) | CPU and the Claude session quota in the GNOME top bar; a click opens the panel, with page tabs, right below it. Also works as a desktop widget | Nothing of its own; the panel it opens makes the same requests as on the phone, such as the weather from `api.open-meteo.com` (see [PRIVACY.md](PRIVACY.md)) |
-| [Phonebox Keyboard Addon](https://github.com/Ultraalmir/Keyboard-Addon-for-PhoneBox) (Windows) | Global keyboard shortcuts for direct page navigation, plus Next / Previous controls and a tray settings panel | Nothing; it only calls the local agent on `127.0.0.1`|
+| Add-on                                                                                         | What it does                                                                                                                                   | What it sends outside the PC                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [PhoneBox Games Tab](https://github.com/lucasaz/phonebox-games-tab) (Windows)                  | A Games page with live FPS, cover art and play time, through the push API and a Custom HTML widget                                             | Store / Xbox apps' package names, with the Windows display language and region, to the Microsoft Store catalog (`displaycatalog.mp.microsoft.com`); Steam games' app IDs to the Steam store (`store.steampowered.com`), for the cover address; the phone loads cover images from Microsoft's image servers and from Steam's, whose URL contains the game's Steam app ID |
+| [PhoneBox for GNOME](https://github.com/Gabrielmororo180/phonebox-gnome) (Linux, GNOME)        | CPU and the Claude session quota in the GNOME top bar; a click opens the panel, with page tabs, right below it. Also works as a desktop widget | Nothing of its own; the panel it opens makes the same requests as on the phone, such as the weather from `api.open-meteo.com` (see [PRIVACY.md](PRIVACY.md))                                                                                                                                                                                                            |
+| [Phonebox Keyboard Addon](https://github.com/Ultraalmir/Keyboard-Addon-for-PhoneBox) (Windows) | Global keyboard shortcuts for direct page navigation, plus Next / Previous controls and a tray settings panel                                  | Nothing; it only calls the local agent on `127.0.0.1`                                                                                                                                                                                                                                                                                                                   |
 
 ## Security & privacy
 

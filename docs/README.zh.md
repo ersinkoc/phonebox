@@ -11,6 +11,7 @@
   <a href="README.it.md">Italiano</a> ·
   <a href="README.pt.md">Português</a> ·
   <a href="README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="README.ro.md">Română</a> ·
   <a href="README.nl.md">Nederlands</a> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
@@ -53,13 +54,13 @@ PhoneBox 将全屏 **Android 应用**与轻量级**桌面代理**配对。通过
 
 ## 主要功能
 
-| 用途 | 手机端显示内容 |
-|---|---|
-| **电脑监控** | CPU、GPU、内存、磁盘、网络与 Ping；图表、GPU 详情与进程管理 |
-| **AI 编程** | Claude、Codex 与 Antigravity 配额及消耗预测；本地 Claude Code 与 Codex 会话；GitHub 审查与 CI 状态 |
+| 用途         | 手机端显示内容                                                                                        |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| **电脑监控** | CPU、GPU、内存、磁盘、网络与 Ping；图表、GPU 详情与进程管理                                           |
+| **AI 编程**  | Claude、Codex 与 Antigravity 配额及消耗预测；本地 Claude Code 与 Codex 会话；GitHub 审查与 CI 状态    |
 | **触控操作** | 应用与网址快捷键、宏命令；通过 [Control Deck](CONTROL-DECK.md) 控制应用音量、麦克风、媒体、OBS 与系统 |
-| **日常工具** | 正在播放、网络电台、时钟、天气、日历、笔记、清单、番茄钟与计时器 |
-| **自动化** | Webhook 推送与通知、Home Assistant 控制以及响应电脑活动的自动化规则 |
+| **日常工具** | 正在播放、网络电台、时钟、天气、日历、笔记、清单、番茄钟与计时器                                      |
+| **自动化**   | Webhook 推送与通知、Home Assistant 控制以及响应电脑活动的自动化规则                                   |
 
 ## 快速开始
 
@@ -81,8 +82,8 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
 
 ### 2. 连接手机
 
-| USB | 仅 Wi-Fi |
-|---|---|
+| USB                                          | 仅 Wi-Fi                                                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | 开启 **开发者选项 → USB 调试**并连接数据线。 | 从[最新发布](https://github.com/ersinkoc/phonebox/releases/latest)安装 APK，开启 **Wi-Fi & Tailscale** 并扫描配对二维码。 |
 
 ### 3. 自定义面板
@@ -91,14 +92,14 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
 
 ## 文档
 
-| 指南 | 内容 |
-|---|---|
-| [安装与连接](SETUP.md) | 安装选项、USB、Wi-Fi、Tailscale、更新与故障排查 |
-| [用户指南](GUIDE.md) | 模板库、小组件、AI 集成、编辑器、Webhook 与规则 |
-| [外观](APPEARANCE.md) | 字体、表面样式、预设与实时预览 |
-| [Control Deck](CONTROL-DECK.md) | 音频、媒体、OBS、快捷键与任务 |
-| [开发指南](DEVELOPMENT.md) | 架构、本地演示服务器、构建与测试 |
-| [隐私政策](../PRIVACY.md) | 外部连接说明与安全性 |
+| 指南                            | 内容                                            |
+| ------------------------------- | ----------------------------------------------- |
+| [安装与连接](SETUP.md)          | 安装选项、USB、Wi-Fi、Tailscale、更新与故障排查 |
+| [用户指南](GUIDE.md)            | 模板库、小组件、AI 集成、编辑器、Webhook 与规则 |
+| [外观](APPEARANCE.md)           | 字体、表面样式、预设与实时预览                  |
+| [Control Deck](CONTROL-DECK.md) | 音频、媒体、OBS、快捷键与任务                   |
+| [开发指南](DEVELOPMENT.md)      | 架构、本地演示服务器、构建与测试                |
+| [隐私政策](../PRIVACY.md)       | 外部连接说明与安全性                            |
 
 ## 许可证
 

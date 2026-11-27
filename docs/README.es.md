@@ -11,6 +11,7 @@
   <a href="README.it.md">Italiano</a> ·
   <a href="README.pt.md">Português</a> ·
   <a href="README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="README.ro.md">Română</a> ·
   <a href="README.nl.md">Nederlands</a> ·
   <a href="README.pl.md">Polski</a> ·
   <a href="README.ru.md">Русский</a> ·
@@ -53,13 +54,13 @@ PhoneBox combina una **aplicación Android** a pantalla completa con un ligero *
 
 ## Qué puedes hacer
 
-| Uso | Qué aparece en el teléfono |
-|---|---|
-| **Monitorización del PC** | CPU, GPU, RAM, discos, red y ping; gráficos, detalles de GPU y control de procesos |
-| **Programación con IA** | Cuotas de Claude, Codex y Antigravity; sesiones locales de Claude Code y Codex; revisiones de GitHub y estado CI |
-| **Controles táctiles** | Atajos de apps y URL, macros; audio, micrófono, multimedia, OBS y sistema mediante [Control Deck](CONTROL-DECK.md) |
-| **Uso diario** | Reproducción actual, radio por internet, relojes, clima, calendarios, notas, listas, pomodoro y temporizadores |
-| **Automatización** | Webhooks, notificaciones, Home Assistant y reglas reactivas |
+| Uso                       | Qué aparece en el teléfono                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Monitorización del PC** | CPU, GPU, RAM, discos, red y ping; gráficos, detalles de GPU y control de procesos                                 |
+| **Programación con IA**   | Cuotas de Claude, Codex y Antigravity; sesiones locales de Claude Code y Codex; revisiones de GitHub y estado CI   |
+| **Controles táctiles**    | Atajos de apps y URL, macros; audio, micrófono, multimedia, OBS y sistema mediante [Control Deck](CONTROL-DECK.md) |
+| **Uso diario**            | Reproducción actual, radio por internet, relojes, clima, calendarios, notas, listas, pomodoro y temporizadores     |
+| **Automatización**        | Webhooks, notificaciones, Home Assistant y reglas reactivas                                                        |
 
 ## Inicio rápido
 
@@ -81,8 +82,8 @@ La configuración se abre en <http://127.0.0.1:8765>. Consulta la [guía de inst
 
 ### 2. Conectar el teléfono
 
-| USB | Solo Wi-Fi |
-|---|---|
+| USB                                                                       | Solo Wi-Fi                                                                                                                                        |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Activa **Opciones de desarrollador → Depuración USB** y conecta el cable. | Instala el APK de la [última versión](https://github.com/ersinkoc/phonebox/releases/latest), activa **Wi-Fi & Tailscale** y escanea el código QR. |
 
 ### 3. Personalizar
@@ -91,14 +92,14 @@ Abre <http://127.0.0.1:8765>, elige una plantilla en **Páginas**, organiza tus 
 
 ## Documentación
 
-| Guía | Contenido |
-|---|---|
+| Guía                                 | Contenido                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------ |
 | [Instalación y conexiones](SETUP.md) | Opciones, USB, Wi-Fi, Tailscale, actualizaciones y solución de problemas |
-| [Guía de usuario](GUIDE.md) | Plantillas, widgets, integraciones IA, editor, webhooks y reglas |
-| [Apariencia](APPEARANCE.md) | Fuentes, superficies, preajustes y vista previa |
-| [Control Deck](CONTROL-DECK.md) | Audio, multimedia, OBS, atajos y tareas |
-| [Desarrollo](DEVELOPMENT.md) | Arquitectura, demo local, compilación y pruebas |
-| [Privacidad](../PRIVACY.md) | Conexiones salientes y seguridad |
+| [Guía de usuario](GUIDE.md)          | Plantillas, widgets, integraciones IA, editor, webhooks y reglas         |
+| [Apariencia](APPEARANCE.md)          | Fuentes, superficies, preajustes y vista previa                          |
+| [Control Deck](CONTROL-DECK.md)      | Audio, multimedia, OBS, atajos y tareas                                  |
+| [Desarrollo](DEVELOPMENT.md)         | Arquitectura, demo local, compilación y pruebas                          |
+| [Privacidad](../PRIVACY.md)          | Conexiones salientes y seguridad                                         |
 
 ## Licencia
 
