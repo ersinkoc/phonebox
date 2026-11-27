@@ -64,11 +64,22 @@ W.dictate = {
         try { body = await r.json(); } catch (_) {}
         if (alive) {
           if (body && body.confirmRequired) {
-            if (window.confirm((body.action || 'Run command') + '?')) {
-              await send(text, true);
-              return;
-            }
-            say('w.dictate.tap');
+            const ov = h('div', 'dc-confirm');
+            ov.style.cssText = 'position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px;';
+            const card = h('div', '');
+            card.style.cssText = 'width:100%;max-width:280px;background:var(--card,#14161c);border:1px solid rgba(239,68,68,.45);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;';
+            const title = h('div', '', (body.action || 'Run command') + '?');
+            title.style.cssText = 'font-size:15px;font-weight:700;color:var(--text,#fff);';
+            const bYes = h('button', 'btn', 'Confirm');
+            bYes.style.cssText = 'padding:10px;border-radius:10px;background:#dc2626;color:#fff;font-weight:600;border:0;cursor:pointer;';
+            const bNo = h('button', 'btn', 'Cancel');
+            bNo.style.cssText = 'padding:10px;border-radius:10px;background:transparent;color:var(--muted,#94a3b8);font-weight:600;border:1px solid var(--line,rgba(255,255,255,.15));cursor:pointer;';
+            bYes.onclick = async () => { ov.remove(); await send(text, true); };
+            bNo.onclick = () => { ov.remove(); say('w.dictate.tap'); };
+            ov.onclick = (ev) => { if (ev.target === ov) { ov.remove(); say('w.dictate.tap'); } };
+            card.append(title, bYes, bNo);
+            ov.append(card);
+            document.body.append(ov);
             return;
           }
           if (body && body.action) note.textContent = body.action;

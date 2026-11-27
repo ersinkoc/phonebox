@@ -965,9 +965,25 @@ W.shortcuts = {
       if (tapMode === 'instant') return btn;
       let timer = 0;
       const openMenu = () => {
-        const choice = window.prompt(`${s.label}\nType 1 to Open, 2 to Close, or Cancel:`, '1');
-        if (choice === '1') api('/run/' + encodeURIComponent(s.id), 'POST', 5000).catch(() => toast(t('panel.pcNoAnswer'), 'err'));
-        else if (choice === '2') api('/shortcuts/close/' + encodeURIComponent(s.id), 'POST', 5000).catch((e) => toast(e?.message || t('panel.pcNoAnswer'), 'err'));
+        const ov = h('div', 'pb-sc-modal');
+        ov.style.cssText = 'position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px;';
+        const card = h('div', 'pb-sc-box');
+        card.style.cssText = 'width:100%;max-width:280px;background:var(--card,#14161c);border:1px solid var(--line,rgba(255,255,255,.15));border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;';
+        const title = h('div', '', s.label);
+        title.style.cssText = 'font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text,#fff);';
+        const bOpen = h('button', 'btn', tp('Open'));
+        bOpen.style.cssText = 'padding:10px;border-radius:10px;background:#16a34a;color:#fff;font-weight:600;border:0;cursor:pointer;';
+        const bClose = h('button', 'btn', tp('Close'));
+        bClose.style.cssText = 'padding:10px;border-radius:10px;background:#dc2626;color:#fff;font-weight:600;border:0;cursor:pointer;';
+        const bCancel = h('button', 'btn', tp('Cancel'));
+        bCancel.style.cssText = 'padding:10px;border-radius:10px;background:transparent;color:var(--muted,#94a3b8);font-weight:600;border:1px solid var(--line,rgba(255,255,255,.15));cursor:pointer;';
+        bOpen.onclick = () => { ov.remove(); api('/run/' + encodeURIComponent(s.id), 'POST', 5000).catch(() => toast(t('panel.pcNoAnswer'), 'err')); };
+        bClose.onclick = () => { ov.remove(); api('/shortcuts/close/' + encodeURIComponent(s.id), 'POST', 5000).catch((e) => toast(e?.message || t('panel.pcNoAnswer'), 'err')); };
+        bCancel.onclick = () => ov.remove();
+        ov.onclick = (ev) => { if (ev.target === ov) ov.remove(); };
+        card.append(title, bOpen, bClose, bCancel);
+        ov.append(card);
+        document.body.append(ov);
       };
       btn.addEventListener('click', (e) => {
         e.stopImmediatePropagation();
