@@ -1189,9 +1189,13 @@ test('the Trackpad widget does not drift the cursor during staggered 2-finger sc
   const coastEvents = await events();
   expect(coastEvents.length).toBeGreaterThan(2);
   expect(coastEvents.every((e) => e.type === 'scroll')).toBe(true);
-  // Decaying: the next 140 ms coast less than the first. Compared as sums over a window, not event by event: a step is
+  // Decaying: a later 140 ms coast less than the first. Compared as sums over a window, not event by event: a step is
   // the distance of one frame, so on a busy runner a long frame after a short one sends a larger step while the speed
-  // still falls. The distance over a window does not depend on how the frames split it.
+  // still falls. The distance over a window does not depend on how the frames split it. The 300 ms between the windows
+  // are dropped: longer than the 200 ms frame gap the coast allows, so no frame begun in the first window lands in the
+  // second (with tau 230 ms the second then holds at most about 60% of the first).
+  await page.waitForTimeout(300);
+  await events();
   await page.waitForTimeout(140);
   const laterCoast = await events();
   const distance = (list) => list.reduce((sum, e) => sum + Math.abs(e.delta), 0);
