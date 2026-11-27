@@ -329,6 +329,26 @@ public sealed class SteamLibraryTests : IDisposable
     }
 
     [Fact]
+    public void ACacheFolderThatIsALinkIsNotFollowed()
+    {
+        var outside = Path.Combine(_dir, "outside-cache");
+        Directory.CreateDirectory(outside);
+        File.WriteAllBytes(Path.Combine(outside, "570_library_600x900.jpg"), [1]);
+        Directory.CreateDirectory(Path.GetDirectoryName(Cache)!);
+        try
+        {
+            Directory.CreateSymbolicLink(Cache, outside);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+        {
+            return; // Windows without Developer Mode cannot create symbolic links; the checks below need them
+        }
+
+        Assert.Null(SteamLibrary.FindCover(Root, "570"));
+        Assert.False(SteamLibrary.SafeCover(Path.GetFullPath(Cache), Path.Combine(Cache, "570_library_600x900.jpg")));
+    }
+
+    [Fact]
     public void CoverPathIsOnlyForAnInstalledGame()
     {
         LibraryFolders();

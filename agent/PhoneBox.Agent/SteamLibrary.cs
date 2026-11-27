@@ -581,18 +581,19 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
 
     /// <summary>
     /// The file exists, is small enough, and resolves inside <paramref name="cache"/> without a symbolic link or junction
-    /// on the way (the file itself and every folder between it and the cache).
+    /// on the way (the file itself, the cache folder, and every folder between them).
     /// </summary>
     internal static bool SafeCover(string cache, string file)
     {
         try
         {
             var full = Path.GetFullPath(file);
-            var prefix = cache.EndsWith(Path.DirectorySeparatorChar) ? cache : cache + Path.DirectorySeparatorChar;
+            var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(cache));
+            var prefix = root + Path.DirectorySeparatorChar;
             if (!full.StartsWith(prefix, PathComparison)) return false;
             var info = new FileInfo(full);
             if (!info.Exists || info.Length == 0 || info.Length > MaxCoverBytes || IsLink(full)) return false;
-            for (var d = info.Directory; d is not null && d.FullName.Length >= prefix.Length; d = d.Parent)
+            for (var d = info.Directory; d is not null && d.FullName.Length >= root.Length; d = d.Parent)
                 if (IsLink(d.FullName)) return false;
             return true;
         }
