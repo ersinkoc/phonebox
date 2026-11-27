@@ -1168,7 +1168,8 @@ W.pomodoro = {
       st.sig = sig;
     } else if (st.sig !== sig) {
       // the sequence was changed in the settings: start it from the beginning
-      Object.assign(st, { step: 0, round: 0, endsAt: null, left: plan[0].ms, sig });
+      // saved: 0, so a reset state never replaces a timer that already runs this sequence on another widget
+      Object.assign(st, { step: 0, round: 0, endsAt: null, left: plan[0].ms, sig, saved: 0 });
     }
     if (!(st.step >= 0 && st.step < plan.length)) st.step = 0;
     if (st.day !== today) { st.count = 0; st.day = today; }
@@ -1266,7 +1267,11 @@ W.pomodoro = {
     skip.addEventListener('click', () => { haptic(); advance(true); render(); });
     return {
       update: render,
-      destroy() { if (--shared.owners <= 0 && POMO.get(sig) === shared) POMO.delete(sig); },
+      destroy() {
+        // the widget's own key gets the shared state, so a widget that stays after a rebuild doesn't bring back an older one
+        store.set(key, st);
+        if (--shared.owners <= 0 && POMO.get(sig) === shared) POMO.delete(sig);
+      },
     };
   },
 };
