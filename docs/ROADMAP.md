@@ -83,6 +83,10 @@ people who proposed or prototyped something are credited in the [changelog](../C
   (`value: { min, max, step }`). The agent checks and formats the number itself and passes it as its own argument
   (or a whole `{value}` placeholder) to shortcuts that start a program or open an address; others refuse a value. At
   most about 4 values a second per shortcut, so a dragged slider can't start hundreds of processes.
+- **macOS: fewer helper starts for the volume** ([#695](https://github.com/ersinkoc/phonebox/issues/695), pull request
+  [#697](https://github.com/ersinkoc/phonebox/pull/697)): an output whose volume `osascript` can never read (HDMI)
+  is tried less and less often, up to every 5 minutes, and read again at once when another output is chosen. Every
+  `osascript` start adds to WindowServer's Mach ports, which macOS does not give back, until the user is logged out.
 
 ## Open for a contributor
 
@@ -126,6 +130,11 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   phones are unaffected: USB maps the phone's 8765 to the agent, and Wi-Fi has its own port.
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
+- **macOS: Now playing without a helper start per reading** ([#695](https://github.com/ersinkoc/phonebox/issues/695)):
+  check in-process whether Spotify or Music is running before the `osascript` fallback asks them, and read Now
+  Playing from one long-running helper that reports changes (or in-process) instead of starting `nowplaying-cli` every
+  few seconds. Each start adds to WindowServer's Mach ports, which macOS does not give back, until the user is logged
+  out after days.
 
 ## Waiting on someone else
 
