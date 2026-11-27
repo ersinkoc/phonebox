@@ -76,8 +76,8 @@ people who proposed or prototyped something are credited in the [changelog](../C
   second pull request: webcams through `MediaCapture` in shared read-only mode (never taking the camera from another
   app), and DirectShow-only virtual cameras through ffmpeg's `dshow` input, as about 5 JPEG frames a second at 640 px
   in the Camera widget. Off by default behind a switch in Settings on the computer (the phone cannot turn it on),
-  only while the widget is on screen, and the camera closes a few seconds after the last request so its light goes
-  off. Frames are not stored or logged.
+  only while the widget is on screen, and PhoneBox lets go of the camera a few seconds after the last request (its
+  light stays on only if another app is using it). Frames are not stored or logged.
 
 ## Open for a contributor
 
