@@ -100,6 +100,8 @@
       window.__pbTooOld = true;
       return;
     }
+    // The notice names Android System WebView and Chrome; the iOS shell's WebKit is part of the OS and can't be updated that way.
+    if (window.__phoneboxIOS) return;
     if (window.CSS && typeof CSS.supports === 'function' && CSS.supports('font-size', '1cqw')) return;
     try { if (sessionStorage.getItem('pb-wv-dismissed') === '1') return; } catch (_) {}
     el.hidden = false; el.style.display = 'flex';

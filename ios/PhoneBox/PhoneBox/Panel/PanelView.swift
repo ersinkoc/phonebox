@@ -58,7 +58,7 @@ struct PanelView: UIViewRepresentable {
             controller.addUserScript(WKUserScript(source: shim, injectionTime: .atDocumentStart, forMainFrameOnly: true))
             let languages = Self.languagesJSON()
             controller.addUserScript(WKUserScript(
-                source: "window.__phoneboxLanguages = \(languages);",
+                source: "window.__phoneboxLanguages = \(languages); window.__phoneboxIOS = true;",
                 injectionTime: .atDocumentStart,
                 forMainFrameOnly: true
             ))
