@@ -196,8 +196,23 @@
     if (d.type === 'event') emit(d.kind, d.data, false);
     if (d.type === 'push') setPush(d.key, d.value, d.ttl);
   };
-  function setPush(key, value, ttl = null) { push[key] = { data: value, at: now(), expiresAt: ttl > 0 ? now() + ttl * 1000 : null }; pushVersion++; }
-  const livePush = () => { for (const k of Object.keys(push)) if (push[k].expiresAt && push[k].expiresAt <= now()) { delete push[k]; pushVersion++; } return push; };
+  function setPush(key, value, ttl = null) {
+    const baseVersion = pushVersion;
+    const item = { data: value, at: now(), expiresAt: ttl > 0 ? now() + ttl * 1000 : null };
+    push[key] = item;
+    pushVersion++;
+    emit('push', { baseVersion, version: pushVersion, key, item }, false);
+  }
+  const livePush = () => {
+    const expired = Object.keys(push).filter((k) => push[k].expiresAt && push[k].expiresAt <= now());
+    if (expired.length) {
+      const baseVersion = pushVersion;
+      for (const k of expired) delete push[k];
+      pushVersion++;
+      emit('push', { baseVersion, version: pushVersion, remove: expired }, false);
+    }
+    return push;
+  };
 
   // ---- made-up computer
   const audio = { volume: 42, muted: false, canControl: true };
@@ -905,8 +920,22 @@
       return json({ ok: true });
     }
     if (path === '/api/push' && method === 'GET') return json({ version: pushVersion, items: livePush() });
-    if (path === '/api/push' && method === 'DELETE') { for (const k of Object.keys(push)) delete push[k]; pushVersion++; return json({}); }
-    if (path.startsWith('/api/push/') && method === 'DELETE') { const key = decodeURIComponent(path.slice(10)); if (!push[key]) return json({}, 404); delete push[key]; pushVersion++; return json({}); }
+    if (path === '/api/push' && method === 'DELETE') {
+      const baseVersion = pushVersion;
+      for (const k of Object.keys(push)) delete push[k];
+      pushVersion++;
+      emit('push', { baseVersion, version: pushVersion, clear: true }, false);
+      return json({});
+    }
+    if (path.startsWith('/api/push/') && method === 'DELETE') {
+      const key = decodeURIComponent(path.slice(10));
+      if (!push[key]) return json({}, 404);
+      const baseVersion = pushVersion;
+      delete push[key];
+      pushVersion++;
+      emit('push', { baseVersion, version: pushVersion, key, item: null }, false);
+      return json({});
+    }
     if (path.startsWith('/api/push/') && method === 'POST') {
       const key = decodeURIComponent(path.slice(10)), value = body == null || body === '' ? (q.has('value') ? parse(q.get('value')) : true) : parse(body), ttl = q.has('ttl') ? +q.get('ttl') : null;
       setPush(key, value, ttl);

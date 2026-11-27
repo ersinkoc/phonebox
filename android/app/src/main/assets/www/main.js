@@ -1296,6 +1296,20 @@ armButton($('psAll'), t('panel.tapToConfirm'), async () => {
 $('psClose').addEventListener('click', () => { haptic(); closeSheet(); });
 
 // ---------------------------------------------------------------- pushed data (webhook API)
+export function applyPushChange(d) {
+  if (!d || typeof d.version !== 'number') return;
+  if (pushVersion !== null && d.version <= pushVersion) return;
+  if (pushVersion === null || d.baseVersion !== pushVersion) { loadPush(); return; }
+  if (d.clear === true) D.push = {};
+  if (Array.isArray(d.remove)) for (const key of d.remove) if (typeof key === 'string') delete D.push[key];
+  if (typeof d.key === 'string') {
+    if (d.item && typeof d.item === 'object') D.push[d.key] = d.item;
+    else delete D.push[d.key];
+  }
+  pushVersion = d.version;
+  emit('push');
+}
+
 /** Normalises whatever was pushed into { value, title, sub, unit, color, icon, progress, items, level }. */
 export function pushView(item) {
   const d = item.data;
@@ -1563,6 +1577,7 @@ $('apCustomText').addEventListener('keydown', (e) => { if (e.key === 'Enter') { 
 export function handleEvent(e) {
   if (PREVIEW && (e.kind === 'goto' || e.kind === 'back' || e.kind === 'reload')) return; // the editor picks the page
   if (e.kind === 'approval' || e.kind === 'approval-done') loadApprovals();
+  else if (e.kind === 'push' && e.data) applyPushChange(e.data);
   else if (e.kind === 'notify' && e.data) handleNotify(e.data);
   else if (e.kind === 'goto' && e.data) {
     // "next" and "prev" are relative: the panel alone knows which page it shows, so they step without a queue (#616).
