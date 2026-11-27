@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Android: a request that takes the computer several seconds to answer no longer reads as "Computer connection
+  unavailable". The app gave up on every request after 4 seconds, even when the panel was willing to wait longer:
+  the Control Deck's sound widgets (Output selection, Device volume, Emergency mute) wait up to 15 seconds for a
+  computer whose audio devices are slow to list, and now the app waits as long (at most 20 seconds) (#720).
+
 ## 0.9.32 — 2026-11-27
 
 - Pi agent sessions in the AI sessions widget: model, thinking level, last tool, token counters, the current context
