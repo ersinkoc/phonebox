@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
@@ -52,12 +53,47 @@ public sealed class StockIntegrationTests : IDisposable
             quote => Assert.Equal(first.Quotes[1], quote));
     }
 
-    private static string Quote(string code, string price)
+    [Fact]
+    public void QuotesCarryEnglishNamesForUsAndHongKongSymbols()
     {
-        var fields = new string[46];
-        fields[1] = code;
+        var store = new ConfigStore(Path.Combine(_root, "config.json"));
+        Assert.Null(store.Save("""{"stocks":["usaapl","hk00700","sh000001"]}"""));
+        using var feed = new QuoteFeed
+        {
+            Body = Quote("usAAPL", "355.58", "苹果", "Apple Inc.")
+                + Quote("hk00700", "352.4", "腾讯控股", "TENCENT")
+                + Quote("sh000001", "3375.21", "上证指数")
+        };
+        using var http = new HttpClient(feed);
+        var stocks = new StockService(store, NullLogger<StockService>.Instance, http);
+
+        var snapshot = stocks.Snapshot();
+
+        Assert.Collection(snapshot.Quotes,
+            quote =>
+            {
+                Assert.Equal("苹果", quote.Name);
+                Assert.Equal("Apple Inc.", quote.EnglishName);
+            },
+            quote =>
+            {
+                Assert.Equal("腾讯控股", quote.Name);
+                Assert.Equal("TENCENT", quote.EnglishName);
+            },
+            quote =>
+            {
+                Assert.Equal("上证指数", quote.Name);
+                Assert.Null(quote.EnglishName);
+            });
+    }
+
+    private static string Quote(string code, string price, string? name = null, string? englishName = null)
+    {
+        var fields = new string[47];
+        fields[1] = name ?? code;
         fields[3] = price;
         fields[45] = "123456.78"; // market value, never a fallback share price
+        if (englishName is not null) fields[46] = englishName;
         return $"v_{code}=\"{string.Join('~', fields)}\";\n";
     }
 
@@ -91,7 +127,7 @@ public sealed class StockIntegrationTests : IDisposable
         public string Body { get; set; } = "";
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel) =>
-            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(Body) });
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(Encoding.GetEncoding("GB18030").GetBytes(Body)) });
     }
 
     public void Dispose() => Directory.Delete(_root, recursive: true);

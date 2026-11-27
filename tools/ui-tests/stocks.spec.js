@@ -21,6 +21,8 @@ test('the stock watchlist and charts render and refresh', async ({ page }) => {
   await expect(charts.locator('.sc-pct').first()).toHaveText('+0.51%');
   await expect(charts.locator('.sc-pct').first()).toHaveCSS('color', 'rgb(34, 197, 94)');
   await expect(page.locator('.fx-list')).toContainText('Shanghai Composite');
+  await expect(page.locator('.fx-list')).toContainText('TENCENT');
+  await expect(page.locator('.fx-list')).not.toContainText('腾讯控股');
   await expect(page.locator('.fx-list .fx-v').first()).toHaveText('3,375.21');
   const minutePrices = await page.evaluate(async () => {
     const demo = code => fetch('/api/stocks/minutes?code=' + code).then(r => r.json());
@@ -40,7 +42,7 @@ test('the stock watchlist and charts render and refresh', async ({ page }) => {
         if (window.stockFailure === 'offline') return Promise.reject(new TypeError('offline'));
         return Promise.resolve(Response.json({ quotes: [
           { code: 'sh000001', name: 'Shanghai Composite', price: 3377, changePct: 0.8 },
-          { code: 'hk00700', name: 'Tencent', price: 410.8, changePct: -0.29 },
+          { code: 'hk00700', name: '腾讯控股', englishName: 'TENCENT', price: 410.8, changePct: -0.29 },
         ], error: window.stockFailure === 'partial' ? 'incomplete quotes' : null }));
       }
       return fetchDemo(input, ...rest);

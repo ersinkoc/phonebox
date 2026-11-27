@@ -984,7 +984,7 @@
       lastCheck: now() - 3600e3, state: 'idle', error: null }, auto: (await config()).updates?.auto !== false, installed: true });
     if (path === '/api/stocks') return json({ quotes: [
       { code: 'sh000001', name: 'Shanghai Composite', price: 3375.21, change: 17.12, changePct: 0.51 },
-      { code: 'hk00700', name: 'Tencent', price: 410.8, change: -1.2, changePct: -0.29 },
+      { code: 'hk00700', name: '腾讯控股', englishName: 'TENCENT', price: 410.8, change: -1.2, changePct: -0.29 },
     ], updated: now() });
     if (path === '/api/stocks/minutes') {
       if (q.get('code') === 'sh000001') return json({

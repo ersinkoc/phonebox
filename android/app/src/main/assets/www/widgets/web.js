@@ -169,6 +169,7 @@ W.crypto = {
 
 const stockText = source => I18n?.tc(source) ?? source;
 const quotePercent = n => (n > 0 ? '+' : '') + (n || 0).toFixed(2) + '%';
+const stockName = q => ((I18n?.getLang?.() || 'en').startsWith('zh') ? q.name : q.englishName || q.name) || q.code;
 
 W.stocks = {
   needs: ['tick'],
@@ -325,7 +326,7 @@ W.stocks = {
             head.style.cssText = 'display:flex;justify-content:space-between;padding:4px 6px 0;font-size:11px;white-space:nowrap;overflow:hidden';
             const canvas = h('canvas');
             canvas.style.cssText = 'flex:1;width:100%;height:100%;min-height:0;display:block';
-            const name = h('b', 'sc-name', q.name || q.code);
+            const name = h('b', 'sc-name', stockName(q));
             name.style.cssText = 'overflow:hidden;text-overflow:ellipsis';
             const pct = h('span', 'sc-pct', quotePercent(q.changePct));
             pct.style.color = quoteColor(q.changePct);
@@ -385,7 +386,7 @@ W.stocks = {
         list.replaceChildren(...quotes.map((q) => {
           // up = red, down = green, flat = dim (A-share colours); the whole row takes the colour
           const col = quoteColor(q.changePct);
-          const name = h('b', null, q.name || q.code);
+          const name = h('b', null, stockName(q));
           name.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
           const pct = h('span', null, quotePercent(q.changePct));
           pct.style.cssText = 'font-weight:600;min-width:56px;text-align:right';

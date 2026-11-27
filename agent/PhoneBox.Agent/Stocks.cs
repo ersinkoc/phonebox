@@ -6,7 +6,7 @@ namespace PhoneBox.Agent;
 
 public sealed record StockQuote(
     string Code, string Name, double Price, double PrevClose,
-    double Change, double ChangePct, string Market, string Time);
+    double Change, double ChangePct, string Market, string Time, string? EnglishName = null);
 
 /// <summary>Live quotes for the Stocks widget, pulled from Tencent's qt.gtimg.cn feed
 /// for the watchlist in Config.Stocks. Quotes are fetched on demand and cached for ~15 s;
@@ -179,7 +179,9 @@ public sealed partial class StockService(ConfigStore config, ILogger<StockServic
             var change = ParseD(f[31]);
             var pct = ParseD(f[32]);
             var market = normalized[..2] switch { "hk" => "HK", "us" => "US", _ => "A" };
-            return new StockQuote(normalized, name, price, prev, change, pct, market, f[30]);
+            var englishName = market is "HK" or "US" && f.Length > 46 ? f[46].Trim() : "";
+            return new StockQuote(normalized, name, price, prev, change, pct, market, f[30],
+                englishName.Length > 0 ? englishName : null);
         }
         catch { return null; }
     }
