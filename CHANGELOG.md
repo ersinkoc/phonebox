@@ -21,6 +21,13 @@
   corners, because Android WebView then drops the rounded corners the page draws itself. Inside the http panel an https
   page is not a secure context, so the few pages that need `crypto.subtle` or a service worker do not work there (#619,
   [dancho12](https://github.com/dancho12)).
+- Trackpad: a two-finger scroll no longer nudges the cursor when the fingers land or lift a moment apart, and a tap
+  no longer moves it by a few pixels. **Inertial scrolling** (on by default, in the widget's Scrolling settings) lets a
+  two-finger flick coast on and slow down (#676, [Prajjwal2404](https://github.com/Prajjwal2404)).
+- Night screen: touching or dragging keeps it from turning on under your finger. The dark-room countdown and the
+  30-second wake hold start again 30 seconds after the last interaction, so a scheduled night, a dark room or a rule's
+  night action waits until you have let go; the Stay and Go now buttons of a page switch do not count (#670,
+  [Prajjwal2404](https://github.com/Prajjwal2404)).
 
 ## 0.9.31 — 2026-11-27
 
@@ -79,12 +86,6 @@
 - README: the Games Tab add-on's row lists its Steam store lookup (#612, [lucasaz](https://github.com/lucasaz)).
 - Development: an `.editorconfig` with the style the code already follows, and the agent builds without warnings on
   Windows (#615, [elong365](https://github.com/elong365)).
-- Custom HTML: **Web page address** shows a web page instead of your own HTML, such as a Home Assistant dashboard,
-  Grafana or a camera on the home network (Android 7 or later). Plain http addresses work too (the panel is now served over http inside
-  the app, so the page and its pictures are not blocked as mixed content). The page runs in its own origin and keeps
-  its sign-in, cannot reach the panel or navigate it away, and is not clipped to the card's rounded corners, because
-  Android WebView then drops the rounded corners the page draws itself. Inside the http panel an https page is not a
-  secure context, so the few pages that need `crypto.subtle` or a service worker do not work there (#619).
 
 ## 0.9.30 — 2026-11-25
 
