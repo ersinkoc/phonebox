@@ -132,7 +132,8 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   `nowplaying-cli` every few seconds. Each start adds to WindowServer's Mach ports, which macOS does not give back, until the user is logged
   out after days.
 - **Say why the agent can't start when its port is taken** ([#710](https://github.com/ersinkoc/phonebox/issues/710)):
-  before the host starts, check 127.0.0.1:8765 the way `Lan.PortProblem` checks the Wi-Fi port. When it is taken,
+  before the host starts, check the local port the agent is about to listen on (8765, or `--port`) the way
+  `Lan.PortProblem` checks the Wi-Fi port. When it is taken,
   log one `crit` line naming the port and, where it can be found, the program holding it, and show it (Windows: a
   message box in the tray's language, macOS/Linux: stderr and a notification) instead of exiting silently; the
   background services' cancellations during that shutdown stay out of the log.
