@@ -27,12 +27,30 @@ namespace PhoneBox.Agent;
 /// macOS), so no iproxy or helper is needed. When there is no iPhone or no usbmuxd, every attempt fails
 /// quietly and is retried; nothing is logged above debug level.
 /// </summary>
-public sealed class IosUsbBridge(
-    ConfigStore config,
-    AgentEndpoint endpoint,
-    LanConfig lan,
-    ILogger<IosUsbBridge> log) : BackgroundService
+public sealed class IosUsbBridge : BackgroundService
 {
+    private readonly ConfigStore _config;
+    private readonly int? _lanPort;
+    private readonly ILogger<IosUsbBridge> _log;
+    private readonly Func<CancellationToken, Task<Socket>> _connectUsbmuxd;
+
+    public IosUsbBridge(ConfigStore config, int? lanPort, ILogger<IosUsbBridge> log)
+        : this(config, lanPort, log, ConnectUsbmuxdAsync)
+    {
+    }
+
+    internal IosUsbBridge(
+        ConfigStore config,
+        int? lanPort,
+        ILogger<IosUsbBridge> log,
+        Func<CancellationToken, Task<Socket>> connectUsbmuxd)
+    {
+        _config = config;
+        _lanPort = lanPort;
+        _log = log;
+        _connectUsbmuxd = connectUsbmuxd;
+    }
+
     /// <summary>The loopback port of the iOS app's USB relay (USBLink.hostPort in ios/PhoneBox).</summary>
     internal const int PhonePort = 8765;
     /// <summary>Pipes kept ready: the app's URLSession opens only a handful of connections per host.</summary>
@@ -49,19 +67,20 @@ public sealed class IosUsbBridge(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // The Wi-Fi listener owns the certificate the app pins and the token it sends, so it is the target.
-        // Without it (off, or set to the agent's own local port) there is nothing to bridge to.
-        if (!lan.Enabled || lan.Port == endpoint.Port) return;
+        // Without an active listener (Wi-Fi off, colliding with the local port, or blocked by a port conflict
+        // at startup) there is nothing to bridge to.
+        if (_lanPort is not { } targetPort || targetPort is < 1 or > 65535) return;
 
         try
         {
-            var pipes = Enumerable.Range(0, PipeCount).Select(index => RunLoopAsync(index, stoppingToken)).ToArray();
+            var pipes = Enumerable.Range(0, PipeCount).Select(index => RunLoopAsync(index, targetPort, stoppingToken)).ToArray();
             await Task.WhenAll(pipes);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
-        catch (Exception ex) { log.LogDebug(ex, "iPhone USB relay stopped"); }
+        catch (Exception ex) { _log.LogDebug(ex, "iPhone USB relay stopped"); }
     }
 
-    private async Task RunLoopAsync(int index, CancellationToken ct)
+    private async Task RunLoopAsync(int index, int targetPort, CancellationToken ct)
     {
         // Stagger the first attempts: with no usbmuxd installed, twelve sockets should not wake at once.
         try { await Task.Delay(TimeSpan.FromMilliseconds(index * 150), ct); }
@@ -69,29 +88,30 @@ public sealed class IosUsbBridge(
 
         while (!ct.IsCancellationRequested)
         {
-            var token = config.Get().Lan.Token;
-            if (!string.IsNullOrEmpty(token))
+            var lan = _config.Get().Lan;
+            if (lan.Enabled && !string.IsNullOrEmpty(lan.Token))
             {
-                try { await RunPipeAsync(index, token, ct); }
+                try { await RunPipeAsync(index, targetPort, lan.Token, ct); }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
-                catch (Exception ex) { log.LogDebug("iPhone USB: {Message}", ex.Message); }
+                catch (Exception ex) { _log.LogDebug("iPhone USB: {Message}", ex.Message); }
             }
             try { await Task.Delay(RetryDelay, ct); }
             catch (OperationCanceledException) { return; }
         }
     }
 
-    private async Task RunPipeAsync(int index, string token, CancellationToken ct)
+    private async Task RunPipeAsync(int index, int targetPort, string token, CancellationToken ct)
     {
-        if (await OpenPipeAsync(ConnectUsbmuxdAsync, token, Volatile.Read(ref _preferredDevice), index, ct) is not { } connected)
+        if (await OpenPipeAsync(_connectUsbmuxd, token, Volatile.Read(ref _preferredDevice), index, ct) is not { } connected)
             return;
         using var phone = connected.Stream;
+        if (!_config.Get().Lan.Enabled) return;
         Volatile.Write(ref _preferredDevice, connected.DeviceId);
 
         using var agent = new TcpClient();
         using var connect = CancellationTokenSource.CreateLinkedTokenSource(ct);
         connect.CancelAfter(AgentConnectTimeout);
-        await agent.ConnectAsync(IPAddress.Loopback, lan.Port, connect.Token);
+        await agent.ConnectAsync(IPAddress.Loopback, targetPort, connect.Token);
         agent.NoDelay = true;
         var agentStream = agent.GetStream();
 

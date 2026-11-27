@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.31 — 2026-11-27
+
 - Pages: a dimmed **photo background** per page, from the Photo frame's source (a folder or an Immich album). A new
   picture fades in every minute, only on the page being shown; the dim level is set in the page editor, and the folder
   path and the Immich key never reach the phone (#288, #611, [Nero-Dark](https://github.com/Nero-Dark)).
@@ -13,6 +15,8 @@
   `if:push:layout=RU` (#622, #623).
 - Wi-Fi: a port the agent cannot open (one Windows reserves, or one another program holds) no longer stops the whole
   agent. Wi-Fi stays off, and Settings › Wi-Fi and `agent.log` say why (#614, #624).
+- iPhone over USB: with Wi-Fi off in Settings, or its port not opened at startup, the USB bridge no longer connects
+  the iPhone to the Wi-Fi port (#665, [trungduc22](https://github.com/trungduc22)).
 - Control Deck on Linux and macOS: the application mixer, microphone, balance, push-to-talk and device switching say
   they are only on Windows for now, instead of showing an empty list (#613, #625).
 - A **Focus history** widget: the Pomodoro's finished focus minutes for each of the last seven days as a small line
