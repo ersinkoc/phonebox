@@ -343,7 +343,7 @@ W.gauge = {
     box.append(dial, h('div', 'g-label', tp(m.label)), sub);
     dial.append(pct);
     if (o.metric === 'cpu' || o.metric === 'ram') bindProcessLink(box, o.metric === 'cpu' ? 'cpu' : 'mem');
-    let svg = null;
+    let svg = null, ring = '';
     return {
       update() {
         const s = D.state;
@@ -352,9 +352,14 @@ W.gauge = {
         const p = raw == null ? 0 : (raw / (m.pct ? 100 : m.max(s))) * 100;
         const warn = m.hot ? (raw > m.hot[1] ? '#ef4444' : raw > m.hot[0] ? '#f59e0b' : '') : (p >= 95 ? '#ef4444' : p >= 85 ? '#f59e0b' : '');
         dial.style.setProperty('--qc', warn || 'var(--q)');
-        if (svg) svg.remove();
-        dial.insertAdjacentHTML('afterbegin', ringSvg(p));
-        svg = dial.firstElementChild;
+        // the ring is rebuilt only when it changes: a state frame arrives every second, and most leave it as it was
+        const next = ringSvg(p);
+        if (next !== ring) {
+          if (svg) svg.remove();
+          dial.insertAdjacentHTML('afterbegin', next);
+          svg = dial.firstElementChild;
+          ring = next;
+        }
         const [v, u] = metricText(m, s);
         pct.replaceChildren(v, h('small', null, u));
         sub.replaceChildren(h('bdi', null, m.sub?.(s) || ''));

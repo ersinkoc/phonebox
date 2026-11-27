@@ -17,6 +17,15 @@
 - Quota ring: the reset shows as a clock time in the phone's own time zone and language, then the time left
   (`Sat 01:29 · in 4 h 3 min`) (#726, [jassu-Workspace](https://github.com/jassu-Workspace)).
 
+- Windows: the default Spotify shortcut opens `spotify:`, so it starts the desktop Spotify as well as the Microsoft
+  Store one; it named the Store app only and failed with "cannot find the file specified" otherwise. Existing
+  shortcuts keep what they have: change the command to `spotify:` in Settings › Shortcuts to get the same (#736,
+  [Braveras](https://github.com/Braveras)).
+- Phone mic: the message after turning it on says the phone can be connected through adb over USB or Android's
+  wireless debugging, not only plugged in (#736).
+- Gauge: the ring is redrawn only when its value changes, not on every state frame, which saves work on slow phones
+  (#736).
+
 ## 0.9.32 — 2026-11-27
 
 - Pi agent sessions in the AI sessions widget: model, thinking level, last tool, token counters, the current context

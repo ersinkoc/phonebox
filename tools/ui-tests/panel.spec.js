@@ -750,3 +750,25 @@ test('interface chrome uses inline SVG icons instead of emoji', async ({ page })
   await expect(page.locator('#toast svg.ico')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('a gauge keeps its ring while the value does not change, and redraws it when it does', async ({ page }) => {
+  await page.goto('/panel/');
+  await expect(page.locator('.w').first()).toBeVisible();
+  const r = await page.evaluate(async () => {
+    const { D } = await import('/panel/main.js');
+    const { W } = await import('/panel/registry.js');
+    const box = document.createElement('section');
+    document.body.append(box);
+    const widget = W.gauge.create(box, { o: { metric: 'ram' }, page: { id: 'fixture' }, w: { id: 'gauge' } });
+    const state = (used) => ({ ...D.state, pc: { ...D.state?.pc, ramUsedGb: used, ramTotalGb: 32 } });
+    D.state = state(16); widget.update();
+    const first = box.querySelector('.g-dial svg');
+    D.state = state(16); widget.update();
+    const same = box.querySelector('.g-dial svg') === first;
+    D.state = state(24); widget.update();
+    const ring = box.querySelector('.g-dial svg');
+    return { same, redrawn: ring !== first, rings: box.querySelectorAll('.g-dial svg').length,
+      offset: ring.querySelector('.fg').getAttribute('stroke-dashoffset') };
+  });
+  expect(r).toEqual({ same: true, redrawn: true, rings: 1, offset: '66.0' });
+});

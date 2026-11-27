@@ -84,7 +84,7 @@ public static class PhoneDeviceSetup
         else if (have != c.ServerPath) serverPath = null;
 
         return Save(cfg, version, x => { x.PhoneMic.Enabled = true; x.PhoneMic.ServerPath = serverPath; },
-            "Phone mic is on. Plug the phone in over USB; apps pick the cable's other end (for VB-CABLE: CABLE Output) as their microphone.");
+            "Phone mic is on. Connect the phone through adb (USB or Android's wireless debugging); apps pick the cable's other end (for VB-CABLE: CABLE Output) as their microphone.");
     }
 
     /// <summary>The names of the active playback devices.</summary>
