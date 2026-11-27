@@ -125,6 +125,7 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             try
             {
                 var names = Gpus.ParseNvidiaNames(await RunAsync("nvidia-smi", "--query-gpu=index,name,driver_version --format=csv,noheader", ct));
+                if (!Allowed()) continue; // turned off while the names were read: the stream is not started
                 var psi = new ProcessStartInfo("nvidia-smi",
                     "--query-gpu=index,utilization.gpu,temperature.gpu,power.draw,power.limit,memory.used,memory.total,fan.speed,clocks.gr,clocks.mem " +
                     "--format=csv,noheader,nounits -lms 1000")
@@ -132,6 +133,8 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
                 using var p = Process.Start(psi)!;
                 JobObject.Track(p);
                 using var reg = ct.Register(() => { try { p.Kill(); } catch { } });
+                // turned off in Settings: stopped within a second even if nvidia-smi has gone quiet
+                using var watch = new System.Threading.Timer(_ => { if (!Allowed()) try { p.Kill(); } catch { } }, null, 1000, 1000);
                 var cards = new SortedDictionary<int, GpuInfo>();
                 while (await p.StandardOutput.ReadLineAsync(ct) is { } line)
                 {
