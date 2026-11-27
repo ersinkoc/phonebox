@@ -127,9 +127,8 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
 - **A larger device switcher** ([#340](https://github.com/ersinkoc/phonebox/issues/340)): bigger touch targets for the
   computers in the all-pages overview, each with an icon (emoji or uploaded picture) and a colour set per computer.
 - **macOS: Now playing without a helper start per reading** ([#695](https://github.com/ersinkoc/phonebox/issues/695)):
-  check in-process whether Spotify or Music is running before the `osascript` fallback asks them, and read Now
-  Playing from one long-running helper that reports changes (or in-process) instead of starting `nowplaying-cli` every
-  few seconds. Each start adds to WindowServer's Mach ports, which macOS does not give back, until the user is logged
+  read Now Playing from one long-running helper that reports changes (or in-process) instead of starting
+  `nowplaying-cli` every few seconds. Each start adds to WindowServer's Mach ports, which macOS does not give back, until the user is logged
   out after days.
 
 ## Waiting on someone else
