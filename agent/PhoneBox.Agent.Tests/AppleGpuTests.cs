@@ -247,6 +247,27 @@ public sealed class AppleGpuTests
         Assert.True(SystemMonitor.HasEveryCard(partial, SystemMonitor.OwnMemoryAccelerators(Radeon5500M + Rx580)));
     }
 
+    [Fact]
+    public void AFailedPciReadIsRetriedWithBackoffAndNeverGivenUp()
+    {
+        int tries = 0, failures = 0;
+        // timeouts (or headings without properties): no card found, retried 1, 2, 4, 8, 16, 30, 30 … minutes later
+        var waits = Enumerable.Range(0, 8).Select(_ => SystemMonitor.NextPciRead(false, false, ref tries, ref failures)!.Value.TotalMinutes).ToList();
+        Assert.Equal([1, 2, 4, 8, 16, 30, 30, 30], waits);
+        Assert.Equal(0, tries); // failures don't use up the tries
+        // then ioreg recovers and finds every card: done
+        Assert.Null(SystemMonitor.NextPciRead(true, true, ref tries, ref failures));
+    }
+
+    [Fact]
+    public void AnIncompletePciReadGetsThreeTriesAMinuteApart()
+    {
+        int tries = 0, failures = 0;
+        Assert.Equal(TimeSpan.FromMinutes(1), SystemMonitor.NextPciRead(true, false, ref tries, ref failures));
+        Assert.Equal(TimeSpan.FromMinutes(1), SystemMonitor.NextPciRead(true, false, ref tries, ref failures));
+        Assert.Null(SystemMonitor.NextPciRead(true, false, ref tries, ref failures)); // a GPU whose device has no VRAM,totalMB
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("+-o pci-bridge@1  <class IOPCIDevice, id 0x100000200, registered>\n  | {\n  |   \"model\" = <\"Some bridge\">\n  | }\n  +-o child  <class IOPCIDevice, id 0x100000201, registered>")]
