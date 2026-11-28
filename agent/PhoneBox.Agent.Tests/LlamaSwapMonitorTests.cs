@@ -436,16 +436,18 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         await read.WaitAsync(TimeSpan.FromSeconds(5)); // the stream ended - no line from the quiet router was needed
     }
 
-    [Fact(DisplayName = "A failed refresh keeps the in-flight list while the event stream is alive")]
-    public async Task AFailedRefreshKeepsTheInflightList()
+    [Fact(DisplayName = "A failed version poll ends the stream, drops in-flight, and publishes offline")]
+    public async Task AFailedRefreshEndsTheStreamAndGoesOffline()
     {
         await using var ls = new FakeLlamaSwap(keepEventsOpen: true, versionFails: true);
         var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url };
         var read = mon.StreamOnceAsync(new Uri(ls.Url));
         await WaitUntil(() => mon.Inflight.Count > 0); // the stream is alive and feeding
         await mon.RefreshAsync(CancellationToken.None); // the version endpoint answers 500
-        Assert.NotEmpty(mon.Inflight); // one failed REST call does not wipe what the stream is showing
-        Assert.Null(mon.Snapshot());   // ... and does not mark the panel offline
+        Assert.Empty(mon.Inflight);
+        Assert.False(mon.Snapshot()!.Connected);
+        Assert.Equal("offline", mon.Snapshot()!.Error);
+        await read.WaitAsync(TimeSpan.FromSeconds(5)); // EndStream ended it, rather than leaving it for StreamLifetime
     }
 
     [Fact(DisplayName = "A stream still waiting for its headers is not a healthy stream")]

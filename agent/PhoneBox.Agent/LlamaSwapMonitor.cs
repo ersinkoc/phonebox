@@ -109,13 +109,11 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     // The active REST refresh: an address change cancels the retired walk, so a stalled body cannot hold the
     // gate - and the new router's first snapshot - until shutdown.
     private volatile CancellationTokenSource? _activeRefresh;
+    private volatile bool _resetStreamBackoff;
+    private int _addressGeneration;
     // The active /api/events read, if any: a cleared or changed address cancels it - a quiet old router would
     // otherwise keep the old stream, and its in-flight list, for the rest of the stream's lifetime.
     private volatile CancellationTokenSource? _activeRead;
-    // Whether the current /api/events connection has actually established (its headers arrived and it is an
-    // event stream). A connection still waiting for headers is not a healthy stream: one failed REST poll must
-    // not leave the panel "connected" on the strength of a socket that may never answer.
-    private volatile bool _streamConnected;
     private Uri? _lastUrl;
 
     /// <summary>The last refresh; null while nothing has been polled yet or the address is not set. Also null
@@ -193,11 +191,21 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 CancelRefresh();
                 ClearInflight();
                 EndStream();
+                _resetStreamBackoff = true;
                 // A new address is a new router: refresh it at once, not at the next poll (which can be an hour
-                // away at the maximum interval). RefreshAsync also hides the old snapshot until the new one answers.
-                await RefreshAsync(ct);
+                // away at the maximum interval). Run it off the watcher so another address change is still
+                // noticed, and let the newest change cancel the retired walk.
+                var generation = ++_addressGeneration;
+                _ = RefreshAfterAddressChangeAsync(ct, generation);
             }
         }
+    }
+
+    private async Task RefreshAfterAddressChangeAsync(CancellationToken ct, int generation)
+    {
+        if (generation != _addressGeneration) return;
+        try { await RefreshAsync(ct); }
+        catch (OperationCanceledException) { }
     }
 
     /// <summary>The configured address as a base URI, or null when it is not one: the watcher and the refresh
@@ -212,6 +220,11 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         var backoff = 1.0;
         while (!ct.IsCancellationRequested)
         {
+            if (_resetStreamBackoff)
+            {
+                _resetStreamBackoff = false;
+                backoff = 1.0;
+            }
             var ok = false;
             try
             {
@@ -252,7 +265,6 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             // wait) must not spend the healthy stream's ten minutes before the first line is read.
             using var lifetime = new CancellationTokenSource(StreamLifetime);
             using var streamCt = CancellationTokenSource.CreateLinkedTokenSource(readCt.Token, lifetime.Token);
-            _streamConnected = true;
             ClearInflight();
             using var stream = await res.Content.ReadAsStreamAsync(ct);
             using var reader = new StreamReader(stream);
@@ -261,7 +273,6 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         }
         finally
         {
-            _streamConnected = false;
             if (_activeRead == readCt) _activeRead = null;
         }
     }
@@ -459,6 +470,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             CancelRefresh();
             ClearInflight();
             EndStream();
+            _resetStreamBackoff = true;
             _published = null;
         }
         _lastUrl = baseUri;
@@ -472,11 +484,12 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             var version = await GetAsync(baseUri, "api/version", refreshCt.Token);
             if (version is null)
             {
-                // Only a stream that actually established keeps what it is showing: a healthy stream re-sends
-                // the list on its next connection. A connection still waiting for headers is not healthy, so
-                // one failed REST call must not leave the old numbers up on the strength of a pending socket.
-                if (!_streamConnected && UrlMatches(baseUri) && !refreshCt.IsCancellationRequested)
+                // A router that no longer answers is offline, whatever the stream's local state says: a powered
+                // off host sends no reset, so keeping the old list would leave stale rows and the fast poll up
+                // for the stream's lifetime. The next connection fills the list again if the router is alive.
+                if (UrlMatches(baseUri) && !refreshCt.IsCancellationRequested)
                 {
+                    EndStream();
                     ClearInflight();
                     Publish(baseUri, Offline());
                 }
@@ -500,8 +513,9 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         catch (Exception ex)
         {
             log.LogDebug(ex, "llama-swap refresh failed");
-            if (!refreshCt.IsCancellationRequested && UrlMatches(baseUri) && !_streamConnected)
+            if (!refreshCt.IsCancellationRequested && UrlMatches(baseUri))
             {
+                EndStream();
                 ClearInflight();
                 Publish(baseUri, Offline());
             }
@@ -624,14 +638,15 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 if (ts is not null)
                 {
                     if (last is null || ts > last) last = ts;
-                    // The day range should already exclude yesterday; keep the guard for a router that ignores it,
-                    // and count what we actually see inside the day instead of trusting its all-time total.
-                    if (ts < day) { sawOlder = true; continue; }
+                    // The day range should already exclude yesterday; keep the guard for a router that ignores it.
+                    // Entries are newest first, so the first older one ends the walk and the count is what we saw.
+                    if (ts < day) { sawOlder = true; break; }
                 }
                 inDay++;
                 input += entry.TryGetProperty("tokens", out var tk) && tk.ValueKind == JsonValueKind.Object ? Num(tk, "input_tokens") ?? 0 : 0;
                 output += entry.TryGetProperty("tokens", out var tk2) && tk2.ValueKind == JsonValueKind.Object ? Num(tk2, "output_tokens") ?? 0 : 0;
             }
+            if (sawOlder) break;
             // Coverage is what actually arrived, not the page size we asked for: a router may cap ?limit lower
             // than 999, and one that omits ?total is walked until an empty page.
             seen += data.GetArrayLength();
