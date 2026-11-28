@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ja": {
     "strings": {
+      "s.llamaswap.title": "llama-swap ステータス",
+      "s.llamaswap.hint": "ローカル LLM ルーターを llama-swap ウィジェットに表示します：ロード中のモデル、経過時間を付した実行中のリクエスト、本日のリクエスト数とトークン数、生成速度（デフォルトでは無効）。スマートフォンに送信されるのはカウント、モデル名、実行中リクエストの id と経過時間だけで、プロンプト・リクエスト・応答は送信されません。",
+      "s.llamaswap.url": "サーバーアドレス（空欄で無効）",
+      "s.llamaswap.refresh": "更新間隔（秒）",
       "s.display.weekStart": "週の始まり",
       "s.display.weekStart.monday": "月曜日",
       "s.display.weekStart.sunday": "日曜日",
@@ -1127,6 +1131,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "読み込み中…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "ローカル LLM ルーター: ロード中のモデル、実行中のリクエスト、本日のリクエスト数とトークン数、生成速度。サーバーアドレスは「設定 › 全般 › llama-swap」で設定します。",
       "Only this category (its category in Settings; empty = all)": "このカテゴリのみ（設定でのカテゴリ。空欄 = すべて）",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / カーソル / OpenCode / Antigravity セッション: 作業中、待機中、無効",
       "1": "1",
@@ -1870,6 +1876,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex プレイリスト（未選択 = すべて）"
     },
     "panel": {
+      "In flight": "進行中",
+      "Today": "今日",
+      "Speed": "速度",
+      "Last request": "前回のリクエスト",
+      "Set the server address in Settings › General › llama-swap.": "サーバーアドレスを「設定 › 一般 › llama-swap」で設定してください。",
+      "llama-swap is offline.": "llama-swap はオフラインです。",
+      "{a} in / {b} out": "入力 {a} / 出力 {b}",
       "% load": "負荷の %",
       "5-hour": "5時間",
       "5-hour session": "5時間セッション",

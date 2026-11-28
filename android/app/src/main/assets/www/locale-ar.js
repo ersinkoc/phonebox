@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ar": {
     "strings": {
+      "s.llamaswap.title": "إحصاءات llama-swap",
+      "s.llamaswap.hint": "يعرض موجِّه LLM المحلي في ودجة llama-swap: أي النماذج محمَّلة، والطلبات الجارية مع مضيها، وطلبات اليوم مع الرموز، وسرعة التوليد (معطَّل افتراضيًا). لا يُرسَل إلى الهاتف إلا العدّادات وأسماء النماذج وهوية كل طلب جارٍ وزمانه — لا موجِّهات ولا طلبات ولا ردود قطّ.",
+      "s.llamaswap.url": "عنوان الخادم (فارغ = إيقاف)",
+      "s.llamaswap.refresh": "تحديث كل (ثوانٍ)",
       "s.display.weekStart": "أول أيام الأسبوع",
       "s.display.weekStart.monday": "الاثنين",
       "s.display.weekStart.sunday": "الأحد",
@@ -1127,6 +1131,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "جارٍ التحميل…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "موجِّه LLM محلي: النماذج المحمَّلة، والطلبات الجارية، وعدد الطلبات والرموز اليوم، وسرعة التوليد. يُضبط عنوان الخادم في الإعدادات › عام › llama-swap.",
       "and": "و",
       "never": "أبدًا",
       "default": "افتراضي",
@@ -1906,6 +1912,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "قوائم تشغيل Plex (دون تحديد = الكل)"
     },
     "panel": {
+      "In flight": "في التنفيذ",
+      "Today": "اليوم",
+      "Speed": "السرعة",
+      "Last request": "آخر طلب",
+      "Set the server address in Settings › General › llama-swap.": "اضبط عنوان الخادم في الإعدادات › عام › llama-swap.",
+      "llama-swap is offline.": "llama-swap غير متصل.",
+      "{a} in / {b} out": "داخل {a} / خارج {b}",
       "% load": "النسبة المئوية للحمولة",
       "5-hour": "5 ساعات",
       "5-hour session": "جلسة مدتها 5 ساعات",

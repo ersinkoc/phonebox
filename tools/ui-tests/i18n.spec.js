@@ -559,3 +559,38 @@ for (const language of ['ar', 'de']) {
     await expect(page.locator('.w-calendar .cal-h')).toHaveText(headings);
   });
 }
+
+// The llama-swap widget's on-screen literals live in the PANEL catalog (tp), not in STRINGS or CATALOG, so the
+// completeness checks above cannot see them: a key missing, a copied English, or a translation that drops a number
+// slot would reach the phone with no test failing. The widget uses exactly these seven keys, so hold them to
+// account in every non-English dictionary. ("Just now" and "5m ago" deliberately are not here: the widget uses
+// the shared ago() helper with its {dur} slot, like every other widget, and a suffix-only "ago" key is how the
+// German "5m vor" happened.) A typo or mojibake inside a real word is not machine-detectable; the failure modes
+// below are.
+test('every llama-swap panel string is translated, not copied English, and keeps its number slots', async ({ page }) => {
+  await page.goto('/panel/');
+  const problems = await page.evaluate(() => {
+    const I18n = window.PhoneBoxI18n;
+    const keys = [
+      'In flight', 'Today', 'Speed', 'Last request',
+      'Set the server address in Settings › General › llama-swap.',
+      'llama-swap is offline.',
+      '{a} in / {b} out',
+    ];
+    // a translation that happens to be byte-identical to English and is nevertheless the right word in that language
+    const SAME_IS_FINE = new Set(['nl:llama-swap is offline.']); // Dutch "is offline" == English "is offline"
+    return I18n.LANGUAGES.filter(({ code }) => code !== 'en').flatMap(({ code }) => {
+      const dict = I18n.PANEL[code] || {};
+      return keys.flatMap((k) => {
+        const v = dict[k];
+        const why = [];
+        if (typeof v !== 'string' || !v.trim()) why.push('missing');
+        else if (v === k && !SAME_IS_FINE.has(`${code}:${k}`)) why.push('copied english');
+        if (k === '{a} in / {b} out' && (typeof v !== 'string' || !v.includes('{a}') || !v.includes('{b}')))
+          why.push('lost a number slot');
+        return why.length ? [`${code}:${k} (${why.join(', ')})`] : [];
+      });
+    });
+  });
+  expect(problems, 'llama-swap panel strings not properly translated:\n' + problems.join('\n')).toEqual([]);
+});
