@@ -43,6 +43,8 @@ public sealed class AgentConfig
     public PiConfig Pi { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
     public AntigravityConfig Antigravity { get; set; } = new();
+    /// <summary>Usage stats of the local llama-swap LLM router; off until its address is entered.</summary>
+    public LlamaSwapConfig LlamaSwap { get; set; } = new();
     /// <summary>OpenCode prompts and sessions on the phone; everything is off until the settings page turns it on.</summary>
     [JsonPropertyName("opencode")]
     public OpenCodeConfig OpenCode { get; set; } = new();
@@ -991,6 +993,8 @@ public sealed partial class ConfigStore(string path)
         c.Antigravity ??= new();
         c.OpenCode ??= new();
         c.Bridge ??= new(); // a hand-edited "bridge": null must not break /api/config or the clipboard poll
+        c.LlamaSwap ??= new();
+        c.LlamaSwap.Url = NormalizeLlamaSwapUrl(c.LlamaSwap.Url);
         c.OpenCode.TimeoutSec = Math.Clamp(c.OpenCode.TimeoutSec, 10, 3600);
         c.OpenCode.AlwaysCountdownSec = Math.Clamp(c.OpenCode.AlwaysCountdownSec, 0, 60);
         if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = "ersinkoc/phonebox";
@@ -1341,6 +1345,24 @@ public sealed partial class ConfigStore(string path)
 
     private static string Cap(string s, int max) => s.Length > max ? s[..max] : s;
 
+    // What the user types is not always a URL: "localhost:8080" needs a scheme, and an address with a path must keep
+    // it - the relative endpoints (api/version, api/events) resolve under the path, and only a trailing slash makes
+    // that resolution keep the path.
+    internal static string NormalizeLlamaSwapUrl(string? u)
+    {
+        u = (u ?? "").Trim();
+        if (u.Length == 0) return "";
+        var scheme = u.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? "https" : "http";
+        var rest = u.IndexOf("://", StringComparison.Ordinal) is var i and >= 0 ? u[(i + 3)..] : u;
+        var slash = rest.IndexOf('/', StringComparison.Ordinal);
+        var host = slash < 0 ? rest : rest[..slash];
+        var path = slash < 0 ? "" : rest[(slash + 1)..];
+        while (path.Length > 0 && path[^1] == '/') path = path[..^1];
+        // the trailing slash when there is a path is not decoration: it is what makes the relative endpoints
+        // (api/version, api/events) resolve under the path instead of at the host root
+        return scheme + "://" + host + (path.Length > 0 ? "/" + path + "/" : "");
+    }
+
     // ToLowerInvariant keeps the Turkish capital İ (U+0130) as it is, so it is mapped by hand like the other letters
     private static string Slug(string s) => NonSlug().Replace(s.ToLowerInvariant()
         .Replace('İ', 'i').Replace('ı', 'i').Replace('ğ', 'g').Replace('ü', 'u').Replace('ş', 's').Replace('ö', 'o').Replace('ç', 'c'), "-").Trim('-');
@@ -1353,6 +1375,18 @@ public sealed partial class ConfigStore(string path)
 
     [GeneratedRegex("^[a-z0-9]{6,32}$")]
     private static partial Regex CameraId();
+}
+
+/// <summary>
+/// The llama-swap server (the local LLM router): where it listens and how often it is polled. Nothing runs and
+/// nothing is polled while the address is empty.
+/// </summary>
+public sealed class LlamaSwapConfig
+{
+    /// <summary>The server address, e.g. <c>http://127.0.0.1:8080</c> (empty = off).</summary>
+    public string Url { get; set; } = "";
+    /// <summary>How often the server is polled, in seconds (10 to 3600).</summary>
+    public int RefreshSeconds { get; set; } = 60;
 }
 
 public sealed class CodexBarConfig

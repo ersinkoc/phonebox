@@ -118,6 +118,19 @@ public class ConfigTests
         Assert.Equal("work", Assert.Single(c.Claude.ExtraCredentialDirs).Label);
     }
 
+    [Fact(DisplayName = "The llama-swap address becomes an absolute url that keeps its path")]
+    public void LlamaSwapAddressBecomesAnAbsoluteUrlKeepingItsPath()
+    {
+        Assert.Equal("http://localhost:8080", ConfigStore.NormalizeLlamaSwapUrl("localhost:8080"));
+        Assert.Equal("http://127.0.0.1:8080/llama/", ConfigStore.NormalizeLlamaSwapUrl("  127.0.0.1:8080/llama/  "));
+        Assert.Equal("https://h:1/p/", ConfigStore.NormalizeLlamaSwapUrl("https://h:1/p/"));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl(""));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl(null));
+        // and the same address typed without a scheme still counts as configured
+        var c = Load("""{"llamaSwap":{"url":"localhost:8080"}}""");
+        Assert.Equal("http://localhost:8080", c.LlamaSwap.Url);
+    }
+
     [Fact]
     public void EmptyConfigGetsTheDefaultPagesAndFreshTokens()
     {
@@ -591,6 +604,7 @@ public class LanTests
     [InlineData("/api/steam/games", false)]
     [InlineData("/api/lyrics", true)]
     [InlineData("/api/lyrics/search", false)]
+    [InlineData("/api/llamaswap", true)]
     [InlineData("/api/push/temperature", true)]
     [InlineData("/api/settings", false)]
     [InlineData("/api/pair", false)]

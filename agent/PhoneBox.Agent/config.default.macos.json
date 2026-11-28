@@ -38,6 +38,8 @@
   "antigravity": { "sessions": false, "shareSessionTitles": false },
   // Live Codex quotas read through the Codex CLI (off by default; Settings › General › AI quotas & CodexBar)
   "codexBar": { "codexLiveQuota": false },
+  // llama-swap (the local LLM router) stats on the phone: its address (empty = off) and the poll interval in seconds
+  "llamaSwap": { "url": "", "refreshSeconds": 60 },
   // OpenCode permission prompts on the phone: Allow (once or always) and Deny, read from OpenCode's
   // background service on 127.0.0.1. Off by default: set "phoneApprovals": true (or Settings › General) to let
   // the phone answer. "shareSessionTitles" puts the session titles on the phone too.
