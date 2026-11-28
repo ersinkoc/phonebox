@@ -141,8 +141,11 @@ the top of each drive, and inside folders such as Games or Program Files, that h
 (a game store's or engine's library such as steam_api.dll or UnityPlayer.dll, Bink videos, a game's archives, a mod loader).
 The drives are looked through in the background once an hour (links, junctions and system folders are not followed, and
 each drive and game folder is looked through only so far). They come after the Steam games, with their program's icon; the
-program is the one named most like the folder, and not one whose name says it is an installer, uninstaller, anti-cheat or crash reporter. A found game that one of
-the widget's own games (in **Other games**) already starts is shown once, as yours. Nothing is sent to external services. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
+program is the one named most like the folder, and not one whose name says it is an installer, uninstaller, anti-cheat or
+crash reporter. A found game that one of the widget's own games (in **Other games**) already starts is shown once, as
+yours. Nothing is sent to external services, unless you turn on **Covers from the Steam store**: then each found game's
+name (its program's product name, then its folder's) is searched once in the Steam store, and when a result has the
+same name its portrait art replaces the icon; the store sees only the names searched for. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
 Steam's own files, so the widget needs no Steam API key, no sign-in and no internet, and nothing is sent to Steam:
 `libraryfolders.vdf` and the `appmanifest_*.acf` file of each game in every library folder, `localconfig.vdf` for when a
 game was last played, covers from Steam's `appcache/librarycache`, and Steam's `RunningAppID` (the registry on Windows,

@@ -1864,6 +1864,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "Tampilkan hanya game favorit",
       "Other games: shortcuts shown as games, after the favorites": "Game lain: pintasan yang ditampilkan sebagai game, setelah favorit",
       "Games shown": "Jumlah game yang ditampilkan",
+      "Covers from the Steam store for the games found outside Steam (sends their names to the store)": "Sampul dari toko Steam untuk game yang ditemukan di luar Steam (mengirim namanya ke toko)",
       "Let the phone start games (off: the library is only shown)": "Izinkan ponsel memulai game (mati: pustaka hanya ditampilkan)",
       "Let the phone start the games found outside Steam (off: they are only shown)": "Izinkan ponsel memulai game yang ditemukan di luar Steam (mati: hanya ditampilkan)",
       "Ask before starting (tap a game twice)": "Tanya sebelum memulai (ketuk game dua kali)",

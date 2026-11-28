@@ -1864,6 +1864,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "お気に入りのゲームだけを表示",
       "Other games: shortcuts shown as games, after the favorites": "その他のゲーム：お気に入りの後にゲームとして表示するショートカット",
       "Games shown": "表示するゲーム数",
+      "Covers from the Steam store for the games found outside Steam (sends their names to the store)": "Steam 以外で見つかったゲームに Steam ストアのカバーを使う（ゲーム名をストアに送信します）",
       "Let the phone start games (off: the library is only shown)": "スマホからゲームを起動できるようにする（オフ：ライブラリの表示のみ）",
       "Let the phone start the games found outside Steam (off: they are only shown)": "Steam 以外で見つかったゲームをスマホから起動できるようにする（オフ：表示のみ）",
       "Ask before starting (tap a game twice)": "起動前に確認する（ゲームを 2 回タップ）",

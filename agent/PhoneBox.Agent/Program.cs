@@ -144,6 +144,7 @@ AddMonitor<DiscordMonitor>(builder.Services);
 AddMonitor<SteamMonitor>(builder.Services);
 AddMonitor<MqttConnection>(builder.Services);
 builder.Services.AddSingleton<SteamLibrary>();
+builder.Services.AddSingleton(sp => new GameCovers(sp.GetRequiredService<ILogger<GameCovers>>()));
 builder.Services.AddSingleton<OtherGames>();
 builder.Services.AddSingleton(sp => new LyricsService(sp.GetRequiredService<ConfigStore>(), sp.GetRequiredService<ILogger<LyricsService>>()));
 AddMonitor<BatteryMonitor>(builder.Services);
@@ -831,12 +832,13 @@ app.MapGet("/api/steam/games", (SteamLibrary library, OtherGames others) =>
 // The id goes in the query string: the Android app lets image requests through by exact path (READ_ONLY_IMAGES).
 app.MapGet("/api/steam/cover", (string? id, SteamLibrary library, OtherGames others, HttpResponse res) =>
 {
-    // a game found outside Steam ("x:…"): its program's own icon
+    // a game found outside Steam ("x:…"): its store art, or its program's own icon
     if (id?.StartsWith("x:", StringComparison.Ordinal) == true)
     {
-        if (others.Cover(id) is not { } png) return Results.NotFound();
-        res.Headers.CacheControl = "private, max-age=86400";
-        return Results.File(png, "image/png");
+        if (others.Cover(id) is not { } pic) return Results.NotFound();
+        // short: the store art replaces the icon once it is fetched
+        res.Headers.CacheControl = pic.Type == "image/png" ? "private, max-age=300" : "private, max-age=86400";
+        return Results.File(pic.Bytes, pic.Type);
     }
     if (library.CoverPath(id) is not { } path) return Results.NotFound();
     byte[] bytes;
