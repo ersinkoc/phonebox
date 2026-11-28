@@ -328,7 +328,7 @@ public static class Shortcuts
 #else
                 case "builtin:monitor-off":
                     if (OperatingSystem.IsMacOS()) Unix("pmset", "displaysleepnow");
-                    else Unix("xset", "dpms", "force", "off");
+                    else MonitorOffLinux();
                     break;
                 case "builtin:mute":
                     // false: the output cannot be muted (macOS) or wpctl / pactl failed; a caller must not count it as done
@@ -443,6 +443,29 @@ public static class Shortcuts
     internal static string Home(string s) =>
         s == "~" || s.StartsWith("~/") ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + s[1..] : s.Replace(" ~/", " " + Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "/");
 
+    /// <summary>
+    /// The commands that turn the screens off in this Linux session, in the order to try. XWayland has no DPMS
+    /// extension, so on Wayland <c>xset dpms force off</c> does nothing (and reported success): KDE Plasma turns them off
+    /// through <c>kscreen-doctor --dpms off</c>, GNOME through Mutter's PowerSaveMode property over D-Bus. Both turn the
+    /// screens back on at the next input. X11 keeps <c>xset</c>. Another Wayland desktop gets no command, so the key
+    /// reports that it can't instead of pretending.
+    /// </summary>
+    internal static IReadOnlyList<(string Tool, string[] Args)> LinuxMonitorOff(Func<string, string?> env)
+    {
+        var wayland = env("WAYLAND_DISPLAY") is { Length: > 0 }
+            || string.Equals(env("XDG_SESSION_TYPE"), "wayland", StringComparison.OrdinalIgnoreCase);
+        if (!wayland) return [("xset", ["dpms", "force", "off"])];
+        var desktops = (env("XDG_CURRENT_DESKTOP") ?? "").Split(':', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var commands = new List<(string, string[])>();
+        // -platform wayland: with an inherited QT_QPA_PLATFORM=xcb, kscreen-doctor would talk to XWayland, print "DPMS is
+        // only supported on Wayland" and still exit 0
+        if (desktops.Contains("KDE", StringComparer.OrdinalIgnoreCase)) commands.Add(("kscreen-doctor", ["-platform", "wayland", "--dpms", "off"]));
+        if (desktops.Contains("GNOME", StringComparer.OrdinalIgnoreCase))
+            commands.Add(("busctl", ["--user", "set-property", "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
+                "org.gnome.Mutter.DisplayConfig", "PowerSaveMode", "i", "1"]));
+        return commands;
+    }
+
 #if WINDOWS
     /// <summary>
     /// Windows keeps a program started by a background process (the agent answering the phone) behind the window in use,
@@ -476,6 +499,16 @@ public static class Shortcuts
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern nint SendMessage(nint hWnd, uint msg, nint wParam, nint lParam);
     [DllImport("user32.dll")] private static extern bool DestroyWindow(nint hWnd);
 #else
+    private static void MonitorOffLinux()
+    {
+        var commands = LinuxMonitorOff(Environment.GetEnvironmentVariable);
+        foreach (var (tool, args) in commands)
+            if (Sh.Run(tool, args) is not null) return;
+        throw new InvalidOperationException(commands.Count == 0
+            ? "turning the screens off is supported on X11, KDE Plasma and GNOME; this Wayland desktop is not one of them"
+            : $"could not turn the screens off ({string.Join(", ", commands.Select(c => c.Tool))} failed or is not installed)");
+    }
+
     private static void Unix(string tool, params string[] args)
     {
         if (Sh.Run(tool, args) is null && Sh.Which(tool) is null) throw new InvalidOperationException($"{tool} is not installed");
