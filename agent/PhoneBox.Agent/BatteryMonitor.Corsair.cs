@@ -284,6 +284,8 @@ public sealed partial class BatteryMonitor
     {
         var readings = new List<DeviceBattery>();
         var handledDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // every Corsair interface listed now
+        var listedAll = false;
         var deadline = Environment.TickCount64 + CorsairTotalBudgetMs;
         string? lastError = null;
 
@@ -297,8 +299,9 @@ public sealed partial class BatteryMonitor
             {
                 var ifData = new SP_DEVICE_INTERFACE_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVICE_INTERFACE_DATA>() };
                 var devData = new SP_DEVINFO_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVINFO_DATA>() };
-                for (uint i = 0; Environment.TickCount64 < deadline && SetupDiEnumDeviceInterfaces(set, IntPtr.Zero, ref guid, i, ref ifData); i++)
+                for (uint i = 0; Environment.TickCount64 < deadline; i++)
                 {
+                    if (!SetupDiEnumDeviceInterfaces(set, IntPtr.Zero, ref guid, i, ref ifData)) { listedAll = true; break; }
                     SetupDiGetDeviceInterfaceDetailW(set, ref ifData, IntPtr.Zero, 0, out var req, IntPtr.Zero);
                     if (req == 0) continue;
 
@@ -309,6 +312,7 @@ public sealed partial class BatteryMonitor
                         if (!SetupDiGetDeviceInterfaceDetailW(set, ref ifData, mem, req, out _, ref devData)) continue;
                         var path = Marshal.PtrToStringUni(IntPtr.Add(mem, 4));
                         if (string.IsNullOrEmpty(path) || !path.Contains("vid_1b1c", StringComparison.OrdinalIgnoreCase)) continue;
+                        present.Add(path);
 
                         // One device exposing the collection twice is asked once.
                         var physicalId = GetPhysicalDeviceId(path, devData.DevInst);
@@ -324,6 +328,12 @@ public sealed partial class BatteryMonitor
             finally { SetupDiDestroyDeviceInfoList(set); }
         }
         catch (Exception ex) { lastError ??= ex.Message; }
+
+        // A receiver that was unplugged (and maybe plugged in again since) starts over: once a whole listing went by without
+        // it, its slots' readings and miss counts are dropped. A listing the budget cut short drops nothing.
+        if (listedAll)
+            foreach (var gone in CorsairInterfaces.Keys.Where(k => !present.Contains(k)).ToArray())
+                CorsairInterfaces.TryRemove(gone, out _);
 
         return (MergeRazerIntoBluetooth([], readings), lastError);
     }
