@@ -75,6 +75,7 @@ public sealed class PulseDeckAudioTests
         		media.name = "Canción con tildes - YouTube"
         Sink Input #3746
         	Owner Module: n/a
+        	Client: 80
         	Sink: 116
         	Corked: no
         	Mute: yes
@@ -84,6 +85,7 @@ public sealed class PulseDeckAudioTests
         		application.process.id = "4242"
         Sink Input #3812
         	Owner Module: 536870917
+        	Client: n/a
         	Sink: 60
         	Corked: no
         	Mute: no
@@ -151,6 +153,39 @@ public sealed class PulseDeckAudioTests
 
         var sidra = sessions[1]; // no application.name: falls back to the binary
         Assert.Equal(("sidra", 4242, "korvex_ch_musica", 70, true, true), (sidra.Name, sidra.Pid, sidra.DeviceId, sidra.Volume, sidra.Muted, sidra.Active));
+    }
+
+    [Fact]
+    public void KeepsPulseAudioClientStreamsThatNameTheProtocolModule()
+    {
+        // PulseAudio (not PipeWire) gives a client's stream the native-protocol module as its owner; a loopback has no client
+        const string pulseAudio = """
+            Sink Input #12
+            	Driver: protocol-native.c
+            	Owner Module: 10
+            	Client: 7
+            	Sink: 60
+            	Corked: no
+            	Mute: no
+            	Volume: front-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB
+            	Properties:
+            		application.name = "Firefox"
+            		application.process.id = "1234"
+            Sink Input #13
+            	Driver: module-loopback.c
+            	Owner Module: 24
+            	Client: n/a
+            	Sink: 60
+            	Corked: no
+            	Mute: no
+            	Volume: mono: 65536 / 100% / 0.00 dB
+            	Properties:
+            		media.name = "Loopback from Monitor of Null Output"
+
+            """;
+        var state = PulseDeckAudio.Build(PulseDeckAudio.Parse(Sinks), [], PulseDeckAudio.Parse(pulseAudio), Scarlett, null);
+        Assert.Equal(["12"], state.Sessions.Select(s => s.Id));
+        Assert.Equal(("Firefox", 1234), (state.Sessions[0].Name, state.Sessions[0].Pid));
     }
 
     [Fact]
@@ -259,6 +294,48 @@ public sealed class PulseDeckAudioTests
         Assert.Equal([40, 20], PulseDeckAudio.Volumes("front-left: 26214 /  40% / -23.88 dB,   front-right: 13107 /  20% / -41.94 dB"));
         Assert.Equal([70], PulseDeckAudio.Volumes("mono: 45875 /  70% / -9.29 dB"));
         Assert.Empty(PulseDeckAudio.Volumes(null));
+    }
+
+    [Fact]
+    public void OverlappingChannelChangesBothLand()
+    {
+        // a stateful fake: listing is slow, so two unserialized left/right changes would both read 40/20
+        var levels = new[] { 40, 20 };
+        var gate = new object();
+        var audio = new PulseDeckAudio(args =>
+        {
+            switch (string.Join(' ', args))
+            {
+                case "list sinks":
+                    int l, r; lock (gate) (l, r) = (levels[0], levels[1]);
+                    Thread.Sleep(50);
+                    return Sinks.Replace("front-left: 26214 /  40% / -23.88 dB,   front-right: 13107 /  20% / -41.94 dB",
+                        $"front-left: 1 / {l}% / 0 dB,   front-right: 1 / {r}% / 0 dB");
+                case "list sources": return Sources;
+                case "list sink-inputs": return Inputs;
+                case "get-default-sink": return Scarlett;
+                case "get-default-source": return Mic;
+            }
+            if (args is ["set-sink-volume", Scarlett, var left, var right])
+                lock (gate) levels = [int.Parse(left.TrimEnd('%')), int.Parse(right.TrimEnd('%'))];
+            return "";
+        });
+        var a = Task.Run(() => audio.Device(Scarlett, 70, null, channel: 0));
+        var b = Task.Run(() => audio.Device(Scarlett, 60, null, channel: 1));
+        Assert.True(a.Result && b.Result);
+        Assert.Equal([70, 60], levels);
+    }
+
+    [Fact]
+    public void AFailedListingIsUnavailableNotTheSystemOutputAlone()
+    {
+        // panic and "Mics off" must not take a list without microphones for the whole list
+        var pulse = new PulseDeckAudio(_ => null);
+        using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+        using var native = new PortableDeckNative(new AudioControl(), media, _ => null, pulse);
+        var state = native.Audio();
+        Assert.False(state.Available);
+        Assert.Empty(state.Devices);
     }
 
     [Fact]

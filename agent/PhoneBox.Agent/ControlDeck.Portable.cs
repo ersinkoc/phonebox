@@ -17,11 +17,16 @@ internal sealed class PortableDeckNative(
     private (long At, (string Kind, string Path)? Player)? _filePlayerCache;
     private (long At, (string Kind, string Path)? Player)? _streamPlayerCache;
 
-    /// <summary>Every device and application stream on Linux (pactl); elsewhere, or when the sound server does not answer,
-    /// the system output's master volume only.</summary>
-    public DeckAudio Audio() => pulse?.Read() ?? (audio.Snapshot() is { } a ? new(true, null,
-        [new("default", "System output", "output", true, a.Volume, a.Muted, 0, 1, a.CanControl)], [])
-        : new(false, "Audio backend is unavailable", [], []));
+    /// <summary>
+    /// Every device and application stream on Linux (pactl); without that backend (macOS, Linux without pactl) the system
+    /// output's master volume only. When pactl is there but its listing fails, audio is reported unavailable rather than
+    /// falling back to the system output: panic and "Mics off" must not take a list without microphones for the full one.
+    /// </summary>
+    public DeckAudio Audio() => pulse is not null
+        ? pulse.Read() ?? new(false, "The sound server did not answer (pactl)", [], [])
+        : audio.Snapshot() is { } a ? new(true, null,
+            [new("default", "System output", "output", true, a.Volume, a.Muted, 0, 1, a.CanControl)], [])
+        : new(false, "Audio backend is unavailable", [], []);
     public bool Device(string id, int? volume, bool? muted, int? channel = null)
     {
         if (pulse is not null && id != "default") return pulse.Device(id, volume, muted, channel);

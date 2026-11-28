@@ -14,6 +14,9 @@ namespace PhoneBox.Agent;
 internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?> pactl)
 {
     private const int TimeoutMs = 2000;
+    /// <summary>One write at a time: a channel change reads every channel and writes them all back, so two overlapping
+    /// left/right changes would otherwise drop one of them.</summary>
+    private readonly Lock _writes = new();
 
     /// <summary>The backend when this is Linux with pactl installed, or null (the caller keeps its master-volume fallback).</summary>
     public static PulseDeckAudio? TryCreate() =>
@@ -63,8 +66,9 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         var sessions = new List<DeckSession>();
         foreach (var i in inputs)
         {
-            // streams a module made (loopbacks of a virtual mixer, combine-sink) are plumbing, not applications
-            if (i.Field("Owner Module") is { } owner && owner != "n/a") continue;
+            // streams a module made on its own (loopbacks of a virtual mixer, combine-sink) have no client: plumbing, not
+            // applications. "Owner Module" can't tell: PulseAudio gives client streams its native-protocol module there.
+            if (i.Field("Client") == "n/a") continue;
             var volumes = Volumes(i.Field("Volume"));
             var binary = i.Property("application.process.binary");
             var name = FirstUseful(i.Property("application.name"), binary, i.Property("media.name")) ?? "Application";
@@ -107,6 +111,11 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
 
     public bool Device(string id, int? volume, bool? muted, int? channel = null)
     {
+        lock (_writes) return DeviceLocked(id, volume, muted, channel);
+    }
+
+    private bool DeviceLocked(string id, int? volume, bool? muted, int? channel)
+    {
         if (volume is < 0 or > 100) return false;
         var device = Read()?.Devices.FirstOrDefault(d => d.Id == id);
         if (device is null) return false;
@@ -130,19 +139,25 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
     public bool Session(string id, int? volume, bool? muted)
     {
         if (volume is < 0 or > 100 || id.Length == 0 || !id.All(char.IsAsciiDigit)) return false;
-        if (volume is { } v && pactl(["set-sink-input-volume", id, Percent(v)]) is null) return false;
-        return muted is not { } m || pactl(["set-sink-input-mute", id, m ? "1" : "0"]) is not null;
+        lock (_writes)
+        {
+            if (volume is { } v && pactl(["set-sink-input-volume", id, Percent(v)]) is null) return false;
+            return muted is not { } m || pactl(["set-sink-input-mute", id, m ? "1" : "0"]) is not null;
+        }
     }
 
     /// <summary>Makes a device the default for its direction. Linux has no separate roles, so every role follows.</summary>
     public bool DefaultDevice(string id, int? role = null)
     {
         if (role is < 0 or > 2) return false;
-        var device = Read()?.Devices.FirstOrDefault(d => d.Id == id);
-        if (device is null) return false;
-        var kind = device.Direction == "output" ? "sink" : "source";
-        if (pactl([$"set-default-{kind}", id]) is null) return false;
-        return pactl([$"get-default-{kind}"])?.Trim() == id;
+        lock (_writes)
+        {
+            var device = Read()?.Devices.FirstOrDefault(d => d.Id == id);
+            if (device is null) return false;
+            var kind = device.Direction == "output" ? "sink" : "source";
+            if (pactl([$"set-default-{kind}", id]) is null) return false;
+            return pactl([$"get-default-{kind}"])?.Trim() == id;
+        }
     }
 
     /// <summary>A new master level that keeps the balance: the loudest channel gets <paramref name="level"/>, the others

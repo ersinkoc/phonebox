@@ -15,27 +15,26 @@ async function show(page, type, os, pulse = false) {
   await page.goto('/panel/');
 }
 
-for (const [type, text] of [
-  ['audio-mixer', 'Per-app volume is only on Windows for now'],
-  ['audio-outputs', 'Switching audio devices is only on Windows for now'],
-  ['push-to-talk', 'Microphone control is only on Windows for now'],
+// each widget's own control: a session's volume slider, an output's button, the enabled push-to-talk button
+for (const [type, text, control] of [
+  ['audio-mixer', 'Per-app volume is only on Windows for now', (page) => page.getByRole('slider', { name: 'Spotify volume', exact: true })],
+  ['audio-outputs', 'Switching audio devices is only on Windows for now', (page) => page.getByRole('button', { name: 'Headphones', exact: true })],
+  ['push-to-talk', 'Microphone control is only on Windows for now', (page) => page.getByRole('button', { name: 'Hold to talk' })],
 ]) {
   test(`${type} says it is Windows-only on Linux`, async ({ page }) => {
     await show(page, type, 'linux');
     await expect(page.getByText(text, { exact: true })).toBeVisible();
+    await expect(control(page).and(page.locator(':enabled'))).toHaveCount(0); // push-to-talk stays, disabled
   });
 
-  test(`${type} keeps its controls on Windows`, async ({ page }) => {
-    await show(page, type, 'windows');
-    await expect(page.locator('.w-control, .deck-list, button').first()).toBeVisible();
-    await expect(page.getByText(text, { exact: true })).toHaveCount(0);
-  });
-
-  test(`${type} works on Linux with pactl`, async ({ page }) => {
-    await show(page, type, 'linux', true);
-    await expect(page.locator('.w-control, .deck-list, button').first()).toBeVisible();
-    await expect(page.getByText(text, { exact: true })).toHaveCount(0);
-  });
+  for (const [label, os, pulse] of [['on Windows', 'windows', false], ['on Linux with pactl', 'linux', true]]) {
+    test(`${type} keeps its controls ${label}`, async ({ page }) => {
+      await show(page, type, os, pulse);
+      await expect(control(page)).toBeVisible();
+      await expect(control(page)).toBeEnabled();
+      await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+    });
+  }
 }
 
 test('device-volume controls the system output on Linux', async ({ page }) => {
