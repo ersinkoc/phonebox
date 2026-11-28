@@ -177,6 +177,9 @@
     build: { data: { value: 'passed', sub: 'main · 3m 12s' }, at: now() - 240e3, expiresAt: null },
     deploy: { data: { value: 'running', sub: 'production' }, at: now() - 60e3, expiresAt: null },
     progress: { data: { value: 64 }, at: now() - 30e3, expiresAt: null },
+    // what two MQTT subscriptions would have put here (an MQTT widget lists their keys)
+    'hall-temp': { data: { value: 22.4, unit: '°C' }, at: now() - 40e3, expiresAt: null },
+    'front-door': { data: 'closed', at: now() - 900e3, expiresAt: null },
     todo: { data: { items: [{ label: 'Try the layout editor', value: 'now', level: 'warn' }, { label: 'Widgets', value: 'done', level: 'ok' },
       { label: 'Webhooks', value: 'done', level: 'ok' }, 'Water the plants'] }, at: now() - 600e3, expiresAt: null },
   });
@@ -787,6 +790,8 @@
     }
     if (path === '/api/calendar') return json(calendar());
     if (path === '/api/docker') return json({ ...docker(), control: allows(await config(), (t) => t === 'docker') });
+    // the MQTT widget: the state, the time of the last message and a kind of error, as the agent answers (never the broker or a topic)
+    if (path === '/api/mqtt/status') { const c = await config(); return json(c.mqtt?.enabled === false ? { state: 'off', lastMessageAt: null, errorKind: null } : { state: 'connected', lastMessageAt: now() - 4000, errorKind: null }); }
     if (path === '/api/obs') { const c = await config(); return json({ ...obsState(), enabled: c.obs?.enabled !== false, control: widgets(c).some((w) => w.type === 'obs' && w.options?.control === true) }); }
     if (path === '/api/discord') {
       const c = await config();

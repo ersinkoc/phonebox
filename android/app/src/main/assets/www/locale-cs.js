@@ -1156,6 +1156,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Načítá se…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "Stav připojení MQTT a čas poslední zprávy, s hodnotami, které vaše odběry ukládají do odeslaných hodnot. Broker a odběry se nastavují v Nastavení › Obecné › MQTT.",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "Klíče odeslaných hodnot k zobrazení, oddělené čárkami (klíče vašich odběrů MQTT)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Lokální LLM router: načtené modely, běžící požadavky, požadavky a tokeny za dnešek, a rychlost generování. Adresa serveru se nastavuje v Nastavení › Obecné › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Jen tato kategorie (její kategorie v Nastavení; prázdné = všechny)",
@@ -1904,6 +1907,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlisty Plex (nic nezaškrtnuto = všechny)"
     },
     "panel": {
+      "Last message": "Poslední zpráva",
+      "Turn on MQTT in Settings › General › MQTT.": "Zapněte MQTT v Nastavení › Obecné › MQTT.",
       "In flight": "Probíhající",
       "Today": "Dnes",
       "Speed": "Rychlost",
