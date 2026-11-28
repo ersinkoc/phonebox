@@ -772,7 +772,9 @@ W.sessions = {
       const box = h('div', 'session-conv wb-check');
       panel.append(box);
       const render = () => {
-        const s = D.work?.sessions?.find((x) => x.id === first.id) || first;
+        // a session the latest frame no longer lists (its process exited) has no heartbeat to report: unknown
+        const live = D.work?.sessions ? D.work.sessions.find((x) => x.id === first.id) : first;
+        const s = live || { id: first.id };
         const wb = D.work?.workbuddy || null; // the agent's booleans; null when the agent is older
         // the heartbeat the row's own freshness is judged on; since is a status-change time and can differ.
         // Its age is counted on the computer's clock (agentClock), never the phone's.
