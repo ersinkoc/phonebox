@@ -102,6 +102,8 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
     // the topics the last connection subscribed to: with Clean session off the broker keeps them, so a topic that is gone
     // from the settings is unsubscribed on the next connection
     private List<string> _filters = [];
+    // the broker session those topics belong to: another broker, client id or account never hears of them
+    private string? _filtersSession;
     private readonly TimeSpan _firstWait = TimeSpan.FromSeconds(5);
     private readonly TimeSpan _stableAfter = TimeSpan.FromSeconds(60);
 
@@ -202,9 +204,12 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
             // inside the try: a subscription that fails still ends with the goodbye below, so the broker does not take the
             // connection for a lost one and publish the last will
             var wanted = subscriptions.Select(s => s.Topic!).Distinct(StringComparer.Ordinal).ToList();
+            var session = SessionOf(cfg);
+            if (_filtersSession != session) _filters = []; // another session: the old topic names are not sent to it
             var leftover = cfg.CleanSession ? [] : await UnsubscribeAsync(client, wanted, ct);
             if (wanted.Count > 0) await SubscribeAsync(client, wanted, ct);
             _filters = [.. wanted, .. leftover];
+            _filtersSession = session;
             _status = new(Connected, null, null);
             connected();
             while (!ct.IsCancellationRequested && !lost.Task.IsCompleted && Signature(config.Get().Mqtt) == signature)
@@ -212,6 +217,8 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
                 // held for a while: the next drop, after days, is retried in seconds
                 if (!holding && since.Elapsed >= _stableAfter) { holding = true; held(); }
                 await Task.WhenAny(lost.Task, Task.Delay(1000, ct));
+                // settings changed during the wait: a row may be gone, so its waiting value is not written
+                if (ct.IsCancellationRequested || Signature(config.Get().Mqtt) != signature) break;
                 feed?.Flush(); // the newest value of a key that had to wait for its second
             }
             // read before our own goodbye below: MQTTnet reports that one as a disconnect too
@@ -269,6 +276,10 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     // the settings the connection was made with, to notice a change; compared in memory and never logged
     private static string Signature(MqttConfig c) => System.Text.Json.JsonSerializer.Serialize(c);
+
+    /// <summary>What names a broker session: the broker, the way to it, the account and the client id.</summary>
+    private static string SessionOf(MqttConfig c)
+        => System.Text.Json.JsonSerializer.Serialize(new { c.Host, c.Port, c.Transport, c.WebSocketPath, c.Tls, c.Username, c.ClientId });
 
     /// <summary>Settings › Test connection: connects once with these settings, then disconnects. Its client id differs from the real connection's, so the broker does not drop that one.</summary>
     public static async Task<MqttTestResult> TestAsync(MqttConfig cfg, CancellationToken ct)

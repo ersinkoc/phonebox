@@ -2,15 +2,6 @@
 
 ## Unreleased
 
-- **MQTT, second step: subscriptions** (Settings › General › MQTT › Subscriptions, #732,
-  [t7spotter](https://github.com/t7spotter)): each row puts the messages of a topic (`+` and `#` allowed) into one
-  pushed value under a key you choose, with an optional JSON field and unit. A **Pushed value** widget shows it and the
-  rules can use it, as with a webhook's value; nothing else of MQTT reaches the phone, and no topic does. A wildcard
-  never makes keys (every matching message updates the row's one key), there are at most 32 rows, and a key is updated
-  at most once a second with the newest value, so a busy topic cannot fill the push store or flood the phone. The
-  password and the topics stay on the computer (never in the log or the status); **Test** subscribes to nothing. The
-  settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
-  `docs/MQTT.md`.
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
@@ -160,6 +151,16 @@
   WirePlumber and PulseAudio do by default. The application is matched by its name or process name, ignoring case and a
   `.exe` suffix, so a control set up on Windows works too. An application that plays nothing reports "Not playing".
   Windows still uses SoundVolumeView (#782, [mikicolmena](https://github.com/mikicolmena)).
+- **MQTT, second step: subscriptions** (Settings › General › MQTT › Subscriptions, #732, #781,
+  [t7spotter](https://github.com/t7spotter)): each row puts the messages of a topic (`+` and `#` allowed) into one
+  pushed value under a key you choose, with an optional JSON field and unit. A **Pushed value** widget shows it and the
+  rules can use it, as with a webhook's value; nothing else of MQTT reaches the phone, and no topic does. A wildcard
+  never makes keys (every matching message updates the row's one key), there are at most 32 rows, and a key is updated
+  at most once a second with the newest value, so a busy topic cannot fill the push store or flood the phone. The
+  password and the topics stay on the computer (never in the log or the status); **Test** subscribes to nothing. The
+  settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
+  `docs/MQTT.md`. With Clean session off, a row removed from the settings is unsubscribed on the next connection to
+  the same broker session; another broker or account never hears the old topics.
 
 ## 0.9.32 — 2026-11-27
 

@@ -12,6 +12,8 @@ internal sealed class MqttTestBroker : IDisposable
     public int Port { get; }
     public List<string> ClientIds { get; } = [];
     public List<(string? User, string? Password)> Logins { get; } = [];
+    /// <summary>The topic filters clients asked to unsubscribe from.</summary>
+    public List<string> Unsubscribed { get; } = [];
     /// <summary>Accepts every login and then disconnects the client at once (a duplicate client id, an access list that kicks).</summary>
     public volatile bool DropClients;
     /// <summary>Refuses every subscription (an access list), as a broker answers with the failure code of MQTT 3.1.1.</summary>
@@ -46,6 +48,11 @@ internal sealed class MqttTestBroker : IDisposable
                     e.ProcessSubscription = false;
                     e.Response.ReasonCode = MqttSubscribeReasonCode.NotAuthorized;
                 }
+                return Task.CompletedTask;
+            };
+            server.InterceptingUnsubscriptionAsync += e =>
+            {
+                lock (broker.Unsubscribed) broker.Unsubscribed.Add(e.Topic);
                 return Task.CompletedTask;
             };
             server.ClientConnectedAsync += async e =>

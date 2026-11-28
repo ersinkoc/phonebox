@@ -363,6 +363,25 @@ public sealed class MqttSubscriptionTests : IDisposable
         await broker.Publish("old/anything", "1");
         await Task.Delay(500); // a message the broker still sent would have arrived by now
         Assert.Null(run.Connection.Status.LastMessageAt);
+        lock (broker.Unsubscribed) Assert.Contains("old/#", broker.Unsubscribed);
+    }
+
+    [Fact]
+    public async Task TheTopicsOfOneBrokerAreNotSentToAnother()
+    {
+        using var first = await MqttTestBroker.StartAsync(persistentSessions: true);
+        using var second = await MqttTestBroker.StartAsync(persistentSessions: true);
+        var push = NewPush();
+        var before = Config(first.Port, "subs-14", Sub("private/door/#", "door"));
+        before.CleanSession = false;
+        await using var run = await Start(before, push);
+        var after = Config(second.Port, "subs-14"); // another broker, no rows
+        after.CleanSession = false;
+        Assert.Null(run.Store.Save(JsonSerializer.Serialize(new { mqtt = after }, ConfigStore.WriteOpts)));
+        await Until(() => { lock (second.Logins) return second.Logins.Count >= 1; }, "the connection to the second broker");
+        await Until(() => run.Connection.Status.State == MqttConnection.Connected, "the connection to be up again");
+        await Task.Delay(300); // an unsubscribe right after connecting would have arrived by now
+        lock (second.Unsubscribed) Assert.Empty(second.Unsubscribed); // the first broker's topic names stay with it
     }
 
     [Fact]
