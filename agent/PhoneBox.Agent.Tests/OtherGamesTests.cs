@@ -396,8 +396,9 @@ public class OtherGamesTests : IDisposable
         void Look(int expected)
         {
             others.List();
-            Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref launchers) == expected, TimeSpan.FromSeconds(10)));
-            Thread.Sleep(50); // the look sets its time after reading the launchers
+            // the look has set its time (after reading the launchers) before the clock moves on
+            Assert.True(SpinWait.SpinUntil(() => others.Looks == expected, TimeSpan.FromSeconds(10)));
+            Assert.Equal(expected, Volatile.Read(ref launchers));
         }
         Look(1);
         Assert.Equal(1, disks);
@@ -408,6 +409,48 @@ public class OtherGamesTests : IDisposable
         Interlocked.Add(ref now, 50 * 60_000);
         Look(3);
         Assert.Equal(2, disks);                                // an hour after the last walk
+    }
+
+    [Fact]
+    public void ALookThatFailsKeepsTheLastListAndIsNotTriedOnEveryRequest()
+    {
+        var game = Program("Old Fort");
+        var now = 1_000_000L;
+        int launchers = 0;
+        var fail = false;
+        var others = new OtherGames(Config("{}"), NullLogger<OtherGames>.Instance)
+        {
+            Clock = () => Interlocked.Read(ref now),
+            Launchers = () =>
+            {
+                Interlocked.Increment(ref launchers);
+                if (Volatile.Read(ref fail)) throw new IOException("the registry could not be read");
+                return [game];
+            },
+            Disks = () => [],
+        };
+        void Look(int expected)
+        {
+            others.List();
+            Assert.True(SpinWait.SpinUntil(() => others.Looks == expected, TimeSpan.FromSeconds(10)));
+        }
+        Look(1);
+        Assert.Equal(["Old Fort"], others.List().Select(g => g.Name));
+
+        Volatile.Write(ref fail, true);
+        Interlocked.Add(ref now, OtherGames.RescanMs + 1);
+        Look(2);                                               // the look fails: the last list stays
+        Assert.Equal(["Old Fort"], others.List().Select(g => g.Name));
+        Interlocked.Add(ref now, OtherGames.RetryMs - 1);
+        others.List();                                         // within the retry time: nothing is read again
+        Assert.Equal(2, others.Looks);
+        Assert.Equal(2, Volatile.Read(ref launchers));
+
+        Volatile.Write(ref fail, false);
+        Interlocked.Add(ref now, 1);
+        Look(3);                                               // then it is tried again
+        Assert.Equal(3, Volatile.Read(ref launchers));
+        Assert.Equal(["Old Fort"], others.List().Select(g => g.Name));
     }
 
     [Fact]

@@ -34,6 +34,8 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     internal const int RescanMs = 10 * 60_000;
     /// <summary>How often the drives are looked through again: a walk wakes idle disks, so at most once an hour.</summary>
     internal const int DriveRescanMs = 60 * 60_000;
+    /// <summary>How soon a look that failed is tried again; the last list found stays shown meanwhile.</summary>
+    internal const int RetryMs = 60_000;
     // bounds for a folder that is not what it seems
     internal const int MaxGamesPerFolder = 200, MaxFilesPerGame = 2000, MaxDepth = 3;
     /// <summary>Folders looked into for one game (its program, its signs), and on one drive in all.</summary>
@@ -51,7 +53,12 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     private long _scannedAt = -(1L << 40);
     private List<Found> _onDrives = [];
     private long _drivesAt = -(1L << 40);
+    private long _retryAt = -(1L << 40); // after a look failed: not tried again before this
     private long? _firstDeadline; // when the requests made during the first look stop waiting for it
+    private int _looks;
+
+    /// <summary>How many looks have ended (found a list or failed): what a test waits for.</summary>
+    internal int Looks => Volatile.Read(ref _looks);
 
     internal Func<long> Clock { get; init; } = () => Environment.TickCount64;
     /// <summary>Overridable for tests: the launchers' games (Windows registry and Epic manifests).</summary>
@@ -103,7 +110,7 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         long wait;
         lock (_gate)
         {
-            if (Clock() - _scannedAt < RescanMs) return _found;
+            if (Clock() - _scannedAt < RescanMs || Clock() < _retryAt) return _found;
             running = _scanning ??= Task.Run(Refresh);
             _firstDeadline ??= Environment.TickCount64 + FirstWaitMs;
             wait = Math.Max(0, _firstDeadline.Value - Environment.TickCount64);
@@ -112,9 +119,10 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         lock (_gate) return _found;
     }
 
+    /// <summary>One look; a look that fails keeps the last list found and is tried again after <see cref="RetryMs"/>.</summary>
     private void Refresh()
     {
-        List<Found> found;
+        List<Found>? found = null;
         try
         {
             // the drives are walked again only once an hour; the launchers' records every time
@@ -127,8 +135,14 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
             }
             found = Scan(Launchers(), drives);
         }
-        catch (Exception ex) { log.LogWarning("could not look for other games: {Msg}", ex.Message); found = []; }
-        lock (_gate) { _found = found; _scannedAt = Clock(); _scanning = null; }
+        catch (Exception ex) { log.LogWarning("could not look for other games: {Msg}", ex.Message); }
+        lock (_gate)
+        {
+            if (found is not null) { _found = found; _scannedAt = Clock(); }
+            else _retryAt = Clock() + RetryMs;
+            _scanning = null;
+            _looks++;
+        }
     }
 
     private Task? _scanning;
