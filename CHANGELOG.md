@@ -176,6 +176,10 @@
   settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
   `docs/MQTT.md`. With Clean session off, a row removed from the settings is unsubscribed on the next connection to
   the same broker session; another broker or account never hears the old topics.
+- macOS: Apple Music shows in Now Playing again without `nowplaying-cli`: the AppleScript reading ended in an empty
+  artwork field, and trimming its tab away dropped the whole line (#787, [mathan-u](https://github.com/mathan-u)).
+- Synced lyrics: Apple Music for Windows reports "Artist — Album" as the artist with no album; the two are split, so
+  LRCLIB is asked for the artist and the album (#790, [Emanuele9017](https://github.com/Emanuele9017)).
 
 ## 0.9.32 — 2026-11-27
 
