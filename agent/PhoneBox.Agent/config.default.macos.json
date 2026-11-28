@@ -40,6 +40,9 @@
   "codexBar": { "codexLiveQuota": false },
   // llama-swap (the local LLM router) stats on the phone: its address (empty = off) and the poll interval in seconds
   "llamaSwap": { "url": "", "refreshSeconds": 60 },
+  // Corsair headsets, mice and keyboards on the Device batteries widget (Windows; off by default): the agent asks
+  // their USB receiver or cable for the battery level. Settings › General › Device batteries
+  "batteries": { "corsair": false },
   // OpenCode permission prompts on the phone: Allow (once or always) and Deny, read from OpenCode's
   // background service on 127.0.0.1. Off by default: set "phoneApprovals": true (or Settings › General) to let
   // the phone answer. "shareSessionTitles" puts the session titles on the phone too.
