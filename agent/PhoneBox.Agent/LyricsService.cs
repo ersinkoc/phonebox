@@ -71,6 +71,8 @@ public sealed partial class LyricsService : IDisposable
         var (title, artist) = CleanQuery(media.Title, media.Artist);
         if (title.Length == 0) return new LyricsResult("idle");
         var album = media.Album?.Trim() ?? "";
+        // Apple Music for Windows puts the album after the artist ("Glocky — Northside Melodies") and leaves the album empty
+        if (album.Length == 0 && SplitArtistAlbum(artist) is { } split) (artist, album) = split;
         var seconds = media.DurMs > 0 ? (int)Math.Round(media.DurMs / 1000.0) : 0;
         var key = string.Join('\n', artist, title, album, seconds).ToLowerInvariant();
         Task<LyricsResult> task;
@@ -252,6 +254,19 @@ public sealed partial class LyricsService : IDisposable
     }
 
     /// <summary>The first artist of a string that names several ("A (…)/B (…)" or "A &amp; B"), without its own bracketed note.</summary>
+    /// <summary>
+    /// "Artist — Album" (an em dash with a space on each side, as Apple Music for Windows reports a track with no album of its
+    /// own) as its two parts; null for any other artist (#790).
+    /// </summary>
+    internal static (string Artist, string Album)? SplitArtistAlbum(string artist)
+    {
+        var at = artist.IndexOf(" \u2014 ", StringComparison.Ordinal);
+        if (at <= 0) return null;
+        var left = artist[..at].Trim();
+        var right = artist[(at + 3)..].Trim();
+        return left.Length > 0 && right.Length > 0 ? (left, right) : null;
+    }
+
     internal static string FirstArtist(string artist)
     {
         var a = artist.Trim();

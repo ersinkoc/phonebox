@@ -88,6 +88,24 @@ public sealed class LyricsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AppleMusicsArtistAndAlbumInOneFieldAreSplit()
+    {
+        // Apple Music for Windows: "Artist — Album" as the artist, no album (#790)
+        var lrclib = new Lrclib(req => req.RequestUri!.AbsolutePath == "/api/get"
+            ? Json("""{"id":1,"trackName":"Problem Solver","artistName":"Glocky","duration":150,"instrumental":false,"plainLyrics":"one","syncedLyrics":"[00:01.00] one"}""")
+            : Json("[]"));
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib);
+        var found = await Ask(lyrics, Track("Problem Solver", "Glocky — Northside Melodies", "", 150_000));
+        Assert.Equal("ok", found.Status);
+        var asked = Assert.Single(lrclib.Asked);
+        Assert.Contains("artist_name=Glocky&", asked);
+        Assert.Contains("album_name=Northside%20Melodies", asked);
+        Assert.Null(LyricsService.SplitArtistAlbum("Simon & Garfunkel"));
+        Assert.Null(LyricsService.SplitArtistAlbum("Jay-Z—Kanye")); // no spaces: a name, not two fields
+        Assert.Null(LyricsService.SplitArtistAlbum(" — Album"));
+    }
+
+    [Fact]
     public async Task TheExactMatchIsUsedAndRememberedForTheSong()
     {
         var lrclib = new Lrclib(req => req.RequestUri!.AbsolutePath == "/api/get"
