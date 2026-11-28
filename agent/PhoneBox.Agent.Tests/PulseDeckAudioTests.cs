@@ -621,4 +621,91 @@ public sealed class PulseDeckAudioTests
         Assert.Equal("conference.monitor", mic.Id);
         Assert.Equal("input", mic.Direction);
     }
+
+    [Fact]
+    public void RoutesEveryStreamOfTheApplicationToTheOutput()
+    {
+        var (audio, calls) = Fake();
+        // set up on Windows as "Firefox.exe": the same control works here
+        Assert.Equal(1, audio.Route("Firefox.exe", "korvex_ch_musica"));
+        Assert.Equal(["move-sink-input 798 korvex_ch_musica"], calls);
+        Assert.Equal("korvex_ch_musica", audio.Read()!.Sessions.Single(s => s.Id == "798").DeviceId);
+    }
+
+    [Fact]
+    public void RoutingMatchesTheProcessNameAndLeavesAStreamAlreadyThere()
+    {
+        var (audio, calls) = Fake();
+        Assert.Equal(1, audio.Route(" SIDRA ", "korvex_ch_musica")); // sidra already plays there
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public void RoutingAnApplicationThatPlaysNothingMovesNothing()
+    {
+        var (audio, calls) = Fake();
+        Assert.Equal(0, audio.Route("discord", Scarlett));
+        Assert.Equal(0, audio.Route("loopback-3278-13 output", "korvex_ch_musica")); // plumbing is not an application
+        Assert.Empty(calls);
+    }
+
+    [Theory]
+    [InlineData("firefox", Mic)]                // a microphone is not an output
+    [InlineData("firefox", "unplugged")]        // not a listed device
+    [InlineData("  ", Scarlett)]
+    [InlineData(".exe", Scarlett)]
+    public void RoutingRefusesAnUnknownOutputOrApplication(string application, string sink)
+    {
+        var (audio, calls) = Fake();
+        Assert.Null(audio.Route(application, sink));
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public void AFailedMoveIsReportedAndForgotten()
+    {
+        var (audio, calls) = Fake(fails: line => line.StartsWith("move-sink-input", StringComparison.Ordinal));
+        Assert.Null(audio.Route("firefox", "korvex_ch_musica"));
+        Assert.Equal(["move-sink-input 798 korvex_ch_musica"], calls);
+        Assert.Equal(Scarlett, audio.Read()!.Sessions.Single(s => s.Id == "798").DeviceId);
+    }
+
+    [Fact]
+    public async Task TheAudioRouteControlUsesPactlOnLinux()
+    {
+        var (pulse, calls) = Fake();
+        var directory = Path.Combine(Path.GetTempPath(), "phonebox-route-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var path = Path.Combine(directory, "config.json");
+            File.WriteAllText(path, """
+                {"controls":{"actions":[
+                  {"id":"music","label":"Firefox to music","kind":"audio-route","target":"firefox","device":"korvex_ch_musica","enabled":true},
+                  {"id":"discord","label":"Discord to music","kind":"audio-route","target":"Discord.exe","device":"korvex_ch_musica","enabled":true},
+                  {"id":"mic","label":"Firefox to mic","kind":"audio-route","target":"firefox","device":"MIC","enabled":true}]}}
+                """.Replace("MIC", Mic));
+            using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+            var native = new PortableDeckNative(new AudioControl(), media, _ => null, pulse);
+            using var deck = new ControlDeck(new ConfigStore(path), native,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ControlDeck>.Instance, () => 1000);
+            Assert.True((await deck.Act("action", "music", null, null, null, null, default)).Ok);
+            var idle = await deck.Act("action", "discord", null, null, null, null, default);
+            Assert.False(idle.Ok);
+            Assert.Contains("not playing", idle.Error);
+            Assert.False((await deck.Act("action", "mic", null, null, null, null, default)).Ok);
+            Assert.Equal(["move-sink-input 798 korvex_ch_musica"], calls);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void ACancelledRouteStartsNoFurtherMove()
+    {
+        var (audio, calls) = Fake();
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        Assert.Null(audio.Route("firefox", "korvex_ch_musica", cancelled.Token));
+        Assert.Empty(calls);
+    }
 }

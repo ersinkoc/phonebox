@@ -41,7 +41,7 @@ by hand takes it off that list, and the list is forgotten when the agent restart
 
 Spotify queue, library and playlist controls need a Spotify Developer Client ID and a connection through the
 settings screen. OBS needs obs-websocket and widget control permission. Application routing uses an installed
-SoundVolumeView executable; virtual-mixer controls use the installed Voicemeeter Remote DLL. MIDI requires an
+SoundVolumeView executable on Windows and `pactl` on Linux; virtual-mixer controls use the installed Voicemeeter Remote DLL. MIDI requires an
 output port. Missing integrations display their setup state. See the [setup and platform guide](CONTROL-DECK.md).
 
 ## Pages & templates

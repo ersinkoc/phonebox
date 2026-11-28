@@ -69,6 +69,12 @@ internal interface IDeckNative : IDisposable
     bool Device(string id, int? volume, bool? muted, int? channel = null);
     bool Session(string id, int? volume, bool? muted);
     bool DefaultDevice(string id, int? role = null);
+    /// <summary>Whether this backend moves applications between outputs itself (pactl on Linux); on Windows routing goes
+    /// through SoundVolumeView instead.</summary>
+    bool CanRouteApplications => false;
+    /// <summary>Moves an application's streams to an output: how many streams it has (0 when it plays nothing), or null
+    /// when the output is unknown, a move failed or the request was cancelled before the next move.</summary>
+    int? RouteApplication(string application, string deviceId, CancellationToken ct = default) => null;
     IReadOnlyList<DeckMonitor> Monitors();
     bool Brightness(string id, int value);
     IReadOnlyList<DeckItem> PowerPlans();
