@@ -75,6 +75,9 @@ internal interface IDeckNative : IDisposable
     /// <summary>Moves an application's streams to an output: how many streams it has (0 when it plays nothing), or null
     /// when the output is unknown, a move failed or the request was cancelled before the next move.</summary>
     int? RouteApplication(string application, string deviceId, CancellationToken ct = default) => null;
+    /// <summary>A phone is about to show the audio: a backend that meters on demand (parec on Linux) starts its meters
+    /// for a few seconds. Windows reads the levels from Core Audio on every listing.</summary>
+    void WantLevels() { }
     IReadOnlyList<DeckMonitor> Monitors();
     bool Brightness(string id, int value);
     IReadOnlyList<DeckItem> PowerPlans();

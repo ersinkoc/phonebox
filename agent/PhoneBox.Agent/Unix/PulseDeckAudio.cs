@@ -16,7 +16,8 @@ namespace PhoneBox.Agent;
 /// (panic and a profile restore change many devices in a row). A write patches the kept listing with what it set
 /// instead of dropping it, so the next write in the same burst still finds the device and its current channels.
 /// </remarks>
-internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?> pactl, Func<long>? now = null)
+internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?> pactl, Func<long>? now = null,
+    PulseMeters? meters = null) : IDisposable
 {
     private const int TimeoutMs = 2000;
     /// <summary>How long a listing is reused, in milliseconds.</summary>
@@ -29,6 +30,8 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
     private readonly Lock _cache = new();
     private (long At, DeckAudio? Audio)? _last;
     private volatile bool _answered;
+    /// <summary>Until when the listings carry levels (<see cref="WantLevels"/>), on <see cref="_now"/>'s clock.</summary>
+    private long _levelsUntil = long.MinValue;
 
     /// <summary>Whether pactl has listed the devices at least once. Until then the caller keeps its master-volume fallback:
     /// pactl may be installed with no Pulse server to talk to (PipeWire without pipewire-pulse).</summary>
@@ -36,7 +39,18 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
 
     /// <summary>The backend when this is Linux with pactl installed, or null (the caller keeps its master-volume fallback).</summary>
     public static PulseDeckAudio? TryCreate() =>
-        OperatingSystem.IsLinux() && Sh.Which("pactl") is { } path ? new(args => Run(path, args)) : null;
+        OperatingSystem.IsLinux() && Sh.Which("pactl") is { } path ? new(args => Run(path, args), meters: PulseMeters.TryCreate()) : null;
+
+    /// <summary>
+    /// A phone is showing deck widgets: the listings of the next <see cref="PulseMeters.IdleMs"/> carry the level of each
+    /// output and application stream. Other readers of the listing (ducking, a profile restore) start no meter.
+    /// </summary>
+    public void WantLevels()
+    {
+        if (meters is not null) Interlocked.Exchange(ref _levelsUntil, _now() + PulseMeters.IdleMs);
+    }
+
+    public void Dispose() => meters?.Dispose();
 
     private static string? Run(string path, IReadOnlyList<string> args)
     {
@@ -79,7 +93,24 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         if (pactl(["info"]) is not { } info || pactl(["list", "sinks"]) is not { } sinksText
             || pactl(["list", "sources"]) is not { } sourcesText || pactl(["list", "sink-inputs"]) is not { } inputsText) return null;
         var (defaultSink, defaultSource) = Defaults(info);
-        return Build(Parse(sinksText), Parse(sourcesText), Parse(inputsText), defaultSink, defaultSource);
+        var sinks = Parse(sinksText);
+        var audio = Build(sinks, Parse(sourcesText), Parse(inputsText), defaultSink, defaultSource);
+        return meters is not null && _now() < Interlocked.Read(ref _levelsUntil) ? WithLevels(audio, sinks, meters) : audio;
+    }
+
+    /// <summary>The listing with the level of every output (its monitor source) and application stream.</summary>
+    internal static DeckAudio WithLevels(DeckAudio audio, IReadOnlyList<Block> sinks, PulseMeters meters)
+    {
+        var monitors = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var s in sinks)
+            if (s.Field("Name") is { Length: > 0 } name)
+                monitors[name] = s.Field("Monitor Source") is { Length: > 0 } monitor && monitor != "n/a" ? monitor : name + ".monitor";
+        return audio with
+        {
+            Devices = [.. audio.Devices.Select(d => d.Direction == "output" && monitors.TryGetValue(d.Id, out var monitor)
+                ? d with { Peak = meters.Level("output:" + d.Id, () => PulseMeters.OutputArgs(monitor)) } : d)],
+            Sessions = [.. audio.Sessions.Select(s => s with { Peak = meters.Level("stream:" + s.Id, () => PulseMeters.StreamArgs(s.Id)) })],
+        };
     }
 
     /// <summary>The default sink and source from <c>LC_ALL=C pactl info</c> ("Default Sink: name"), null when none is set.</summary>

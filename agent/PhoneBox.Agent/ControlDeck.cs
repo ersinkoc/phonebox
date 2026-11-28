@@ -86,8 +86,9 @@ public sealed partial class ControlDeck : BackgroundService
             return _audio = _native.Audio();
         }
     }
-    private DeckAudio AudioForPhone()
+    private DeckAudio AudioForPhone(bool wantLevels = false)
     {
+        if (wantLevels) _native.WantLevels();
         var audio = Audio();
         if (!audio.Available || audio.Sessions.Count == 0) return audio;
         var defaultOutput = audio.Defaults?.GetValueOrDefault("output:1");
@@ -144,7 +145,7 @@ public sealed partial class ControlDeck : BackgroundService
         lock (_state) sleep = _sleep.Select(p => (object)new { id = p.Key, at = p.Value }).ToArray();
         return new
         {
-            platform = AppPaths.Os, audio = AudioForPhone(), media, mediaError,
+            platform = AppPaths.Os, audio = AudioForPhone(wantLevels: true), media, mediaError,
             monitors = _monitors, powerPlans = _plans, midi = _midi, hardwareLoading = _hardwareJob?.IsCompleted == false,
             actions = c.Controls.Actions.Where(a => a.Enabled).Select(Describe).ToArray(),
             shortcuts = c.Shortcuts.Select(DescribeShortcut),

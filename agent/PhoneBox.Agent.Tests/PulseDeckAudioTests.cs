@@ -708,4 +708,157 @@ public sealed class PulseDeckAudioTests
         Assert.Null(audio.Route("firefox", "korvex_ch_musica", cancelled.Token));
         Assert.Empty(calls);
     }
+
+    // ---- level meters (parec) --------------------------------------------------------------------------------------
+
+    /// <summary>A parec stand-in: hands out <paramref name="data"/>, then blocks like a live capture until stopped.</summary>
+    private sealed class LiveFeed(byte[] data) : Stream
+    {
+        private readonly ManualResetEventSlim _stopped = new();
+        private int _at;
+        public bool Stopped => _stopped.IsSet;
+        public void Stop() => _stopped.Set();
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (_at < data.Length) { var n = Math.Min(count, data.Length - _at); Array.Copy(data, _at, buffer, offset, n); _at += n; return n; }
+            _stopped.Wait();
+            return 0;
+        }
+        public override bool CanRead => true; public override bool CanSeek => false; public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException(); public override long Position { get => _at; set => throw new NotSupportedException(); }
+        public override void Flush() { } public override long Seek(long o, SeekOrigin s) => throw new NotSupportedException();
+        public override void SetLength(long v) => throw new NotSupportedException(); public override void Write(byte[] b, int o, int c) => throw new NotSupportedException();
+    }
+
+    /// <summary>One 50 ms chunk of s16le stereo whose loudest sample is <paramref name="peak"/>.</summary>
+    private static byte[] Chunk(short peak)
+    {
+        var bytes = new byte[PulseMeters.ChunkFrames * PulseMeters.Channels * 2];
+        System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(6), peak);
+        return bytes;
+    }
+
+    private static (PulseMeters Meters, List<string> Started, Dictionary<string, LiveFeed> Feeds) FakeMeters(
+        Func<long> now, short peak = 16384, int chunks = 1)
+    {
+        var started = new List<string>();
+        var feeds = new Dictionary<string, LiveFeed>();
+        var meters = new PulseMeters(args =>
+        {
+            var line = string.Join(' ', args);
+            lock (started) started.Add(line);
+            var feed = new LiveFeed([.. Enumerable.Range(0, chunks).SelectMany(_ => Chunk(peak))]);
+            lock (feeds) feeds[line] = feed;
+            return new(feed, feed.Stop);
+        }, now);
+        return (meters, started, feeds);
+    }
+
+    private static double Settled(Func<double> level)
+    {
+        var until = DateTime.UtcNow.AddSeconds(5);
+        double value;
+        while ((value = level()) == 0 && DateTime.UtcNow < until) Thread.Sleep(10);
+        return value;
+    }
+
+    [Fact]
+    public void APeakIsTheLoudestSampleOfTheChunk()
+    {
+        Assert.Equal(0, PulseMeters.Peak(new byte[16]));
+        Assert.Equal(0.5, PulseMeters.Peak(Chunk(16384)));
+        Assert.Equal(1.0, PulseMeters.Peak(Chunk(short.MinValue))); // -32768 is full scale, not over it
+        Assert.Equal(32767 / 32768.0, PulseMeters.Peak(Chunk(short.MaxValue)));
+    }
+
+    [Fact]
+    public void AMeterStartsWhenAskedAndReportsTheLastSecond()
+    {
+        using var meters = FakeMeters(() => 0).Meters;
+        meters.Level("output:a", () => PulseMeters.OutputArgs("a.monitor")); // starts it (0 until its first chunk)
+        Assert.Equal(0.5, Settled(() => meters.Level("output:a", () => throw new InvalidOperationException("started twice"))));
+        Assert.Equal(1, meters.Running);
+    }
+
+    [Fact]
+    public void AMeterNobodyAsksForStops()
+    {
+        long clock = 0;
+        var (meters, _, feeds) = FakeMeters(() => clock);
+        using (meters)
+        {
+            meters.Level("stream:798", () => PulseMeters.StreamArgs("798"));
+            clock = PulseMeters.IdleMs;
+            meters.Sweep();
+            Assert.Equal(1, meters.Running); // asked exactly IdleMs ago: still wanted
+            clock = PulseMeters.IdleMs + 1;
+            meters.Sweep();
+            Assert.Equal(0, meters.Running);
+            Assert.True(Assert.Single(feeds.Values).Stopped);
+        }
+    }
+
+    [Fact]
+    public void AMeterWhoseCaptureEndsIsForgottenAndStartsAgain()
+    {
+        var started = 0;
+        using var meters = new PulseMeters(_ => { started++; return new(new MemoryStream(Chunk(8192)), () => { }); });
+        meters.Level("stream:1", () => PulseMeters.StreamArgs("1"));
+        var until = DateTime.UtcNow.AddSeconds(5);
+        while (meters.Running > 0 && DateTime.UtcNow < until) Thread.Sleep(10);
+        Assert.Equal(0, meters.Running); // the stream ended
+        meters.Level("stream:1", () => PulseMeters.StreamArgs("1"));
+        Assert.Equal(2, started);
+    }
+
+    [Fact]
+    public void MetersAreCappedAndStopWithTheBackend()
+    {
+        var (meters, started, feeds) = FakeMeters(() => 0);
+        for (var i = 0; i < PulseMeters.MaxMeters + 5; i++) meters.Level("stream:" + i, () => PulseMeters.StreamArgs(i.ToString()));
+        Assert.Equal(PulseMeters.MaxMeters, started.Count);
+        meters.Dispose();
+        Assert.All(feeds.Values, f => Assert.True(f.Stopped));
+        Assert.Equal(0, meters.Level("stream:0", () => PulseMeters.StreamArgs("0")));
+    }
+
+    [Fact]
+    public void ParecMetersTheMonitorSourceAndEachStreamButNoMicrophone()
+    {
+        var (meters, started, _) = FakeMeters(() => 0);
+        using (meters)
+        {
+            var sinks = PulseDeckAudio.Parse(Sinks);
+            var audio = PulseDeckAudio.Build(sinks, PulseDeckAudio.Parse(Sources), PulseDeckAudio.Parse(Inputs), Scarlett, Mic);
+            PulseDeckAudio.WithLevels(audio, sinks, meters);
+            Assert.Contains(started, a => a.EndsWith("--device=" + Scarlett + ".monitor", StringComparison.Ordinal));
+            Assert.Contains(started, a => a.EndsWith("--monitor-stream=798", StringComparison.Ordinal));
+            Assert.Contains(started, a => a.EndsWith("--monitor-stream=3746", StringComparison.Ordinal));
+            Assert.DoesNotContain(started, a => a.Contains(Mic, StringComparison.Ordinal));
+            Assert.All(started, a => Assert.StartsWith("--raw --format=s16le --rate=8000 --channels=2", a));
+            Assert.Equal(audio.Devices.Count(d => d.Direction == "output") + audio.Sessions.Count, started.Count);
+        }
+    }
+
+    [Fact]
+    public void LevelsAreReadOnlyWhileAPhoneWantsThem()
+    {
+        long clock = 0;
+        var (meters, started, _) = FakeMeters(() => clock);
+        using var audio = new PulseDeckAudio(PactlFor, () => clock, meters);
+        audio.Read(fresh: true);
+        Assert.Empty(started); // ducking, profiles and the like start no meter
+        audio.WantLevels();
+        audio.Read(fresh: true);
+        Assert.NotEmpty(started);
+        var count = started.Count;
+        clock = PulseMeters.IdleMs; // the phone stopped asking
+        audio.Read(fresh: true);
+        Assert.Equal(count, started.Count);
+    }
+
+    private static string? PactlFor(IReadOnlyList<string> args) => string.Join(' ', args) switch
+    {
+        "list sinks" => Sinks, "list sources" => Sources, "list sink-inputs" => Inputs, "info" => PipeWireInfo(Scarlett, Mic), _ => "",
+    };
 }

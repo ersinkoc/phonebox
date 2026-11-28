@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Linux: the Control Deck's **level meters** move. While a phone shows a deck widget, the agent reads the level of each
+  output and application stream with `parec` (same package as `pactl`; 8 kHz, only the loudest sample of the last
+  second is kept), and stops five seconds after the phone stops asking. Microphones are not metered on Linux: reading
+  one records it and lights the desktop's "microphone in use" indicator. The guide no longer says the audio device
+  list, microphone and per-application volume work only on Windows.
+
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
