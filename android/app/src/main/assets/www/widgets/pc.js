@@ -1532,6 +1532,7 @@ W.ha = {
       } catch (_) {}
     };
     const toggle = async (e) => {
+      if (busy === e.id) return; // a second tap while a toggle is in flight would flip the light back
       haptic();
       busy = e.id; render(true);
       try {
