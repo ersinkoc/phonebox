@@ -53,6 +53,10 @@
   keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
   before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
   one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
+- Webhooks: a value pushed every second (live FPS, for example) no longer makes the phone download every pushed value
+  each time. The agent sends the change itself as an event, and the phone fetches the whole list only when it missed
+  one; these events are the first ones dropped from the short event backlog, so notifications and page switches stay
+  in it. `__proto__` works as a key like any other (#686, [Seyamalam](https://github.com/Seyamalam)).
 
 ## 0.9.32 — 2026-11-27
 

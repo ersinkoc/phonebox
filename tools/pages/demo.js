@@ -166,14 +166,15 @@
     if (broadcast) bc.postMessage({ type: 'event', kind, data });
     return e;
   }
-  const push = {
+  // no prototype: "__proto__" is a valid key and must stay an ordinary entry, as in the agent's store
+  const push = Object.assign(Object.create(null), {
     temperature: { data: 21.5, at: now() - 180e3, expiresAt: null },
     build: { data: { value: 'passed', sub: 'main · 3m 12s' }, at: now() - 240e3, expiresAt: null },
     deploy: { data: { value: 'running', sub: 'production' }, at: now() - 60e3, expiresAt: null },
     progress: { data: { value: 64 }, at: now() - 30e3, expiresAt: null },
     todo: { data: { items: [{ label: 'Try the layout editor', value: 'now', level: 'warn' }, { label: 'Widgets', value: 'done', level: 'ok' },
       { label: 'Webhooks', value: 'done', level: 'ok' }, 'Water the plants'] }, at: now() - 600e3, expiresAt: null },
-  };
+  });
   let pushVersion = 1;
   let rulesPaused = 0;
   // the phone reports its battery through /api/phone/battery; /api/charge serves the last report

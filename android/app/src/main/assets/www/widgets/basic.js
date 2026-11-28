@@ -1587,7 +1587,7 @@ W.push = {
     const key = o.key || '';
     let lastAt = -1;
     const render = () => {
-      const item = D.push[key];
+      const item = Object.prototype.hasOwnProperty.call(D.push, key) ? D.push[key] : null; // not Object.prototype for "__proto__"
       if (!item) {
         if (lastAt === 0) return;
         lastAt = 0;

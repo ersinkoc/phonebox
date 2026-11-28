@@ -1324,7 +1324,8 @@ export function applyPushChange(d) {
   if (d.clear === true) D.push = {};
   if (Array.isArray(d.remove)) for (const key of d.remove) if (typeof key === 'string') delete D.push[key];
   if (typeof d.key === 'string') {
-    if (d.item && typeof d.item === 'object') D.push[d.key] = d.item;
+    // an own entry even for "__proto__", which a plain assignment would turn into the object's prototype
+    if (d.item && typeof d.item === 'object') Object.defineProperty(D.push, d.key, { value: d.item, enumerable: true, writable: true, configurable: true });
     else delete D.push[d.key];
   }
   pushVersion = d.version;
@@ -3009,10 +3010,13 @@ export async function loadProcs() {
 
 let pushRequest = 0, appliedPushRequest = 0;
 export async function loadPush() {
-  const req = ++pushRequest;
+  const req = ++pushRequest, startVersion = pushVersion;
   try {
     const r = await api('/push');
     if (req < appliedPushRequest) return;
+    // an event applied while this request was out is newer than an answer with a lower version: the next state asks
+    // again. A lower version alone is not stale (the agent restarted or its clock stepped back)
+    if (pushVersion !== startVersion && r.version < pushVersion) return;
     appliedPushRequest = req;
     D.push = r.items || {};
     pushVersion = r.version;
