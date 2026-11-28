@@ -35,8 +35,11 @@ children inherit their stack's appearance.
 - **Content only** uses transparent surfaces, square corners, 12px spacing/padding and no border/shadow.
 - **Seamless panel** uses square corners, zero grid spacing, 12px inner padding and borders.
 - **Glass** uses translucent cards with a light rim, a top sheen and a soft shadow, 20px corners, 10px spacing and
-  12px padding, over a colourful background (or your wallpaper). Shortcut keys, process rows and AI quota cards get
-  the glass, not the widget around them. Note, Image and the Discord bar keep their own colours. It does not blur what is behind the cards, so it stays smooth on older phones.
+  12px padding, over a colourful background (or your wallpaper). The background is drawn only behind a page that has
+  glass widgets, so the other pages keep theirs. Shortcut keys, process rows and AI quota cards get the glass, not the
+  widget around them. Note, Image and the Discord bar keep their own colours. It does not blur what is behind the
+  cards, so it stays smooth on older phones. Glass draws its own rim and shadow: a border or shadow switched off by a
+  parent's preset (Flat, Content only) does not carry over, while one set on the same scope or below still applies.
 
 Choosing a preset replaces overrides at that scope. Individual adjustments then override its defaults. **Inherit**
 on an individual control removes only that explicit adjustment, restoring the preset/parent value.

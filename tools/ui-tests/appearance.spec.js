@@ -65,6 +65,42 @@ test('glass keeps explicit border and shadow choices',async({page})=>{
   expect(await css(page.locator('.w-note'),'boxShadow')).toBe('none');
 });
 
+test('Flat global + Glass page: the glass rim and depth are not hidden by the inherited flat border and shadow',async({page})=>{
+  await show(page,{display:{appearance:{style:'flat'}},pages:[{id:'glass',title:'Glass',appearance:{style:'glass'},widgets:[
+    {id:'note',type:'note',x:0,y:0,w:4,h:6,options:{text:'Appearance sample'}},
+    {id:'stat',type:'stat',x:4,y:0,w:4,h:6,options:{metric:'cpu'}},
+    {id:'plain',type:'stat',x:8,y:0,w:4,h:6,options:{metric:'ram'},appearance:{border:false,shadow:false}}
+  ]}]});
+  const stat=page.locator('.w-stat').first(),plain=page.locator('.w-stat').nth(1);
+  await expect(stat).toHaveAttribute('data-widget-surface','glass');
+  await expect(stat).not.toHaveAttribute('data-widget-border',/./);
+  await expect(stat).not.toHaveAttribute('data-widget-shadow',/./);
+  await expect.poll(()=>css(stat,'borderTopWidth')).toBe('1px');
+  expect(await css(stat,'boxShadow')).toContain('inset');
+  expect(await css(stat,'backgroundImage')).toContain('linear-gradient(145deg');
+  // an explicit choice on a later layer still wins over the glass rim and depth
+  await expect(plain).toHaveAttribute('data-widget-border','false');
+  expect(await css(plain,'borderTopWidth')).toBe('0px');
+  expect(await css(plain,'boxShadow')).toBe('none');
+});
+
+test('the glass background is drawn behind a page with glass widgets only',async({page})=>{
+  const mesh='56, 189, 248';
+  await show(page,{pages:[
+    {id:'original',title:'Original',widgets:[{id:'note',type:'note',x:0,y:0,w:6,h:6,options:{text:'Appearance sample'}}]},
+    {id:'glass',title:'Glass',appearance:{style:'glass'},widgets:[{id:'stat',type:'stat',x:0,y:0,w:6,h:6,options:{metric:'cpu'}}]}
+  ]});
+  const pages=page.locator('#pager > .page');
+  await expect(pages).toHaveCount(2);
+  await expect(page.locator('.w-stat')).toHaveAttribute('data-widget-surface','glass');
+  const before=(locator)=>locator.evaluate(node=>{const s=getComputedStyle(node,'::before');return {content:s.content,background:s.backgroundImage};});
+  expect(await page.evaluate(()=>getComputedStyle(document.body,'::before').backgroundImage)).not.toContain(mesh);
+  expect((await before(pages.nth(0))).background).not.toContain(mesh);
+  const glass=await before(pages.nth(1));
+  expect(glass.content).not.toBe('none');
+  expect(glass.background).toContain(mesh);
+});
+
 test('page and widget overrides win and explicit false and zero survive',async({page})=>{
   await show(page,{display:{appearance:{style:'cards',radius:24,gap:18,border:true,shadow:true}},
     pages:[{id:'p',title:'P',appearance:{gap:0,radius:12},widgets:[

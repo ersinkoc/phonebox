@@ -53,6 +53,13 @@
   keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
   before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
   one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
+- Appearance: a **Glass** preset (Settings › General › Appearance, or a page's or widget's appearance; opt-in):
+  translucent cards with a light rim, a top sheen and a soft shadow, 20px corners and 10px spacing, over a colourful
+  background drawn behind the pages that have glass widgets (or over your wallpaper). Shortcut keys, process rows and
+  AI quota cards get the glass; Note, Image and the Discord bar keep their own colours. Nothing behind the cards is
+  blurred, so it stays smooth on older phones. A Glass page under a Flat or Content only look keeps its rim and depth,
+  while a border or shadow set on the page or the widget itself still wins (#713,
+  [jassu-Workspace](https://github.com/jassu-Workspace)).
 
 ## 0.9.32 — 2026-11-27
 
