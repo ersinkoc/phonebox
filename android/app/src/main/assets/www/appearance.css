@@ -47,6 +47,9 @@
   border-color: rgba(255, 255, 255, .2);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
 }
+/* an explicit shadow: false clears all of the glass box-shadow, the inset sheen included, as it does on the widget
+   itself (above); the key's status ring is drawn by .key::after and stays */
+.w[data-widget-surface="glass"][data-widget-shadow="false"] :is(.key, .proc, .q-card) { box-shadow: none; }
 /* glass needs colour behind it: a static mesh (a moving one would redraw every card), unless a wallpaper is set. It is
    drawn behind a page with a glass widget only (main.js marks it .has-glass), so the other pages keep their own
    background; a page photo background paints over it. */

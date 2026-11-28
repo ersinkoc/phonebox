@@ -84,6 +84,27 @@ test('Flat global + Glass page: the glass rim and depth are not hidden by the in
   expect(await css(plain,'boxShadow')).toBe('none');
 });
 
+test('an explicit shadow: false on a Glass widget also clears the glass shadows of its keys and process rows',async({page})=>{
+  const shortcuts=[{id:'k',label:'Key',icon:'🎚️',color:'#6b7280',cmd:'builtin:keys'}];
+  await show(page,{shortcuts,pages:[{id:'glass',title:'Glass',appearance:{style:'glass'},widgets:[
+    {id:'note',type:'note',x:0,y:0,w:2,h:6,options:{text:'Appearance sample'}},
+    {id:'deep',type:'shortcuts',x:2,y:0,w:2,h:3,options:{ids:['k'],columns:1}},
+    {id:'flat',type:'shortcuts',x:2,y:3,w:2,h:3,options:{ids:['k'],columns:1},appearance:{shadow:false}},
+    {id:'procs',type:'processes',x:4,y:0,w:4,h:6,options:{}},
+    {id:'flatProcs',type:'processes',x:8,y:0,w:4,h:6,options:{},appearance:{shadow:false}}
+  ]}]});
+  const keys=page.locator('.w-shortcuts .key');
+  await expect(keys).toHaveCount(2);
+  await expect(page.locator('.w-shortcuts').nth(1)).toHaveAttribute('data-widget-shadow','false');
+  await expect.poll(()=>css(keys.nth(0),'boxShadow')).toContain('inset');
+  expect(await css(keys.nth(1),'boxShadow')).toBe('none');
+  const procs=page.locator('.w-processes');
+  await expect(procs.nth(0).locator('.proc').first()).toBeVisible();
+  await expect(procs.nth(1).locator('.proc').first()).toBeVisible();
+  expect(await css(procs.nth(0).locator('.proc').first(),'boxShadow')).toContain('inset');
+  expect(await css(procs.nth(1).locator('.proc').first(),'boxShadow')).toBe('none');
+});
+
 test('the glass background is drawn behind a page with glass widgets only',async({page})=>{
   const mesh='56, 189, 248';
   await show(page,{pages:[
