@@ -44,7 +44,7 @@ public sealed partial class ControlDeck
             return new(false, "Choose an application and an active output device");
         if (native)
         {
-            var moved = _native.RouteApplication(action.Target, action.Device);
+            var moved = _native.RouteApplication(action.Target, action.Device, ct);
             Invalidate();
             _actionResults[action.Id] = moved switch { > 0 => "Routed", 0 => "Not playing", _ => "Routing request failed" };
             return moved switch

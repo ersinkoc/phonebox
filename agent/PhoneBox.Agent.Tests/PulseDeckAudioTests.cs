@@ -698,4 +698,14 @@ public sealed class PulseDeckAudioTests
         }
         finally { Directory.Delete(directory, true); }
     }
+
+    [Fact]
+    public void ACancelledRouteStartsNoFurtherMove()
+    {
+        var (audio, calls) = Fake();
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        Assert.Null(audio.Route("firefox", "korvex_ch_musica", cancelled.Token));
+        Assert.Empty(calls);
+    }
 }

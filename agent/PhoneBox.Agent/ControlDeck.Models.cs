@@ -73,8 +73,8 @@ internal interface IDeckNative : IDisposable
     /// through SoundVolumeView instead.</summary>
     bool CanRouteApplications => false;
     /// <summary>Moves an application's streams to an output: how many streams it has (0 when it plays nothing), or null
-    /// when the output is unknown or a move failed.</summary>
-    int? RouteApplication(string application, string deviceId) => null;
+    /// when the output is unknown, a move failed or the request was cancelled before the next move.</summary>
+    int? RouteApplication(string application, string deviceId, CancellationToken ct = default) => null;
     IReadOnlyList<DeckMonitor> Monitors();
     bool Brightness(string id, int value);
     IReadOnlyList<DeckItem> PowerPlans();

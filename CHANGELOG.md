@@ -4,7 +4,8 @@
 
 - Linux: the Control Deck's **Application routing** control works with `pactl` (PulseAudio, or PipeWire through
   pipewire-pulse), with nothing else to install: a tap moves the application's playing streams to the chosen output
-  (`pactl move-sink-input`), and the sound server remembers that output for the application's next streams. The
+  (`pactl move-sink-input`); its next streams use that output too when the sound server restores stream targets, as
+  WirePlumber and PulseAudio do by default. The
   application is matched by its name or process name, ignoring case and a `.exe` suffix, so a control set up on Windows
   works too. An application that plays nothing reports "Not playing". Windows still uses SoundVolumeView.
 

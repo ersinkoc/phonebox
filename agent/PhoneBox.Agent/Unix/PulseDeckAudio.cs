@@ -246,11 +246,13 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
     /// Moves every stream of an application to an output (<c>pactl move-sink-input</c>), the Linux side of the
     /// "audio-route" control that SoundVolumeView's /SetAppDefault does on Windows. The application is matched by its
     /// process name or its name, ignoring case and a ".exe" suffix, so a control set up as "Discord.exe" works here too.
-    /// Only streams playing now move; PipeWire (WirePlumber) remembers the output for the application's next streams,
-    /// PulseAudio does with module-stream-restore. Returns how many streams the application has (0: it plays nothing),
-    /// or null when the output is not one of the listed outputs or a move failed.
+    /// Only streams playing now move. The application's next streams follow only when the sound server restores stream
+    /// targets: WirePlumber's stream.restore-target and PulseAudio's module-stream-restore, both on by default.
+    /// Returns how many streams the application has (0: it plays nothing), or null when the output is not one of the
+    /// listed outputs, a move failed, or <paramref name="ct"/> was cancelled before the next move (the moves already
+    /// made stay; each pactl call is bounded by its own timeout, as for the other writes).
     /// </summary>
-    public int? Route(string application, string sink)
+    public int? Route(string application, string sink, CancellationToken ct = default)
     {
         var wanted = AppKey(application);
         if (wanted.Length == 0) return null;
@@ -262,6 +264,7 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
             var streams = audio.Sessions.Where(s => AppKey(s.ProcessName) == wanted || AppKey(s.Name) == wanted).ToList();
             foreach (var stream in streams.Where(s => s.DeviceId != sink))
             {
+                if (ct.IsCancellationRequested) return null;
                 if (pactl(["move-sink-input", stream.Id, sink]) is null) { Forget(); return null; }
                 Patch(a => a with { Sessions = [.. a.Sessions.Select(s => s.Id == stream.Id ? s with { DeviceId = sink } : s)] });
             }
