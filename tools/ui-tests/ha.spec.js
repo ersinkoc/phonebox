@@ -194,3 +194,17 @@ test('many long entity ids are asked for in several smaller requests', async ({ 
   expect(calls.length).toBeGreaterThan(1);
   for (const u of calls) expect(u.length).toBeLessThan(8000);
 });
+
+test('a second tap while a toggle is still running sends no second toggle', async ({ page }) => {
+  await spyOnFetch(page);
+  await open(page, '/panel/', { control: true, items: [{ id: 'light.desk' }] });
+  const tile = page.locator('.ha-tile').first();
+  await expect(tile).toHaveClass(/can/);
+  await expect(tile).toHaveClass(/\bon\b/); // the demo's lamp starts on
+  await tile.click();
+  await tile.click(); // a double-tap, while the first toggle and its 700 ms reload are still in flight
+  await page.waitForTimeout(1500); // let the reload settle
+  const toggles = await page.evaluate(() => window.__calls.filter((u) => u.includes('/api/ha/toggle/light.desk')));
+  expect(toggles).toHaveLength(1);
+  await expect(tile).not.toHaveClass(/\bon\b/); // toggled exactly once: on -> off, not back on
+});
