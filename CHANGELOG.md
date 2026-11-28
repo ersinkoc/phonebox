@@ -2,18 +2,6 @@
 
 ## Unreleased
 
-- Control Deck: the **level meters read in dB** (−60 dBFS empty, 0 dBFS full), as mixers and the computer's own meters
-  do: ordinary music around −20 dBFS fills two thirds of the bar instead of a tenth. The bar is clipped instead of
-  stretched, so its colours stay at fixed marks: green up to −12 dB, yellow up to −3 dB, red above (#793, step 1). The
-  Linux notes in CONTROL-DECK.md name KORVEX Audio Console as an example of a virtual mixer whose channels the deck shows
-  as faders.
-- Docs: on KDE Plasma (Wayland), shortcuts that press keys or type need `ydotool`, as on GNOME. SETUP.md said `wtype`
-  works on KDE, but KWin doesn't offer ordinary programs the virtual keyboard protocol `wtype` needs.
-- Linux: the iPhone USB relay waits quietly while usbmuxd is not running. Its twelve pipes dialled usbmuxd's socket
-  every four seconds even when it did not exist (Linux starts usbmuxd only while an Apple device is plugged in), about
-  16 exceptions a second for nothing; they now check for the socket first. macOS, where usbmuxd always runs, and
-  Windows are unchanged.
-
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
@@ -200,6 +188,17 @@
   their receiver or on their cable, without iCUE (which can keep running). Only read requests are sent, only to devices
   the receiver reports connected on two reads in a row, and a device behind a receiver that stops answering is not
   asked again until it reconnects (#773, #783, [lemarkis](https://github.com/lemarkis)).
+- Control Deck: the **level meters read in dB** (−60 dBFS empty, 0 dBFS full), as mixers and the computer's own meters
+  do: ordinary music around −20 dBFS fills two thirds of the bar instead of a tenth. The bar is clipped instead of
+  stretched, so its colours stay at fixed marks: green up to −12 dB, yellow up to −3 dB, red above (#793, step 1). The
+  Linux notes in CONTROL-DECK.md name KORVEX Audio Console as an example of a virtual mixer whose channels the deck shows
+  as faders (#799, [mikicolmena](https://github.com/mikicolmena)).
+- Docs: on KDE Plasma (Wayland), shortcuts that press keys or type need `ydotool`, as on GNOME. SETUP.md said `wtype`
+  works on KDE, but KWin doesn't offer ordinary programs the virtual keyboard protocol `wtype` needs (#808, [mikicolmena](https://github.com/mikicolmena)).
+- Linux: the iPhone USB relay waits quietly while usbmuxd is not running. Its twelve pipes dialled usbmuxd's socket
+  every four seconds even when it did not exist (Linux starts usbmuxd only while an Apple device is plugged in), about
+  16 exceptions a second for nothing; they now check for the socket first. macOS, where usbmuxd always runs, and
+  Windows are unchanged (#807, [mikicolmena](https://github.com/mikicolmena)).
 
 ## 0.9.32 — 2026-11-27
 
