@@ -113,10 +113,10 @@ public sealed class AgentConfig
         wallpaperRev = wallpaperRev?.ToString(System.Globalization.CultureInfo.InvariantCulture),
         pages = PagesFor(deviceId).Select(p => new
         {
-            p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance, p.PhotoBg,
+            p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance, p.PhotoBg, p.Upright,
             widgets = (p.Widgets ?? []).Select(w => new
             {
-                w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance,
+                w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance, w.Upright,
                 // command widgets: only what the panel shows; the scripts (command, commandUnix, …) stay on this computer
                 options = StackWidgets.PublicOptions(w),
             }),
@@ -511,6 +511,12 @@ public sealed class PageConfig
     public List<WidgetConfig>? Widgets { get; set; }
     /// <summary>A dimmed photo behind this page's widgets, using the Photo frame's folder; null = off.</summary>
     public PhotoBgConfig? PhotoBg { get; set; }
+    /// <summary>
+    /// True when the page has its own upright layout, arranged in Settings › Pages › Upright: held upright, each
+    /// widget sits at its <see cref="WidgetConfig.Upright"/> place and one without a place is left out. Null or false:
+    /// upright, the panel packs the landscape page into columns by itself.
+    /// </summary>
+    public bool? Upright { get; set; }
 
     /// <summary>Create the page from this template (templates.json) when it has no widgets yet.</summary>
     public string? Template { get; set; }
@@ -541,13 +547,26 @@ public sealed class WidgetConfig
     public int W { get; set; } = 1;
     public int H { get; set; } = 1;
     public Dictionary<string, JsonElement>? Options { get; set; }
+    /// <summary>Its place on the page's own upright layout (<see cref="PageConfig.Upright"/>); null = left off it.</summary>
+    public GridPlace? Upright { get; set; }
 
     public JsonElement? Opt(string key) => Options is not null && Options.TryGetValue(key, out var v) ? v : null;
     public string? Str(string key) => Opt(key) is { ValueKind: JsonValueKind.String } v ? v.GetString() : null;
     public int? Int(string key) => Opt(key) is { ValueKind: JsonValueKind.Number } v && v.TryGetDouble(out var d) ? (int)d : null;
     public bool? Bool(string key) => Opt(key) is { } v ? v.ValueKind switch { JsonValueKind.True => true, JsonValueKind.False => false, _ => null } : null;
     public void Set(string key, object? value) => (Options ??= [])[key] = JsonSerializer.SerializeToElement(value);
-    public WidgetConfig Clone() => new() { Id = Id, Type = Type, X = X, Y = Y, W = W, H = H, Appearance = Appearance?.Clone(), Options = Options?.ToDictionary(kv => kv.Key, kv => kv.Value.Clone()) };
+    public WidgetConfig Clone() => new() { Id = Id, Type = Type, X = X, Y = Y, W = W, H = H, Appearance = Appearance?.Clone(), Options = Options?.ToDictionary(kv => kv.Key, kv => kv.Value.Clone()), Upright = Upright?.Clone() };
+}
+
+/// <summary>A widget's cells on a grid: column, row, width and height.</summary>
+public sealed class GridPlace
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int W { get; set; } = 1;
+    public int H { get; set; } = 1;
+
+    public GridPlace Clone() => new() { X = X, Y = Y, W = W, H = H };
 }
 
 /// <summary>
@@ -1217,6 +1236,7 @@ public sealed partial class ConfigStore(string path)
             p.Id = reservedPages.TryGetValue(p, out var reservedPage)
                 ? reservedPage : UniqueLayoutId(LayoutId(tpl?.Id ?? p.Title, "page"), pageIds);
             if (!string.IsNullOrWhiteSpace(originalId)) originalIds.TryAdd(originalId, p.Id);
+            if (p.Upright != true) p.Upright = null;
             p.Template = null;
             p.Type = null;
             p.Options = null;
@@ -1233,6 +1253,15 @@ public sealed partial class ConfigStore(string path)
                 w.H = Math.Clamp(w.H, Math.Min(minH, Catalog.MaxRows), Catalog.MaxRows);
                 w.X = Math.Clamp(w.X, 0, Catalog.Cols - w.W);
                 w.Y = Math.Clamp(w.Y, 0, Catalog.MaxRows - w.H);
+                // an upright place counts only on a page arranged for upright, and stays inside its 6 × 12 grid
+                if (p.Upright != true) w.Upright = null;
+                else if (w.Upright is { } u)
+                {
+                    u.W = Math.Clamp(u.W, Math.Min(minW, Catalog.UprightCols), Catalog.UprightCols);
+                    u.H = Math.Clamp(u.H, Math.Min(minH, Catalog.UprightRows), Catalog.UprightRows);
+                    u.X = Math.Clamp(u.X, 0, Catalog.UprightCols - u.W);
+                    u.Y = Math.Clamp(u.Y, 0, Catalog.UprightRows - u.H);
+                }
                 w.Id = reservedWidgets.TryGetValue(w, out var reservedWidget)
                     ? reservedWidget : UniqueLayoutId(LayoutId(w.Type, w.Type), widgetIds);
                 widgets.Add(w);
