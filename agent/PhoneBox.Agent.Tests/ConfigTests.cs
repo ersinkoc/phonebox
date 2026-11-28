@@ -130,6 +130,18 @@ public class ConfigTests
         Assert.Equal("work", Assert.Single(c.Claude.ExtraCredentialDirs).Label);
     }
 
+    [Fact(DisplayName = "A batteries section that is not an object reads as the defaults, and the rest still loads")]
+    public void ABatteriesSectionThatIsNotAnObjectReadsAsTheDefaults()
+    {
+        foreach (var bad in new[] { "5", "\"x\"", "null", "[1]", """{"corsair":null}""" })
+        {
+            var c = Load("{\"batteries\":" + bad + ",\"llamaSwap\":{\"url\":\"localhost:8080\"}}");
+            Assert.False(c.Batteries.Corsair);
+            Assert.Equal("http://localhost:8080", c.LlamaSwap.Url); // the rest of the file loaded
+        }
+        Assert.True(Load("""{"batteries":{"corsair":true}}""").Batteries.Corsair);
+    }
+
     [Fact(DisplayName = "The llama-swap address becomes an absolute url that keeps its path")]
     public void LlamaSwapAddressBecomesAnAbsoluteUrlKeepingItsPath()
     {

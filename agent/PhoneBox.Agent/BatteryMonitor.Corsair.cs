@@ -32,7 +32,7 @@ public sealed partial class BatteryMonitor
     internal const int CorsairMaxMisses = 2;
     // A receiver reading older than this is not "the last read": the widget was closed meanwhile (scans run only while it
     // is shown), the setting was off, or the receiver was plugged in again. Its slots start over: two reads in a row
-    // before one is asked, and a slot that stopped answering gets its chance again.
+    // before one is asked, and identified again first.
     internal const long CorsairStaleMs = 90_000;
 
     internal static readonly byte[] CorsairSlotTargets = [0x09, 0x0A, 0x0B, 0x0C, 0x0D];
@@ -232,8 +232,9 @@ public sealed partial class BatteryMonitor
         }
         if (state.ConnectedAt is not { } seen || now() - seen > CorsairStaleMs)
         {
+            // the miss counts stay: a slot that stopped answering is asked again only once it has been reported gone (or
+            // its receiver left a whole listing), not after every pause
             state.Connected = [];
-            state.Misses.Clear();
             state.ProductIds.Clear(); // another device may be on a slot now: identified again before its battery is asked
         }
         var settled = connected.Where(state.Connected.Contains).ToArray();

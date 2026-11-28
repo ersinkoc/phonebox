@@ -716,7 +716,7 @@ the Device batteries widget. This is off by default: while it is on, PhoneBox as
 on its cable, for the battery level and charging state. Nothing is changed on the device, and iCUE keeps working.
 Only listed receivers and devices are asked. A device on a receiver is first asked which product it is, and only a
 listed one is asked for its battery. A device behind a receiver that does not answer is left alone until it has
-disconnected and come back, or until the widget has been off screen for a while.
+disconnected and come back, or the receiver has been plugged in again.
 
 ## Security & privacy
 

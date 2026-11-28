@@ -40,6 +40,7 @@ public sealed class AgentConfig
     /// <summary>Clipboard sharing with the paired phone (macOS only; off by default).</summary>
     public BridgeConfig Bridge { get; set; } = new();
     /// <summary>Optional sources of the Device batteries widget.</summary>
+    [JsonConverter(typeof(BatteriesSectionJsonConverter))]
     public BatteriesConfig Batteries { get; set; } = new();
     /// <summary>Pi agent sessions on the AI sessions widget (off by default).</summary>
     public PiConfig Pi { get; set; } = new();
@@ -1480,6 +1481,23 @@ internal sealed class LlamaSwapSectionJsonConverter : JsonConverter<LlamaSwapCon
     }
 
     public override void Write(Utf8JsonWriter writer, LlamaSwapConfig value, JsonSerializerOptions options) =>
+        JsonSerializer.Serialize(writer, value, options);
+}
+
+/// <summary>A hand-edited "batteries" that is not an object (a number, a string, null) reads as the defaults; the rest of the file still loads.</summary>
+internal sealed class BatteriesSectionJsonConverter : JsonConverter<BatteriesConfig>
+{
+    public override bool HandleNull => true;
+
+    public override BatteriesConfig Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.StartObject)
+            return JsonSerializer.Deserialize<BatteriesConfig>(ref reader, options) ?? new();
+        reader.Skip();
+        return new();
+    }
+
+    public override void Write(Utf8JsonWriter writer, BatteriesConfig value, JsonSerializerOptions options) =>
         JsonSerializer.Serialize(writer, value, options);
 }
 
