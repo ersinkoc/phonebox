@@ -2,6 +2,12 @@ using System.Text.Json;
 using PhoneBox.Agent;
 using Xunit;
 
+// WorkBuddyNames keeps one static cache of the last names file it read: a test reading another home's file at the
+// same time (WorkBuddySessionsTests, through SessionMonitor.ReadWorkBuddy) would replace it between two asserts here.
+[CollectionDefinition("WorkBuddy names", DisableParallelization = true)]
+public sealed class WorkBuddyNamesCollection { }
+
+[Collection("WorkBuddy names")]
 public sealed class WorkBuddyNamesTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "pb-workbuddy-" + Guid.NewGuid());
