@@ -121,9 +121,11 @@ and mute, and switching the default output and microphone, so the application mi
 volume, balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection widgets work.
 Linux has one default device per direction, so all three Windows roles follow it. Monitor sources and streams a
 module made (the loopbacks of a virtual mixer, a combine sink) are left out; virtual sinks (`module-null-sink`)
-are listed as outputs. Level meters on Linux use `parec` (same package as `pactl`): while a phone shows a deck widget, one
+are listed as outputs. Level meters on Linux use `parec` (same package as `pactl`): while an enabled page holds a widget that draws meters
+(application mixer, application volume, device volume, channel balance, audio levels) and a phone asks for the deck, one
 `parec` per output (its monitor source) and per application stream (`--monitor-stream`) reads 8 kHz audio and keeps
-only the loudest sample of the last second, the same linear 0–1 peak Windows reports. They stop five seconds after the
+only the loudest sample of the last second (a capture that stalls stops counting after that second), the same linear
+0–1 peak Windows reports. They stop five seconds after the
 phone stops asking, and at most 32 run. Microphones are not metered on Linux, since reading one records it and lights
 the desktop's "microphone in use" indicator, so ducking (which waits for signal on a microphone) does not start there. On macOS, on Linux without `pactl`, and on Linux
 where `pactl` has not yet reached a sound server (PipeWire without pipewire-pulse), master volume/media controls

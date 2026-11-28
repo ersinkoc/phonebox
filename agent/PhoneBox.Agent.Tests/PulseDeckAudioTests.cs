@@ -861,4 +861,38 @@ public sealed class PulseDeckAudioTests
     {
         "list sinks" => Sinks, "list sources" => Sources, "list sink-inputs" => Inputs, "info" => PipeWireInfo(Scarlett, Mic), _ => "",
     };
+
+    [Fact]
+    public void AStalledCaptureDoesNotHoldItsLastPeak()
+    {
+        long clock = 0;
+        var (meters, _, _) = FakeMeters(() => clock); // one chunk, then the capture blocks without closing
+        using (meters)
+        {
+            Assert.Equal(0.5, Settled(() => meters.Level("stream:1", () => PulseMeters.StreamArgs("1"))));
+            clock = PulseMeters.WindowMs;
+            Assert.Equal(0.5, meters.Level("stream:1", () => PulseMeters.StreamArgs("1"))); // still within the second
+            clock = PulseMeters.WindowMs + 1;
+            Assert.Equal(0, meters.Level("stream:1", () => PulseMeters.StreamArgs("1")));
+            Assert.Equal(1, meters.Running); // still asked for, so it keeps running
+        }
+    }
+
+    private static AgentConfig Pages(string widgets, bool enabled = true) => System.Text.Json.JsonSerializer.Deserialize<AgentConfig>(
+        $$"""{"pages":[{"id":"p","enabled":{{(enabled ? "true" : "false")}},"widgets":{{widgets}}}]}""",
+        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+    [Theory]
+    [InlineData("""[{"type":"audio-mixer"}]""", true, true)]
+    [InlineData("""[{"type":"app-volume"}]""", true, true)]
+    [InlineData("""[{"type":"device-volume"}]""", true, true)]
+    [InlineData("""[{"type":"audio-balance"}]""", true, true)]
+    [InlineData("""[{"type":"audio-meter"}]""", true, true)]
+    [InlineData("""[{"type":"stack","options":{"widgets":[{"type":"audio-meter"}]}}]""", true, true)]
+    [InlineData("""[{"type":"stack","options":{"widgets":[{"type":"audio-meter","enabled":false}]}}]""", true, false)]
+    [InlineData("""[{"type":"panic-mute"},{"type":"audio-outputs"},{"type":"microphone"}]""", true, false)] // no output or app meter
+    [InlineData("""[{"type":"audio-mixer"}]""", false, false)] // on a disabled page
+    [InlineData("[]", true, false)]
+    public void MetersStartOnlyForAWidgetThatShowsThem(string widgets, bool pageEnabled, bool shown) =>
+        Assert.Equal(shown, ControlDeck.MetersShown(Pages(widgets, pageEnabled)));
 }

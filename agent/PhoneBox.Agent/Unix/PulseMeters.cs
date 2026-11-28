@@ -14,7 +14,7 @@ namespace PhoneBox.Agent;
 internal sealed class PulseMeters : IDisposable
 {
     internal const int Rate = 8000, Channels = 2, ChunkFrames = 400; // 50 ms per chunk
-    internal const int WindowChunks = 20; // the level covers the last second
+    internal const int WindowChunks = 20, WindowMs = 1000; // the level covers the last second
     internal const int IdleMs = 5000, MaxMeters = 32;
     private readonly Func<IReadOnlyList<string>, Feed?> _start;
     private readonly Func<long> _now;
@@ -144,11 +144,27 @@ internal sealed class PulseMeters : IDisposable
     private sealed class Meter(PulseMeters owner, string key, Feed feed)
     {
         private readonly double[] _window = new double[WindowChunks];
+        /// <summary>When each peak was read: a capture that stalls without closing must not hold its last peak.</summary>
+        private readonly long[] _readAt = new long[WindowChunks];
         private int _next;
         private int _stopped;
         public string Key => key;
         public long AskedAt;
-        public double Level { get { lock (_window) return _window.Max(); } }
+        /// <summary>The loudest peak read within the last <see cref="WindowMs"/>.</summary>
+        public double Level
+        {
+            get
+            {
+                var now = owner._now();
+                lock (_window)
+                {
+                    var level = 0.0;
+                    for (var i = 0; i < _window.Length; i++)
+                        if (now - _readAt[i] <= WindowMs && _window[i] > level) level = _window[i];
+                    return level;
+                }
+            }
+        }
 
         public void Run() => new Thread(Read) { IsBackground = true, Name = "PhoneBox meter" }.Start();
 
@@ -167,7 +183,8 @@ internal sealed class PulseMeters : IDisposable
                         filled += n;
                     }
                     var peak = Peak(chunk);
-                    lock (_window) { _window[_next] = peak; _next = (_next + 1) % _window.Length; }
+                    var at = owner._now();
+                    lock (_window) { _window[_next] = peak; _readAt[_next] = at; _next = (_next + 1) % _window.Length; }
                 }
             }
             catch { }
