@@ -74,6 +74,12 @@
   one; these events are the first ones dropped from the short event backlog, so notifications and page switches stay
   in it. A pushed value can nest at most 32 levels of arrays and objects; a deeper one is refused with an error
   (#686, [Seyamalam](https://github.com/Seyamalam)).
+- Upright pages fill the screen: a widget wider than the upright columns keeps its area, getting narrower and taller
+  (12 × 4 becomes 6 × 8 on a phone), so a page drawn for 12 × 6 no longer leaves the lower half of an upright screen
+  empty (#730, [WellyngtonSantos](https://github.com/WellyngtonSantos)).
+- Docs: running the agent in a container on a QNAP NAS (Container Station), for a panel that stays on without a
+  computer: a compose file, the settings through an SSH tunnel, Wi-Fi pairing and QuFirewall, and what mounting the
+  Docker socket means ([docs/QNAP.md](docs/QNAP.md)) (#718, [odin-21](https://github.com/odin-21)).
 
 ## 0.9.32 — 2026-11-27
 

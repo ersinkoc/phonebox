@@ -29,6 +29,13 @@ people who proposed or prototyped something are credited in the [changelog](../C
   defined on the computer and triggered from the phone by id only, behind the widget's `control` option with "ask
   first" on and retain off by default. In small pull requests; the connection and its settings are in
   ([#739](https://github.com/ersinkoc/phonebox/pull/739)), subscriptions to the push store come next.
+- **An upright layout of a page's own** ([#755](https://github.com/ersinkoc/phonebox/issues/755), pull request
+  [#758](https://github.com/ersinkoc/phonebox/pull/758)): arrange a page for an upright screen in the editor instead of
+  the automatic packing.
+- **Games outside Steam in the game library** ([#756](https://github.com/ersinkoc/phonebox/issues/756), pull request
+  [#759](https://github.com/ersinkoc/phonebox/pull/759)): other launchers, games found on the drives and your own
+  shortcuts; starting them from the phone gets its own per-widget option, off by default. Store covers for them, opt-in
+  ([#757](https://github.com/ersinkoc/phonebox/issues/757), pull request [#760](https://github.com/ersinkoc/phonebox/pull/760)).
 - **Rules for pushed values**: a "not updated for N seconds" condition, `>=` / `<=`, and a separate release threshold
   ([#242](https://github.com/ersinkoc/phonebox/issues/242), pull request
   [#245](https://github.com/ersinkoc/phonebox/pull/245), in 0.9.21, did the first two).
