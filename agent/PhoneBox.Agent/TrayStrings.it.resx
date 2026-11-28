@@ -45,4 +45,13 @@
     <data xml:space="preserve" name="autostartError">
         <value>Impossibile modificare il collegamento di avvio: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox non può avviarsi: la porta {0} è usata da {1}. Chiudi quel programma e avvia di nuovo PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox non può avviarsi: un altro programma usa la porta {0}. Chiudi quel programma e avvia di nuovo PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox non può avviarsi: la porta {0} è riservata da Windows. Di solito riavviare il computer la libera. Per vedere le porte riservate, esegui: netsh interface ipv4 show excludedportrange protocol=tcp</value>
+    </data>
 </root>

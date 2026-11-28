@@ -199,6 +199,10 @@
   every four seconds even when it did not exist (Linux starts usbmuxd only while an Apple device is plugged in), about
   16 exceptions a second for nothing; they now check for the socket first. macOS, where usbmuxd always runs, and
   Windows are unchanged (#807, [mikicolmena](https://github.com/mikicolmena)).
+- The agent says why it cannot start when its port is taken by another program (named, on Windows) or reserved by
+  Windows, in a message box on Windows and on stderr and as a notification on Linux and macOS, instead of stopping
+  with the reason buried in the log. Under systemd or launchd it waits for the port and then starts, rather than
+  exiting into a restart loop (#710, #805, [sszxt](https://github.com/sszxt)).
 
 ## 0.9.32 — 2026-11-27
 

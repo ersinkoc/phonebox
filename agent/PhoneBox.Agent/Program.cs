@@ -158,6 +158,29 @@ AddMonitor<PhoneMic>(builder.Services);
 builder.Services.AddHostedService<Tray>();
 
 var app = builder.Build();
+// #710: a local port another program holds, or one Windows reserves, stopped the agent as it started, silently, and the
+// background services' cancellations buried the reason in the log. Checked before anything starts, so the reason is the only line.
+var portProblem = Lan.PortProblem(Port, IPAddress.Loopback);
+if (portProblem is "in-use" or "reserved")
+{
+    var program = ListeningPorts.ProgramOn(IPAddress.Loopback, Port);
+    // access denied with no listener: a range Windows keeps for itself (with one: a program holding the port exclusively)
+    var reserved = portProblem == "reserved" && program is null;
+    if (reserved)
+        app.Logger.LogCritical("PhoneBox can't start: port {Port} is reserved by the system{Hint}", Port, OperatingSystem.IsWindows()
+            ? "; `netsh interface ipv4 show excludedportrange protocol=tcp` lists the ports Windows reserves, and restarting the computer usually frees it" : "");
+    else
+        app.Logger.LogCritical("PhoneBox can't start: port {Port} is used by {Program}. Close that program and start PhoneBox again",
+            Port, program ?? "another program");
+    Tray.ShowPortProblem(configStore, Port, program, reserved);
+    // Started by hand: the message says it, and the agent stops. Under systemd or launchd it is meant to come up by itself
+    // once the port is free (a program that holds it for a while at boot): it waits here, checking every five seconds,
+    // instead of exiting into a restart loop that would show the message again each time (or, with a clean exit, of
+    // staying down for good).
+    if (!Lan.RunsUnderSupervisor()) return;
+    while (Lan.PortProblem(Port, IPAddress.Loopback) is "in-use" or "reserved") Thread.Sleep(5000);
+    app.Logger.LogInformation("port {Port} is free again: starting", Port);
+}
 {
     // the phone acts on it through a shortcut command and reads it in /api/state (see PhoneDevices)
     PhoneDevices.Mic = app.Services.GetRequiredService<PhoneMic>();

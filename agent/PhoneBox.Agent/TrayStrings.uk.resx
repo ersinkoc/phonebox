@@ -45,4 +45,13 @@
     <data xml:space="preserve" name="autostartError">
         <value>Не вдалося змінити скорочення для запуску: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox не може запуститися: порт {0} зайнятий програмою {1}. Закрийте цю програму та запустіть PhoneBox знову.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox не може запуститися: порт {0} уже використовує інша програма. Закрийте цю програму та запустіть PhoneBox знову.</value>
+    </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox не може запуститися: порт {0} зарезервований Windows. Зазвичай його звільняє перезавантаження комп’ютера. Щоб переглянути зарезервовані порти, виконайте: netsh interface ipv4 show excludedportrange protocol=tcp</value>
+    </data>
 </root>

@@ -39,15 +39,28 @@ public static class Lan
     public static string Fingerprint(X509Certificate2 cert) => Convert.ToHexString(SHA256.HashData(cert.RawData)).ToLowerInvariant();
 
     /// <summary>
-    /// Why the Wi-Fi port cannot be opened, or null when it can: "reserved" (access denied: a port range Windows keeps
-    /// for itself, or a program that holds the port exclusively), "in-use" (another program listens on it) or "failed".
-    /// Checked before the agent starts listening, so a bad port turns Wi-Fi off instead of stopping the whole agent.
+    /// Why a port cannot be opened on <paramref name="address"/> (every interface by default), or null when it can:
+    /// "reserved" (access denied: a port range Windows keeps for itself, or a program that holds the port exclusively),
+    /// "in-use" (another program listens on it) or "failed". Checked before the agent starts listening, so a bad Wi-Fi
+    /// port turns Wi-Fi off instead of stopping the whole agent, and a taken local port is explained (#710).
     /// </summary>
-    public static string? PortProblem(int port)
+    /// <summary>
+    /// The agent runs as a systemd or launchd service, which restarts it on its own: systemd sets INVOCATION_ID for a unit's
+    /// process, and launchd sets XPC_SERVICE_NAME to the job's label (a Terminal shell has "0" there). Never on Windows,
+    /// where the agent starts at sign-in and nothing restarts it.
+    /// </summary>
+    internal static bool RunsUnderSupervisor(Func<string, string?>? env = null)
+    {
+        if (OperatingSystem.IsWindows()) return false;
+        env ??= Environment.GetEnvironmentVariable;
+        return !string.IsNullOrEmpty(env("INVOCATION_ID")) || env("XPC_SERVICE_NAME") is { Length: > 0 } name && name != "0";
+    }
+
+    public static string? PortProblem(int port, IPAddress? address = null)
     {
         try
         {
-            var probe = new TcpListener(IPAddress.Any, port);
+            var probe = new TcpListener(address ?? IPAddress.Any, port);
             probe.Start();
             probe.Stop();
             return null;

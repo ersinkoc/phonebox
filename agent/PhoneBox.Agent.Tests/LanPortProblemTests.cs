@@ -20,6 +20,16 @@ public sealed class LanPortProblemTests
         finally { holder.Stop(); }
     }
 
+    // #710: the agent's own port, which it opens on 127.0.0.1 only, is checked on that address before the agent starts
+    [Fact]
+    public void ALoopbackPortAnotherProgramListensOnIsInUse()
+    {
+        var holder = new TcpListener(IPAddress.Loopback, 0);
+        holder.Start();
+        try { Assert.Equal("in-use", Lan.PortProblem(((IPEndPoint)holder.LocalEndpoint).Port, IPAddress.Loopback)); }
+        finally { holder.Stop(); }
+    }
+
     [Fact]
     public void AFreePortHasNoProblemAndIsLeftFree()
     {
@@ -32,5 +42,17 @@ public sealed class LanPortProblemTests
         var again = new TcpListener(IPAddress.Any, port);
         again.Start();
         again.Stop();
+    }
+
+    [Fact]
+    public void AServiceIsToldFromAStartByHand()
+    {
+        string? None(string _) => null;
+        Assert.False(Lan.RunsUnderSupervisor(None));
+        Assert.False(Lan.RunsUnderSupervisor(k => k == "XPC_SERVICE_NAME" ? "0" : null)); // a Terminal shell on macOS
+        var service = Lan.RunsUnderSupervisor(k => k == "INVOCATION_ID" ? "5f2c" : null);
+        var job = Lan.RunsUnderSupervisor(k => k == "XPC_SERVICE_NAME" ? "net.oxog.phonebox.agent" : null);
+        Assert.Equal(!OperatingSystem.IsWindows(), service);
+        Assert.Equal(!OperatingSystem.IsWindows(), job);
     }
 }
