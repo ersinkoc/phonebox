@@ -108,6 +108,9 @@
 - iOS: the companion app runs on iOS 15, and the panel works in Safari 15 and in older Android WebViews that lack
   newer CSS (keys keep their look, and media art no longer collapses) (#723,
   [haquanghuy2908](https://github.com/haquanghuy2908)).
+- iOS: the companion app can pair with several computers and switch between them. When the one in use stops
+  answering for 30 seconds, the app follows whichever paired computer answers, and goes back to your pick as soon
+  as it answers again. Tokens stay in the Keychain (#727, [haquanghuy2908](https://github.com/haquanghuy2908)).
 
 ## 0.9.32 — 2026-11-27
 

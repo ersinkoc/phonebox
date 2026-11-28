@@ -29,6 +29,9 @@ people who proposed or prototyped something are credited in the [changelog](../C
   defined on the computer and triggered from the phone by id only, behind the widget's `control` option with "ask
   first" on and retain off by default. In small pull requests; the connection and its settings are in
   ([#739](https://github.com/ersinkoc/phonebox/pull/739)), subscriptions to the push store come next.
+- **Corsair batteries in Device batteries** ([#773](https://github.com/ersinkoc/phonebox/issues/773)): headsets and
+  mice read over USB HID like the Razer ones, from a list of known devices, with read-only battery and charging
+  queries, no switch to software mode and no fight with iCUE.
 - **A bigger Microphone tile** ([#766](https://github.com/ersinkoc/phonebox/issues/766)): an opt-in layout of the
   Microphone widget with a large mute button and a vertical gain slider; the current look stays the default.
 - **An upright layout of a page's own** ([#755](https://github.com/ersinkoc/phonebox/issues/755), pull request
