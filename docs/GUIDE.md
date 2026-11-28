@@ -593,7 +593,8 @@ curl -X POST http://127.0.0.1:8765/api/refresh                                  
 | `ttl` | Seconds until the value disappears (also `?ttl=`). |
 
 Notifications take `title`, `text`, `level`, `vibrate`, `seconds`, `wake` (light up the night screen) and `page`.
-`GET /api/push` lists the values and `DELETE /api/push/<key>` removes one; values survive restarts.
+`GET /api/push` lists the values and `DELETE /api/push/<key>` removes one; values survive restarts. The messages of an MQTT
+topic can fill a key as well: see [MQTT.md](MQTT.md#subscriptions).
 
 From this PC no key is needed. With Wi-Fi on, other machines on the network or Tailscale can use the same endpoints
 on `https://<pc>:8766` with the **webhook key** from the settings (`Authorization: Bearer <key>`, or `?token=<key>`

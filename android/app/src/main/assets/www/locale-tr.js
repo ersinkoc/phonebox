@@ -3,7 +3,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "tr": {
     "strings": {
       "s.mqtt.enable": "Bir MQTT broker'ına bağlan",
-      "s.mqtt.hint": "Bağlantıyı ajan tutar. Telefon broker'ın adresini, kullanıcı adını, parolasını veya konularını asla almaz. Broker internette olabilir; o durumda bu bilgisayarın adresini görür. Bu sürüm yalnızca bağlanır: ajan hiçbir şeye abone olmaz ve kendisi hiçbir şey yayınlamaz. Yalnızca son istek iletisini (ayarladıysanız) bağlantı koptuğunda broker yayınlar.",
+      "s.mqtt.hint": "Bağlantıyı ajan tutar. Telefon broker'ın adresini, kullanıcı adını, parolasını veya konularını asla almaz. Broker internette olabilir; o durumda bu bilgisayarın adresini ve abone olduğunuz konuları görür. Ajan kendisi hiçbir şey yayınlamaz; yalnızca son istek iletisini (ayarladıysanız) bağlantı koptuğunda broker yayınlar.",
+      "s.mqtt.subs": "Abonelikler",
+      "s.mqtt.subsHint": "Her satır bir konunun iletilerini tek bir itilen değere koyar; bu değeri İtilmiş değer widget'ı gösterir ve kurallar kullanabilir. Konuda + (bir seviye) ve # (altındaki her şey) kullanılabilir; eşleşen her ileti aynı anahtarı günceller, saniyede en çok bir kez (sonuncusu geçerli olur). sensor.temp gibi bir JSON alanı, JSON iletisinden tek bir değer seçer; boş = iletinin tamamı. Konusu ve anahtarı olmayan satırlar kaydedilmez. En fazla 32.",
+      "s.mqtt.topic": "Konu",
+      "s.mqtt.key": "Anahtar",
+      "s.mqtt.field": "JSON alanı (isteğe bağlı)",
+      "s.mqtt.unit": "Birim",
+      "s.mqtt.subAdd": "＋ Abonelik ekle",
       "s.mqtt.transport": "Aktarım",
       "s.mqtt.wsPath": "WebSocket yolu",
       "s.mqtt.user": "Kullanıcı adı",

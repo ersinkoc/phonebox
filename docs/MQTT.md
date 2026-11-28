@@ -1,10 +1,10 @@
 # MQTT
 
 PhoneBox can connect to an MQTT broker (Mosquitto, Home Assistant's add-on, Zigbee2MQTT, a cloud broker) from the
-computer. This is the first step: the agent holds the connection and reports its state. Subscribing to topics so their
-values reach the panel, a widget and publish actions come in later steps (issue #732). Until then the agent subscribes to
-nothing and publishes nothing itself; the only message that can be published is the last will, if you set one, and the
-broker publishes it when the connection is lost.
+computer and put the values it receives into the panel's pushed values. This is the second step (issue #732): the
+agent holds the connection, reports its state and subscribes to the topics you list. A widget for the connection's
+state and publish actions come in later steps. The agent publishes nothing itself; the only message that can be
+published is the last will, if you set one, and the broker publishes it when the connection is lost.
 
 The connection is made by the agent on the computer, never by the phone. The phone never gets the broker's address, user
 name, password or topics.
@@ -22,6 +22,38 @@ It is off by default. While it is on, the agent keeps trying: after a failure it
 60 seconds between tries. The wait starts over at 5 seconds once a connection has held for a minute or the settings
 change. A broker that accepts the login and then drops the connection (a duplicate client ID, an access list) is
 therefore retried more and more slowly, and the log notes it once.
+
+## Subscriptions
+
+In **Settings › General › MQTT**, under **Subscriptions**, each row puts the messages of a topic into one pushed value:
+
+| Field | What it does |
+|---|---|
+| Topic | The topic to subscribe to. `+` stands for one level (`home/+/temp`) and `#` for everything below (`sensors/#`, last level only) |
+| Key | The pushed value's key: 1 to 64 letters, digits, `.`, `_` or `-`, the same as a [webhook's](GUIDE.md#webhooks) |
+| JSON field | Optional. For a JSON message, the field to take, such as `temperature`, `sensor.temp` or `list.0` (a number picks an array item). Empty: the whole message |
+| Unit | Optional. Stored with a number or a text as `{"value": 21.5, "unit": "°C"}`, which the Pushed value widget shows next to the value |
+
+The value is then in the push store like one posted to `/api/push/<key>`: a **Pushed value** widget
+with that key shows it, a rule can compare it ("a pushed value is above…", "has had no update for N seconds") and
+`GET /api/push` lists it. Nothing else of MQTT reaches the phone, and no topic does.
+
+- **One row, one key.** A wildcard never makes keys: every message that matches a row updates that row's key, the
+  newest one winning. A busy broker (`#`) therefore cannot fill the push store, which holds 200 keys in all, webhooks
+  included. A row without a valid topic or key is not saved, a key can be used once, and there are at most 32 rows.
+- **At most one update a second per key.** A sensor that publishes ten times a second changes its key once a second,
+  with the newest value. Every message that does get through updates the value's time, even when the value is the
+  same, so a rule that watches for a silent sensor still works.
+- **What is stored.** A number, `true` or `false` stays one and anything else is a text, like a webhook's body. A JSON
+  object or array without a field is kept as it is (so `{"value": 21.5, "unit": "°C", "title": "Hall"}` works as a
+  Pushed value would; a number `ttl` in it expires the value, as in a webhook's), and a unit is added only to a number or a text. A message that has no usable value writes
+  nothing: an empty one (a retained message being cleared), one that is not text, one larger than 64 KB, one that is not
+  JSON when a field is set, or one without that field.
+- **Retained messages** arrive right after the agent subscribes, so a value is there as soon as the connection is up.
+  A change in the settings connects again, which subscribes again.
+- The agent subscribes at QoS 0 (a value to show, not a command). If the broker refuses a subscription (an access list),
+  the log says how many, never which; the connection stays up.
+- **Test** subscribes to nothing.
 
 ## Options
 
@@ -72,5 +104,5 @@ name, a topic or the error's own text, which usually names the broker.
 
 ## What the broker sees
 
-A public broker sees this computer's address, the client id, the user name and everything the agent sends it. See
-[PRIVACY.md](../PRIVACY.md).
+A public broker sees this computer's address, the client id, the user name, the topics you subscribe to and everything
+the agent sends it. See [PRIVACY.md](../PRIVACY.md).

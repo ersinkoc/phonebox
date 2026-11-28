@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **MQTT, second step: subscriptions** (Settings › General › MQTT › Subscriptions, #732,
+  [t7spotter](https://github.com/t7spotter)): each row puts the messages of a topic (`+` and `#` allowed) into one
+  pushed value under a key you choose, with an optional JSON field and unit. A **Pushed value** widget shows it and the
+  rules can use it, as with a webhook's value; nothing else of MQTT reaches the phone, and no topic does. A wildcard
+  never makes keys (every matching message updates the row's one key), there are at most 32 rows, and a key is updated
+  at most once a second with the newest value, so a busy topic cannot fill the push store or flood the phone. The
+  password and the topics stay on the computer (never in the log or the status); **Test** subscribes to nothing. The
+  settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
+  `docs/MQTT.md`.
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
@@ -14,7 +23,7 @@
   pinned SHA-256 fingerprint, and there is no switch to skip the check. The password is write-only (the settings
   page never gets it back, and it never reaches the phone, the log or the status), and a retained last will is
   off with a warning. `GET /api/mqtt/status` reports only the state, the time of the last message and a kind of
-  error, and is local only. Nothing is subscribed or published yet; subscriptions, a widget and publish actions
+  error, and is local only. This step only connects; subscriptions (next entry), a widget and publish actions
   follow in separate steps. The agent now includes the MQTTnet client library (#732, #739,
   [t7spotter](https://github.com/t7spotter)).
 - Android: a request that takes the computer several seconds to answer no longer reads as "Computer connection

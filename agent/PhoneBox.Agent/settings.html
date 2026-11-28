@@ -699,7 +699,7 @@ nav a.on::before { color: var(--accent); }
       <div class="card" id="mqttCard">
         <h3>MQTT</h3>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="mqtt.enabled" aria-labelledby="mqttEnabledLabel"><span></span></label> <span id="mqttEnabledLabel" data-i18n="s.mqtt.enable">Connect to an MQTT broker</span></div>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.hint">The agent holds the connection. The phone never gets the broker's address, user name, password or topics. The broker can be on the internet, and then it sees this computer's address. This version only connects: nothing is subscribed or published yet.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.hint">The agent holds the connection. The phone never gets the broker's address, user name, password or topics. The broker can be on the internet, and then it sees this computer's address and the topics you subscribe to. The agent publishes nothing itself; only the last will, if you set one, is published by the broker when the connection is lost.</p>
         <div class="grid2">
           <div class="field"><label for="mqttHost" data-i18n="s.ha.address">Address</label><input id="mqttHost" type="text" data-bind="mqtt.host" placeholder="broker.local" autocomplete="off" spellcheck="false"></div>
           <div class="field"><label for="mqttPort" data-i18n="s.lhm.port">Port</label><input id="mqttPort" type="number" min="1" max="65535" data-bind="mqtt.port" data-type="int"></div>
@@ -718,6 +718,10 @@ nav a.on::before { color: var(--accent); }
           <div class="field"><label for="mqttPin" data-i18n="s.mqtt.pin">or certificate fingerprint (SHA-256)</label><input id="mqttPin" type="text" data-bind="mqtt.pinnedFingerprint" autocomplete="off" spellcheck="false"></div>
         </div>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.tlsHint">The broker's certificate is always checked. A broker with its own certificate needs its CA file or its fingerprint here: there is no way to switch the check off.</p>
+        <div class="field"><label data-i18n="s.mqtt.subs">Subscriptions</label>
+          <div id="mqttSubs"></div>
+          <button class="btn sm" id="mqttSubAdd" data-i18n="s.mqtt.subAdd">＋ Add a subscription</button></div>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.subsHint">Each row puts the messages of a topic into one pushed value, which a Pushed value widget shows and the rules can use. A topic may contain + (one level) and # (everything below); every message it matches updates the same key, at most once a second (the last one wins). A JSON field such as sensor.temp picks one value out of a JSON message; empty = the whole message. Rows without a topic and a key are not saved. At most 32.</p>
         <div class="grid2">
           <div class="field"><label for="mqttWillTopic" data-i18n="s.mqtt.willTopic">Last will topic (empty = none)</label><input id="mqttWillTopic" type="text" data-bind="mqtt.willTopic" autocomplete="off" spellcheck="false"></div>
           <div class="field"><label for="mqttWillPayload" data-i18n="s.mqtt.willPayload">Last will message</label><input id="mqttWillPayload" type="text" data-bind="mqtt.willPayload" autocomplete="off" spellcheck="false"></div>
@@ -2797,7 +2801,29 @@ function renderMqtt() {
   $('mqttPassword').value = typeof cfg.mqtt.password === 'string' ? cfg.mqtt.password : '';
   $('mqttPassword').placeholder = saved ? '••••••••' : '';
   $('mqttPasswordRemove').hidden = !saved;
+  renderMqttSubs();
 }
+// the subscriptions: one row per pushed key. The agent applies the same rules on save (a valid topic and key, each key once, at most 32)
+const MQTT_SUBS_MAX = 32;
+function renderMqttSubs() {
+  const rows = cfg.mqtt.subscriptions ??= [];
+  $('mqttSubs').replaceChildren(...rows.map((r, i) => {
+    const text = (key, label, flex, max) => h('input', { type: 'text', value: r[key] ?? '', placeholder: label, 'aria-label': label, maxlength: max, spellcheck: 'false', autocomplete: 'off', style: { flex, minWidth: '0' }, oninput: (e) => { r[key] = e.target.value; changed(); } });
+    return h('div', { class: 'row mqtt-sub', style: { gap: '6px', flexWrap: 'wrap', marginBottom: '6px' } },
+      text('topic', t('s.mqtt.topic'), '2 1 200px', 256), text('key', t('s.mqtt.key'), '1 1 120px', 64),
+      text('field', t('s.mqtt.field'), '1 1 140px', 128), text('unit', t('s.mqtt.unit'), '0 0 90px', 16),
+      h('button', { class: 'btn sm', title: t('s.ha.remove'), 'aria-label': t('s.ha.remove'), onclick: () => { rows.splice(i, 1); renderMqttSubs(); changed(); } }, '✕'));
+  }));
+  $('mqttSubAdd').disabled = rows.length >= MQTT_SUBS_MAX;
+}
+$('mqttSubAdd').onclick = () => {
+  const rows = cfg.mqtt.subscriptions ??= [];
+  if (rows.length >= MQTT_SUBS_MAX) return;
+  rows.push({ topic: '', key: '', field: '', unit: '' });
+  renderMqttSubs();
+  $('mqttSubs').querySelector('.mqtt-sub:last-child input')?.focus();
+  changed();
+};
 $('mqttPassword').oninput = () => {
   if ($('mqttPassword').value) cfg.mqtt.password = $('mqttPassword').value;
   else delete cfg.mqtt.password; // emptied again: the stored one stays
@@ -3191,7 +3217,7 @@ const RULE_PRESETS = [
 let activeRules = [];
 
 function renderRules() {
-  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.mqtt ??= { enabled: false, port: 1883, transport: 'tcp', webSocketPath: '/mqtt', keepAliveSec: 60, cleanSession: true }; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.phoneMic ??= { enabled: false, source: 'mic-camcorder', endpoint: 'CABLE Input', latencyMs: 50, maxBufferMs: 150, gain: 1, serverPath: null, startMuted: false }; cfg.discord ??= { enabled: false }; cfg.steam ??= { enabled: false };
+  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.mqtt ??= { enabled: false, port: 1883, transport: 'tcp', webSocketPath: '/mqtt', keepAliveSec: 60, cleanSession: true, subscriptions: [] }; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.phoneMic ??= { enabled: false, source: 'mic-camcorder', endpoint: 'CABLE Input', latencyMs: 50, maxBufferMs: 150, gain: 1, serverPath: null, startMuted: false }; cfg.discord ??= { enabled: false }; cfg.steam ??= { enabled: false };
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
