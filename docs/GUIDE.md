@@ -570,7 +570,8 @@ day's range, so they are exact totals; a very busy day (more than 20 pages of 99
 request count, with `—` for the token totals it could not read completely. Point the **Server address** field at the
 router (e.g. `http://127.0.0.1:8080`); the agent polls it on a configurable interval (default: every minute), and only
 the counters, the version, the loaded model names, and the id, model and elapsed time of each in-flight request reach
-the phone. Prompts, requests, responses, request paths and response sizes never leave the server.
+the phone. Prompts, requests, responses, request paths and response sizes never reach the phone: the agent keeps
+each in-flight request's path and response size in memory only, to build its list.
 
 OpenCode's agent questions work the same way: when the agent asks "route A, B or C, or type your own", the phone
 shows the choices as buttons (and a text field when a custom answer is allowed) and sends the pick back. Questions

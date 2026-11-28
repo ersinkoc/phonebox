@@ -112,14 +112,19 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     private readonly SemaphoreSlim _gate = new(1, 1);
     // The active REST refresh: an address change cancels the retired walk, so a stalled body cannot hold the
     // gate - and the new router's first snapshot - until shutdown.
-    private volatile CancellationTokenSource? _activeRefresh;
+    // Taken and released with Interlocked only: a retired call's cleanup must never erase a newer call's handle.
+    private CancellationTokenSource? _activeRefresh;
     // Cancelled when the address changes: it ends the stream loop's reconnect wait (up to 30 s after a run of
     // failures, or with no address at all), so a newly entered address shows its in-flight list at once.
     private CancellationTokenSource _streamWake = new();
+    // Cancelled when the effective refresh interval changes, so a saved new interval applies now, not after the
+    // old one (up to an hour) has run out.
+    private CancellationTokenSource _pollWake = new();
     private int _addressGeneration;
     // The active /api/events read, if any: a cleared or changed address cancels it - a quiet old router would
     // otherwise keep the old stream, and its in-flight list, for the rest of the stream's lifetime.
-    private volatile CancellationTokenSource? _activeRead;
+    // Like the refresh handle, taken and released with Interlocked only.
+    private CancellationTokenSource? _activeRead;
     private Uri? _lastUrl;
 
     /// <summary>The last refresh; null while nothing has been polled yet or the address is not set. Also null
@@ -127,6 +132,19 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     /// address pointed at, and it must not keep showing as if it were the new router's.</summary>
     public LlamaSwapSnapshot? Snapshot()
         => HasAddress && _published is { } published && UrlMatches(published.Url) ? published.Snapshot : null;
+
+    /// <summary>What /api/llamaswap answers with: the snapshot and the live rows of one router. An offline snapshot
+    /// carries no rows (a stream that reconnected before the next good poll must not keep the phone on its fast
+    /// in-flight poll), and rows read while the address moved may be the new router's, so the answer is then
+    /// "loading" (null) rather than the old router's numbers with the new router's requests.</summary>
+    public (LlamaSwapSnapshot? Snapshot, IReadOnlyList<LlamaSwapInflight> Inflight) ReadForPhone()
+    {
+        var published = _published;
+        if (!HasAddress || published is null || !UrlMatches(published.Url)) return (null, []);
+        if (!published.Snapshot.Connected) return (published.Snapshot, []);
+        var rows = Inflight;
+        return UrlMatches(published.Url) ? (published.Snapshot, rows) : (null, []);
+    }
 
     /// <summary>Whether an address is configured at all. The endpoint reports it separately from the snapshot:
     /// the snapshot is also null before the first refresh has finished, and the widget must say "set the
@@ -175,10 +193,20 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     {
         while (!ct.IsCancellationRequested)
         {
+            var wake = Volatile.Read(ref _pollWake);
             await RefreshAsync(ct);
-            var seconds = Math.Clamp(config.Get()?.LlamaSwap.RefreshSeconds ?? 60, 10, 3600);
-            await Task.Delay(TimeSpan.FromSeconds(seconds), ct);
+            using var waitCt = CancellationTokenSource.CreateLinkedTokenSource(ct, wake.Token);
+            try { await Task.Delay(TimeSpan.FromSeconds(RefreshSeconds()), waitCt.Token); }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
         }
+    }
+
+    private int RefreshSeconds() => Math.Clamp(config.Get()?.LlamaSwap.RefreshSeconds ?? 60, 10, 3600);
+
+    private void WakePoll()
+    {
+        var old = Interlocked.Exchange(ref _pollWake, new CancellationTokenSource());
+        old.Cancel();
     }
 
     // RefreshAsync sees an address change only on its poll interval, and a quiet stream sits blocked in its
@@ -187,9 +215,17 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     private async Task AddressWatchAsync(CancellationToken ct)
     {
         var last = BaseOf(Url());
+        var lastInterval = RefreshSeconds();
         while (!ct.IsCancellationRequested)
         {
             await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            var interval = RefreshSeconds();
+            if (interval != lastInterval)
+            {
+                // a saved new interval: refresh now and wait the new interval from here
+                lastInterval = interval;
+                WakePoll();
+            }
             var cur = BaseOf(Url());
             if (!Uri.Equals(cur, last))
             {
@@ -238,7 +274,14 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch (Exception ex) { log.LogDebug(ex, "llama-swap events stream failed"); }
+            catch (Exception ex)
+            {
+                log.LogDebug(ex, "llama-swap events stream failed");
+                // No stream is open now (this loop runs one at a time), so nothing will send the remove events
+                // for the rows the last one left: drop them instead of reporting them live until the next good
+                // connection or MaxInflightAge.
+                ClearInflight();
+            }
             backoff = ok ? StreamRetryMin : TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, StreamRetryMax.Ticks));
             using (var waitCt = CancellationTokenSource.CreateLinkedTokenSource(ct, wake.Token))
             {
@@ -257,7 +300,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         // The read's cancellation is registered before the request goes out: EndStream (a cleared or changed
         // address) must reach the wait for the response headers, too, not only a read that is already running.
         using var readCt = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _activeRead = readCt;
+        Volatile.Write(ref _activeRead, readCt);
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, new Uri(baseUri, "api/events"));
@@ -282,7 +325,8 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         }
         finally
         {
-            if (_activeRead == readCt) _activeRead = null;
+            // only this read's own handle is released: a newer stream registered meanwhile keeps its own
+            Interlocked.CompareExchange(ref _activeRead, null, readCt);
         }
     }
 
@@ -353,8 +397,9 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     /// old router's stream - quiet or not - feeding the panel until the stream's lifetime runs out.</summary>
     private void EndStream()
     {
-        var read = _activeRead;
-        _activeRead = null;
+        // One atomic take: a read and a separate null write would erase a stream registered in between,
+        // which then could not be stopped by a cleared address.
+        var read = Interlocked.Exchange(ref _activeRead, null);
         try { read?.Cancel(); }
         catch (ObjectDisposedException)
         {
@@ -375,8 +420,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     /// router's stalled body while the new router has no snapshot yet.</summary>
     private void CancelRefresh()
     {
-        var refresh = _activeRefresh;
-        _activeRefresh = null;
+        var refresh = Interlocked.Exchange(ref _activeRefresh, null);
         try { refresh?.Cancel(); }
         catch (ObjectDisposedException)
         {
@@ -497,7 +541,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         }
         _lastUrl = baseUri;
         using var refreshCt = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _activeRefresh = refreshCt;
+        Volatile.Write(ref _activeRefresh, refreshCt);
         var gateHeld = false;
         try
         {
@@ -517,7 +561,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 }
                 return;
             }
-            var models = await GetAsync(baseUri, "v1/models", refreshCt.Token);
+            var models = await GetOptionalAsync(baseUri, "v1/models", refreshCt.Token);
             var today = await ReadActivityAsync(baseUri, refreshCt.Token);
             if (refreshCt.IsCancellationRequested || !UrlMatches(baseUri)) return;
 
@@ -545,7 +589,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         finally
         {
             if (gateHeld) _gate.Release();
-            if (_activeRefresh == refreshCt) _activeRefresh = null;
+            Interlocked.CompareExchange(ref _activeRefresh, null, refreshCt);
         }
     }
 
@@ -595,6 +639,19 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         }
     }
 
+    /// <summary>An endpoint the snapshot can do without (the models, the request log): a reset connection or a
+    /// truncated body there is missing data, not an offline router - only the version poll decides that. Host
+    /// shutdown and a retired refresh still cancel.</summary>
+    private async Task<JsonElement?> GetOptionalAsync(Uri baseUri, string path, CancellationToken ct)
+    {
+        try { return await GetAsync(baseUri, path, ct); }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or IOException)
+        {
+            log.LogDebug(ex, "llama-swap {Path} unavailable", path);
+            return null;
+        }
+    }
+
     private static string? ParseVersion(JsonElement? el)
         => el is { ValueKind: JsonValueKind.Object } o && o.TryGetProperty("version", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
@@ -632,7 +689,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     {
         var day = Now().Date;
         var start = Uri.EscapeDataString(new DateTimeOffset(day).ToString("o", CultureInfo.InvariantCulture));
-        var firstPage = await GetAsync(baseUri, $"api/metrics/activity?start={start}&limit={ActivityWindow}&page=1", ct);
+        var firstPage = await GetOptionalAsync(baseUri, $"api/metrics/activity?start={start}&limit={ActivityWindow}&page=1", ct);
         if (firstPage is not { ValueKind: JsonValueKind.Object } page
             || !page.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
             return (null, null, null, null, null);
@@ -644,17 +701,22 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         var newestRead = false;
         var sawOlder = false;
         var complete = true;
+        var rowIds = new HashSet<long>();
         for (var pageNo = 1; ; pageNo++)
         {
             if (pageNo > 1)
             {
-                var next = await GetAsync(baseUri, $"api/metrics/activity?start={start}&limit={ActivityWindow}&page={pageNo}", ct);
+                var next = await GetOptionalAsync(baseUri, $"api/metrics/activity?start={start}&limit={ActivityWindow}&page={pageNo}", ct);
                 if (next is not { ValueKind: JsonValueKind.Object } nextPage
                     || !nextPage.TryGetProperty("data", out data) || data.ValueKind != JsonValueKind.Array) { complete = false; break; }
             }
             foreach (var entry in data.EnumerateArray())
             {
                 if (entry.ValueKind != JsonValueKind.Object) continue;
+                // The router pages by offset, newest first: a request that finishes between two pages pushes the
+                // last row of one page onto the next. Its id is the same, so it is counted once.
+                if (entry.TryGetProperty("id", out var rowId) && rowId.ValueKind == JsonValueKind.Number
+                    && rowId.TryGetInt64(out var rowN) && !rowIds.Add(rowN)) continue;
                 if (!newestRead) { newestRead = true; tps = TpsOf(entry); }
                 var ts = TimestampOf(entry);
                 if (ts is not null)
@@ -680,10 +742,11 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             else if (data.GetArrayLength() == 0) break;
             if (pageNo >= MaxActivityPages) { complete = false; break; }
         }
-        if (total is 0)
+        // An empty day, whether the router said so (total 0) or a complete walk without a total found nothing.
+        if ((total is 0 || (total is null && complete && inDay == 0)) && last is null)
         {
             // Nothing finished today: the widget still shows the newest finished request's speed and time.
-            var newest = await GetAsync(baseUri, "api/metrics/activity?limit=1&page=1", ct);
+            var newest = await GetOptionalAsync(baseUri, "api/metrics/activity?limit=1&page=1", ct);
             if (newest is { ValueKind: JsonValueKind.Object } n
                 && n.TryGetProperty("data", out var nd) && nd.ValueKind == JsonValueKind.Array
                 && nd.GetArrayLength() > 0 && nd[0].ValueKind == JsonValueKind.Object)
@@ -702,7 +765,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         => entry.ValueKind == JsonValueKind.Object
            && entry.TryGetProperty("tokens", out var tokens) && tokens.ValueKind == JsonValueKind.Object
            && tokens.TryGetProperty("tokens_per_second", out var tps) && tps.ValueKind == JsonValueKind.Number
-           && tps.TryGetDouble(out var value) ? value : null;
+           && tps.TryGetDouble(out var value) && double.IsFinite(value) ? value : null;
 
     private static DateTime? TimestampOf(JsonElement entry)
         => entry.ValueKind == JsonValueKind.Object

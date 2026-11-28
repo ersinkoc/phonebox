@@ -13,6 +13,9 @@ async function open(page) {
     localStorage.setItem('pb-demo-config', JSON.stringify(c));
   }, config());
   await page.reload();
+  // The startup loader asks /api/llamaswap, which the demo does not serve: wait for its answer (the offline
+  // state) before a test injects its fixture, or that late answer could overwrite the fixture.
+  await expect(page.locator('.ls-list .empty')).toHaveText('llama-swap is offline.');
 }
 
 // demo.js does not serve /api/llamaswap, so the widget is fed the data the agent's poll would deliver
@@ -146,6 +149,23 @@ test('llama-swap does not reuse a timer across a poll gap that hid an id reuse',
   await page.evaluate(() => window.__advance(60_000));
   await llamaswap(page, { ...connected, inflightRequests: [{ id: '7', model: 'Qwen3.8-27B-GGUF', elapsedMs: 1000 }] });
   // the old start would show about a minute; it must be the new request's own second
+  await expect(page.locator('.ls-hero-t')).toHaveText('1s');
+});
+
+test('llama-swap re-seeds a reused id that comes back with a larger elapsed between two polls', async ({ page }) => {
+  await page.addInitScript(() => {
+    const realNow = Date.now.bind(Date);
+    let offset = 0;
+    window.__advance = (ms) => { offset += ms; };
+    Date.now = () => realNow() + offset;
+  });
+  await open(page);
+  await llamaswap(page, { ...connected, inflightRequests: [{ id: '1', model: 'Qwen3.8-27B-GGUF', elapsedMs: 500 }] });
+  await expect(page.locator('.ls-hero-t')).toHaveText('1s');
+  // one ordinary poll later (no gap) the router has restarted, and a new request reused id 1 at one second
+  await page.evaluate(() => window.__advance(5_000));
+  await llamaswap(page, { ...connected, inflightRequests: [{ id: '1', model: 'Qwen3.8-27B-GGUF', elapsedMs: 1_000 }] });
+  // the old local start would show about five seconds
   await expect(page.locator('.ls-hero-t')).toHaveText('1s');
 });
 

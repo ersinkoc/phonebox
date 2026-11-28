@@ -831,6 +831,9 @@ W.sessions = {
 // A poll gap this long can hide a request ending and its id being reused: the widget must not carry the old
 // request's timer across it. The fast poll is 5 s while requests are in flight, so three missed polls is a gap.
 const LLAMA_POLL_GAP_MS = 15_000;
+// The agent measures each request's elapsed time live, so between two polls the local count and the server's value
+// differ only by the request's latency. A larger difference means the id now belongs to another request.
+const LLAMA_DRIFT_MS = 2_000;
 
 W['llama-swap'] = {
   needs: ['llamaswap', 'tick'],
@@ -904,7 +907,10 @@ W['llama-swap'] = {
           // the router renumbers its ids from 1 on a restart: for one request the server's elapsed only grows,
           // so the same id with a lower value than the last poll is a renumbered id - re-seed it
           const prev = prevEl.get(r.id);
-          if (prev === undefined || el < prev) seen.set(r.id, now - el);
+          // ... and an id whose local count has drifted from the server's elapsed by more than latency can explain
+          // is another request too (a restart between two polls can bring the same id back with a larger value)
+          const drift = prev === undefined ? 0 : Math.abs((now - seen.get(r.id)) - el);
+          if (prev === undefined || el < prev || drift > LLAMA_DRIFT_MS) seen.set(r.id, now - el);
           prevEl.set(r.id, el);
         }
         for (const id of [...seen.keys()]) if (!reqs.some(r => r.id === id)) { seen.delete(id); prevEl.delete(id); }

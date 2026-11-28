@@ -1204,14 +1204,14 @@ app.MapPost("/api/volume", (int? level, string? op, AudioControl audio) =>
 app.MapGet("/api/quotas", (QuotaMonitor q) => Results.Json(new { providers = q.Snapshot(), overview = q.Overview() }));
 app.MapGet("/api/llamaswap", (LlamaSwapMonitor m) =>
 {
-    var s = m.Snapshot();
+    // the snapshot is taken on the refresh timer, but the in-flight list and its elapsed times come straight from
+    // the event stream, so the phone reads them fresh on every poll. Both come from one router (ReadForPhone), and
+    // an offline snapshot carries no live rows. Only what the widget shows leaves the machine: per request the id,
+    // the model and how long it has been running - never the path or the byte count.
+    var (s, inflight) = m.ReadForPhone();
     // A null snapshot means either no address, or an address whose first refresh has not finished yet: report
     // which, so the widget can say "set the address" (not "offline") or "loading" (not "set the address").
     if (s is null) return Results.Json(new { connected = false, configured = m.HasAddress, error = (string?)null });
-    // the snapshot is taken on the refresh timer, but the in-flight list and its elapsed times come straight from
-    // the event stream, so the phone reads them fresh on every poll. Only what the widget shows leaves the machine:
-    // per request the id, the model and how long it has been running - never the path or the byte count.
-    var inflight = m.Inflight;
     // the projection is one static method with a test of its own: the same list serialized any other way would
     // also send the request path and the response byte count, which is what must never leave the machine
     var view = LlamaSwapMonitor.InflightView(inflight);

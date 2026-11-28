@@ -506,6 +506,139 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         }
     }
 
+    [Fact(DisplayName = "A non-finite generation speed is dropped, the rest of the stats still publish")]
+    public async Task NonFiniteSpeedIsDropped()
+    {
+        await using var ls = new FakeLlamaSwap();
+        var now = DateTime.Today.AddHours(12);
+        ls.ActivityEntries = [$"{{\"timestamp\":\"{now.ToUniversalTime():yyyy-MM-ddTHH:mm:ss.fffZ}\",\"tokens\":{{\"input_tokens\":3,\"output_tokens\":4,\"tokens_per_second\":1e400}}}}"];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => now };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.True(s.Connected);
+        Assert.Null(s.GenTps); // infinity would make the endpoint's JSON writer throw
+        Assert.Equal(1, s.TodayRequests);
+        System.Text.Json.JsonSerializer.Serialize(s); // and the snapshot serializes
+    }
+
+    [Fact(DisplayName = "A request finishing between two activity pages is not counted twice")]
+    public async Task RowPushedOntoTheNextPageIsCountedOnce()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        static string Row(int id, DateTime local, long input) =>
+            $"{{\"id\":{id},\"timestamp\":\"{local.ToUniversalTime():yyyy-MM-ddTHH:mm:ss.fffZ}\",\"tokens\":{{\"input_tokens\":{input},\"output_tokens\":1}}}}";
+        await using var ls = new FakeLlamaSwap { LimitCap = 2 };
+        ls.ActivityEntries = [Row(3, frozen.AddMinutes(-1), 100), Row(2, frozen.AddMinutes(-2), 10), Row(1, frozen.AddMinutes(-3), 1)];
+        ls.InsertAfterFirstPage = Row(4, frozen, 1000); // page 2 then starts with row 2 again
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(3, s.TodayRequests); // the total the first page reported
+        Assert.Equal(111, s.TodayInputTokens); // rows 3, 2 and 1 once each - not row 2 twice
+    }
+
+    [Fact(DisplayName = "A broken optional activity page leaves the router online with unknown token totals")]
+    public async Task BrokenActivityPageKeepsTheRouterOnline()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { LimitCap = 1, BrokenActivityFromPage = 2 };
+        ls.ActivityEntries = [Entry(frozen, 1, 2), Entry(frozen.AddMinutes(-1), 1, 2)];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.True(s.Connected); // the version answered: a cut-off log page is missing data, not an offline router
+        Assert.Equal(2, s.TodayRequests); // the first page's total still stands
+        Assert.Null(s.TodayInputTokens); // the sums it could not finish are unknown, not partial
+    }
+
+    [Fact(DisplayName = "An empty day without a total still shows the newest request's speed and time")]
+    public async Task EmptyDayWithoutTotalKeepsTheNewestSpeed()
+    {
+        var frozen = DateTime.Today.AddHours(1);
+        await using var ls = new FakeLlamaSwap { OmitTotal = true };
+        ls.ActivityEntries = [Entry(frozen.AddDays(-1), 100, 10, tps: 58.42)];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(0, s.TodayRequests);
+        Assert.Equal(58.42, s.GenTps!.Value, 2);
+        Assert.NotNull(s.LastRequestAt);
+    }
+
+    [Fact(DisplayName = "An offline snapshot sends no in-flight rows to the phone")]
+    public async Task OfflineSnapshotSendsNoRows()
+    {
+        await using var ls = new FakeLlamaSwap(versionFails: true);
+        var mon = Monitor(ls.Url);
+        await mon.RefreshAsync(); // offline
+        // a stream that reconnected before the next good poll fed a row
+        mon.ApplyInflightEvent("""{"operation":"upsert","request":{"id":"7","model":"M7","elapsed_ms":5}}""");
+        Assert.NotEmpty(mon.Inflight);
+        var (snapshot, rows) = mon.ReadForPhone();
+        Assert.False(snapshot!.Connected);
+        Assert.Empty(rows);
+    }
+
+    [Fact(DisplayName = "The phone gets the live rows with a connected snapshot, and nothing for a moved address")]
+    public async Task ReadForPhonePairsTheSnapshotWithItsRouter()
+    {
+        await using var ls = new FakeLlamaSwap();
+        var mon = Monitor(ls.Url);
+        await mon.RefreshAsync();
+        mon.ApplyInflightEvent("""{"operation":"upsert","request":{"id":"7","model":"M7","elapsed_ms":5}}""");
+        var (snapshot, rows) = mon.ReadForPhone();
+        Assert.True(snapshot!.Connected);
+        Assert.Equal("7", Assert.Single(rows).Id);
+        mon.UrlOverride = "http://127.0.0.1:1/elsewhere";
+        var (moved, movedRows) = mon.ReadForPhone();
+        Assert.Null(moved); // "loading" for the new router, not the old router's numbers
+        Assert.Empty(movedRows);
+    }
+
+    [Fact(DisplayName = "A failed stream reconnect drops the rows the last stream left")]
+    public async Task FailedReconnectDropsTheRows()
+    {
+        await using var ls = new FakeLlamaSwap { EventsFail = true };
+        var mon = new LlamaSwapMonitor(new ConfigStore(Path.Combine(_dir, "events-config.json")), NullLogger<LlamaSwapMonitor>.Instance)
+        { UrlOverride = ls.Url };
+        // the last stream ended without its remove event
+        mon.ApplyInflightEvent("""{"operation":"upsert","request":{"id":"7","model":"M7","elapsed_ms":5}}""");
+        await mon.StartAsync(CancellationToken.None);
+        try
+        {
+            await WaitUntil(() => mon.Inflight.Count == 0); // the reconnect answered 503: nothing feeds the row now
+        }
+        finally
+        {
+            try { await mon.StopAsync(CancellationToken.None); }
+            catch (OperationCanceledException) { }
+        }
+    }
+
+    [Fact(DisplayName = "A saved new refresh interval applies without waiting out the old one")]
+    public async Task NewRefreshIntervalAppliesAtOnce()
+    {
+        await using var ls = new FakeLlamaSwap();
+        var path = Path.Combine(_dir, "interval-config.json");
+        File.WriteAllText(path, """{"llamaSwap":{"refreshSeconds":3600}}""");
+        var mon = new LlamaSwapMonitor(new ConfigStore(path), NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url };
+        await mon.StartAsync(CancellationToken.None);
+        try
+        {
+            await WaitUntil(() => Volatile.Read(ref ls.VersionRequests) >= 1); // the first poll, then an hour's wait
+            await Task.Delay(1500); // the watcher has seen the hour-long interval
+            var before = Volatile.Read(ref ls.VersionRequests);
+            File.WriteAllText(path, """{"llamaSwap":{"refreshSeconds":10}}""");
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(5)); // a distinct stamp, however coarse the clock
+            await WaitUntil(() => Volatile.Read(ref ls.VersionRequests) > before); // polled again within seconds
+        }
+        finally
+        {
+            try { await mon.StopAsync(CancellationToken.None); }
+            catch (OperationCanceledException) { }
+        }
+    }
+
     [Fact(DisplayName = "A stream still waiting for its headers is not a healthy stream")]
     public async Task PendingHeadersAreNotHealthy()
     {
@@ -636,6 +769,12 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
     public bool OmitTotal { get; set; }
     public int? LimitCap { get; set; }
     public string Version { get; set; } = "v275";
+    public int VersionRequests;
+    public string? InsertAfterFirstPage;
+    /// <summary>From this activity page on, the body is cut off mid-JSON.</summary>
+    public int? BrokenActivityFromPage { get; set; }
+    /// <summary>/api/events answers 503.</summary>
+    public bool EventsFail { get; set; }
 
     public FakeLlamaSwap(bool activity = true, bool keepEventsOpen = false, bool objectData = false, string basePath = "", bool quietEvents = false, bool versionFails = false, int versionDelayMs = 0, int eventsDelayMs = 0, bool oversizedLine = false)
     {
@@ -675,6 +814,12 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
             ctx.Response.OutputStream.Close();
             return;
         }
+        if (path == _base + "/api/events" && EventsFail)
+        {
+            ctx.Response.StatusCode = 503;
+            ctx.Response.OutputStream.Close();
+            return;
+        }
         if (path == _base + "/api/events" && (_keepEventsOpen || _quietEvents))
         {
             _ = Task.Run(() => KeepEventsOpen(ctx));
@@ -687,6 +832,7 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
         switch (p)
         {
             case "/api/version":
+                Interlocked.Increment(ref VersionRequests);
                 body = "{\"version\":\"" + Version + "\",\"commit\":\"e0274d5\",\"build_date\":\"2026-11-20T07:15:47Z\"}";
                 if (_versionFails) status = 500;
                 if (_versionDelay > 0) await Task.Delay(_versionDelay);
@@ -714,6 +860,10 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
                 var page = int.TryParse(qs["page"], out var pg) && pg > 0 ? pg : 1;
                 var total = OmitTotal ? "" : ",\"total\":" + (TotalOverride ?? entries.Length);
                 body = "{\"data\":[" + string.Join(",", entries.Skip((page - 1) * limit).Take(limit)) + "],\"page\":" + page + ",\"limit\":" + limit + total + "}";
+                if (BrokenActivityFromPage is { } broken && page >= broken) body = body[..(body.Length / 2)];
+                // a request finishes right after the first page was served: it lands at the top of the log
+                if (page == 1 && start is not null && Interlocked.Exchange(ref InsertAfterFirstPage, null) is { } fresh)
+                    ActivityEntries = [fresh, .. ActivityEntries];
                 break;
             }
             case "/api/events":
