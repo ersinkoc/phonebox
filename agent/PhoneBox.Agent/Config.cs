@@ -134,6 +134,9 @@ public sealed class AgentConfig
         charge = new { Charge.Enabled, Charge.Min, Charge.Max },
         // OpenCode prompts: how long the Allow always button waits before it can be pressed (it saves a pattern)
         opencode = new { OpenCode.AlwaysCountdownSec },
+        // the WorkBuddy switches as booleans: the phone's self-check card follows them (the
+        // settings file, the timeouts and the paths all stay on this computer)
+        workBuddy = new { WorkBuddy.PhoneApprovals, WorkBuddy.Sessions, WorkBuddy.OnlyWhenAway },
         // the bridge switches: the phone's Phone bridge screen follows them (nothing here is a secret). "supported" is what the
         // panel's Phone bridge button waits for: on Windows and Linux there is no bridge, and the screen could only say so.
         bridge = new { Bridge.Clipboard, Bridge.Notifications, Bridge.CopyCodes, supported = bridgeExists ?? BridgeConfig.PlatformHasBridge },
