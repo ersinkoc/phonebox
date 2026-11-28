@@ -144,7 +144,9 @@ AddMonitor<DiscordMonitor>(builder.Services);
 AddMonitor<SteamMonitor>(builder.Services);
 AddMonitor<MqttConnection>(builder.Services);
 builder.Services.AddSingleton<SteamLibrary>();
-builder.Services.AddSingleton(sp => new GameCovers(sp.GetRequiredService<ILogger<GameCovers>>()));
+// covers from the Steam store for the games found outside Steam: asked only while a widget's option is on (checked per request)
+builder.Services.AddSingleton(sp => new GameCovers(sp.GetRequiredService<ILogger<GameCovers>>(),
+    wanted: () => GameCovers.WantedBy(sp.GetRequiredService<ConfigStore>().Get())));
 builder.Services.AddSingleton<OtherGames>();
 builder.Services.AddSingleton(sp => new LyricsService(sp.GetRequiredService<ConfigStore>(), sp.GetRequiredService<ILogger<LyricsService>>()));
 AddMonitor<BatteryMonitor>(builder.Services);

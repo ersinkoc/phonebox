@@ -63,8 +63,7 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log, Game
     private bool Wanted() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "steam-library");
 
     /// <summary>A library widget on an enabled page has "Covers from the Steam store" turned on (off by default).</summary>
-    private bool CoversWanted() => covers is not null
-        && config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "steam-library" && w.Bool("storeCovers") == true);
+    private bool CoversWanted() => covers is not null && GameCovers.WantedBy(config.Get());
 
     /// <summary>
     /// The asking widget may start the games found outside Steam: its own "allowLaunchOthers" option, off by default and

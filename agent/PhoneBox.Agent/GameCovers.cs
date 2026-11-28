@@ -11,7 +11,11 @@ namespace PhoneBox.Agent;
 /// numbers agree with the name (<see cref="Matches"/>), and that app's 600 × 900 library art is kept on this computer.
 /// Each game is looked up once (a game the store does not have is asked again after a week), one request at a time,
 /// in the background. The store sees the names searched for and nothing else. Off until a library widget's "Covers from
-/// the Steam store" option is turned on.
+/// the Steam store" option is turned on, and checked again before every request.
+/// After a failure the store is left alone for a while (<see cref="FirstBackoffMs"/>, doubling up to
+/// <see cref="MaxBackoffMs"/>, or as long as its Retry-After asks), and the game that failed is asked again only after a
+/// wait of its own (<see cref="FirstGameRetryMs"/>, doubling up to <see cref="MaxGameRetryMs"/>), so it does not hold up
+/// the others. The covers of the games no longer found are dropped, with their index entries.
 /// </summary>
 public sealed class GameCovers : IDisposable
 {
@@ -20,25 +24,40 @@ public sealed class GameCovers : IDisposable
     internal const long MaxArtBytes = 4 << 20;
     internal static readonly TimeSpan RetryMissing = TimeSpan.FromDays(7);
     internal const int PauseMs = 1500;
+    /// <summary>After failures in a row, nothing is asked for 1, 2, 4… minutes, at most 30 (like LyricsService).</summary>
+    internal const long FirstBackoffMs = 60_000, MaxBackoffMs = 30 * 60_000;
+    /// <summary>A game whose lookup failed is asked again after 1, 2, 4… hours, at most a day.</summary>
+    internal const long FirstGameRetryMs = 3_600_000, MaxGameRetryMs = 24 * 3_600_000;
 
     private readonly ILogger<GameCovers> _log;
     private readonly HttpClient _http;
     private readonly string _dir;
     private readonly Func<DateTimeOffset> _now;
+    private readonly Func<bool> _wanted;
     private readonly int _pauseMs;
     private readonly Lock _gate = new();
     private Dictionary<string, Entry> _index;
     private readonly Queue<(string Key, string[] Names)> _queue = new();
     private readonly HashSet<string> _queued = [];
+    private readonly Dictionary<string, (int Count, long Until)> _gameFailures = [];
+    private int _failures;
+    private long _quietUntil;
     private Task? _worker;
 
     internal sealed record Entry(long App, long At);
 
-    public GameCovers(ILogger<GameCovers> log, HttpMessageHandler? handler = null, string? dir = null, Func<DateTimeOffset>? now = null, int pauseMs = PauseMs)
+    /// <summary>Whether a Game library widget on an enabled page has "Covers from the Steam store" on (off by default).</summary>
+    internal static bool WantedBy(AgentConfig c) =>
+        c.Widgets(enabledPagesOnly: true).Any(w => w.Type == "steam-library" && w.Bool("storeCovers") == true);
+
+    /// <param name="wanted">Asked before every request: false stops the lookups (the option was turned off).</param>
+    public GameCovers(ILogger<GameCovers> log, HttpMessageHandler? handler = null, string? dir = null, Func<DateTimeOffset>? now = null,
+        int pauseMs = PauseMs, Func<bool>? wanted = null)
     {
         _log = log;
         _dir = dir ?? Path.Combine(AppPaths.LocalDir, "game-covers");
         _now = now ?? (() => DateTimeOffset.UtcNow);
+        _wanted = wanted ?? (() => true);
         _pauseMs = pauseMs;
         _http = new HttpClient(handler ?? new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(10), AllowAutoRedirect = false })
         {
@@ -69,6 +88,8 @@ public sealed class GameCovers : IDisposable
         try
         {
             Directory.CreateDirectory(_dir);
+            // the folder or the index swapped for a link (a junction to elsewhere): nothing is written through it
+            if (SteamLibrary.IsLink(_dir) || (File.Exists(IndexPath) && SteamLibrary.IsLink(IndexPath))) return;
             string json;
             lock (_gate) json = JsonSerializer.Serialize(_index);
             var tmp = IndexPath + ".tmp";
@@ -78,36 +99,86 @@ public sealed class GameCovers : IDisposable
         catch (Exception ex) { _log.LogDebug("could not save the game covers index: {Msg}", ex.Message); }
     }
 
-    /// <summary>The cover kept for a game (its key), or null.</summary>
+    /// <summary>The cover kept for a game (its key), or null; never a file reached through a link.</summary>
     public string? CoverFile(string key)
     {
+        long app;
         lock (_gate)
+        {
             if (!_index.TryGetValue(key, out var e) || e.App <= 0) return null;
-        var file = ArtPath(_index[key].App);
-        return File.Exists(file) ? file : null;
+            app = e.App;
+        }
+        var file = ArtPath(app);
+        return File.Exists(file) && !SteamLibrary.IsLink(file) && !SteamLibrary.IsLink(_dir) ? file : null;
     }
 
     private string ArtPath(long app) => Path.Combine(_dir, app.ToString(CultureInfo.InvariantCulture) + ".jpg");
 
-    /// <summary>Looks up, in the background, the games not looked up yet (or not found a week ago).</summary>
+    private long NowMs() => _now().ToUnixTimeMilliseconds();
+
+    /// <summary>
+    /// The games found now: looks up, in the background, those not looked up yet (or not found a week ago), but not while
+    /// the store is left alone after a failure, nor a game whose own lookup failed a moment ago. Drops what is kept for
+    /// the games that are no longer in <paramref name="games"/>.
+    /// </summary>
     public void Want(IEnumerable<(string Key, string[] Names)> games)
     {
+        var list = games.ToList();
+        bool pruned;
         lock (_gate)
         {
-            var now = _now().ToUnixTimeSeconds();
-            foreach (var (key, names) in games)
+            pruned = Prune(list.Select(g => g.Key).ToHashSet(StringComparer.Ordinal));
+            var nowMs = NowMs();
+            if (_quietUntil <= nowMs)
             {
-                if (names.Length == 0 || _queued.Contains(key)) continue;
-                if (_index.TryGetValue(key, out var e) && (e.App > 0 ? File.Exists(ArtPath(e.App)) : now - e.At < RetryMissing.TotalSeconds)) continue;
-                _queue.Enqueue((key, names));
-                _queued.Add(key);
+                var now = nowMs / 1000;
+                foreach (var (key, names) in list)
+                {
+                    if (names.Length == 0 || _queued.Contains(key)) continue;
+                    if (_gameFailures.TryGetValue(key, out var f) && f.Until > nowMs) continue;
+                    if (_index.TryGetValue(key, out var e) && (e.App > 0 ? File.Exists(ArtPath(e.App)) : now - e.At < RetryMissing.TotalSeconds)) continue;
+                    _queue.Enqueue((key, names));
+                    _queued.Add(key);
+                }
+                if (_queue.Count > 0 && _worker is null) _worker = Task.Run(Work);
             }
-            if (_queue.Count > 0 && _worker is null) _worker = Task.Run(Work);
         }
+        if (pruned) { SaveIndex(); DropUnusedArt(); }
+    }
+
+    /// <summary>Drops the index entries (and failure counts) of the games not in <paramref name="keep"/>; call with the lock held.</summary>
+    private bool Prune(HashSet<string> keep)
+    {
+        foreach (var key in _gameFailures.Keys.Where(k => !keep.Contains(k)).ToList()) _gameFailures.Remove(key);
+        var gone = _index.Keys.Where(k => !keep.Contains(k)).ToList();
+        foreach (var key in gone) _index.Remove(key);
+        return gone.Count > 0;
+    }
+
+    /// <summary>Deletes the art files no index entry names any more (only files named like ours: digits and .jpg).</summary>
+    private void DropUnusedArt()
+    {
+        try
+        {
+            if (!Directory.Exists(_dir) || SteamLibrary.IsLink(_dir)) return;
+            HashSet<string> used;
+            lock (_gate) used = _index.Values.Where(e => e.App > 0).Select(e => Path.GetFileName(ArtPath(e.App))).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in Directory.EnumerateFiles(_dir, "*.jpg", new EnumerationOptions { AttributesToSkip = FileAttributes.ReparsePoint }))
+            {
+                var name = Path.GetFileName(file);
+                if (used.Contains(name) || !Path.GetFileNameWithoutExtension(name).All(char.IsAsciiDigit)) continue;
+                lock (_gate) if (_queue.Count > 0 || _worker is not null) return; // a lookup may be writing one now
+                File.Delete(file);
+            }
+        }
+        catch (Exception ex) { _log.LogDebug("could not drop old game covers: {Msg}", ex.Message); }
     }
 
     /// <summary>Waits for the lookups under way (tests).</summary>
     internal Task Idle() { lock (_gate) return _worker ?? Task.CompletedTask; }
+
+    /// <summary>How long the store is still left alone after a failure (ms), or 0 (tests).</summary>
+    internal long PausedFor() { lock (_gate) return Math.Max(0, _quietUntil - NowMs()); }
 
     private async Task Work()
     {
@@ -122,17 +193,70 @@ public sealed class GameCovers : IDisposable
             long app = 0;
             var failed = false;
             try { app = await LookUp(next.Names); }
-            catch (Exception ex) { failed = true; _log.LogInformation("game cover lookup failed: {Msg}", ex.Message); }
-            lock (_gate)
+            catch (CoversOffException)
             {
-                _queued.Remove(next.Key);
-                // a failure (no network, the store busy) is not "not found": the game is asked again next time
-                if (!failed) _index[next.Key] = new Entry(app, _now().ToUnixTimeSeconds());
-                if (failed) { _queue.Clear(); _queued.Clear(); }
+                // the option was turned off: the rest is not asked, and nothing counts as a failure
+                lock (_gate) { _queue.Clear(); _queued.Clear(); _worker = null; }
+                return;
             }
-            if (!failed) { SaveIndex(); _log.LogDebug("game cover: {Names} -> {App}", string.Join(" | ", next.Names), app); }
+            catch (Exception ex)
+            {
+                failed = true;
+                _log.LogInformation("game cover lookup failed: {Msg}", ex.Message);
+                lock (_gate)
+                {
+                    var nowMs = NowMs();
+                    // this game waits on its own (1, 2, 4… hours), so a game that always fails does not hold up the rest
+                    var count = Math.Min((_gameFailures.TryGetValue(next.Key, out var f) ? f.Count : 0) + 1, 16);
+                    _gameFailures[next.Key] = (count, nowMs + Math.Min(FirstGameRetryMs << (count - 1), MaxGameRetryMs));
+                    // and the store is left alone for 1, 2, 4… minutes, at most 30, or as long as its Retry-After asks
+                    _failures = Math.Min(_failures + 1, 16);
+                    var keep = Math.Min(FirstBackoffMs << (_failures - 1), MaxBackoffMs);
+                    if (ex is StoreRefusedException { RetryAfter: { } wait }) keep = Math.Max((long)wait.TotalMilliseconds, keep);
+                    _quietUntil = Math.Max(_quietUntil, nowMs + keep);
+                    // the games queued after it are asked again once the wait is over (the next list after it)
+                    _queue.Clear();
+                    _queued.Clear();
+                }
+            }
+            if (!failed)
+            {
+                lock (_gate)
+                {
+                    _queued.Remove(next.Key);
+                    // a failure (no network, the store busy) is not "not found": only an answer is kept
+                    _index[next.Key] = new Entry(app, _now().ToUnixTimeSeconds());
+                    _gameFailures.Remove(next.Key);
+                    _failures = 0;
+                }
+                SaveIndex();
+                _log.LogDebug("game cover: {Names} -> {App}", string.Join(" | ", next.Names), app);
+            }
             if (_pauseMs > 0) await Task.Delay(_pauseMs);
         }
+    }
+
+    /// <summary>The option was turned off while lookups were queued.</summary>
+    private sealed class CoversOffException() : Exception("Covers from the Steam store were turned off");
+
+    /// <summary>The store answered with an error: its status, and how long it asks to wait (Retry-After), if it says.</summary>
+    internal sealed class StoreRefusedException(int status, TimeSpan? retryAfter) : HttpRequestException($"the Steam store answered {status}")
+    {
+        public TimeSpan? RetryAfter { get; } = retryAfter;
+    }
+
+    private static StoreRefusedException Refused(HttpResponseMessage res)
+    {
+        TimeSpan? wait = res.Headers.RetryAfter?.Delta;
+        if (wait is null && res.Headers.RetryAfter?.Date is { } at) wait = at - DateTimeOffset.UtcNow;
+        return new StoreRefusedException((int)res.StatusCode, wait is { Ticks: > 0 } ? wait : null);
+    }
+
+    /// <summary>A request to the store, made only while the option is still on.</summary>
+    private async Task<HttpResponseMessage> Get(string url)
+    {
+        if (!_wanted()) throw new CoversOffException();
+        return await _http.GetAsync(url);
     }
 
     /// <summary>The store app whose name matches one of <paramref name="names"/>, with its art saved; 0 when none does.</summary>
@@ -141,7 +265,9 @@ public sealed class GameCovers : IDisposable
         foreach (var name in names)
         {
             var url = $"{SearchUrl}?term={Uri.EscapeDataString(name)}&cc=us&l=en";
-            using var doc = JsonDocument.Parse(await _http.GetStringAsync(url));
+            using var res = await Get(url);
+            if (!res.IsSuccessStatusCode) throw Refused(res);
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
             if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) continue;
             var hits = new List<(long Id, int Score)>();
             foreach (var item in items.EnumerateArray())
@@ -161,12 +287,18 @@ public sealed class GameCovers : IDisposable
 
     private async Task<bool> SaveArt(long app)
     {
-        using var res = await _http.GetAsync(string.Format(CultureInfo.InvariantCulture, ArtUrl, app));
+        using var res = await Get(string.Format(CultureInfo.InvariantCulture, ArtUrl, app));
+        // no art for that app (404): another result may have some; a refusal (429, 5xx, a Retry-After) is a failure
+        if (res.Headers.RetryAfter is not null || (int)res.StatusCode == 429 || (int)res.StatusCode >= 500) throw Refused(res);
         if (!res.IsSuccessStatusCode || res.Content.Headers.ContentType?.MediaType != "image/jpeg") return false;
         var bytes = await res.Content.ReadAsByteArrayAsync();
         if (bytes.Length is < 1024 or > (int)MaxArtBytes || bytes[0] != 0xFF || bytes[1] != 0xD8) return false; // a JPEG, not a page
         Directory.CreateDirectory(_dir);
-        await File.WriteAllBytesAsync(ArtPath(app), bytes);
+        // the folder, or a file in its place, swapped for a link: nothing is written through it
+        var path = ArtPath(app);
+        if (SteamLibrary.IsLink(_dir) || (File.Exists(path) && SteamLibrary.IsLink(path)))
+            throw new IOException("the game covers folder or file is a link");
+        await File.WriteAllBytesAsync(path, bytes);
         return true;
     }
 

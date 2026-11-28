@@ -601,7 +601,7 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
     }
 
     /// <summary>A symbolic link or a junction (both are reparse points; a symbolic link also has a target).</summary>
-    private static bool IsLink(string path)
+    internal static bool IsLink(string path)
     {
         try
         {

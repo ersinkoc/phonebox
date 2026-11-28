@@ -106,4 +106,97 @@ public class GameCoversTests : IDisposable
         await back.Idle();
         Assert.NotNull(back.CoverFile("x:1"));
     }
+
+    [Fact]
+    public async Task AFailureLeavesTheStoreAloneForAWhileOrAsLongAsItsRetryAfterAsks()
+    {
+        var at = DateTimeOffset.UtcNow;
+        var busy = true;
+        var store = new FakeStore(r =>
+        {
+            if (!busy) return Store(r);
+            var res = new HttpResponseMessage((HttpStatusCode)429);
+            res.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromMinutes(5));
+            return res;
+        });
+        var covers = new GameCovers(NullLogger<GameCovers>.Instance, store, _dir, () => at, pauseMs: 0);
+        covers.Want([("x:1", ["Grand Theft Auto IV"]), ("x:2", ["Red Dead Redemption 2"])]);
+        await covers.Idle();
+        Assert.Single(store.Asked);   // the first refusal stops the rest
+        Assert.InRange(covers.PausedFor(), 4 * 60_000, 5 * 60_000); // Retry-After: longer than the first minute
+
+        // the panel asks every 30 s: nothing is asked while the wait lasts
+        at = at.AddMinutes(1);
+        covers.Want([("x:1", ["Grand Theft Auto IV"]), ("x:2", ["Red Dead Redemption 2"])]);
+        await covers.Idle();
+        Assert.Single(store.Asked);
+
+        // after it, the other game is asked; the one that failed waits its own turn (an hour)
+        busy = false;
+        at = at.AddMinutes(5);
+        covers.Want([("x:1", ["Grand Theft Auto IV"]), ("x:2", ["Red Dead Redemption 2"])]);
+        await covers.Idle();
+        Assert.Equal(2, store.Asked.Count);
+        Assert.Contains("Red Dead", store.Asked[1]);
+        Assert.Null(covers.CoverFile("x:1"));
+
+        at = at.AddHours(1);
+        covers.Want([("x:1", ["Grand Theft Auto IV"]), ("x:2", ["Red Dead Redemption 2"])]);
+        await covers.Idle();
+        Assert.NotNull(covers.CoverFile("x:1"));
+    }
+
+    [Fact]
+    public async Task FailuresInARowDoubleTheWaitUpToHalfAnHour()
+    {
+        var at = DateTimeOffset.UtcNow;
+        var store = new FakeStore(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        var covers = new GameCovers(NullLogger<GameCovers>.Instance, store, _dir, () => at, pauseMs: 0);
+        var waits = new List<long>();
+        for (var i = 0; i < 7; i++)
+        {
+            covers.Want([("x:" + i, ["Game " + i])]); // a new game each time: each one's own wait does not get in the way
+            await covers.Idle();
+            waits.Add(covers.PausedFor());
+            at = at.AddMilliseconds(covers.PausedFor() + 1);
+        }
+        Assert.Equal([60_000L, 120_000, 240_000, 480_000, 960_000, 1_800_000, 1_800_000], waits);
+    }
+
+    [Fact]
+    public async Task NothingIsAskedOnceTheOptionIsTurnedOff()
+    {
+        var on = false;
+        var store = new FakeStore(Store);
+        var covers = new GameCovers(NullLogger<GameCovers>.Instance, store, _dir, pauseMs: 0, wanted: () => on);
+        covers.Want([("x:1", ["Grand Theft Auto IV"]), ("x:2", ["FIFA 23"])]);
+        await covers.Idle();
+        Assert.Empty(store.Asked);
+        Assert.Equal(0, covers.PausedFor()); // not a failure
+
+        on = true;
+        covers.Want([("x:1", ["Grand Theft Auto IV"])]);
+        await covers.Idle();
+        Assert.NotNull(covers.CoverFile("x:1"));
+    }
+
+    [Fact]
+    public async Task TheCoversOfGamesNoLongerFoundAreDropped()
+    {
+        var covers = new GameCovers(NullLogger<GameCovers>.Instance, new FakeStore(Store), _dir, pauseMs: 0);
+        covers.Want([("x:1", ["Grand Theft Auto IV"]), ("x:2", ["FIFA 23"])]);
+        await covers.Idle();
+        var art = covers.CoverFile("x:1");
+        Assert.NotNull(art);
+        File.WriteAllText(Path.Combine(_dir, "notes.jpg"), "not ours"); // a file not named like ours stays
+
+        covers.Want([("x:2", ["FIFA 23"])]);
+        Assert.Null(covers.CoverFile("x:1"));
+        Assert.False(File.Exists(art));
+        Assert.True(File.Exists(Path.Combine(_dir, "notes.jpg")));
+        // and the index on disk no longer has it
+        var again = new GameCovers(NullLogger<GameCovers>.Instance, new FakeStore(Store), _dir, pauseMs: 0);
+        Assert.DoesNotContain("x:1", File.ReadAllText(Path.Combine(_dir, "index.json")));
+        Assert.Null(again.CoverFile("x:1"));
+    }
 }
