@@ -737,4 +737,38 @@ public sealed class PulseDeckAudioTests
         using var native = new PortableDeckNative(new AudioControl(), media, _ => null, pulse);
         Assert.Equal("default", native.OutputSink("default"));
     }
+
+    [Theory]
+    [InlineData("Firefox", "firefox", "YouTube", "Firefox")]
+    [InlineData("WEBRTC VoiceEngine", "Discord", "playStream", "Discord")]   // Discord's voice, live on PipeWire 1.6
+    [InlineData("webrtc voiceengine", "Discord", null, "Discord")]
+    [InlineData("Chromium", "slack", null, "slack")]                          // an Electron app that sets no name
+    [InlineData("WEBRTC VoiceEngine", null, "playStream", "WEBRTC VoiceEngine")] // no binary: keep what there is
+    [InlineData("ALSA plug-in [mpg123]", "mpg123", null, "mpg123")]
+    [InlineData("ALSA plug-in [aplay]", null, null, "aplay")]
+    [InlineData(null, "sidra", null, "sidra")]
+    [InlineData(null, null, "loopback output", "loopback output")]
+    [InlineData(null, null, null, "Application")]
+    public void AStreamIsNamedAfterItsProgramNotItsAudioLibrary(string? applicationName, string? binary, string? media, string expected) =>
+        Assert.Equal(expected, PulseDeckAudio.StreamName(applicationName, binary, media));
+
+    [Fact]
+    public void DiscordsVoiceIsListedAsDiscord()
+    {
+        const string inputs = """
+            Sink Input #284472
+            	Client: 280729
+            	Sink: 60
+            	Corked: no
+            	Mute: no
+            	Volume: front-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB
+            	Properties:
+            		application.name = "WEBRTC VoiceEngine"
+            		application.process.id = "955900"
+            		application.process.binary = "Discord"
+            		media.name = "playStream"
+            """;
+        var session = Assert.Single(PulseDeckAudio.Build(PulseDeckAudio.Parse(Sinks), [], PulseDeckAudio.Parse(inputs), null, null).Sessions);
+        Assert.Equal(("Discord", "Discord"), (session.Name, session.ProcessName));
+    }
 }
