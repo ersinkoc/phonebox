@@ -26,7 +26,10 @@ Last updated: 2026-11-26 (PhoneBox 0.9.30).
   Rockstar Games Launcher (their registry keys) leave on this computer, and looks through the folders at the top of each
   drive for installed games (skipping links and system folders). The games' names, their folders, the program or launcher
   link that starts each one and the programs' icons are kept in memory only, never in a file; the log names a game only
-  when the phone starts it. It sends only the names, a hashed id and the icons to your phone (never a path) and makes no
+  when the phone starts it. It sends only this to your phone (never a path): for each Steam game its app id, name, when
+  it was last played, its size on disk, its update state (ready, update queued, updating, paused) and update progress;
+  which game is running now; for each game found outside Steam a hashed id, its name, where it was found (a launcher or
+  a drive) and the ids of your own shortcuts that start a program in its folder; and the covers and icons. It makes no
   network connection; nothing is sent to Steam or anyone else. Before it starts a game's program by its path (with
   **Let the phone start the games found outside Steam** on), the agent reads that program's and its folders' attributes
   up to the drive's root and, on Windows, their owners and permissions, and refuses a program reached through a link or
