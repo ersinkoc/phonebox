@@ -234,6 +234,7 @@ public sealed partial class BatteryMonitor
         {
             state.Connected = [];
             state.Misses.Clear();
+            state.ProductIds.Clear(); // another device may be on a slot now: identified again before its battery is asked
         }
         var settled = connected.Where(state.Connected.Contains).ToArray();
         state.Connected = [.. connected];
@@ -286,6 +287,7 @@ public sealed partial class BatteryMonitor
         var handledDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // every Corsair interface listed now
         var listedAll = false;
+        var missedOne = false; // an entry whose path could not be read: the listing is not complete
         var deadline = Environment.TickCount64 + CorsairTotalBudgetMs;
         string? lastError = null;
 
@@ -301,15 +303,19 @@ public sealed partial class BatteryMonitor
                 var devData = new SP_DEVINFO_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVINFO_DATA>() };
                 for (uint i = 0; Environment.TickCount64 < deadline; i++)
                 {
-                    if (!SetupDiEnumDeviceInterfaces(set, IntPtr.Zero, ref guid, i, ref ifData)) { listedAll = true; break; }
+                    if (!SetupDiEnumDeviceInterfaces(set, IntPtr.Zero, ref guid, i, ref ifData))
+                    {
+                        listedAll = Marshal.GetLastWin32Error() == 259; // ERROR_NO_MORE_ITEMS: the end, not a failure
+                        break;
+                    }
                     SetupDiGetDeviceInterfaceDetailW(set, ref ifData, IntPtr.Zero, 0, out var req, IntPtr.Zero);
-                    if (req == 0) continue;
+                    if (req == 0) { missedOne = true; continue; }
 
                     var mem = Marshal.AllocHGlobal((int)req);
                     try
                     {
                         Marshal.WriteInt32(mem, IntPtr.Size == 8 ? 8 : 6);
-                        if (!SetupDiGetDeviceInterfaceDetailW(set, ref ifData, mem, req, out _, ref devData)) continue;
+                        if (!SetupDiGetDeviceInterfaceDetailW(set, ref ifData, mem, req, out _, ref devData)) { missedOne = true; continue; }
                         var path = Marshal.PtrToStringUni(IntPtr.Add(mem, 4));
                         if (string.IsNullOrEmpty(path) || !path.Contains("vid_1b1c", StringComparison.OrdinalIgnoreCase)) continue;
                         present.Add(path);
@@ -321,17 +327,17 @@ public sealed partial class BatteryMonitor
                         handledDevices.Add(physicalId);
                         readings.AddRange(found);
                     }
-                    catch (Exception ex) { lastError ??= ex.Message; }
+                    catch (Exception ex) { lastError ??= ex.Message; missedOne = true; }
                     finally { Marshal.FreeHGlobal(mem); }
                 }
             }
             finally { SetupDiDestroyDeviceInfoList(set); }
         }
-        catch (Exception ex) { lastError ??= ex.Message; }
+        catch (Exception ex) { lastError ??= ex.Message; missedOne = true; }
 
         // A receiver that was unplugged (and maybe plugged in again since) starts over: once a whole listing went by without
         // it, its slots' readings and miss counts are dropped. A listing the budget cut short drops nothing.
-        if (listedAll)
+        if (listedAll && !missedOne)
             foreach (var gone in CorsairInterfaces.Keys.Where(k => !present.Contains(k)).ToArray())
                 CorsairInterfaces.TryRemove(gone, out _);
 
