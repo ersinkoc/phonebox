@@ -144,6 +144,7 @@ AddMonitor<DiscordMonitor>(builder.Services);
 AddMonitor<SteamMonitor>(builder.Services);
 AddMonitor<MqttConnection>(builder.Services);
 builder.Services.AddSingleton<SteamLibrary>();
+builder.Services.AddSingleton<OtherGames>();
 builder.Services.AddSingleton(sp => new LyricsService(sp.GetRequiredService<ConfigStore>(), sp.GetRequiredService<ILogger<LyricsService>>()));
 AddMonitor<BatteryMonitor>(builder.Services);
 AddMonitor<RuleEngine>(builder.Services);
@@ -817,13 +818,26 @@ app.MapGet("/api/steam/avatar", async (string id, SteamMonitor steam, Cancellati
 
 // Steam library from Steam's own files on this computer (no API key, no account): installed games, covers, the game
 // being played. Nothing is read while no Steam library widget is on an enabled page.
-app.MapGet("/api/steam/library", (SteamLibrary library) => Results.Json(library.View()));
+// "others": the games found on this computer outside Steam (OtherGames).
+app.MapGet("/api/steam/library", (SteamLibrary library, OtherGames others) =>
+{
+    var v = library.View();
+    return Results.Json(new { v.Enabled, v.Found, v.Error, v.Running, v.Games, Others = others.List() });
+});
 // The installed games (id and name) for the widget's favorites picker in settings. Not in Lan.cs: the computer only.
-app.MapGet("/api/steam/games", (SteamLibrary library) => Results.Json(library.Installed()));
+app.MapGet("/api/steam/games", (SteamLibrary library, OtherGames others) =>
+    Results.Json(library.Installed().Concat(others.List().Select(g => new SteamPick(g.Id, g.Name)))));
 // A cover from Steam's appcache/librarycache, for an installed app id only (SteamLibrary.FindCover checks the path).
 // The id goes in the query string: the Android app lets image requests through by exact path (READ_ONLY_IMAGES).
-app.MapGet("/api/steam/cover", (string? id, SteamLibrary library, HttpResponse res) =>
+app.MapGet("/api/steam/cover", (string? id, SteamLibrary library, OtherGames others, HttpResponse res) =>
 {
+    // a game found outside Steam ("x:…"): its program's own icon
+    if (id?.StartsWith("x:", StringComparison.Ordinal) == true)
+    {
+        if (others.Cover(id) is not { } png) return Results.NotFound();
+        res.Headers.CacheControl = "private, max-age=86400";
+        return Results.File(png, "image/png");
+    }
     if (library.CoverPath(id) is not { } path) return Results.NotFound();
     byte[] bytes;
     try { bytes = File.ReadAllBytes(path); } catch { return Results.NotFound(); }
@@ -833,8 +847,11 @@ app.MapGet("/api/steam/cover", (string? id, SteamLibrary library, HttpResponse r
 });
 // Starts an installed game through Steam (steam://rungameid/<id>) for the asking widget ("widget=pageId/widgetId"),
 // only with that widget's "Let the phone start games" on (off by default), like the App console and Dictation.
-app.MapPost("/api/steam/launch", (string? id, string? widget, HttpRequest req, SteamLibrary library) =>
-    library.Launch(req.Headers["X-PhoneBox-Device"].ToString(), widget, id) is { } refused
+// A game found outside Steam ("x:…") starts the same way, by its launcher or its program, under the same widget option.
+app.MapPost("/api/steam/launch", (string? id, string? widget, HttpRequest req, SteamLibrary library, OtherGames others) =>
+    (id?.StartsWith("x:", StringComparison.Ordinal) == true
+        ? others.LaunchAllowed(req.Headers["X-PhoneBox-Device"].ToString(), widget) ? others.Launch(id) : SteamLibrary.LaunchOff
+        : library.Launch(req.Headers["X-PhoneBox-Device"].ToString(), widget, id)) is { } refused
         ? Results.BadRequest(new { error = refused.Error, code = refused.Code })
         : Results.Ok(new { ok = true }));
 // Synced lyrics of the track playing now, from LRCLIB, for the asking widget ("widget=pageId/widgetId"): only when that

@@ -20,9 +20,12 @@ Last updated: 2026-11-26 (PhoneBox 0.9.30).
   sent to Steam once when you save it, then only the SteamID64 is stored. The key is never sent to the phone or logged.
   The activity widget derives its short history from successive polls in memory; it is not written to disk or logged and
   starts empty after an agent restart.
-- **Steam library**: the Steam library widget reads Steam's own files on this computer (the installed games' manifests,
-  `localconfig.vdf` for when each was last played, covers from Steam's library cache, and the game running now) and sends
-  the list and the covers only to your phone. It makes no network connection; nothing is sent to Steam or anyone else.
+- **Game library**: the Game library widget reads Steam's own files on this computer (the installed games' manifests,
+  `localconfig.vdf` for when each was last played, covers from Steam's library cache, and the game running now). On
+  Windows it also reads what the Epic Games Launcher (its manifests), the EA app, GOG Galaxy, Ubisoft Connect and the
+  Rockstar Games Launcher (their registry keys) leave on this computer, and looks through the folders at the top of each
+  drive for installed games; only the games' names and their programs' icons are kept, in memory. It sends the list and
+  the covers only to your phone and makes no network connection; nothing is sent to Steam or anyone else.
 - **Last Claude quota reading**: `claude-quota.json` next to the log (usage percentages and reset times, no token),
   so the panel can show the last values after a restart, and `claude-quota-schedule.json` (when the next check may
   run, the last error message and, after Anthropic refused a token, a 16-character hash of that token, never the token

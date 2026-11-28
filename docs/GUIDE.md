@@ -130,9 +130,18 @@ vibrate for them). **Tick while scrolling**, off by default, adds a light tick f
 settings, **Haptic feedback** sets how strong they are (no vibration, light, normal or strong). The vibrations follow the
 display's vibration switch and night mode like the panel's other ones.
 
-**Steam library** shows the Steam games installed on this computer: the favorites you tick in the widget's options
+**Game library** shows the Steam games installed on this computer: the favorites you tick in the widget's options
 first, in the order you ticked them, then the most recently played, with their covers, the game being played and update progress.
-**Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
+A game Steam does not know (one from another launcher, a mod, a game started by its own program) can join them:
+make it a shortcut and tick it in **Other games**; it comes after the favorites, with the picture uploaded for the
+shortcut as its cover, and a tap runs the shortcut. On Windows the widget also finds, on its own, the games installed outside Steam: the ones the Epic
+Games Launcher (its manifests), the EA app, GOG Galaxy, Ubisoft Connect and the Rockstar Games Launcher (their registry keys)
+installed, and the games on the drives that no launcher lists (a portable copy, a mod, an old disc install): the folders at
+the top of each drive, and inside folders such as Games or Program Files, that hold a program and something only games carry
+(a game store's or engine's library such as steam_api.dll or UnityPlayer.dll, Bink videos, a game's archives, a mod loader).
+The drives are looked through in the background every ten minutes. They come after the Steam games, with their program's
+icon; the program is the one named most like the folder, never an installer, uninstaller or crash reporter. Nothing is sent
+anywhere. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
 Steam's own files, so the widget needs no Steam API key, no sign-in and no internet, and nothing is sent to Steam:
 `libraryfolders.vdf` and the `appmanifest_*.acf` file of each game in every library folder, `localconfig.vdf` for when a
 game was last played, covers from Steam's `appcache/librarycache`, and Steam's `RunningAppID` (the registry on Windows,
