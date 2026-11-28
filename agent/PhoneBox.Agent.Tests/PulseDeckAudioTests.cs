@@ -708,4 +708,20 @@ public sealed class PulseDeckAudioTests
         Assert.Null(audio.Route("firefox", "korvex_ch_musica", cancelled.Token));
         Assert.Empty(calls);
     }
+
+    [Theory]
+    [InlineData("korvex_ch_musica", "korvex_ch_musica")]
+    [InlineData(Scarlett, Scarlett)]
+    [InlineData(Mic, null)]          // a microphone is not an output
+    [InlineData("unplugged", null)]  // not listed now: the default output, as before
+    [InlineData("default", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void SoundsPlayOnTheChosenOutputWhenItIsListed(string? device, string? sink)
+    {
+        var (pulse, _) = Fake();
+        using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+        using var native = new PortableDeckNative(new AudioControl(), media, _ => null, pulse);
+        Assert.Equal(sink, native.OutputSink(device));
+    }
 }

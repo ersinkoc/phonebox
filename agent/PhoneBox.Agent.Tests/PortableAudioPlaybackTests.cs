@@ -54,4 +54,23 @@ public sealed class PortableAudioPlaybackTests
 
         Assert.Throws<NotSupportedException>(() => native.Play("r1", "https://stream.example/live.mp3", null, 60));
     }
+
+    [Fact]
+    public void APlayerOnLinuxIsSentToTheChosenOutput()
+    {
+        var ffplay = PortableDeckNative.BuildStartInfo("ffplay", "/usr/bin/ffplay", "/tmp/bell.wav", 50, "korvex_ch_musica");
+        Assert.Equal("korvex_ch_musica", ffplay.Environment["PULSE_SINK"]);
+        Assert.Equal(["-nodisp", "-autoexit", "-vn", "-sn", "-loglevel", "error", "-volume", "50", "-i", "/tmp/bell.wav"], ffplay.ArgumentList);
+
+        var mpv = PortableDeckNative.BuildStartInfo("mpv", "/usr/bin/mpv", "/tmp/bell.wav", 50, "korvex_ch_musica");
+        Assert.Equal(["--no-config", "--no-terminal", "--no-video", "--really-quiet", "--volume=50", "--audio-device=pulse/korvex_ch_musica", "--", "/tmp/bell.wav"], mpv.ArgumentList);
+
+        var vlc = PortableDeckNative.BuildStartInfo("vlc", "/usr/bin/vlc", "https://stream.example/live", 50, "korvex_ch_musica");
+        Assert.Equal(["--intf", "dummy", "--no-one-instance", "--play-and-exit", "--no-video", "--quiet", "--gain=0.5", "--aout=pulse", "--", "https://stream.example/live"], vlc.ArgumentList);
+        Assert.Equal("korvex_ch_musica", vlc.Environment["PULSE_SINK"]);
+
+        // without a chosen output nothing changes, and a PULSE_SINK the agent inherited is left alone
+        var plain = PortableDeckNative.BuildStartInfo("ffplay", "/usr/bin/ffplay", "/tmp/bell.wav", 50);
+        Assert.Equal(Environment.GetEnvironmentVariable("PULSE_SINK"), plain.Environment.TryGetValue("PULSE_SINK", out var v) ? v : null);
+    }
 }

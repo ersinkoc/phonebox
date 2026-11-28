@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Linux: soundboard sounds and radio stations play on the **output chosen in the control**, as on Windows, when `pactl`
+  lists it: `ffplay` and VLC through `PULSE_SINK` (VLC also with `--aout=pulse`), mpv through `--audio-device=pulse/…`.
+  An output that is not there right now plays on the default output, as before.
+
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
