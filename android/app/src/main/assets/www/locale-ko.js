@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ko": {
     "strings": {
+      "s.llamaswap.title": "llama-swap 통계",
+      "s.llamaswap.hint": "로컬 LLM 라우터를 llama-swap 위젯에 표시합니다: 로드된 모델, 경과 시간을 가진 진행 중인 요청, 오늘의 요청 및 토큰 수, 생성 속도 (기본값: 꺼짐). 카운터, 모델 이름, 진행 중인 요청의 id와 경과 시간만 전화로 전송되며 프롬프트, 요청, 응답은 전송되지 않습니다. 라우터 버전과 마지막 요청 시간도 전송됩니다.",
+      "s.llamaswap.url": "서버 주소 (비어 있음 = 꺼짐)",
+      "s.llamaswap.refresh": "새로고침 주기(초)",
       "s.display.weekStart": "한 주의 시작 요일",
       "s.display.weekStart.monday": "월요일",
       "s.display.weekStart.sunday": "일요일",
@@ -402,6 +406,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.tablet": "태블릿",
       "s.pages.screen.wide": "와이드 태블릿",
       "s.pages.screenHint": "휴대폰 페이지는 12 × 6입니다. 태블릿은 12열을 유지하고 행을 추가하므로 한 페이지에 더 많은 위젯을 둘 수 있습니다. 위쪽 6행 아래의 위젯은 태블릿에만 표시되고, 휴대폰은 위쪽 6행을 표시합니다.",
+      "s.pages.screen.upright": "세로",
+      "s.pages.screen.landscape": "가로",
+      "s.pages.uprightAuto": "세로로 두면 이 페이지는 가로 페이지를 바탕으로 자동 배치됩니다. 직접 배치하려면 여기서 위젯을 옮기거나 크기를 바꾸세요.",
+      "s.pages.uprightOwn": "이 페이지에는 자체 세로 레이아웃이 있습니다. 세로로 두면 위젯이 여기서 놓은 자리에 표시됩니다.",
+      "s.pages.uprightReset": "자동으로 되돌리기",
+      "s.pages.uprightLeftOff": "세로 화면에 없는 위젯:",
+      "s.js.leaveOffUpright": "세로에서 숨기기",
+      "s.js.leaveOffUprightHint": "세로에서는 이 위젯이 표시되지 않으며 가로 페이지에는 남아 있습니다",
       "s.lhm.checking": "센서 소스 확인 중…",
       "s.lhm.connected": "센서 소스 연결됨",
       "s.lhm.unavailable": "센서 소스에 연결할 수 없음",
@@ -1132,6 +1144,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "불러오는 중…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "로컬 LLM 라우터: 로드된 모델, 진행 중인 요청, 오늘의 요청 및 토큰 수, 생성 속도. 서버 주소는 설정 › 일반 › llama-swap에서 설정합니다.",
       "Only this category (its category in Settings; empty = all)": "이 분류만 (설정의 분류, 비우면 전체)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity 세션: 작업, 대기, 유휴.",
       "1": "1",
@@ -1875,6 +1889,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 재생목록 (선택 안 함 = 전체)"
     },
     "panel": {
+      "In flight": "진행 중",
+      "Today": "오늘",
+      "Speed": "속도",
+      "Last request": "마지막 요청",
+      "Set the server address in Settings › General › llama-swap.": "서버 주소를 설정 › 일반 › llama-swap에서 설정하세요.",
+      "llama-swap is offline.": "llama-swap이 오프라인입니다.",
+      "{a} in / {b} out": "입력 {a} / 출력 {b}",
       "% load": "부하%",
       "5-hour": "5시간",
       "5-hour session": "5시간 세션",

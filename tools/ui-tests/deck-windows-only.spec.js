@@ -1,10 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
-// #613: on Linux and macOS the agent reports only the system output (PortableDeckNative: no sessions, no inputs, one
-// output that cannot be switched; the demo answers the same for __demoOs). The deck widgets that need Windows Core
-// Audio say so instead of an empty list.
-async function show(page, type, os) {
-  await page.addInitScript((os) => { window.__demoOs = os; }, os);
+// #613: without a full audio backend (macOS, or Linux without pactl) the agent reports only the system output
+// (PortableDeckNative: no sessions, no inputs, one output that cannot be switched; the demo answers the same for
+// __demoOs). The deck widgets that need more say so instead of an empty list. With pactl (__demoPulse) Linux reports
+// every device and application stream, and the widgets work as on Windows.
+async function show(page, type, os, pulse = false) {
+  await page.addInitScript(([os, pulse]) => { window.__demoOs = os; window.__demoPulse = pulse; }, [os, pulse]);
   await page.goto('/panel/style.css');
   await page.evaluate((type) => {
     localStorage.clear();
@@ -14,19 +15,31 @@ async function show(page, type, os) {
   await page.goto('/panel/');
 }
 
-for (const [type, text] of [
-  ['audio-mixer', 'Per-app volume is only on Windows for now'],
-  ['audio-outputs', 'Switching audio devices is only on Windows for now'],
-  ['push-to-talk', 'Microphone control is only on Windows for now'],
+// each widget's own control: a session's volume slider, an output's button, the enabled push-to-talk button
+for (const [type, text, control] of [
+  ['audio-mixer', 'Per-app volume is only on Windows for now', (page) => page.getByRole('slider', { name: 'Spotify volume', exact: true })],
+  ['audio-outputs', 'Switching audio devices is only on Windows for now', (page) => page.getByRole('button', { name: 'Headphones', exact: true })],
+  ['push-to-talk', 'Microphone control is only on Windows for now', (page) => page.getByRole('button', { name: 'Hold to talk' })],
 ]) {
   test(`${type} says it is Windows-only on Linux`, async ({ page }) => {
     await show(page, type, 'linux');
     await expect(page.getByText(text, { exact: true })).toBeVisible();
+    await expect(control(page).and(page.locator(':enabled'))).toHaveCount(0); // push-to-talk stays, disabled
   });
 
-  test(`${type} keeps its controls on Windows`, async ({ page }) => {
-    await show(page, type, 'windows');
-    await expect(page.locator('.w-control, .deck-list, button').first()).toBeVisible();
+  for (const [label, os, pulse] of [['on Windows', 'windows', false], ['on Linux with pactl', 'linux', true]]) {
+    test(`${type} keeps its controls ${label}`, async ({ page }) => {
+      await show(page, type, os, pulse);
+      await expect(control(page)).toBeVisible();
+      await expect(control(page)).toBeEnabled();
+      await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+    });
+  }
+
+  // pactl answered once, then the sound server stopped: the agent reports audio unavailable, which is not Windows-only
+  test(`${type} says audio is unavailable when the sound server stops`, async ({ page }) => {
+    await show(page, type, 'linux', 'down');
+    await expect(page.getByText('The sound server did not answer (pactl)', { exact: true })).toBeVisible();
     await expect(page.getByText(text, { exact: true })).toHaveCount(0);
   });
 }

@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "id": {
     "strings": {
+      "s.llamaswap.title": "Statistik llama-swap",
+      "s.llamaswap.hint": "Tampilkan router LLM lokal di widget llama-swap: model mana yang dimuat, permintaan yang berjalan beserta waktunya, permintaan dan token hari ini, serta kecepatan generasi (nonaktif secara bawaan). Hanya penghitung, nama model, serta id dan waktu berjalan setiap permintaan yang berjalan yang dikirim ke ponsel — tidak pernah prompt, permintaan, atau respons. Versi router dan waktu permintaan terakhir juga dikirim.",
+      "s.llamaswap.url": "Alamat server (kosong = nonaktif)",
+      "s.llamaswap.refresh": "Muat ulang setiap (detik)",
       "s.display.weekStart": "Hari pertama dalam pekan",
       "s.display.weekStart.monday": "Senin",
       "s.display.weekStart.sunday": "Minggu",
@@ -402,6 +406,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.tablet": "Tablet",
       "s.pages.screen.wide": "Tablet lebar",
       "s.pages.screenHint": "Halaman ponsel berukuran 12 × 6. Tablet mempertahankan 12 kolom dan menambah baris, sehingga halaman memuat lebih banyak widget. Widget di bawah 6 baris teratas tetap di tablet; ponsel menampilkan 6 baris teratas.",
+      "s.pages.screen.upright": "Tegak",
+      "s.pages.screen.landscape": "Mendatar",
+      "s.pages.uprightAuto": "Saat tegak, halaman ini diatur otomatis dari halaman mendatar. Pindahkan atau ubah ukuran widget di sini untuk mengaturnya sendiri.",
+      "s.pages.uprightOwn": "Halaman ini punya tata letak tegak sendiri: saat tegak, widget berada di tempat yang Anda letakkan di sini.",
+      "s.pages.uprightReset": "Kembali ke otomatis",
+      "s.pages.uprightLeftOff": "Tidak ada di layar tegak:",
+      "s.js.leaveOffUpright": "Sembunyikan saat tegak",
+      "s.js.leaveOffUprightHint": "Saat tegak widget ini tidak ditampilkan; tetap ada di halaman mendatar",
       "s.lhm.checking": "Memeriksa sumber sensor…",
       "s.lhm.connected": "Sumber sensor tersambung",
       "s.lhm.unavailable": "Sumber sensor tidak tersedia",
@@ -1132,6 +1144,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Memuat…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Router LLM lokal: model yang dimuat, permintaan berjalan, permintaan dan token hari ini, serta kecepatan generasi. Alamat server diatur di Pengaturan › Umum › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Hanya kategori ini (kategorinya di Pengaturan; kosong = semua)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sesi: bekerja, menunggu, diam.",
       "1": "1",
@@ -1875,6 +1889,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Daftar putar Plex (tidak ada yang dicentang = semua)"
     },
     "panel": {
+      "In flight": "Berlangsung",
+      "Today": "Hari ini",
+      "Speed": "Kecepatan",
+      "Last request": "Permintaan terakhir",
+      "Set the server address in Settings › General › llama-swap.": "Atur alamat server di Pengaturan › Umum › llama-swap.",
+      "llama-swap is offline.": "llama-swap luring.",
+      "{a} in / {b} out": "masuk {a} / keluar {b}",
       "% load": "% muatan",
       "5-hour": "5 jam",
       "5-hour session": "Sesi 5 jam",

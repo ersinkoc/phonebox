@@ -63,9 +63,18 @@ internal interface IDeckNative : IDisposable
 {
     event Action<string>? SoundStopped { add { } remove { } }
     DeckAudio Audio();
+    /// <summary>Whether a microphone is muted right now, for push-to-talk's restore target: a backend that keeps its
+    /// listings for a moment (pactl) reads it fresh here.</summary>
+    bool? MicrophoneMuted(string id) => Audio().Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted;
     bool Device(string id, int? volume, bool? muted, int? channel = null);
     bool Session(string id, int? volume, bool? muted);
     bool DefaultDevice(string id, int? role = null);
+    /// <summary>Whether this backend moves applications between outputs itself (pactl on Linux); on Windows routing goes
+    /// through SoundVolumeView instead.</summary>
+    bool CanRouteApplications => false;
+    /// <summary>Moves an application's streams to an output: how many streams it has (0 when it plays nothing), or null
+    /// when the output is unknown, a move failed or the request was cancelled before the next move.</summary>
+    int? RouteApplication(string application, string deviceId, CancellationToken ct = default) => null;
     IReadOnlyList<DeckMonitor> Monitors();
     bool Brightness(string id, int value);
     IReadOnlyList<DeckItem> PowerPlans();

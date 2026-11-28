@@ -630,7 +630,7 @@ body.offline .w-media.phone-song .offline-msg { display: none; }
    second on a 120 Hz phone) for as long as it is on screen. main.js flips beat-2 .. beat-4 on <html> instead, from its 250 ms tick
    and only while something that pulses is shown, so the panel draws a frame only when a pulse changes. The beat has two
    steps, a little less smooth than a fade and far cheaper. */
-html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiting .st { opacity: .35; }
+html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiting .st, html.beat-2 .ls-dot.on { opacity: .35; }
 .sess .tl { font-size: 12px; width: 14px; text-align: center; flex: 0 0 14px; }
 .sess .tl.claude { color: #d97757; }
 .sess .tl.codex { color: #e5e7eb; }
@@ -1971,3 +1971,30 @@ body.controls-top .ap-foot { order: -1; margin-bottom: 4px; }
 .ly-note[hidden] { display: none; }
 .w-lyrics:not(.timed):not(.plain) .ly-note { margin: auto; }
 .ly-credit { position: absolute; right: 10px; top: 9px; font-size: 9px; letter-spacing: .1em; color: var(--dim); }
+
+/* llama-swap widget: the local LLM router's loaded models, the requests in flight, and usage */
+.w-llama-swap { padding: 10px 12px; display: flex; flex-direction: column; }
+.ls-list { flex: 1; min-height: 0; display: grid; gap: 7px; overflow-y: auto; align-content: start; padding: 2px 0; }
+.ls-models { display: grid; gap: 2px; font-size: 12.5px; font-weight: 600; min-width: 0; }
+.ls-model { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-hero { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.ls-hero-n { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ls-hero b { font-size: clamp(20px, 24cqh, 30px); font-weight: 500; letter-spacing: -0.02em; line-height: 1.05; }
+.ls-hero-t { font-size: 12px; font-weight: 600; color: var(--muted); }
+.ls-reqs { display: grid; gap: 3px; min-width: 0; }
+.ls-req { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; min-width: 0; }
+.ls-rm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ls-rs { flex: none; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ls-more { font-size: 11px; font-weight: 700; color: var(--muted); }
+.ls-stats { display: grid; gap: 4px; min-width: 0; margin-top: 7px; }
+.ls-stat { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.ls-k { color: var(--muted); flex: none; }
+.ls-v { color: var(--text); text-align: right; word-break: break-word; }
+.ls-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; border-top: 1px solid var(--line); padding-top: 6px; min-width: 0; margin-top: 7px; }
+.ls-mini { display: grid; gap: 1px; min-width: 0; }
+.ls-mini .ls-k { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.ls-mini > span:last-child { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* it wraps instead of truncating at the narrow three-column widths */
+.ls-spd > span:last-child { font-size: 16px; white-space: normal; overflow: visible; text-overflow: clip; }
+.ls-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 7px rgba(16, 185, 129, .7); margin-inline-end: 6px; position: relative; top: 2px; }
+.ls-dot.on { background: #f59e0b; box-shadow: 0 0 7px rgba(245, 158, 11, .8); }

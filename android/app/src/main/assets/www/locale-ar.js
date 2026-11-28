@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ar": {
     "strings": {
+      "s.llamaswap.title": "إحصاءات llama-swap",
+      "s.llamaswap.hint": "يعرض موجِّه LLM المحلي في ودجة llama-swap: أي النماذج محمَّلة، والطلبات الجارية مع مضيها، وطلبات اليوم مع الرموز، وسرعة التوليد (معطَّل افتراضيًا). لا يُرسَل إلى الهاتف إلا العدّادات وأسماء النماذج وهوية كل طلب جارٍ وزمانه — لا المطالبات ولا الطلبات ولا الردود قطّ. تُرسل أيضًا نسخة الموجّه ووقت آخر طلب.",
+      "s.llamaswap.url": "عنوان الخادم (فارغ = إيقاف)",
+      "s.llamaswap.refresh": "تحديث كل (ثوانٍ)",
       "s.display.weekStart": "أول أيام الأسبوع",
       "s.display.weekStart.monday": "الاثنين",
       "s.display.weekStart.sunday": "الأحد",
@@ -402,6 +406,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.tablet": "الجهاز اللوحي",
       "s.pages.screen.wide": "جهاز لوحي عريض",
       "s.pages.screenHint": "صفحة الهاتف 12 × 6. يحتفظ الجهاز اللوحي بالأعمدة الاثني عشر ويضيف صفوفًا، فتتسع الصفحة لعناصر أكثر. تبقى العناصر الموجودة أسفل الصفوف الستة الأولى على الجهاز اللوحي، ويعرض الهاتف الصفوف الستة الأولى.",
+      "s.pages.screen.upright": "عمودي",
+      "s.pages.screen.landscape": "أفقي",
+      "s.pages.uprightAuto": "في الوضع العمودي تُرتَّب هذه الصفحة تلقائيًا من الصفحة الأفقية. انقل عنصرًا أو غيّر حجمه هنا لترتيبها بنفسك.",
+      "s.pages.uprightOwn": "لهذه الصفحة تخطيط عمودي خاص: في الوضع العمودي تبقى العناصر حيث تضعها هنا.",
+      "s.pages.uprightReset": "العودة إلى التلقائي",
+      "s.pages.uprightLeftOff": "ليست على الشاشة العمودية:",
+      "s.js.leaveOffUpright": "إخفاء في الوضع العمودي",
+      "s.js.leaveOffUprightHint": "في الوضع العمودي لا يظهر هذا العنصر؛ يبقى في الصفحة الأفقية",
       "s.lhm.checking": "جارٍ التحقق من مصدر المستشعرات…",
       "s.lhm.connected": "مصدر المستشعرات متصل",
       "s.lhm.unavailable": "مصدر المستشعرات غير متاح",
@@ -1132,6 +1144,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "جارٍ التحميل…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "موجِّه LLM محلي: النماذج المحمَّلة، والطلبات الجارية، وعدد الطلبات والرموز اليوم، وسرعة التوليد. يُضبط عنوان الخادم في الإعدادات › عام › llama-swap.",
       "and": "و",
       "never": "أبدًا",
       "default": "افتراضي",
@@ -1911,6 +1925,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "قوائم تشغيل Plex (دون تحديد = الكل)"
     },
     "panel": {
+      "In flight": "في التنفيذ",
+      "Today": "اليوم",
+      "Speed": "السرعة",
+      "Last request": "آخر طلب",
+      "Set the server address in Settings › General › llama-swap.": "اضبط عنوان الخادم في الإعدادات › عام › llama-swap.",
+      "llama-swap is offline.": "llama-swap غير متصل.",
+      "{a} in / {b} out": "داخل {a} / خارج {b}",
       "% load": "النسبة المئوية للحمولة",
       "5-hour": "5 ساعات",
       "5-hour session": "جلسة مدتها 5 ساعات",

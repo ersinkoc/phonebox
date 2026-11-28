@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ro": {
     "strings": {
+      "s.llamaswap.title": "Statistici llama-swap",
+      "s.llamaswap.hint": "Afișează routerul LLM local pe un widget llama-swap: ce modele sunt încărcate, cererile în curs cu durata lor, cererile și tokenii de astăzi și viteza de generare (oprit implicit). Doar contoarele, numele modelelor și id-ul și durata fiecărei cereri în curs sunt trimise pe telefon — niciodată prompturi, cereri sau răspunsuri. Se trimit și versiunea routerului și ora ultimei cereri.",
+      "s.llamaswap.url": "Adresa serverului (gol = oprit)",
+      "s.llamaswap.refresh": "Reîmprospătează la fiecare (secunde)",
       "s.display.weekStart": "Prima zi a săptămânii",
       "s.display.weekStart.monday": "Luni",
       "s.display.weekStart.sunday": "Duminică",
@@ -398,6 +402,14 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.tablet": "Tabletă",
       "s.pages.screen.wide": "Tabletă lată",
       "s.pages.screenHint": "O pagină de telefon are 12 × 6. O tabletă păstrează cele 12 coloane și adaugă rânduri, așa că pe pagină încap mai multe widgeturi. Widgeturile sub primele 6 rânduri rămân pe tabletă; un telefon le arată pe primele 6.",
+      "s.pages.screen.upright": "Vertical",
+      "s.pages.screen.landscape": "Orizontal",
+      "s.pages.uprightAuto": "Pe verticală, această pagină este aranjată automat după cea orizontală. Mută sau redimensionează un widget aici ca s-o aranjezi singur.",
+      "s.pages.uprightOwn": "Această pagină are propriul aranjament vertical: pe verticală, widgeturile stau unde le pui aici.",
+      "s.pages.uprightReset": "Înapoi la automat",
+      "s.pages.uprightLeftOff": "Nu sunt pe ecranul vertical:",
+      "s.js.leaveOffUpright": "Ascunde pe verticală",
+      "s.js.leaveOffUprightHint": "Pe verticală acest widget nu apare; rămâne pe pagina orizontală",
       "s.lhm.checking": "Se verifică sursa senzorilor…",
       "s.lhm.connected": "Sursa senzorilor e conectată",
       "s.lhm.unavailable": "Sursa senzorilor nu e disponibilă",
@@ -1127,6 +1139,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Se încarcă…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Routerul LLM local: modelele încărcate, cererile în curs, cererile și tokenii de astăzi și viteza de generare. Adresa serverului se setează în Setări › General › llama-swap.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -1870,6 +1884,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlisturi Plex (niciunul bifat = toate)"
     },
     "panel": {
+      "In flight": "În curs",
+      "Today": "Astăzi",
+      "Speed": "Viteză",
+      "Last request": "Ultima cerere",
+      "Set the server address in Settings › General › llama-swap.": "Setează adresa serverului în Setări › General › llama-swap.",
+      "llama-swap is offline.": "llama-swap este offline.",
+      "{a} in / {b} out": "intrare {a} / ieșire {b}",
       "% load": "% încărcare",
       "5-hour": "5 ore",
       "5-hour session": "Sesiune de 5 ore",

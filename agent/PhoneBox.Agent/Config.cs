@@ -43,6 +43,9 @@ public sealed class AgentConfig
     public PiConfig Pi { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
     public AntigravityConfig Antigravity { get; set; } = new();
+    /// <summary>Usage stats of the local llama-swap LLM router; off until its address is entered.</summary>
+    [JsonConverter(typeof(LlamaSwapSectionJsonConverter))]
+    public LlamaSwapConfig LlamaSwap { get; set; } = new();
     /// <summary>OpenCode prompts and sessions on the phone; everything is off until the settings page turns it on.</summary>
     [JsonPropertyName("opencode")]
     public OpenCodeConfig OpenCode { get; set; } = new();
@@ -113,10 +116,10 @@ public sealed class AgentConfig
         wallpaperRev = wallpaperRev?.ToString(System.Globalization.CultureInfo.InvariantCulture),
         pages = PagesFor(deviceId).Select(p => new
         {
-            p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance, p.PhotoBg,
+            p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance, p.PhotoBg, p.Upright,
             widgets = (p.Widgets ?? []).Select(w => new
             {
-                w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance,
+                w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance, w.Upright,
                 // command widgets: only what the panel shows; the scripts (command, commandUnix, …) stay on this computer
                 options = StackWidgets.PublicOptions(w),
             }),
@@ -514,6 +517,12 @@ public sealed class PageConfig
     public List<WidgetConfig>? Widgets { get; set; }
     /// <summary>A dimmed photo behind this page's widgets, using the Photo frame's folder; null = off.</summary>
     public PhotoBgConfig? PhotoBg { get; set; }
+    /// <summary>
+    /// True when the page has its own upright layout, arranged in Settings › Pages › Upright: held upright, each
+    /// widget sits at its <see cref="WidgetConfig.Upright"/> place and one without a place is left out. Null or false:
+    /// upright, the panel packs the landscape page into columns by itself.
+    /// </summary>
+    public bool? Upright { get; set; }
 
     /// <summary>Create the page from this template (templates.json) when it has no widgets yet.</summary>
     public string? Template { get; set; }
@@ -544,13 +553,26 @@ public sealed class WidgetConfig
     public int W { get; set; } = 1;
     public int H { get; set; } = 1;
     public Dictionary<string, JsonElement>? Options { get; set; }
+    /// <summary>Its place on the page's own upright layout (<see cref="PageConfig.Upright"/>); null = left off it.</summary>
+    public GridPlace? Upright { get; set; }
 
     public JsonElement? Opt(string key) => Options is not null && Options.TryGetValue(key, out var v) ? v : null;
     public string? Str(string key) => Opt(key) is { ValueKind: JsonValueKind.String } v ? v.GetString() : null;
     public int? Int(string key) => Opt(key) is { ValueKind: JsonValueKind.Number } v && v.TryGetDouble(out var d) ? (int)d : null;
     public bool? Bool(string key) => Opt(key) is { } v ? v.ValueKind switch { JsonValueKind.True => true, JsonValueKind.False => false, _ => null } : null;
     public void Set(string key, object? value) => (Options ??= [])[key] = JsonSerializer.SerializeToElement(value);
-    public WidgetConfig Clone() => new() { Id = Id, Type = Type, X = X, Y = Y, W = W, H = H, Appearance = Appearance?.Clone(), Options = Options?.ToDictionary(kv => kv.Key, kv => kv.Value.Clone()) };
+    public WidgetConfig Clone() => new() { Id = Id, Type = Type, X = X, Y = Y, W = W, H = H, Appearance = Appearance?.Clone(), Options = Options?.ToDictionary(kv => kv.Key, kv => kv.Value.Clone()), Upright = Upright?.Clone() };
+}
+
+/// <summary>A widget's cells on a grid: column, row, width and height.</summary>
+public sealed class GridPlace
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int W { get; set; } = 1;
+    public int H { get; set; } = 1;
+
+    public GridPlace Clone() => new() { X = X, Y = Y, W = W, H = H };
 }
 
 /// <summary>
@@ -994,6 +1016,9 @@ public sealed partial class ConfigStore(string path)
         c.Antigravity ??= new();
         c.OpenCode ??= new();
         c.Bridge ??= new(); // a hand-edited "bridge": null must not break /api/config or the clipboard poll
+        c.LlamaSwap ??= new();
+        c.LlamaSwap.Url = NormalizeLlamaSwapUrl(c.LlamaSwap.Url);
+        c.LlamaSwap.RefreshSeconds = Math.Clamp(c.LlamaSwap.RefreshSeconds, 10, 3600);
         c.OpenCode.TimeoutSec = Math.Clamp(c.OpenCode.TimeoutSec, 10, 3600);
         c.OpenCode.AlwaysCountdownSec = Math.Clamp(c.OpenCode.AlwaysCountdownSec, 0, 60);
         if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = "ersinkoc/phonebox";
@@ -1220,6 +1245,7 @@ public sealed partial class ConfigStore(string path)
             p.Id = reservedPages.TryGetValue(p, out var reservedPage)
                 ? reservedPage : UniqueLayoutId(LayoutId(tpl?.Id ?? p.Title, "page"), pageIds);
             if (!string.IsNullOrWhiteSpace(originalId)) originalIds.TryAdd(originalId, p.Id);
+            if (p.Upright != true) p.Upright = null;
             p.Template = null;
             p.Type = null;
             p.Options = null;
@@ -1236,11 +1262,23 @@ public sealed partial class ConfigStore(string path)
                 w.H = Math.Clamp(w.H, Math.Min(minH, Catalog.MaxRows), Catalog.MaxRows);
                 w.X = Math.Clamp(w.X, 0, Catalog.Cols - w.W);
                 w.Y = Math.Clamp(w.Y, 0, Catalog.MaxRows - w.H);
+                // an upright place counts only on a page arranged for upright, and stays inside its 6 × 12 grid
+                if (p.Upright != true) w.Upright = null;
+                else if (w.Upright is { } u)
+                {
+                    u.W = Math.Clamp(u.W, Math.Min(minW, Catalog.UprightCols), Catalog.UprightCols);
+                    u.H = Math.Clamp(u.H, Math.Min(minH, Catalog.UprightRows), Catalog.UprightRows);
+                    u.X = Math.Clamp(u.X, 0, Catalog.UprightCols - u.W);
+                    u.Y = Math.Clamp(u.Y, 0, Catalog.UprightRows - u.H);
+                }
                 w.Id = reservedWidgets.TryGetValue(w, out var reservedWidget)
                     ? reservedWidget : UniqueLayoutId(LayoutId(w.Type, w.Type), widgetIds);
                 widgets.Add(w);
             }
             p.Widgets = widgets;
+            // a page whose widgets have no upright place (its widgets replaced from a template, say) has no upright
+            // layout of its own: upright, the panel packs it automatically
+            if (p.Upright == true && widgets.All(w => w.Upright is null)) p.Upright = null;
             pages.Add(p);
         }
         if (pages.Count > 0 && pages.All(p => !p.Enabled)) pages[0].Enabled = true;
@@ -1344,6 +1382,47 @@ public sealed partial class ConfigStore(string path)
 
     private static string Cap(string s, int max) => s.Length > max ? s[..max] : s;
 
+    // What the user types is not always a URL: "localhost:8080" needs a scheme, and an address with a path must keep
+    // it - the relative endpoints (api/version, api/events) resolve under the path, and only a trailing slash makes
+    // that resolution keep the path.
+    internal static string NormalizeLlamaSwapUrl(string? u)
+    {
+        u = (u ?? "").Trim();
+        if (u.Length == 0) return "";
+        string scheme;
+        string rest;
+        // the scheme is looked for before any query or fragment: "host:8080/llama?next=https://x" has none
+        var end = u.IndexOfAny(['?', '#']);
+        var sep = (end >= 0 ? u[..end] : u).IndexOf("://", StringComparison.Ordinal);
+        if (sep >= 0)
+        {
+            scheme = u[..sep].ToLowerInvariant();
+            // An explicit scheme other than http(s) is not ours to rewrite: ftp:// or file:// must stay off.
+            if (scheme is not ("http" or "https")) return "";
+            rest = u[(sep + 3)..];
+        }
+        else
+        {
+            scheme = "http";
+            rest = u;
+        }
+        // A query or fragment means nothing to the router's base address, and kept in place it would swallow the
+        // trailing slash (http://h/llama?x=1/ still has the path /llama): it is dropped, the path is kept.
+        var cut = rest.IndexOfAny(['?', '#']);
+        if (cut >= 0) rest = rest[..cut];
+        var slash = rest.IndexOf('/', StringComparison.Ordinal);
+        var host = slash < 0 ? rest : rest[..slash];
+        var path = slash < 0 ? "" : rest[(slash + 1)..];
+        if (host.Length == 0 || host.Any(char.IsWhiteSpace)) return "";
+        while (path.Length > 0 && path[^1] == '/') path = path[..^1];
+        // the trailing slash when there is a path is not decoration: it is what makes the relative endpoints
+        // (api/version, api/events) resolve under the path instead of at the host root
+        var candidate = scheme + "://" + host + (path.Length > 0 ? "/" + path + "/" : "");
+        return Uri.TryCreate(candidate, UriKind.Absolute, out var parsed)
+            && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps)
+            && !string.IsNullOrWhiteSpace(parsed.Host) ? candidate : "";
+    }
+
     // ToLowerInvariant keeps the Turkish capital İ (U+0130) as it is, so it is mapped by hand like the other letters
     private static string Slug(string s) => NonSlug().Replace(s.ToLowerInvariant()
         .Replace('İ', 'i').Replace('ı', 'i').Replace('ğ', 'g').Replace('ü', 'u').Replace('ş', 's').Replace('ö', 'o').Replace('ç', 'c'), "-").Trim('-');
@@ -1356,6 +1435,81 @@ public sealed partial class ConfigStore(string path)
 
     [GeneratedRegex("^[a-z0-9]{6,32}$")]
     private static partial Regex CameraId();
+}
+
+/// <summary>
+/// The llama-swap server (the local LLM router): where it listens and how often it is polled. Nothing runs and
+/// nothing is polled while the address is empty.
+/// </summary>
+public sealed class LlamaSwapConfig
+{
+    /// <summary>The server address, e.g. <c>http://127.0.0.1:8080</c> (empty = off).</summary>
+    [JsonConverter(typeof(LenientStringJsonConverter))]
+    public string Url { get; set; } = "";
+    /// <summary>How often the server is polled, in seconds (10 to 3600).</summary>
+    [JsonConverter(typeof(LlamaSwapRefreshJsonConverter))]
+    public int RefreshSeconds { get; set; } = DefaultRefreshSeconds;
+
+    internal const int DefaultRefreshSeconds = 60;
+}
+
+/// <summary>
+/// The llamaSwap section: a hand-edited value that is not an object (a number, a string, null) must not make the
+/// whole settings file unreadable, so it is skipped and the section starts from its defaults.
+/// </summary>
+internal sealed class LlamaSwapSectionJsonConverter : JsonConverter<LlamaSwapConfig>
+{
+    public override bool HandleNull => true;
+
+    public override LlamaSwapConfig Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.StartObject)
+            return JsonSerializer.Deserialize<LlamaSwapConfig>(ref reader, options) ?? new();
+        reader.Skip();
+        return new();
+    }
+
+    public override void Write(Utf8JsonWriter writer, LlamaSwapConfig value, JsonSerializerOptions options) =>
+        JsonSerializer.Serialize(writer, value, options);
+}
+
+/// <summary>A string setting whose hand-edited non-string value (a number, a boolean, null) reads as empty.</summary>
+internal sealed class LenientStringJsonConverter : JsonConverter<string>
+{
+    public override bool HandleNull => true;
+
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String) return reader.GetString() ?? "";
+        reader.Skip();
+        return "";
+    }
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value);
+}
+
+/// <summary>
+/// llamaSwap.refreshSeconds: a whole number is kept (Normalize clamps it to 10-3600), a fractional or out-of-range
+/// number is rounded into that range, and anything else (null, a string, a boolean) is the 60-second default -
+/// never an exception that would cost the rest of the file.
+/// </summary>
+internal sealed class LlamaSwapRefreshJsonConverter : JsonConverter<int>
+{
+    public override bool HandleNull => true;
+
+    public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Number)
+        {
+            if (reader.TryGetInt32(out var n)) return n;
+            if (reader.TryGetDouble(out var d) && double.IsFinite(d)) return (int)Math.Round(Math.Clamp(d, 10, 3600));
+            return LlamaSwapConfig.DefaultRefreshSeconds;
+        }
+        reader.Skip();
+        return LlamaSwapConfig.DefaultRefreshSeconds;
+    }
+
+    public override void Write(Utf8JsonWriter writer, int value, JsonSerializerOptions options) => writer.WriteNumberValue(value);
 }
 
 public sealed class CodexBarConfig

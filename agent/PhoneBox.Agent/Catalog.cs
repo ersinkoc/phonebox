@@ -20,6 +20,9 @@ public static class Catalog
     public const int Rows = 6;
     /// <summary>Tallest page that can be saved. Widgets below row <see cref="Rows"/> show on a tablet and stay off a phone.</summary>
     public const int MaxRows = 18;
+    /// <summary>The grid of a page arranged for upright in Settings › Pages (the panel's grid.js UPRIGHT_COLS / UPRIGHT_ROWS).</summary>
+    public const int UprightCols = 6;
+    public const int UprightRows = 12;
 
     private static readonly JsonSerializerOptions Opts = new() { PropertyNameCaseInsensitive = true };
 

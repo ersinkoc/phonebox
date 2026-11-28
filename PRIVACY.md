@@ -82,6 +82,17 @@ Last updated: 2026-11-26 (PhoneBox 0.9.30).
   `models-store.json` next to the sessions folder; built-in models may not be there), is read from that file. Titles
   reach the phone only while **Show Pi session titles on the phone** is
   also on, and with it off no title is read at all. Turning the setting off stops the scan and forgets what was read.
+- **llama-swap stats** (off by default; **Settings › General › llama-swap stats**): while a server address is set, the
+  agent asks the [llama-swap](https://github.com/mostlygeek/llama-swap) router you point it at (its `/api/version`,
+  `/v1/models` and `/api/metrics/activity` endpoints) on a configurable interval (default: every minute), and keeps
+  its `/api/events` stream open to count the requests the router is serving right now. Each request carries the
+  `User-Agent: PhoneBox/<version>` header; the activity request also carries the local-midnight timestamp with its
+  UTC offset and the page/limit parameters. What reaches the phone is the counters — requests and tokens today, the
+  in-flight count (with the id, model and elapsed time of each in-flight request), generation speed, the loaded model
+  names and the time of the last request — and the router's version. Prompts and responses are never read, stored or
+  sent. Each in-flight request's path (`req_path`) and response byte count (`resp_bytes`) are parsed and kept in
+  memory with that list; they are never sent to the phone, written to disk or logged. Clearing the address stops the
+  polling and the stream.
 - **OpenCode sessions (off by default):** with Settings › General › "Show OpenCode sessions" on, the agent asks
   OpenCode's own background service — the native one, and the one inside each running WSL distro — for its recent
   sessions: the same local HTTP API the desktop app uses, authenticated with the password OpenCode wrote to

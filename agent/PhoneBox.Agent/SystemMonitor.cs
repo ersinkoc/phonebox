@@ -640,13 +640,27 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             // Linux / macOS: real volumes only (no snaps, boot partitions or macOS system snapshots)
             drives = drives.Where(d => d.Name == "/" || d.Name.StartsWith("/home") || d.Name.StartsWith("/mnt/") || d.Name.StartsWith("/media/")
                                        || d.Name.StartsWith("/Volumes/") || d.Name.StartsWith("/data"))
-                .Where(d => !d.Name.Contains("/wsl") && !d.Name.Contains("docker") && !d.Name.StartsWith("/mnt/c") && d.Name.Length > 0)
-                .DistinctBy(d => (SafeSize(d), d.TotalFreeSpace / (1L << 30)));
-        return drives
-            .Select(d => new DiskInfo(DiskLabel(d.Name), Math.Round((d.TotalSize - d.TotalFreeSpace) / Gb), Math.Round(d.TotalSize / Gb)))
-            .Take(6)
+                .Where(d => !d.Name.Contains("/wsl") && !d.Name.Contains("docker") && !d.Name.StartsWith("/mnt/c") && d.Name.Length > 0);
+        // each volume is read once; one that fails is left out before the de-duplication, so it cannot hide a healthy one
+        var read = drives.Select(ReadVolume).Where(v => v is not null).Select(v => v!.Value);
+        if (!OperatingSystem.IsWindows()) read = read.DistinctBy(v => (v.Total, v.Free / (1L << 30)));
+        return read
+            .Select(v => new DiskInfo(DiskLabel(v.Name), Math.Round((v.Total - v.Free) / Gb), Math.Round(v.Total / Gb)))
+            .Take(MaxDisks)
             .ToList();
     }
+
+    // A volume that goes away between the checks above and this read is left out of this sample; the others still report
+    // (an exception here would end the sampling loop).
+    private static (string Name, long Total, long Free)? ReadVolume(DriveInfo d)
+    {
+        try { return (d.Name, d.TotalSize, d.TotalFreeSpace); }
+        catch { return null; }
+    }
+
+    // Every volume a computer can have a letter for: the panel's disk grid wraps, so a seventh drive must not push
+    // the last one out (#785). Only a bound against something odd, not a choice of which disks to show.
+    private const int MaxDisks = 26;
 
     private static long SafeSize(DriveInfo d) { try { return d.TotalSize; } catch { return 0; } }
 

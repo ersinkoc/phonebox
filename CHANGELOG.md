@@ -117,6 +117,43 @@
   shows an error toast, and an unknown one stays quiet. The session details show a WorkBuddy check: whether the hook
   is installed, the approval switch and the heartbeat's age, which keeps counting while the details are open (#701,
   [elong365](https://github.com/elong365)).
+- Linux: the Control Deck's **audio widgets work**: the application mixer, application volume, device volume,
+  channel balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection. The agent
+  reads every output, microphone and application stream through `pactl` (PulseAudio, or PipeWire through
+  pipewire-pulse) instead of offering only the system output, and works with pactl versions before 15 too. It reads
+  pactl's plain-text listing, as its JSON output turns any name with a non-ASCII character into "(null)", and shares
+  one listing for 300 ms, so an emergency mute or a profile restore starts one pactl per change. Monitor sources and
+  streams a module made (the loopbacks of a virtual mixer) are left out; virtual sinks are listed as outputs, so the
+  channels of a virtual mixer get their own faders. Until pactl reaches a sound server (PipeWire without
+  pipewire-pulse) the system output's volume stays; once it has, a server that stops answering shows the widgets as
+  unavailable. Without `pactl` (package `pulseaudio-utils` on Debian, Ubuntu and Fedora, `libpulse` on Arch) and on
+  macOS the widgets still say they need Windows (#613, #762, [mikicolmena](https://github.com/mikicolmena)).
+- Pages: a layout of their own for an upright screen. The layout editor (Settings › Pages) has **Landscape** and
+  **Upright**. Upright, it shows the page as the panel packs it held upright, with the same columns (6 on a phone,
+  12 on a tablet with More rows on a tablet), wide widgets keeping their area and as many rows as that takes; widgets
+  the screen leaves out are listed under the canvas. Moving or resizing a widget there gives the page its own upright
+  layout (6 × 12), which a phone or tablet held upright then uses as it is; a widget that does not fit on it is
+  listed as left off and can be put back, and **Back to automatic** drops the layout. A click that only selects a
+  widget changes nothing. Replacing a page's widgets from a template or clearing it drops its upright layout, and a
+  page whose widgets have no upright place is packed automatically. Pages without one look as before. Without More
+  rows on a tablet, the editor's screen buttons read **Landscape** and **Upright** (#755, #758,
+  [WellyngtonSantos](https://github.com/WellyngtonSantos)).
+- llama-swap: a widget for the local [llama-swap](https://github.com/mostlygeek/llama-swap) router — which models are
+  currently loaded, the requests in flight (at most three rows, more as `+N`) with how long each has been running,
+  requests and tokens today, the newest finished request's speed and the time of the last request. Off by default;
+  point **Settings › General › llama-swap stats** at the server (e.g. `http://127.0.0.1:8080`) to switch it on. Only
+  the counters, the version, the loaded model names, and the id, model and elapsed time of each in-flight request are
+  sent to the phone — no prompts, requests, responses, request paths or response sizes (#768,
+  [0xTankBuilds](https://github.com/0xTankBuilds)).
+- Linux: the Control Deck's **Application routing** control works with `pactl` (PulseAudio, or PipeWire through
+  pipewire-pulse), with nothing else to install: a tap moves the application's playing streams to the chosen output
+  (`pactl move-sink-input`); its next streams use that output too when the sound server restores stream targets, as
+  WirePlumber and PulseAudio do by default. The application is matched by its name or process name, ignoring case and a
+  `.exe` suffix, so a control set up on Windows works too. An application that plays nothing reports "Not playing".
+  Windows still uses SoundVolumeView (#782, [mikicolmena](https://github.com/mikicolmena)).
+- Memory & disks: the agent reports up to 26 disks (every fixed volume over 2 GB), not only the first six: with a seventh
+  drive (a USB disk, for example) the last one no longer disappears from the widget and from `pc.disks`, and a volume
+  that goes away while it is read no longer stops the sampling (#785, [ssavickiy](https://github.com/ssavickiy)).
 
 ## 0.9.32 — 2026-11-27
 

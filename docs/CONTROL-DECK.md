@@ -85,7 +85,7 @@ manifests on Windows, not playlist webpages.
 |---|---|---|
 | Spotify | Create an app in the Spotify Developer dashboard, save Client ID, click Connect, register the exact loopback redirect address, then follow the sign-in link | PKCE; credentials stored next to config in a private token file. No automatic browser login during polling. Playback depends on Spotify account/API permissions and an active player. No account has been connected during development. |
 | OBS | Enable obs-websocket, configure its URL/password in existing OBS settings and enable control on an OBS widget | Inputs, sources and transitions are discovered; unsupported features remain disabled. OBS control permission applies across OBS widgets. |
-| Application routing | Install [SoundVolumeView](https://www.nirsoft.net/utils/sound_volume_view.html), set its executable path and configure process/output ID bindings | Successful helper exit is shown as **Routing requested**; it is not independent proof that a running application migrated its stream. The helper is not bundled. |
+| Application routing | Windows: install [SoundVolumeView](https://www.nirsoft.net/utils/sound_volume_view.html), set its executable path and configure process/output ID bindings. Linux: nothing to install beyond `pactl`; the target is the application's name or process name (`firefox`, `discord`; a `.exe` suffix is ignored, so a control set up on Windows works) and the output is a sink name from the Output selection list | Windows: successful helper exit is shown as **Routing requested**; it is not independent proof that a running application migrated its stream. The helper is not bundled. Linux: the application's streams playing now are moved with `pactl move-sink-input` and the result is checked per stream; an application that plays nothing reports **Not playing**. Only streams playing now move; the application's next streams use that output when the sound server restores stream targets (WirePlumber's `stream.restore-target`, PulseAudio's `module-stream-restore`), which both do by default. |
 | Virtual mixer | Install/start Voicemeeter and set the path to its matching 64-bit Remote DLL | Measured Strip/Bus gain and toggle values; missing engine/DLL displays unavailable. Third-party binaries are not bundled. |
 | MIDI | Choose an actual output port ID | Wire-order channel message bytes, e.g. `B0 07 {value}`. Values 0–127. Note pads send note-off after 120 ms. SysEx is excluded. |
 | OSC | Configure host:port and address such as `/volume` | Sends the binding's whole-number value as one float argument using network byte order. UDP delivery is not an acknowledgment from the receiving device. |
@@ -114,7 +114,17 @@ configure application/global shortcuts appropriately. Presentation bindings targ
 ## Platforms and connection behavior
 
 The full native audio/session/device, DDC/CI, Windows service/window/display/power, MIDI and loopback
-implementation targets Windows. On Linux/macOS, master volume/media controls remain available, and soundboard/radio
+implementation targets Windows. On Linux with `pactl` (PulseAudio, or PipeWire through pipewire-pulse; the package
+is `pulseaudio-utils` on Debian, Ubuntu and Fedora and `libpulse` on Arch) the audio
+controls work too: every output and microphone with its volume, mute and channel balance, per-application volume
+and mute, and switching the default output and microphone, so the application mixer, application and device
+volume, balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection widgets work.
+Linux has one default device per direction, so all three Windows roles follow it. Monitor sources and streams a
+module made (the loopbacks of a virtual mixer, a combine sink) are left out; virtual sinks (`module-null-sink`)
+are listed as outputs. Level meters show no signal on Linux yet. On macOS, on Linux without `pactl`, and on Linux
+where `pactl` has not yet reached a sound server (PipeWire without pipewire-pulse), master volume/media controls
+remain available. Once `pactl` has answered, a sound server that stops answering shows the audio widgets as
+unavailable. On Linux/macOS soundboard/radio
 actions use installed `ffplay`, `mpv`, `cvlc`/`vlc` (plus macOS `afplay` for local soundboard files) when found on
 `PATH`. Configured executable tasks, OSC and account integrations are portable when their corresponding programs and
 APIs are available. Do not interpret cross-platform compilation as native feature parity.

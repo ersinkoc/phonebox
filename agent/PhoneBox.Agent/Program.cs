@@ -125,6 +125,7 @@ builder.Services.AddSingleton<SpectrumAnalyzer>();
 AddMonitor<SystemMonitor>(builder.Services);
 AddMonitor<MediaMonitor>(builder.Services);
 AddMonitor<QuotaMonitor>(builder.Services);
+AddMonitor<LlamaSwapMonitor>(builder.Services);
 AddMonitor<ProcessMonitor>(builder.Services);
 AddMonitor<SessionMonitor>(builder.Services);
 AddMonitor<OpenCodeApprovals>(builder.Services);
@@ -1204,6 +1205,34 @@ app.MapPost("/api/volume", (int? level, string? op, AudioControl audio) =>
 });
 
 app.MapGet("/api/quotas", (QuotaMonitor q) => Results.Json(new { providers = q.Snapshot(), overview = q.Overview() }));
+app.MapGet("/api/llamaswap", (LlamaSwapMonitor m) =>
+{
+    // the snapshot is taken on the refresh timer, but the in-flight list and its elapsed times come straight from
+    // the event stream, so the phone reads them fresh on every poll. Both come from one router (ReadForPhone), and
+    // an offline snapshot carries no live rows. Only what the widget shows leaves the machine: per request the id,
+    // the model and how long it has been running - never the path or the byte count.
+    var (s, inflight) = m.ReadForPhone();
+    // A null snapshot means either no address, or an address whose first refresh has not finished yet: report
+    // which, so the widget can say "set the address" (not "offline") or "loading" (not "set the address").
+    if (s is null) return Results.Json(new { connected = false, configured = m.HasAddress, error = (string?)null });
+    // the projection is one static method with a test of its own: the same list serialized any other way would
+    // also send the request path and the response byte count, which is what must never leave the machine
+    var view = LlamaSwapMonitor.InflightView(inflight);
+    return Results.Json(new
+    {
+        connected = s.Connected,
+        error = s.Error,
+        version = s.Version,
+        loadedModels = s.LoadedModels,
+        genTps = s.GenTps,
+        todayRequests = s.TodayRequests,
+        todayInputTokens = s.TodayInputTokens,
+        todayOutputTokens = s.TodayOutputTokens,
+        lastRequestAt = s.LastRequestAt,
+        inflight = inflight.Count,
+        inflightRequests = view
+    });
+});
 
 app.MapGet("/api/work", (SessionMonitor s, GitHubMonitor gh, ConfigStore cfg) => Results.Json(WorkFeed.Build(s, gh, cfg.Get().WorkBuddy, WorkBuddyHook.InstalledCached())));
 
