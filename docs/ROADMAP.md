@@ -27,20 +27,22 @@ people who proposed or prototyped something are credited in the [changelog](../C
   connection held by the agent (MQTTnet; off by default, credentials never leave the computer), subscriptions that
   feed the push store under fixed keys with a cap and a throttle, a read-only MQTT widget, then publish actions
   defined on the computer and triggered from the phone by id only, behind the widget's `control` option with "ask
-  first" on and retain off by default. In small pull requests; the connection and its settings are in
-  ([#739](https://github.com/ersinkoc/phonebox/pull/739)), subscriptions to the push store come next.
+  first" on and retain off by default. In small pull requests; the connection and its settings
+  ([#739](https://github.com/ersinkoc/phonebox/pull/739)) and subscriptions to the push store
+  ([#788](https://github.com/ersinkoc/phonebox/pull/788)) are in, the read-only MQTT widget comes next.
 - **Corsair batteries in Device batteries** ([#773](https://github.com/ersinkoc/phonebox/issues/773)): headsets and
   mice read over USB HID like the Razer ones, from a list of known devices, with read-only battery and charging
-  queries, no switch to software mode and no fight with iCUE.
+  queries, no switch to software mode and no fight with iCUE. Pull request
+  [#783](https://github.com/ersinkoc/phonebox/pull/783) is under review: off by default, and a slot that does not answer
+  is not asked again until it reconnects.
+- **Livelier Control Deck level meters** ([#793](https://github.com/ersinkoc/phonebox/issues/793)), each its own pull
+  request: a dB scale on the phone (−60 to 0 dBFS); a read-only `/api/controls/levels` the panel polls about ten times a
+  second only while a deck meter is on screen (not with the night screen or "E-ink screen"), answering the same ids and
+  levels as the controls state from one shared, briefly cached reading however many phones ask; and, behind a widget
+  option, a vertical meter beside each fader with peak hold. On Linux the levels come from the meters of
+  [#792](https://github.com/ersinkoc/phonebox/pull/792).
 - **A bigger Microphone tile** ([#766](https://github.com/ersinkoc/phonebox/issues/766)): an opt-in layout of the
   Microphone widget with a large mute button and a vertical gain slider; the current look stays the default.
-- **An upright layout of a page's own** ([#755](https://github.com/ersinkoc/phonebox/issues/755), pull request
-  [#758](https://github.com/ersinkoc/phonebox/pull/758)): arrange a page for an upright screen in the editor instead of
-  the automatic packing.
-- **Games outside Steam in the game library** ([#756](https://github.com/ersinkoc/phonebox/issues/756), pull request
-  [#759](https://github.com/ersinkoc/phonebox/pull/759)): other launchers, games found on the drives and your own
-  shortcuts; starting them from the phone gets its own per-widget option, off by default. Store covers for them, opt-in
-  ([#757](https://github.com/ersinkoc/phonebox/issues/757), pull request [#760](https://github.com/ersinkoc/phonebox/pull/760)).
 - **Rules for pushed values**: a "not updated for N seconds" condition, `>=` / `<=`, and a separate release threshold
   ([#242](https://github.com/ersinkoc/phonebox/issues/242), pull request
   [#245](https://github.com/ersinkoc/phonebox/pull/245), in 0.9.21, did the first two).
@@ -92,12 +94,11 @@ people who proposed or prototyped something are credited in the [changelog](../C
   in the Camera widget. Off by default behind a switch in Settings on the computer (the phone cannot turn it on),
   only while the widget is on screen, and PhoneBox lets go of the camera a few seconds after the last request (its
   light stays on only if another app is using it). Frames are not stored or logged.
-- **WorkBuddy follow-ups** ([#700](https://github.com/ersinkoc/phonebox/issues/700), pull requests
-  [#701](https://github.com/ersinkoc/phonebox/pull/701), [#702](https://github.com/ersinkoc/phonebox/pull/702),
-  [#703](https://github.com/ersinkoc/phonebox/pull/703)): session rows that never look healthy on a lost feed (an
-  `unknown` state when the heartbeat is old) and a WorkBuddy self-check; approval cards with a countdown, the full
-  detail, and a second tap for high-risk tools decided on the agent; and, off by default, notifications and a rule
-  trigger when a WorkBuddy chat fails or finishes.
+- **WorkBuddy follow-ups** ([#700](https://github.com/ersinkoc/phonebox/issues/700)): the trustworthy session status
+  and self-check ([#777](https://github.com/ersinkoc/phonebox/pull/777)) and the approval countdown with high-risk
+  marking ([#771](https://github.com/ersinkoc/phonebox/pull/771)) are in; next, off by default, notifications and a rule
+  trigger when a WorkBuddy chat fails or finishes (a fresh pull request from current `main`, after
+  [#703](https://github.com/ersinkoc/phonebox/pull/703)).
 
 ## Open for a contributor
 
