@@ -261,6 +261,64 @@ public class OtherGamesTests : IDisposable
     }
 
     [Fact]
+    public void EveryFolderLookedIntoTakesFromTheBudgetTheLastLevelToo()
+    {
+        MakeExe("Racer/racer.exe", 5000);
+        MakeExe("Racer/a/b/c/steam_api.dll", 10);   // three folders down: the last level looked into
+        var racer = Path.Combine(_dir, "Racer");
+        // a spent budget reads nothing, not even the game's own folder
+        Assert.Null(OtherGames.PickExe(racer, "Racer", new OtherGames.Budget(0)));
+        Assert.False(OtherGames.LooksLikeAGame(racer, racer, new OtherGames.Budget(0)));
+        Assert.EndsWith("racer.exe", OtherGames.PickExe(racer, "Racer", new OtherGames.Budget(1)));
+        // Racer, a, b and c: four folders; with three the last one is not read
+        Assert.False(OtherGames.LooksLikeAGame(racer, racer, new OtherGames.Budget(3)));
+        Assert.True(OtherGames.LooksLikeAGame(racer, racer, new OtherGames.Budget(4)));
+        // a drive's budget: its top folder alone spends it, so no game is looked into
+        var drive = new OtherGames.Budget(1);
+        Assert.True(drive.Take());
+        Assert.True(drive.Spent);
+        Assert.True(new OtherGames.Budget(5, drive).Spent);
+    }
+
+    private static IEnumerable<string> Endless(Action<int> pulled, int failAt = -1)
+    {
+        for (var i = 0; ; i++)
+        {
+            pulled(i);
+            if (i == failAt) throw new IOException("the folder went away");
+            yield return "e" + i;
+        }
+    }
+
+    [Fact]
+    public void AListingIsReadOnlyAsFarAsItsLimitAndEndsAtAnError()
+    {
+        var pulled = 0;
+        Assert.Equal(["e0", "e1", "e2"], OtherGames.Entries(() => Endless(i => pulled = i + 1), 3));
+        Assert.Equal(3, pulled);                     // not one entry more than the limit is read
+        Assert.Equal(["e0", "e1"], OtherGames.Entries(() => Endless(_ => { }, failAt: 2), 10));
+        Assert.Empty(OtherGames.Entries(() => throw new DirectoryNotFoundException(), 10));
+    }
+
+    [Fact]
+    public void ALinkedGamesFolderOfALauncherIsNotWalked()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
+        var link = Path.Combine(_dir, "Ubisoft Game Launcher", "games");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(outside, "Far Game"));
+            File.WriteAllBytes(Path.Combine(outside, "Far Game", "far.exe"), new byte[5000]);
+            File.WriteAllBytes(Path.Combine(outside, "Far Game", "upc_r2_loader64.dll"), new byte[10]);
+            Directory.CreateDirectory(Path.Combine(_dir, "Ubisoft Game Launcher"));
+            Junction(link, outside);
+            Assert.True(Directory.Exists(Path.Combine(link, "Far Game")));
+            Assert.Empty(OtherGames.FromDrives([_dir]));
+        }
+        finally { try { Directory.Delete(link); } catch { } try { Directory.Delete(outside, true); } catch { } }
+    }
+
+    [Fact]
     public void WindowsOldAndInetpubAreNotLookedInto()
     {
         MakeExe("Windows.old/Games/Old Game/old.exe", 5000);

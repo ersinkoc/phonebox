@@ -196,6 +196,8 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     internal sealed class Budget(int folders, Budget? drive = null)
     {
         private int _left = folders;
+        /// <summary>Nothing more may be looked into: this budget, or its drive's, is spent.</summary>
+        public bool Spent => _left <= 0 || drive?.Spent == true;
         public bool Take()
         {
             if (_left <= 0 || drive?.Take() == false) return false;
@@ -204,12 +206,32 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         }
     }
 
-    /// <summary>The folders in a folder (no links, no system folders), or none when it cannot be read or the budget is spent.</summary>
-    private static string[] Folders(string dir, Budget budget)
+    /// <summary>
+    /// At most <paramref name="max"/> entries of a folder's listing, read one by one as they are asked for, so a folder
+    /// with a huge number of entries is not read whole. A listing that cannot be read (any more) ends there.
+    /// </summary>
+    internal static IEnumerable<string> Entries(Func<IEnumerable<string>> listing, int max)
     {
-        if (!budget.Take()) return [];
-        try { return Directory.EnumerateDirectories(dir, "*", Walk).ToArray(); } catch { return []; }
+        IEnumerator<string> e;
+        try { e = listing().GetEnumerator(); } catch { yield break; }
+        using (e)
+        {
+            for (var n = 0; n < max; n++)
+            {
+                string next;
+                try
+                {
+                    if (!e.MoveNext()) yield break;
+                    next = e.Current;
+                }
+                catch { yield break; }
+                yield return next;
+            }
+        }
     }
+
+    /// <summary>The folders in a folder (no links, no system folders), at most <paramref name="max"/>.</summary>
+    private static IEnumerable<string> Folders(string dir, int max) => Entries(() => Directory.EnumerateDirectories(dir, "*", Walk), max);
 
     /// <summary>The games on these drives: every folder at a drive's top, or inside a <see cref="Holders"/> folder, that looks like a game (<see cref="LooksLikeAGame"/>).</summary>
     internal static IEnumerable<Found> FromDrives(IEnumerable<string> roots)
@@ -220,22 +242,31 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
             var candidates = new List<string>();
             void Look(string dir, int level)
             {
-                foreach (var sub in Folders(dir, drive).Take(MaxGamesPerFolder))
+                if (!drive.Take()) return;
+                foreach (var sub in Folders(dir, MaxGamesPerFolder))
                 {
                     var name = Path.GetFileName(sub);
                     // a package cache or a Python environment carries game libraries (pygame) without being a game
                     if (NotGames.Contains(name) || name.StartsWith('.') || name.StartsWith('$') || name.Contains("cache", StringComparison.OrdinalIgnoreCase)
                         || name.Contains("venv", StringComparison.OrdinalIgnoreCase) || name.Contains("conda", StringComparison.OrdinalIgnoreCase)) continue;
                     // a launcher's own folder: only the games folder inside it (Ubisoft Game Launcher › games), not its parts
-                    if (LauncherHomes.Contains(name)) { if (level < 3 && Directory.Exists(Path.Combine(sub, "games"))) Look(Path.Combine(sub, "games"), level + 1); }
+                    // (that folder looked up by its name, so a link there is skipped here, as the listing skips the others)
+                    if (LauncherHomes.Contains(name))
+                    {
+                        var games = Path.Combine(sub, "games");
+                        if (level < 3 && Directory.Exists(games) && !SteamLibrary.IsLink(games)) Look(games, level + 1);
+                    }
                     else if (Holders.Contains(name) && level < 3) Look(sub, level + 1);
                     else candidates.Add(sub);
                 }
             }
             Look(root, 0);
             foreach (var dir in candidates)
+            {
+                if (drive.Spent) break; // the drive's folders are spent: the rest of its candidates are not looked into
                 if (Game(dir, new Budget(MaxFoldersPerGame, drive)) is { } g
                     && LooksLikeAGame(dir, Path.GetDirectoryName(g.Exe!)!, new Budget(MaxFoldersPerGame, drive))) yield return g;
+            }
         }
     }
 
@@ -282,18 +313,19 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         return sure > 0 || weak.Count > 1;
     }
 
+    // Every folder looked into, the last level too, takes one from the budget before it is read; a spent budget ends the look.
     private static IEnumerable<string> Files(string dir, int depth, Budget budget)
     {
-        string[] files, dirs;
-        try { files = Directory.EnumerateFiles(dir, "*", Walk).ToArray(); } catch { yield break; }
-        dirs = depth < MaxDepth ? Folders(dir, budget) : [];
-        foreach (var f in files) yield return f;
-        foreach (var d in dirs)
+        if (!budget.Take()) yield break;
+        foreach (var f in Entries(() => Directory.EnumerateFiles(dir, "*", Walk), MaxFilesPerGame * 2)) yield return f;
+        if (depth >= MaxDepth) yield break;
+        foreach (var d in Folders(dir, MaxFoldersPerGame))
         {
             var name = Path.GetFileName(d);
             if (name.Equals("site-packages", StringComparison.OrdinalIgnoreCase) || name.Equals("node_modules", StringComparison.OrdinalIgnoreCase)) continue;
             // a source tree: its .git folder is reported (and ends the look) without reading it
             if (name.Equals(".git", StringComparison.OrdinalIgnoreCase)) { yield return Path.Combine(d, "HEAD"); continue; }
+            if (budget.Spent) yield break;
             foreach (var f in Files(d, depth + 1, budget)) yield return f;
         }
     }
@@ -411,14 +443,17 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         return best?.File;
     }
 
+    // like Files: each folder looked into takes one from the budget first
     private static IEnumerable<(string File, int Depth)> Programs(string dir, int depth, Budget budget)
     {
-        string[] files, dirs;
-        try { files = Directory.EnumerateFiles(dir, "*.exe", Walk).ToArray(); } catch { yield break; }
-        dirs = depth < MaxDepth ? Folders(dir, budget) : [];
-        foreach (var f in files) yield return (f, depth);
-        foreach (var d in dirs)
+        if (!budget.Take()) yield break;
+        foreach (var f in Entries(() => Directory.EnumerateFiles(dir, "*.exe", Walk), MaxFilesPerGame)) yield return (f, depth);
+        if (depth >= MaxDepth) yield break;
+        foreach (var d in Folders(dir, MaxFoldersPerGame))
+        {
+            if (budget.Spent) yield break;
             foreach (var x in Programs(d, depth + 1, budget)) yield return x;
+        }
     }
 
     /// <summary>A name's words in lower case, with the digits split off ("GTAIV" stays one word, "FIFA23" gives fifa and 23).</summary>
