@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "tr": {
     "strings": {
+      "s.llamaswap.title": "llama-swap istatistikleri",
+      "s.llamaswap.hint": "Lokal LLM yönlendiricisini bir llama-swap yerleşkesinde gösterir: hangi modellerin yüklendiği, süresiyle birlikte devam eden istekler, bugünün istekleri ve tokenları ve üretim hızı (varsayılan olarak kapalı). Telefona yalnızca sayılar, model adları ve her devam eden isteğin kimliği ve süresi gönderilir — asla istem, istek veya yanıt gönderilmez. Yönlendiricinin sürümü ve son isteğin zamanı da gönderilir.",
+      "s.llamaswap.url": "Sunucu adresi (boş = kapalı)",
+      "s.llamaswap.refresh": "Yenileme aralığı (saniye)",
       "s.mqtt.enable": "Bir MQTT broker'ına bağlan",
       "s.mqtt.hint": "Bağlantıyı ajan tutar. Telefon broker'ın adresini, kullanıcı adını, parolasını veya konularını asla almaz. Broker internette olabilir; o durumda bu bilgisayarın adresini görür. Bu sürüm yalnızca bağlanır: ajan hiçbir şeye abone olmaz ve kendisi hiçbir şey yayınlamaz. Yalnızca son istek iletisini (ayarladıysanız) bağlantı koptuğunda broker yayınlar.",
       "s.mqtt.transport": "Aktarım",
@@ -504,6 +508,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Yükleniyor…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Yerel LLM yönlendiricisi: yüklü modeller, devam eden istekler, bugünün istekleri ve tokenları ve üretim hızı. Sunucu adresi Ayarlar › Genel › llama-swap içinde ayarlanır.",
       "Only this category (its category in Settings; empty = all)": "Yalnızca bu kategori (Ayarlar'daki kategorisi; boş = tümü)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity oturumları: çalışma, bekleme, boş.",
       "1": "1",
@@ -1235,6 +1241,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex çalma listeleri (hiçbiri işaretli değil = hepsi)"
     },
     "panel": {
+      "In flight": "Devam eden",
+      "Today": "Bugün",
+      "Speed": "Hız",
+      "Last request": "Son istek",
+      "Set the server address in Settings › General › llama-swap.": "Sunucu adresini Ayarlar › Genel › llama-swap altında ayarlayın.",
+      "llama-swap is offline.": "llama-swap çevrimdışı.",
+      "{a} in / {b} out": "giriş {a} / çıkış {b}",
       "% load": "% yükleme",
       "5-hour": "5 saat.",
       "5-hour session": "5 saatlik bir oturum.",
