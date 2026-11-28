@@ -111,6 +111,13 @@
 - iOS: the companion app can pair with several computers and switch between them. When the one in use stops
   answering for 30 seconds, the app follows whichever paired computer answers, and goes back to your pick as soon
   as it answers again. Tokens stay in the Keychain (#727, [haquanghuy2908](https://github.com/haquanghuy2908)).
+- Linux: the Control Deck's **audio widgets work**: the application mixer, application volume, device volume,
+  channel balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection. The agent
+  reads every output, microphone and application stream through `pactl` (PulseAudio, or PipeWire through
+  pipewire-pulse) instead of offering only the system output. It reads pactl's plain-text listing, as its JSON
+  output turns any name with a non-ASCII character into "(null)". Monitor sources and streams a module made (the
+  loopbacks of a virtual mixer) are left out; virtual sinks are listed as outputs, so the channels of a virtual
+  mixer get their own faders. Without `pactl` (and on macOS) the widgets still say they need Windows (#613).
 
 ## 0.9.32 — 2026-11-27
 
