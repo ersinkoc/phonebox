@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Docs: on KDE Plasma (Wayland), shortcuts that press keys or type need `ydotool`, as on GNOME. SETUP.md said `wtype`
+  works on KDE, but KWin doesn't offer ordinary programs the virtual keyboard protocol `wtype` needs.
 - Linux: the iPhone USB relay waits quietly while usbmuxd is not running. Its twelve pipes dialled usbmuxd's socket
   every four seconds even when it did not exist (Linux starts usbmuxd only while an Apple device is plugged in), about
   16 exceptions a second for nothing; they now check for the socket first. macOS, where usbmuxd always runs, and
