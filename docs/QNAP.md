@@ -115,7 +115,11 @@ If QuFirewall is on, allow TCP port 8766 from your local network:
    `192.168.1.0` / `255.255.255.0`), Protocol `TCP`, Service Port `Custom` › `8766`.
 3. Make sure the rule is on and above any `Deny` rule, then click **Apply**.
 
-For a phone outside your network use Tailscale rather than forwarding port 8766 on the router.
+For a phone outside your network use Tailscale rather than forwarding port 8766 on the router. Tailscale runs on the
+NAS (QNAP's App Center has it), not in this container. The agent offers a Tailscale address in the pairing QR code
+only when the NAS has one on a network interface (in the `100.64.0.0/10` range, as `ip addr` over SSH shows); a
+Tailscale running in userspace networking mode adds none. With QuFirewall on, add a second rule like the one above
+with Source `100.64.0.0` / `255.192.0.0`.
 
 ## Docker widget
 
@@ -139,6 +143,7 @@ are listed in [PRIVACY.md](../PRIVACY.md).
 - **`ssh -L` connects, but the page does not load** (`channel … open failed: administratively prohibited`): the NAS's
   SSH server does not allow port forwarding. Some QTS versions turn it off; the setting belongs to QTS, not PhoneBox.
 - **The phone cannot reach port 8766:** check that **Wi-Fi & Tailscale** says "Listening on port 8766", that the phone
-  is on the same network, and that the QuFirewall rule is on and above any `Deny` rule.
+  is on the same network (or on Tailscale, see above), and that the QuFirewall rules are on and above any `Deny` rule.
 - **Reinstall the agent:** stop the container, delete `/share/Container/phonebox/share/app` and start it again; setup
-  then installs the latest release. Settings and pairings stay.
+  then installs the latest release, or the one given with `--version` (remove that option from the compose file
+  first to get the latest). Settings and pairings stay.
