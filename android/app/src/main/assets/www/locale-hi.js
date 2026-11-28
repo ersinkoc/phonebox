@@ -1153,6 +1153,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "लोड हो रहा है…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "MQTT कनेक्शन की स्थिति और उसके आख़िरी संदेश का समय, साथ में वे मान जो आपके सब्सक्रिप्शन पुश किए गए मानों में रखते हैं। ब्रोकर और सब्सक्रिप्शन सेटिंग्स › सामान्य › MQTT में सेट होते हैं।",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "दिखाने के लिए पुश किए गए मानों की कुंजियाँ, कॉमा से अलग (आपके MQTT सब्सक्रिप्शन की कुंजियाँ)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "स्थानीय LLM रूटर: कौन से मॉडल लोड हैं, चल रहे अनुरोध, आज के अनुरोध और टोकन, और जनरेशन गति। सर्वर पता सेटिंग › सामान्य › llama-swap में सेट होता है।",
       "Only this category (its category in Settings; empty = all)": "केवल यह श्रेणी (सेटिंग्स में इसकी श्रेणी; खाली = सभी)",
@@ -1901,6 +1904,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex प्लेलिस्ट (कोई चयनित नहीं = सभी)"
     },
     "panel": {
+      "Last message": "आख़िरी संदेश",
+      "Turn on MQTT in Settings › General › MQTT.": "सेटिंग्स › सामान्य › MQTT में MQTT चालू करें।",
       "In flight": "चालू",
       "Today": "आज",
       "Speed": "गति",

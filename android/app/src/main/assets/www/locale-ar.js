@@ -1153,6 +1153,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "جارٍ التحميل…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "حالة اتصال MQTT ووقت آخر رسالة، مع القيم التي تضعها اشتراكاتك في القيم المدفوعة. يُضبط الوسيط والاشتراكات في الإعدادات › عام › MQTT.",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "مفاتيح القيم المدفوعة المراد عرضها، مفصولة بفواصل (مفاتيح اشتراكات MQTT لديك)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "موجِّه LLM محلي: النماذج المحمَّلة، والطلبات الجارية، وعدد الطلبات والرموز اليوم، وسرعة التوليد. يُضبط عنوان الخادم في الإعدادات › عام › llama-swap.",
       "and": "و",
@@ -1937,6 +1940,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "قوائم تشغيل Plex (دون تحديد = الكل)"
     },
     "panel": {
+      "Last message": "آخر رسالة",
+      "Turn on MQTT in Settings › General › MQTT.": "شغّل MQTT من الإعدادات › عام › MQTT.",
       "In flight": "في التنفيذ",
       "Today": "اليوم",
       "Speed": "السرعة",

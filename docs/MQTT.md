@@ -1,9 +1,9 @@
 # MQTT
 
 PhoneBox can connect to an MQTT broker (Mosquitto, Home Assistant's add-on, Zigbee2MQTT, a cloud broker) from the
-computer and put the values it receives into the panel's pushed values. This is the second step (issue #732): the
-agent holds the connection, reports its state and subscribes to the topics you list. A widget for the connection's
-state and publish actions come in later steps. The agent publishes nothing itself; the only message that can be
+computer, put the values it receives into the panel's pushed values and show them on an **MQTT** widget. This is the
+third step (issue #732): the agent holds the connection, reports its state and subscribes to the topics you list, and the
+widget shows the state and those values. Publish actions come in a later step. The agent publishes nothing itself; the only message that can be
 published is the last will, if you set one, and the broker publishes it when the connection is lost.
 
 The connection is made by the agent on the computer, never by the phone. The phone never gets the broker's address, user
@@ -100,9 +100,24 @@ password again, so it is never sent somewhere you did not enter it.
 
 It is not in what the phone receives, in the log or in the status.
 
+## The widget
+
+The **MQTT** widget (in the widget list, under Web & data) shows:
+
+- the connection's state with a coloured dot (connected, connecting, off, or what went wrong, in the same words as the
+  settings page) and how long ago the last message arrived;
+- one row per key you list in its **Keys** option (commas between them, usually the keys of your subscriptions): the
+  value with its unit and how long ago it changed, or "No data yet".
+
+It is read-only: it sends nothing, and it has no way to MQTT of its own. The values are read from the pushed values, as a
+**Pushed value** widget reads them, so they arrive the moment the agent stores them; the state is
+`GET /api/mqtt/status`, asked every 5 seconds while the widget is on screen. A key that a webhook fills works the same
+way. The broker's address, the user name and the topics never reach the phone.
+
 ## The status
 
-`GET /api/mqtt/status` (on the computer only, not over Wi-Fi) answers with the state (`off`, `connecting`, `connected` or
+`GET /api/mqtt/status` (on the computer, and over Wi-Fi with the phone's key for the MQTT widget; never with the webhook
+key) answers with the state (`off`, `connecting`, `connected` or
 `error`), the time of the last message in milliseconds since 1970 (`null` until one arrives) and, when something is wrong,
 a kind of error: `dns`, `refused`, `timeout`, `tls`, `auth`, `protocol`, `config` (the address is not a plain host name or IP address, or the CA file cannot be read) or `other`. Never the address, the user
 name, a topic or the error's own text, which usually names the broker.

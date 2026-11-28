@@ -172,6 +172,12 @@
   settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
   `docs/MQTT.md`. With Clean session off, a row removed from the settings is unsubscribed on the next connection to
   the same broker session; another broker or account never hears the old topics.
+- **MQTT, third step: the MQTT widget** (Web & data, #732, [t7spotter](https://github.com/t7spotter)): the
+  connection's state with a coloured dot (or what went wrong, in the settings page's words), how long ago the last
+  message arrived, and the values of the keys you list (usually your subscriptions' keys) with their unit and age. It is
+  read-only: the values come from the pushed values, like a Pushed value widget's, and the state from
+  `GET /api/mqtt/status`, which is now on the Wi-Fi allow-list for the phone's key only (still only the state, the time of
+  the last message and a kind of error). Strings in all 24 languages; documented in `docs/MQTT.md`.
 
 ## 0.9.32 — 2026-11-27
 

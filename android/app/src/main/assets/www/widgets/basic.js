@@ -3,6 +3,7 @@ import { W } from '../registry.js';
 import { weekStartDay } from './time.js';
 import { invalidateDeckState } from './controls.js';
 import { parseWidgets } from './stack.js';
+import { every } from './helpers.js';
 
 function bindProcessLink(box, sortTarget) {
   if (!hasProcessesPage()) return;
@@ -1810,6 +1811,51 @@ W.push = {
       box.replaceChildren(title, body);
     };
     return { update: render };
+  },
+};
+
+// MQTT: the connection's state from /api/mqtt/status (only a kind of error: the phone never gets the broker, the user name or a
+// topic) and the values of the keys it lists, read from the pushed values as a Pushed value widget reads them. It has no
+// other way to MQTT, and it sends nothing: publishing comes later, behind its own per-widget option.
+const MQTT_ERR = (kind) => 's.mqtt.err.' + (['dns', 'refused', 'timeout'].includes(kind) ? 'network' : ['tls', 'auth', 'config'].includes(kind) ? kind : 'other');
+W.mqtt = {
+  needs: ['push', 'tick'],
+  create(box, { o }) {
+    // the subscriptions allow 32 keys, and a key is what a subscription row names
+    const keys = [...new Set(String(o.keys || '').split(',').map((k) => k.trim()).filter(Boolean))].slice(0, 32);
+    let status = null, failed = false, lastKey = '';
+    const load = async () => {
+      try { status = await api('/mqtt/status'); failed = false; return true; } catch (_) { failed = true; return false; }
+    };
+    const stateText = () => {
+      if (!status) return failed ? t('w.offline') : t('w.loading');
+      if (status.state === 'connected') return t('s.cd.connected');
+      if (status.state === 'connecting') return t('panel.connecting');
+      if (status.state === 'error') return t(MQTT_ERR(status.errorKind));
+      return tp('Turn on MQTT in Settings › General › MQTT.');
+    };
+    const render = () => {
+      const items = keys.map((k) => [k, Object.prototype.hasOwnProperty.call(D.push, k) ? D.push[k] : null]); // not Object.prototype for "__proto__"
+      const at = status?.lastMessageAt;
+      const key = JSON.stringify([status, failed, at ? ago(at) : '', items.map(([k, it]) => [k, it ? [it.at, it.data, ago(it.at)] : null]), box.clientHeight]);
+      if (key === lastKey) return;
+      lastKey = key;
+      const state = status ? status.state : failed ? 'error' : 'connecting';
+      const rows = items.map(([k, it]) => {
+        if (!it) return h('div', 'mq-row none', h('span', 'mq-k', k), h('span', 'mq-v', t('w.noDataYet')), h('span', 'mq-age'));
+        const v = pushView(it), unit = v.unit ?? '';
+        const row = h('div', 'mq-row', h('span', 'mq-k', v.title || k), h('b', 'mq-v', fmtValue(v.value), unit ? h('small', null, unit) : null), h('span', 'mq-age', ago(it.at)));
+        const c = v.color || LEVEL_COLOR[levelOf(v)];
+        if (c) row.style.setProperty('--c', c);
+        return row;
+      });
+      box.replaceChildren(
+        h('div', 'w-title', o.title || 'MQTT', h('span', 'w-sub mq-last', tp('Last message') + ' ' + (at ? ago(at) : '—'))),
+        h('div', 'mq-state ' + state, h('span', 'mq-dot'), h('span', 'mq-text', stateText())),
+        ...(rows.length ? [h('div', 'mq-list', ...rows)] : []));
+    };
+    const tick = every(5000, async () => { const ok = await load(); render(); return ok; }, 15_000);
+    return { update: () => { tick(); render(); } };
   },
 };
 
