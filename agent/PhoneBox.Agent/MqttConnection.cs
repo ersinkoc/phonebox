@@ -87,10 +87,11 @@ internal sealed class MqttTrust
 
 /// <summary>
 /// The connection to the MQTT broker (Settings › General › MQTT). The agent holds it while it is enabled and keeps
-/// trying again, with a longer wait after each failure. This first version only connects and reports its state; what is
-/// subscribed and published is added on top of it.
+/// trying again, with a longer wait after each failure. It subscribes to the topics in the settings and turns their messages
+/// into pushed values (<see cref="MqttFeed"/>); it publishes nothing itself.
 /// </summary>
-public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> log) : BackgroundService
+/// <param name="push">Where the messages of the subscriptions go. Null (only in tests without subscriptions): none is subscribed.</param>
+public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> log, PushStore? push = null) : BackgroundService
 {
     public const string Off = "off", Connecting = "connecting", Connected = "connected", Error = "error";
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
@@ -98,11 +99,14 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     private volatile MqttStatus _status = new(Off, null, null);
     private long _lastMessage;
+    // the topics the last connection subscribed to: with Clean session off the broker keeps them, so a topic that is gone
+    // from the settings is unsubscribed on the next connection
+    private List<string> _filters = [];
     private readonly TimeSpan _firstWait = TimeSpan.FromSeconds(5);
     private readonly TimeSpan _stableAfter = TimeSpan.FromSeconds(60);
 
     /// <summary>For tests: shorter waits (internal, so the container does not pick it).</summary>
-    internal MqttConnection(ConfigStore config, ILogger<MqttConnection> log, TimeSpan firstWait, TimeSpan stableAfter) : this(config, log)
+    internal MqttConnection(ConfigStore config, ILogger<MqttConnection> log, TimeSpan firstWait, TimeSpan stableAfter, PushStore? push = null) : this(config, log, push)
     {
         _firstWait = firstWait;
         _stableAfter = stableAfter;
@@ -177,23 +181,38 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
         Interlocked.Exchange(ref _lastMessage, 0);
         _status = new(Connecting, null, null);
         var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        // no push store or no subscription: the connection receives nothing, as in the first version
+        var subscriptions = push is null ? [] : cfg.Subscriptions;
+        var feed = push is null ? null : new MqttFeed(subscriptions, push, log);
         using var client = await OpenAsync(cfg, "", ct, c =>
         {
             c.DisconnectedAsync += _ => { lost.TrySetResult(); return Task.CompletedTask; };
-            c.ApplicationMessageReceivedAsync += _ => { Interlocked.Exchange(ref _lastMessage, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()); return Task.CompletedTask; };
+            c.ApplicationMessageReceivedAsync += e =>
+            {
+                Interlocked.Exchange(ref _lastMessage, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                feed?.Receive(e.ApplicationMessage.Topic, e.ApplicationMessage.Payload);
+                return Task.CompletedTask;
+            };
         });
-        _status = new(Connected, null, null);
-        connected();
         var since = System.Diagnostics.Stopwatch.StartNew();
         var holding = false;
         var dropped = false;
         try
         {
+            // inside the try: a subscription that fails still ends with the goodbye below, so the broker does not take the
+            // connection for a lost one and publish the last will
+            var wanted = subscriptions.Select(s => s.Topic!).Distinct(StringComparer.Ordinal).ToList();
+            var leftover = cfg.CleanSession ? [] : await UnsubscribeAsync(client, wanted, ct);
+            if (wanted.Count > 0) await SubscribeAsync(client, wanted, ct);
+            _filters = [.. wanted, .. leftover];
+            _status = new(Connected, null, null);
+            connected();
             while (!ct.IsCancellationRequested && !lost.Task.IsCompleted && Signature(config.Get().Mqtt) == signature)
             {
                 // held for a while: the next drop, after days, is retried in seconds
                 if (!holding && since.Elapsed >= _stableAfter) { holding = true; held(); }
                 await Task.WhenAny(lost.Task, Task.Delay(1000, ct));
+                feed?.Flush(); // the newest value of a key that had to wait for its second
             }
             // read before our own goodbye below: MQTTnet reports that one as a disconnect too
             dropped = lost.Task.IsCompleted;
@@ -201,6 +220,10 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
         catch (OperationCanceledException) { }
         finally
         {
+            // the values that still waited for their second are written when the connection was dropped (after a settings
+            // change they may no longer be wanted); then the feed is closed, so nothing is written while the goodbye is sent
+            if (dropped) feed?.Flush(all: true);
+            feed?.Stop();
             if (client.IsConnected)
             {
                 using var closing = new CancellationTokenSource(TimeSpan.FromSeconds(2));
@@ -209,6 +232,39 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
         }
         // dropped by the broker or the network, not by a settings change or the agent stopping
         if (dropped && !ct.IsCancellationRequested) throw new MqttFailure("other");
+    }
+
+    /// <summary>
+    /// With Clean session off the broker still has the topics of the previous settings: those that are not wanted any more
+    /// are unsubscribed (best effort: the ones that could not be are returned, and tried again on the next connection). After a restart the agent
+    /// does not know them, so a broker may keep one until the session ends; its messages are ignored.
+    /// </summary>
+    private async Task<List<string>> UnsubscribeAsync(IMqttClient client, List<string> wanted, CancellationToken ct)
+    {
+        var stale = _filters.Where(f => !wanted.Contains(f, StringComparer.Ordinal)).ToList();
+        if (stale.Count == 0) return [];
+        var options = new MqttClientUnsubscribeOptionsBuilder();
+        foreach (var topic in stale) options.WithTopicFilter(topic);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(ConnectTimeout);
+        try { await client.UnsubscribeAsync(options.Build(), timeout.Token); return []; }
+        catch (Exception) when (!ct.IsCancellationRequested) { return stale; } // the ones left over are tried again next time
+    }
+
+    /// <summary>Subscribes to the topics at once (QoS 0: a value, not a command). A refusal is logged without the topic.</summary>
+    private async Task SubscribeAsync(IMqttClient client, List<string> topics, CancellationToken ct)
+    {
+        var options = new MqttClientSubscribeOptionsBuilder();
+        foreach (var topic in topics)
+            options.WithTopicFilter(f => f.WithTopic(topic).WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtMostOnce));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(ConnectTimeout);
+        MqttClientSubscribeResult result;
+        try { result = await client.SubscribeAsync(options.Build(), timeout.Token); }
+        catch (Exception ex) when (ex is OperationCanceledException or MqttCommunicationTimedOutException && !ct.IsCancellationRequested) { throw new MqttFailure("timeout"); }
+        // the broker answers per topic; 0x80 and above is a refusal (an access list, say)
+        var refused = result.Items.Count(i => (int)i.ResultCode >= 0x80);
+        if (refused > 0) log.LogInformation("mqtt: the broker refused {Count} of {Total} subscriptions", refused, result.Items.Count);
     }
 
     // the settings the connection was made with, to notice a change; compared in memory and never logged
