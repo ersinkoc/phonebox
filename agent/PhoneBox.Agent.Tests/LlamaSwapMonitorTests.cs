@@ -124,6 +124,78 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         Assert.Equal(50, mon.Inflight[0].ElapsedMs);
     }
 
+    [Fact(DisplayName = "An over-long stream line is discarded and the events after it still apply")]
+    public async Task OverlongStreamLineIsDiscarded()
+    {
+        await using var ls = new FakeLlamaSwap(oversizedLine: true);
+        var mon = Monitor(ls.Url);
+        await mon.StreamOnceAsync(new Uri(ls.Url));
+        // the over-long line was skipped, not treated as EOF: the normal snapshot/upsert/remove still ran
+        Assert.Equal(["ModelB"], mon.Inflight.Select(r => r.Model));
+    }
+
+    [Fact(DisplayName = "A router that ignores the day range still counts only today's entries")]
+    public async Task RouterIgnoringTheDayRangeStillCountsOnlyToday()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { IgnoreStart = true };
+        ls.ActivityEntries = [
+            Entry(frozen, 5, 6),
+            Entry(frozen.AddMinutes(-1), 7, 8),
+            Entry(frozen.AddDays(-1), 999, 999),
+        ];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(2, s.TodayRequests);
+        Assert.Equal(12, s.TodayInputTokens);
+        Assert.Equal(14, s.TodayOutputTokens);
+    }
+
+    [Fact(DisplayName = "A router that caps the page size below 999 still has every entry summed")]
+    public async Task ActivityPageSizeCapStillSumsEveryEntry()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { LimitCap = 100 };
+        ls.ActivityEntries = [.. Enumerable.Range(0, 250).Select(i => Entry(frozen - TimeSpan.FromSeconds(i), 1, 2))];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(250, s.TodayRequests);
+        Assert.Equal(250, s.TodayInputTokens);
+        Assert.Equal(500, s.TodayOutputTokens);
+    }
+
+    [Fact(DisplayName = "A router that omits the total is walked until an empty page")]
+    public async Task ActivityWithoutTotalWalksToTheEnd()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { OmitTotal = true };
+        ls.ActivityEntries = [.. Enumerable.Range(0, 1100).Select(i => Entry(frozen - TimeSpan.FromSeconds(i), 1, 2))];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(1100, s.TodayRequests);
+        Assert.Equal(1100, s.TodayInputTokens);
+        Assert.Equal(2200, s.TodayOutputTokens);
+    }
+
+    [Fact(DisplayName = "A router reporting a huge total does not walk the request log without bound")]
+    public async Task ActivityPaginationIsCapped()
+    {
+        await using var ls = new FakeLlamaSwap();
+        ls.ActivityEntries = [Entry(DateTime.Now, 100, 10)];
+        ls.TotalOverride = 1_000_000;
+        var mon = Monitor(ls.Url);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(30), "the page cap keeps one refresh bounded");
+        Assert.Equal(1_000_000, s.TodayRequests); // the reported total is still the exact request count
+        Assert.Null(s.TodayInputTokens); // an incomplete walk is not passed off as exact tokens
+        Assert.Null(s.TodayOutputTokens);
+    }
+
     [Fact(DisplayName = "The in-flight count rides along on the snapshot the phone reads")]
     public async Task InflightRidesAlongOnSnapshot()
     {
@@ -462,6 +534,7 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
     private readonly bool _activity;
     private readonly bool _keepEventsOpen; // /api/events then stays open and sends keep-alive comments
     private readonly bool _objectData; // the in-flight events carry their data as an object, not a string
+    private readonly bool _oversizedLine; // /api/events starts with one line longer than the client's cap
     private readonly bool _quietEvents; // /api/events stays open but sends nothing after the first events
     private readonly bool _versionFails; // /api/version then answers 500
     private readonly int _versionDelay; // /api/version waits this long before answering
@@ -470,12 +543,17 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
     private readonly Task _loop;
     public string Url => _server.Prefixes.Single().TrimEnd('/') + (_base.Length > 0 ? _base + "/" : "");
     public volatile string[] ActivityEntries = [];
+    public int? TotalOverride { get; set; }
+    public bool IgnoreStart { get; set; }
+    public bool OmitTotal { get; set; }
+    public int? LimitCap { get; set; }
 
-    public FakeLlamaSwap(bool activity = true, bool keepEventsOpen = false, bool objectData = false, string basePath = "", bool quietEvents = false, bool versionFails = false, int versionDelayMs = 0, int eventsDelayMs = 0)
+    public FakeLlamaSwap(bool activity = true, bool keepEventsOpen = false, bool objectData = false, string basePath = "", bool quietEvents = false, bool versionFails = false, int versionDelayMs = 0, int eventsDelayMs = 0, bool oversizedLine = false)
     {
         _activity = activity;
         _keepEventsOpen = keepEventsOpen;
         _objectData = objectData;
+        _oversizedLine = oversizedLine;
         _quietEvents = quietEvents;
         _versionFails = versionFails;
         _versionDelay = versionDelayMs;
@@ -527,7 +605,7 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
                     System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var st) ? st : null;
                 var entries = ActivityEntries.Where(e =>
                 {
-                    if (start is null) return true;
+                    if (start is null || IgnoreStart) return true;
                     using var doc = System.Text.Json.JsonDocument.Parse(e);
                     return doc.RootElement.TryGetProperty("timestamp", out var t) && t.ValueKind == System.Text.Json.JsonValueKind.String
                         && DateTime.TryParse(t.GetString(), System.Globalization.CultureInfo.InvariantCulture,
@@ -535,8 +613,10 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
                         && ts >= start;
                 }).ToArray();
                 var limit = int.TryParse(qs["limit"], out var l) && l > 0 ? l : 999;
+                if (LimitCap is { } cap && cap > 0) limit = Math.Min(limit, cap);
                 var page = int.TryParse(qs["page"], out var pg) && pg > 0 ? pg : 1;
-                body = "{\"data\":[" + string.Join(",", entries.Skip((page - 1) * limit).Take(limit)) + "],\"page\":" + page + ",\"limit\":" + limit + ",\"total\":" + entries.Length + "}";
+                var total = OmitTotal ? "" : ",\"total\":" + (TotalOverride ?? entries.Length);
+                body = "{\"data\":[" + string.Join(",", entries.Skip((page - 1) * limit).Take(limit)) + "],\"page\":" + page + ",\"limit\":" + limit + total + "}";
                 break;
             }
             case "/api/events":
@@ -555,7 +635,10 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
         ctx.Response.OutputStream.Close();
     }
 
-    private string EventsBody() => _objectData
+    private string EventsBody()
+    {
+        var oversized = _oversizedLine ? "data:" + new string('x', LlamaSwapMonitor.MaxLineChars + 16) + "\n" : "";
+        return oversized + (_objectData
         ? "event:message\n"
           + "data:{\"type\":\"inflight\",\"data\":\"{\\\"operation\\\":\\\"snapshot\\\",\\\"requests\\\":[{\\\"id\\\":\\\"1\\\",\\\"model\\\":\\\"ModelA\\\",\\\"req_path\\\":\\\"/v1/chat/completions\\\",\\\"elapsed_ms\\\":1234,\\\"resp_bytes\\\":56}]}\"}\n\n"
           + "event:message\n"
@@ -572,7 +655,8 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
           data:{"type":"modelStatus","data":"[]"}
 
           data:{"type":"inflight","data":"{\"operation\":\"remove\",\"id\":1}"}
-          """;
+          """);
+    }
 
     private async Task KeepEventsOpen(HttpListenerContext ctx)
     {
