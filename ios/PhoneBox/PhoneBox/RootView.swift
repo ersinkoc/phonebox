@@ -100,7 +100,7 @@ private struct ComputerOptionsView: View {
     @State private var addingComputer = false
 
     var body: some View {
-        NavigationStack {
+        CompatNavigation {
             Form {
                 if let message = pairing.errorMessage {
                     Section {
@@ -148,20 +148,19 @@ private struct ComputerOptionsView: View {
                     Text("Tap a computer to show it. When it hasn't answered for 30 seconds, PhoneBox shows another paired computer that answers, and goes back to yours once it answers again. Pair each operating system of a dual-boot PC once (Windows and macOS run separate agents), and the panel follows whichever is running.")
                 }
                 Section("This computer") {
-                    LabeledContent("Name", value: computer.name)
-                    LabeledContent("Addresses", value: computer.hosts.joined(separator: ", "))
-                    LabeledContent("Port", value: String(computer.port))
+                    InfoRow("Name", value: computer.name)
+                    InfoRow("Addresses", value: computer.hosts.joined(separator: ", "))
+                    InfoRow("Port", value: String(computer.port))
                 }
                 Section("Certificate") {
                     Text(computer.fingerprint)
                         .font(.system(.caption, design: .monospaced))
                         .textSelection(.enabled)
-                    LabeledContent("Check code") {
-                        Text(computer.checkCode).monospaced()
-                    }
+                    InfoRow("Check code", value: computer.checkCode)
+                        .font(.system(.body, design: .monospaced))
                 }
                 Section {
-                    LabeledContent("USB cable", value: usb.isConnected ? "Connected" : "Not connected")
+                    InfoRow("USB cable", value: usb.isConnected ? "Connected" : "Not connected")
                 } footer: {
                     Text("The desktop agent carries the cable link automatically; keep it running. USB reuses this pairing's certificate and token, so no Wi-Fi network is needed once the app is paired.")
                 }
@@ -182,7 +181,7 @@ private struct ComputerOptionsView: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .compatMediumLargeDetents()
         .sheet(isPresented: $addingComputer) {
             UnpairedView(addingAnother: true) { addingComputer = false }
                 .environmentObject(pairing)

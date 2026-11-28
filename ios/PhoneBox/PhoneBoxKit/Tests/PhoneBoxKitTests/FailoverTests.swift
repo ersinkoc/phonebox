@@ -24,6 +24,16 @@ final class FailoverTests: XCTestCase {
         XCTAssertTrue(f.failed(at: t0.addingTimeInterval(30)))
     }
 
+    func testASuspensionIsNotPartOfTheOutage() {
+        var f = Failover()
+        XCTAssertFalse(f.failed(at: t0))
+        // the app was in the background for a minute: the failure after it resumes starts a new window
+        f.resumed()
+        XCTAssertFalse(f.failed(at: t0.addingTimeInterval(60)))
+        XCTAssertFalse(f.failed(at: t0.addingTimeInterval(89)))
+        XCTAssertTrue(f.failed(at: t0.addingTimeInterval(90)))
+    }
+
     func testAskingNobodyBacksOff() {
         var f = Failover()
         _ = f.failed(at: t0)

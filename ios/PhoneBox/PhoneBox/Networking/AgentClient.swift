@@ -57,15 +57,17 @@ final class AgentClient {
     /// Forwards one request. Returns nil when no address answered (the caller turns that into the panel's
     /// usual 503 "offline"). Only GET and POST are accepted.
     func request(method: String, pathAndQuery: String, body: Data? = nil, contentType: String? = nil) async -> AgentReply? {
-        let reply = await send(method: method, pathAndQuery: pathAndQuery, body: body, contentType: contentType)
+        // A request this client never sends is a mistake in the caller, not a computer that doesn't answer: it must
+        // not count towards a switch.
+        let upper = method.uppercased()
+        guard upper == "GET" || upper == "POST", pathAndQuery.hasPrefix("/") else { return nil }
+        let reply = await send(method: upper, pathAndQuery: pathAndQuery, body: body, contentType: contentType)
         if reply == nil { activeFailed() } else { activeAnswered() }
         return reply
     }
 
-    private func send(method: String, pathAndQuery: String, body: Data?, contentType: String?) async -> AgentReply? {
-        let upper = method.uppercased()
-        guard upper == "GET" || upper == "POST" else { return nil }
-        guard pathAndQuery.hasPrefix("/") else { return nil }
+    /// `method` is GET or POST and `pathAndQuery` starts with "/" (checked by `request`).
+    private func send(method upper: String, pathAndQuery: String, body: Data?, contentType: String?) async -> AgentReply? {
 
         // The cable first, then the addresses from the pairing link. The relay at 127.0.0.1:8767 only
         // listens while an authenticated USB pipe exists; otherwise the connection is refused at once and
@@ -197,6 +199,13 @@ final class AgentClient {
             if let (response, _) = try? await session.data(for: request), response.statusCode == 200 { return true }
         }
         return false
+    }
+
+    /// The app came back to the foreground: requests that failed before it was suspended don't count any more.
+    func appResumed() {
+        lock.lock()
+        failover.resumed()
+        lock.unlock()
     }
 
     func invalidate() {

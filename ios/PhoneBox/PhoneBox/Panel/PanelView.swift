@@ -38,6 +38,7 @@ struct PanelView: UIViewRepresentable {
         private let bridgeKey: String
         private var webView: WKWebView?
         private var loaded = false
+        private var resumeObserver: NSObjectProtocol?
 
         init(
             computer: PairedComputer,
@@ -54,6 +55,10 @@ struct PanelView: UIViewRepresentable {
             self.proxyHandler = PanelProxyHandler(client: client, bridgeKey: key)
             self.bridgeKey = key
             super.init()
+            // iOS suspends the app in the background: failures before and after that are not one outage
+            resumeObserver = NotificationCenter.default.addObserver(
+                forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main
+            ) { [weak client] _ in client?.appResumed() }
         }
 
         func makeWebView() -> WKWebView {
@@ -102,6 +107,8 @@ struct PanelView: UIViewRepresentable {
         }
 
         func shutdown() {
+            if let resumeObserver { NotificationCenter.default.removeObserver(resumeObserver) }
+            resumeObserver = nil
             usb.stop()
             client.invalidate()
             webView?.stopLoading()

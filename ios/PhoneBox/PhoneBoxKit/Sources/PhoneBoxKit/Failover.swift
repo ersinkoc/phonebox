@@ -31,6 +31,12 @@ public struct Failover: Equatable {
         nextProbe = .distantPast
     }
 
+    /// The app came back to the foreground. A failure before it was suspended and one after it resumes are not one
+    /// outage: the window starts again from the next failure.
+    public mutating func resumed() {
+        failingSince = nil
+    }
+
     /// A request to the computer on screen got no answer at `now`. True when the others should be asked now.
     public mutating func failed(at now: Date) -> Bool {
         let since = failingSince ?? now
