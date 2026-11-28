@@ -99,6 +99,13 @@ test('rows beyond the widget height can be scrolled to', async ({ page }) => {
   expect(sizes.scroll).toBeGreaterThan(sizes.client); // more rows than room: the list scrolls rather than cutting them off
   await list.evaluate((el) => { el.scrollTop = el.scrollHeight; });
   await expect(list.locator('.mq-row').last()).toBeInViewport();
+  // a new value redraws the widget; the list stays scrolled where it was
+  const before = await list.evaluate((el) => el.scrollTop);
+  expect(before).toBeGreaterThan(0);
+  await page.evaluate(() => fetch('/api/push/key3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '7' }));
+  await expect(list.locator('.mq-row').nth(3).locator('.mq-v')).toHaveText('7');
+  expect(await list.evaluate((el) => el.scrollTop)).toBe(before);
+  await expect(list.locator('.mq-row').last()).toBeInViewport();
 });
 
 test('the widget is in the catalog and the panel speaks the language (German)', async ({ page }) => {

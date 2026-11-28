@@ -1852,10 +1852,14 @@ W.mqtt = {
         if (c) row.style.setProperty('--c', c);
         return row;
       });
+      // the list is drawn anew: a list scrolled down to later keys stays where it was
+      const top = box.querySelector('.mq-list')?.scrollTop || 0;
       box.replaceChildren(
         h('div', 'w-title', o.title || 'MQTT', h('span', 'w-sub mq-last', tp('Last message') + ' ' + (at ? ago(at) : '—'))),
         h('div', 'mq-state ' + state, h('span', 'mq-dot'), h('span', 'mq-text', stateText())),
         ...(rows.length ? [h('div', 'mq-list', ...rows)] : []));
+      const list = box.querySelector('.mq-list');
+      if (list) list.scrollTop = top;
     };
     const tick = every(5000, async () => { const ok = await load(); render(); return ok; }, 15_000);
     return { update: () => { tick(); render(); } };
