@@ -3,7 +3,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "id": {
     "strings": {
       "s.llamaswap.title": "Statistik llama-swap",
-      "s.llamaswap.hint": "Tampilkan router LLM lokal di widget llama-swap: model mana yang dimuat, permintaan yang berjalan beserta waktunya, permintaan dan token hari ini, serta kecepatan generasi (nonaktif secara bawaan). Hanya penghitung, nama model, serta id dan waktu berjalan setiap permintaan yang berjalan yang dikirim ke ponsel — tidak pernah prompt, permintaan, atau respons.",
+      "s.llamaswap.hint": "Tampilkan router LLM lokal di widget llama-swap: model mana yang dimuat, permintaan yang berjalan beserta waktunya, permintaan dan token hari ini, serta kecepatan generasi (nonaktif secara bawaan). Hanya penghitung, nama model, serta id dan waktu berjalan setiap permintaan yang berjalan yang dikirim ke ponsel — tidak pernah prompt, permintaan, atau respons. Versi router dan waktu permintaan terakhir juga dikirim.",
       "s.llamaswap.url": "Alamat server (kosong = nonaktif)",
       "s.llamaswap.refresh": "Muat ulang setiap (detik)",
       "s.display.weekStart": "Hari pertama dalam pekan",

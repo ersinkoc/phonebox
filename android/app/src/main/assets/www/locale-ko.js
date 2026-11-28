@@ -3,7 +3,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ko": {
     "strings": {
       "s.llamaswap.title": "llama-swap 통계",
-      "s.llamaswap.hint": "로컬 LLM 라우터를 llama-swap 위젯에 표시합니다: 로드된 모델, 경과 시간을 가진 진행 중인 요청, 오늘의 요청 및 토큰 수, 생성 속도 (기본값: 꺼짐). 카운터, 모델 이름, 진행 중인 요청의 id와 경과 시간만 전화로 전송되며 프롬프트, 요청, 응답은 전송되지 않습니다.",
+      "s.llamaswap.hint": "로컬 LLM 라우터를 llama-swap 위젯에 표시합니다: 로드된 모델, 경과 시간을 가진 진행 중인 요청, 오늘의 요청 및 토큰 수, 생성 속도 (기본값: 꺼짐). 카운터, 모델 이름, 진행 중인 요청의 id와 경과 시간만 전화로 전송되며 프롬프트, 요청, 응답은 전송되지 않습니다. 라우터 버전과 마지막 요청 시간도 전송됩니다.",
       "s.llamaswap.url": "서버 주소 (비어 있음 = 꺼짐)",
       "s.llamaswap.refresh": "새로고침 주기(초)",
       "s.display.weekStart": "한 주의 시작 요일",

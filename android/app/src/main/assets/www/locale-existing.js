@@ -37,7 +37,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "de": {
     "strings": {
       "s.llamaswap.title": "llama-swap-Statistiken",
-      "s.llamaswap.hint": "Zeigt den lokalen LLM-Router auf einem llama-swap-Widget: welche Modelle geladen sind, die laufenden Anfragen mit ihrer Dauer, heutige Anfragen und Token, sowie die Generierungsgeschwindigkeit (standardmäßig deaktiviert). Nur Zähler, Modellnamen sowie die Kennung und Laufzeit jeder laufenden Anfrage werden an das Telefon gesendet — keine Prompts, Anfragen oder Antworten.",
+      "s.llamaswap.hint": "Zeigt den lokalen LLM-Router auf einem llama-swap-Widget: welche Modelle geladen sind, die laufenden Anfragen mit ihrer Dauer, heutige Anfragen und Token, sowie die Generierungsgeschwindigkeit (standardmäßig deaktiviert). Nur Zähler, Modellnamen sowie die Kennung und Laufzeit jeder laufenden Anfrage werden an das Telefon gesendet — keine Prompts, Anfragen oder Antworten. Auch die Router-Version und der Zeitpunkt der letzten Anfrage werden gesendet.",
       "s.llamaswap.url": "Serveradresse (leer = aus)",
       "s.llamaswap.refresh": "Aktualisieren alle (Sekunden)",
       "s.mqtt.enable": "Mit einem MQTT-Broker verbinden",
@@ -1702,7 +1702,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "fr": {
     "strings": {
       "s.llamaswap.title": "Statistiques llama-swap",
-      "s.llamaswap.hint": "Affiche le routeur LLM local dans un widget llama-swap : quels modèles sont chargés, les requêtes en cours avec leur durée, les requêtes et les jetons du jour, et la vitesse de génération (désactivé par défaut). Seuls les compteurs, les noms de modèles, ainsi que l'identifiant et la durée de chaque requête en cours sont envoyés au téléphone — jamais les invites, les requêtes ni les réponses.",
+      "s.llamaswap.hint": "Affiche le routeur LLM local dans un widget llama-swap : quels modèles sont chargés, les requêtes en cours avec leur durée, les requêtes et les jetons du jour, et la vitesse de génération (désactivé par défaut). Seuls les compteurs, les noms de modèles, ainsi que l'identifiant et la durée de chaque requête en cours sont envoyés au téléphone — jamais les invites, les requêtes ni les réponses. La version du routeur et l’heure de la dernière requête sont aussi envoyées.",
       "s.llamaswap.url": "Adresse du serveur (vide = désactivé)",
       "s.llamaswap.refresh": "Actualiser toutes les (secondes)",
       "s.mqtt.enable": "Se connecter à un broker MQTT",
@@ -3367,7 +3367,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "es": {
     "strings": {
       "s.llamaswap.title": "Estadísticas de llama-swap",
-      "s.llamaswap.hint": "Muestra el router LLM local en un widget llama-swap: qué modelos están cargados, las peticiones en curso con su tiempo transcurrido, las peticiones y tokens de hoy, y la velocidad de generación (desactivado por defecto). Solo se envían al teléfono contadores, nombres de modelos y la id y el tiempo transcurrido de cada petición en curso — nunca los prompts, peticiones o respuestas.",
+      "s.llamaswap.hint": "Muestra el router LLM local en un widget llama-swap: qué modelos están cargados, las peticiones en curso con su tiempo transcurrido, las peticiones y tokens de hoy, y la velocidad de generación (desactivado por defecto). Solo se envían al teléfono contadores, nombres de modelos y la id y el tiempo transcurrido de cada petición en curso — nunca los prompts, peticiones o respuestas. También se envían la versión del router y la hora de la última petición.",
       "s.llamaswap.url": "Dirección del servidor (vacío = desactivado)",
       "s.llamaswap.refresh": "Actualizar cada (segundos)",
       "s.mqtt.enable": "Conectar con un broker MQTT",
@@ -5032,7 +5032,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "it": {
     "strings": {
       "s.llamaswap.title": "Statistiche llama-swap",
-      "s.llamaswap.hint": "Mostra il router LLM locale in un widget llama-swap: quali modelli sono caricati, le richieste in corso con i relativi tempi, le richieste e i token di oggi, e la velocità di generazione (disattivata di default). Solo i contatori, i nomi dei modelli, nonché l'identificativo e il tempo di ogni richiesta in corso vengono inviati al telefono — mai prompt, richieste o risposte.",
+      "s.llamaswap.hint": "Mostra il router LLM locale in un widget llama-swap: quali modelli sono caricati, le richieste in corso con i relativi tempi, le richieste e i token di oggi, e la velocità di generazione (disattivata di default). Solo i contatori, i nomi dei modelli, nonché l'identificativo e il tempo di ogni richiesta in corso vengono inviati al telefono — mai prompt, richieste o risposte. Vengono inviati anche la versione del router e l’ora dell’ultima richiesta.",
       "s.llamaswap.url": "Indirizzo del server (vuoto = disattivato)",
       "s.llamaswap.refresh": "Aggiorna ogni (secondi)",
       "s.mqtt.enable": "Connetti a un broker MQTT",
@@ -6697,7 +6697,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "pt": {
     "strings": {
       "s.llamaswap.title": "Estatísticas do llama-swap",
-      "s.llamaswap.hint": "Mostra o router LLM local num widget llama-swap: que modelos estão carregados, os pedidos em curso com o seu tempo decorrido, os pedidos e tokens de hoje, e a velocidade de geração (desativado por omissão). Só os contadores, os nomes dos modelos e o identificador e o tempo decorrido de cada pedido em curso são enviados para o telefone — nunca os prompts, pedidos ou respostas.",
+      "s.llamaswap.hint": "Mostra o router LLM local num widget llama-swap: que modelos estão carregados, os pedidos em curso com o seu tempo decorrido, os pedidos e tokens de hoje, e a velocidade de geração (desativado por omissão). Só os contadores, os nomes dos modelos e o identificador e o tempo decorrido de cada pedido em curso são enviados para o telefone — nunca os prompts, pedidos ou respostas. Também são enviados a versão do router e a hora do último pedido.",
       "s.llamaswap.url": "Endereço do servidor (vazio = desativado)",
       "s.llamaswap.refresh": "Atualizar a cada (segundos)",
       "s.mqtt.enable": "Ligar a um broker MQTT",
@@ -8362,7 +8362,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "pt-BR": {
     "strings": {
       "s.llamaswap.title": "Estatísticas do llama-swap",
-      "s.llamaswap.hint": "Mostra o router LLM local em um widget llama-swap: quais modelos estão carregados, os pedidos em andamento com o tempo decorrido, os pedidos e tokens de hoje, e a velocidade de geração (desativado por padrão). Apenas contadores, nomes de modelos e o id e o tempo decorrido de cada pedido em andamento são enviados para o telefone — nunca prompts, pedidos ou respostas.",
+      "s.llamaswap.hint": "Mostra o router LLM local em um widget llama-swap: quais modelos estão carregados, os pedidos em andamento com o tempo decorrido, os pedidos e tokens de hoje, e a velocidade de geração (desativado por padrão). Apenas contadores, nomes de modelos e o id e o tempo decorrido de cada pedido em andamento são enviados para o telefone — nunca prompts, pedidos ou respostas. Também são enviados a versão do roteador e o horário da última requisição.",
       "s.llamaswap.url": "Endereço do servidor (vazio = desativado)",
       "s.llamaswap.refresh": "Atualizar a cada (segundos)",
       "s.mqtt.enable": "Conectar a um broker MQTT",
@@ -8544,7 +8544,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "nl": {
     "strings": {
       "s.llamaswap.title": "llama-swap-statistieken",
-      "s.llamaswap.hint": "Toont de lokale LLM-router in een llama-swap-widget: welke modellen geladen zijn, de actieve verzoeken met hun duur, de verzoeken en tokens van vandaag, en de generatiesnelheid (standaard uit). Alleen tellers, modelnamen en de id en de duur van elk actief verzoek worden naar de telefoon gestuurd — nooit prompts, verzoeken of antwoorden.",
+      "s.llamaswap.hint": "Toont de lokale LLM-router in een llama-swap-widget: welke modellen geladen zijn, de actieve verzoeken met hun duur, de verzoeken en tokens van vandaag, en de generatiesnelheid (standaard uit). Alleen tellers, modelnamen en de id en de duur van elk actief verzoek worden naar de telefoon gestuurd — nooit prompts, verzoeken of antwoorden. Ook de routerversie en het tijdstip van het laatste verzoek worden verstuurd.",
       "s.llamaswap.url": "Serveradres (leeg = uit)",
       "s.llamaswap.refresh": "Verversen om de (seconden)",
       "s.mqtt.enable": "Verbinden met een MQTT-broker",
@@ -10209,7 +10209,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "pl": {
     "strings": {
       "s.llamaswap.title": "Statystyki llama-swap",
-      "s.llamaswap.hint": "Pokaż lokalny router LLM na widgetzie llama-swap: które modele są załadowane, trwające żądania z czasem trwania, żądania i tokeny z dziś, a także prędkość generowania (domyślnie wyłączone). Na telefon trafiają tylko liczniki, nazwy modeli oraz identyfikator i czas trwania każdego trwającego żądania — nigdy prompty, żądania ani odpowiedzi.",
+      "s.llamaswap.hint": "Pokaż lokalny router LLM na widgetzie llama-swap: które modele są załadowane, trwające żądania z czasem trwania, żądania i tokeny z dziś, a także prędkość generowania (domyślnie wyłączone). Na telefon trafiają tylko liczniki, nazwy modeli oraz identyfikator i czas trwania każdego trwającego żądania — nigdy prompty, żądania ani odpowiedzi. Wysyłana jest też wersja routera i czas ostatniego żądania.",
       "s.llamaswap.url": "Adres serwera (puste = wyłączone)",
       "s.llamaswap.refresh": "Odświeżaj co (sekundy)",
       "s.mqtt.enable": "Połącz z brokerem MQTT",
@@ -11874,7 +11874,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ru": {
     "strings": {
       "s.llamaswap.title": "Статистика llama-swap",
-      "s.llamaswap.hint": "Показывает локальный LLM-роутер на виджете llama-swap: какие модели загружены, текущие запросы с их длительностью, запросы и токены за сегодня, а также скорость генерации (выключено по умолчанию). На телефон отправляются только счётчики, названия моделей, а также идентификатор и длительность каждого текущего запроса — никогда промпты, запросы и ответы.",
+      "s.llamaswap.hint": "Показывает локальный LLM-роутер на виджете llama-swap: какие модели загружены, текущие запросы с их длительностью, запросы и токены за сегодня, а также скорость генерации (выключено по умолчанию). На телефон отправляются только счётчики, названия моделей, а также идентификатор и длительность каждого текущего запроса — никогда промпты, запросы и ответы. Также отправляются версия роутера и время последнего запроса.",
       "s.llamaswap.url": "Адрес сервера (пусто = выкл.)",
       "s.llamaswap.refresh": "Обновлять каждые (секунд)",
       "s.mqtt.enable": "Подключиться к брокеру MQTT",
@@ -13659,7 +13659,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "el": {
     "strings": {
       "s.llamaswap.title": "Στατιστικά llama-swap",
-      "s.llamaswap.hint": "Εμφανίζει τον τοπικό δρομολογητή LLM σε ένα widget llama-swap: ποια μοντέλα είναι φορτωμένα, οι αιτήσεις που βρίσκονται εν εξελίξει με τον χρόνο που έχουν πάρει, οι αιτήσεις και τα tokens για σήμερα, και η ταχύτητα παραγωγής (απενεργοποιημένο κατά προεπιλογή). Στο τηλέφωνο αποστέλλονται μόνο μετρητές, ονόματα μοντέλων, και το id και ο χρόνος κάθε ενεργής αίτησης — ποτέ prompts, αιτήσεις ή απαντήσεις.",
+      "s.llamaswap.hint": "Εμφανίζει τον τοπικό δρομολογητή LLM σε ένα widget llama-swap: ποια μοντέλα είναι φορτωμένα, οι αιτήσεις που βρίσκονται εν εξελίξει με τον χρόνο που έχουν πάρει, οι αιτήσεις και τα tokens για σήμερα, και η ταχύτητα παραγωγής (απενεργοποιημένο κατά προεπιλογή). Στο τηλέφωνο αποστέλλονται μόνο μετρητές, ονόματα μοντέλων, και το id και ο χρόνος κάθε ενεργής αίτησης — ποτέ prompts, αιτήσεις ή απαντήσεις. Αποστέλλονται επίσης η έκδοση του δρομολογητή και η ώρα του τελευταίου αιτήματος.",
       "s.llamaswap.url": "Διεύθυνση διακομιστή (κενή = απενεργοποίηση)",
       "s.llamaswap.refresh": "Ανανέωση κάθε (δευτερόλεπτα)",
       "s.mqtt.enable": "Σύνδεση σε broker MQTT",
@@ -14159,7 +14159,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "vi": {
     "strings": {
       "s.llamaswap.title": "Thống kê llama-swap",
-      "s.llamaswap.hint": "Hiển thị bộ định tuyến LLM cục bộ trên widget llama-swap: mô hình nào đang tải, các yêu cầu đang chạy kèm thời gian đã chạy, yêu cầu và token hôm nay, cùng tốc độ sinh (tắt theo mặc định). Chỉ bộ đếm, tên mô hình, cùng id và thời gian của mỗi yêu cầu đang chạy được gửi lên điện thoại — không bao giờ gửi prompt, yêu cầu hay phản hồi.",
+      "s.llamaswap.hint": "Hiển thị bộ định tuyến LLM cục bộ trên widget llama-swap: mô hình nào đang tải, các yêu cầu đang chạy kèm thời gian đã chạy, yêu cầu và token hôm nay, cùng tốc độ sinh (tắt theo mặc định). Chỉ bộ đếm, tên mô hình, cùng id và thời gian của mỗi yêu cầu đang chạy được gửi lên điện thoại — không bao giờ gửi prompt, yêu cầu hay phản hồi. Phiên bản bộ định tuyến và thời điểm yêu cầu cuối cùng cũng được gửi.",
       "s.llamaswap.url": "Địa chỉ máy chủ (trống = tắt)",
       "s.llamaswap.refresh": "Làm mới mỗi (giây)",
       "s.mqtt.enable": "Kết nối tới broker MQTT",
@@ -14659,7 +14659,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "zh": {
     "strings": {
       "s.llamaswap.title": "llama-swap 统计",
-      "s.llamaswap.hint": "在 llama-swap 小组件上显示本地 LLM 路由器：当前加载的模型、进行中的请求及其已用时间、今日的请求数和 token 数，以及生成速度（默认关闭）。只有计数器、模型名称以及每个进行中请求的 id 和已用时间会发送到手机——绝不发送提示词、请求或响应。",
+      "s.llamaswap.hint": "在 llama-swap 小组件上显示本地 LLM 路由器：当前加载的模型、进行中的请求及其已用时间、今日的请求数和 token 数，以及生成速度（默认关闭）。只有计数器、模型名称以及每个进行中请求的 id 和已用时间会发送到手机——绝不发送提示词、请求或响应。 还会发送路由器版本和最后一次请求的时间。",
       "s.llamaswap.url": "服务器地址（留空 = 关闭）",
       "s.llamaswap.refresh": "刷新间隔（秒）",
       "s.mqtt.enable": "连接到 MQTT 代理（broker）",

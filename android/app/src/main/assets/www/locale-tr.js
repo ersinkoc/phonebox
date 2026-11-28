@@ -3,7 +3,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "tr": {
     "strings": {
       "s.llamaswap.title": "llama-swap istatistikleri",
-      "s.llamaswap.hint": "Lokal LLM yönlendiricisini bir llama-swap yerleşkesinde gösterir: hangi modellerin yüklendiği, süresiyle birlikte devam eden istekler, bugünün istekleri ve tokenları ve üretim hızı (varsayılan olarak kapalı). Telefona yalnızca sayılar, model adları ve her devam eden isteğin kimliği ve süresi gönderilir — asla istem, istek veya yanıt gönderilmez.",
+      "s.llamaswap.hint": "Lokal LLM yönlendiricisini bir llama-swap yerleşkesinde gösterir: hangi modellerin yüklendiği, süresiyle birlikte devam eden istekler, bugünün istekleri ve tokenları ve üretim hızı (varsayılan olarak kapalı). Telefona yalnızca sayılar, model adları ve her devam eden isteğin kimliği ve süresi gönderilir — asla istem, istek veya yanıt gönderilmez. Yönlendiricinin sürümü ve son isteğin zamanı da gönderilir.",
       "s.llamaswap.url": "Sunucu adresi (boş = kapalı)",
       "s.llamaswap.refresh": "Yenileme aralığı (saniye)",
       "s.mqtt.enable": "Bir MQTT broker'ına bağlan",

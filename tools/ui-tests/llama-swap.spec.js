@@ -62,11 +62,11 @@ test('llama-swap with no address says to set the address, not offline', async ({
   await expect(page.locator('.ls-list .empty')).toHaveText('Set the server address in Settings › General › llama-swap.');
 });
 
-test('llama-swap with an address but no data yet says loading, not offline', async ({ page }) => {
+test('llama-swap says loading during the first refresh and offline when the request fails', async ({ page }) => {
   await open(page);
-  // D.llamaswap is still null (the demo page does not serve the endpoint): loading…
-  await expect(page.locator('.ls-list .empty')).toHaveText('Loading…');
-  // and an address whose first refresh has not finished yet (connected is false, no error) too
+  // the demo page does not serve /api/llamaswap: a failed request publishes the unavailable state
+  await expect(page.locator('.ls-list .empty')).toHaveText('llama-swap is offline.');
+  // an address whose first refresh has not finished yet (connected is false, no error) says loading
   await llamaswap(page, { connected: false, configured: true });
   await expect(page.locator('.ls-list .empty')).toHaveText('Loading…');
 });

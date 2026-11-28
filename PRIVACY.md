@@ -86,7 +86,9 @@ Last updated: 2026-11-26 (PhoneBox 0.9.30).
   agent asks the [llama-swap](https://github.com/mostlygeek/llama-swap) router you point it at (its `/api/version`,
   `/v1/models` and `/api/metrics/activity` endpoints) on a configurable interval (default:
   every minute), and keeps its `/api/events`
-  stream open to count the requests the router is serving right now. Only the counters it returns — requests and
+  stream open to count the requests the router is serving right now. Each request carries the
+  `User-Agent: PhoneBox/<version>` header; the activity request also carries the local-midnight timestamp with its
+  UTC offset and the page/limit parameters. Only the counters it returns — requests and
   tokens today, the in-flight count (with the id, model and elapsed time of each in-flight request), generation speed, the loaded model names and the time of the last request — are kept for the
   panel; prompts,
   requests and responses are never read, stored or sent. Clearing the

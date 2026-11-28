@@ -27,20 +27,20 @@ public sealed class LlamaSwapMonitorTests : IDisposable
     public async Task TodayCountsOnlyToday()
     {
         await using var ls = new FakeLlamaSwap();
-        var now = DateTime.Now;
+        var now = DateTime.Today.AddHours(12); // frozen at noon: the fixture and the query share one day boundary
         var midnightToday = now.Date;
         ls.ActivityEntries = [
             Entry(midnightToday.AddSeconds(1), 100, 10),
             Entry(now, 50, 5),
             Entry(midnightToday.AddDays(-1).AddHours(23).AddMinutes(59).AddSeconds(59), 999, 999),
         ];
-        var mon = Monitor(ls.Url);
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => now };
         await mon.RefreshAsync();
         var s = mon.Snapshot()!;
         Assert.Equal(2, s.TodayRequests);
         Assert.Equal(150, s.TodayInputTokens);
         Assert.Equal(15, s.TodayOutputTokens);
-        Assert.Equal(now, s.LastRequestAt!.Value, TimeSpan.FromSeconds(2));
+        Assert.Equal(now, s.LastRequestAt!.Value);
     }
 
     [Fact(DisplayName = "The speed is the newest finished request's tokens per second, not the older ones")]
@@ -182,15 +182,15 @@ public sealed class LlamaSwapMonitorTests : IDisposable
     [Fact(DisplayName = "A router reporting a huge total does not walk the request log without bound")]
     public async Task ActivityPaginationIsCapped()
     {
-        await using var ls = new FakeLlamaSwap();
-        ls.ActivityEntries = [Entry(DateTime.Now, 100, 10)];
-        ls.TotalOverride = 1_000_000;
-        var mon = Monitor(ls.Url);
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { LimitCap = 1 };
+        // one nonempty page per request, with more pages than the cap: page 2 must not look like the end
+        ls.ActivityEntries = [.. Enumerable.Range(0, LlamaSwapMonitor.MaxActivityPages + 1).Select(i => Entry(frozen - TimeSpan.FromSeconds(i), 1, 2))];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
         await mon.RefreshAsync();
         var s = mon.Snapshot()!;
-        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(30), "the page cap keeps one refresh bounded");
-        Assert.Equal(1_000_000, s.TodayRequests); // the reported total is still the exact request count
+        Assert.Equal(LlamaSwapMonitor.MaxActivityPages, ls.ActivityRequests); // the cap itself ended the walk
+        Assert.Equal(LlamaSwapMonitor.MaxActivityPages + 1, s.TodayRequests); // the reported total is still exact
         Assert.Null(s.TodayInputTokens); // an incomplete walk is not passed off as exact tokens
         Assert.Null(s.TodayOutputTokens);
     }
@@ -275,7 +275,8 @@ public sealed class LlamaSwapMonitorTests : IDisposable
     [Fact(DisplayName = "A malformed in-flight entry is dropped without wiping the list it arrives in")]
     public void AMalformedEntryIsDroppedWithoutWipingTheList()
     {
-        var mon = Monitor("");
+        var frozen = DateTime.Today.AddHours(12);
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = "", Now = () => frozen, UtcNow = () => frozen };
         mon.ApplyInflightEvent("""{"operation":"upsert","request":{"id":"7","model":"M7","req_path":"/v1/chat","elapsed_ms":9,"resp_bytes":1}}""");
         Assert.Single(mon.Inflight);
         // a snapshot whose first entry carries a non-integer elapsed_ms: that entry is dropped, the neighbour survives
@@ -287,6 +288,31 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         Assert.Equal(["b"], mon.Inflight.Select(r => r.Id));
         mon.ApplyInflightEvent("""{"operation":"remove","id":1.5}""");
         Assert.Equal(["b"], mon.Inflight.Select(r => r.Id));
+    }
+
+    [Fact(DisplayName = "A snapshot without a requests array keeps the live list")]
+    public void ASnapshotWithoutRequestsKeepsTheLiveList()
+    {
+        var mon = Monitor("");
+        mon.ApplyInflightEvent("""{"operation":"upsert","request":{"id":"7","model":"M7","req_path":"/v1/chat","elapsed_ms":9,"resp_bytes":1}}""");
+        mon.ApplyInflightEvent("""{"operation":"snapshot"}""");
+        Assert.Equal(["7"], mon.Inflight.Select(r => r.Id)); // malformed replacement, live list kept
+        mon.ApplyInflightEvent("""{"operation":"snapshot","requests":[]}""");
+        Assert.Empty(mon.Inflight); // an explicit empty array still clears it
+    }
+
+    [Fact(DisplayName = "A refresh for the old address cannot publish over the new router")]
+    public async Task OlderRefreshCannotPublishOverNewAddress()
+    {
+        await using var old = new FakeLlamaSwap(versionDelayMs: 500) { Version = "old" };
+        await using var newer = new FakeLlamaSwap { Version = "new" };
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = old.Url };
+        var oldRefresh = mon.RefreshAsync();
+        await Task.Delay(100); // the old refresh is past the gate and waiting for the old router's version body
+        mon.UrlOverride = newer.Url;
+        var newRefresh = mon.RefreshAsync(); // cancels the retired walk and waits for the gate
+        await Task.WhenAll(oldRefresh, newRefresh);
+        Assert.Equal("new", mon.Snapshot()!.Version);
     }
 
     [Fact(DisplayName = "A stream the lifetime gives up ends as a healthy end, not a failure")]
@@ -547,9 +573,11 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
     public string Url => _server.Prefixes.Single().TrimEnd('/') + (_base.Length > 0 ? _base + "/" : "");
     public volatile string[] ActivityEntries = [];
     public int? TotalOverride { get; set; }
+    public int ActivityRequests;
     public bool IgnoreStart { get; set; }
     public bool OmitTotal { get; set; }
     public int? LimitCap { get; set; }
+    public string Version { get; set; } = "v275";
 
     public FakeLlamaSwap(bool activity = true, bool keepEventsOpen = false, bool objectData = false, string basePath = "", bool quietEvents = false, bool versionFails = false, int versionDelayMs = 0, int eventsDelayMs = 0, bool oversizedLine = false)
     {
@@ -582,6 +610,13 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
     {
         var url = ctx.Request.Url!;
         var path = url.AbsolutePath;
+        if (_base.Length > 0 && !path.StartsWith(_base + "/", StringComparison.Ordinal))
+        {
+            ctx.Response.StatusCode = 404;
+            ctx.Response.ContentType = "application/json";
+            ctx.Response.OutputStream.Close();
+            return;
+        }
         if (path == _base + "/api/events" && (_keepEventsOpen || _quietEvents))
         {
             _ = Task.Run(() => KeepEventsOpen(ctx));
@@ -594,7 +629,7 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
         switch (p)
         {
             case "/api/version":
-                body = """{"version":"v275","commit":"e0274d5","build_date":"2026-11-20T07:15:47Z"}""";
+                body = "{\"version\":\"" + Version + "\",\"commit\":\"e0274d5\",\"build_date\":\"2026-11-20T07:15:47Z\"}";
                 if (_versionFails) status = 500;
                 if (_versionDelay > 0) await Task.Delay(_versionDelay);
                 break;
@@ -603,6 +638,7 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
                 break;
             case "/api/metrics/activity" when _activity:
             {
+                Interlocked.Increment(ref ActivityRequests);
                 var qs = ctx.Request.QueryString;
                 DateTime? start = DateTime.TryParse(qs["start"], System.Globalization.CultureInfo.InvariantCulture,
                     System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var st) ? st : null;

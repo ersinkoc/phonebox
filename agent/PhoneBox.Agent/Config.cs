@@ -995,6 +995,7 @@ public sealed partial class ConfigStore(string path)
         c.Bridge ??= new(); // a hand-edited "bridge": null must not break /api/config or the clipboard poll
         c.LlamaSwap ??= new();
         c.LlamaSwap.Url = NormalizeLlamaSwapUrl(c.LlamaSwap.Url);
+        c.LlamaSwap.RefreshSeconds = Math.Clamp(c.LlamaSwap.RefreshSeconds, 10, 3600);
         c.OpenCode.TimeoutSec = Math.Clamp(c.OpenCode.TimeoutSec, 10, 3600);
         c.OpenCode.AlwaysCountdownSec = Math.Clamp(c.OpenCode.AlwaysCountdownSec, 0, 60);
         if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = "ersinkoc/phonebox";
@@ -1352,15 +1353,32 @@ public sealed partial class ConfigStore(string path)
     {
         u = (u ?? "").Trim();
         if (u.Length == 0) return "";
-        var scheme = u.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? "https" : "http";
-        var rest = u.IndexOf("://", StringComparison.Ordinal) is var i and >= 0 ? u[(i + 3)..] : u;
+        string scheme;
+        string rest;
+        var sep = u.IndexOf("://", StringComparison.Ordinal);
+        if (sep >= 0)
+        {
+            scheme = u[..sep].ToLowerInvariant();
+            // An explicit scheme other than http(s) is not ours to rewrite: ftp:// or file:// must stay off.
+            if (scheme is not ("http" or "https")) return "";
+            rest = u[(sep + 3)..];
+        }
+        else
+        {
+            scheme = "http";
+            rest = u;
+        }
         var slash = rest.IndexOf('/', StringComparison.Ordinal);
         var host = slash < 0 ? rest : rest[..slash];
         var path = slash < 0 ? "" : rest[(slash + 1)..];
+        if (host.Length == 0 || host.Any(char.IsWhiteSpace)) return "";
         while (path.Length > 0 && path[^1] == '/') path = path[..^1];
         // the trailing slash when there is a path is not decoration: it is what makes the relative endpoints
         // (api/version, api/events) resolve under the path instead of at the host root
-        return scheme + "://" + host + (path.Length > 0 ? "/" + path + "/" : "");
+        var candidate = scheme + "://" + host + (path.Length > 0 ? "/" + path + "/" : "");
+        return Uri.TryCreate(candidate, UriKind.Absolute, out var parsed)
+            && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps)
+            && !string.IsNullOrWhiteSpace(parsed.Host) ? candidate : "";
     }
 
     // ToLowerInvariant keeps the Turkish capital İ (U+0130) as it is, so it is mapped by hand like the other letters
