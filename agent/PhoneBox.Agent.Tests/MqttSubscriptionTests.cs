@@ -100,6 +100,7 @@ public sealed class MqttSubscriptionTests : IDisposable
                 Sub("a/b#", "x3"),
                 Sub("", "x4"),
                 Sub("a/b\nc", "x5"),    // a control character is no part of a topic
+                Sub("$share/group/a/b", "x6"), // a shared subscription is delivered without its prefix: it would never match
                 Sub("ok/topic", "bad key"),
                 Sub("ok/topic", ""),
                 Sub("ok/topic", new string('k', 65)),
@@ -153,6 +154,8 @@ public sealed class MqttSubscriptionTests : IDisposable
     [InlineData("ON", null, "x", "{\"value\":\"ON\",\"unit\":\"x\"}")]
     [InlineData("{\"t\":19.5}", "t", "°C", "{\"value\":19.5,\"unit\":\"°C\"}")]
     [InlineData("{\"a\":1}", null, "°C", "{\"a\":1}")] // an object has its own shape
+    [InlineData("true", null, "°C", "true")]            // a boolean has no unit
+    [InlineData("{\"on\":false}", "on", "x", "false")]
     public void AMessageBecomesAValue(string payload, string? field, string? unit, string expected)
     {
         var v = MqttFeed.ValueOf(payload, Sub("t", "k", field, unit));
@@ -323,6 +326,59 @@ public sealed class MqttSubscriptionTests : IDisposable
         await Task.Delay(500);
         Assert.Empty(push.Snapshot());
         Assert.Null(run.Connection.Status.LastMessageAt);
+    }
+
+    [Fact]
+    public async Task ChangingARowConnectsAgainAndSubscribesWithTheNewList()
+    {
+        using var broker = await MqttTestBroker.StartAsync();
+        await broker.Publish("new/topic", "first", retain: true);
+        var push = NewPush();
+        await using var run = await Start(Config(broker.Port, "subs-12", Sub("old/topic", "temp")), push);
+        await broker.Publish("old/topic", "1");
+        await Until(() => push.Get("temp")?.Data.GetDouble() == 1, "the first value");
+
+        // "temp" becomes "temperature" on another topic: the retained message of the new topic shows it was subscribed
+        Assert.Null(run.Store.Save(JsonSerializer.Serialize(new { mqtt = Config(broker.Port, "subs-12", Sub("new/topic", "temperature")) }, ConfigStore.WriteOpts)));
+        await Until(() => push.Get("temperature")?.Data.GetString() == "first", "the new row");
+        await broker.Publish("old/topic", "2");
+        await broker.Publish("new/topic", "second");
+        await Until(() => push.Get("temperature")?.Data.GetString() == "second", "the next value of the new row");
+        Assert.Equal(1, push.Get("temp")!.Data.GetDouble()); // the old topic is not subscribed any more
+    }
+
+    [Fact]
+    public async Task ATopicRemovedFromTheSettingsIsUnsubscribedWhenTheBrokerKeepsTheSession()
+    {
+        using var broker = await MqttTestBroker.StartAsync(persistentSessions: true);
+        var push = NewPush();
+        var before = Config(broker.Port, "subs-13", Sub("old/#", "old"));
+        before.CleanSession = false; // the broker keeps this client's subscriptions between connections
+        await using var run = await Start(before, push);
+        var after = Config(broker.Port, "subs-13"); // no rows left
+        after.CleanSession = false;
+        Assert.Null(run.Store.Save(JsonSerializer.Serialize(new { mqtt = after }, ConfigStore.WriteOpts)));
+        await Until(() => { lock (broker.Logins) return broker.Logins.Count >= 2; }, "the second connection");
+        await Until(() => run.Connection.Status.State == MqttConnection.Connected, "the connection to be up again");
+        await broker.Publish("old/anything", "1");
+        await Task.Delay(500); // a message the broker still sent would have arrived by now
+        Assert.Null(run.Connection.Status.LastMessageAt);
+    }
+
+    [Fact]
+    public void AFeedThatIsStoppedWritesNothingMore()
+    {
+        var push = NewPush();
+        var feed = new MqttFeed([Sub("t", "k"), Sub("u", "other")], push, NullLogger.Instance);
+        static System.Buffers.ReadOnlySequence<byte> Bytes(string text) => new(System.Text.Encoding.UTF8.GetBytes(text));
+        feed.Receive("t", Bytes("1"));
+        feed.Receive("t", Bytes("2")); // inside the second: it waits
+        Assert.Equal(1, push.Get("k")!.Data.GetDouble());
+        feed.Stop(); // the connection is ending: the goodbye is on its way
+        feed.Receive("u", Bytes("x"));
+        feed.Flush(all: true);
+        Assert.Equal(1, push.Get("k")!.Data.GetDouble());
+        Assert.Null(push.Get("other"));
     }
 
     // ---------------------------------------------------------------- what stays on the computer

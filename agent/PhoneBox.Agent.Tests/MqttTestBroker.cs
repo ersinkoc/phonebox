@@ -19,13 +19,15 @@ internal sealed class MqttTestBroker : IDisposable
 
     private MqttTestBroker(MqttServer server, int port) { _server = server; Port = port; }
 
-    public static async Task<MqttTestBroker> StartAsync(X509Certificate2? cert = null, string? user = null, string? password = null, int? at = null)
+    public static async Task<MqttTestBroker> StartAsync(X509Certificate2? cert = null, string? user = null, string? password = null, int? at = null, bool persistentSessions = false)
     {
         for (var attempt = 0; ; attempt++)
         {
             var port = at ?? FreePort();
             var factory = new MqttServerFactory();
             var builder = factory.CreateServerOptionsBuilder();
+            // a client that connects with Clean session off keeps its subscriptions between connections, as on a real broker
+            builder.WithPersistentSessions(persistentSessions);
             // loopback IPv4 only: a broker on every interface would show up twice in what ListeningPortsTests counts for this process
             if (cert is null) builder.WithDefaultEndpoint().WithDefaultEndpointPort(port).WithDefaultEndpointBoundIPAddress(IPAddress.Loopback).WithDefaultEndpointBoundIPV6Address(IPAddress.None);
             else builder.WithoutDefaultEndpoint().WithEncryptedEndpoint().WithEncryptedEndpointPort(port).WithEncryptedEndpointBoundIPAddress(IPAddress.Loopback).WithEncryptedEndpointBoundIPV6Address(IPAddress.None).WithEncryptionCertificate(cert);

@@ -99,6 +99,9 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     private volatile MqttStatus _status = new(Off, null, null);
     private long _lastMessage;
+    // the topics the last connection subscribed to: with Clean session off the broker keeps them, so a topic that is gone
+    // from the settings is unsubscribed on the next connection
+    private List<string> _filters = [];
     private readonly TimeSpan _firstWait = TimeSpan.FromSeconds(5);
     private readonly TimeSpan _stableAfter = TimeSpan.FromSeconds(60);
 
@@ -198,7 +201,10 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
         {
             // inside the try: a subscription that fails still ends with the goodbye below, so the broker does not take the
             // connection for a lost one and publish the last will
-            if (subscriptions.Count > 0) await SubscribeAsync(client, subscriptions, ct);
+            var wanted = subscriptions.Select(s => s.Topic!).Distinct(StringComparer.Ordinal).ToList();
+            var leftover = cfg.CleanSession ? [] : await UnsubscribeAsync(client, wanted, ct);
+            if (wanted.Count > 0) await SubscribeAsync(client, wanted, ct);
+            _filters = [.. wanted, .. leftover];
             _status = new(Connected, null, null);
             connected();
             while (!ct.IsCancellationRequested && !lost.Task.IsCompleted && Signature(config.Get().Mqtt) == signature)
@@ -214,23 +220,42 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
         catch (OperationCanceledException) { }
         finally
         {
+            // the values that still waited for their second are written when the connection was dropped (after a settings
+            // change they may no longer be wanted); then the feed is closed, so nothing is written while the goodbye is sent
+            if (dropped) feed?.Flush(all: true);
+            feed?.Stop();
             if (client.IsConnected)
             {
                 using var closing = new CancellationTokenSource(TimeSpan.FromSeconds(2));
                 try { await client.DisconnectAsync(new MqttClientDisconnectOptions(), closing.Token); } catch { /* the broker did not answer the goodbye in time */ }
             }
         }
-        // dropped by the broker or the network, not by a settings change or the agent stopping. Then the values that still
-        // waited for their second are written (after a settings change they may no longer be wanted)
-        if (dropped) feed?.Flush(all: true);
+        // dropped by the broker or the network, not by a settings change or the agent stopping
         if (dropped && !ct.IsCancellationRequested) throw new MqttFailure("other");
     }
 
-    /// <summary>Subscribes to every topic of the settings at once (QoS 0: a value, not a command). A refusal is logged without the topic.</summary>
-    private async Task SubscribeAsync(IMqttClient client, List<MqttSubscription> subscriptions, CancellationToken ct)
+    /// <summary>
+    /// With Clean session off the broker still has the topics of the previous settings: those that are not wanted any more
+    /// are unsubscribed (best effort: the ones that could not be are returned, and tried again on the next connection). After a restart the agent
+    /// does not know them, so a broker may keep one until the session ends; its messages are ignored.
+    /// </summary>
+    private async Task<List<string>> UnsubscribeAsync(IMqttClient client, List<string> wanted, CancellationToken ct)
+    {
+        var stale = _filters.Where(f => !wanted.Contains(f, StringComparer.Ordinal)).ToList();
+        if (stale.Count == 0) return [];
+        var options = new MqttClientUnsubscribeOptionsBuilder();
+        foreach (var topic in stale) options.WithTopicFilter(topic);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(ConnectTimeout);
+        try { await client.UnsubscribeAsync(options.Build(), timeout.Token); return []; }
+        catch (Exception) when (!ct.IsCancellationRequested) { return stale; } // the ones left over are tried again next time
+    }
+
+    /// <summary>Subscribes to the topics at once (QoS 0: a value, not a command). A refusal is logged without the topic.</summary>
+    private async Task SubscribeAsync(IMqttClient client, List<string> topics, CancellationToken ct)
     {
         var options = new MqttClientSubscribeOptionsBuilder();
-        foreach (var topic in subscriptions.Select(s => s.Topic!).Distinct(StringComparer.Ordinal))
+        foreach (var topic in topics)
             options.WithTopicFilter(f => f.WithTopic(topic).WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtMostOnce));
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(ConnectTimeout);

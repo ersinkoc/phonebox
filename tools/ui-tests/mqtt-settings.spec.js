@@ -159,3 +159,38 @@ test('Revert brings the subscriptions back to what is saved', async ({ page }) =
   await page.locator('#revert').click();
   await expect(page.locator('#mqttSubs .mqtt-sub')).toHaveCount(1);
 });
+
+test('a row the agent would drop is marked, and the page does not save while one is there', async ({ page }) => {
+  await open(page, config({ enabled: true, host: 'broker.local', subscriptions: [
+    { topic: 'a/b', key: 'ok' },
+    { topic: 'a/b', key: 'living room' },   // a space is no part of a key
+    { topic: 'a/#/b', key: 'two' },         // # is only the last level
+    { topic: '$share/g/a/b', key: 'three' }, // shared subscriptions are not supported
+    { topic: 'c/d', key: 'ok' },            // the key is taken
+    { topic: 'e/f', key: '' },              // a key is missing
+    { topic: '', key: '' },                 // an empty row is simply not saved
+  ] }));
+  const rows = page.locator('#mqttSubs .mqtt-sub');
+  const invalid = async (i) => (await rows.nth(i).locator('input').first().getAttribute('aria-invalid')) === 'true';
+  expect(await Promise.all([0, 1, 2, 3, 4, 5, 6].map(invalid))).toEqual([false, true, true, true, true, true, false]);
+  await expect(rows.nth(1)).toHaveAttribute('title', /not saved/);
+  await page.evaluate(() => {
+    const real = window.fetch;
+    window.__puts = 0;
+    window.fetch = async (input, init) => { if (String(input).endsWith('/api/settings') && init?.method === 'PUT') window.__puts++; return real(input, init); };
+  });
+  await rows.nth(0).locator('input').nth(3).fill('x'); // any edit, so that Save is on
+  await page.locator('#save').click();
+  await expect(page.locator('.toast.err')).toContainText('not saved');
+  expect(await page.evaluate(() => window.__puts)).toBe(0);
+
+  // mending the rows clears the marks, and the page saves again
+  await rows.nth(1).locator('input').nth(1).fill('living-room');
+  await rows.nth(2).locator('input').nth(0).fill('a/+/b');
+  await rows.nth(3).locator('input').nth(0).fill('a/b/c');
+  await rows.nth(4).locator('input').nth(1).fill('other');
+  await rows.nth(5).locator('input').nth(1).fill('last');
+  expect(await Promise.all([0, 1, 2, 3, 4, 5, 6].map(invalid))).toEqual([false, false, false, false, false, false, false]);
+  await page.locator('#save').click();
+  await expect.poll(() => page.evaluate(() => window.__puts)).toBe(1);
+});

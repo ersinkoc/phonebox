@@ -22,6 +22,7 @@ internal sealed class MqttFeed(IReadOnlyList<MqttSubscription> subscriptions, Pu
     private readonly Lock _lock = new();
     private readonly Dictionary<string, Slot> _slots = [];
     private bool _refusedLogged;
+    private bool _stopped;
 
     /// <summary>A message arrived: the value of every subscription whose topic it matches is written, or kept for the next second.</summary>
     public void Receive(string topic, ReadOnlySequence<byte> payload)
@@ -46,16 +47,27 @@ internal sealed class MqttFeed(IReadOnlyList<MqttSubscription> subscriptions, Pu
     public void Flush(bool all = false)
     {
         lock (_lock)
-            foreach (var (key, slot) in _slots)
+            if (!_stopped)
+                foreach (var (key, slot) in _slots)
                 if (slot.Waiting is { } value && (all || Due(slot))) Write(key, slot, value);
     }
 
     private static bool Due(Slot slot) => slot.WrittenAt is not { } at || Environment.TickCount64 - at >= IntervalMs;
 
+    /// <summary>
+    /// The connection is ending: nothing is written from now on, so a message that arrives while the goodbye is on its way
+    /// cannot write a key the settings no longer have.
+    /// </summary>
+    public void Stop()
+    {
+        lock (_lock) _stopped = true;
+    }
+
     private void Offer(string key, JsonElement value)
     {
         lock (_lock)
         {
+            if (_stopped) return;
             if (!_slots.TryGetValue(key, out var slot)) _slots[key] = slot = new();
             if (Due(slot)) Write(key, slot, value);
             else slot.Waiting = value; // the newest one waits; an older one that waited is replaced
@@ -79,7 +91,7 @@ internal sealed class MqttFeed(IReadOnlyList<MqttSubscription> subscriptions, Pu
     /// <summary>
     /// The pushed value of a message, or null when there is none to push. With a field the message must be JSON that has it.
     /// Without one, a JSON object or array is kept as it is, and anything else is a number, a boolean or a text, like a
-    /// webhook's body. A number or a text with a unit is stored as {"value", "unit"}, which the widgets and rules read.
+    /// webhook's body. A number or a text with a unit is stored as {"value", "unit"}, which the widgets and rules read (a boolean, an object and an array have no unit).
     /// </summary>
     internal static JsonElement? ValueOf(string payload, MqttSubscription s)
     {
@@ -100,7 +112,7 @@ internal sealed class MqttFeed(IReadOnlyList<MqttSubscription> subscriptions, Pu
         }
         else if (text[0] is '{' or '[' && TryJson(text, out var whole)) value = whole;
         else value = PushStore.ParseValue(text);
-        if (!string.IsNullOrEmpty(s.Unit) && value.ValueKind is not (JsonValueKind.Object or JsonValueKind.Array))
+        if (!string.IsNullOrEmpty(s.Unit) && value.ValueKind is JsonValueKind.Number or JsonValueKind.String)
             value = JsonSerializer.SerializeToElement(new { value, unit = s.Unit });
         return value;
     }

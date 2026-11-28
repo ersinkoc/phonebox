@@ -29,7 +29,7 @@ In **Settings › General › MQTT**, under **Subscriptions**, each row puts the
 
 | Field | What it does |
 |---|---|
-| Topic | The topic to subscribe to. `+` stands for one level (`home/+/temp`) and `#` for everything below (`sensors/#`, last level only) |
+| Topic | The topic to subscribe to. `+` stands for one level (`home/+/temp`) and `#` for everything below (`sensors/#`, last level only). Shared subscriptions (`$share/…`) are not supported |
 | Key | The pushed value's key: 1 to 64 letters, digits, `.`, `_` or `-`, the same as a [webhook's](GUIDE.md#webhooks) |
 | JSON field | Optional. For a JSON message, the field to take, such as `temperature`, `sensor.temp` or `list.0` (a number picks an array item). Empty: the whole message |
 | Unit | Optional. Stored with a number or a text as `{"value": 21.5, "unit": "°C"}`, which the Pushed value widget shows next to the value |
@@ -40,7 +40,7 @@ with that key shows it, a rule can compare it ("a pushed value is above…", "ha
 
 - **One row, one key.** A wildcard never makes keys: every message that matches a row updates that row's key, the
   newest one winning. A busy broker (`#`) therefore cannot fill the push store, which holds 200 keys in all, webhooks
-  included. A row without a valid topic or key is not saved, a key can be used once, and there are at most 32 rows.
+  included. A row needs a valid topic and a key, a key can be used once, and there are at most 32 rows. The settings page marks a row that breaks one of these and does not save until it is fixed (the agent drops such a row too).
 - **At most one update a second per key.** A sensor that publishes ten times a second changes its key once a second,
   with the newest value. Every message that does get through updates the value's time, even when the value is the
   same, so a rule that watches for a silent sensor still works.
@@ -51,6 +51,11 @@ with that key shows it, a rule can compare it ("a pushed value is above…", "ha
   JSON when a field is set, or one without that field.
 - **Retained messages** arrive right after the agent subscribes, so a value is there as soon as the connection is up.
   A change in the settings connects again, which subscribes again.
+- **Removed rows.** With **Clean session** on (the default) the broker forgets the topics when the connection ends. With it off, the
+  broker keeps a client's subscriptions between connections, so the agent unsubscribes from a topic you remove when it
+  connects again. After the agent itself has been restarted it does not know the old topics: the broker may keep sending
+  them until the session ends (turn **Clean session** on and connect once to clear them). Those messages are ignored, but
+  they still move the time of the last message in the status.
 - The agent subscribes at QoS 0 (a value to show, not a command). If the broker refuses a subscription (an access list),
   the log says how many, never which; the connection stays up.
 - **Test** subscribes to nothing.

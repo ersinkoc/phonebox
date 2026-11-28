@@ -106,10 +106,14 @@ public sealed class MqttConfig
         return result;
     }
 
-    /// <summary>A topic filter as MQTT defines it: '+' is a whole level, '#' is the whole last level, nothing else is special.</summary>
+    /// <summary>
+    /// A topic filter as MQTT defines it: '+' is a whole level, '#' is the whole last level, nothing else is special.
+    /// A shared subscription ("$share/group/topic") is not supported: the broker delivers the topic without the prefix,
+    /// so such a row would never match.
+    /// </summary>
     internal static bool ValidFilter(string filter)
     {
-        if (filter.Length is 0 or > 256 || filter.Any(char.IsControl)) return false;
+        if (filter.Length is 0 or > 256 || filter.Any(char.IsControl) || filter.StartsWith("$share/", StringComparison.Ordinal)) return false;
         var levels = filter.Split('/');
         for (var i = 0; i < levels.Length; i++)
         {

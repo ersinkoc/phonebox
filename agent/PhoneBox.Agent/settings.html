@@ -69,6 +69,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .check input { accent-color: var(--accent); width: 16px; height: 16px; }
 .ha-row { padding: 8px 0; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); }
 .ha-row input[type=text] { min-width: 0; }
+#mqttSubs input[aria-invalid="true"] { border-color: var(--danger); }
 
 /* switch */
 .switch { position: relative; width: 40px; height: 22px; flex: 0 0 40px; }
@@ -721,7 +722,7 @@ nav a.on::before { color: var(--accent); }
         <div class="field"><label data-i18n="s.mqtt.subs">Subscriptions</label>
           <div id="mqttSubs"></div>
           <button class="btn sm" id="mqttSubAdd" data-i18n="s.mqtt.subAdd">＋ Add a subscription</button></div>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.subsHint">Each row puts the messages of a topic into one pushed value, which a Pushed value widget shows and the rules can use. A topic may contain + (one level) and # (everything below); every message it matches updates the same key, at most once a second (the last one wins). A JSON field such as sensor.temp picks one value out of a JSON message; empty = the whole message. Rows without a topic and a key are not saved. At most 32.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.subsHint">Each row puts the messages of a topic into one pushed value, which a Pushed value widget shows and the rules can use. A topic may contain + (one level) and # (everything below, as the last level); every message it matches updates the same key, at most once a second (the last one wins). A JSON field such as sensor.temp picks one value out of a JSON message; empty = the whole message. At most 32 rows.</p>
         <div class="grid2">
           <div class="field"><label for="mqttWillTopic" data-i18n="s.mqtt.willTopic">Last will topic (empty = none)</label><input id="mqttWillTopic" type="text" data-bind="mqtt.willTopic" autocomplete="off" spellcheck="false"></div>
           <div class="field"><label for="mqttWillPayload" data-i18n="s.mqtt.willPayload">Last will message</label><input id="mqttWillPayload" type="text" data-bind="mqtt.willPayload" autocomplete="off" spellcheck="false"></div>
@@ -2803,17 +2804,39 @@ function renderMqtt() {
   $('mqttPasswordRemove').hidden = !saved;
   renderMqttSubs();
 }
-// the subscriptions: one row per pushed key. The agent applies the same rules on save (a valid topic and key, each key once, at most 32)
+// the subscriptions: one row per pushed key. The agent applies the same rules on save (a valid topic and key, each key once,
+// at most 32), and drops a row that breaks them: so such a row is marked here, and the page does not save while one is there
 const MQTT_SUBS_MAX = 32;
+function mqttSubProblem(rows, i) {
+  const topic = String(rows[i].topic ?? '').trim(), key = String(rows[i].key ?? '').trim();
+  if (!topic && !key) return false; // an empty row is dropped without a word
+  if (!topic || !key) return true;
+  const levels = topic.split('/');
+  const badTopic = topic.length > 256 || /[\u0000-\u001f\u007f-\u009f]/.test(topic) || topic.startsWith('$share/')
+    || levels.some((l, n) => (l.includes('#') && (l !== '#' || n !== levels.length - 1)) || (l.includes('+') && l !== '+'));
+  return badTopic || !/^[A-Za-z0-9_.-]{1,64}$/.test(key) || rows.findIndex((r) => String(r.key ?? '').trim() === key) !== i;
+}
+function markMqttSubs() {
+  const rows = cfg.mqtt.subscriptions ?? [];
+  [...$('mqttSubs').children].forEach((row, i) => {
+    const bad = mqttSubProblem(rows, i);
+    row.title = bad ? t('s.mqtt.subBad') : '';
+    for (const input of row.querySelectorAll('input')) {
+      input.setAttribute('aria-invalid', String(bad));
+      input.setCustomValidity(bad ? t('s.mqtt.subBad') : '');
+    }
+  });
+}
 function renderMqttSubs() {
   const rows = cfg.mqtt.subscriptions ??= [];
   $('mqttSubs').replaceChildren(...rows.map((r, i) => {
-    const text = (key, label, flex, max) => h('input', { type: 'text', value: r[key] ?? '', placeholder: label, 'aria-label': label, maxlength: max, spellcheck: 'false', autocomplete: 'off', style: { flex, minWidth: '0' }, oninput: (e) => { r[key] = e.target.value; changed(); } });
+    const text = (key, label, flex, max) => h('input', { type: 'text', value: r[key] ?? '', placeholder: label, 'aria-label': label, maxlength: max, spellcheck: 'false', autocomplete: 'off', style: { flex, minWidth: '0' }, oninput: (e) => { r[key] = e.target.value; markMqttSubs(); changed(); } });
     return h('div', { class: 'row mqtt-sub', style: { gap: '6px', flexWrap: 'wrap', marginBottom: '6px' } },
       text('topic', t('s.mqtt.topic'), '2 1 200px', 256), text('key', t('s.mqtt.key'), '1 1 120px', 64),
       text('field', t('s.mqtt.field'), '1 1 140px', 128), text('unit', t('s.mqtt.unit'), '0 0 90px', 16),
       h('button', { class: 'btn sm', title: t('s.ha.remove'), 'aria-label': t('s.ha.remove'), onclick: () => { rows.splice(i, 1); renderMqttSubs(); changed(); } }, '✕'));
   }));
+  markMqttSubs();
   $('mqttSubAdd').disabled = rows.length >= MQTT_SUBS_MAX;
 }
 $('mqttSubAdd').onclick = () => {
@@ -4420,6 +4443,9 @@ function save() {
 }
 async function doSave() {
   if (!$('lhmHelp').hidden && !$('lhmPort').reportValidity()) return false;
+  // a subscription row the agent would drop is not saved: it is marked, and the page says so instead of reloading without it
+  const badRow = $('mqttSubs').querySelector('input[aria-invalid="true"]');
+  if (badRow) { toast(t('s.mqtt.subBad'), true); badRow.reportValidity(); return false; }
   const headers = { 'Content-Type': 'application/json' };
   if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
   let r;
