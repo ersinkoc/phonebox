@@ -9,7 +9,8 @@ public sealed record DeviceBattery(string Name, int Level, string Kind, bool? Ch
 
 /// <summary>
 /// Battery levels of wireless devices: headphones, mice, keyboards, controllers (and a laptop's own battery on Linux).
-///  - Windows: Bluetooth battery property via SetupAPI (what Settings › Bluetooth shows) and Razer USB HID devices.
+///  - Windows: Bluetooth battery property via SetupAPI (what Settings › Bluetooth shows), Razer and Corsair USB HID
+///    devices.
 ///  - Linux: UPower (BlueZ devices, Logitech receivers, the laptop battery).
 ///  - macOS: ioreg (Magic Mouse / Keyboard / Trackpad) and system_profiler (AirPods and other headphones).
 /// Read every 20 seconds (a minute on macOS, where system_profiler is slow), only while a phone shows the widget.
@@ -26,7 +27,9 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
     private readonly object _publishLock = new();
     private IReadOnlyList<DeviceBattery> _btDevices = [];
     private IReadOnlyList<DeviceBattery> _razerDevices = [];
+    private IReadOnlyList<DeviceBattery> _corsairDevices = [];
     private Task? _razerTask;
+    private Task? _corsairTask;
 #endif
     private long _lastRequest = NoRequest;
     private long? _readAt;
@@ -54,7 +57,7 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
                     lock (_publishLock)
                     {
                         _btDevices = bt;
-                        _devices = SortDevices(MergeRazerIntoBluetooth(_btDevices, _razerDevices));
+                        PublishWindowsDevices();
                     }
                 }
                 catch (Exception ex) { log.LogDebug("batteries: {Msg}", ex.Message); }
@@ -68,7 +71,21 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
                         lock (_publishLock)
                         {
                             _razerDevices = razer;
-                            _devices = SortDevices(MergeRazerIntoBluetooth(_btDevices, _razerDevices));
+                            PublishWindowsDevices();
+                        }
+                    }, ct);
+                }
+
+                if (_corsairTask is null || _corsairTask.IsCompleted)
+                {
+                    _corsairTask = Task.Run(() =>
+                    {
+                        var (corsair, error) = WindowsCorsair();
+                        if (error is not null) log.LogDebug("batteries (corsair): {Msg}", error);
+                        lock (_publishLock)
+                        {
+                            _corsairDevices = corsair;
+                            PublishWindowsDevices();
                         }
                     }, ct);
                 }
@@ -83,6 +100,12 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
 
     private static List<DeviceBattery> SortDevices(IEnumerable<DeviceBattery> list)
         => list.OrderBy(d => d.Kind == "laptop" ? 1 : 0).ThenBy(d => d.Name).ToList();
+
+#if WINDOWS
+    // Called under _publishLock. The merge matches by name, so it serves every USB source.
+    private void PublishWindowsDevices()
+        => _devices = SortDevices(MergeRazerIntoBluetooth(_btDevices, _razerDevices.Concat(_corsairDevices)));
+#endif
 
 #if !WINDOWS
     private static IReadOnlyList<DeviceBattery> Read()
