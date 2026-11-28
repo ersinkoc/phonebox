@@ -153,7 +153,8 @@ however many phones ask, and parses a file again only after it changed; each fil
 runtimes (Proton, Steamworks Common Redistributables…) are left out.
 
 Starting a game from the phone is off by default: turn on **Let the phone start games** in the widget's options. Each
-Game library widget decides for itself: the agent checks the option of the widget a tap comes from. With
+Game library widget decides for itself: for a Steam game or a game found outside Steam, the agent checks the option
+of the widget a tap comes from (for your own games, see below). With
 **Ask before starting** (on by default) the first tap marks the game and a second tap within four seconds starts it.
 For a Steam game the phone sends only the game's app id; the agent starts it only if that id is installed right then, by
 handing Steam's own `steam://rungameid/<id>` link to the system (Windows' URL handler, `xdg-open` on Linux, `open` on

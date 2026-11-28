@@ -364,7 +364,7 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         {
             var full = Path.GetFullPath(Path.Combine(dir, file.Trim().Trim('"')));
             return full.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && Norm(full).StartsWith(Norm(Path.GetFullPath(dir)), StringComparison.OrdinalIgnoreCase)
-                && File.Exists(full) && !LinkBelow(dir, full) ? full : null;
+                && !LinkBelow(dir, full) && File.Exists(full) ? full : null;
         }
         catch { return null; }
     }
@@ -380,9 +380,16 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     {
         try
         {
-            var root = Norm(Path.GetFullPath(dir));
-            for (var p = Path.GetFullPath(exe); Norm(p).Length > root.Length && Norm(p).StartsWith(root, StringComparison.OrdinalIgnoreCase); p = Path.GetDirectoryName(p)!)
-                if (SteamLibrary.IsLink(p)) return true;
+            // from the game's folder down, stopping at the first link, so nothing below a link is looked at
+            var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir));
+            var full = Path.GetFullPath(exe);
+            if (Norm(full).Length <= Norm(root).Length || !Norm(full).StartsWith(Norm(root), StringComparison.OrdinalIgnoreCase)) return false;
+            var path = root;
+            foreach (var part in full[root.Length..].Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries))
+            {
+                path = Path.Combine(path, part);
+                if (SteamLibrary.IsLink(path)) return true;
+            }
             return false;
         }
         catch { return true; }
