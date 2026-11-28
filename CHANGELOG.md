@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Linux: the built-in **Screen off** key works on Wayland. It ran `xset dpms force off`, which does nothing under
+  XWayland (no DPMS extension) and still reported success. KDE Plasma on Wayland now uses `kscreen-doctor --dpms off`,
+  GNOME on Wayland Mutter's PowerSaveMode over D-Bus (`busctl`), and X11 keeps `xset`; the screens come back at the next
+  input. On another Wayland desktop, or when the command fails, the key reports an error instead of success.
+
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
