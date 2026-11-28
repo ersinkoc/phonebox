@@ -6,7 +6,7 @@ namespace PhoneBox.Agent;
 /// Sends key combinations and text to the computer for shortcut keys and macros: "ctrl+shift+m", "win+d", "f13",
 /// "playpause"; several combos separated by commas are pressed one after another.
 ///  - Windows: SendInput.
-///  - Linux: xdotool (X11), or wtype then ydotool (Wayland; GNOME needs ydotool), xdotool only when neither is installed.
+///  - Linux: xdotool (X11), or wtype then ydotool (Wayland; KDE Plasma and GNOME need ydotool), xdotool only when neither is installed.
 ///  - macOS: key combinations through System Events via osascript; text and the mouse (Trackpad widget) as Quartz
 ///    events in-process, see Unix/MacKeyboard.cs and Unix/MacMouse.cs. All need the Accessibility permission.
 /// </summary>
@@ -323,8 +323,8 @@ public static class KeySender
     }
 
     /// <summary>
-    /// Wayland (or X11 without xdotool): wtype (wlroots, KDE), then ydotool (GNOME, which has neither wtype's protocol
-    /// nor a way for xdotool in). A tool that timed out may have typed already, so nothing runs after it. xdotool runs
+    /// Wayland (or X11 without xdotool): wtype (wlroots), then ydotool (KDE Plasma and GNOME: KWin 6 and Mutter don't
+    /// advertise zwp_virtual_keyboard_manager_v1 to ordinary clients, so wtype fails there, and xdotool has no way in). A tool that timed out may have typed already, so nothing runs after it. xdotool runs
     /// only when neither wtype nor ydotool is installed: on GNOME it exits 0 having typed nothing.
     /// <paramref name="ydotool"/> is null when ydotool can't do this input, <paramref name="ydotoolCannot"/> says why.
     /// </summary>

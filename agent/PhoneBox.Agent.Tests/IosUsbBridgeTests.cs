@@ -218,6 +218,52 @@ public sealed class IosUsbBridgeTests
     }
 
     [Fact]
+    public async Task DoesNotDialUsbmuxdWhileItIsNotThere()
+    {
+        // Linux starts usbmuxd only while an Apple device is plugged in: without its socket nothing is dialled
+        var dir = Directory.CreateTempSubdirectory("phonebox-ios-usb-");
+        try
+        {
+            var path = Path.Combine(dir.FullName, "config.json");
+            File.WriteAllText(path, JsonSerializer.Serialize(new
+            {
+                lan = new { enabled = true, port = 8766, token = "phonebox-test-token" },
+            }));
+            var connectAttempts = 0;
+            var presenceChecks = 0;
+            using var bridge = new IosUsbBridge(
+                new ConfigStore(path),
+                8766,
+                NullLogger<IosUsbBridge>.Instance,
+                _ =>
+                {
+                    Interlocked.Increment(ref connectAttempts);
+                    throw new InvalidOperationException("must not dial usbmuxd");
+                },
+                () => { Interlocked.Increment(ref presenceChecks); return false; });
+
+            await bridge.StartAsync(CancellationToken.None);
+            var until = DateTime.UtcNow.AddSeconds(5);
+            while (Volatile.Read(ref presenceChecks) < IosUsbBridge.PipeCount && DateTime.UtcNow < until) await Task.Delay(20);
+            await bridge.StopAsync(CancellationToken.None);
+
+            Assert.True(presenceChecks >= IosUsbBridge.PipeCount); // every pipe looked
+            Assert.Equal(0, connectAttempts);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void UsbmuxdIsFoundByItsSocketOnLinuxAndMacOS()
+    {
+        var expected = OperatingSystem.IsWindows() || File.Exists("/var/run/usbmuxd") || File.Exists("/run/usbmuxd");
+        Assert.Equal(expected, IosUsbBridge.UsbmuxdPresent());
+    }
+
+    [Fact]
     public async Task DoesNotOpenPipesWhileWifiIsDisabledInConfig()
     {
         var dir = Directory.CreateTempSubdirectory("phonebox-ios-usb-");
