@@ -385,6 +385,26 @@ public sealed class MqttSubscriptionTests : IDisposable
     }
 
     [Fact]
+    public async Task GoingBackToABrokerUnsubscribesWhatWasRemovedMeanwhile()
+    {
+        using var first = await MqttTestBroker.StartAsync(persistentSessions: true);
+        using var second = await MqttTestBroker.StartAsync(persistentSessions: true);
+        var push = NewPush();
+        var a = Config(first.Port, "subs-15", Sub("old/#", "old"));
+        a.CleanSession = false;
+        await using var run = await Start(a, push);
+        var b = Config(second.Port, "subs-15");
+        b.CleanSession = false;
+        Assert.Null(run.Store.Save(JsonSerializer.Serialize(new { mqtt = b }, ConfigStore.WriteOpts)));
+        await Until(() => { lock (second.Logins) return second.Logins.Count >= 1; }, "the connection to the second broker");
+        var back = Config(first.Port, "subs-15"); // back to the first broker, the row removed
+        back.CleanSession = false;
+        Assert.Null(run.Store.Save(JsonSerializer.Serialize(new { mqtt = back }, ConfigStore.WriteOpts)));
+        await Until(() => { lock (first.Unsubscribed) return first.Unsubscribed.Contains("old/#"); }, "the first broker to be told");
+        lock (second.Unsubscribed) Assert.Empty(second.Unsubscribed);
+    }
+
+    [Fact]
     public void AFeedThatIsStoppedWritesNothingMore()
     {
         var push = NewPush();

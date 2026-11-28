@@ -99,11 +99,11 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     private volatile MqttStatus _status = new(Off, null, null);
     private long _lastMessage;
-    // the topics the last connection subscribed to: with Clean session off the broker keeps them, so a topic that is gone
-    // from the settings is unsubscribed on the next connection
+    // the topics each broker session was subscribed to: with Clean session off the broker keeps them, so a topic that is
+    // gone from the settings is unsubscribed on the next connection to that session - also after a visit to another
+    // broker - and no session (broker, account, client id) ever hears another's topics
+    private readonly Dictionary<string, List<string>> _filtersBySession = [];
     private List<string> _filters = [];
-    // the broker session those topics belong to: another broker, client id or account never hears of them
-    private string? _filtersSession;
     private readonly TimeSpan _firstWait = TimeSpan.FromSeconds(5);
     private readonly TimeSpan _stableAfter = TimeSpan.FromSeconds(60);
 
@@ -205,12 +205,12 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
             // connection for a lost one and publish the last will
             var wanted = subscriptions.Select(s => s.Topic!).Distinct(StringComparer.Ordinal).ToList();
             var session = SessionOf(cfg);
-            if (_filtersSession != session) _filters = []; // another session: the old topic names are not sent to it
+            _filters = _filtersBySession.GetValueOrDefault(session) ?? []; // only this session's own topics
             var leftover = cfg.CleanSession ? [] : await UnsubscribeAsync(client, wanted, ct);
             // recorded before the SUBSCRIBE: one that times out may still have reached the broker, so it is unsubscribed
             // later if the setting goes away
             _filters = [.. wanted, .. leftover];
-            _filtersSession = session;
+            _filtersBySession[session] = _filters;
             if (wanted.Count > 0) await SubscribeAsync(client, wanted, ct);
             _status = new(Connected, null, null);
             connected();
