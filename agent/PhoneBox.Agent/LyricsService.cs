@@ -82,7 +82,7 @@ public sealed partial class LyricsService : IDisposable
         var (title, artist) = CleanQuery(media.Title, rawArtist);
         if (title.Length == 0) return new LyricsResult("idle");
         var seconds = media.DurMs > 0 ? (int)Math.Round(media.DurMs / 1000.0) : 0;
-        var key = string.Join('\n', artist, title, album, seconds).ToLowerInvariant();
+        var key = KeyOf(title, artist, album, seconds, combined);
         Task<LyricsResult> task;
         lock (_gate)
         {
@@ -115,7 +115,7 @@ public sealed partial class LyricsService : IDisposable
         LyricsResult result;
         long keep;
         // LRCLIB failed a moment ago: no request until the back-off is over; the song is asked again after it
-        if (PausedFor() is > 0 and var quiet) return Remember(title, artist, album, seconds, new LyricsResult("error"), quiet);
+        if (PausedFor() is > 0 and var quiet) return Remember(title, artist, album, seconds, new LyricsResult("error"), quiet, combined);
         try
         {
             result = await Fetch(title, artist, album, seconds, combined);
@@ -143,7 +143,7 @@ public sealed partial class LyricsService : IDisposable
                 _quietUntil = Math.Max(_quietUntil, _clock() + keep);
             }
         }
-        return Remember(title, artist, album, seconds, result, keep);
+        return Remember(title, artist, album, seconds, result, keep, combined);
     }
 
     /// <summary>How many answers are held now (tests: expired ones are dropped).</summary>
@@ -168,9 +168,13 @@ public sealed partial class LyricsService : IDisposable
     /// Keeps an answer for <paramref name="keep"/> ms, at most <see cref="CacheSize"/> songs. Expired answers are dropped
     /// whenever lyrics are asked for (and here), so memory holds only answers that would still be used.
     /// </summary>
-    private LyricsResult Remember(string title, string artist, string album, int seconds, LyricsResult result, long keep)
+    // the whole artist field (when it was split) belongs to the key: it is one more search, so a lookup without it is another
+    private static string KeyOf(string title, string artist, string album, int seconds, string? combined) =>
+        string.Join('\n', artist, title, album, seconds, combined ?? "").ToLowerInvariant();
+
+    private LyricsResult Remember(string title, string artist, string album, int seconds, LyricsResult result, long keep, string? combined = null)
     {
-        var key = string.Join('\n', artist, title, album, seconds).ToLowerInvariant();
+        var key = KeyOf(title, artist, album, seconds, combined);
         lock (_gate)
         {
             var now = _clock();
@@ -221,7 +225,7 @@ public sealed partial class LyricsService : IDisposable
         // extras dropped. A player often carries a translation in brackets or a version note ("(10 years after Ver.)")
         // in the title and several artists in one string; LRCLIB matches the track name as a whole, so such a title
         // finds nothing even when the song is there. An ordinary title has one query here, as before.
-        foreach (var (queryTitle, queryArtist) in combined is null ? Queries(title, artist) : Queries(title, artist).Append((title, combined)))
+        foreach (var (queryTitle, queryArtist) in combined is null ? Queries(title, artist) : Queries(title, artist).Prepend((title, combined)))
         {
             // a failure of another lookup may have started a back-off meanwhile: no further request during it
             if (PausedFor() is > 0 and var left) throw new LrclibPausedException(left);
