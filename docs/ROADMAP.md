@@ -98,12 +98,12 @@ people who proposed or prototyped something are credited in the [changelog](../C
 
 ## Open for a contributor
 
+Agreed in principle, not being built in-house. Say so on the issue before starting.
+
 - **Rates for currencies the ECB does not publish** ([#767](https://github.com/ersinkoc/phonebox/issues/767)): the
   Exchange rates widget uses Frankfurter (ECB reference rates), which has had no ruble since March 2022. A second,
   optional source, such as the Central Bank of Russia's daily rates, behind its own switch (off by default) and with
   a PRIVACY.md row.
-Agreed in principle, not being built in-house. Say so on the issue before starting.
-
 - **Typing from the phone's keyboard**: a text field and a row of keys (Enter, Backspace, Esc, Tab, arrows, optionally
   Ctrl / Alt / Shift) on the Dictation widget, behind its **Type the text on the computer** switch and through
   `/api/dictate`; nothing logged or stored ([#320](https://github.com/ersinkoc/phonebox/issues/320)).
