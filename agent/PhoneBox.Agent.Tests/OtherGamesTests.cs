@@ -6,7 +6,10 @@ using Xunit;
 /// <summary>Games found outside Steam: the launchers' records, game folders and the program chosen for each game.</summary>
 public class OtherGamesTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), $"phonebox-games-{Guid.NewGuid():N}");
+    // on Windows under your own local app data: a program is started only from a path no other account may change, and
+    // the temp folder can carry other accounts' rights (a sandbox's, another user's)
+    private readonly string _dir = Path.Combine(OperatingSystem.IsWindows() ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) : Path.GetTempPath(),
+        $"phonebox-games-{Guid.NewGuid():N}");
 
     public OtherGamesTests() => Directory.CreateDirectory(_dir);
     public void Dispose() { try { Directory.Delete(_dir, true); } catch { } }
@@ -505,6 +508,72 @@ public class OtherGamesTests : IDisposable
         var on = Games(Config("""{"allowLaunchOthers":true}"""), game, other);
         Assert.Equal("unsafe", on.Launch(null, "p/w", game.Id)?.Code);
         Assert.Equal("unsafe", on.Launch(null, "p/w", other.Id)?.Code);
+        Assert.Empty(_started);
+    }
+
+    // the rules for each file and folder on the path, deny by default (OtherGames.Judge)
+    private const string Me = "S-1-5-21-1000-2000-3000-1001", Another = "S-1-5-21-1000-2000-3000-1002";
+    private const string TrustedInstaller = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
+    private static OtherGames.Allow A(string sid, long rights, bool inheritOnly = false) => new(sid, rights, inheritOnly);
+    private const long Modify = 0x1301BF, ReadExecute = 0x1200A9, FullControl = 0x1F01FF;
+
+    [Fact]
+    public void OnlyTrustedAccountsMayOwnOrChangeAProgramsPath()
+    {
+        // Program Files: TrustedInstaller owns it; SYSTEM and Administrators may change it; Users read; CREATOR OWNER's
+        // rule only reaches what is created inside
+        var programFiles = new[] { A(TrustedInstaller, FullControl), A("S-1-5-18", Modify), A("S-1-5-32-544", Modify), A("S-1-5-32-545", ReadExecute),
+            A("S-1-3-0", 0x10000000, inheritOnly: true), A("S-1-5-32-545", unchecked((uint)-1610612736), inheritOnly: true) };
+        Assert.Null(OtherGames.Judge(TrustedInstaller, programFiles, false, Me));
+        // your own folder
+        Assert.Null(OtherGames.Judge(Me, [A(Me, FullControl), A("S-1-5-18", FullControl), A("S-1-5-32-544", FullControl)], false, Me));
+
+        // a folder another account owns (it can give itself any right)
+        Assert.Equal("is owned by another account", OtherGames.Judge(Another, [A(Me, FullControl)], false, Me));
+        Assert.Equal("is owned by another account", OtherGames.Judge("S-1-5-32-545", [], false, Me));
+        // a specific standard account (not only Everyone, Authenticated Users or Users) that may change it
+        Assert.Equal("can be changed by other accounts", OtherGames.Judge(Me, [A(Me, FullControl), A(Another, Modify)], false, Me));
+        foreach (var right in new long[] { 0x2, 0x4, 0x40, 0x10000, 0x40000, 0x80000, 0x40000000, 0x10000000 })
+            Assert.Equal("can be changed by other accounts", OtherGames.Judge(Me, [A(Another, right)], false, Me));
+        Assert.Null(OtherGames.Judge(Me, [A(Another, ReadExecute)], false, Me)); // reading is fine
+    }
+
+    [Fact]
+    public void ADrivesRootMayLetAuthenticatedUsersCreateFoldersThereButNothingMore()
+    {
+        // C:\ and a data drive's root, as Windows sets them up
+        var system = new[] { A("S-1-5-11", 0x4), A("S-1-5-11", unchecked((uint)-536805376), inheritOnly: true), A("S-1-5-18", FullControl), A("S-1-5-32-544", FullControl), A("S-1-5-32-545", ReadExecute) };
+        var data = new[] { A("S-1-5-11", Modify), A("S-1-5-11", unchecked((uint)-536805376), inheritOnly: true), A("S-1-5-18", FullControl), A("S-1-5-32-544", FullControl) };
+        Assert.Null(OtherGames.Judge(TrustedInstaller, system, true, Me));
+        Assert.Null(OtherGames.Judge("S-1-5-18", data, true, Me));
+        // only at the root itself, only Authenticated Users, and not the rights that move or re-permission what is there
+        Assert.Equal("can be changed by other accounts", OtherGames.Judge("S-1-5-18", [A("S-1-5-11", 0x4)], false, Me));
+        Assert.Equal("can be changed by other accounts", OtherGames.Judge("S-1-5-18", [A("S-1-1-0", 0x4)], true, Me));
+        foreach (var right in new long[] { 0x40, 0x40000, 0x80000, 0x40000000, 0x10000000 })
+            Assert.Equal("can be changed by other accounts", OtherGames.Judge("S-1-5-18", [A("S-1-5-11", 0x4 | right)], true, Me));
+    }
+
+    [Fact]
+    public void ASystemProgramPassesAndAFolderAnotherAccountMayChangeDoesNot()
+    {
+        if (!OperatingSystem.IsWindows()) return; // Windows permissions
+        // the drive's root, Windows and System32 are owned and changed by trusted accounts only
+        var cmd = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+        Assert.Null(OtherGames.Unsafe(Environment.SystemDirectory, cmd));
+        var dotnet = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe");
+        if (File.Exists(dotnet)) Assert.Null(OtherGames.Unsafe(Path.GetDirectoryName(dotnet)!, dotnet));
+
+        // a folder in your own profile where one other standard account (not a broad group) may modify
+        var game = Program("Lent Game");
+        Assert.Null(OtherGames.Unsafe(game.Dir, game.Exe!));
+        var dir = new DirectoryInfo(game.Dir);
+        var acl = dir.GetAccessControl();
+        acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(new System.Security.Principal.SecurityIdentifier(Another),
+            System.Security.AccessControl.FileSystemRights.Modify, System.Security.AccessControl.InheritanceFlags.None,
+            System.Security.AccessControl.PropagationFlags.None, System.Security.AccessControl.AccessControlType.Allow));
+        dir.SetAccessControl(acl);
+        Assert.Equal("can be changed by other accounts", OtherGames.Unsafe(game.Dir, game.Exe!));
+        Assert.Equal("unsafe", Games(Config("""{"allowLaunchOthers":true}"""), game).Launch(null, "p/w", game.Id)?.Code);
         Assert.Empty(_started);
     }
 }

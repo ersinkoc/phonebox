@@ -574,26 +574,34 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     internal static readonly SteamLibrary.LaunchError Unprotected =
         new("unsafe", "That game's folder can be changed by other accounts on this computer, so it is not started from the phone");
 
-    // Everyone, Authenticated Users and the local Users group
-    private static readonly HashSet<string> BroadGroups = ["S-1-1-0", "S-1-5-11", "S-1-5-32-545"];
+    // The accounts trusted to own and change a program's path besides the agent's own user: SYSTEM, Administrators and
+    // TrustedInstaller (Program Files belongs to them).
+    private const string TrustedInstaller = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
+    private static readonly HashSet<string> TrustedSids = ["S-1-5-18", "S-1-5-32-544", TrustedInstaller];
+    private const string AuthenticatedUsers = "S-1-5-11";
 
-    // what lets another account put a different program in place: write or append data (create files and folders),
-    // delete, delete a child, change the permissions or the owner, and the generic write and all rights
-    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private const FileSystemRights ReplaceRights = FileSystemRights.WriteData | FileSystemRights.AppendData | FileSystemRights.Delete
-        | FileSystemRights.DeleteSubdirectoriesAndFiles | FileSystemRights.ChangePermissions | FileSystemRights.TakeOwnership
-        | (FileSystemRights)0x40000000 /* GENERIC_WRITE */ | (FileSystemRights)0x10000000 /* GENERIC_ALL */;
+    // The rights that let an account put another program in place: write data (create files), append data (create
+    // folders), delete, delete a child, change the permissions (WRITE_DAC), change the owner (WRITE_OWNER), and the
+    // generic write and all rights.
+    internal const long ReplaceRights = 0x2 | 0x4 | 0x10000 | 0x40 | 0x40000 | 0x80000 | 0x40000000 | 0x10000000;
+    // Drive-root exception: a drive's root lets Authenticated Users create files and folders in it, and on a data drive
+    // also modify the root itself (write data, append data, delete), by Windows' default. None of these lets anyone
+    // rename or replace a folder that is already there (that needs delete-a-child on the root, or rights on the folder
+    // itself, which are checked on the folder), so at the root itself, and only there, they are accepted.
+    internal const long RootCreateRights = 0x2 | 0x4 | 0x10000;
+
+    /// <summary>An allow rule of a file's or folder's permissions: who, which rights, and whether it only applies to what is created inside.</summary>
+    internal readonly record struct Allow(string Sid, long Rights, bool InheritOnly);
 
     /// <summary>
     /// Why a game's program (by path: found on a drive, or named by a launcher's record) must not be started from the
-    /// phone, or null when it may:
+    /// phone, or null when it may. Deny by default:
     /// - "missing": not an existing .exe inside the game's folder (any more);
     /// - "is reached through a link": the path, resolved again now, has a junction or symbolic link in it, from the drive's
     ///   root down to the program (on Windows; elsewhere from the game's folder down);
-    /// - "can be changed by other accounts": on Windows, the game's folder, a folder between it and the program, or the
-    ///   program itself lets Everyone, Authenticated Users or Users write, delete or change permissions (inherited
-    ///   rules count). Another account could otherwise plant a program there and have it run as this user. Games under
-    ///   Program Files or in this user's own folders pass; a folder made at the top of a data drive usually does not.
+    /// - on Windows, the program and every folder above it up to the drive's root (whoever controls a parent can move the
+    ///   game's folder away and put another in its place) are judged by <see cref="Judge"/>: owned by a trusted account,
+    ///   and changeable by trusted accounts only. Permissions that cannot be read refuse the start.
     /// </summary>
     internal static string? Unsafe(string dir, string exe)
     {
@@ -611,28 +619,54 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         }
         if (chain.Any(SteamLibrary.IsLink)) return "is reached through a link";
         if (OperatingSystem.IsWindows())
-            foreach (var p in chain.Where(p => Norm(p).StartsWith(Norm(root), StringComparison.OrdinalIgnoreCase)))
-                if (WritableByOthers(p)) return "can be changed by other accounts";
+        {
+            if (System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value is not { } me) return "permissions could not be read";
+            foreach (var p in chain)
+                if (Permissions(p, me) is { } why) return why;
+        }
         return null;
     }
 
-    /// <summary>Everyone, Authenticated Users or Users may write, delete or re-permission this file or folder (an unreadable one counts).</summary>
+    /// <summary>The owner and allow rules of a file or folder, judged by <see cref="Judge"/>; unreadable ones refuse.</summary>
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    internal static bool WritableByOthers(string path)
+    private static string? Permissions(string path, string me)
     {
         try
         {
-            FileSystemSecurity security = Directory.Exists(path) ? new DirectoryInfo(path).GetAccessControl() : new FileInfo(path).GetAccessControl();
-            var folder = security is DirectorySecurity;
-            foreach (FileSystemAccessRule rule in security.GetAccessRules(true, true, typeof(SecurityIdentifier)))
-            {
-                if (rule.AccessControlType != AccessControlType.Allow || !BroadGroups.Contains(rule.IdentityReference.Value)) continue;
-                // a rule only handed down to what is created inside does not apply to the folder itself
-                if (folder && rule.PropagationFlags.HasFlag(PropagationFlags.InheritOnly)) continue;
-                if ((rule.FileSystemRights & ReplaceRights) != 0) return true;
-            }
-            return false;
+            const AccessControlSections sections = AccessControlSections.Access | AccessControlSections.Owner;
+            FileSystemSecurity security = Directory.Exists(path) ? new DirectoryInfo(path).GetAccessControl(sections) : new FileInfo(path).GetAccessControl(sections);
+            if (security.GetOwner(typeof(SecurityIdentifier)) is not SecurityIdentifier owner) return "permissions could not be read";
+            var allows = security.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>()
+                .Where(r => r.AccessControlType == AccessControlType.Allow)
+                .Select(r => new Allow(r.IdentityReference.Value, (uint)(int)r.FileSystemRights, r.PropagationFlags.HasFlag(PropagationFlags.InheritOnly)))
+                .ToList();
+            var isRoot = Path.GetPathRoot(path) is { } r && Norm(r).Equals(Norm(path), StringComparison.OrdinalIgnoreCase);
+            return Judge(owner.Value, allows, isRoot, me);
         }
-        catch { return true; }
+        catch { return "permissions could not be read"; }
+    }
+
+    /// <summary>
+    /// The rules for one file or folder on a program's path, deny by default:
+    /// - its owner is the agent's user (<paramref name="me"/>), SYSTEM, Administrators or TrustedInstaller;
+    /// - every allow rule with a right in <see cref="ReplaceRights"/> belongs to one of those four, except
+    ///   - a rule that only applies to what is created inside (inherit-only, such as CREATOR OWNER's): it is not a right on
+    ///     this folder, and where such a rule reaches a folder or the program on the path it is judged there, as an
+    ///     inherited rule;
+    ///   - at a drive's root only, Authenticated Users with nothing beyond <see cref="RootCreateRights"/>.
+    /// Deny rules are not needed for this: they only take rights away.
+    /// </summary>
+    internal static string? Judge(string owner, IEnumerable<Allow> allows, bool root, string me)
+    {
+        bool Trusted(string sid) => sid == me || TrustedSids.Contains(sid);
+        if (!Trusted(owner)) return "is owned by another account";
+        foreach (var a in allows)
+        {
+            var rights = a.Rights & ReplaceRights;
+            if (rights == 0 || Trusted(a.Sid) || a.InheritOnly) continue;
+            if (root && a.Sid == AuthenticatedUsers && (rights & ~RootCreateRights) == 0) continue;
+            return "can be changed by other accounts";
+        }
+        return null;
     }
 }
