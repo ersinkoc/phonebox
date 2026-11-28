@@ -28,7 +28,8 @@ Setup installs the [latest release](https://github.com/ersinkoc/phonebox/release
    No .NET to install: the agent is one self-contained program.
 3. **Installs adb if it is missing**, after asking. adb is the USB link to the phone. Setup gets it from winget, Homebrew or
    your distribution (apt, dnf, pacman, zypper), or from Google's download as a fallback.
-4. **Offers optional helpers** for more widgets. On Linux: `playerctl` for Now Playing, `pactl` for volume, and `xprintidle`.
+4. **Offers optional helpers** for more widgets. On Linux: `playerctl` for Now Playing, `pactl` for volume and the Control
+   Deck's audio widgets (package `pulseaudio-utils` on Debian, Ubuntu and Fedora, `libpulse` on Arch), and `xprintidle`.
    On macOS: `nowplaying-cli`.
 5. **Installs the agent for your user only**:
 
@@ -244,6 +245,7 @@ already off, turn *Stay awake* back on in the phone's Developer options, or run
 | GPU load, VRAM, temperature | Any vendor (Windows GPU counters); NVIDIA adds power, fan and clocks (`nvidia-smi`), AMD / Intel add them with LibreHardwareMonitor | NVIDIA (`nvidia-smi`), AMD (`amdgpu` sysfs), Intel (`i915` / `xe`: load and clock) | Apple silicon (`ioreg`) |
 | Now playing + controls | ✓ (apps in Windows' media controls) | ✓ (MPRIS via `playerctl`) | System media, including browser video, with `nowplaying-cli`; Spotify and Music fallback |
 | Volume | ✓ | ✓ (`wpctl` / `pactl`) | ✓ |
+| Control Deck: audio devices, microphone, per-app volume | ✓ | ✓ (`pactl`) | — (system output only) |
 | Processes, end one / all | ✓ | ✓ (your own) | ✓ (your own) |
 | App icons | ✓ | ✓ (icon theme) | ✓ (app bundles) |
 | Shortcuts, lock, screen off | ✓ | ✓ (`loginctl`, `xset`) | ✓ (`open`, `pmset`) |

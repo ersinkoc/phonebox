@@ -490,15 +490,20 @@
       { id: 'saver', name: 'Power saver', kind: 'power-plan', state: 'Available', available: true }], midi: [],
   };
   const actionState = {}; // what a configured control last did: "Running", "Finished", "Stopped"…
+  // the agent's audio backend: Windows Core Audio, or pactl on Linux (__demoPulse); otherwise the system output only
+  const basicDeckAudio = () => (window.__demoOs || 'windows') !== 'windows' && !window.__demoPulse;
   async function deckState() {
     const c = await config(), controls = c.controls || {};
     // the output device follows the computer's volume, and the first player is the one in /api/state
     Object.assign(deck.audio.devices[0], { volume: audio.volume, muted: audio.muted });
     Object.assign(deck.media[0], { title: TRACKS[player.track][0], playing: player.playing, position: position(), duration: TRACKS[player.track][3] });
-    // like PortableDeckNative on Linux and macOS: only the system output, no app sessions, no microphones
-    const portable = (window.__demoOs || 'windows') !== 'windows';
-    const deckAudio = portable ? { ...deck.audio, sessions: [], devices: [{ id: 'default', name: 'System output', direction: 'output',
-      default: true, volume: audio.volume, muted: audio.muted, peak: 0, channels: 1, canControl: true }] } : deck.audio;
+    // like PortableDeckNative without pactl (macOS, or Linux without it): only the system output, no app sessions, no
+    // microphones. With pactl (__demoPulse) Linux reports every device and application stream, as Windows does; once
+    // pactl has answered, a sound server that stops answering (__demoPulse = 'down') makes audio unavailable.
+    const portable = basicDeckAudio();
+    const deckAudio = window.__demoPulse === 'down' ? { available: false, error: 'The sound server did not answer (pactl)', devices: [], sessions: [] }
+      : portable ? { ...deck.audio, sessions: [], devices: [{ id: 'default', name: 'System output', direction: 'output',
+        default: true, volume: audio.volume, muted: audio.muted, peak: 0, channels: 1, canControl: true }] } : deck.audio;
     return { ...deck, audio: deckAudio, allowListening: !!controls.allowListening, allowPower: !!controls.allowPower,
       // ControlDeck.Describe / DescribeShortcut: ids, labels and kinds only
       actions: (controls.actions || []).filter((a) => a.enabled !== false).map((a) => ({ id: a.id, name: a.label, kind: a.kind, state: actionState[a.id] ?? (/^(app|project|shortcut|focus)$/.test(a.kind) ? (c.shortcuts.some((x) => x.id === a.target) ? 'Ready' : 'Shortcut is missing') : null),
@@ -555,9 +560,9 @@
       // the first output follows the computer's volume (/api/volume, the mute key): start from its current state, so a
       // mute-only command keeps the volume and a volume-only one keeps the mute
       Object.assign(deck.audio.devices[0], { volume: audio.volume, muted: audio.muted });
-      // like PortableDeckNative: off Windows the only device is "default", the system output (deckState's first device),
-      // with no sessions and no per-channel volume
-      const portable = (window.__demoOs || 'windows') !== 'windows';
+      // like PortableDeckNative without pactl: the only device is "default", the system output (deckState's first
+      // device), with no sessions and no per-channel volume
+      const portable = basicDeckAudio();
       const item = portable ? (kind === 'device' && id === 'default' && op !== 'left' && op !== 'right' ? deck.audio.devices[0] : null)
         : (kind === 'device' ? deck.audio.devices : deck.audio.sessions).find(x => x.id === id);
       if (!item) return { ok: false, error: 'Device unavailable' };
@@ -593,7 +598,7 @@
     else if (kind === 'mics-on') {
       // ControlDeck.MicsOn: only the microphones panic or "Mics off" closed
       const mics = deck.audio.devices.filter((d) => d.direction === 'input' && deckReopen.has(d.id));
-      if (!mics.length || (window.__demoOs || 'windows') !== 'windows') return { ok: false, error: 'No microphone muted by PhoneBox to unmute', mics: 'none' };
+      if (!mics.length || basicDeckAudio()) return { ok: false, error: 'No microphone muted by PhoneBox to unmute', mics: 'none' };
       mics.forEach((d) => { d.muted = false; deckReopen.delete(d.id); });
       return { ok: true, mics: 'unmuted' };
     }
