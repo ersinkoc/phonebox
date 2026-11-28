@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The microphone and camera are only checked while something uses them: an **On air** widget on an enabled page that
+  lights up for them, or a rule on mic-in-use or camera-in-use. Before, the agent probed every two seconds regardless.
+  On Linux that probe listed the open files of every process (thousands of them) and threw an exception for each
+  process of another user (hundreds every two seconds); those processes are now skipped with `access(2)`.
+
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the

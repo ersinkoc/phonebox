@@ -48,6 +48,15 @@ public static class Sh
     }
 
     [DllImport("libc", EntryPoint = "geteuid")] private static extern uint geteuid();
+    [DllImport("libc", EntryPoint = "access")] private static extern int access(string path, int mode);
+
+    /// <summary>Whether this process may list a directory (read and search permission), asked with access(2) so a folder
+    /// it may not read costs no exception.</summary>
+    public static bool CanList(string directory)
+    {
+        try { return access(directory, 4 /*R_OK*/ | 1 /*X_OK*/) == 0; }
+        catch { return true; } // no libc access (never on Linux / macOS): let the caller try, as before
+    }
 
     /// <summary>The effective user id of the agent (to tell the user's own processes from others').</summary>
     public static readonly uint Uid = OperatingSystem.IsWindows() ? 0 : geteuid();
