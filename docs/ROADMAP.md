@@ -29,6 +29,8 @@ people who proposed or prototyped something are credited in the [changelog](../C
   defined on the computer and triggered from the phone by id only, behind the widget's `control` option with "ask
   first" on and retain off by default. In small pull requests; the connection and its settings are in
   ([#739](https://github.com/ersinkoc/phonebox/pull/739)), subscriptions to the push store come next.
+- **A bigger Microphone tile** ([#766](https://github.com/ersinkoc/phonebox/issues/766)): an opt-in layout of the
+  Microphone widget with a large mute button and a vertical gain slider; the current look stays the default.
 - **An upright layout of a page's own** ([#755](https://github.com/ersinkoc/phonebox/issues/755), pull request
   [#758](https://github.com/ersinkoc/phonebox/pull/758)): arrange a page for an upright screen in the editor instead of
   the automatic packing.
@@ -96,6 +98,10 @@ people who proposed or prototyped something are credited in the [changelog](../C
 
 ## Open for a contributor
 
+- **Rates for currencies the ECB does not publish** ([#767](https://github.com/ersinkoc/phonebox/issues/767)): the
+  Exchange rates widget uses Frankfurter (ECB reference rates), which has had no ruble since March 2022. A second,
+  optional source, such as the Central Bank of Russia's daily rates, behind its own switch (off by default) and with
+  a PRIVACY.md row.
 Agreed in principle, not being built in-house. Say so on the issue before starting.
 
 - **Typing from the phone's keyboard**: a text field and a row of keys (Enter, Backspace, Esc, Tab, arrows, optionally
