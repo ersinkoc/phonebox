@@ -44,7 +44,8 @@
   does the same on the others; a widget with another sequence keeps its own. Focus history shows today's running or
   paused focus step as it goes, and the minutes drop out again when that step is restarted or skipped (#741).
 - Spectrum bars: **Album colours** follow the cover of the song that is playing, the colour the background tint takes,
-  dark at the bottom and light at the top, and change with the next song (#745).
+  dark at the bottom and light at the top, and change with the next song. With the background tint off (Settings ›
+  Display) they stay the panel's default teal (#745).
 
 ## 0.9.32 — 2026-11-27
 
