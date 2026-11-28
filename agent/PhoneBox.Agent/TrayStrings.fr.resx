@@ -45,4 +45,13 @@
     <data xml:space="preserve" name="autostartError">
         <value>Impossible de modifier le raccourci de démarrage: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox ne peut pas démarrer : le port {0} est utilisé par {1}. Fermez ce programme, puis relancez PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox ne peut pas démarrer : un autre programme utilise le port {0}. Fermez ce programme, puis relancez PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox ne peut pas démarrer : le port {0} est réservé par Windows. Redémarrer l'ordinateur le libère généralement. Pour afficher les ports réservés, exécutez : netsh interface ipv4 show excludedportrange protocol=tcp</value>
+    </data>
 </root>

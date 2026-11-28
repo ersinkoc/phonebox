@@ -45,4 +45,13 @@
     <data xml:space="preserve" name="autostartError">
         <value>Nie można zmienić skrótu uruchamiania: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>Nie można uruchomić PhoneBox: port {0} jest używany przez {1}. Zamknij ten program i uruchom PhoneBox ponownie.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>Nie można uruchomić PhoneBox: inny program używa portu {0}. Zamknij ten program i uruchom PhoneBox ponownie.</value>
+    </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>Nie można uruchomić PhoneBox: port {0} jest zarezerwowany przez system Windows. Ponowne uruchomienie komputera zwykle go zwalnia. Aby wyświetlić zarezerwowane porty, uruchom: netsh interface ipv4 show excludedportrange protocol=tcp</value>
+    </data>
 </root>

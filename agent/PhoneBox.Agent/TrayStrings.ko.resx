@@ -45,4 +45,13 @@
     <data xml:space="preserve" name="autostartError">
         <value>시작 단축키를 변경할 수 없습니다.: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox를 시작할 수 없습니다: {1}이(가) 포트 {0}을(를) 사용하고 있습니다. 해당 프로그램을 닫고 PhoneBox를 다시 시작하세요.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox를 시작할 수 없습니다: 다른 프로그램이 포트 {0}을(를) 사용하고 있습니다. 해당 프로그램을 닫고 PhoneBox를 다시 시작하세요.</value>
+    </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox를 시작할 수 없습니다: 포트 {0}이(가) Windows에 예약되어 있습니다. 보통 컴퓨터를 다시 시작하면 해제됩니다. 예약된 포트를 보려면 다음을 실행하세요: netsh interface ipv4 show excludedportrange protocol=tcp</value>
+    </data>
 </root>
