@@ -1,0 +1,79 @@
+# PhoneBox on QNAP Container Station
+#
+# Runs the PhoneBox Linux agent 24/7 on a QNAP NAS (x64 or ARM64) so an Android
+# phone or tablet can stay connected over Wi-Fi without keeping a desktop PC on.
+#
+# Security note:
+#   `phonebox-proxy` exposes PhoneBox's passwordless settings UI (127.0.0.1:8765)
+#   on LAN port 18765 so you can configure widgets and pair devices from another
+#   computer. Stop `phonebox-proxy` in Container Station once setup is complete
+#   (or remove it and use an SSH tunnel instead). Never forward port 18765 to the
+#   internet.
+
+services:
+  phonebox:
+    # PhoneBox Linux releases require glibc; Alpine/musl is not supported.
+    image: debian:bookworm-slim
+    container_name: phonebox
+    # Host networking lets Wi-Fi pairing advertise the NAS's real LAN IP on port 8766
+    # and allows the optional local proxy (or an SSH tunnel) to reach 127.0.0.1:8765.
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      # Mount the parent PhoneBox directory rather than .../app so setup.sh and
+      # self-updates can rename app -> app.old without hitting "Device or resource busy".
+      - /share/Container/phonebox/share:/home/phonebox/.local/share/PhoneBox
+      - /share/Container/phonebox/config:/home/phonebox/.config/PhoneBox
+      # Optional: uncomment to monitor QNAP Docker containers with PhoneBox's Docker widget.
+      # - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        set -e
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update && apt-get install -y --no-install-recommends curl ca-certificates unzip libicu72
+
+        # setup.sh refuses to run as root, so run both installation and the agent as a non-root user.
+        id -u phonebox >/dev/null 2>&1 || useradd -m -s /bin/bash phonebox
+        mkdir -p /home/phonebox/.local/share/PhoneBox /home/phonebox/.config/PhoneBox
+        chown -R phonebox:phonebox /home/phonebox
+
+        if [ -z "$$(find /home/phonebox/.local/share/PhoneBox/app -maxdepth 2 -type f -executable -iname 'phonebox*' ! -name '*.dll' ! -name '*.so*' ! -name '*.pdb' 2>/dev/null | head -n 1)" ]; then
+          su - phonebox -c 'curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | bash -s -- --yes --no-phone --no-autostart --no-extras --no-start'
+        fi
+
+        BIN=$$(find /home/phonebox/.local/share/PhoneBox/app -maxdepth 2 -type f -executable -iname 'phonebox*' ! -name '*.dll' ! -name '*.so*' ! -name '*.pdb' | head -n 1)
+        echo "Starting $$BIN ..."
+        exec su - phonebox -c "exec \"$$BIN\""
+
+  # Optional LAN proxy for the settings UI (http://<qnap-ip>:18765).
+  # Stop this container after pairing and configuring your layouts, or remove this
+  # service completely if you prefer accessing 127.0.0.1:8765 over an SSH tunnel.
+  phonebox-proxy:
+    image: nginx:alpine
+    container_name: phonebox-proxy
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - phonebox
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cat <<'EOF' > /etc/nginx/conf.d/default.conf
+        server {
+            listen 18765;
+            location / {
+                proxy_pass http://127.0.0.1:8765;
+                proxy_http_version 1.1;
+                proxy_set_header Host 127.0.0.1:8765;
+                proxy_set_header Origin http://127.0.0.1:8765;
+                proxy_set_header Upgrade $$http_upgrade;
+                proxy_set_header Connection $$http_connection;
+                proxy_buffering off;
+                proxy_read_timeout 3600s;
+            }
+        }
+        EOF
+        exec nginx -g 'daemon off;'
