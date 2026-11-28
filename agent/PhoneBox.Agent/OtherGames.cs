@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -539,10 +541,21 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         if (!LaunchAllowed(deviceId, widget)) return LaunchOff;
         if (g is null) return new("notinstalled", "That game is not installed");
         // a launcher's address goes to its URL handler; a path only when it is still a program (the list is up to ten
-        // minutes old, and a launcher's record could name any file): the shell starts it so a game that asks for
-        // administrator rights still gets the prompt
-        var exe = g.Url is null && g.Exe is not null && g.Exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(g.Exe) ? g.Exe : null;
-        if (g.Url is null && exe is null) return new("notinstalled", "That game is not installed");
+        // minutes old, and a launcher's record could name any file) that no other account could have put there (see
+        // Unsafe): the shell starts it so a game that asks for administrator rights still gets the prompt
+        string? exe = null;
+        if (g.Url is null)
+        {
+            if (g.Exe is null) return new("notinstalled", "That game is not installed");
+            switch (Unsafe(g.Dir, g.Exe))
+            {
+                case null: exe = Path.GetFullPath(g.Exe); break;
+                case "missing": return new("notinstalled", "That game is not installed");
+                case var why:
+                    log.LogWarning("not starting {Name} from the phone: its program {Why}", g.Name, why);
+                    return Unprotected;
+            }
+        }
         try
         {
             StartProcess(g.Url is not null
@@ -556,5 +569,70 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
             log.LogWarning("could not start {Name}: {Msg}", g.Name, ex.Message);
             return new("failed", "The game could not be started");
         }
+    }
+
+    internal static readonly SteamLibrary.LaunchError Unprotected =
+        new("unsafe", "That game's folder can be changed by other accounts on this computer, so it is not started from the phone");
+
+    // Everyone, Authenticated Users and the local Users group
+    private static readonly HashSet<string> BroadGroups = ["S-1-1-0", "S-1-5-11", "S-1-5-32-545"];
+
+    // what lets another account put a different program in place: write or append data (create files and folders),
+    // delete, delete a child, change the permissions or the owner, and the generic write and all rights
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private const FileSystemRights ReplaceRights = FileSystemRights.WriteData | FileSystemRights.AppendData | FileSystemRights.Delete
+        | FileSystemRights.DeleteSubdirectoriesAndFiles | FileSystemRights.ChangePermissions | FileSystemRights.TakeOwnership
+        | (FileSystemRights)0x40000000 /* GENERIC_WRITE */ | (FileSystemRights)0x10000000 /* GENERIC_ALL */;
+
+    /// <summary>
+    /// Why a game's program (by path: found on a drive, or named by a launcher's record) must not be started from the
+    /// phone, or null when it may:
+    /// - "missing": not an existing .exe inside the game's folder (any more);
+    /// - "is reached through a link": the path, resolved again now, has a junction or symbolic link in it, from the drive's
+    ///   root down to the program (on Windows; elsewhere from the game's folder down);
+    /// - "can be changed by other accounts": on Windows, the game's folder, a folder between it and the program, or the
+    ///   program itself lets Everyone, Authenticated Users or Users write, delete or change permissions (inherited
+    ///   rules count). Another account could otherwise plant a program there and have it run as this user. Games under
+    ///   Program Files or in this user's own folders pass; a folder made at the top of a data drive usually does not.
+    /// </summary>
+    internal static string? Unsafe(string dir, string exe)
+    {
+        string full, root;
+        try { full = Path.GetFullPath(exe); root = Path.GetFullPath(dir); } catch { return "missing"; }
+        if (!full.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(full)
+            || !Norm(full).StartsWith(Norm(root), StringComparison.OrdinalIgnoreCase)) return "missing";
+        // the program and its folders up to the game's folder, then (Windows) on to the drive's root
+        var chain = new List<string> { full };
+        for (var d = Path.GetDirectoryName(full); d is not null; d = Path.GetDirectoryName(d))
+        {
+            var mine = Norm(d).StartsWith(Norm(root), StringComparison.OrdinalIgnoreCase);
+            if (!mine && !OperatingSystem.IsWindows()) break;
+            chain.Add(d);
+        }
+        if (chain.Any(SteamLibrary.IsLink)) return "is reached through a link";
+        if (OperatingSystem.IsWindows())
+            foreach (var p in chain.Where(p => Norm(p).StartsWith(Norm(root), StringComparison.OrdinalIgnoreCase)))
+                if (WritableByOthers(p)) return "can be changed by other accounts";
+        return null;
+    }
+
+    /// <summary>Everyone, Authenticated Users or Users may write, delete or re-permission this file or folder (an unreadable one counts).</summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    internal static bool WritableByOthers(string path)
+    {
+        try
+        {
+            FileSystemSecurity security = Directory.Exists(path) ? new DirectoryInfo(path).GetAccessControl() : new FileInfo(path).GetAccessControl();
+            var folder = security is DirectorySecurity;
+            foreach (FileSystemAccessRule rule in security.GetAccessRules(true, true, typeof(SecurityIdentifier)))
+            {
+                if (rule.AccessControlType != AccessControlType.Allow || !BroadGroups.Contains(rule.IdentityReference.Value)) continue;
+                // a rule only handed down to what is created inside does not apply to the folder itself
+                if (folder && rule.PropagationFlags.HasFlag(PropagationFlags.InheritOnly)) continue;
+                if ((rule.FileSystemRights & ReplaceRights) != 0) return true;
+            }
+            return false;
+        }
+        catch { return true; }
     }
 }
