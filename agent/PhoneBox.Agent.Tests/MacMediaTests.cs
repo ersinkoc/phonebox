@@ -353,4 +353,19 @@ public sealed class MacMediaTests
             try { await serving.WaitAsync(TimeSpan.FromSeconds(5)); } catch { }
         }
     }
+
+    [Fact(DisplayName = "Apple Music's line, whose last field is empty, is read (#787)")]
+    public void MusicLineEndingInATabIsRead()
+    {
+        var (snap, art) = MediaMonitor.ParseMacAppleScript("Music\tplaying\tProblem Solver\tGlocky\tNorthside\t12,5\t150\t\n");
+        Assert.NotNull(snap);
+        Assert.Equal("Music", snap!.App);
+        Assert.Equal("Problem Solver", snap.Title);
+        Assert.True(snap.Playing);
+        Assert.Equal(12_500, snap.PosMs);
+        Assert.Equal(150_000, snap.DurMs);
+        Assert.Equal("", art);
+        Assert.Null(MediaMonitor.ParseMacAppleScript("\n").Item1);
+        Assert.Null(MediaMonitor.ParseMacAppleScript("Music\tplaying\tonly\n").Item1);
+    }
 }

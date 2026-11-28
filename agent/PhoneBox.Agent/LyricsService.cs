@@ -68,11 +68,21 @@ public sealed partial class LyricsService : IDisposable
     {
         if (!Wanted(deviceId, widget)) return new LyricsResult("off");
         if (media is null || string.IsNullOrWhiteSpace(media.Title)) return new LyricsResult("idle");
-        var (title, artist) = CleanQuery(media.Title, media.Artist);
-        if (title.Length == 0) return new LyricsResult("idle");
+        // Apple Music for Windows puts the album after the artist ("Glocky — Northside Melodies") and leaves the album empty:
+        // split before the title is cleaned (which compares the artist with the title), and keep the whole field as one
+        // more search, for an artist whose own name has such a dash
         var album = media.Album?.Trim() ?? "";
+        var rawArtist = media.Artist;
+        string? combined = null;
+        if (album.Length == 0 && SplitArtistAlbum((rawArtist ?? "").Trim()) is { } split)
+        {
+            combined = rawArtist!.Trim();
+            (rawArtist, album) = split;
+        }
+        var (title, artist) = CleanQuery(media.Title, rawArtist);
+        if (title.Length == 0) return new LyricsResult("idle");
         var seconds = media.DurMs > 0 ? (int)Math.Round(media.DurMs / 1000.0) : 0;
-        var key = string.Join('\n', artist, title, album, seconds).ToLowerInvariant();
+        var key = KeyOf(title, artist, album, seconds, combined);
         Task<LyricsResult> task;
         lock (_gate)
         {
@@ -84,7 +94,7 @@ public sealed partial class LyricsService : IDisposable
             // its answer cached (LookUp caches before it completes), and that answer has expired since: start a new one.
             if (!_pending.TryGetValue(key, out var running) || running.IsCompleted)
             {
-                running = Task.Run(() => LookUp(title, artist, album, seconds));
+                running = Task.Run(() => LookUp(title, artist, album, seconds, combined));
                 _pending[key] = running;
                 // forgotten once it is done (only this lookup: a newer one for the same song stays)
                 _ = running.ContinueWith(done =>
@@ -100,15 +110,15 @@ public sealed partial class LyricsService : IDisposable
         return result with { Title = title, Artist = artist };
     }
 
-    private async Task<LyricsResult> LookUp(string title, string artist, string album, int seconds)
+    private async Task<LyricsResult> LookUp(string title, string artist, string album, int seconds, string? combined = null)
     {
         LyricsResult result;
         long keep;
         // LRCLIB failed a moment ago: no request until the back-off is over; the song is asked again after it
-        if (PausedFor() is > 0 and var quiet) return Remember(title, artist, album, seconds, new LyricsResult("error"), quiet);
+        if (PausedFor() is > 0 and var quiet) return Remember(title, artist, album, seconds, new LyricsResult("error"), quiet, combined);
         try
         {
-            result = await Fetch(title, artist, album, seconds);
+            result = await Fetch(title, artist, album, seconds, combined);
             keep = result.Status switch { "ok" => 6 * 3600_000L, "off" => 0, _ => 30 * 60_000L };
             lock (_gate) _failures = 0;
         }
@@ -133,7 +143,7 @@ public sealed partial class LyricsService : IDisposable
                 _quietUntil = Math.Max(_quietUntil, _clock() + keep);
             }
         }
-        return Remember(title, artist, album, seconds, result, keep);
+        return Remember(title, artist, album, seconds, result, keep, combined);
     }
 
     /// <summary>How many answers are held now (tests: expired ones are dropped).</summary>
@@ -158,9 +168,13 @@ public sealed partial class LyricsService : IDisposable
     /// Keeps an answer for <paramref name="keep"/> ms, at most <see cref="CacheSize"/> songs. Expired answers are dropped
     /// whenever lyrics are asked for (and here), so memory holds only answers that would still be used.
     /// </summary>
-    private LyricsResult Remember(string title, string artist, string album, int seconds, LyricsResult result, long keep)
+    // the whole artist field (when it was split) belongs to the key: it is one more search, so a lookup without it is another
+    private static string KeyOf(string title, string artist, string album, int seconds, string? combined) =>
+        string.Join('\n', artist, title, album, seconds, combined ?? "").ToLowerInvariant();
+
+    private LyricsResult Remember(string title, string artist, string album, int seconds, LyricsResult result, long keep, string? combined = null)
     {
-        var key = string.Join('\n', artist, title, album, seconds).ToLowerInvariant();
+        var key = KeyOf(title, artist, album, seconds, combined);
         lock (_gate)
         {
             var now = _clock();
@@ -173,7 +187,7 @@ public sealed partial class LyricsService : IDisposable
         return result;
     }
 
-    private async Task<LyricsResult> Fetch(string title, string artist, string album, int seconds)
+    private async Task<LyricsResult> Fetch(string title, string artist, string album, int seconds, string? combined = null)
     {
         // the exact match first (it needs the album and the length), then a search by title and artist
         if (album.Length > 0 && seconds is > 0 and <= 3600 && artist.Length > 0)
@@ -211,7 +225,8 @@ public sealed partial class LyricsService : IDisposable
         // extras dropped. A player often carries a translation in brackets or a version note ("(10 years after Ver.)")
         // in the title and several artists in one string; LRCLIB matches the track name as a whole, so such a title
         // finds nothing even when the song is there. An ordinary title has one query here, as before.
-        foreach (var (queryTitle, queryArtist) in Queries(title, artist))
+        // With an artist field that was split ("Artist — Album"), the whole field's searches come first, then the split artist's.
+        foreach (var (queryTitle, queryArtist) in combined is null ? Queries(title, artist) : Queries(title, combined).Concat(Queries(title, artist)).Distinct())
         {
             // a failure of another lookup may have started a back-off meanwhile: no further request during it
             if (PausedFor() is > 0 and var left) throw new LrclibPausedException(left);
@@ -252,6 +267,19 @@ public sealed partial class LyricsService : IDisposable
     }
 
     /// <summary>The first artist of a string that names several ("A (…)/B (…)" or "A &amp; B"), without its own bracketed note.</summary>
+    /// <summary>
+    /// "Artist — Album" (an em dash with a space on each side, as Apple Music for Windows reports a track with no album of its
+    /// own) as its two parts; null for any other artist (#790).
+    /// </summary>
+    internal static (string Artist, string Album)? SplitArtistAlbum(string artist)
+    {
+        var at = artist.IndexOf(" \u2014 ", StringComparison.Ordinal);
+        if (at <= 0) return null;
+        var left = artist[..at].Trim();
+        var right = artist[(at + 3)..].Trim();
+        return left.Length > 0 && right.Length > 0 ? (left, right) : null;
+    }
+
     internal static string FirstArtist(string artist)
     {
         var a = artist.Trim();

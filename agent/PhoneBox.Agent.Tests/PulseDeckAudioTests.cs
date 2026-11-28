@@ -708,4 +708,33 @@ public sealed class PulseDeckAudioTests
         Assert.Null(audio.Route("firefox", "korvex_ch_musica", cancelled.Token));
         Assert.Empty(calls);
     }
+
+    [Theory]
+    [InlineData("korvex_ch_musica", "korvex_ch_musica")]
+    [InlineData(Scarlett, Scarlett)]
+    [InlineData(Mic, null)]          // a microphone is not an output
+    [InlineData("unplugged", null)]  // not listed now: the default output, as before
+    [InlineData("default", null)]    // no sink of that name here (a listed one would be used, see below)
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void SoundsPlayOnTheChosenOutputWhenItIsListed(string? device, string? sink)
+    {
+        var (pulse, _) = Fake();
+        using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+        using var native = new PortableDeckNative(new AudioControl(), media, _ => null, pulse);
+        Assert.Equal(sink, native.OutputSink(device));
+    }
+
+    [Fact]
+    public void ASinkNamedDefaultIsAChoiceLikeAnyOther()
+    {
+        var sinks = Sinks.Replace("korvex_ch_musica", "default", StringComparison.Ordinal);
+        var pulse = new PulseDeckAudio(args => string.Join(' ', args) switch
+        {
+            "list sinks" => sinks, "list sources" => Sources, "list sink-inputs" => Inputs, "info" => PipeWireInfo(Scarlett, Mic), _ => "",
+        }, () => 0);
+        using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+        using var native = new PortableDeckNative(new AudioControl(), media, _ => null, pulse);
+        Assert.Equal("default", native.OutputSink("default"));
+    }
 }

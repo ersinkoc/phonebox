@@ -88,6 +88,44 @@ public sealed class LyricsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AppleMusicsArtistAndAlbumInOneFieldAreSplit()
+    {
+        // Apple Music for Windows: "Artist — Album" as the artist, no album (#790)
+        var lrclib = new Lrclib(req => req.RequestUri!.AbsolutePath == "/api/get"
+            ? Json("""{"id":1,"trackName":"Problem Solver","artistName":"Glocky","duration":150,"instrumental":false,"plainLyrics":"one","syncedLyrics":"[00:01.00] one"}""")
+            : Json("[]"));
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib);
+        var found = await Ask(lyrics, Track("Problem Solver", "Glocky — Northside Melodies", "", 150_000));
+        Assert.Equal("ok", found.Status);
+        var asked = Assert.Single(lrclib.Asked);
+        Assert.Contains("artist_name=Glocky&", asked);
+        Assert.Contains("album_name=Northside%20Melodies", asked);
+        Assert.Null(LyricsService.SplitArtistAlbum("Simon & Garfunkel"));
+        Assert.Null(LyricsService.SplitArtistAlbum("Jay-Z—Kanye")); // no spaces: a name, not two fields
+        Assert.Null(LyricsService.SplitArtistAlbum(" — Album"));
+    }
+
+    [Fact]
+    public async Task AWholeArtistWithADashIsStillSearchedAndATitledTrackIsSplitToo()
+    {
+        // an artist whose own name has the dash: the exact lookup and the split searches miss, the whole field still searches
+        var lrclib = new Lrclib(req => req.RequestUri!.Query.Contains("artist_name=Earth%20%E2%80%94%20Wind")
+            ? Json(SearchHit) : req.RequestUri!.AbsolutePath == "/api/get" ? new HttpResponseMessage(System.Net.HttpStatusCode.NotFound) : Json("[]"));
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib);
+        Assert.Equal("ok", (await Ask(lyrics, Track("Song", "Earth — Wind", "", 200_000))).Status);
+        // with a bracketed note in the title, the whole field is searched without it too
+        using var bracketed = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib);
+        Assert.Equal("ok", (await Ask(bracketed, Track("Song (Live)", "Earth — Wind", "", 200_000))).Status);
+        Assert.Contains(lrclib.Asked, a => a.Contains("track_name=Song&artist_name=Earth%20%E2%80%94%20Wind"));
+
+        // "Artist - Song" as the title: the field is split before the title is cleaned, so the album is still found
+        var exact = new Lrclib(req => Json("[]"));
+        using var titled = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, exact);
+        await Ask(titled, Track("Glocky - Problem Solver", "Glocky — Northside Melodies", "", 150_000));
+        Assert.Contains(exact.Asked, a => a.Contains("album_name=Northside%20Melodies"));
+    }
+
+    [Fact]
     public async Task TheExactMatchIsUsedAndRememberedForTheSong()
     {
         var lrclib = new Lrclib(req => req.RequestUri!.AbsolutePath == "/api/get"
