@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-- Linux: soundboard sounds and radio stations play on the **output chosen in the control**, as on Windows, when `pactl`
-  lists it: `ffplay` and VLC through `PULSE_SINK` (VLC also with `--aout=pulse`), mpv through `--audio-device=pulse/…`.
-  An output that is not there right now plays on the default output, as before.
-
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
@@ -180,6 +176,13 @@
   artwork field, and trimming its tab away dropped the whole line (#787, [mathan-u](https://github.com/mathan-u)).
 - Synced lyrics: Apple Music for Windows reports "Artist — Album" as the artist with no album; the two are split, so
   LRCLIB is asked for the artist and the album (#790, [Emanuele9017](https://github.com/Emanuele9017)).
+- Linux: soundboard sounds and radio stations play on the **output chosen in the control**, as on Windows, when `pactl`
+  lists it: `ffplay` and VLC through `PULSE_SINK` (VLC also with `--aout=pulse`), mpv through `--audio-device=pulse/…`.
+  An output that is not there right now plays on the default output, as before (#796, [mikicolmena](https://github.com/mikicolmena)).
+- Linux: the mixer names a stream after its program when the stream carries the name of an audio library instead.
+  Discord's voice showed as "WEBRTC VoiceEngine" and now shows as Discord; an Electron app that reports "Chromium",
+  and a program playing through the ALSA plug-in ("ALSA plug-in [program]"), get their program's name too (#798,
+  [mikicolmena](https://github.com/mikicolmena)).
 - **Corsair batteries** (Windows, off by default: Settings › General › Device batteries): wireless Corsair headsets,
   mice and keyboards from a known list show in the Device batteries widget with their level and charging state, through
   their receiver or on their cable, without iCUE (which can keep running). Only read requests are sent, only to devices
