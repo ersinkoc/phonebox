@@ -937,13 +937,14 @@ W['llama-swap'] = {
         }
         if (list.firstChild !== models) list.replaceChildren(models, hero, flight);
         if (d === lastData) { // the data did not change: only the seconds of the in-flight requests move
-          const n = Date.now(); let o = 0;
+          const n = performance.now(); let o = 0;
           for (const t0 of seen.values()) o = Math.max(o, n - t0);
           heroT.textContent = seen.size ? Math.floor(o / 1000) + 's' : '';
           for (const q of flightRefs) q.t.textContent = Math.floor((n - seen.get(q.id)) / 1000) + 's';
           return;
         }
-        const now = Date.now();
+        // elapsed times run on the monotonic clock: a phone clock set back between polls must not show -5s
+        const now = performance.now();
         // A gap since the last poll can contain a request ending and another reusing its id: the old local
         // start belongs to a request the widget no longer saw, so the new one is seeded from its own elapsed.
         if (lastDataAt && now - lastDataAt > LLAMA_POLL_GAP_MS) { seen.clear(); prevEl.clear(); }

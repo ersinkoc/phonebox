@@ -303,6 +303,8 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         Volatile.Write(ref _activeRead, readCt);
         try
         {
+            // an address cleared or changed before the handle was registered found nothing to cancel: do not send
+            if (!UrlMatches(baseUri)) return;
             using var req = new HttpRequestMessage(HttpMethod.Get, new Uri(baseUri, "api/events"));
             req.Headers.Accept.ParseAdd("text/event-stream");
             using var headerDeadline = new CancellationTokenSource(HeaderWait);
@@ -541,12 +543,16 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         }
         _lastUrl = baseUri;
         using var refreshCt = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        Volatile.Write(ref _activeRefresh, refreshCt);
         var gateHeld = false;
         try
         {
             await _gate.WaitAsync(refreshCt.Token);
             gateHeld = true;
+            // Only the gate holder is cancelable: a waiter registered earlier would replace the holder's handle, and
+            // an address change would then cancel the waiter instead of the walk to the old router. A waiter whose
+            // address changed meanwhile sends nothing.
+            Volatile.Write(ref _activeRefresh, refreshCt);
+            if (!UrlMatches(baseUri)) return;
             var version = await GetAsync(baseUri, "api/version", refreshCt.Token);
             if (version is null)
             {
@@ -702,6 +708,9 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         var sawOlder = false;
         var complete = true;
         var rowIds = new HashSet<long>();
+        // The newest row id of the first page: the total is the first page's, so a row with a higher id finished
+        // after the walk began and belongs to neither the count nor the sums.
+        long? newestId = null;
         for (var pageNo = 1; ; pageNo++)
         {
             if (pageNo > 1)
@@ -709,16 +718,25 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 var next = await GetOptionalAsync(baseUri, $"api/metrics/activity?start={start}&limit={ActivityWindow}&page={pageNo}", ct);
                 if (next is not { ValueKind: JsonValueKind.Object } nextPage
                     || !nextPage.TryGetProperty("data", out data) || data.ValueKind != JsonValueKind.Array) { complete = false; break; }
+                // Without row ids a shift cannot be told apart from new rows: a total that moved leaves the sums unknown.
+                if (newestId is null && total is { } before && nextPage.TryGetProperty("total", out var nowEl)
+                    && nowEl.ValueKind == JsonValueKind.Number && nowEl.TryGetInt32(out var nowN) && nowN != before) { complete = false; break; }
             }
-            var repeats = 0;
+            else
+            {
+                foreach (var entry in data.EnumerateArray())
+                    if (RowIdOf(entry) is { } id && (newestId is null || id > newestId)) newestId = id;
+            }
+            // rows that do not count (not an object, already counted, or newer than the walk) do not cover the total
+            var skipped = 0;
             foreach (var entry in data.EnumerateArray())
             {
-                if (entry.ValueKind != JsonValueKind.Object) continue;
-                // The router pages by offset, newest first: a request that finishes between two pages pushes the
-                // last row of one page onto the next. Its id is the same, so it is counted once - and it does not
-                // count towards coverage either, or the walk would stop one row short of the total.
-                if (entry.TryGetProperty("id", out var rowId) && rowId.ValueKind == JsonValueKind.Number
-                    && rowId.TryGetInt64(out var rowN) && !rowIds.Add(rowN)) { repeats++; continue; }
+                if (entry.ValueKind != JsonValueKind.Object) { skipped++; continue; }
+                // The router pages by offset, newest first: requests that finish between two pages push the last
+                // rows of one page onto the next. Their ids are the same, so they are counted once - and they do not
+                // count towards coverage either, or the walk would stop short of the total. The new rows that pushed
+                // them have higher ids than the first page's newest and are left out.
+                if (RowIdOf(entry) is { } rowN && ((pageNo > 1 && rowN > newestId) || !rowIds.Add(rowN))) { skipped++; continue; }
                 if (!newestRead) { newestRead = true; tps = TpsOf(entry); }
                 var ts = TimestampOf(entry);
                 if (ts is not null)
@@ -736,7 +754,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             // Coverage is the distinct rows that actually arrived, not the page size we asked for: a router may cap
             // ?limit lower than 999, and one that omits ?total is walked until an empty page. A walk that cannot
             // reach the total within the page cap reports unknown token sums.
-            seen += data.GetArrayLength() - repeats;
+            seen += data.GetArrayLength() - skipped;
             if (total is { } expected)
             {
                 if (seen >= expected) break;
@@ -763,6 +781,10 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             : total ?? (complete ? (int?)Math.Min(inDay, int.MaxValue) : null);
         return (requests, complete ? input : null, complete ? output : null, last, tps);
     }
+
+    private static long? RowIdOf(JsonElement entry)
+        => entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty("id", out var id)
+           && id.ValueKind == JsonValueKind.Number && id.TryGetInt64(out var n) ? n : null;
 
     private static double? TpsOf(JsonElement entry)
         => entry.ValueKind == JsonValueKind.Object

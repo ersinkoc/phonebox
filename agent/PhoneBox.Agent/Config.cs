@@ -1391,7 +1391,9 @@ public sealed partial class ConfigStore(string path)
         if (u.Length == 0) return "";
         string scheme;
         string rest;
-        var sep = u.IndexOf("://", StringComparison.Ordinal);
+        // the scheme is looked for before any query or fragment: "host:8080/llama?next=https://x" has none
+        var end = u.IndexOfAny(['?', '#']);
+        var sep = (end >= 0 ? u[..end] : u).IndexOf("://", StringComparison.Ordinal);
         if (sep >= 0)
         {
             scheme = u[..sep].ToLowerInvariant();

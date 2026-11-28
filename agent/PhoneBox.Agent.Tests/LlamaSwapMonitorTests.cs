@@ -424,14 +424,15 @@ public sealed class LlamaSwapMonitorTests : IDisposable
     public async Task AddressChangeStopsTheStreamWithoutARefresh()
     {
         await using var ls = new FakeLlamaSwap(quietEvents: true);
+        await using var other = new FakeLlamaSwap();
         var mon = new LlamaSwapMonitor(new ConfigStore(Path.Combine(_dir, "watch-config.json")), NullLogger<LlamaSwapMonitor>.Instance)
         { UrlOverride = ls.Url, Now = () => DateTime.Now, UtcNow = () => DateTime.UtcNow };
         await mon.StartAsync(CancellationToken.None); // the BackgroundService's own Start: PollLoop, StreamLoop and the watcher
         try
         {
             await WaitUntil(() => mon.Inflight.Count > 0); // the stream is open and has fed the list
-            mon.UrlOverride = "http://127.0.0.1:1/elsewhere"; // the watcher notices and refreshes it at once
-            await WaitUntil(() => mon.Inflight.Count == 0); // the quiet router's read could not end this by itself
+            mon.UrlOverride = other.Url; // the watcher notices and refreshes it at once
+            await WaitUntil(() => Volatile.Read(ref other.VersionRequests) >= 1); // the new router is asked, not at the next poll
         }
         finally
         {
@@ -511,7 +512,7 @@ public sealed class LlamaSwapMonitorTests : IDisposable
     {
         await using var ls = new FakeLlamaSwap();
         var now = DateTime.Today.AddHours(12);
-        ls.ActivityEntries = [$"{{\"timestamp\":\"{now.ToUniversalTime():yyyy-MM-ddTHH:mm:ss.fffZ}\",\"tokens\":{{\"input_tokens\":3,\"output_tokens\":4,\"tokens_per_second\":1e400}}}}"];
+        ls.ActivityEntries = [$"{{\"timestamp\":\"{Wire(now)}\",\"tokens\":{{\"input_tokens\":3,\"output_tokens\":4,\"tokens_per_second\":1e400}}}}"];
         var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => now };
         await mon.RefreshAsync();
         var s = mon.Snapshot()!;
@@ -525,8 +526,6 @@ public sealed class LlamaSwapMonitorTests : IDisposable
     public async Task RowPushedOntoTheNextPageIsCountedOnce()
     {
         var frozen = DateTime.Today.AddHours(12);
-        static string Row(int id, DateTime local, long input) =>
-            $"{{\"id\":{id},\"timestamp\":\"{local.ToUniversalTime():yyyy-MM-ddTHH:mm:ss.fffZ}\",\"tokens\":{{\"input_tokens\":{input},\"output_tokens\":1}}}}";
         await using var ls = new FakeLlamaSwap { LimitCap = 2 };
         ls.ActivityEntries = [Row(3, frozen.AddMinutes(-1), 100), Row(2, frozen.AddMinutes(-2), 10), Row(1, frozen.AddMinutes(-3), 1)];
         ls.InsertAfterFirstPage = Row(4, frozen, 1000); // page 2 then starts with row 2 again
@@ -541,8 +540,6 @@ public sealed class LlamaSwapMonitorTests : IDisposable
     public async Task RepeatedRowDoesNotEndTheWalkEarly()
     {
         var frozen = DateTime.Today.AddHours(12);
-        static string Row(int id, DateTime local, long input) =>
-            $"{{\"id\":{id},\"timestamp\":\"{local.ToUniversalTime():yyyy-MM-ddTHH:mm:ss.fffZ}\",\"tokens\":{{\"input_tokens\":{input},\"output_tokens\":1}}}}";
         await using var ls = new FakeLlamaSwap { LimitCap = 2 };
         ls.ActivityEntries = [Row(4, frozen.AddMinutes(-1), 1000), Row(3, frozen.AddMinutes(-2), 100), Row(2, frozen.AddMinutes(-3), 10), Row(1, frozen.AddMinutes(-4), 1)];
         ls.InsertAfterFirstPage = Row(5, frozen, 10000); // page 2 is then [3, 2], page 3 [1]
@@ -552,6 +549,48 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         Assert.Equal(4, s.TodayRequests);
         Assert.Equal(1111, s.TodayInputTokens); // rows 4, 3, 2 and 1 once each - row 1 is not left out
         Assert.Equal(3, ls.ActivityRequests);
+    }
+
+    [Fact(DisplayName = "Requests finishing during the walk are left out, and the oldest row is still read")]
+    public async Task RowsNewerThanTheWalkAreLeftOut()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { LimitCap = 2 };
+        ls.ActivityEntries = [Row(4, frozen.AddMinutes(-1), 1000), Row(3, frozen.AddMinutes(-2), 100), Row(2, frozen.AddMinutes(-3), 10), Row(1, frozen.AddMinutes(-4), 1)];
+        // three finish after the first page: page 2 is then [5, 4], page 3 [3, 2], page 4 [1]
+        ls.InsertManyAfterFirstPage = [Row(7, frozen, 70000), Row(6, frozen, 60000), Row(5, frozen, 50000)];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(4, s.TodayRequests); // the first page's total
+        Assert.Equal(1111, s.TodayInputTokens); // rows 4 to 1, not row 5
+    }
+
+    [Fact(DisplayName = "A row that is not an object does not count towards the total")]
+    public async Task NonObjectRowLeavesTheSumsUnknown()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { IgnoreStart = true }; // the fake's day filter reads objects only
+        ls.ActivityEntries = [Row(1, frozen, 5), "null"];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(2, s.TodayRequests);
+        Assert.Null(s.TodayInputTokens); // one row's tokens are not a two-request total
+    }
+
+    [Fact(DisplayName = "Without row ids, a total that moves between pages leaves the sums unknown")]
+    public async Task MovingTotalWithoutIdsLeavesTheSumsUnknown()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { LimitCap = 2 };
+        ls.ActivityEntries = [Entry(frozen.AddMinutes(-1), 1000, 1), Entry(frozen.AddMinutes(-2), 100, 1), Entry(frozen.AddMinutes(-3), 10, 1)];
+        ls.InsertAfterFirstPage = Entry(frozen, 5, 1);
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(3, s.TodayRequests);
+        Assert.Null(s.TodayInputTokens);
     }
 
     [Fact(DisplayName = "A broken optional activity page leaves the router online with unknown token totals")]
@@ -667,7 +706,9 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         await mon.RefreshAsync(CancellationToken.None); // the REST endpoints fail while the headers are pending
         Assert.Empty(mon.Inflight);
         Assert.False(mon.Snapshot()!.Connected); // offline, not the previous connected snapshot
-        try { await read.WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
+        // the refresh cancelled the pending stream: a read that only ended on the wait's timeout was never stopped
+        var ended = await Record.ExceptionAsync(() => read.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.IsAssignableFrom<OperationCanceledException>(ended);
     }
 
     [Fact(DisplayName = "The old router's numbers do not ride on while a new router is still answering")]
@@ -757,10 +798,17 @@ public sealed class LlamaSwapMonitorTests : IDisposable
     private static LlamaSwapMonitor Monitor(string url)
         => new(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = url };
 
+    // the router's wire format, in the invariant culture: a th-TH runner would otherwise write a Buddhist year
+    private static string Wire(DateTime local)
+        => local.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Row(long id, DateTime local, long input)
+        => $"{{\"id\":{id},\"timestamp\":\"{Wire(local)}\",\"tokens\":{{\"input_tokens\":{input},\"output_tokens\":1}}}}";
+
     private static string Entry(DateTime local, long input, long output, double? tps = null)
     {
         var tpsJson = tps is null ? "" : $",\"tokens_per_second\":{tps.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
-        return $"{{\"timestamp\":\"{local.ToUniversalTime():yyyy-MM-ddTHH:mm:ss.fffZ}\",\"tokens\":{{\"input_tokens\":{input},\"output_tokens\":{output}{tpsJson}}}}}";
+        return $"{{\"timestamp\":\"{Wire(local)}\",\"tokens\":{{\"input_tokens\":{input},\"output_tokens\":{output}{tpsJson}}}}}";
     }
 }
 
@@ -788,6 +836,8 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
     public string Version { get; set; } = "v275";
     public int VersionRequests;
     public string? InsertAfterFirstPage;
+    /// <summary>Several requests finish right after the first page (newest first).</summary>
+    public string[]? InsertManyAfterFirstPage;
     /// <summary>From this activity page on, the body is cut off mid-JSON.</summary>
     public int? BrokenActivityFromPage { get; set; }
     /// <summary>/api/events answers 503.</summary>
@@ -881,6 +931,8 @@ internal sealed class FakeLlamaSwap : IAsyncDisposable
                 // a request finishes right after the first page was served: it lands at the top of the log
                 if (page == 1 && start is not null && Interlocked.Exchange(ref InsertAfterFirstPage, null) is { } fresh)
                     ActivityEntries = [fresh, .. ActivityEntries];
+                if (page == 1 && start is not null && Interlocked.Exchange(ref InsertManyAfterFirstPage, null) is { } many)
+                    ActivityEntries = [.. many, .. ActivityEntries];
                 break;
             }
             case "/api/events":

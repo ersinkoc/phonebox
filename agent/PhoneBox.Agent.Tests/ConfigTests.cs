@@ -136,6 +136,8 @@ public class ConfigTests
         // a query or fragment is dropped so the trailing slash lands on the path, not after the query
         Assert.Equal("http://router.test/llama/", ConfigStore.NormalizeLlamaSwapUrl("http://router.test/llama?view=stats"));
         Assert.Equal("http://router.test:8080", ConfigStore.NormalizeLlamaSwapUrl("router.test:8080#top"));
+        // a "://" inside the query is not the address's scheme
+        Assert.Equal("http://router.test:8080/llama/", ConfigStore.NormalizeLlamaSwapUrl("router.test:8080/llama?next=https://example.test"));
     }
 
     [Theory(DisplayName = "A wrong type in the llama-swap section does not cost the rest of the config")]
