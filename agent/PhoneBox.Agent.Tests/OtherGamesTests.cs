@@ -327,7 +327,7 @@ public class OtherGamesTests : IDisposable
     [Fact]
     public void ScanKeepsOneGamePerFolderAndLeavesSteamGamesToSteam()
     {
-        OtherGames.Found F(string name, string dir) => new(OtherGames.IdOf("t", dir), name, "t", dir, dir + @"\a.exe", null);
+        OtherGames.Found F(string name, string dir) => new(OtherGames.IdOf(dir), name, "t", dir, dir + @"\a.exe", null);
         var list = OtherGames.Scan([F("Battlefield V", @"D:\Epic Games\Battlefield V\"), F("BF V again", @"d:/epic games/battlefield v"),
             F("FC 26", @"D:\SteamLibrary\steamapps\common\FC 26")], []);
         Assert.Equal("Battlefield V", Assert.Single(list).Name);
@@ -336,10 +336,10 @@ public class OtherGamesTests : IDisposable
     [Fact]
     public void AnIdIsStableAndTellsNothingOfThePath()
     {
-        var a = OtherGames.IdOf("folder", @"D:\Games\FIFA 23\FIFA23.exe");
-        Assert.Equal(a, OtherGames.IdOf("folder", @"d:\games\fifa 23\fifa23.exe"));
+        var a = OtherGames.IdOf(@"D:\Games\FIFA 23\FIFA23.exe");
+        Assert.Equal(a, OtherGames.IdOf(@"d:\games\fifa 23\fifa23.exe"));
         Assert.Matches("^x:[0-9a-f]{16}$", a);
-        Assert.NotEqual(a, OtherGames.IdOf("epic", @"D:\Games\FIFA 23\FIFA23.exe"));
+        Assert.NotEqual(a, OtherGames.IdOf(@"D:\Games\FIFA 24\FIFA24.exe"));
     }
 
     [Fact]
@@ -399,7 +399,7 @@ public class OtherGamesTests : IDisposable
     [Fact]
     public void AFolderInsideAGameIsNotAnotherGame()
     {
-        OtherGames.Found F(string name, string dir) => new(OtherGames.IdOf("t", dir), name, "t", dir, dir + @".exe", null);
+        OtherGames.Found F(string name, string dir) => new(OtherGames.IdOf(dir), name, "t", dir, dir + @".exe", null);
         var list = OtherGames.Scan([F("Battlefield V", @"D:\Epic Games\Battlefield V")], [F("Battlefield V tools", @"D:\Epic Games\Battlefield V\Tools"), F("Other", @"D:\Other")]);
         Assert.Equal(["Battlefield V", "Other"], list.Select(g => g.Name));
     }
@@ -407,7 +407,7 @@ public class OtherGamesTests : IDisposable
     [Fact]
     public void AGameStartedByOneOfYourOwnShortcutsNamesThatShortcut()
     {
-        OtherGames.Found F(string name, string dir) => new(OtherGames.IdOf("t", dir), name, "drive", dir, dir + "/a.exe", null);
+        OtherGames.Found F(string name, string dir) => new(OtherGames.IdOf(dir), name, "drive", dir, dir + "/a.exe", null);
         var programs = new[] { ("gta", @"d:\gta 4 lcpdfr\GTA 4 LCPDFR\Grand Theft Auto IV\LaunchGTAIV.exe"), ("other", @"D:\GTA 4 LCPDFR2\x.exe") };
         // the phone leaves the found game out only in a widget that shows that shortcut as one of its own games
         Assert.Equal(["gta"], OtherGames.StartedBy(F("GTA 4 LCPDFR", "D:/GTA 4 LCPDFR"), programs));
@@ -423,7 +423,7 @@ public class OtherGamesTests : IDisposable
         MakeExe("Racer/data/level.sb", 10);
         var g = Assert.Single(OtherGames.FromDrives([_dir]));
         // the id is the folder's, so another program picked later keeps it (and a favorite with it)
-        Assert.Equal(OtherGames.IdOf("drive", Path.Combine(_dir, "Racer")), g.Id);
+        Assert.Equal(OtherGames.IdOf(Path.Combine(_dir, "Racer")), g.Id);
         MakeExe("Racer/Racer2.exe", 9_000_000);
         Assert.Equal(g.Id, Assert.Single(OtherGames.FromDrives([_dir])).Id);
     }
@@ -527,7 +527,7 @@ public class OtherGamesTests : IDisposable
     {
         var exe = MakeExe($"{name}/{name}.exe", 100);
         var dir = Path.GetDirectoryName(exe)!;
-        return new(OtherGames.IdOf("drive", dir), name, "drive", dir, exe, null);
+        return new(OtherGames.IdOf(dir), name, "drive", dir, exe, null);
     }
 
     // both options: "Let the phone start games" and "Let the phone start the games found outside Steam"
@@ -581,9 +581,9 @@ public class OtherGamesTests : IDisposable
     [Fact]
     public void ALaunchersGameStartsByItsAddressAndAProgramThatIsGoneDoesNot()
     {
-        var epic = new OtherGames.Found(OtherGames.IdOf("epic", Path.Combine(_dir, "Ember")), "Ember Road", "epic", Path.Combine(_dir, "Ember"), null,
+        var epic = new OtherGames.Found(OtherGames.IdOf(Path.Combine(_dir, "Ember")), "Ember Road", "epic", Path.Combine(_dir, "Ember"), null,
             "com.epicgames.launcher://apps/ns%3Aitem%3AEmber?action=launch&silent=true");
-        var gone = new OtherGames.Found(OtherGames.IdOf("gog", Path.Combine(_dir, "Gone")), "Gone", "gog", Path.Combine(_dir, "Gone"), Path.Combine(_dir, "Gone", "gone.exe"), null);
+        var gone = new OtherGames.Found(OtherGames.IdOf(Path.Combine(_dir, "Gone")), "Gone", "gog", Path.Combine(_dir, "Gone"), Path.Combine(_dir, "Gone", "gone.exe"), null);
         var doc = Program("Doc") with { Exe = MakeExe("Doc/readme.txt", 10) };
         Directory.CreateDirectory(epic.Dir);
         var on = Games(Config(BothOn), epic, gone, doc);
@@ -600,7 +600,7 @@ public class OtherGamesTests : IDisposable
         // the list is up to ten minutes old: the game's folder is looked at again before the launcher's address is used
         var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
         var link = Path.Combine(_dir, "Linked");
-        OtherGames.Found Epic(string dir) => new(OtherGames.IdOf("epic", dir), "Ember Road", "epic", dir, null, "com.epicgames.launcher://apps/ns%3Aitem%3AEmber?action=launch&silent=true");
+        OtherGames.Found Epic(string dir) => new(OtherGames.IdOf(dir), "Ember Road", "epic", dir, null, "com.epicgames.launcher://apps/ns%3Aitem%3AEmber?action=launch&silent=true");
         try
         {
             var kept = Epic(Path.Combine(_dir, "Ember Road"));
@@ -631,7 +631,7 @@ public class OtherGamesTests : IDisposable
             File.WriteAllBytes(Path.Combine(Directory.CreateDirectory(Path.Combine(outside, "Ember Road")).FullName, "Ember.exe"), new byte[100]);
             MakeExe("Plain/Ember Road/Ember.exe", 100);
             Junction(link, outside);
-            OtherGames.Found Gog(string dir) => new(OtherGames.IdOf("gog", dir), "Ember Road", "gog", dir, Path.Combine(dir, "Ember.exe"), null);
+            OtherGames.Found Gog(string dir) => new(OtherGames.IdOf(dir), "Ember Road", "gog", dir, Path.Combine(dir, "Ember.exe"), null);
             var plain = Gog(Path.Combine(_dir, "Plain", "Ember Road"));
             // a link above the game's folder (Windows; elsewhere the game's folder itself is the link)
             var linked = Gog(OperatingSystem.IsWindows() ? Path.Combine(link, "Ember Road") : link) with { Exe = Path.Combine(link, "Ember Road", "Ember.exe") };
@@ -857,8 +857,8 @@ public class OtherGamesTests : IDisposable
             File.WriteAllBytes(Path.Combine(outside, "Far", "far.exe"), new byte[100]);
             Junction(link, outside);
             // the link above the game's folder, and the game's folder itself a link
-            var below = new OtherGames.Found(OtherGames.IdOf("gog", Path.Combine(link, "Far")), "Far", "gog", Path.Combine(link, "Far"), Path.Combine(link, "Far", "far.exe"), null);
-            var at = new OtherGames.Found(OtherGames.IdOf("gog", link), "Far 2", "gog", link, Path.Combine(link, "Far", "far.exe"), null);
+            var below = new OtherGames.Found(OtherGames.IdOf(Path.Combine(link, "Far")), "Far", "gog", Path.Combine(link, "Far"), Path.Combine(link, "Far", "far.exe"), null);
+            var at = new OtherGames.Found(OtherGames.IdOf(link), "Far 2", "gog", link, Path.Combine(link, "Far", "far.exe"), null);
             Assert.Equal("is reached through a link", OtherGames.Unsafe(at.Dir, at.Exe!));
             if (OperatingSystem.IsWindows()) Assert.Equal("is reached through a link", OtherGames.Unsafe(below.Dir, below.Exe!));
             var config = Config(BothOn);

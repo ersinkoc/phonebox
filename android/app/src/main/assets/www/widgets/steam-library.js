@@ -194,7 +194,8 @@ W['steam-library'] = {
       // how many are installed: also when the tiles shown stay the same (a game found beyond the ones shown)
       const n = steam.length + own.length;
       count.textContent = n ? ' ' + n : '';
-      const key = JSON.stringify([games, [...favShown], data?.running, data?.enabled, data?.found, data?.error, failed, armed, busy]);
+      // the count is in the key too: the empty message depends on it (no games at all, or none of your favorites)
+      const key = JSON.stringify([games, n, [...favShown], data?.running, data?.enabled, data?.found, data?.error, failed, armed, busy]);
       if (!force && key === lastKey) return;
       lastKey = key;
       box.classList.toggle('sl-can-launch', canLaunch);

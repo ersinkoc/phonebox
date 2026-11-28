@@ -181,9 +181,10 @@ Program Files or in your own user folders pass. A folder you made at the top of 
 Users change it (Windows hands that down from the drive), so its games are listed but not started from the phone: the
 phone says the game could not be started, and the agent's log says why. Remove that permission from the folder, or move
 the game to a folder only you and administrators can change. A shortcut of your own (**Other games**) runs its command
-without these folder checks: if another account can change the game's folder, it can replace the program, and the
-phone then starts that one. So start such a game from a shortcut only once it is in a folder only you and
-administrators can change, or if you accept that risk.
+without these folder checks: if another account can change the game's folder or any folder above it, it can replace
+the program (or move the folder away and put another in its place), and the phone then starts that one. So start such a
+game from a shortcut only once it and the folders above it can be changed only by you and administrators, or if you
+accept that risk.
 Games started by a launcher's link skip the program checks, as the launcher starts them; the agent hands over the link
 only while the game's folder is still there, on a local disk with no junction or symbolic link on its way.
 

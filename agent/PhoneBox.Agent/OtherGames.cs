@@ -147,6 +147,13 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                 launchers = Launchers().ToList();
                 lock (_gate) _lastLaunchers = launchers;
             }
+            catch (PartialLaunchers partial)
+            {
+                log.LogWarning("could not read one launcher's games; its last ones are kept");
+                launchersFailed = true;
+                launchers = partial.Games;
+                lock (_gate) _lastLaunchers = launchers;
+            }
             catch (Exception ex)
             {
                 log.LogWarning("could not read the launchers' games: {Msg}", ex.Message);
@@ -285,8 +292,9 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
             foreach (var dir in candidates)
             {
                 if (drive.Spent) break; // the drive's folders are spent: the rest of its candidates are not looked into
-                if (Game(dir, new Budget(MaxFoldersPerGame, drive)) is { } g
-                    && LooksLikeAGame(dir, Path.GetDirectoryName(g.Exe!)!, new Budget(MaxFoldersPerGame, drive))) yield return g;
+                // one budget for both looks at a candidate: its program and its signs share the per-game limit
+                var budget = new Budget(MaxFoldersPerGame, drive);
+                if (Game(dir, budget) is { } g && LooksLikeAGame(dir, Path.GetDirectoryName(g.Exe!)!, budget)) yield return g;
             }
         }
     }
@@ -359,14 +367,16 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     private static string Norm(string dir) => dir.Replace('/', '\\').TrimEnd('\\') + "\\";
 
     /// <summary>A found game's id: a hash of where it is (its folder), so a different program picked later keeps the id.</summary>
-    internal static string IdOf(string source, string where) =>
-        "x:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(source + "\n" + Norm(where).ToLowerInvariant())))[..16];
+    // the folder alone, not the source: a game first found on a drive and later named by its launcher keeps its id, and
+    // a favourite saved under it (Scan keeps one record per folder, so the id stays unique)
+    internal static string IdOf(string where) =>
+        "x:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Norm(where).ToLowerInvariant())))[..16];
 
     private static Found? Game(string dir, Budget? budget = null)
     {
         var name = Path.GetFileName(dir.TrimEnd('\\', '/'));
         if (name.StartsWith('.') || name.StartsWith('$') || name.StartsWith('_')) return null;
-        return PickExe(dir, name, budget) is { } exe ? new Found(IdOf("drive", dir), name, "drive", dir, exe, null) : null;
+        return PickExe(dir, name, budget) is { } exe ? new Found(IdOf(dir), name, "drive", dir, exe, null) : null;
     }
 
     /// <summary>
@@ -599,13 +609,14 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                 // not installed (any more)
                 if (!Usable(dir, isLink)) continue;
                 // a program inside the game's folder only; the launcher's address starts it otherwise
-                var exe = ProgramIn(dir, S("LaunchExecutable"));
+                // the program the manifest names, unless it is an installer or a helper (the launcher's link still works)
+                var exe = ProgramIn(dir, S("LaunchExecutable")) is { } named && !NotTheGame(named) ? named : null;
                 string? url = null;
                 if (S("CatalogNamespace") is { } ns && S("CatalogItemId") is { } item && S("AppName") is { } app
                     && new[] { ns, item, app }.All(x => x.Length > 0 && x.All(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' or '.')))
                     url = $"com.epicgames.launcher://apps/{ns}%3A{item}%3A{app}?action=launch&silent=true";
                 if (exe is null && url is null) continue;
-                g = new Found(IdOf("epic", dir), name, "epic", dir, exe, url);
+                g = new Found(IdOf(dir), name, "epic", dir, exe, url);
             }
             catch { }
             if (g is not null) yield return g;
@@ -630,20 +641,20 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                     {
                         // the program the record names, unless it is an installer or a helper: then the one picked here
                         var exe = ProgramIn(gp, k.Value("exe")) is { } named && !NotTheGame(named) ? named : PickExe(gp, gn);
-                        if (exe is not null) yield return new Found(IdOf("gog", gp), gn, "gog", gp, exe, null);
+                        if (exe is not null) yield return new Found(IdOf(gp), gn, "gog", gp, exe, null);
                     }
                     break;
                 case "ubisoft":
                     // the Installs key holds only the folder; Ubisoft Connect starts the game by its number
                     if (k.Value("InstallDir") is { Length: > 0 } ud && k.Name.All(char.IsAsciiDigit) && Usable(ud, isLink))
-                        yield return new Found(IdOf("ubisoft", ud), Path.GetFileName(ud.TrimEnd('/', '\\')), "ubisoft", ud, PickExe(ud, Path.GetFileName(ud.TrimEnd('/', '\\'))), $"uplay://launch/{k.Name}/0");
+                        yield return new Found(IdOf(ud), Path.GetFileName(ud.TrimEnd('/', '\\')), "ubisoft", ud, PickExe(ud, Path.GetFileName(ud.TrimEnd('/', '\\'))), $"uplay://launch/{k.Name}/0");
                     break;
                 case "ea":
                 case "rockstar":
                     var dir = k.Value("Install Dir") ?? k.Value("InstallFolder") ?? k.Value("InstallDir");
                     if (dir is { Length: > 0 } && !k.Name.Contains("Launcher", StringComparison.OrdinalIgnoreCase)
                         && !k.Name.Contains("Social Club", StringComparison.OrdinalIgnoreCase) && Usable(dir, isLink) && PickExe(dir, k.Name) is { } x)
-                        yield return new Found(IdOf(source, dir), k.Name, source, dir, x, null);
+                        yield return new Found(IdOf(dir), k.Name, source, dir, x, null);
                     break;
             }
         }
@@ -653,11 +664,41 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     {
         if (!OperatingSystem.IsWindows()) return [];
         var data = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        return FromEpic(Path.Combine(data, "Epic", "EpicGamesLauncher", "Data", "Manifests"))
-            .Concat(FromKeys("ea", Keys(@"SOFTWARE\WOW6432Node\EA Games")))
-            .Concat(FromKeys("gog", Keys(@"SOFTWARE\WOW6432Node\GOG.com\Games")))
-            .Concat(FromKeys("ubisoft", Keys(@"SOFTWARE\WOW6432Node\Ubisoft\Launcher\Installs")))
-            .Concat(FromKeys("rockstar", Keys(@"SOFTWARE\WOW6432Node\Rockstar Games")));
+        var sources = new (string Name, Func<IEnumerable<Found>> Read)[]
+        {
+            ("epic", () => FromEpic(Path.Combine(data, "Epic", "EpicGamesLauncher", "Data", "Manifests"))),
+            ("ea", () => FromKeys("ea", Keys(@"SOFTWARE\WOW6432Node\EA Games"))),
+            ("gog", () => FromKeys("gog", Keys(@"SOFTWARE\WOW6432Node\GOG.com\Games"))),
+            ("ubisoft", () => FromKeys("ubisoft", Keys(@"SOFTWARE\WOW6432Node\Ubisoft\Launcher\Installs"))),
+            ("rockstar", () => FromKeys("rockstar", Keys(@"SOFTWARE\WOW6432Node\Rockstar Games"))),
+        };
+        // Each launcher on its own: one whose records cannot be read keeps its own last games, and the others' are current.
+        var all = new List<Found>();
+        var failed = false;
+        foreach (var (name, read) in sources)
+        {
+            List<Found> games;
+            try
+            {
+                games = read().ToList();
+                lock (LastBySource) LastBySource[name] = games;
+            }
+            catch (Exception)
+            {
+                failed = true;
+                lock (LastBySource) games = LastBySource.GetValueOrDefault(name) ?? [];
+            }
+            all.AddRange(games);
+        }
+        return failed ? throw new PartialLaunchers(all) : all;
+    }
+
+    private static readonly Dictionary<string, List<Found>> LastBySource = [];
+
+    /// <summary>Some launcher's records could not be read: <see cref="Games"/> holds the others' and that one's last games.</summary>
+    internal sealed class PartialLaunchers(List<Found> games) : Exception("a launcher's records could not be read")
+    {
+        public List<Found> Games { get; } = games;
     }
 
     /// <summary>
@@ -782,7 +823,9 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     {
         string full, root;
         try { full = Path.GetFullPath(exe); root = Path.GetFullPath(dir); } catch { return "missing"; }
-        if (!full.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(full)
+        // the text first, then the links from the drive's root down, and only then the file: a parent that became a link
+        // since the list was made is not followed even to see whether the program is there
+        if (!full.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
             || !Norm(full).StartsWith(Norm(root), StringComparison.OrdinalIgnoreCase)) return "missing";
         // the program and its folders up to the game's folder, then (Windows) on to the drive's root
         var chain = new List<string> { full };
@@ -792,7 +835,14 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
             if (!mine && !OperatingSystem.IsWindows()) break;
             chain.Add(d);
         }
-        if (chain.Any(SteamLibrary.IsLink)) return "is reached through a link";
+        for (var i = chain.Count - 1; i >= 1; i--)
+        {
+            // a folder that is gone is a game that is gone (its parent, checked just before, is not a link)
+            if (!Directory.Exists(chain[i])) return "missing";
+            if (SteamLibrary.IsLink(chain[i])) return "is reached through a link";
+        }
+        if (!File.Exists(full)) return "missing";
+        if (SteamLibrary.IsLink(full)) return "is reached through a link";
         if (OperatingSystem.IsWindows())
         {
             if (System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value is not { } me) return "permissions could not be read";
