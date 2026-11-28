@@ -39,6 +39,9 @@ public sealed class AgentConfig
     public CursorConfig Cursor { get; set; } = new();
     /// <summary>Clipboard sharing with the paired phone (macOS only; off by default).</summary>
     public BridgeConfig Bridge { get; set; } = new();
+    /// <summary>Optional sources of the Device batteries widget.</summary>
+    [JsonConverter(typeof(BatteriesSectionJsonConverter))]
+    public BatteriesConfig Batteries { get; set; } = new();
     /// <summary>Pi agent sessions on the AI sessions widget (off by default).</summary>
     public PiConfig Pi { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
@@ -422,6 +425,13 @@ public sealed class CursorConfig
     /// (needs the Cursor hook, see Settings › General). Cursor's hook runs before every command, also the ones it would
     /// run by itself, and waits for the phone while one is connected, so this stays off until you turn it on.</summary>
     public bool PhoneApprovals { get; set; }
+}
+
+public sealed class BatteriesConfig
+{
+    /// <summary>Read the batteries of Corsair devices over their USB receiver or cable (Windows; off by default).</summary>
+    [JsonConverter(typeof(OptInBoolJsonConverter))]
+    public bool Corsair { get; set; }
 }
 
 public sealed class PiConfig
@@ -1012,6 +1022,7 @@ public sealed partial class ConfigStore(string path)
             .Where(x => x.key is not null && x.key != defaultClaude)
             .DistinctBy(x => x.key).Select(x => x.d).DistinctBy(d => d.Label, StringComparer.OrdinalIgnoreCase).Take(10).ToArray();
         c.Cursor ??= new();
+        c.Batteries ??= new();
         c.Pi ??= new();
         c.Antigravity ??= new();
         c.OpenCode ??= new();
@@ -1470,6 +1481,23 @@ internal sealed class LlamaSwapSectionJsonConverter : JsonConverter<LlamaSwapCon
     }
 
     public override void Write(Utf8JsonWriter writer, LlamaSwapConfig value, JsonSerializerOptions options) =>
+        JsonSerializer.Serialize(writer, value, options);
+}
+
+/// <summary>A hand-edited "batteries" that is not an object (a number, a string, null) reads as the defaults; the rest of the file still loads.</summary>
+internal sealed class BatteriesSectionJsonConverter : JsonConverter<BatteriesConfig>
+{
+    public override bool HandleNull => true;
+
+    public override BatteriesConfig Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.StartObject)
+            return JsonSerializer.Deserialize<BatteriesConfig>(ref reader, options) ?? new();
+        reader.Skip();
+        return new();
+    }
+
+    public override void Write(Utf8JsonWriter writer, BatteriesConfig value, JsonSerializerOptions options) =>
         JsonSerializer.Serialize(writer, value, options);
 }
 

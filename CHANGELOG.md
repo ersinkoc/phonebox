@@ -183,6 +183,11 @@
   Discord's voice showed as "WEBRTC VoiceEngine" and now shows as Discord; an Electron app that reports "Chromium",
   and a program playing through the ALSA plug-in ("ALSA plug-in [program]"), get their program's name too (#798,
   [mikicolmena](https://github.com/mikicolmena)).
+- **Corsair batteries** (Windows, off by default: Settings › General › Device batteries): wireless Corsair headsets,
+  mice and keyboards from a known list show in the Device batteries widget with their level and charging state, through
+  their receiver or on their cable, without iCUE (which can keep running). Only read requests are sent, only to devices
+  the receiver reports connected on two reads in a row, and a device behind a receiver that stops answering is not
+  asked again until it reconnects (#773, #783, [lemarkis](https://github.com/lemarkis)).
 - **MQTT, third step: the MQTT widget** (Web & data, #732, [t7spotter](https://github.com/t7spotter)): the
   connection's state with a coloured dot (or what went wrong, in the settings page's words), how long ago the last
   message arrived, and the values of the keys you list (usually your subscriptions' keys) with their unit and age. It is

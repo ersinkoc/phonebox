@@ -918,6 +918,12 @@ nav a.on::before { color: var(--accent); }
           <span class="hint" id="chargeState"></span></div>
       </div>
 
+      <div class="card" id="deviceBatteriesCard">
+        <h3 data-i18n="s.devBatteries.title">Device batteries</h3>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.devBatteries.corsairHint">Show Corsair wireless headsets, mice and keyboards on the Device batteries widget (off by default). PhoneBox then asks their USB receiver, or the device on its cable, for the battery level and charging state. Nothing is changed on the device, and iCUE keeps working.</p>
+        <div class="row"><label class="switch"><input type="checkbox" data-bind="batteries.corsair" aria-labelledby="corsairBatteriesLabel"><span></span></label> <span id="corsairBatteriesLabel" data-i18n="s.devBatteries.corsair">Read Corsair device batteries</span></div>
+      </div>
+
       <div class="card">
         <h3 data-i18n="s.cursor.title">Cursor sessions</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.cursor.hint">Show recent Cursor agent chats on the AI sessions widget (off by default). Only the last message's role is kept; chat text is never shown, stored or sent. Project names use the folder basename from Cursor's workspaceStorage.</p>
@@ -4534,6 +4540,7 @@ async function loadInfo() {
     lhmStatus.dataset.i18n = lhmKey;
     if (lhmStatus.textContent !== lhmText) lhmStatus.textContent = lhmText;
     if ($('phoneMicCard')) { $('phoneMicCard').hidden = osName !== 'windows'; if (osName === 'windows') renderPhoneMicState(); }
+    $('deviceBatteriesCard').hidden = osName !== 'windows'; // the Corsair reader is Windows only
     $('followComputerLockOption').style.display = osName === 'macos' ? '' : 'none';
     $('bridgeCard').style.display = osName === 'macos' ? '' : 'none';
     $('bridgeRefused').hidden = !(osName === 'macos' && i.bridgeRefused);
@@ -4604,6 +4611,7 @@ async function loadInfo() {
 function fillDefaults() {
   cfg.libreHardwareMonitorPort ??= 8085;
   cfg.nvidiaSmi ??= true;
+  cfg.batteries ??= { corsair: false };
   cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.display.wallpaper ??= { dim: 45, blur: 0 }; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.claude.extraCredentialDirs ??= []; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity', 'grok'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,

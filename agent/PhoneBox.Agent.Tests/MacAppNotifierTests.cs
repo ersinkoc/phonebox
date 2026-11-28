@@ -21,7 +21,13 @@ public sealed class MacAppNotifierTests : IDisposable
     private bool _throwOnShow;
     private string? _swiftc = "/Library/Developer/CommandLineTools/usr/bin/swiftc";
 
-    public MacAppNotifierTests() => Directory.CreateDirectory(_dir);
+    // Owner-only, as the notifier creates its own folder: with the umask Ubuntu desktops use (0002) a plain
+    // CreateDirectory gives 0775, the notifier rightly refuses a group-writable folder, and every test failed there.
+    public MacAppNotifierTests()
+    {
+        if (OperatingSystem.IsWindows()) Directory.CreateDirectory(_dir);
+        else Directory.CreateDirectory(_dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    }
     public void Dispose() { try { Directory.Delete(_dir, true); } catch { } }
 
     private Task<(int, string)> Run(string file, IReadOnlyList<string> args, string? stdin, TimeSpan timeout, CancellationToken ct)

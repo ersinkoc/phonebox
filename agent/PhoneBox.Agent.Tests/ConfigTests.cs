@@ -69,6 +69,18 @@ public class ConfigTests
         Assert.False(publicConfig.TryGetProperty("nvidiaSmi", out _));
     }
 
+    [Theory]
+    [InlineData("{}", false)] // no Corsair device is asked anything until Settings says so
+    [InlineData("""{"batteries": null}""", false)]
+    [InlineData("""{"batteries": {"corsair": true}}""", true)]
+    public void CorsairBatteriesAreOffUnlessTurnedOnAndStayOnTheComputer(string json, bool expected)
+    {
+        var config = Load(json);
+        Assert.Equal(expected, config.Batteries.Corsair);
+        var publicConfig = JsonSerializer.SerializeToElement(config.ToPublic(), ConfigStore.WriteOpts);
+        Assert.False(publicConfig.TryGetProperty("batteries", out _));
+    }
+
     [Fact]
     public void ExtraClaudeCredentialDirsDropBlankAndRepeatedEntries()
     {
@@ -116,6 +128,18 @@ public class ConfigTests
             new { label = "work", dir = Path.Combine(Path.GetTempPath(), "claude-work") },
         } } }));
         Assert.Equal("work", Assert.Single(c.Claude.ExtraCredentialDirs).Label);
+    }
+
+    [Fact(DisplayName = "A batteries section that is not an object reads as the defaults, and the rest still loads")]
+    public void ABatteriesSectionThatIsNotAnObjectReadsAsTheDefaults()
+    {
+        foreach (var bad in new[] { "5", "\"x\"", "null", "[1]", """{"corsair":null}""" })
+        {
+            var c = Load("{\"batteries\":" + bad + ",\"llamaSwap\":{\"url\":\"localhost:8080\"}}");
+            Assert.False(c.Batteries.Corsair);
+            Assert.Equal("http://localhost:8080", c.LlamaSwap.Url); // the rest of the file loaded
+        }
+        Assert.True(Load("""{"batteries":{"corsair":true}}""").Batteries.Corsair);
     }
 
     [Fact(DisplayName = "The llama-swap address becomes an absolute url that keeps its path")]
