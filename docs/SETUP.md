@@ -258,7 +258,7 @@ already off, turn *Stay awake* back on in the phone's Developer options, or run
 | Control Deck: audio devices, microphone, per-app volume | ✓ | ✓ (`pactl`) | — (system output only) |
 | Processes, end one / all | ✓ | ✓ (your own) | ✓ (your own) |
 | App icons | ✓ | ✓ (icon theme) | ✓ (app bundles) |
-| Shortcuts, lock, screen off | ✓ | ✓ (`loginctl`, `xset`) | ✓ (`open`, `pmset`) |
+| Shortcuts, lock, screen off | ✓ | ✓ (`loginctl`; screen off: `xset` on X11, `kscreen-doctor` on KDE Plasma Wayland, Mutter over D-Bus on GNOME Wayland) | ✓ (`open`, `pmset`) |
 | Command widgets | PowerShell | bash | zsh |
 | Claude / Codex quotas & sessions, GitHub, webhooks | ✓ | ✓ | ✓ (Claude token from the Keychain) |
 | Tray icon | ✓ | — (settings in the browser) | — |
