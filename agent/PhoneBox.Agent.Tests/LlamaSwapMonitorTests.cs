@@ -372,6 +372,19 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         Assert.Contains(mon.Inflight, r => r.Id == "late");
     }
 
+    [Fact(DisplayName = "An event read before the stream ended is dropped, not applied after offline")]
+    public void AnEventFromAnEndedStreamIsDropped()
+    {
+        var now = DateTime.Now;
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance)
+        { UrlOverride = "http://127.0.0.1:1/current/", Now = () => now, UtcNow = () => now };
+        using var ended = new CancellationTokenSource();
+        ended.Cancel();
+        const string late = """{"operation":"upsert","request":{"id":"late","model":"ModelLate","req_path":"/v1/chat","elapsed_ms":11,"resp_bytes":1}}""";
+        mon.ApplyInflightEvent(late, new Uri("http://127.0.0.1:1/current/"), ended.Token);
+        Assert.Empty(mon.Inflight); // the stream's cancellation wins over a line it had already read
+    }
+
     [Fact(DisplayName = "The wait for the stream's response headers gives up on its deadline")]
     public async Task HeaderWaitGivesUpOnItsDeadline()
     {
