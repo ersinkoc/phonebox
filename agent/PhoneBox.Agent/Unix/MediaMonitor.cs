@@ -427,12 +427,21 @@ public sealed class MediaMonitor(ILogger<MediaMonitor> log) : BackgroundService
             end if
             return ""
             """;
-        var line = Sh.Run("osascript", "-e", script)?.Trim();
-        if (string.IsNullOrEmpty(line)) return (null, "");
+        return ParseMacAppleScript(Sh.Run("osascript", "-e", script));
+    }
+
+    /// <summary>
+    /// The script's line: eight tab-separated fields. Only the line break osascript adds is removed, never the tabs: Music's
+    /// last field (its artwork) is always empty, so its line ends in a tab, and trimming that away dropped the reading (#787).
+    /// </summary>
+    internal static (MediaSnapshot?, string) ParseMacAppleScript(string? output)
+    {
+        var line = output?.TrimEnd('\r', '\n');
+        if (string.IsNullOrWhiteSpace(line)) return (null, "");
         var f = line.Split('\t');
         if (f.Length < 8) return (null, "");
-        long Sec(string s) => double.TryParse(s.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? (long)(v * 1000) : 0;
-        return (new MediaSnapshot(f[0], f[2], f[3], f[4], f[1] == "playing", Sec(f[5]), Sec(f[6]), 0, true), f[7]);
+        long Sec(string s) => double.TryParse(s.Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? (long)(v * 1000) : 0;
+        return (new MediaSnapshot(f[0].Trim(), f[2], f[3], f[4], f[1].Trim() == "playing", Sec(f[5]), Sec(f[6]), 0, true), f[7].Trim());
     }
 
     private static HttpClient CreatePublicHttpClient()

@@ -122,7 +122,7 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
             if (i.Field("Client") == "n/a") continue;
             var volumes = Volumes(i.Field("Volume"));
             var binary = i.Property("application.process.binary");
-            var name = FirstUseful(i.Property("application.name"), binary, i.Property("media.name")) ?? "Application";
+            var name = StreamName(i.Property("application.name"), binary, i.Property("media.name"));
             _ = int.TryParse(i.Property("application.process.id"), NumberStyles.None, CultureInfo.InvariantCulture, out var pid);
             sessions.Add(new(i.Index, name, pid, sinkNames.GetValueOrDefault(i.Field("Sink") ?? "", ""),
                 Master(volumes), i.Field("Mute") == "yes", 0, binary, i.Field("Corked") != "yes"));
@@ -154,6 +154,25 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         if (cls is not null || of is not null) return false;
         return name.EndsWith(".monitor", StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The name a stream is shown and grouped by: its application.name, unless that is the name of the audio library
+    /// the program plays through rather than of the program. Discord's voice (and any WebRTC app's) is
+    /// "WEBRTC VoiceEngine", an Electron app that sets no name is "Chromium", and a program using ALSA through the Pulse
+    /// plug-in is "ALSA plug-in [program]"; the program's binary names those better.
+    /// </summary>
+    internal static string StreamName(string? applicationName, string? binary, string? mediaName)
+    {
+        var name = applicationName?.Trim();
+        if (name is not null && AlsaPluginRegex().Match(name) is { Success: true } alsa) name = alsa.Groups[1].Value.Trim();
+        else if (name is not null && LibraryNames.Contains(name)) name = FirstUseful(binary) ?? name;
+        return FirstUseful(name, binary, mediaName) ?? "Application";
+    }
+
+    private static readonly HashSet<string> LibraryNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "WEBRTC VoiceEngine", "Chromium", "Chromium input",
+    };
 
     private static string? FirstUseful(params string?[] values) =>
         values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v) && v != "(null)")?.Trim();
@@ -357,6 +376,9 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         Flush();
         return blocks;
     }
+
+    [GeneratedRegex(@"\AALSA plug-in \[(.+)\]\z")]
+    private static partial Regex AlsaPluginRegex();
 
     [GeneratedRegex(@"(\d+)%")]
     private static partial Regex PercentRegex();

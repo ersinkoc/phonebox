@@ -76,7 +76,9 @@ The music sleep timer fades matching application sessions over its final thirty 
 then restores volume. A manual volume adjustment takes ownership away from the fade. Players without a matching
 application audio session can still be paused; their volume cannot be faded. Soundboard files and radio streams play
 on the computer: Windows plays them itself, Linux and macOS through `ffplay`, `mpv` or `vlc` (whichever is installed;
-the output device setting applies on Windows only). Radio targets are direct HTTP(S) audio streams, or HLS (`.m3u8`)
+the output device setting applies on Windows, and on Linux when `pactl` lists that output: the player gets
+`PULSE_SINK`, plus `--audio-device=pulse/…` for mpv and `--aout=pulse` for VLC; an output that is not there plays on the
+default one). Radio targets are direct HTTP(S) audio streams, or HLS (`.m3u8`)
 manifests on Windows, not playlist webpages.
 
 ## Optional integrations

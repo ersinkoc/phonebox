@@ -1740,7 +1740,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "Cíl: ID monitoru. Argument: JSON s šířkou, výškou, hz, volitelně x/y.",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "Cíl: owner/repo. Argument: název souboru workflowu. Zařízení: volitelná větev/ref.",
       "Target: process name. Argument: left, right, center, max.": "Cíl: název procesu. Argument: vlevo, vpravo, středu, max.",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "Cíl: process.exe. Zařízení: ID výstupu. Vyžaduje SoundVolumeView.",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "Target: process.exe (Windows) nebo název aplikace (Linux). Zařízení: ID výstupu. Vyžaduje SoundVolumeView ve Windows nebo pactl v Linuxu.",
       "Target: spotify:playlist:… (also album, track or episode).": "Cíl: spotify:playlist:… (také album, skladba nebo epizoda).",
       "Target: text shortcut ID.": "Cíl: ID textové zkratky.",
       "Target: text to type.": "Cíl: text na typ.",

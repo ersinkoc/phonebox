@@ -172,6 +172,17 @@
   settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
   `docs/MQTT.md`. With Clean session off, a row removed from the settings is unsubscribed on the next connection to
   the same broker session; another broker or account never hears the old topics.
+- macOS: Apple Music shows in Now Playing again without `nowplaying-cli`: the AppleScript reading ended in an empty
+  artwork field, and trimming its tab away dropped the whole line (#787, [mathan-u](https://github.com/mathan-u)).
+- Synced lyrics: Apple Music for Windows reports "Artist — Album" as the artist with no album; the two are split, so
+  LRCLIB is asked for the artist and the album (#790, [Emanuele9017](https://github.com/Emanuele9017)).
+- Linux: soundboard sounds and radio stations play on the **output chosen in the control**, as on Windows, when `pactl`
+  lists it: `ffplay` and VLC through `PULSE_SINK` (VLC also with `--aout=pulse`), mpv through `--audio-device=pulse/…`.
+  An output that is not there right now plays on the default output, as before (#796, [mikicolmena](https://github.com/mikicolmena)).
+- Linux: the mixer names a stream after its program when the stream carries the name of an audio library instead.
+  Discord's voice showed as "WEBRTC VoiceEngine" and now shows as Discord; an Electron app that reports "Chromium",
+  and a program playing through the ALSA plug-in ("ALSA plug-in [program]"), get their program's name too (#798,
+  [mikicolmena](https://github.com/mikicolmena)).
 - **MQTT, third step: the MQTT widget** (Web & data, #732, [t7spotter](https://github.com/t7spotter)): the
   connection's state with a coloured dot (or what went wrong, in the settings page's words), how long ago the last
   message arrived, and the values of the keys you list (usually your subscriptions' keys) with their unit and age. It is

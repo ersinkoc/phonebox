@@ -1740,7 +1740,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "대상: 모니터 ID. 인수: JSON 너비, 높이, hz, 선택적 x/y와 함께.",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "대상: owner/repo. 인수: workflow filename. 장치: 선택적 branch/ref.",
       "Target: process name. Argument: left, right, center, max.": "대상: 프로세스 이름. 인수: 왼쪽, 오른쪽, 중앙, 최대",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "대상: process.exe 장치: 출력 ID SoundVolumeView가 필요합니다.",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "대상: process.exe (Windows) 또는 애플리케이션 이름 (Linux) 장치: 출력 ID Windows에서는 SoundVolumeView, Linux에서는 pactl이 필요합니다.",
       "Target: spotify:playlist:… (also album, track or episode).": "대상: spotify:playlist:...(앨범, 트랙 또는 에피소드도 포함)",
       "Target: text shortcut ID.": "대상: 텍스트 단축키 ID.",
       "Target: text to type.": "대상: 입력할 텍스트.",

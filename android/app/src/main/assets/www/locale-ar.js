@@ -1775,7 +1775,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "الهدف: هوية المراقبة. العبارة: JSON مع عرض، ارتفاع، hz، اختياري x/y.",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "الهدف: مالك/مستودع. العبارة: اسم ملف تدفق العمل. الجهاز: فرع اختياري/مرجع.",
       "Target: process name. Argument: left, right, center, max.": "الهدف: اسم العملية. العبارة: يسارا، يمينا، وسطا، أقصى",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "الهدف: process.exe الجهاز: رمز الخرج يتطلب SoundVolumeView",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "الهدف: process.exe (Windows) أو اسم التطبيق (Linux). الجهاز: معرّف الخرج. يتطلب SoundVolumeView على Windows أو pactl على Linux.",
       "Target: spotify:playlist:… (also album, track or episode).": "الهدف: spotify:playlist:... (أيضا الألبوم، المسار أو الحلقة).",
       "Target: text shortcut ID.": "الهدف: تحديد هوية اختصار النص.",
       "Target: text to type.": "الهدف: النص إلى الطباعة.",
