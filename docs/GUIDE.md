@@ -168,9 +168,13 @@ outside Steam**, because it starts a program the agent picked, not Steam. With i
 launcher's own link (Epic Games Launcher, Ubisoft Connect), or by the game's program in its folder, with no arguments
 and only when it is still an existing `.exe` inside that folder. Nothing from the request reaches the command.
 A program started by its path is checked again right before it starts, so that no other account on this computer
-could have put it there: no junction or symbolic link may be on its path, from the drive's root down to the program,
-and on Windows neither the game's folder, nor a folder between it and the program, nor the program itself may let
-Everyone, Authenticated Users or Users write, delete or change permissions (inherited permissions count). Games under
+could have put it there. No junction or symbolic link may be on its path, from the drive's root down to the program.
+On Windows the program and every folder above it, up to the drive's root, must be owned by you, SYSTEM, Administrators
+or TrustedInstaller, and only those four may write, create, delete, change the permissions or take the ownership of
+them (inherited permissions count; a permission that only reaches what is created inside a folder, such as CREATOR
+OWNER's, is judged where it reaches the path). One exception: at a drive's root itself, Windows lets Authenticated
+Users create files and folders (and, on a data drive, modify the root), which cannot move or replace a folder already
+there, so it is accepted at the root and nowhere else. Permissions that cannot be read refuse the start. Games under
 Program Files or in your own user folders pass. A folder you made at the top of a drive usually lets Authenticated
 Users change it (Windows hands that down from the drive), so its games are listed but not started from the phone: the
 phone says the game could not be started, and the agent's log says why. Remove that permission from the folder, or

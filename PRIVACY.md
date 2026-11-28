@@ -29,8 +29,9 @@ Last updated: 2026-11-26 (PhoneBox 0.9.30).
   when the phone starts it. It sends only the names, a hashed id and the icons to your phone (never a path) and makes no
   network connection, except the store covers below when you turn them on. Before it starts a game's program by its path (with
   **Let the phone start the games found outside Steam** on), the agent reads that program's and its folders' attributes
-  and, on Windows, their permissions, and refuses a program reached through a link or one that Everyone, Authenticated
-  Users or Users could change; nothing of this is stored.
+  up to the drive's root and, on Windows, their owners and permissions, and refuses a program reached through a link or
+  one that an account other than you, SYSTEM, Administrators or TrustedInstaller owns or could change; nothing of this
+  is stored.
 - **Last Claude quota reading**: `claude-quota.json` next to the log (usage percentages and reset times, no token),
   so the panel can show the last values after a restart, and `claude-quota-schedule.json` (when the next check may
   run, the last error message and, after Anthropic refused a token, a 16-character hash of that token, never the token
