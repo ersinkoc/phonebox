@@ -158,6 +158,12 @@ const spyOnFetch = (page, failEntitiesOnce = false) => page.addInitScript((fail)
       if (depth) return native(...a); // the demo's own fetch calls the one it replaced, which is this wrapper
       const url = String(a[0]); window.__calls.push(url);
       if (!failed && url.includes('/api/ha/entities')) { failed = true; return Promise.resolve(new Response(JSON.stringify({ configured: false, error: 'Home Assistant is not reachable', entities: [] }), { headers: { 'content-type': 'application/json' } })); }
+      if (window.__holdToggle && url.includes('/api/ha/toggle/')) {
+        depth++;
+        let res;
+        try { res = inner(...a); } finally { depth--; } // the demo flips the lamp now; only the answer is held back
+        return new Promise((resolve) => { (window.__heldToggles ??= []).push(() => res.then(resolve)); window.__releaseToggle = () => { window.__heldToggles.splice(0).forEach((f) => f()); }; });
+      }
       depth++;
       try { return inner(...a); } finally { depth--; }
     };
@@ -201,10 +207,26 @@ test('a second tap while a toggle is still running sends no second toggle', asyn
   const tile = page.locator('.ha-tile').first();
   await expect(tile).toHaveClass(/can/);
   await expect(tile).toHaveClass(/\bon\b/); // the demo's lamp starts on
-  await tile.click();
-  await tile.click(); // a double-tap, while the first toggle and its 700 ms reload are still in flight
-  await page.waitForTimeout(1500); // let the reload settle
-  const toggles = await page.evaluate(() => window.__calls.filter((u) => u.includes('/api/ha/toggle/light.desk')));
-  expect(toggles).toHaveLength(1);
-  await expect(tile).not.toHaveClass(/\bon\b/); // toggled exactly once: on -> off, not back on
+  await page.evaluate(() => { window.__holdToggle = true; });
+  await tile.click(); // first toggle starts; its answer is held back
+  await expect.poll(() => page.evaluate(() => window.__calls.filter((u) => u.includes('/api/ha/toggle/light.desk')).length)).toBe(1);
+  await tile.click(); // a double-tap, while the first toggle is still pending
+  expect(await page.evaluate(() => window.__calls.filter((u) => u.includes('/api/ha/toggle/light.desk')).length)).toBe(1);
+  await page.evaluate(() => { window.__releaseToggle(); window.__holdToggle = false; });
+  await expect(tile).not.toHaveClass(/\bon\b/); // toggled exactly once: on -> off, not back on (after the 700 ms reload)
+});
+
+test('toggles on two tiles stay independent while both are pending', async ({ page }) => {
+  await spyOnFetch(page);
+  await open(page, '/panel/', { control: true, items: [{ id: 'light.desk' }, { id: 'switch.coffee' }] });
+  const tiles = page.locator('.ha-tile');
+  await expect(tiles).toHaveCount(2);
+  await page.evaluate(() => { window.__holdToggle = true; });
+  await tiles.nth(0).click(); // desk toggle starts, its answer is held
+  await tiles.nth(1).click(); // coffee is a different tile: its toggle still starts
+  await expect.poll(() => page.evaluate(() => window.__calls.filter((u) => u.includes('/api/ha/toggle/')).length)).toBe(2);
+  await tiles.nth(0).click(); // desk again while its own toggle is still pending
+  expect(await page.evaluate(() => window.__calls.filter((u) => u.includes('/api/ha/toggle/')).length)).toBe(2);
+  await page.evaluate(() => { window.__releaseToggle(); window.__holdToggle = false; });
+  await expect(tiles.nth(0)).not.toHaveClass(/\bon\b/); // desk toggled exactly once
 });
