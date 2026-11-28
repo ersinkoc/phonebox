@@ -111,6 +111,10 @@ export let evSeq = null;          // last event seq the agent reported in a stat
 let evReplay = false;             // the agent restarted: the next poll replays the events it kept (from 0)
 let evGen = 0;                    // bumped when a restart arms evReplay, so an answer already in flight cannot disarm a newer one
 let stateTs = 0;                  // server ts of the newest state applied (a late response must not reset the events)
+let stateTsAt = 0;                // when (on this phone's clock) the state carrying stateTs arrived
+/** The computer's clock now, from the newest state's ts and the time since it arrived: an age taken against it does
+ * not depend on the phone's clock being set right. Falls back to the phone's clock before the first state. */
+export const agentClock = () => (stateTs && stateTsAt ? stateTs + (Date.now() - stateTsAt) : Date.now());
 const evSeen = new Set();         // event seqs already handled in this agent run (the stream and a poll can repeat one)
 const evMark = (s) => { evSeen.add(s); if (evSeen.size > 400) evSeen.delete(evSeen.values().next().value); };
 let evQueue = [];                 // live events held while a replay is armed — the backlog must apply before them
@@ -1126,7 +1130,7 @@ export function paceInfo(l) {
 }
 
 // ---------------------------------------------------------------- sessions & GitHub
-export const S_ORDER = { waiting: 0, busy: 1, shell: 2, idle: 3 };
+export const S_ORDER = { waiting: 0, failed: 1, busy: 2, shell: 3, completed: 4, stopped: 4, idle: 5, unknown: 6 };
 export const prevStatus = new Map();
 export let workLoaded = false;
 
@@ -1140,6 +1144,18 @@ export function notifyTransitions(sessions) {
         buzz('0,90,90,90,90,160');
         toast(s.waitingFor || t('panel.needsInput'), 'err', s.name);
       } else if (s.status === 'idle' && (before === 'busy' || before === 'shell')) {
+        buzz('0,70,110,70');
+        if (cfg.display?.finishToast !== false) toast(t('panel.sessionFinished', { name: s.name }), 'ok');
+        finished++;
+      }
+      // WorkBuddy has no idle: its busy turn ends as completed, stopped or failed. A failed turn
+      // reads as a failure (the error buzz and toast, shown like a waiting prompt even with the
+      // finish toast off), and a feed that went quiet (unknown) says nothing: the row's STALE badge
+      // shows it, and a lost feed is not a finished turn.
+      else if (s.tool === 'workbuddy' && before === 'busy' && s.status === 'failed') {
+        buzz('0,90,90,90,90,160');
+        toast(t('sess.failed'), 'err', s.name);
+      } else if (s.tool === 'workbuddy' && before === 'busy' && (s.status === 'completed' || s.status === 'stopped')) {
         buzz('0,70,110,70');
         if (cfg.display?.finishToast !== false) toast(t('panel.sessionFinished', { name: s.name }), 'ok');
         finished++;
@@ -3260,7 +3276,7 @@ export function applyState(s, replayGen = null) {
   if (s.cfgVersion !== undefined && cfgVersion !== null && s.cfgVersion !== cfgVersion) loadConfig();
   if (s.pushVersion !== undefined && s.pushVersion !== pushVersion) loadPush();
   if (fresh) {
-    stateTs = s.ts ?? stateTs;
+    if (s.ts != null) { stateTs = s.ts; stateTsAt = Date.now(); }
     // the agent restarted: it counts events from 0 again — forget what was handled and replay its backlog once
     if (evSeq != null && s.evSeq != null && s.evSeq < evSeq) { evSeen.clear(); evQueue = []; evDrop = 0; evReplay = true; evGen++; evSeq = 0; }
     evSeq = Math.max(evSeq ?? 0, s.evSeq ?? 0);

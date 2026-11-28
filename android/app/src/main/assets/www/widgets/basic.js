@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, phoneMediaArt, phoneMediaControl, phoneAudio, phoneMute, phoneVolume, setMediaChoice, swapOn, swapPhone, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, mediaPosMs, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, providersFor, pages, curPage, gotoPageRef } from '../main.js';
+import { $, API, D, LEVEL_COLOR, phoneMediaArt, phoneMediaControl, phoneAudio, phoneMute, phoneVolume, setMediaChoice, swapOn, swapPhone, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, agentClock, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, mediaPosMs, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, providersFor, pages, curPage, gotoPageRef } from '../main.js';
 import { W } from '../registry.js';
 import { weekStartDay } from './time.js';
 import { invalidateDeckState } from './controls.js';
@@ -678,7 +678,7 @@ W.sessions = {
     box.append(h('div', 'w-head', h('span', 's-label', t('w.sessions')), sum), list);
     box.style.setProperty('--c', '#d97757');
     const tokens = (n) => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
-    const statusText = (s) => s.status === 'busy' ? t('sess.working') : s.status === 'waiting' ? t('sess.waiting') : s.status === 'shell' ? t('sess.shell') : s.outcome === 'completed' ? t('sess.completed') : s.outcome === 'failed' ? t('sess.failed') : s.outcome === 'aborted' ? t('sess.aborted') : t('sess.idle');
+    const statusText = (s) => s.status === 'busy' ? t('sess.working') : s.status === 'waiting' ? t('sess.waiting') : s.status === 'shell' ? t('sess.shell') : s.status === 'completed' ? t('sess.completed') : s.status === 'failed' ? t('sess.failed') : s.status === 'stopped' ? t('sess.stopped') : s.status === 'unknown' ? tp('unknown') : s.outcome === 'completed' ? t('sess.completed') : s.outcome === 'failed' ? t('sess.failed') : s.outcome === 'aborted' ? t('sess.aborted') : t('sess.idle');
     // The tool each session comes from: one glyph in the list, a glyph and a name in the details panel.
     const toolIcon = (tool) => tool === 'claude' ? '✳' : tool === 'codex' ? '◎' : tool === 'cursor' ? '◆' : tool === 'opencode' ? '◈' : tool === 'antigravity' ? Q_STYLE.antigravity.logo : tool === 'grok' ? Q_STYLE.grok.logo : tool === 'workbuddy' ? '❖' : tool === 'pi' ? 'π' : '◎';
     const toolTitle = (tool) => tool === 'claude' ? 'Claude Code' : tool === 'codex' ? 'Codex' : tool === 'cursor' ? 'Cursor' : tool === 'opencode' ? 'OpenCode' : tool === 'antigravity' ? 'Antigravity' : tool === 'grok' ? 'Grok' : tool === 'workbuddy' ? 'WorkBuddy' : tool === 'pi' ? 'Pi' : 'Codex';
@@ -760,6 +760,44 @@ W.sessions = {
       const timer = setInterval(load, 3000);
       return () => { gone = true; clearInterval(timer); };
     };
+    // WorkBuddy's setup check: three lines — the hook, the approval switch and the heartbeat's
+    // age. All of them come from the agent's own "work" frame (D.work.workbuddy: booleans the
+    // agent judged — the hook's settings path names the user's home folder and never travels),
+    // so the card also works over Wi-Fi and USB and never phones home for the path. Anything
+    // that cannot be read says "unknown" rather than "on": a check that fails must not pass
+    // itself (fail-loud). Values go in with textContent only. The card follows the latest
+    // "work" frame every second while it is open, so the heartbeat's age keeps counting and
+    // turns stale when the agent says so; it returns the function that stops that.
+    const workbuddyCheck = (panel, first) => {
+      const box = h('div', 'session-conv wb-check');
+      panel.append(box);
+      const render = () => {
+        // a session the latest frame no longer lists (its process exited) has no heartbeat to report: unknown
+        const live = D.work?.sessions ? D.work.sessions.find((x) => x.id === first.id) : first;
+        const s = live || { id: first.id };
+        const wb = D.work?.workbuddy || null; // the agent's booleans; null when the agent is older
+        // the heartbeat the row's own freshness is judged on; since is a status-change time and can differ.
+        // Its age is counted on the computer's clock (agentClock), never the phone's. 0 means the file
+        // had no time at all: there is nothing to judge, so it reads unknown, not stale.
+        const beat = s.heartbeat > 0 ? s.heartbeat : s.since > 0 ? s.since : null;
+        const beatAge = beat != null ? Math.max(0, Math.round((agentClock() - beat) / 1000)) : null;
+        const rows = [
+          [tp('Hook'), wb == null ? null : wb.installed === true ? tp('installed') : wb.installed === false ? tp('not installed') : null],
+          [tp('Agent setting'), wb == null ? null : wb.approvals === true ? tp('on') : wb.approvals === false ? tp('off') : null],
+          // the agent's recent flag is only as fresh as the last frame: when the feed stops, the age
+          // keeps counting and passes the same 90 s window, so an old "recent" turns stale too
+          [tp('Last heartbeat'), beatAge == null ? null : s.recent === false || beatAge > 90 ? tp('stale') : tpv('{n}s ago', { n: beatAge })],
+        ];
+        box.replaceChildren(h('div', 'conv-h', tp('WorkBuddy check')), ...rows.map(([label, text]) => {
+          const strong = h('strong', null, text ?? tp('unknown'));
+          if (text == null || text === tp('stale')) strong.classList.add('wb-unknown');
+          return h('div', 'wb-check-row', h('span', null, label), strong);
+        }));
+      };
+      render();
+      const timer = setInterval(render, 1000);
+      return () => clearInterval(timer);
+    };
     const openDetails = (s) => {
       haptic();
       const backdrop = h('div', 'session-backdrop');
@@ -795,6 +833,7 @@ W.sessions = {
       panel.append(h('div', 'session-grid', rows.filter(([, value]) => value != null)
         .map(([label, value]) => h('div', 'session-cell', h('span', null, tp(label)), h('strong', null, value)))));
       if (s.tool === 'codex' || s.tool === 'grok' || (s.tool === 'antigravity' && s.totalTokens != null) || (s.tool === 'pi' && s.totalTokens != null)) panel.append(h('p', 'session-note', tp('Token totals are for this local session, not your account allowance.')));
+      if (s.tool === 'workbuddy') stopConversation = workbuddyCheck(panel, s);
       if (s.tool === 'claude') stopConversation = conversationSection(panel, s);
       backdrop.append(panel);
       document.body.append(backdrop);
@@ -807,17 +846,32 @@ W.sessions = {
         if (!sessions) return;
         const counts = { waiting: 0, busy: 0, shell: 0, idle: 0 };
         sessions.forEach((s) => (counts[s.status] = (counts[s.status] || 0) + 1));
+        // the statuses that mean a turn is over count together as finished; unknown gets its own
+        // fragment so a list of rows never reads as "no open sessions"
+        const done = (counts.completed || 0) + (counts.failed || 0) + (counts.stopped || 0);
         sum.textContent = [
           counts.busy + counts.shell ? tpv('{n} working', { n: counts.busy + counts.shell }) : '',
           counts.waiting ? tpv('{n} waiting', { n: counts.waiting }) : '',
           counts.idle ? tpv('{n} idle', { n: counts.idle }) : '',
-        ].filter(Boolean).join(' · ') || t('w.noOpenSessions');
+          done ? tpv('{n} finished', { n: done }) : '',
+          counts.unknown ? tpv('{n} unknown', { n: counts.unknown }) : '',
+        ].filter(Boolean).join(' · ')
+          // rows that are all terminal or unknown are still sessions: the headline
+          // names them instead of contradicting the list with "no open sessions"
+          || (sessions.length ? tpv('{n} sessions', { n: sessions.length }) : t('w.noOpenSessions'));
         const sorted = [...sessions].sort((a, b) => (S_ORDER[a.status] ?? 9) - (S_ORDER[b.status] ?? 9) || b.since - a.since);
         const rows = sorted.length ? sorted.map((s) => {
-          const row = h('button', 'sess ' + s.status,
+          // a stale row is one the agent itself judged not recent (WorkBuddy's flag, judged on the
+          // computer's clock — the phone never compares its own clock to the computer's): it dims
+          // and gets the badge, because the dot it shows is only as fresh as the feed. Other tools
+          // (Claude, Codex…) send no such flag and never go stale — a since that records the last
+          // status change grows on its own while a busy session keeps working.
+          const stale = s.tool === 'workbuddy' && s.recent === false;
+          const row = h('button', 'sess ' + s.status + (stale ? ' stale' : ''),
             h('span', 'st'), h('span', 'tl ' + s.tool, toolIcon(s.tool)),
             h('span', 'sess-main', h('span', 'nm', titleOf(s)), h('span', 'sess-meta', [folderOf(s), [s.model, s.effort].filter(Boolean).join(' · ') || statusText(s)].filter(Boolean).join(' · '))),
-            h('span', 'ds', shortDur(Date.now() - s.since)));
+            h('span', 'ds', shortDur(Date.now() - s.since)),
+            stale ? h('span', 'stale-badge', tp('stale')) : null);
           row.type = 'button';
           row.addEventListener('click', () => openDetails(s));
           return row;

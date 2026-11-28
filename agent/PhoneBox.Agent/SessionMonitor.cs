@@ -7,12 +7,18 @@ namespace PhoneBox.Agent;
 
 /// <param name="Status">busy | waiting | shell | idle</param>
 /// <param name="Title">The chat's title: carried only while the user shares session titles — Claude Code's own setting, "Show OpenCode session titles" for OpenCode, or "Show Antigravity chat titles on the phone" for Antigravity.</param>
+/// <param name="Heartbeat">The timestamp the tool's own freshness is judged on (WorkBuddy's lastHeartbeat).
+/// Distinct from <see cref="AgentSession.Since"/>: a status-change time is not a heartbeat. Null for
+/// tools that report no heartbeat, so a stale badge keyed on this never fires for them.</param>
+/// <param name="Recent">Whether the tool's own feed (WorkBuddy's heartbeat) is fresh, judged on this
+/// computer's clock — not the phone's. Null for tools that report no feed freshness.</param>
 public sealed record AgentSession(string Id, string Tool, string Name, string Project, string Status,
     string? WaitingFor, long Since, long StartedAt, int? Pid = null,
     string? Model = null, string? Effort = null, long? TotalTokens = null, long? InputTokens = null,
     long? OutputTokens = null, long? CachedInputTokens = null, long? ReasoningTokens = null,
     long? LastInputTokens = null, long? ContextWindow = null, long? TurnStartedAt = null,
-    string? Outcome = null, string? LastTool = null, string? Title = null);
+    string? Outcome = null, string? LastTool = null, string? Title = null,
+    long? Heartbeat = null, bool? Recent = null);
 
 /// <summary>
 /// Watches running AI coding sessions (local and read-only):
@@ -236,7 +242,18 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
         return _wslSessions = list;
     }
 
-    /// <summary>Reads WorkBuddy's live status files. No transcript or database is opened.</summary>
+    /// <summary>
+    /// Reads WorkBuddy's live status files. No transcript or database is opened.
+    /// The status files (as of WorkBuddy 2.176) carry: pid, lastHeartbeat, sessionId, cwd,
+    /// startedAt, kind, processIdentity, updatedAt — and nothing about what the chat
+    /// is doing: no waitingFor, no outcome, no approval flag (checked against real
+    /// files). So a file whose heartbeat is under 90 s old reads busy; one over 90 s
+    /// whose process still runs reads "unknown" — fail-loud, a lost feed never shows
+    /// as a healthy one. A dead process's file is dropped, as before. When a future
+    /// WorkBuddy writes a "status" (or "outcome") string there, a known state
+    /// (working/completed/stopped/failed) is used as it is and any other word is
+    /// judged by the heartbeat — nothing is taken at its word.
+    /// </summary>
     internal static IEnumerable<AgentSession> ReadWorkBuddy(string? homeDir = null, Func<int, bool>? isAlive = null, long? nowMs = null)
     {
         var home = homeDir ?? Home;
@@ -251,7 +268,7 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
             {
                 using var doc = JsonDocument.Parse(File.ReadAllText(file));
                 var root = doc.RootElement;
-                if (!root.TryGetProperty("pid", out var id) || !id.TryGetInt32(out var pid) || pid <= 0 || !alive(pid))
+                if (!root.TryGetProperty("pid", out var id) || !id.TryGetInt32(out var pid) || pid <= 0)
                     continue;
                 if (Str(root, "kind") == "prewarm") continue;
                 var sessionId = Str(root, "sessionId");
@@ -260,11 +277,34 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
                 var started = Long(root, "startedAt") ?? 0;
                 var heartbeat = Long(root, "lastHeartbeat") ?? Long(root, "updatedAt") ?? started;
                 var recent = heartbeat > 0 && now >= heartbeat && now - heartbeat < 90_000;
+                // No live file today carries a status/outcome field (checked against real
+                // files, WorkBuddy 2.176): when a future version writes one there, a known
+                // state (working/completed/stopped/failed) becomes the row's state as it
+                // is — "working" means a turn still runs, and any word outside the known
+                // set is judged by the heartbeat's freshness, never taken at its word.
+                // Nothing is invented while no field is there: a heartbeat over 90 s with
+                // no outcome reads "unknown".
+                var outcome = Str(root, "status") ?? Str(root, "outcome");
+                // a future version may name states we have never seen ("waiting"…): a word
+                // outside the known set says nothing on its own, so it is judged by the
+                // heartbeat's freshness instead of being taken at its word
+                outcome = outcome switch
+                {
+                    "completed" or "stopped" or "failed" => outcome,
+                    _ => null,
+                };
+                var status = outcome ?? (recent ? "busy" : "unknown");
+                if (!alive(pid)) continue; // a dead process's file is dropped, as before
                 session = new AgentSession(
                     Id: "workbuddy:" + (string.IsNullOrWhiteSpace(sessionId) ? pid.ToString() : sessionId),
-                    Tool: "workbuddy", Name: project, Project: project, Status: recent ? "busy" : "idle",
+                    Tool: "workbuddy", Name: project, Project: project, Status: status,
                     WaitingFor: null, Since: Long(root, "updatedAt") ?? heartbeat, StartedAt: started, Pid: pid,
-                    Model: Str(root, "model"));
+                    Model: Str(root, "model"), Outcome: outcome,
+                    // the heartbeat the row's own freshness is judged on, not the status-change time
+                    Heartbeat: heartbeat,
+                    // the feed's freshness as this computer judges it, so the phone never compares
+                    // its own clock against the computer's timestamps
+                    Recent: recent);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
             { /* The status file can be replaced between poll ticks. */ }
@@ -815,5 +855,15 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
 /// <summary>The "work" data the phone gets, on the live stream and on the polling path alike: sessions and GitHub.</summary>
 public static class WorkFeed
 {
-    public static object Build(SessionMonitor sessions, GitHubMonitor gh) => new { sessions = sessions.Snapshot(), github = gh.Snapshot() };
+    // The WorkBuddy facts the phone's self-check card shows: whether the hook is installed in
+    // ~/.workbuddy/settings.json (a plain flag — the path itself stays on this computer, it names
+    // the user's home folder), and the approval and session switches from the config (booleans
+    // again; the config file itself never leaves this computer). WorkBuddy rows are only sent
+    // while sessions are shared, so the switches ride along every "work" frame for the card to read.
+    public static object Build(SessionMonitor sessions, GitHubMonitor gh, WorkBuddyConfig? workbuddy = null, bool hookInstalled = false) => new
+    {
+        sessions = sessions.Snapshot(),
+        github = gh.Snapshot(),
+        workbuddy = workbuddy is null ? null : new { installed = hookInstalled, approvals = workbuddy.PhoneApprovals, sessions = workbuddy.Sessions },
+    };
 }
