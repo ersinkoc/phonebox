@@ -75,11 +75,13 @@ test('the inspector changes the column of a widget clipped by the Phone view', a
 
 test('the screen buttons follow More rows on a tablet', async ({ page }) => {
   await openEditor(page, false);
-  await expect(page.locator('#screenSeg')).toBeHidden();
+  // Phone and Upright are always there; the tablet screens come with the setting
+  await expect(page.locator('#screenSeg [data-screen="upright"]')).toBeVisible();
+  await expect(page.locator('#screenSeg [data-screen="tablet"]')).toBeHidden();
   await page.goto('/settings/#general');
   await page.locator('#tabletRowsOpt').check();
   await page.goto('/settings/#pages');
-  await expect(page.locator('#screenSeg')).toBeVisible();
+  await expect(page.locator('#screenSeg [data-screen="tablet"]')).toBeVisible();
 });
 
 async function panelRows(page) {

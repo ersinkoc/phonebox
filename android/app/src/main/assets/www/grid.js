@@ -78,3 +78,17 @@ export function portraitLayout(widgets, cols = 6) {
   }
   return { pos, rows: Math.max(12, occ.length) };
 }
+
+/** The grid of a page arranged for upright in the editor; the agent's Catalog.UprightCols / UprightRows match it. */
+export const UPRIGHT_COLS = 6;
+export const UPRIGHT_ROWS = 12;
+
+/** Where a widget sits on a page's own upright layout, or null when it is left off it (or its place is unusable). */
+export function uprightPlace(w) {
+  const u = w?.upright;
+  if (!u || typeof u !== 'object') return null;
+  const n = (v, min, max) => Math.min(max, Math.max(min, Math.round(Number(v))));
+  if (![u.x, u.y, u.w, u.h].every((v) => Number.isFinite(Number(v)))) return null;
+  const ww = n(u.w, 1, UPRIGHT_COLS), hh = n(u.h, 1, UPRIGHT_ROWS);
+  return { x: n(u.x, 0, UPRIGHT_COLS - ww), y: n(u.y, 0, UPRIGHT_ROWS - hh), w: ww, h: hh };
+}

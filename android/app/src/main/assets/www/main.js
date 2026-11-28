@@ -1,7 +1,7 @@
 // PhoneBox desk panel: core, pages, navigation and data from the agent. The widgets live in widgets/*.js;
 // they import what they need from here, so this module must not run code that needs them while it loads
 // (the start section at the end runs after every module has loaded).
-import { designGrid, gridForViewport, placeWidget, portraitLayout, widgetsOnGrid } from './grid.js';
+import { designGrid, gridForViewport, placeWidget, portraitLayout, uprightPlace, UPRIGHT_COLS, UPRIGHT_ROWS, widgetsOnGrid } from './grid.js';
 import { W } from './registry.js';
 import './appearance.js';
 import { cached } from './widgets/helpers.js';
@@ -1840,15 +1840,19 @@ export function buildLayout() {
     const pageAppearance = PhoneBoxAppearance.resolve(cfg.display?.appearance, p.appearance);
     // Upright, pack only the widgets this screen's landscape grid shows, so a phone leaves out tablet-only rows
     // while a tablet held upright keeps them.
-    const pl = portrait ? portraitLayout(widgetsOnGrid(p.widgets, designed.cols, designed.rows), viewport.cols) : null;
+    // A page arranged for upright in the editor (Settings › Pages › Upright) keeps its own places there. One whose
+    // widgets have no usable upright place (replaced from a template, say) packs automatically instead of drawing nothing.
+    const own = portrait && p.upright === true && p.widgets.some((w) => W[w.type] && uprightPlace(w));
+    const pl = portrait && !own ? portraitLayout(widgetsOnGrid(p.widgets, designed.cols, designed.rows), viewport.cols) : null;
     if (pl) { grid.style.gridTemplateColumns = `repeat(${viewport.cols}, minmax(0, 1fr))`; grid.style.gridTemplateRows = `repeat(${pl.rows}, minmax(0, 1fr))`; }
+    if (own) { grid.style.gridTemplateColumns = `repeat(${UPRIGHT_COLS}, minmax(0, 1fr))`; grid.style.gridTemplateRows = `repeat(${UPRIGHT_ROWS}, minmax(0, 1fr))`; }
     let glass = false;
     for (const w of p.widgets) {
       const def = W[w.type];
       if (!def) continue;
       // not upright: the grid the CSS draws (--pb-rows), which on a nearly square screen can differ from the viewport's
-      const at = pl ? pl.pos.get(w) : placeWidget(w, designed.cols, designed.rows);
-      if (!at) continue; // a widget on a tablet-only row stays off a phone
+      const at = own ? uprightPlace(w) : pl ? pl.pos.get(w) : placeWidget(w, designed.cols, designed.rows);
+      if (!at) continue; // a widget on a tablet-only row stays off a phone, one left off the upright layout off that
       const box = h('div', `w w-${w.type}${def.bare ? ' bare' : ' card'}`);
       const appearance = PhoneBoxAppearance.resolve(cfg.display?.appearance, p.appearance, w.appearance);
       box.style.gridArea = `${at.y + 1} / ${at.x + 1} / span ${at.h} / span ${at.w}`;

@@ -128,6 +128,15 @@
   pipewire-pulse) the system output's volume stays; once it has, a server that stops answering shows the widgets as
   unavailable. Without `pactl` (package `pulseaudio-utils` on Debian, Ubuntu and Fedora, `libpulse` on Arch) and on
   macOS the widgets still say they need Windows (#613, #762, [mikicolmena](https://github.com/mikicolmena)).
+- Pages: a layout of their own for an upright screen. The layout editor (Settings › Pages) has **Landscape** and
+  **Upright**. Upright, it shows the page as the panel packs it held upright, with the same columns (6 on a phone,
+  12 on a tablet with More rows on a tablet), wide widgets keeping their area and as many rows as that takes; widgets
+  the screen leaves out are listed under the canvas. Moving or resizing a widget there gives the page its own upright
+  layout (6 × 12), which a phone or tablet held upright then uses as it is; a widget that does not fit on it is
+  listed as left off and can be put back, and **Back to automatic** drops the layout. A click that only selects a
+  widget changes nothing. Replacing a page's widgets from a template or clearing it drops its upright layout, and a
+  page whose widgets have no upright place is packed automatically. Pages without one look as before. Without More
+  rows on a tablet, the editor's screen buttons read **Landscape** and **Upright** (#755, #758,
 - The Steam library widget is now the Game library. Shortcuts ticked in its new **Other games** option show as games,
   and on Windows it also finds the games installed outside Steam: the Epic Games Launcher's, the EA app's, GOG Galaxy's,
   Ubisoft Connect's and the Rockstar Games Launcher's, and game folders on the drives. Starting those from the phone is
