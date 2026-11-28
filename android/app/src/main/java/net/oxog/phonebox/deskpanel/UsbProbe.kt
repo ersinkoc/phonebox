@@ -1,5 +1,6 @@
 package net.oxog.phonebox.deskpanel
 
+import android.os.SystemClock
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
@@ -51,13 +52,14 @@ internal object UsbProbe {
 internal class UsbHealth(
     private val okForMs: Long = 10_000,
     private val downForMs: Long = 15_000,
-    private val clock: () -> Long = System::currentTimeMillis,
+    // elapsed time, not the wall clock: a clock set back an hour must not skip a working tunnel for that hour
+    private val clock: () -> Long = { SystemClock.elapsedRealtime() },
 ) {
-    @Volatile private var okUntil = 0L
-    @Volatile private var downUntil = 0L
+    private var okUntil = 0L
+    private var downUntil = 0L
 
     /** true: use USB without a probe; false: skip USB; null: probe first. */
-    fun decide(): Boolean? {
+    @Synchronized fun decide(): Boolean? {
         val now = clock()
         return when {
             now < okUntil -> true
@@ -66,8 +68,8 @@ internal class UsbHealth(
         }
     }
 
-    fun ok() { okUntil = clock() + okForMs; downUntil = 0 }
-    fun down() { downUntil = clock() + downForMs; okUntil = 0 }
+    @Synchronized fun ok() { okUntil = clock() + okForMs; downUntil = 0 }
+    @Synchronized fun down() { downUntil = clock() + downForMs; okUntil = 0 }
     /** A request over USB failed: the next one probes again. */
-    fun unsure() { okUntil = 0 }
+    @Synchronized fun unsure() { okUntil = 0 }
 }

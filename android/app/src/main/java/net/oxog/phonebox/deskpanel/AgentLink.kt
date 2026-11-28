@@ -36,7 +36,9 @@ import javax.net.ssl.X509TrustManager
  */
 class AgentLink(private val context: Context) {
 
-    class Reply(val code: Int, val contentType: String?, val body: InputStream, val headers: Map<String, String> = emptyMap())
+    /** [transportUnknown]: the request may or may not have reached the computer (a POST whose write or answer was cut). */
+    class Reply(val code: Int, val contentType: String?, val body: InputStream, val headers: Map<String, String> = emptyMap(),
+                val transportUnknown: Boolean = false)
 
     enum class Route { USB, WIFI, NONE }
 
@@ -310,7 +312,8 @@ class AgentLink(private val context: Context) {
             c.connectTimeout = 400 // refused instantly when no adb reverse tunnel exists
             headers.forEach { (name, value) -> c.setRequestProperty(name, value) }
             val r = send(c, method, readTimeout, body, contentType)
-            usbHealth.ok()
+            // a POST cut off on the way says nothing good about the tunnel: the next request checks it again
+            if (r.transportUnknown) usbHealth.unsure() else usbHealth.ok()
             if (r.code == 401) {
                 // the agent doesn't know this app's key yet (it reads it over adb within seconds): nothing ran, try Wi-Fi
                 try { r.body.close() } catch (_: Exception) {}
@@ -437,7 +440,8 @@ class AgentLink(private val context: Context) {
         // A write may have reached the computer. Do not try any other route or address.
         c.disconnect()
         return Reply(504, "application/json", ByteArrayInputStream(
-            """{"ok":false,"error":"The command result is unknown; check the computer before retrying"}""".toByteArray()))
+            """{"ok":false,"error":"The command result is unknown; check the computer before retrying"}""".toByteArray()),
+            transportUnknown = true)
     }
 
     private val macRefreshThrottle = RefreshThrottle(10 * 60_000)
