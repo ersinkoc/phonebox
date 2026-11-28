@@ -242,6 +242,23 @@ test('starting the page\'s own layout keeps what fits on 6 × 12 and lists the r
   expect(await dirty(page)).toBe(true);
 });
 
+test('a widget that runs past row 12 when the page\'s own layout starts is shortened to the rows left', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await seedWith(page, LAYOUTS.fourteen, false);
+  await page.goto('/settings/#pages');
+  await expect(page.locator('#canvas .wb')).toHaveCount(4);
+  const box = await page.locator('#canvas').boundingBox();
+  const a = await page.locator('#canvas .wb').first().boundingBox();
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(a.x + a.width / 2 + box.width / 6, a.y + a.height / 2, { steps: 6 });
+  await page.mouse.up();
+  // D packs to 6 × 8 at row 6 (rows 6-13); on the 6 × 12 layout it keeps its place with the 6 rows left
+  expect(await saved(page)).toEqual({ upright: true, places: [
+    { x: 1, y: 0, w: 4, h: 2 }, { x: 0, y: 2, w: 4, h: 2 }, { x: 0, y: 4, w: 4, h: 2 }, { x: 0, y: 6, w: 6, h: 6 }] });
+  await expect(page.locator('#uprightOff')).toBeHidden();
+});
+
 test('Replace widgets from a template and Clear drop the page\'s own upright layout', async ({ page }) => {
   await openUpright(page, [OWN]);
   await expect(page.locator('#uprightReset')).toBeVisible();
