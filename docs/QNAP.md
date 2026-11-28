@@ -22,7 +22,8 @@ The agent is the Linux one (see [What works where](SETUP.md#what-works-where)), 
   not Alpine.
 - The PhoneBox app on the phone, installed from the [release page](https://github.com/ersinkoc/phonebox/releases/latest).
 - The phone and the NAS on the same network, or both on [Tailscale](https://tailscale.com).
-- SSH on the NAS (**Control Panel › Network & File Services › Telnet / SSH**), to open the settings page.
+- SSH on the NAS (**Control Panel › Network & File Services › Telnet / SSH**) with TCP port forwarding allowed: the
+  settings page is reached only through an SSH tunnel.
 
 ## 1. Create the application
 
@@ -142,6 +143,9 @@ are listed in [PRIVACY.md](../PRIVACY.md).
   internet on the first start; `PhoneBoxAgent was not installed` means `setup.sh` failed.
 - **`ssh -L` connects, but the page does not load** (`channel … open failed: administratively prohibited`): the NAS's
   SSH server does not allow port forwarding. Some QTS versions turn it off; the setting belongs to QTS, not PhoneBox.
+  Allow TCP forwarding in the NAS's SSH server (`AllowTcpForwarding yes` in its sshd configuration) and restart SSH from
+  the Telnet / SSH page. Without forwarding the settings page cannot be reached, and the agent cannot be paired, so
+  this setup cannot be used on that NAS.
 - **The phone cannot reach port 8766:** check that **Wi-Fi & Tailscale** says "Listening on port 8766", that the phone
   is on the same network (or on Tailscale, see above), and that the QuFirewall rules are on and above any `Deny` rule.
 - **Reinstall the agent:** stop the container, delete `/share/Container/phonebox/share/app` and start it again; setup
