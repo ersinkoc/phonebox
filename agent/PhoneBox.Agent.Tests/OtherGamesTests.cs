@@ -315,7 +315,7 @@ public class OtherGamesTests : IDisposable
 
         Assert.Null(on.Launch(null, "p/w", game.Id));
         var psi = Assert.Single(_started);
-        Assert.Equal(game.Exe, psi.FileName);
+        Assert.Equal(Path.GetFullPath(game.Exe!), psi.FileName);
         Assert.Equal(game.Dir, psi.WorkingDirectory);
         Assert.Empty(psi.ArgumentList);
         Assert.True(string.IsNullOrEmpty(psi.Arguments));
@@ -429,5 +429,82 @@ public class OtherGamesTests : IDisposable
             Assert.Empty(OtherGames.FromDrives([_dir]));
         }
         finally { try { Directory.Delete(Path.Combine(_dir, "Games", "Linked")); } catch { } try { Directory.Delete(outside, true); } catch { } }
+    }
+
+    // ------------------------------------------------------------------ a program other accounts could have put there
+
+    private void Junction(string link, string target)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            using var p = Process.Start(new ProcessStartInfo("cmd.exe") { ArgumentList = { "/c", "mklink", "/J", link, target }, UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true })!;
+            p.WaitForExit(10_000);
+        }
+        else Directory.CreateSymbolicLink(link, target);
+        Assert.True(Directory.Exists(link));
+    }
+
+    [Fact]
+    public void AProgramInAFolderOnlyThisUserCanChangeIsStarted()
+    {
+        var game = Program("Old Fort");
+        Assert.Null(OtherGames.Unsafe(game.Dir, game.Exe!));
+        Assert.Null(Games(Config("""{"allowLaunchOthers":true}"""), game).Launch(null, "p/w", game.Id));
+        Assert.Equal(Path.GetFullPath(game.Exe!), Assert.Single(_started).FileName);
+    }
+
+    [Fact]
+    public void AProgramReachedThroughALinkIsNotStarted()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
+        var link = Path.Combine(_dir, "Linked");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(outside, "Far"));
+            File.WriteAllBytes(Path.Combine(outside, "Far", "far.exe"), new byte[100]);
+            Junction(link, outside);
+            // the link above the game's folder, and the game's folder itself a link
+            var below = new OtherGames.Found(OtherGames.IdOf("gog", Path.Combine(link, "Far")), "Far", "gog", Path.Combine(link, "Far"), Path.Combine(link, "Far", "far.exe"), null);
+            var at = new OtherGames.Found(OtherGames.IdOf("gog", link), "Far 2", "gog", link, Path.Combine(link, "Far", "far.exe"), null);
+            Assert.Equal("is reached through a link", OtherGames.Unsafe(at.Dir, at.Exe!));
+            if (OperatingSystem.IsWindows()) Assert.Equal("is reached through a link", OtherGames.Unsafe(below.Dir, below.Exe!));
+            var config = Config("""{"allowLaunchOthers":true}""");
+            Assert.Equal("unsafe", Games(config, at).Launch(null, "p/w", at.Id)?.Code);
+            if (OperatingSystem.IsWindows()) Assert.Equal("unsafe", Games(config, below).Launch(null, "p/w", below.Id)?.Code);
+            Assert.Empty(_started);
+        }
+        finally { try { Directory.Delete(link); } catch { } try { Directory.Delete(outside, true); } catch { } }
+    }
+
+    [Fact]
+    public void AProgramInAFolderEveryoneMayChangeIsNotStarted()
+    {
+        if (!OperatingSystem.IsWindows()) return; // Windows permissions
+        var game = Program("Shared Game");
+        var sub = Program("Shared Game/bin/Shared Game") with { Dir = game.Dir };
+        var other = Program("Users Game");
+        Assert.Null(OtherGames.Unsafe(game.Dir, game.Exe!));
+
+        // Everyone may modify the game's folder (and, inherited, the program in it)
+        var dir = new DirectoryInfo(game.Dir);
+        var acl = dir.GetAccessControl();
+        acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(new System.Security.Principal.SecurityIdentifier("S-1-1-0"),
+            System.Security.AccessControl.FileSystemRights.Modify, System.Security.AccessControl.InheritanceFlags.ContainerInherit | System.Security.AccessControl.InheritanceFlags.ObjectInherit,
+            System.Security.AccessControl.PropagationFlags.None, System.Security.AccessControl.AccessControlType.Allow));
+        dir.SetAccessControl(acl);
+        // Users may write the program itself only
+        var file = new FileInfo(other.Exe!);
+        var facl = file.GetAccessControl();
+        facl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(new System.Security.Principal.SecurityIdentifier("S-1-5-32-545"),
+            System.Security.AccessControl.FileSystemRights.Write, System.Security.AccessControl.AccessControlType.Allow));
+        file.SetAccessControl(facl);
+
+        Assert.Equal("can be changed by other accounts", OtherGames.Unsafe(game.Dir, game.Exe!));
+        Assert.Equal("can be changed by other accounts", OtherGames.Unsafe(sub.Dir, sub.Exe!)); // a program further down, by inheritance
+        Assert.Equal("can be changed by other accounts", OtherGames.Unsafe(other.Dir, other.Exe!));
+        var on = Games(Config("""{"allowLaunchOthers":true}"""), game, other);
+        Assert.Equal("unsafe", on.Launch(null, "p/w", game.Id)?.Code);
+        Assert.Equal("unsafe", on.Launch(null, "p/w", other.Id)?.Code);
+        Assert.Empty(_started);
     }
 }

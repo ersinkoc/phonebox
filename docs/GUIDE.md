@@ -167,6 +167,14 @@ outside Steam**, because it starts a program the agent picked, not Steam. With i
 (`x:` and a hash of its folder); the agent starts the game only if that id is in the list it found, either by the
 launcher's own link (Epic Games Launcher, Ubisoft Connect), or by the game's program in its folder, with no arguments
 and only when it is still an existing `.exe` inside that folder. Nothing from the request reaches the command.
+A program started by its path is checked again right before it starts, so that no other account on this computer
+could have put it there: no junction or symbolic link may be on its path, from the drive's root down to the program,
+and on Windows neither the game's folder, nor a folder between it and the program, nor the program itself may let
+Everyone, Authenticated Users or Users write, delete or change permissions (inherited permissions count). Games under
+Program Files or in your own user folders pass. A folder you made at the top of a drive usually lets Authenticated
+Users change it (Windows hands that down from the drive), so its games are listed but not started from the phone: the
+phone says the game could not be started, and the agent's log says why. Remove that permission from the folder, or
+start the game from a shortcut of your own (**Other games**). Games started by a launcher's link are not affected.
 
 **Smart Stack** combines up to 12 widgets in one slot. Add it from the Layout category, then drag widgets into it or
 use its picker. Reorder cards, open their settings, or disable individual cards. Tap the dots or swipe vertically to
