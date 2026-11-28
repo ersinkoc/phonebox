@@ -87,3 +87,15 @@ test('upright, a widget wider than the columns keeps its area, so a 12 × 6 page
   expect(r.twelveKeys).toEqual({ x: 0, y: 2, w: 12, h: 4 });
   expect(r.sizes).toEqual([{ w: 6, h: 12 }, { w: 6, h: 7 }, { w: 4, h: 3 }]);
 });
+
+test('an upright place stays inside the 6 × 12 upright grid, and a widget without one is left off', async ({ page }) => {
+  const r = await grid(page, (g) => [
+    g.uprightPlace({ upright: { x: 0, y: 4, w: 6, h: 8 } }),
+    g.uprightPlace({ upright: { x: 5, y: 11, w: 4, h: 3 } }),
+    g.uprightPlace({ upright: { x: 0, y: 0, w: 9, h: 20 } }),
+    g.uprightPlace({ x: 0, y: 0, w: 4, h: 2 }),
+    g.uprightPlace({ upright: { x: 'a', y: 0, w: 1, h: 1 } }),
+    [g.UPRIGHT_COLS, g.UPRIGHT_ROWS],
+  ]);
+  expect(r).toEqual([{ x: 0, y: 4, w: 6, h: 8 }, { x: 2, y: 9, w: 4, h: 3 }, { x: 0, y: 0, w: 6, h: 12 }, null, null, [6, 12]]);
+});
