@@ -600,4 +600,25 @@ public sealed class PulseDeckAudioTests
         Assert.True(native.DefaultDevice("korvex_ch_musica"));
         Assert.Equal(["set-sink-input-volume 798 10%", "set-default-sink korvex_ch_musica"], calls);
     }
+
+    [Fact]
+    public void AMicrophoneNamedLikeAMonitorStaysListed()
+    {
+        // the metadata says it is a real microphone, so the ".monitor" suffix does not hide it
+        const string sources = """
+            Source #7
+            	State: SUSPENDED
+            	Name: conference.monitor
+            	Description: Conference microphone
+            	Monitor of Sink: n/a
+            	Mute: no
+            	Volume: mono: 32768 /  50% / -18.06 dB
+            	Properties:
+            		device.class = "sound"
+            """;
+        var state = PulseDeckAudio.Build([], PulseDeckAudio.Parse(sources), [], null, null);
+        var mic = Assert.Single(state.Devices);
+        Assert.Equal("conference.monitor", mic.Id);
+        Assert.Equal("input", mic.Direction);
+    }
 }

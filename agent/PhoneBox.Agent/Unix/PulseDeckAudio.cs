@@ -144,9 +144,16 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
             Master(volumes), b.Field("Mute") == "yes", 0, Math.Max(1, volumes.Count), true, volumes.Count > 0 ? volumes : null);
     }
 
-    private static bool IsMonitor(Block b, string name) =>
-        b.Property("device.class") == "monitor" || name.EndsWith(".monitor", StringComparison.Ordinal)
-        || b.Field("Monitor of Sink") is { } of && of != "n/a";
+    // The metadata decides when pactl gives it; the ".monitor" name suffix only when it gives neither, so a real
+    // microphone that happens to be named "conference.monitor" stays listed.
+    private static bool IsMonitor(Block b, string name)
+    {
+        var cls = b.Property("device.class");
+        var of = b.Field("Monitor of Sink");
+        if (cls == "monitor" || of is { } sink && sink != "n/a") return true;
+        if (cls is not null || of is not null) return false;
+        return name.EndsWith(".monitor", StringComparison.Ordinal);
+    }
 
     private static string? FirstUseful(params string?[] values) =>
         values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v) && v != "(null)")?.Trim();
