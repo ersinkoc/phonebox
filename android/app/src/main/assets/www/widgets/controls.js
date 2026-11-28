@@ -93,9 +93,11 @@ function slider(label, send, max = 100) {
 }
 function meter(value) { const e = h('div', 'deck-meter', h('i')); e.firstChild.style.transform = `scaleX(${Math.max(0, Math.min(1, value || 0))})`; return e; }
 
-// The device list, the microphone, per-app volume and switching devices use Windows Core Audio. On Linux and macOS the
-// agent reports only the system output, so these say so instead of showing an empty list (#613).
-const onlyOnWindows = () => !!D.state?.os && D.state.os !== 'windows';
+// The device list, the microphone, per-app volume and switching devices need the agent's full audio backend: Windows
+// Core Audio, or pactl on Linux. Without one (macOS, or Linux without pactl) the agent reports only the system output
+// ("default"), so these say so instead of showing an empty list (#613).
+const onlyOnWindows = data => !!D.state?.os && D.state.os !== 'windows'
+  && !(data?.audio?.devices || []).some(d => d.id !== 'default');
 const WINDOWS_ONLY = {
   apps: () => tp('Per-app volume is only on Windows for now'),
   app: () => tp('Per-app volume is only on Windows for now'),
@@ -117,7 +119,7 @@ function audioView(box, options, mode) {
     if (mode === 'mic' && !options.device) items = items.filter(d => d.default);
     if (mode === 'balance') items = items.filter(d => d.direction === 'output' && d.channels >= 2 && (options.device || d.default));
     if (!items.length) {
-      empty(root, onlyOnWindows() && WINDOWS_ONLY[mode] ? WINDOWS_ONLY[mode]()
+      empty(root, onlyOnWindows(data) && WINDOWS_ONLY[mode] ? WINDOWS_ONLY[mode]()
         : mode === 'app' ? tp('Start the selected application and play audio') : tp('No matching audio devices'));
       return;
     }
@@ -172,8 +174,8 @@ function chooser(box, options, which) {
   }
   let signature = '';
   return data => {
-    // the system output is listed on Linux and macOS too, but only Windows can switch the default device
-    if ((which === 'input' || which === 'output') && onlyOnWindows()) {
+    // the system output is listed on every system, but only a full audio backend can switch the default device
+    if ((which === 'input' || which === 'output') && onlyOnWindows(data)) {
       if (signature !== 'windows-only') { signature = 'windows-only'; empty(list, tp('Switching audio devices is only on Windows for now')); }
       return;
     }
@@ -235,7 +237,7 @@ function hold(box, options, power = null) {
       device = options.device || data.audio?.devices?.find(d => d.direction === 'input' && d.default)?.id;
       b.disabled = power ? !data.allowPower : !device;
       if (b.disabled) status.textContent = power ? tp('Enable power controls in desktop settings')
-        : onlyOnWindows() ? tp('Microphone control is only on Windows for now') : tp('No microphone is available');
+        : onlyOnWindows(data) ? tp('Microphone control is only on Windows for now') : tp('No microphone is available');
     },
     destroy() { end(); observer?.disconnect(); window.removeEventListener('blur', end); document.removeEventListener('visibilitychange', visibility); },
   };

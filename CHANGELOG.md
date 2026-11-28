@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Linux: the Control Deck's **audio widgets work**: the application mixer, application volume, device volume,
+  channel balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection. The agent
+  reads every output, microphone and application stream through `pactl` (PulseAudio, or PipeWire through
+  pipewire-pulse) instead of offering only the system output. It reads pactl's plain-text listing, as its JSON
+  output turns any name with a non-ASCII character into "(null)". Monitor sources and streams a module made (the
+  loopbacks of a virtual mixer) are left out; virtual sinks are listed as outputs, so the channels of a virtual
+  mixer get their own faders. Without `pactl` (and on macOS) the widgets still say they need Windows (#613).
 - **MQTT, first step** (Settings › General › MQTT, off by default): the agent can hold a connection to an MQTT broker:
   TCP or WebSocket, TLS, client id, user name and password, keep-alive, clean session, a last will and a **Test**
   button. The certificate is always checked: a broker with its own certificate is trusted through a CA file or a

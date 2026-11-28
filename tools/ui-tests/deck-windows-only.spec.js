@@ -1,10 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
-// #613: on Linux and macOS the agent reports only the system output (PortableDeckNative: no sessions, no inputs, one
-// output that cannot be switched; the demo answers the same for __demoOs). The deck widgets that need Windows Core
-// Audio say so instead of an empty list.
-async function show(page, type, os) {
-  await page.addInitScript((os) => { window.__demoOs = os; }, os);
+// #613: without a full audio backend (macOS, or Linux without pactl) the agent reports only the system output
+// (PortableDeckNative: no sessions, no inputs, one output that cannot be switched; the demo answers the same for
+// __demoOs). The deck widgets that need more say so instead of an empty list. With pactl (__demoPulse) Linux reports
+// every device and application stream, and the widgets work as on Windows.
+async function show(page, type, os, pulse = false) {
+  await page.addInitScript(([os, pulse]) => { window.__demoOs = os; window.__demoPulse = pulse; }, [os, pulse]);
   await page.goto('/panel/style.css');
   await page.evaluate((type) => {
     localStorage.clear();
@@ -26,6 +27,12 @@ for (const [type, text] of [
 
   test(`${type} keeps its controls on Windows`, async ({ page }) => {
     await show(page, type, 'windows');
+    await expect(page.locator('.w-control, .deck-list, button').first()).toBeVisible();
+    await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+  });
+
+  test(`${type} works on Linux with pactl`, async ({ page }) => {
+    await show(page, type, 'linux', true);
     await expect(page.locator('.w-control, .deck-list, button').first()).toBeVisible();
     await expect(page.getByText(text, { exact: true })).toHaveCount(0);
   });
