@@ -55,6 +55,52 @@ test('the finished and unknown counts are translated', async ({ page }) => {
   await expect(page.locator('.w-sum')).toHaveText('1 aktiv · 2 fertig · 1 unbekannt');
 });
 
+test('every language translates the finished and unknown counts, Romanian from both of its dictionaries', async ({ page }) => {
+  await load(page);
+  const result = await page.evaluate(async () => {
+    const I18n = window.PhoneBoxI18n;
+    const { tp } = await import('/panel/main.js');
+    const missing = [];
+    const ro = {};
+    for (const { code } of I18n.LANGUAGES) {
+      if (code === 'en') continue;
+      I18n.setLang(code);
+      for (const text of ['{n} finished', '{n} unknown']) {
+        const out = tp(text);
+        if (out === text || !out.includes('{n}')) missing.push(`${code}: ${text} -> ${out}`);
+      }
+      if (code === 'ro') for (const text of ['{n} working', 'WorkBuddy check', '{n} sessions']) ro[text] = tp(text);
+    }
+    return { missing, ro };
+  });
+  expect(result.missing).toEqual([]);
+  expect(result.ro['{n} working']).toBe('{n} lucrează');
+  expect(result.ro['WorkBuddy check']).toBe('Verificare WorkBuddy');
+  expect(result.ro['{n} sessions']).toBe('{n} sesiuni');
+});
+
+test('the heartbeat age is counted on the computer\'s clock, not the phone\'s', async ({ page }) => {
+  await load(page);
+  // the computer's clock runs five minutes behind the phone's: a heartbeat 10 s before its clock is 10 s old
+  await page.evaluate(async () => {
+    const { D, applyState, emit } = await import('/panel/main.js');
+    window.onAppPause(true);
+    const pc = Date.now() - 300_000;
+    applyState({ ...(D.state || {}), ts: pc });
+    D.work = {
+      sessions: [{ id: 'workbuddy:skew', tool: 'workbuddy', name: 'skew', project: 'skew', status: 'busy', waitingFor: null,
+        since: pc - 60_000, startedAt: pc - 120_000, heartbeat: pc - 10_000, recent: true, outcome: null, pid: 7 }],
+      github: { user: null, notifications: 0, reviewRequests: [], myPrs: [], error: null },
+      workbuddy: { installed: true, approvals: true, sessions: true },
+    };
+    emit('work');
+  });
+  await page.locator('button.sess').click();
+  const age = parseInt(await page.locator('.wb-check-row').nth(2).locator('strong').textContent(), 10);
+  expect(age).toBeGreaterThanOrEqual(10);
+  expect(age).toBeLessThan(15);
+});
+
 test('the WorkBuddy check keeps counting the heartbeat while it is open and turns stale', async ({ page }) => {
   await load(page);
   await setWork(page, [{ name: 'live', status: 'busy', beatAgo: 5_000 }]);
