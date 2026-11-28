@@ -45,4 +45,13 @@
     <data xml:space="preserve" name="autostartError">
         <value>Could not change the startup shortcut: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox can't start: port {0} is used by {1}. Close that program and start PhoneBox again.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox can't start: port {0} is used by another program. Close that program and start PhoneBox again.</value>
+    </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox can't start: port {0} is reserved by Windows. Restarting the computer usually frees it. To list the reserved ports, run: netsh interface ipv4 show excludedportrange protocol=tcp</value>
+    </data>
 </root>

@@ -45,4 +45,13 @@
     <data xml:space="preserve" name="autostartError">
         <value>Não foi possível alterar o atalho de inicialização: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>O PhoneBox não pode iniciar: a porta {0} está sendo usada por {1}. Feche esse programa e inicie o PhoneBox novamente.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>O PhoneBox não pode iniciar: outro programa está usando a porta {0}. Feche esse programa e inicie o PhoneBox novamente.</value>
+    </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>O PhoneBox não pode iniciar: a porta {0} está reservada pelo Windows. Reiniciar o computador costuma liberá-la. Para ver as portas reservadas, execute: netsh interface ipv4 show excludedportrange protocol=tcp</value>
+    </data>
 </root>

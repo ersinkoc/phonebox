@@ -39,15 +39,16 @@ public static class Lan
     public static string Fingerprint(X509Certificate2 cert) => Convert.ToHexString(SHA256.HashData(cert.RawData)).ToLowerInvariant();
 
     /// <summary>
-    /// Why the Wi-Fi port cannot be opened, or null when it can: "reserved" (access denied: a port range Windows keeps
-    /// for itself, or a program that holds the port exclusively), "in-use" (another program listens on it) or "failed".
-    /// Checked before the agent starts listening, so a bad port turns Wi-Fi off instead of stopping the whole agent.
+    /// Why a port cannot be opened on <paramref name="address"/> (every interface by default), or null when it can:
+    /// "reserved" (access denied: a port range Windows keeps for itself, or a program that holds the port exclusively),
+    /// "in-use" (another program listens on it) or "failed". Checked before the agent starts listening, so a bad Wi-Fi
+    /// port turns Wi-Fi off instead of stopping the whole agent, and a taken local port is explained (#710).
     /// </summary>
-    public static string? PortProblem(int port)
+    public static string? PortProblem(int port, IPAddress? address = null)
     {
         try
         {
-            var probe = new TcpListener(IPAddress.Any, port);
+            var probe = new TcpListener(address ?? IPAddress.Any, port);
             probe.Start();
             probe.Stop();
             return null;

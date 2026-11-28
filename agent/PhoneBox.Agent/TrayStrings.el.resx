@@ -45,4 +45,13 @@
     <data xml:space="preserve" name="autostartError">
         <value>Δεν ήταν δυνατή η αλλαγή της συντόμευσης εκκίνησης: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>Το PhoneBox δεν μπορεί να ξεκινήσει: η θύρα {0} χρησιμοποιείται από το {1}. Κλείσε αυτό το πρόγραμμα και ξεκίνα ξανά το PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>Το PhoneBox δεν μπορεί να ξεκινήσει: άλλο πρόγραμμα χρησιμοποιεί ήδη τη θύρα {0}. Κλείσε αυτό το πρόγραμμα και ξεκίνα ξανά το PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>Το PhoneBox δεν μπορεί να ξεκινήσει: η θύρα {0} είναι δεσμευμένη από τα Windows. Η επανεκκίνηση του υπολογιστή συνήθως την ελευθερώνει. Για να δεις τις δεσμευμένες θύρες, εκτέλεσε: netsh interface ipv4 show excludedportrange protocol=tcp</value>
+    </data>
 </root>

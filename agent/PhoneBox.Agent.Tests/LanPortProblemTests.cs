@@ -20,6 +20,16 @@ public sealed class LanPortProblemTests
         finally { holder.Stop(); }
     }
 
+    // #710: the agent's own port, which it opens on 127.0.0.1 only, is checked on that address before the agent starts
+    [Fact]
+    public void ALoopbackPortAnotherProgramListensOnIsInUse()
+    {
+        var holder = new TcpListener(IPAddress.Loopback, 0);
+        holder.Start();
+        try { Assert.Equal("in-use", Lan.PortProblem(((IPEndPoint)holder.LocalEndpoint).Port, IPAddress.Loopback)); }
+        finally { holder.Stop(); }
+    }
+
     [Fact]
     public void AFreePortHasNoProblemAndIsLeftFree()
     {
