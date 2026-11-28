@@ -298,10 +298,15 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     /// </summary>
     internal static bool LooksLikeAGame(string dir, string exeDir, Budget? budget = null)
     {
+        budget ??= new Budget(MaxFoldersPerGame);
+        if (budget.Spent) return false;
+        // a source tree: its .git at the top is looked for before the walk, which may stop at its file limit before
+        // reaching the folders (a tree with thousands of files at its top)
+        if (Directory.Exists(Path.Combine(dir, ".git")) || File.Exists(Path.Combine(dir, ".git"))) return false;
         int sure = 0, files = 0;
         var weak = new HashSet<string>();
         var under = Norm(exeDir);
-        foreach (var file in Files(dir, 0, budget ?? new Budget(MaxFoldersPerGame)))
+        foreach (var file in Files(dir, 0, budget))
         {
             if (++files > MaxFilesPerGame * 2) break;
             var path = file.Replace('/', '\\');
@@ -367,7 +372,8 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     /// <summary>
     /// Whether a junction or symbolic link is on the way from the game's folder down to its program, the program
     /// included: such a path can lead out of the folder. A program found by a walk never is (links are not walked); one
-    /// named by a launcher's record is checked here, and again before its icon is read. Before a start,
+    /// named by a launcher's record is checked here, and again before its icon is read (the game's folder and the ones
+    /// above it are checked by <see cref="Usable"/> before, from the drive's root down). Before a start,
     /// <see cref="Unsafe"/> checks the whole path again, from the drive's root down.
     /// </summary>
     internal static bool LinkBelow(string dir, string exe)
@@ -397,6 +403,37 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         if (!OperatingSystem.IsWindows()) return true;
         if (d.Length < 3 || !char.IsAsciiLetter(d[0]) || d[1] != ':') return false;
         try { return (driveType ?? (root => new DriveInfo(root).DriveType))(d[0] + @":\") == DriveType.Fixed; }
+        catch { return false; }
+    }
+
+    /// <summary>
+    /// Whether a game's folder named by a launcher's record may be read: on a local disk (<see cref="Local"/>, judged
+    /// from the text), with no junction or symbolic link on the way from the drive's root down to the folder, the folder
+    /// included, and still there. The path is checked from the top down and the check stops at the first link, so
+    /// nothing is read through one (a link above the folder could lead to a network share, or to a disc or removable
+    /// drive that <see cref="Local"/> keeps out). The drive's root itself is not checked. Elsewhere than Windows (where
+    /// nothing is found outside the tests) only the folder itself is. Every probe, enumeration and icon read of such a
+    /// folder comes after this. <paramref name="isLink"/>: the link check (<see cref="SteamLibrary.IsLink"/>), the
+    /// first thing that touches the folder's path; a test counts it.
+    /// </summary>
+    internal static bool Usable(string? dir, Func<string, bool>? isLink = null)
+    {
+        if (!Local(dir)) return false;
+        isLink ??= SteamLibrary.IsLink;
+        try
+        {
+            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir!.Trim()));
+            if (!OperatingSystem.IsWindows()) return !isLink(full) && Directory.Exists(full);
+            var root = Path.GetPathRoot(full);
+            if (string.IsNullOrEmpty(root) || full.Length <= root.Length) return false; // a drive's root is no game's folder
+            var path = root;
+            foreach (var part in full[root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+            {
+                path = Path.Combine(path, part);
+                if (isLink(path)) return false;
+            }
+            return Directory.Exists(full);
+        }
         catch { return false; }
     }
 
@@ -512,11 +549,17 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         return words;
     }
 
-    /// <summary>The Epic Games Launcher's manifests (one JSON .item per installed game).</summary>
-    internal static IEnumerable<Found> FromEpic(string manifests)
+    /// <summary>
+    /// The Epic Games Launcher's manifests (one JSON .item per installed game). No manifests folder: the launcher is not
+    /// installed, so no games. A folder that cannot be listed (no access, a disk error) fails the look, so the last list
+    /// found stays and the look is tried again soon (<see cref="RetryMs"/>) rather than dropping the Epic games.
+    /// <paramref name="isLink"/>: see <see cref="Usable"/>.
+    /// </summary>
+    internal static IEnumerable<Found> FromEpic(string manifests, Func<string, bool>? isLink = null)
     {
-        IEnumerable<string> files;
-        try { files = Directory.EnumerateFiles(manifests, "*.item").ToList(); } catch { yield break; }
+        List<string> files;
+        try { files = Directory.EnumerateFiles(manifests, "*.item").ToList(); }
+        catch (DirectoryNotFoundException) { yield break; }
         foreach (var f in files)
         {
             Found? g = null;
@@ -528,8 +571,9 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                 string? S(string k) => r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
                 var cats = r.TryGetProperty("AppCategories", out var c) && c.ValueKind == JsonValueKind.Array ? c.EnumerateArray().Select(x => x.GetString()).ToList() : [];
                 if (!cats.Contains("games") || S("DisplayName") is not { Length: > 0 } name || S("InstallLocation") is not { Length: > 0 } dir) continue;
-                // a folder on a network share is never read; a game whose folder is gone is not installed (any more)
-                if (!Local(dir) || !Directory.Exists(dir)) continue;
+                // a folder on a network share, or reached through a link, is never read; a game whose folder is gone is
+                // not installed (any more)
+                if (!Usable(dir, isLink)) continue;
                 // a program inside the game's folder only; the launcher's address starts it otherwise
                 var exe = ProgramIn(dir, S("LaunchExecutable"));
                 string? url = null;
@@ -547,31 +591,34 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     /// <summary>One registry key of a launcher: its name and a reader of its values.</summary>
     internal sealed record Key(string Name, Func<string, string?> Value);
 
-    /// <summary>GOG Galaxy, Ubisoft Connect, the EA app and Rockstar from their keys (see <see cref="DefaultLaunchers"/>).</summary>
-    internal static IEnumerable<Found> FromKeys(string source, IEnumerable<Key> keys)
+    /// <summary>GOG Galaxy, Ubisoft Connect, the EA app and Rockstar from their keys (see <see cref="DefaultLaunchers"/>).
+    /// <paramref name="isLink"/>: see <see cref="Usable"/>.</summary>
+    internal static IEnumerable<Found> FromKeys(string source, IEnumerable<Key> keys, Func<string, bool>? isLink = null)
     {
-        // each folder named is checked to be on a local disk (Local) before anything there is read
+        // each folder named is checked (Usable: a local disk, no link from the drive's root down, still there) before
+        // anything there is read
         foreach (var k in keys)
         {
             switch (source)
             {
                 case "gog":
-                    if (k.Value("path") is { Length: > 0 } gp && Local(gp) && k.Value("gameName") is { Length: > 0 } gn)
+                    if (k.Value("path") is { Length: > 0 } gp && k.Value("gameName") is { Length: > 0 } gn && Usable(gp, isLink))
                     {
-                        var exe = ProgramIn(gp, k.Value("exe")) ?? PickExe(gp, gn);
+                        // the program the record names, unless it is an installer or a helper: then the one picked here
+                        var exe = ProgramIn(gp, k.Value("exe")) is { } named && !NotTheGame(named) ? named : PickExe(gp, gn);
                         if (exe is not null) yield return new Found(IdOf("gog", gp), gn, "gog", gp, exe, null);
                     }
                     break;
                 case "ubisoft":
                     // the Installs key holds only the folder; Ubisoft Connect starts the game by its number
-                    if (k.Value("InstallDir") is { Length: > 0 } ud && k.Name.All(char.IsAsciiDigit) && Local(ud) && Directory.Exists(ud))
+                    if (k.Value("InstallDir") is { Length: > 0 } ud && k.Name.All(char.IsAsciiDigit) && Usable(ud, isLink))
                         yield return new Found(IdOf("ubisoft", ud), Path.GetFileName(ud.TrimEnd('/', '\\')), "ubisoft", ud, PickExe(ud, Path.GetFileName(ud.TrimEnd('/', '\\'))), $"uplay://launch/{k.Name}/0");
                     break;
                 case "ea":
                 case "rockstar":
                     var dir = k.Value("Install Dir") ?? k.Value("InstallFolder") ?? k.Value("InstallDir");
-                    if (dir is { Length: > 0 } && Local(dir) && Directory.Exists(dir) && !k.Name.Contains("Launcher", StringComparison.OrdinalIgnoreCase)
-                        && !k.Name.Contains("Social Club", StringComparison.OrdinalIgnoreCase) && PickExe(dir, k.Name) is { } x)
+                    if (dir is { Length: > 0 } && !k.Name.Contains("Launcher", StringComparison.OrdinalIgnoreCase)
+                        && !k.Name.Contains("Social Club", StringComparison.OrdinalIgnoreCase) && Usable(dir, isLink) && PickExe(dir, k.Name) is { } x)
                         yield return new Found(IdOf(source, dir), k.Name, source, dir, x, null);
                     break;
             }
@@ -589,24 +636,25 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
             .Concat(FromKeys("rockstar", Keys(@"SOFTWARE\WOW6432Node\Rockstar Games")));
     }
 
+    /// <summary>
+    /// A launcher's keys. No key: the launcher is not installed, so no games. A read that fails (no access, a key
+    /// changing under it) fails the look rather than giving part of the list, so the last list found stays and the look
+    /// is tried again soon (<see cref="RetryMs"/>). A game's key removed between the listing and its reading is skipped.
+    /// </summary>
     private static List<Key> Keys(string path)
     {
         var list = new List<Key>();
         if (!OperatingSystem.IsWindows()) return list;
-        try
+        using var root = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(path);
+        if (root is null) return list;
+        foreach (var name in root.GetSubKeyNames())
         {
-            using var root = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(path);
-            if (root is null) return list;
-            foreach (var name in root.GetSubKeyNames())
-            {
-                using var k = root.OpenSubKey(name);
-                if (k is null) continue;
-                var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-                foreach (var v in k.GetValueNames()) values[v] = k.GetValue(v)?.ToString();
-                list.Add(new Key(name, v => values.TryGetValue(v, out var s) ? s : null));
-            }
+            using var k = root.OpenSubKey(name);
+            if (k is null) continue;
+            var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var v in k.GetValueNames()) values[v] = k.GetValue(v)?.ToString();
+            list.Add(new Key(name, v => values.TryGetValue(v, out var s) ? s : null));
         }
-        catch { }
         return list;
     }
 
@@ -615,10 +663,14 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     {
         if (id is null || !id.StartsWith("x:", StringComparison.Ordinal)) return null;
         var g = Games().FirstOrDefault(x => x.Id == id);
-        // the list is up to ten minutes old: a link put on the program's path since is not followed
-        if (g?.Exe is null || LinkBelow(g.Dir, g.Exe)) return null;
-        return ShortcutIcons.Icon(new Shortcut { Id = id, Cmd = g.Exe });
+        // the list is up to ten minutes old: a link put on the program's path since (above the game's folder, at it, or
+        // below it) is not followed
+        if (g?.Exe is null || !Usable(g.Dir) || LinkBelow(g.Dir, g.Exe)) return null;
+        return ReadIcon(g.Exe);
     }
+
+    /// <summary>Overridable for tests: reads a program's icon, as a PNG.</summary>
+    internal Func<string, byte[]?> ReadIcon { get; init; } = exe => ShortcutIcons.Icon(new Shortcut { Id = "game", Cmd = exe });
 
     /// <summary>
     /// Starts a found game for the asking <paramref name="widget"/> when both its "Let the phone start games" and its "Let
@@ -634,11 +686,16 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         // an option can be turned off while this waited for the first look: decide with the settings of now
         if (LaunchRefused(deviceId, widget) is { } now) return now;
         if (g is null) return new("notinstalled", "That game is not installed");
-        // a launcher's address goes to its URL handler; a path only when it is still a program (the list is up to ten
-        // minutes old, and a launcher's record could name any file) that no other account could have put there (see
-        // Unsafe): the shell starts it so a game that asks for administrator rights still gets the prompt
+        // a launcher's address goes to its URL handler, only while the game's folder is still there, on a local disk
+        // with no link on its way (the list is up to ten minutes old: the game may have been removed since); a path only
+        // when it is still a program (a launcher's record could name any file) that no other account could have put
+        // there (see Unsafe): the shell starts it so a game that asks for administrator rights still gets the prompt
         string? exe = null;
-        if (g.Url is null)
+        if (g.Url is not null)
+        {
+            if (!Usable(g.Dir)) return new("notinstalled", "That game is not installed");
+        }
+        else
         {
             if (g.Exe is null) return new("notinstalled", "That game is not installed");
             switch (Unsafe(g.Dir, g.Exe))

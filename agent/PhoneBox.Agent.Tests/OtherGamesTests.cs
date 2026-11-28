@@ -173,17 +173,112 @@ public class OtherGamesTests : IDisposable
     [Fact]
     public void ALaunchersRecordOfAGameOnANetworkShareIsNotRead()
     {
-        // a share's folder would be read (connecting to it) if the check came after; nothing is listed from it
+        // a share's folder would be read (connecting to it) if the check came after; nothing is listed from it. The link
+        // check is the first thing that touches a launcher's folder (OtherGames.Usable): it is never asked about a share
         const string share = @"\\phonebox-test.invalid\share\Ember Road";
+        var probes = new List<string>();
+        bool Probe(string p) { probes.Add(p); return SteamLibrary.IsLink(p); }
         var manifests = Manifest("Share", "Ember Road", share, "Ember.exe");
-        var clock = Stopwatch.StartNew();
-        Assert.Empty(OtherGames.FromEpic(manifests));
-        var key = (string name, Dictionary<string, string> v) => new OtherGames.Key(name, k => v.GetValueOrDefault(k));
-        Assert.Empty(OtherGames.FromKeys("gog", [key("1", new() { ["path"] = share, ["gameName"] = "Ember Road", ["exe"] = "Ember.exe" })]));
-        Assert.Empty(OtherGames.FromKeys("ubisoft", [key("635", new() { ["InstallDir"] = share })]));
-        Assert.Empty(OtherGames.FromKeys("ea", [key("Ember Road", new() { ["Install Dir"] = share })]));
-        Assert.Empty(OtherGames.FromKeys("rockstar", [key("Ember Road", new() { ["InstallFolder"] = @"\\?\UNC\phonebox-test.invalid\share\Ember Road" })]));
-        Assert.True(clock.ElapsedMilliseconds < 1000, $"took {clock.ElapsedMilliseconds} ms");
+        Assert.Empty(OtherGames.FromEpic(manifests, Probe));
+        Assert.Empty(OtherGames.FromKeys("gog", [Key("1", new() { ["path"] = share, ["gameName"] = "Ember Road", ["exe"] = "Ember.exe" })], Probe));
+        Assert.Empty(OtherGames.FromKeys("ubisoft", [Key("635", new() { ["InstallDir"] = share })], Probe));
+        Assert.Empty(OtherGames.FromKeys("ea", [Key("Ember Road", new() { ["Install Dir"] = share })], Probe));
+        Assert.Empty(OtherGames.FromKeys("rockstar", [Key("Ember Road", new() { ["InstallFolder"] = @"\\?\UNC\phonebox-test.invalid\share\Ember Road" })], Probe));
+        Assert.Empty(probes);
+
+        // a folder on this computer is checked, down to the game's folder, before it is listed
+        var game = Path.Combine(_dir, "Ember Road");
+        Directory.CreateDirectory(game);
+        Assert.Single(OtherGames.FromEpic(Manifest("Here", "Ember Road", game, "Ember.exe"), Probe));
+        Assert.Equal(game, probes[^1]);
+        if (OperatingSystem.IsWindows()) Assert.Contains(_dir, probes);   // and every folder above it
+    }
+
+    private static OtherGames.Key Key(string name, Dictionary<string, string> values) => new(name, k => values.GetValueOrDefault(k));
+
+    [Fact]
+    public void ALaunchersGameFolderReachedThroughALinkIsNotRead()
+    {
+        // a junction above the game's folder (on Windows: it could lead to a share or a removable drive), and the game's
+        // folder itself a link; the same game in a plain folder is listed by every launcher
+        var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
+        var link = Path.Combine(_dir, "Linked");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(outside, "Ember Road"));
+            File.WriteAllBytes(Path.Combine(outside, "Ember Road", "Ember.exe"), new byte[100]);
+            MakeExe("Plain/Ember Road/Ember.exe", 100);
+            Junction(link, outside);
+            var above = Path.Combine(link, "Ember Road");
+            var plain = Path.Combine(_dir, "Plain", "Ember Road");
+            Assert.True(File.Exists(Path.Combine(above, "Ember.exe")));
+            IEnumerable<OtherGames.Found> All(string dir) =>
+                OtherGames.FromEpic(Manifest(Guid.NewGuid().ToString("N"), "Ember Road", dir, "Ember.exe"))
+                .Concat(OtherGames.FromKeys("gog", [Key("1", new() { ["path"] = dir, ["gameName"] = "Ember Road", ["exe"] = "Ember.exe" })]))
+                .Concat(OtherGames.FromKeys("ubisoft", [Key("635", new() { ["InstallDir"] = dir })]))
+                .Concat(OtherGames.FromKeys("ea", [Key("Ember Road", new() { ["Install Dir"] = dir })]))
+                .Concat(OtherGames.FromKeys("rockstar", [Key("Ember Road", new() { ["InstallFolder"] = dir })]));
+            Assert.Equal(["epic", "gog", "ubisoft", "ea", "rockstar"], All(plain).Select(g => g.Source));
+            Assert.True(OtherGames.Usable(plain));
+            Assert.Empty(All(link));                                    // the game's folder is the link
+            Assert.False(OtherGames.Usable(link));
+            if (!OperatingSystem.IsWindows()) return;                   // above the game's folder: checked on Windows
+            Assert.Empty(All(above));
+            Assert.False(OtherGames.Usable(above));
+        }
+        finally { try { Directory.Delete(link); } catch { } try { Directory.Delete(outside, true); } catch { } }
+    }
+
+    [Fact]
+    public void ALaunchersFolderMustBeAFolderOfThisComputerThatIsStillThere()
+    {
+        Assert.False(OtherGames.Usable(Path.Combine(_dir, "Gone")));
+        Assert.False(OtherGames.Usable(@"\\phonebox-test.invalid\share\Ember Road"));
+        Assert.True(OtherGames.Usable(_dir));
+        Assert.True(OtherGames.Usable(_dir + Path.DirectorySeparatorChar));
+        if (OperatingSystem.IsWindows()) Assert.False(OtherGames.Usable(Path.GetPathRoot(_dir)));   // a drive's root is no game's folder
+    }
+
+    [Fact]
+    public void AGogRecordNamingAnInstallerGetsTheGamesProgramInstead()
+    {
+        var game = Path.Combine(_dir, "Ember Road");
+        MakeExe("Ember Road/Ember.exe", 100);
+        MakeExe("Ember Road/setup_ember_road.exe", 9000);
+        var named = OtherGames.FromKeys("gog", [Key("1", new() { ["path"] = game, ["gameName"] = "Ember Road", ["exe"] = "setup_ember_road.exe" })]);
+        Assert.Equal(Path.Combine(game, "Ember.exe"), Assert.Single(named).Exe);
+        // a program that is the game still wins over the one picked
+        MakeExe("Ember Road/bin/Different.exe", 100);
+        var right = OtherGames.FromKeys("gog", [Key("1", new() { ["path"] = game, ["gameName"] = "Ember Road", ["exe"] = @"bin\Different.exe".Replace('\\', Path.DirectorySeparatorChar) })]);
+        Assert.Equal(Path.Combine(game, "bin", "Different.exe"), Assert.Single(right).Exe);
+    }
+
+    [Fact]
+    public void NoEpicManifestsFolderIsNoGamesButAFolderThatCannotBeListedFailsTheLook()
+    {
+        Assert.Empty(OtherGames.FromEpic(Path.Combine(_dir, "no-such-folder", "Manifests")));
+        if (!OperatingSystem.IsWindows()) return; // a file where the folder should be: a listing error on Windows
+        var file = MakeExe("Manifests", 10);
+        Assert.ThrowsAny<IOException>(() => OtherGames.FromEpic(file).ToList());
+
+        // a look whose Epic listing fails keeps the last list (and is tried again after RetryMs)
+        var game = Program("Old Fort");
+        var now = 1_000_000L;
+        var fail = false;
+        var others = new OtherGames(Config("{}"), NullLogger<OtherGames>.Instance)
+        {
+            Clock = () => Interlocked.Read(ref now),
+            Launchers = () => Volatile.Read(ref fail) ? OtherGames.FromEpic(file) : [game],
+            Disks = () => [],
+        };
+        others.List();
+        Assert.True(SpinWait.SpinUntil(() => others.Looks == 1, TimeSpan.FromSeconds(10)));
+        Assert.Equal(["Old Fort"], others.List().Select(g => g.Name));
+        Volatile.Write(ref fail, true);
+        Interlocked.Add(ref now, OtherGames.RescanMs + 1);
+        others.List();
+        Assert.True(SpinWait.SpinUntil(() => others.Looks == 2, TimeSpan.FromSeconds(10)));
+        Assert.Equal(["Old Fort"], others.List().Select(g => g.Name));
     }
 
     [Fact]
@@ -490,12 +585,82 @@ public class OtherGamesTests : IDisposable
             "com.epicgames.launcher://apps/ns%3Aitem%3AEmber?action=launch&silent=true");
         var gone = new OtherGames.Found(OtherGames.IdOf("gog", Path.Combine(_dir, "Gone")), "Gone", "gog", Path.Combine(_dir, "Gone"), Path.Combine(_dir, "Gone", "gone.exe"), null);
         var doc = Program("Doc") with { Exe = MakeExe("Doc/readme.txt", 10) };
+        Directory.CreateDirectory(epic.Dir);
         var on = Games(Config(BothOn), epic, gone, doc);
         Assert.Null(on.Launch(null, "p/w", epic.Id));
         Assert.Equal(epic.Url, Assert.Single(_started).FileName);
         Assert.Equal("notinstalled", on.Launch(null, "p/w", gone.Id)?.Code);
         Assert.Equal("notinstalled", on.Launch(null, "p/w", doc.Id)?.Code); // not a program: never handed to the shell
         Assert.Single(_started);
+    }
+
+    [Fact]
+    public void ALaunchersGameRemovedSinceItWasFoundIsNotStartedByItsAddress()
+    {
+        // the list is up to ten minutes old: the game's folder is looked at again before the launcher's address is used
+        var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
+        var link = Path.Combine(_dir, "Linked");
+        OtherGames.Found Epic(string dir) => new(OtherGames.IdOf("epic", dir), "Ember Road", "epic", dir, null, "com.epicgames.launcher://apps/ns%3Aitem%3AEmber?action=launch&silent=true");
+        try
+        {
+            var kept = Epic(Path.Combine(_dir, "Ember Road"));
+            Directory.CreateDirectory(kept.Dir);
+            var on = Games(Config(BothOn), kept);
+            Assert.Null(on.Launch(null, "p/w", kept.Id));
+            Assert.Single(_started);
+            Directory.Delete(kept.Dir);                                   // uninstalled since
+            Assert.Equal("notinstalled", on.Launch(null, "p/w", kept.Id)?.Code);
+
+            // its folder now reached through a link (above it on Windows; elsewhere the folder itself)
+            Directory.CreateDirectory(Path.Combine(outside, "Ember Road"));
+            Junction(link, outside);
+            var linked = Epic(OperatingSystem.IsWindows() ? Path.Combine(link, "Ember Road") : link);
+            Assert.Equal("notinstalled", Games(Config(BothOn), linked).Launch(null, "p/w", linked.Id)?.Code);
+            Assert.Single(_started);
+        }
+        finally { try { Directory.Delete(link); } catch { } try { Directory.Delete(outside, true); } catch { } }
+    }
+
+    [Fact]
+    public void AFoundGamesIconIsNotReadThroughALinkAboveItsFolder()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
+        var link = Path.Combine(_dir, "Linked");
+        try
+        {
+            File.WriteAllBytes(Path.Combine(Directory.CreateDirectory(Path.Combine(outside, "Ember Road")).FullName, "Ember.exe"), new byte[100]);
+            MakeExe("Plain/Ember Road/Ember.exe", 100);
+            Junction(link, outside);
+            OtherGames.Found Gog(string dir) => new(OtherGames.IdOf("gog", dir), "Ember Road", "gog", dir, Path.Combine(dir, "Ember.exe"), null);
+            var plain = Gog(Path.Combine(_dir, "Plain", "Ember Road"));
+            // a link above the game's folder (Windows; elsewhere the game's folder itself is the link)
+            var linked = Gog(OperatingSystem.IsWindows() ? Path.Combine(link, "Ember Road") : link) with { Exe = Path.Combine(link, "Ember Road", "Ember.exe") };
+            var read = new List<string>();
+            var games = new OtherGames(Config("{}"), NullLogger<OtherGames>.Instance)
+            {
+                Launchers = () => [plain, linked], Disks = () => [], ReadIcon = exe => { read.Add(exe); return [1]; },
+            };
+            Assert.NotNull(games.Cover(plain.Id));
+            Assert.Null(games.Cover(linked.Id));
+            Assert.Equal([plain.Exe!], read);
+        }
+        finally { try { Directory.Delete(link); } catch { } try { Directory.Delete(outside, true); } catch { } }
+    }
+
+    [Fact]
+    public void ASourceTreeWithManyFilesAtItsTopIsNotAGame()
+    {
+        // more files at the top than the walk reads: the .git folder, listed after them, is looked for first
+        var repo = Path.Combine(_dir, "Repo");
+        MakeExe("Repo/app.exe", 9000);
+        MakeExe("Repo/unityplayer.dll", 10);
+        for (var i = 0; i < OtherGames.MaxFilesPerGame * 2; i++) File.WriteAllBytes(Path.Combine(repo, $"zz-{i:D5}.txt"), []);
+        if (OperatingSystem.IsWindows()) Assert.True(OtherGames.LooksLikeAGame(repo, repo));   // NTFS lists by name: the game's sign is read
+        Directory.CreateDirectory(Path.Combine(repo, ".git"));
+        Assert.False(OtherGames.LooksLikeAGame(repo, repo));
+        Directory.Delete(Path.Combine(repo, ".git"));
+        File.WriteAllText(Path.Combine(repo, ".git"), "gitdir: elsewhere");   // a worktree's or submodule's .git file
+        Assert.False(OtherGames.LooksLikeAGame(repo, repo));
     }
 
     [Fact]
