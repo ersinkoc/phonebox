@@ -53,6 +53,9 @@
   keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
   before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
   one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
+- Docs: running the agent in a container on a QNAP NAS (Container Station), for a panel that stays on without the
+  computer: a compose file, the settings through an SSH tunnel, Wi-Fi pairing and QuFirewall, and what mounting the
+  Docker socket means ([docs/QNAP.md](docs/QNAP.md)) (#718, [odin-21](https://github.com/odin-21)).
 
 ## 0.9.32 — 2026-11-27
 

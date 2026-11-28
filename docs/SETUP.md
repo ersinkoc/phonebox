@@ -174,6 +174,8 @@ The settings are at <http://127.0.0.1:8765>, on Windows also from the tray icon.
   scoop install main/adb phonebox/phonebox
   ```
 
+- **Linux in a container on a QNAP NAS**: [QNAP.md](QNAP.md) runs the agent in Container Station, for a panel that
+  stays on without the computer, paired over Wi-Fi.
 - **winget**: a package (`ersinkoc.PhoneBox`) is prepared in [`packaging/winget`](../packaging/winget) for
   winget-pkgs. Once it is accepted, `winget install ersinkoc.PhoneBox` will install it.
 - **Windows x64 installer**: `PhoneBox-<version>-win-x64-setup.exe` on the release installs for the current user (no
