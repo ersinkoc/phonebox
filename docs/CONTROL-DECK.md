@@ -121,7 +121,8 @@ and mute, and switching the default output and microphone, so the application mi
 volume, balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection widgets work.
 Linux has one default device per direction, so all three Windows roles follow it. Monitor sources and streams a
 module made (the loopbacks of a virtual mixer, a combine sink) are left out; virtual sinks (`module-null-sink`)
-are listed as outputs. Level meters show no signal on Linux yet. On macOS, on Linux without `pactl`, and on Linux
+are listed as outputs, so the channels of a virtual mixer such as
+[KORVEX Audio Console](https://github.com/mikicolmena/KORVEX-Audio-Console) (local, MIT) show up as faders. Level meters show no signal on Linux yet. On macOS, on Linux without `pactl`, and on Linux
 where `pactl` has not yet reached a sound server (PipeWire without pipewire-pulse), master volume/media controls
 remain available. Once `pactl` has answered, a sound server that stops answering shows the audio widgets as
 unavailable. On Linux/macOS soundboard/radio
