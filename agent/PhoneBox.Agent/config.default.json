@@ -6,6 +6,8 @@
   "deviceSerial": null,
   "ignoredDeviceSerials": [],
   "libreHardwareMonitorPort": 8085,
+  // Read NVIDIA cards with nvidia-smi (false: never start it; LibreHardwareMonitor or the OS read the GPU instead)
+  "nvidiaSmi": true,
   // Path to adb.exe (null = searched in PATH, the Android SDK and winget locations)
   "adbPath": null,
 
@@ -30,6 +32,8 @@
   "discord": { "enabled": false, "clientId": null, "clientSecret": null, "allowControl": false, "screenShare": false, "chat": false },
   // Cursor agent chats on the AI sessions widget (off by default). Windows: "watchWsl" also reads the chats of projects opened over Remote - WSL, in the running distros (off by default). "phoneApprovals" sends the commands and MCP tool calls of the Cursor agent to the phone for Allow / Deny (needs the hook from Settings › General; off by default)
   "cursor": { "sessions": false, "watchWsl": false, "phoneApprovals": false },
+  // Pi agent sessions on the AI sessions widget (off by default); "shareSessionTitles" shows each session's Pi-written title
+  "pi": { "sessions": false, "shareSessionTitles": false },
   // Antigravity chats on the AI sessions widget (off by default)
   "antigravity": { "sessions": false, "shareSessionTitles": false },
   // Live Codex quotas read through the Codex CLI (off by default; Settings › General › AI quotas & CodexBar)
@@ -48,6 +52,11 @@
   "phoneMic": { "enabled": false, "source": "mic-camcorder", "endpoint": "CABLE Input", "latencyMs": 50, "maxBufferMs": 150, "gain": 1, "serverPath": null, "startMuted": false },
   // Steam friends widget: enter your SteamID64 and a user Web API key in Settings › General (see docs/STEAM.md)
   "steam": { "enabled": false, "steamId": null, "apiKey": null },
+  // MQTT broker (off by default; Settings › General › MQTT, see docs/MQTT.md). The agent connects, the phone never sees any of it.
+  // "transport" is "tcp" or "websocket" (then "webSocketPath"). A broker with its own certificate is trusted only through "caFile" or
+  // "pinnedFingerprint" (SHA-256); there is no way to skip the check. "password" is write-only in Settings. "willRetain" stays off
+  // unless you want the last will delivered again to every device that connects
+  "mqtt": { "enabled": false, "host": null, "port": 1883, "transport": "tcp", "webSocketPath": "/mqtt", "tls": false, "caFile": null, "pinnedFingerprint": null, "clientId": null, "username": null, "keepAliveSec": 60, "cleanSession": true, "willTopic": null, "willPayload": null, "willQos": 0, "willRetain": false },
 
   // Night mode: between these times the screen dims and only the clock stays. Tap to wake it for 30 s.
   "night": { "enabled": true, "start": "00:30", "end": "07:30", "brightness": 0.02 },
@@ -90,7 +99,7 @@
     { "id": "explorer",   "label": "Files",        "icon": "\ud83d\udcc1", "color": "#e5b84b", "cmd": "explorer.exe" },
     { "id": "vscode",     "label": "VS Code",      "icon": "\ud83d\udcdd", "color": "#2f80ed", "cmd": "shell:AppsFolder\\Microsoft.VisualStudioCode" },
     { "id": "browser",    "label": "Browser",      "icon": "\ud83c\udf10", "color": "#0ea5e9", "cmd": "https://github.com" },
-    { "id": "spotify",    "label": "Spotify",      "icon": "\ud83c\udfa7", "color": "#1db954", "cmd": "shell:AppsFolder\\SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify" },
+    { "id": "spotify",    "label": "Spotify",      "icon": "\ud83c\udfa7", "color": "#1db954", "cmd": "spotify:" },
     { "id": "calc",       "label": "Calculator",   "icon": "\ud83e\uddee", "color": "#64748b", "cmd": "calc.exe" },
     { "id": "settings",   "label": "Settings",     "icon": "\u2699\ufe0f", "color": "#94a3b8", "cmd": "ms-settings:" },
     { "id": "snip",       "label": "Snip",         "icon": "\u2702\ufe0f", "color": "#14b8a6", "cmd": "ms-screenclip:" },

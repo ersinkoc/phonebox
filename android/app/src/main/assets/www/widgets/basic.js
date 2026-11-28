@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, phoneMediaArt, phoneMediaControl, phoneAudio, phoneMute, phoneVolume, setMediaChoice, swapOn, swapPhone, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, mediaPosMs, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, pages, curPage, gotoPageRef } from '../main.js';
+import { $, API, D, LEVEL_COLOR, phoneMediaArt, phoneMediaControl, phoneAudio, phoneMute, phoneVolume, setMediaChoice, swapOn, swapPhone, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, mediaPosMs, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, providersFor, pages, curPage, gotoPageRef } from '../main.js';
 import { W } from '../registry.js';
 import { weekStartDay } from './time.js';
 import { invalidateDeckState } from './controls.js';
@@ -343,7 +343,7 @@ W.gauge = {
     box.append(dial, h('div', 'g-label', tp(m.label)), sub);
     dial.append(pct);
     if (o.metric === 'cpu' || o.metric === 'ram') bindProcessLink(box, o.metric === 'cpu' ? 'cpu' : 'mem');
-    let svg = null;
+    let svg = null, ring = '';
     return {
       update() {
         const s = D.state;
@@ -352,9 +352,14 @@ W.gauge = {
         const p = raw == null ? 0 : (raw / (m.pct ? 100 : m.max(s))) * 100;
         const warn = m.hot ? (raw > m.hot[1] ? '#ef4444' : raw > m.hot[0] ? '#f59e0b' : '') : (p >= 95 ? '#ef4444' : p >= 85 ? '#f59e0b' : '');
         dial.style.setProperty('--qc', warn || 'var(--q)');
-        if (svg) svg.remove();
-        dial.insertAdjacentHTML('afterbegin', ringSvg(p));
-        svg = dial.firstElementChild;
+        // the ring is rebuilt only when it changes: a state frame arrives every second, and most leave it as it was
+        const next = ringSvg(p);
+        if (next !== ring) {
+          if (svg) svg.remove();
+          dial.insertAdjacentHTML('afterbegin', next);
+          svg = dial.firstElementChild;
+          ring = next;
+        }
         const [v, u] = metricText(m, s);
         pct.replaceChildren(v, h('small', null, u));
         sub.replaceChildren(h('bdi', null, m.sub?.(s) || ''));
@@ -481,11 +486,7 @@ W.quotas = {
       return cfg.codexBar?.rotateInterval ?? 8;
     };
 
-    const getProviders = () => {
-      if (Array.isArray(o.providers)) return o.providers;
-      if (Array.isArray(cfg.codexBar?.providers)) return cfg.codexBar.providers;
-      return ['claude', 'codex', 'antigravity', 'grok'];
-    };
+    const getProviders = () => providersFor(o);
 
     const isOverviewEnabled = () => o.showOverview === true;
 
@@ -679,8 +680,8 @@ W.sessions = {
     const tokens = (n) => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
     const statusText = (s) => s.status === 'busy' ? t('sess.working') : s.status === 'waiting' ? t('sess.waiting') : s.status === 'shell' ? t('sess.shell') : s.outcome === 'completed' ? t('sess.completed') : s.outcome === 'failed' ? t('sess.failed') : s.outcome === 'aborted' ? t('sess.aborted') : t('sess.idle');
     // The tool each session comes from: one glyph in the list, a glyph and a name in the details panel.
-    const toolIcon = (tool) => tool === 'claude' ? '✳' : tool === 'codex' ? '◎' : tool === 'cursor' ? '◆' : tool === 'opencode' ? '◈' : tool === 'antigravity' ? Q_STYLE.antigravity.logo : tool === 'grok' ? Q_STYLE.grok.logo : tool === 'workbuddy' ? '❖' : '◎';
-    const toolTitle = (tool) => tool === 'claude' ? 'Claude Code' : tool === 'codex' ? 'Codex' : tool === 'cursor' ? 'Cursor' : tool === 'opencode' ? 'OpenCode' : tool === 'antigravity' ? 'Antigravity' : tool === 'grok' ? 'Grok' : tool === 'workbuddy' ? 'WorkBuddy' : 'Codex';
+    const toolIcon = (tool) => tool === 'claude' ? '✳' : tool === 'codex' ? '◎' : tool === 'cursor' ? '◆' : tool === 'opencode' ? '◈' : tool === 'antigravity' ? Q_STYLE.antigravity.logo : tool === 'grok' ? Q_STYLE.grok.logo : tool === 'workbuddy' ? '❖' : tool === 'pi' ? 'π' : '◎';
+    const toolTitle = (tool) => tool === 'claude' ? 'Claude Code' : tool === 'codex' ? 'Codex' : tool === 'cursor' ? 'Cursor' : tool === 'opencode' ? 'OpenCode' : tool === 'antigravity' ? 'Antigravity' : tool === 'grok' ? 'Grok' : tool === 'workbuddy' ? 'WorkBuddy' : tool === 'pi' ? 'Pi' : 'Codex';
     const ageText = (since) => Date.now() - since < 60_000 ? 'just now' : shortDur(Date.now() - since) + ' ago';
     // A session's title is the main label and the project folder goes under it: Claude Code sends it only while
     // Settings › Claude Code › "Show session titles on the phone" is on, OpenCode only while "Show OpenCode session
@@ -786,12 +787,14 @@ W.sessions = {
         ['Cached input', s.cachedInputTokens != null ? tokens(s.cachedInputTokens) : null],
         ['Reasoning output', s.reasoningTokens != null ? tokens(s.reasoningTokens) : null],
         ['Last input / context window', s.lastInputTokens != null && s.contextWindow ? `${tokens(s.lastInputTokens)} / ${tokens(s.contextWindow)}` : null],
+        // Pi (and friends) without a known context window: the current context size on its own
+        ['Context', s.lastInputTokens != null && s.contextWindow == null ? tokens(s.lastInputTokens) : null],
         ['Recent tool', s.lastTool],
       ];
       // a small label over each value, four to a row: the facts take one line instead of four
       panel.append(h('div', 'session-grid', rows.filter(([, value]) => value != null)
         .map(([label, value]) => h('div', 'session-cell', h('span', null, tp(label)), h('strong', null, value)))));
-      if (s.tool === 'codex' || s.tool === 'grok' || (s.tool === 'antigravity' && s.totalTokens != null)) panel.append(h('p', 'session-note', tp('Token totals are for this local session, not your account allowance.')));
+      if (s.tool === 'codex' || s.tool === 'grok' || (s.tool === 'antigravity' && s.totalTokens != null) || (s.tool === 'pi' && s.totalTokens != null)) panel.append(h('p', 'session-note', tp('Token totals are for this local session, not your account allowance.')));
       if (s.tool === 'claude') stopConversation = conversationSection(panel, s);
       backdrop.append(panel);
       document.body.append(backdrop);
@@ -1116,6 +1119,25 @@ function addFocusMinutes(endedAt, minutes) {
   store.set(FOCUS_KEY, hist);
 }
 
+/**
+ * The timers of the Pomodoro widgets, one per sequence (#741): widgets with the same sequence share one timer, so
+ * starting, pausing, restarting or skipping on one page does the same on the others. owners counts the widgets on it.
+ */
+const POMO = new Map();
+/**
+ * Focus minutes of the focus steps that are running or paused, not yet in the history: the Focus history shows them as
+ * they go, and they drop out again when the step is restarted or skipped (#741).
+ */
+function liveFocusMinutes(now = Date.now()) {
+  let ms = 0;
+  for (const { st } of POMO.values()) {
+    if (st.phase !== 'focus' || !(st.stepMs > 0)) continue;
+    const left = st.endsAt ? Math.max(0, st.endsAt - now) : +st.left || 0;
+    ms += Math.min(st.stepMs, Math.max(0, st.stepMs - left));
+  }
+  return ms / 60_000;
+}
+
 W.pomodoro = {
   needs: ['tick'],
   always: true, // the alarm goes off on whatever page is showing
@@ -1146,12 +1168,24 @@ W.pomodoro = {
       st.sig = sig;
     } else if (st.sig !== sig) {
       // the sequence was changed in the settings: start it from the beginning
-      Object.assign(st, { step: 0, round: 0, endsAt: null, left: plan[0].ms, sig });
+      // saved: 0, so a reset state never replaces a timer that already runs this sequence on another widget
+      Object.assign(st, { step: 0, round: 0, endsAt: null, left: plan[0].ms, sig, saved: 0 });
     }
     if (!(st.step >= 0 && st.step < plan.length)) st.step = 0;
     if (st.day !== today) { st.count = 0; st.day = today; }
-    const save = () => { st.phase = plan[st.step].kind; store.set(key, st); };
-    save();
+    // one timer per sequence: the first widget brings its state; after a reload the state saved last wins
+    let shared = POMO.get(sig);
+    if (!shared) POMO.set(sig, shared = { st, owners: 0 });
+    else if ((st.saved || 0) > (shared.st.saved || 0)) Object.assign(shared.st, st);
+    shared.owners++;
+    st = shared.st;
+    const save = (changed = true) => {
+      st.phase = plan[st.step].kind;
+      st.stepMs = plan[st.step].ms;
+      if (changed) st.saved = Date.now();
+      store.set(key, st);
+    };
+    save(false);
     const dial = h('div', 'g-dial'), time = h('div', 'g-val'), phase = h('div', 'g-label'), count = h('div', 'g-sub');
     const play = labelled(h('button', 'pb main', icon('play')), t('w.a.start')), reset = labelled(h('button', 'pb', icon('rotate-ccw')), t('w.a.restart')), skip = labelled(h('button', 'pb', icon('skip-forward')), t('w.a.skip'));
     dial.append(time);
@@ -1231,7 +1265,14 @@ W.pomodoro = {
       st.endsAt = null; st.left = total(); save(); render();
     });
     skip.addEventListener('click', () => { haptic(); advance(true); render(); });
-    return { update: render };
+    return {
+      update: render,
+      destroy() {
+        // the widget's own key gets the shared state, so a widget that stays after a rebuild doesn't bring back an older one
+        store.set(key, st);
+        if (--shared.owners <= 0 && POMO.get(sig) === shared) POMO.delete(sig);
+      },
+    };
   },
 };
 
@@ -1303,7 +1344,9 @@ W.focushistory = {
       update() {
         week = lastWeek();
         const keys = week.map(dayKey), hist = keys[6] === shown.slice(0, 10) ? store.get(FOCUS_KEY, {}) || {} : focusWeek();
-        mins = keys.map((k) => Math.round(+hist[k] || 0));
+        // today also shows the focus step that is still going
+        const live = liveFocusMinutes();
+        mins = keys.map((k, i) => Math.round((+hist[k] || 0) + (i === 6 ? live : 0)));
         const sig = keys[6] + '|' + mins.join(',') + '|' + LOCALE;
         if (sig === shown) return;
         shown = sig;

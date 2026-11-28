@@ -1,4 +1,4 @@
-import { D, api, h, icon, media, mediaPosMs, t } from '../main.js';
+import { D, api, h, haptic, icon, media, mediaPosMs, t } from '../main.js';
 import { W } from '../registry.js';
 
 // ---------------------------------------------------------------- lyrics (LRCLIB, asked by the agent)
@@ -68,7 +68,7 @@ W.lyrics = {
     const say = (text) => { note.textContent = text; note.hidden = !text; };
     const asPage = (texts) => texts.map((l) => h('div', 'ly-line' + (l.trim() ? '' : ' gap'), l.trim() || ' '));
     const paint = () => {
-      rows = []; shown = -2; timedShown = null;
+      rows = []; shown = -2; timedShown = null; seekable = null;
       box.classList.remove('timed', 'plain');
       if (!track) { list.replaceChildren(); say(t('w.lyrics.idle')); return; }
       if (loading || !result) { list.replaceChildren(); say(t('w.lyrics.loading')); return; }
@@ -103,8 +103,38 @@ W.lyrics = {
       }
       list.scrollTop = 0;
     };
+    // a tap on a line plays the song from that line (#744), when the computer's player lets the agent move its position
+    const canSeek = () => !!(media && !media.phone && media.canSeek && Number(media.durMs) > 0 && trackKey(media) === track);
+    const seekTo = (row) => {
+      const i = rows.indexOf(row);
+      if (i < 0 || !canSeek()) return;
+      // the line is lit when the position plus the offset reaches it, so the song goes to its time minus the offset
+      const ms = Math.round(Math.max(0, Math.min(Number(media.durMs), lines[i].ms - offsetFor(perPlayer, media.app, offset))));
+      haptic();
+      // like the media bar: the new position stays until the agent's next samples have caught up with it
+      media.posMs = ms; media.at = performance.now(); media.hold = performance.now() + 2500;
+      api('/media/seek?ms=' + ms, 'POST').catch(() => {});
+      follow(true);
+    };
+    list.addEventListener('click', (e) => seekTo(e.target.closest('.ly-line')));
+    // a keyboard reaches the lines too: each is a button while the player can be moved
+    list.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.classList?.contains('ly-line')) { e.preventDefault(); seekTo(e.target); }
+    });
+    let seekable = null;
+    const markSeekable = () => {
+      const on = canSeek();
+      if (on === seekable) return;
+      seekable = on;
+      box.classList.toggle('seekable', on);
+      // a line without words (a music gap) stays a tap target only: as a button it would have nothing to say
+      for (const r of rows) {
+        if (on && !r.classList.contains('gap')) { r.tabIndex = 0; r.setAttribute('role', 'button'); } else { r.removeAttribute('tabindex'); r.removeAttribute('role'); }
+      }
+    };
     const follow = (jump = false) => {
       if (!rows.length || !media) return;
+      markSeekable();
       const pos = mediaPosMs(media) + offsetFor(perPlayer, media.app, offset);
       const at = lyricAt(lines, pos);
       if (at === shown && !jump) return;

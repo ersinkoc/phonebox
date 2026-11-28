@@ -52,7 +52,7 @@ Every page is a 12 × 6 grid. Start a page from one of the 30 templates (or from
 |---|---|
 | **Home** — clock, weather, now playing, CPU / GPU / RAM / network tiles | **Dashboard** — gauges, clock, media and a few shortcut keys |
 | <img src="screenshots/home.png" alt="Home"> | <img src="screenshots/dashboard.png" alt="Dashboard"> |
-| **AI quotas** — Claude, Codex and Grok limits, reset times, "at this pace: full in 1 d 5 h" | **Sessions** — Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions and GitHub |
+| **AI quotas** — Claude, Codex and Grok limits, reset times, "at this pace: full in 1 d 5 h" | **Sessions** — Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity / Pi sessions and GitHub |
 | <img src="screenshots/ai.png" alt="AI quotas"> | <img src="screenshots/work.png" alt="Sessions"> |
 | **System** — CPU, GPU, memory, disks, network and ping charts | **Processes** — heaviest apps; tap one to end an instance or all of them |
 | <img src="screenshots/system.png" alt="System"> | <img src="screenshots/procs-sheet.png" alt="Processes"> |
@@ -88,7 +88,7 @@ screen on (unless [power standby](#power-standby) is on).
 | **Time** | Clock (with status line and weather) · Analog clock (any time zone) · **Word clock** · World clocks · Calendar · **Next up** · Time progress (day / week / month / year) · Countdown · Pomodoro · **Focus history** · Quick timer · Stopwatch |
 | **Weather & sky** | Weather · Forecast (hourly / 7 days) · Sun & moon (daylight left, UV, moon phase) · **Moon** · Air quality (European AQI, PM2.5, PM10, O₃, NO₂) |
 | **Computer** | **Rules** (which hold, pause) · **Battery care** · On air (microphone / camera / OBS) · OBS Studio (live, recording, scenes) · **Dictation** (speak on the phone, typed on the PC; the app asks for the microphone on first use) · **App console** (Windows: keys and a dial for the app in front, set per app in Settings › General; use the focused app's process name from Task Manager's Details tab; packaged Store apps can all show up as `ApplicationFrameHost` and terminal tabs as `WindowsTerminal`, so a profile for those names covers all of them) · **Steam library** (installed games with covers, most recently played first; starting a game only when the widget allows it) · Device batteries (headphones, mice, keyboards) · Docker / Podman (containers, start / stop) · Metric tile · Gauge · Chart · GPU details · Memory & disks · Top processes · Processes · Now playing · Radio · Volume · **Spectrum bars** (Windows: a live spectrum of what the PC is playing, like the classic LED bar visualizers) · Shortcut grid · Big button (optionally filled with the shortcut's uploaded picture) · **Command** (PowerShell / bash / zsh output, refreshed every N seconds) · **Trackpad** (control PC cursor, tap to click, hold to drag, scroll) |
-| **AI & code** | AI quotas · Quota ring · AI sessions (Claude Code, Codex, Cursor, OpenCode, Antigravity) · GitHub |
+| **AI & code** | AI quotas · Quota ring · AI sessions (Claude Code, Codex, Cursor, OpenCode, Antigravity, Pi) · GitHub |
 | **Personal** | **Agenda** (Google / Outlook / iCloud calendars) · Note (edit it from the phone) · Checklist (resets daily) · Counter · Breathe · Quote · Title · Phone battery · **Computers** (switch between paired computers) · **Photo frame** (a slideshow from a photo folder on the PC or an Immich album) |
 | **Web & data** | **Custom HTML** (your own widget, sandboxed, or a web page by its address on Android 7 or later) · **Home Assistant** (entities with their own name and icon, tap to switch) · **Home Assistant dashboard** (a dashboard as it is, see [HOME-ASSISTANT.md](HOME-ASSISTANT.md)) · **Pushed value** · **Notifications** (both fed by [webhooks](#webhooks)) · **News feeds** (RSS and Atom feeds with categories, OPML/bulk import, and category filtering; with its "Open articles on the PC" option, a tap opens the article on the PC) · Hacker News · Exchange rates (ECB) · Crypto prices · Image / webcam · **Camera** (a live picture from an IP camera over RTSP, pulled by ffmpeg on the PC) |
 
@@ -159,6 +159,13 @@ Local Claude, Codex, Antigravity and Grok sources keep refreshing when CodexBar 
 provide defaults; a widget's own options override them, including an empty provider selection.
 Install a compatible CLI from [CodexBar](https://github.com/steipete/CodexBar) if available for your system.
 PhoneBox uses native local sources when no compatible CLI is installed.
+
+**Which providers show** is set once in **Settings › General › AI quotas & CodexBar › Tracked AI services** (all on by
+default). A Clock status line, an AI quotas widget and a CodexBar widget follow it, including widgets added later and
+pages made from a template. To give one widget its own list, untick **Follow my AI providers** in its settings and pick
+the providers there.
+The Quota ring's provider picker offers only the providers in this list, plus Cursor. A ring keeps the provider it
+already shows, so a ring set to Grok still asks for Grok quotas after Grok is turned off here.
 
 **Claude quotas** need the sign-in of the Claude Code command-line tool (run `claude` and sign in). The Claude Desktop
 app keeps its own sign-in to itself, so with only the desktop app the widget shows the plan and says so; its sessions
@@ -296,7 +303,7 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   *Takes a number from a Custom HTML page or a script* and give the lowest and highest number and the step. See
   [Numbers for a shortcut](#numbers-for-a-shortcut).
 - **Webhooks**: the webhook key, copy-paste examples, test buttons and the values pushed so far.
-- **General**: weather location search, the temperature unit (°C or °F) and the forecast model; calendars (ICS links from Google, Outlook or iCloud), Home Assistant and OBS
+- **General**: weather location search, the temperature unit (°C or °F) and the forecast model; calendars (ICS links from Google, Outlook or iCloud), Home Assistant, OBS and [MQTT](MQTT.md)
   connections; night mode; theme and accent colour, orientation (landscape, portrait or follow the phone), clock seconds,
   vibration, the message when a session finishes, volume-key paging and the phone's sensors (brightness that follows the room, the night screen when the
   room goes dark, wave to wake it); [OLED burn-in protection](#appearance); [page switching](#rules) (home page, countdown, back home after);
@@ -543,6 +550,18 @@ Antigravity sessions (opt-in: **Settings › General › Antigravity sessions**,
 Antigravity IDE and CLI chats with their model, tool and token metadata (prompts, replies and tool arguments are never
 retained or sent). Chat titles reach the phone only when **Show Antigravity chat titles on the phone** is also on.
 
+Pi sessions (opt-in: **Settings › General › Pi sessions**, off by default) show recent local [Pi](https://github.com/earendil-works/pi)
+agent sessions from `~/.pi/agent/sessions` (or `$PI_CODING_AGENT_DIR/sessions`; a leading `~` there is expanded the
+way Pi expands it), with the model, thinking level, token counters, the current context size and the last tool
+(prompts, replies and tool arguments are never retained or sent). A session reads as working while its last record is a
+prompt, a tool result, or an assistant reply that carries a tool call, and as finished when the turn ended with a stop,
+an abort, or an error — the usual buzz and "session finished" toast apply. A failure is reported at once; when Pi
+retries it, the recovery it writes to the same file puts the session back to working, and the retried reply ends it. A
+turn that writes nothing for half an hour settles as idle with no outcome, so a session Pi was killed in neither reads
+"working" for hours nor claims a finish. The context window comes from Pi's cached model store, the file next to the
+sessions folder, so a built-in model that Pi has not cached shows the context size alone. Session titles reach the
+phone only when **Show Pi session titles on the phone** is also on; with it off no title is read at all.
+
 OpenCode's agent questions work the same way: when the agent asks "route A, B or C, or type your own", the phone
 shows the choices as buttons (and a text field when a custom answer is allowed) and sends the pick back. Questions
 without tappable answers, and Claude Code's own questions, are shown for information only — they are answered at
@@ -672,7 +691,11 @@ switchable ports). The panel keeps running over Wi-Fi while the USB power is off
   only the session's folder, title, model, token counters, times and outcome are read, never prompts, replies or tool
   arguments. Cursor sessions (opt-in in **Settings › General › Cursor sessions**) come from recent agent transcripts
   under `~/.cursor/projects/*/agent-transcripts`. Only the last message's role is kept; chat text is never shown,
-  stored or sent. Project names use the folder basename from Cursor's `workspaceStorage`.
+  stored or sent. Project names use the folder basename from Cursor's `workspaceStorage`. Pi sessions (opt-in in
+  **Settings › General › Pi sessions**) come from recent `*.jsonl` files under `~/.pi/agent/sessions` (or
+  `$PI_CODING_AGENT_DIR/sessions`); only the
+  working directory, session id, model, thinking level, token counters, stop reasons, tool names and times are kept,
+  never prompts, replies or tool arguments.
 - **Claude Code and Cursor inside WSL** (Windows, opt-in): **Also watch Claude Code in WSL** (Settings › General, next to the Claude Code options)
   and **Also watch Cursor in WSL** (Settings › General › Cursor sessions) read the same files in the running distros'
   default users' homes, through `\\wsl.localhost\<distro>`, like OpenCode in WSL: only distros that are already

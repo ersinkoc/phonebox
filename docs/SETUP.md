@@ -278,6 +278,11 @@ PhoneBox reads LibreHardwareMonitor's sensor list from `http://127.0.0.1:8085/da
    up to 30 seconds.
 4. To keep it running: **Options › Start Minimized**, **Minimize To Tray** and **Run On Windows Startup**.
 
+PhoneBox reads NVIDIA cards with `nvidia-smi` as well, one long-running process. If your screens go black for a moment
+while PhoneBox runs (some drivers do that while `nvidia-smi` asks the card), turn off **Read NVIDIA cards with
+nvidia-smi** in the same section: `nvidia-smi` is then never started, and LibreHardwareMonitor, or Windows' own GPU
+counters, supply the GPU readings.
+
 The web server answers on every network the PC is on. If Windows Firewall asks, PhoneBox only needs it on this
 computer, so you can leave the network access unchecked. Menu names are those of recent LibreHardwareMonitor versions
 and may differ slightly in older ones.

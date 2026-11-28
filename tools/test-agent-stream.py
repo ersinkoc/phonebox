@@ -94,6 +94,7 @@ object Build {
     object VERSION { @JvmField var SDK_INT: Int = 34 }
     object VERSION_CODES { const val LOLLIPOP_MR1 = 22 }
 }
+object SystemClock { @JvmStatic fun elapsedRealtime(): Long = System.nanoTime() / 1_000_000 }
 """,
     "ProviderStubs.kt": """package android.provider
 object Settings { object Secure { const val ANDROID_ID = "android_id"; @JvmStatic fun getString(cr: android.content.ContentResolver?, n: String) = "id1" } }
@@ -403,7 +404,7 @@ def check_agent_link(compiler_cp: str, classpath: str, base_out: Path) -> None:
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
     deskpanel = ROOT / "android/app/src/main/java/net/oxog/phonebox/deskpanel"
     # Compile the production link and its dependencies that do not require Android.
-    src_files = [deskpanel / name for name in ("AgentLink.kt", "WakePacket.kt", "BridgeClip.kt")]
+    src_files = [deskpanel / name for name in ("AgentLink.kt", "UsbProbe.kt", "WakePacket.kt", "BridgeClip.kt")]
     for name, content in LINK_STUBS.items():
         path = src_dir / name
         path.write_text(content, encoding="utf-8")

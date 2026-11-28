@@ -320,7 +320,7 @@ input[type=color] { width: 42px; height: 34px; border: 1px solid var(--line); bo
 [dir="rtl"] :is(#general, #shortcuts, #rules) input[type="range"],
 [dir="rtl"] :is(#general, #shortcuts, #rules) .technical-input,
 [dir="rtl"] #general :is(input[type="password"], input[data-bind$="url" i], input[data-bind$="path" i],
-                         input[data-bind$="host" i], input[data-bind$="key" i], input[data-bind$="id" i]),
+                         input[data-bind$="host" i], input[data-bind$="key" i], input[data-bind$="id" i], input[data-bind^="mqtt." i]),
 [dir="rtl"] #general :is(#nbv, #appearanceSettings output),
 [dir="rtl"] #webhooks :is(.cmdline, .items td.val),
 [dir="rtl"] #advanced #info dd { direction: ltr; unicode-bidi: isolate; }
@@ -543,6 +543,8 @@ nav a.on::before { color: var(--accent); }
               <label for="lhmPort" data-i18n="s.lhm.port">Port</label>
               <input id="lhmPort" type="number" min="1" max="65535" required data-bind="libreHardwareMonitorPort">
             </div>
+            <div class="row" style="margin:12px 0 4px"><label class="switch"><input type="checkbox" data-bind="nvidiaSmi" aria-labelledby="nvidiaSmiLabel"><span></span></label> <span id="nvidiaSmiLabel" data-i18n="s.gpu.nvidiaSmi">Read NVIDIA cards with nvidia-smi</span></div>
+            <p class="hint" data-i18n="s.gpu.nvidiaSmiHint">Turn this off if your screens go black for a moment while PhoneBox runs. nvidia-smi is then never started, and LibreHardwareMonitor (or Windows) supplies the GPU readings.</p>
           </div>
           <div id="peRest"></div>
         </div>
@@ -692,6 +694,37 @@ nav a.on::before { color: var(--accent); }
           <div class="field"><label data-i18n="s.ha.token">Long-lived access token</label><input type="password" data-bind="homeAssistant.token" autocomplete="off"></div>
         </div>
         <div class="row"><button class="btn sm" id="haTest" data-i18n="s.test">Test</button><span class="hint" id="haState"></span></div>
+      </div>
+
+      <div class="card" id="mqttCard">
+        <h3>MQTT</h3>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="mqtt.enabled" aria-labelledby="mqttEnabledLabel"><span></span></label> <span id="mqttEnabledLabel" data-i18n="s.mqtt.enable">Connect to an MQTT broker</span></div>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.hint">The agent holds the connection. The phone never gets the broker's address, user name, password or topics. The broker can be on the internet, and then it sees this computer's address. This version only connects: nothing is subscribed or published yet.</p>
+        <div class="grid2">
+          <div class="field"><label for="mqttHost" data-i18n="s.ha.address">Address</label><input id="mqttHost" type="text" data-bind="mqtt.host" placeholder="broker.local" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="mqttPort" data-i18n="s.lhm.port">Port</label><input id="mqttPort" type="number" min="1" max="65535" data-bind="mqtt.port" data-type="int"></div>
+          <div class="field"><label for="mqttTransport" data-i18n="s.mqtt.transport">Transport</label><select id="mqttTransport" data-bind="mqtt.transport"><option value="tcp">TCP</option><option value="websocket">WebSocket</option></select></div>
+          <div class="field"><label for="mqttWsPath" data-i18n="s.mqtt.wsPath">WebSocket path</label><input id="mqttWsPath" type="text" data-bind="mqtt.webSocketPath" placeholder="/mqtt" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="mqttUser" data-i18n="s.mqtt.user">User name</label><input id="mqttUser" type="text" data-bind="mqtt.username" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="mqttPassword" data-i18n="s.obs.password">Password</label><input id="mqttPassword" type="password" autocomplete="new-password">
+            <button class="btn sm" id="mqttPasswordRemove" data-i18n="s.mqtt.removePassword" hidden>Remove the saved password</button></div>
+          <div class="field"><label for="mqttClientId" data-i18n="s.discord.clientId">Client ID</label><input id="mqttClientId" type="text" data-bind="mqtt.clientId" placeholder="phonebox-…" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="mqttKeepAlive" data-i18n="s.mqtt.keepAlive">Keep-alive (seconds)</label><input id="mqttKeepAlive" type="number" min="5" max="600" data-bind="mqtt.keepAliveSec" data-type="int"></div>
+        </div>
+        <div class="row" style="margin:12px 0 4px"><label class="switch"><input type="checkbox" data-bind="mqtt.cleanSession" aria-labelledby="mqttCleanLabel"><span></span></label> <span id="mqttCleanLabel" data-i18n="s.mqtt.clean">Clean session</span></div>
+        <div class="row" style="margin:12px 0 4px"><label class="switch"><input type="checkbox" data-bind="mqtt.tls" aria-labelledby="mqttTlsLabel"><span></span></label> <span id="mqttTlsLabel" data-i18n="s.mqtt.tls">Use TLS</span></div>
+        <div class="grid2">
+          <div class="field"><label for="mqttCa" data-i18n="s.mqtt.ca">CA certificate file</label><input id="mqttCa" type="text" data-bind="mqtt.caFile" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="mqttPin" data-i18n="s.mqtt.pin">or certificate fingerprint (SHA-256)</label><input id="mqttPin" type="text" data-bind="mqtt.pinnedFingerprint" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.tlsHint">The broker's certificate is always checked. A broker with its own certificate needs its CA file or its fingerprint here: there is no way to switch the check off.</p>
+        <div class="grid2">
+          <div class="field"><label for="mqttWillTopic" data-i18n="s.mqtt.willTopic">Last will topic (empty = none)</label><input id="mqttWillTopic" type="text" data-bind="mqtt.willTopic" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="mqttWillPayload" data-i18n="s.mqtt.willPayload">Last will message</label><input id="mqttWillPayload" type="text" data-bind="mqtt.willPayload" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div class="row" style="margin:12px 0 4px"><label class="switch"><input type="checkbox" data-bind="mqtt.willRetain" aria-labelledby="mqttRetainLabel"><span></span></label> <span id="mqttRetainLabel" data-i18n="s.mqtt.willRetain">Retain the last will</span></div>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.mqtt.retainWarn">Warning: a retained message is delivered again whenever a device connects or restarts. Leave this off unless you are sure.</p>
+        <div class="row"><button class="btn sm" id="mqttTest" data-i18n="s.test">Test</button><span class="hint" id="mqttState" role="status"></span></div>
       </div>
 
       <div class="card">
@@ -881,6 +914,13 @@ nav a.on::before { color: var(--accent); }
       </div>
 
       <div class="card">
+        <h3 data-i18n="s.pi.title">Pi sessions</h3>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.pi.hint">Show recent Pi agent sessions on the AI sessions widget (off by default). Only session metadata and token counters are kept; prompts, replies and tool arguments are never shown, stored or sent.</p>
+        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="pi.sessions" aria-labelledby="piSessionsLabel"><span></span></label> <span id="piSessionsLabel" data-i18n="s.pi.sessions">Show Pi sessions</span></div>
+        <label class="check"><input type="checkbox" data-bind="pi.shareSessionTitles"> <span data-i18n="s.pi.shareSessionTitles">Show Pi session titles on the phone (Pi writes a title for each session)</span></label>
+      </div>
+
+      <div class="card">
         <h3 data-i18n="s.antigravity.title">Antigravity sessions</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n="s.antigravity.hint">Show recent Antigravity chats on the AI sessions widget (off by default). Only step metadata and token counters are kept; prompts, replies and tool arguments are never shown, stored or sent.</p>
         <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="antigravity.sessions" aria-labelledby="antigravitySessionsLabel"><span></span></label> <span id="antigravitySessionsLabel" data-i18n="s.antigravity.sessions">Show Antigravity sessions</span></div>
@@ -944,6 +984,7 @@ nav a.on::before { color: var(--accent); }
             <label class="check"><input type="checkbox" id="cb_antigravity"> Antigravity</label>
             <label class="check"><input type="checkbox" id="cb_grok"> Grok</label>
           </div>
+          <span class="hint" data-i18n="s.quotas.sharedHint">Clock, AI quotas and CodexBar widgets follow this list unless a widget has its own Providers list. The Quota ring picker offers only these (plus Cursor), and a ring keeps the provider it already shows.</span>
           <span class="hint" data-i18n="s.quotas.grokHint">Grok uses the Grok CLI sign-in on this computer (grok login). PhoneBox reads that token without refreshing it, and asks Grok only while an enabled page shows Grok quotas.</span>
         </div>
         <div class="field" style="margin-top:10px">
@@ -1392,7 +1433,14 @@ function deckCols() {
   return 4;
 }
 
+// A Clock or AI quotas widget without a Providers list of its own follows the shared one in AI quotas › Tracked AI
+// services (#351): new widgets and templates are saved without one, and the panel and the agent read it the same way.
+const FOLLOWS_SHARED = new Set(['clock', 'quotas', 'codexbar']);
+const ALL_PROVIDERS = ['claude', 'codex', 'antigravity', 'grok'];
+const sharedProviders = () => Array.isArray(cfg.codexBar?.providers) ? cfg.codexBar.providers : ALL_PROVIDERS;
+const followsShared = (w) => FOLLOWS_SHARED.has(w.type) && !Array.isArray(w.options?.providers);
 function optVal(w, o) {
+  if (o.key === 'providers' && followsShared(w)) return sharedProviders();
   const value = w.options && o.key in w.options ? w.options[o.key] : o.default;
   // The previous Clock alignment value is an alias for the logical start.
   return w.type === 'clock' && o.key === 'align' && value === 'left' ? 'start' : value;
@@ -1413,7 +1461,10 @@ function optionLabel(w, d, o) {
 /** The catalog's defaults for a widget type, written out so the panel and the agent see what the inspector shows. */
 function defaultOptions(type) {
   const options = {};
-  for (const o of widgetDef(type)?.options || []) options[o.key] = Array.isArray(o.default) ? [...o.default] : o.default;
+  for (const o of widgetDef(type)?.options || []) {
+    if (o.key === 'providers' && FOLLOWS_SHARED.has(type)) continue; // follows the shared list until the widget picks its own
+    options[o.key] = Array.isArray(o.default) ? [...o.default] : o.default;
+  }
   return options;
 }
 function setWOpt(w, key, val) { w.options = { ...(w.options || {}), [key]: val }; changed(); renderCanvas(); }
@@ -1468,7 +1519,7 @@ function widgetSummary(w) {
     case 'button': return cfg.shortcuts.find((s) => s.id === o.id)?.label || 'pick a shortcut';
     case 'shortcuts': return (o.ids?.length ? tcv('{n} keys', { n: o.ids.length }) : tc('all keys')) + ' · ' + tcv('{n} columns', { n: o.columns || 4 });
     case 'worldclock': return (o.zones || d.options[0]?.default || []).map((z) => z.split('=')[0]).join(' · ');
-    case 'quotas': case 'codexbar': return (o.providers || ['claude', 'codex', 'antigravity', 'grok']).join(' + ');
+    case 'quotas': case 'codexbar': return (Array.isArray(o.providers) ? o.providers : sharedProviders()).join(' + ');
     case 'quotaring': return `${choice('provider')} · ${choice('limit').split(' (')[0]}`;
     case 'analog': return o.label || o.zone || '';
     case 'topprocs': case 'breathe': return choice(w.type === 'topprocs' ? 'sort' : 'pattern');
@@ -1988,7 +2039,8 @@ function renderStackWidgetsOption(w, o) {
               ...(subO.section ? [h('h4', { class: 'opt-section' }, subO.section)] : []),
               optionField(subW, subO, (key, val) => {
                 item.options = item.options || {};
-                item.options[key] = val;
+                if (val === undefined) delete item.options[key]; // e.g. Follow my AI providers: the card keeps no list
+                else item.options[key] = val;
                 save(false);
               }),
             ])
@@ -2088,7 +2140,11 @@ function optionField(w, o, onValChange) {
         if (selected && !seen.has(selected)) list.push([selected, selected]);
         select.replaceChildren(...list.map(([k, l]) => h('option', { value: k, selected: k === selected }, l)));
       };
-      fill([...(o.choices || [])]);
+      // Quota ring: the four shared providers that are switched off in AI quotas are left out (#351); others such as
+      // Cursor stay, and fill() keeps the ring's current choice.
+      const ringOn = (choices) => o.key === 'provider' && w.type === 'quotaring'
+        ? choices.filter(([k]) => { const base = String(k).split('@')[0]; return k === optVal(w, o) || !ALL_PROVIDERS.includes(base) || sharedProviders().includes(base); }) : choices;
+      fill(ringOn([...(o.choices || [])]));
       // Quota ring: offer every provider CodexBar / local quotas currently report.
       if (o.key === 'provider' && w.type === 'quotaring') {
         fetch('/api/quotas').then((r) => r.ok ? r.json() : null).then((data) => {
@@ -2100,7 +2156,7 @@ function optionField(w, o, onValChange) {
               merged.push([p.id, p.name || p.id]);
             }
           }
-          fill(merged);
+          fill(ringOn(merged));
         }).catch(() => {});
       }
       return field(select);
@@ -2109,11 +2165,13 @@ function optionField(w, o, onValChange) {
       // read the stored value on every change: the inspector is not rebuilt between two ticks
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
       const optsBox = h('div', { class: 'opts' });
+      const canFollow = o.key === 'providers' && FOLLOWS_SHARED.has(w.type);
+      const following = () => canFollow && followsShared(w);
       let currentChoices = [...(o.choices || [])];
       const renderChoices = (choices) => {
         currentChoices = choices;
         const selected = cur();
-        optsBox.replaceChildren(...choices.map(([k, l]) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: selected.includes(k), onchange: (e) => {
+        optsBox.replaceChildren(...choices.map(([k, l]) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: selected.includes(k), disabled: following(), onchange: (e) => {
           const picked = new Set(cur());
           if (e.target.checked) picked.add(k); else picked.delete(k);
           const knownOrder = currentChoices.map((c) => c[0]).filter((x) => picked.has(x));
@@ -2143,6 +2201,20 @@ function optionField(w, o, onValChange) {
           }
           renderChoices(withSaved(merged));
         }).catch(() => {});
+      }
+      if (canFollow) {
+        // ticked: the widget has no list and shows what AI quotas › Tracked AI services lists; unticked: its own list,
+        // starting from the shared one, which the boxes below then edit
+        const follow = h('input', { type: 'checkbox', checked: following(), onchange: (e) => {
+          if (e.target.checked) {
+            const { providers: _, ...rest } = w.options || {};
+            w.options = rest;
+            if (onValChange) onValChange(o.key, undefined); else { changed(); renderCanvas(); }
+          } else set(o.key, [...sharedProviders()]);
+          renderChoices(withSaved(currentChoices));
+        } });
+        return field(h('label', { class: 'check', style: { marginBottom: '6px' } }, follow, h('span', {}, t('s.w.followProviders'))),
+          optsBox, h('span', { class: 'hint' }, t('s.w.followProvidersHint')));
       }
       return field(optsBox);
     }
@@ -2717,6 +2789,44 @@ $('haTest').onclick = async () => {
     $('haState').textContent = r.result;
   } catch (_) { $('haState').textContent = 'Could not check'; }
 };
+// MQTT: the password is write-only. The page never gets it back, only "passwordSet"; typing one replaces it, and a save
+// without one keeps the stored one. "Remove" sends an empty one.
+function renderMqtt() {
+  const saved = !!cfg.mqtt.passwordSet && cfg.mqtt.password !== '';
+  // what is on the page is what is sent: after Revert the field shows a typed password again, or nothing
+  $('mqttPassword').value = typeof cfg.mqtt.password === 'string' ? cfg.mqtt.password : '';
+  $('mqttPassword').placeholder = saved ? '••••••••' : '';
+  $('mqttPasswordRemove').hidden = !saved;
+}
+$('mqttPassword').oninput = () => {
+  if ($('mqttPassword').value) cfg.mqtt.password = $('mqttPassword').value;
+  else delete cfg.mqtt.password; // emptied again: the stored one stays
+  changed();
+};
+$('mqttPasswordRemove').onclick = () => { cfg.mqtt.password = ''; $('mqttPassword').value = ''; renderMqtt(); changed(); };
+const mqttError = (kind) => t('s.mqtt.err.' + (['dns', 'refused', 'timeout'].includes(kind) ? 'network' : ['tls', 'auth', 'config'].includes(kind) ? kind : 'other'));
+let mqttTestedAt = 0;
+$('mqttTest').onclick = async () => {
+  mqttTestedAt = Date.now();
+  $('mqttState').textContent = t('panel.connecting');
+  try {
+    const { passwordSet, ...sent } = cfg.mqtt; // a typed password goes along; otherwise the agent uses the stored one for the same broker
+    const r = await (await fetch('/api/mqtt/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sent) })).json();
+    $('mqttState').textContent = r.ok ? t('s.cd.connected') : mqttError(r.errorKind);
+  } catch (_) { $('mqttState').textContent = mqttError('other'); }
+};
+// the live connection's state (only its kind of error), while the section is switched on
+async function renderMqttState() {
+  // a test's answer stays for a while before the live state takes the line over again
+  if (document.hidden || !cfg?.mqtt?.enabled || Date.now() - mqttTestedAt < 15000) return;
+  try {
+    const asked = mqttTestedAt;
+    const s = await (await fetch('/api/mqtt/status', { cache: 'no-store' })).json();
+    if (asked !== mqttTestedAt) return; // a test ran while this was on its way: its answer stays
+    $('mqttState').textContent = s.state === 'connected' ? t('s.cd.connected') : s.state === 'connecting' ? t('panel.connecting') : s.state === 'error' ? mqttError(s.errorKind) : '';
+  } catch (_) { $('mqttState').textContent = ''; }
+}
+setInterval(renderMqttState, 3000);
 // Phone mic: live state under the settings (Windows only; the agent leaves it off elsewhere).
 async function renderPhoneMicState() {
   if (document.hidden || !$('phoneMicState')) return;
@@ -3081,7 +3191,7 @@ const RULE_PRESETS = [
 let activeRules = [];
 
 function renderRules() {
-  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.phoneMic ??= { enabled: false, source: 'mic-camcorder', endpoint: 'CABLE Input', latencyMs: 50, maxBufferMs: 150, gain: 1, serverPath: null, startMuted: false }; cfg.discord ??= { enabled: false }; cfg.steam ??= { enabled: false };
+  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.mqtt ??= { enabled: false, port: 1883, transport: 'tcp', webSocketPath: '/mqtt', keepAliveSec: 60, cleanSession: true }; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.phoneMic ??= { enabled: false, source: 'mic-camcorder', endpoint: 'CABLE Input', latencyMs: 50, maxBufferMs: 150, gain: 1, serverPath: null, startMuted: false }; cfg.discord ??= { enabled: false }; cfg.steam ??= { enabled: false };
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
@@ -4096,6 +4206,7 @@ function bindForm() {
     };
   });
   bindCodexBar();
+  renderMqtt();
   renderClaudeDirs();
   renderBridge();
   renderPhotoSource();
@@ -4239,6 +4350,7 @@ async function loadInfo() {
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
   cfg.libreHardwareMonitorPort ??= 8085;
+  cfg.nvidiaSmi ??= true;
   cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.display.wallpaper ??= { dim: 45, blur: 0 }; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: true, repo: 'ersinkoc/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false, watchWsl: false }; cfg.claude.extraCredentialDirs ??= []; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity', 'grok'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,

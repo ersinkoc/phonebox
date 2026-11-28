@@ -142,6 +142,7 @@ AddMonitor<DockerMonitor>(builder.Services);
 AddMonitor<ObsMonitor>(builder.Services);
 AddMonitor<DiscordMonitor>(builder.Services);
 AddMonitor<SteamMonitor>(builder.Services);
+AddMonitor<MqttConnection>(builder.Services);
 builder.Services.AddSingleton<SteamLibrary>();
 builder.Services.AddSingleton(sp => new LyricsService(sp.GetRequiredService<ConfigStore>(), sp.GetRequiredService<ILogger<LyricsService>>()));
 AddMonitor<BatteryMonitor>(builder.Services);
@@ -399,7 +400,7 @@ app.MapGet("/favicon.ico", () => AppPaths.Resource("phonebox.ico") is { } s ? Re
 app.MapGet("/api/settings", (HttpRequest req, ConfigStore cfg, HttpResponse res) =>
 {
     var config = cfg.Get();
-    var json = JsonSerializer.Serialize(config, ConfigStore.WriteOpts);
+    var settings = JsonSerializer.SerializeToNode(config, ConfigStore.WriteOpts)!.AsObject();
     // Only a same-origin browser fetch from the desktop settings page gets credentials. The phone's native USB proxy
     // does not send Fetch Metadata headers; redact for every other request on the local port, including callers that
     // omit the phone headers or try to supply them themselves.
@@ -407,14 +408,11 @@ app.MapGet("/api/settings", (HttpRequest req, ConfigStore cfg, HttpResponse res)
         && req.Headers["Sec-Fetch-Site"] == "same-origin"
         && req.Headers["Sec-Fetch-Mode"] == "cors"
         && req.Headers["Sec-Fetch-Dest"] == "empty";
-    if (req.HttpContext.Connection.LocalPort == Port && !desktopSettingsFetch)
-    {
-        var publicConfig = JsonSerializer.SerializeToNode(config, ConfigStore.WriteOpts)?.AsObject();
-        if (publicConfig?["steam"] is JsonObject steam) steam.Remove("apiKey");
-        json = publicConfig?.ToJsonString(ConfigStore.WriteOpts) ?? json;
-    }
+    if (req.HttpContext.Connection.LocalPort == Port && !desktopSettingsFetch && settings["steam"] is JsonObject steam) steam.Remove("apiKey");
+    // the MQTT password is write-only for everyone, the desktop settings page included: it gets "passwordSet" instead
+    MqttConfig.Redact(settings);
     res.Headers["X-Config-Version"] = cfg.Version.ToString();
-    return Results.Text(json, "application/json; charset=utf-8");
+    return Results.Text(settings.ToJsonString(ConfigStore.WriteOpts), "application/json; charset=utf-8");
 });
 
 app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck deck, PhotoFrame photos, CameraFeeds cameras, ShortcutIconUploads icons, ILogger<Program> log, CancellationToken ct) =>
@@ -433,6 +431,9 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
     // /api/settings redacts Steam's key for callers that are not the same-origin desktop page.
     // Keep the configured secret if that redacted (or older) client sends it back as missing/null.
     if (ConfigStore.PreserveSteamApiKey(proposed, cfg.Get().Steam.ApiKey))
+        body = JsonSerializer.Serialize(proposed, ConfigStore.WriteOpts);
+    // the page never has the MQTT password: a save without one keeps it, an empty one removes it
+    if (MqttConfig.KeepPassword(proposed, cfg.Get().Mqtt))
         body = JsonSerializer.Serialize(proposed, ConfigStore.WriteOpts);
     if (proposed?.Steam is { } steam)
     {
@@ -711,6 +712,13 @@ app.MapGet("/api/ha/dashboards", async (HomeAssistant ha) => Results.Json(await 
 // Settings › General › Home Assistant › Test (local only)
 app.MapPost("/api/ha/test", async (HomeAssistantConfig body) =>
     Results.Json(new { result = await HomeAssistant.TestAsync(body.Url ?? "", body.Token ?? "") }));
+
+// MQTT (Settings › General › MQTT): the connection's state, and a one-off test with the settings on the page. Both are
+// local only (not on the Wi-Fi allow-list in Lan.cs): no phone widget reads the state yet. Neither answers with the broker's
+// address, the user name, the password or an error's text, only a fixed kind of error.
+app.MapGet("/api/mqtt/status", (MqttConnection mqtt) => Results.Json(mqtt.Status));
+app.MapPost("/api/mqtt/test", async (MqttConfig body, ConfigStore cfg, CancellationToken ct) =>
+    Results.Json(await MqttConnection.TestAsync(MqttConfig.ForTest(body, cfg.Get().Mqtt), ct)));
 
 // Settings › General › Photo frame › Immich › Load albums (local only: not on the Wi-Fi allow-list). The key in the body
 // is used for this request only; the saved one stands in when the address is unchanged and the field was left empty.

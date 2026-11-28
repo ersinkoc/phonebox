@@ -5,6 +5,9 @@ using PhoneBox.Agent;
 using Xunit;
 
 /// <summary>Tests for finding the loopback TCP ports a process listens on (used for Antigravity's run-time HTTPS port).</summary>
+// alone, like the other tests that start a process: on macOS the lookup runs lsof with a 2-second deadline, which a
+// busy runner (and every other test's listening sockets) can exceed, so the port went missing at random
+[Collection("Process deadline")]
 public sealed class ListeningPortsTests
 {
     [Fact]

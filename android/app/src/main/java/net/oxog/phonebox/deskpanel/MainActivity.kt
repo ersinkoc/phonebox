@@ -564,7 +564,8 @@ class MainActivity : Activity(), SensorEventListener {
     private fun proxy(req: WebResourceRequest): WebResourceResponse {
         val path = req.url.encodedPath!!.removePrefix("/agent")
         val query = req.url.encodedQuery?.let { "?$it" } ?: ""
-        val r = link.request(req.method, path + query)
+        val wait = req.requestHeaders.entries.firstOrNull { it.key.equals(TIMEOUT_HEADER, ignoreCase = true) }?.value
+        val r = link.request(req.method, path + query, AgentLink.panelReadTimeout(wait))
         if (r.code < 400) markHostAnswer()
         val ct = r.contentType ?: "application/octet-stream"
         val mime = ct.substringBefore(';').trim()
@@ -1119,6 +1120,7 @@ class MainActivity : Activity(), SensorEventListener {
         private const val MOVED_KEYS = "phonebox-storage-move-done"
         private val NO_STORE = mapOf("Cache-Control" to "no-store")
         private const val PANEL_HEADER = "X-PhoneBox-Panel"
+        private const val TIMEOUT_HEADER = "X-PhoneBox-Timeout"
         private val READ_ONLY_IMAGES = setOf("/agent/api/art", "/agent/api/controls/radio-logo", "/agent/api/apps/icon", "/agent/api/discord/img", "/agent/api/shortcuts/icon",
             "/agent/api/steam/cover", "/agent/api/wallpaper")
         private val PASSED_HEADERS = setOf("content-security-policy", "x-content-type-options")

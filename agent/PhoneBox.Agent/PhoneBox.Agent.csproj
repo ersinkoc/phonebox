@@ -13,7 +13,7 @@
     <Product>PhoneBox</Product>
     <Company>PhoneBox</Company>
     <Description>PhoneBox desktop agent: feeds the PhoneBox Android desk panel over USB or Wi-Fi.</Description>
-    <Version>0.9.31</Version>
+    <Version>0.9.32</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
@@ -47,6 +47,8 @@
   <ItemGroup>
     <!-- QR codes for pairing a phone over Wi-Fi (settings page) -->
     <PackageReference Include="QRCoder" Version="1.9.0" />
+    <!-- the MQTT client (Settings › General › MQTT); exact version, the broker package is test-only -->
+    <PackageReference Include="MQTTnet" Version="[5.2.0.1603]" />
   </ItemGroup>
 
   <ItemGroup>

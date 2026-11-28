@@ -275,3 +275,22 @@ test('on a short widget the weekdays are out of sight and out of the way, but a 
   await page.keyboard.press('Enter');
   await expect(tip).toHaveText('Wed · 125 min');
 });
+
+test('a focus step shows its minutes as it goes, and a restarted or skipped step takes them back (#741)', async ({ page }) => {
+  const p = await show(page, { options: { focus: 25, break: 5 } });
+  await p.play();
+  await page.clock.fastForward(10 * MIN);
+  await expect(p.line).toHaveAttribute('data-minutes', '0,0,0,0,0,0,10');
+  await p.pomo.locator('.pb.main').click(); // paused: the minutes stay
+  await page.clock.fastForward(5 * MIN);
+  await expect(p.line).toHaveAttribute('data-minutes', '0,0,0,0,0,0,10');
+  await p.pomo.locator('.pb').first().click(); // restarted: the step is discarded
+  await expect(p.line).toHaveAttribute('data-minutes', '0,0,0,0,0,0,0');
+  await p.play();
+  await page.clock.fastForward(7 * MIN);
+  await expect(p.line).toHaveAttribute('data-minutes', '0,0,0,0,0,0,7');
+  await p.skip();
+  await expect(p.label).toHaveText('Break');
+  await expect(p.line).toHaveAttribute('data-minutes', '0,0,0,0,0,0,0');
+  expect(await saved(page)).toBeNull();
+});

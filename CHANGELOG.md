@@ -2,6 +2,71 @@
 
 ## Unreleased
 
+- **MQTT, first step** (Settings › General › MQTT, off by default): the agent can hold a connection to an MQTT broker:
+  TCP or WebSocket, TLS, client id, user name and password, keep-alive, clean session, a last will and a **Test**
+  button. The certificate is always checked: a broker with its own certificate is trusted through a CA file or a
+  pinned SHA-256 fingerprint, and there is no switch to skip the check. The password is write-only (the settings
+  page never gets it back, and it never reaches the phone, the log or the status), and a retained last will is
+  off with a warning. `GET /api/mqtt/status` reports only the state, the time of the last message and a kind of
+  error, and is local only. Nothing is subscribed or published yet; subscriptions, a widget and publish actions
+  follow in separate steps. The agent now includes the MQTTnet client library (#732, #739,
+  [t7spotter](https://github.com/t7spotter)).
+- Android: a request that takes the computer several seconds to answer no longer reads as "Computer connection
+  unavailable". The app gave up on every request after 4 seconds, even when the panel was willing to wait longer:
+  the Control Deck's sound widgets (Output selection, Device volume, Emergency mute) wait up to 15 seconds for a
+  computer whose audio devices are slow to list, and now the app waits as long (at most 20 seconds) (#720).
+- Windows: **Read NVIDIA cards with nvidia-smi** (Settings › Pages, in the LibreHardwareMonitor section, on by
+  default). Turned off, `nvidia-smi` is never started, and LibreHardwareMonitor or Windows' GPU counters supply the GPU
+  readings: on some drivers its queries make the screens go black for a moment (#716).
+- AI quotas: the Clock's status line, AI quotas and CodexBar widgets follow **Tracked AI services** (Settings ›
+  General) unless a widget has its own Providers list, and the Quota ring's picker leaves out the services switched
+  off there (a ring keeps the provider it already shows). A widget saved with its own list keeps it. A config from
+  before Grok support may still hold the old default without Grok: tick Grok there to see it on the Home clock again
+  (#351, #725, [abdulah-x](https://github.com/abdulah-x)).
+- Quota ring: the reset shows as a clock time in the phone's own time zone and language, then the time left
+  (`Sat 01:29 · in 4 h 3 min`) (#726, [jassu-Workspace](https://github.com/jassu-Workspace)).
+- Forecast: in the tall layout the day, icon, temperature and rain line up in columns from row to row; a rain chance
+  or a longer day name no longer moves the others sideways (#737, [Captain-Sangam](https://github.com/Captain-Sangam)).
+- Windows: an AMD card's temperature limit no longer reads 11 °C, which turned the GPU details bar red at any
+  temperature. The Adrenalin driver reports the limit in whole degrees, not in tenths as Windows documents; the agent
+  now takes whichever reading is a plausible limit (50 to 150 °C) and leaves out anything else (#736,
+  [Braveras](https://github.com/Braveras)).
+- Windows: the default Spotify shortcut opens `spotify:`, so it starts the desktop Spotify as well as the Microsoft
+  Store one; it named the Store app only and failed with "cannot find the file specified" otherwise. Existing
+  shortcuts keep what they have: change the command to `spotify:` in Settings › Shortcuts to get the same (#736,
+  [Braveras](https://github.com/Braveras)).
+- Phone mic: the message after turning it on says the phone can be connected through adb over USB or Android's
+  wireless debugging, not only plugged in (#736).
+- Gauge: the ring is redrawn only when its value changes, not on every state frame, which saves work on slow phones
+  (#736).
+- Pomodoro: widgets with the same sequence share one timer, so starting, pausing, restarting or skipping on one page
+  does the same on the others; a widget with another sequence keeps its own. Focus history shows today's running or
+  paused focus step as it goes, and the minutes drop out again when that step is restarted or skipped (#741).
+- Spectrum bars: **Album colours** follow the cover of the song that is playing, the colour the background tint takes,
+  dark at the bottom and light at the top, and change with the next song. With the background tint off (Settings ›
+  Display) they stay the panel's default teal (#745).
+- Synced lyrics: a tap on a line (or Enter on it) moves the song to that line, when the computer's player lets
+  PhoneBox move its position (the same players whose media bar can be dragged). The widget's timing offset is taken
+  into account, and a paused song stays paused (#744).
+- Android: over Wi-Fi with a phone that was once connected by USB, taps no longer reach the computer seconds late, and
+  the live stream no longer takes 8 s to come back every minute. With the cable out, the adb daemon on some phones
+  keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
+  before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
+  one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
+- macOS: Dictation and the Text action of shortcut keys type the text itself, whatever the keyboard layout. They used
+  System Events' `keystroke`, which looks each character up as a key of the current layout: on Brazilian ABNT2 every
+  accented vowel came out as `a` (`não, você` typed `nao, voca`). Text now goes as Quartz keyboard events from the
+  agent, so no `osascript` starts for it either (#706).
+
+## 0.9.32 — 2026-11-27
+
+- Pi agent sessions in the AI sessions widget: model, thinking level, last tool, token counters, the current context
+  size and the context window (when Pi's cached model store knows it), and whether a turn is running: a failed reply
+  finishes at once, its automatic retry puts the row back to working, and a turn that has written nothing for half an
+  hour settles as idle instead of hanging on. Off by default
+  (**Settings › General › Pi sessions**), and session titles reach the phone only with their own switch on. The agent
+  reads the local session files for their metadata only; prompts, replies and tool arguments are never kept or sent
+  (#675, [0xTankBuilds](https://github.com/0xTankBuilds)).
 - **Romanian** (Română) joins the interface languages: the panel, the settings page, the widget and template catalog,
   the Windows tray, the Android pairing and phone-bridge dialogs, and a Romanian README. Pick it in Settings › General ›
   Language, or it follows a phone set to Romanian (#671, [GabrielUlici](https://github.com/GabrielUlici)).
@@ -51,10 +116,9 @@
   agent checks the number and writes it itself. A program starts without the shell with the number as its own argument
   (in place of `{value}`, or at the end), an address takes it in place of `{value}` in the address, and at most 4
   numbers a second reach one shortcut (#677, #687, [mayankbohradev](https://github.com/mayankbohradev)).
-- macOS: Dictation and the Text action of shortcut keys type the text itself, whatever the keyboard layout. They used
-  System Events' `keystroke`, which looks each character up as a key of the current layout: on Brazilian ABNT2 every
-  accented vowel came out as `a` (`não, você` typed `nao, voca`). Text now goes as Quartz keyboard events from the
-  agent, so no `osascript` starts for it either (#706).
+- Windows: the live Codex quota finds the Codex desktop app's CLI even when a `codex.cmd` of your own (a wrapper that
+  forwards to it) is on `PATH`. Only npm's `codex.cmd` is used now; another one used to stop the search with "Could not
+  locate the npm Codex binary" (#709, [harafuhub](https://github.com/harafuhub)).
 
 ## 0.9.31 — 2026-11-27
 

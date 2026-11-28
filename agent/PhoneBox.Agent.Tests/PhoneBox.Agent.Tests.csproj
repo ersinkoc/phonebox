@@ -11,6 +11,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
+    <!-- an in-process MQTT broker for the MQTT tests: nothing ever connects to a broker outside the test process -->
+    <PackageReference Include="MQTTnet.Server" Version="[5.2.0.1603]" />
   </ItemGroup>
 
   <ItemGroup>

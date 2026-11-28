@@ -4,6 +4,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
+// Starts real processes against a deadline: run apart from other collections, so a busy two-core runner cannot
+// push a child's start past it (see ShTests).
+[Collection("Process deadline")]
 public sealed class CodexLiveQuotaTests
 {
     private const string Rate = """{"primary":{"usedPercent":82,"windowDurationMins":300,"resetsAt":4102444800},"secondary":{"usedPercent":7,"windowDurationMins":10080,"resetsAt":4102444900},"planType":"plus","credits":{"hasCredits":true,"balance":"12.5"}}""";
@@ -77,6 +80,7 @@ public sealed class CodexLiveQuotaTests
             File.WriteAllText(Path.Combine(dir1, "codex"), "#!/bin/sh\n");
             var cmd = Path.Combine(dir1, "codex.cmd");
             File.WriteAllText(cmd, "@echo off\r\n");
+            Directory.CreateDirectory(Path.Combine(dir1, "node_modules", "@openai", "codex")); // npm's shim
             var pathEnv = dir1 + Path.PathSeparator + dir2;
             Assert.Equal(cmd, CodexQuota.Find(pathEnv, isWindows: true));
 
@@ -94,6 +98,32 @@ public sealed class CodexLiveQuotaTests
         {
             Directory.Delete(dir1, recursive: true);
             Directory.Delete(dir2, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void WindowsDiscoveryPassesOverAUsersOwnCodexCmdForTheDesktopApp()
+    {
+        // #709: a codex.cmd of the user's own (forwarding to the desktop app's CLI) cannot be started without cmd.exe
+        var wrapperDir = Directory.CreateTempSubdirectory("pb-codex-wrapper-").FullName;
+        var npmDir = Directory.CreateTempSubdirectory("pb-codex-npm-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(wrapperDir, "codex.cmd"), "@echo off\r\n\"%LOCALAPPDATA%\\OpenAI\\Codex\\bin\\codex.exe\" %*\r\n");
+            const string desktop = @"C:\Program Files\WindowsApps\OpenAI.Codex\app\resources\codex.exe";
+            Assert.Equal(desktop, CodexQuota.Find(wrapperDir, isWindows: true, () => desktop));
+            Assert.Null(CodexQuota.Find(wrapperDir, isWindows: true));
+
+            // an npm install later on PATH still wins over the desktop app
+            var npmCmd = Path.Combine(npmDir, "codex.cmd");
+            File.WriteAllText(npmCmd, "@echo off\r\n");
+            Directory.CreateDirectory(Path.Combine(npmDir, "node_modules", "@openai", "codex"));
+            Assert.Equal(npmCmd, CodexQuota.Find(wrapperDir + Path.PathSeparator + npmDir, isWindows: true, () => desktop));
+        }
+        finally
+        {
+            Directory.Delete(wrapperDir, recursive: true);
+            Directory.Delete(npmDir, recursive: true);
         }
     }
 
@@ -245,7 +275,7 @@ public sealed class CodexLiveQuotaTests
             var start = Shell(
                 $"$a=[Console]::ReadLine(); [IO.File]::WriteAllText('{transcript}', $a + \"`n\"); [Console]::WriteLine('{{\"id\":1,\"method\":\"server/ping\"}}'); [Console]::WriteLine('{{\"id\":1,\"result\":{{}}}}'); $b=[Console]::ReadLine(); $c=[Console]::ReadLine(); [IO.File]::AppendAllText('{transcript}', $b + \"`n\" + $c); [Console]::WriteLine('{{\"method\":\"notification\"}}'); [Console]::WriteLine('{{\"id\":2,\"method\":\"server/request\"}}'); [Console]::WriteLine('{{\"id\":99,\"result\":{{}}}}'); [Console]::WriteLine('{response}'); Start-Sleep 60",
                 $"read -r a; printf '%s\\n' \"$a\" > '{transcript}'; printf '%s\\n' '{{\"id\":1,\"method\":\"server/ping\"}}' '{{\"id\":1,\"result\":{{}}}}'; read -r b; read -r c; printf '%s\\n' \"$b\" \"$c\" >> '{transcript}'; printf '%s\\n' 'diagnostic' '{{\"method\":\"notification\"}}' '{{\"id\":2,\"method\":\"server/request\"}}' '{{\"id\":99,\"result\":{{}}}}' '{response}'; exec sleep 60");
-            var result = await CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(10), default);
+            var result = await CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(30), default);
             Assert.Equal(82, result.Limits[0].Percent);
             var requests = File.ReadAllLines(transcript).Select(line => JsonDocument.Parse(line)).ToArray();
             try
@@ -271,7 +301,7 @@ public sealed class CodexLiveQuotaTests
     {
         var start = Shell($"[Console]::ReadLine() | Out-Null; [Console]::WriteLine('{response}')",
             $"read -r a; printf '%s\\n' '{response}'");
-        await Assert.ThrowsAsync<IOException>(() => CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(10), default));
+        await Assert.ThrowsAsync<IOException>(() => CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(30), default));
     }
 
     [Theory]
@@ -286,8 +316,8 @@ public sealed class CodexLiveQuotaTests
         int pid = 0;
         try
         {
-            var pending = CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(cancel ? 30 : 8), cancellation.Token);
-            using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var pending = CodexQuota.ReadAsync(start, TimeSpan.FromSeconds(cancel ? 60 : 15), cancellation.Token);
+            using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(45));
             while (pid == 0)
             {
                 if (File.Exists(marker))

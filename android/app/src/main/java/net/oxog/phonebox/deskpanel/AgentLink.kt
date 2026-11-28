@@ -36,7 +36,9 @@ import javax.net.ssl.X509TrustManager
  */
 class AgentLink(private val context: Context) {
 
-    class Reply(val code: Int, val contentType: String?, val body: InputStream, val headers: Map<String, String> = emptyMap())
+    /** [transportUnknown]: the request may or may not have reached the computer (a POST whose write or answer was cut). */
+    class Reply(val code: Int, val contentType: String?, val body: InputStream, val headers: Map<String, String> = emptyMap(),
+                val transportUnknown: Boolean = false)
 
     enum class Route { USB, WIFI, NONE }
 
@@ -168,8 +170,12 @@ class AgentLink(private val context: Context) {
         return usbRefusal
     }
 
-    /** Forwards a request (method + path with query) to the agent over the best available route. */
-    fun request(method: String, pathAndQuery: String): Reply = request(method, pathAndQuery, null, null)
+    /**
+     * Forwards a request (method + path with query) to the agent over the best available route. [readTimeoutMs]: how
+     * long the agent may take to answer once connected; the panel passes its own deadline (see [panelReadTimeout]).
+     */
+    fun request(method: String, pathAndQuery: String, readTimeoutMs: Int = REQUEST_READ_TIMEOUT): Reply =
+        request(method, pathAndQuery, null, null, readTimeoutMs)
 
     /** A notification batch and its config check must address the same paired computer. */
     internal class NotificationTarget(val paired: Pc?, val usbPin: String?) {
@@ -191,15 +197,18 @@ class AgentLink(private val context: Context) {
         return wireless ?: Reply(503, "application/json", ByteArrayInputStream(ByteArray(0)))
     }
 
-    fun request(method: String, pathAndQuery: String, body: ByteArray?, contentType: String?): Reply {
+    fun request(method: String, pathAndQuery: String, body: ByteArray?, contentType: String?,
+                readTimeoutMs: Int = REQUEST_READ_TIMEOUT): Reply {
         if (method == "POST" && pathAndQuery == "/api/bridge/clipboard")
             return sendBridgeClipboard(pathAndQuery, body, contentType)
-        usb(method, pathAndQuery, 4000, body, contentType)?.let {
+        // USB is tried first; a tunnel that accepts and then stalls must leave the Wi-Fi attempt time to answer inside
+        // the panel's deadline, so USB gets that deadline minus the usual 4 s (never less than 4 s itself)
+        usb(method, pathAndQuery, usbReadTimeout(readTimeoutMs), body, contentType)?.let {
             route = Route.USB
             maybePair()
             return it
         }
-        wifi(method, pathAndQuery, 4000, body, contentType)?.let {
+        wifi(method, pathAndQuery, readTimeoutMs, body, contentType)?.let {
             route = Route.WIFI
             maybeRefreshMacs()
             return it
@@ -297,23 +306,47 @@ class AgentLink(private val context: Context) {
 
     private fun usb(method: String, pathAndQuery: String, readTimeout: Int, body: ByteArray?, contentType: String?,
                     headers: Map<String, String> = emptyMap(), pin: String? = UsbKey.pin(context)): Reply? = try {
-        val c = usbConnection(pathAndQuery, pin)
-        c.connectTimeout = 400 // refused instantly when no adb reverse tunnel exists
-        headers.forEach { (name, value) -> c.setRequestProperty(name, value) }
-        val r = send(c, method, readTimeout, body, contentType)
-        if (r.code == 401) {
-            // the agent doesn't know this app's key yet (it reads it over adb within seconds): nothing ran, try Wi-Fi
-            try { r.body.close() } catch (_: Exception) {}
-            null
-        } else r
+        if (pin == null || !usbWorthTrying(pin)) null
+        else {
+            val c = usbConnection(pathAndQuery, pin)
+            c.connectTimeout = 400 // refused instantly when no adb reverse tunnel exists
+            headers.forEach { (name, value) -> c.setRequestProperty(name, value) }
+            val r = send(c, method, readTimeout, body, contentType)
+            // a POST cut off on the way says nothing good about the tunnel: the next request checks it again
+            if (r.transportUnknown) usbHealth.unsure() else usbHealth.ok()
+            if (r.code == 401) {
+                // the agent doesn't know this app's key yet (it reads it over adb within seconds): nothing ran, try Wi-Fi
+                try { r.body.close() } catch (_: Exception) {}
+                null
+            } else r
+        }
     } catch (e: Exception) {
+        usbHealth.unsure()
         null
     }
+
+    private val usbHealth = UsbHealth()
+
+    /**
+     * Whether a request should go over USB now (#750): a tunnel that worked a moment ago is used at once; otherwise a short
+     * handshake (at most about 2 s) decides, instead of a request that waits out its whole read timeout on a silent tunnel.
+     */
+    private fun usbWorthTrying(pin: String): Boolean {
+        usbHealth.decide()?.let { return it }
+        return when (UsbProbe.check(usbFactoryFor(pin), "127.0.0.1", USB_PORT)) {
+            UsbProbe.Result.REACHABLE -> { usbHealth.ok(); true }
+            UsbProbe.Result.STALLED -> { usbHealth.down(); false }
+            UsbProbe.Result.REFUSED -> false
+        }
+    }
+
+    private fun usbFactoryFor(pin: String): SSLSocketFactory =
+        usbFactory?.takeIf { it.first == pin }?.second ?: pinnedFactory(pin).also { usbFactory = pin to it }
 
     /** A USB request: TLS pinned to the agent's certificate, then the key. Without a pin yet, USB is not used at all. */
     private fun usbConnection(pathAndQuery: String, pin: String? = UsbKey.pin(context)): HttpURLConnection {
         if (pin == null) throw java.io.IOException("no USB pin yet")
-        val f = usbFactory?.takeIf { it.first == pin }?.second ?: pinnedFactory(pin).also { usbFactory = pin to it }
+        val f = usbFactoryFor(pin)
         return (URL("$USB_BASE$pathAndQuery").openConnection() as HttpsURLConnection).apply {
             sslSocketFactory = f
             hostnameVerifier = PINNED_HOSTNAME_VERIFIER // identity is the pinned certificate
@@ -407,7 +440,8 @@ class AgentLink(private val context: Context) {
         // A write may have reached the computer. Do not try any other route or address.
         c.disconnect()
         return Reply(504, "application/json", ByteArrayInputStream(
-            """{"ok":false,"error":"The command result is unknown; check the computer before retrying"}""".toByteArray()))
+            """{"ok":false,"error":"The command result is unknown; check the computer before retrying"}""".toByteArray()),
+            transportUnknown = true)
     }
 
     private val macRefreshThrottle = RefreshThrottle(10 * 60_000)
@@ -728,9 +762,27 @@ class AgentLink(private val context: Context) {
         // (#389, #508). Only for the pinned factories: the pinned certificate, not the host name, is the identity.
         private val PINNED_HOSTNAME_VERIFIER = javax.net.ssl.HostnameVerifier { _, _ -> true }
 
-        private const val USB_BASE = "https://127.0.0.1:8765"
+        private const val USB_PORT = 8765
+        private const val USB_BASE = "https://127.0.0.1:$USB_PORT"
         /** The agent sends "state" every second, so a silent connection for this long is dead. */
         const val STREAM_READ_TIMEOUT = 8000
+        /** A request without a deadline of its own: most answers take milliseconds. */
+        const val REQUEST_READ_TIMEOUT = 4000
+        /** The longest wait a panel request can ask for (see [panelReadTimeout]). */
+        const val MAX_REQUEST_READ_TIMEOUT = 20_000
+
+        /**
+         * The read timeout for a panel request: the deadline its `api()` call gives itself (X-PhoneBox-Timeout, in
+         * ms), at least [REQUEST_READ_TIMEOUT] and at most [MAX_REQUEST_READ_TIMEOUT]. Without it a slow but working
+         * endpoint (the Control Deck's audio devices can take several seconds, #720) was cut off at 4 s while the
+         * panel was still willing to wait 15, and the widget said the computer was unreachable.
+         */
+        /** USB's share of a request's read timeout: room is left for the Wi-Fi attempt after a stalled tunnel. */
+        fun usbReadTimeout(readTimeoutMs: Int): Int =
+            (readTimeoutMs - REQUEST_READ_TIMEOUT).coerceAtLeast(REQUEST_READ_TIMEOUT)
+
+        fun panelReadTimeout(header: String?): Int =
+            header?.trim()?.toIntOrNull()?.coerceIn(REQUEST_READ_TIMEOUT, MAX_REQUEST_READ_TIMEOUT) ?: REQUEST_READ_TIMEOUT
         /** The paired computers' preferences. Each AgentLink reads them once, so the clipboard service watches them for changes. */
         const val PAIRING_PREFS = "pairing"
     }

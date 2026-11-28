@@ -342,4 +342,20 @@ public sealed class GpuSourceTests
         }
         finally { root.Delete(true); }
     }
+
+    [Theory]
+    [InlineData(1100u, 110.0)]   // tenths of a degree, as documented
+    [InlineData(880u, 88.0)]
+    [InlineData(110u, 110.0)]    // whole degrees, as the AMD Adrenalin driver reports it (#736)
+    [InlineData(95u, 95.0)]
+    public void ATemperatureLimitIsReadInTenthsOrWholeDegreesWhicheverIsPlausible(uint raw, double expected) =>
+        Assert.Equal(expected, Gpus.TempMaxFromCaps(raw));
+
+    [Theory]
+    [InlineData(0u)]
+    [InlineData(11u)]
+    [InlineData(300u)]
+    [InlineData(2000u)]
+    [InlineData(uint.MaxValue)]
+    public void AnImplausibleTemperatureLimitIsNoLimit(uint raw) => Assert.Null(Gpus.TempMaxFromCaps(raw));
 }

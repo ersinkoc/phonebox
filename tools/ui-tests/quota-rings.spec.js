@@ -52,3 +52,31 @@ for (const size of [{ width: 780, height: 360 }, { width: 750, height: 420 }]) {
     expect(spill.every((s) => !s)).toBe(true);
   });
 }
+
+// The Quota ring shows when the limit resets as a clock time in the phone's zone and language, then the time left.
+for (const { language, left } of [{ language: 'en', left: /in 2 h/ }, { language: 'de', left: /in 2/ }]) {
+  test(`the quota ring shows the reset clock time in the phone's zone (${language})`, async ({ browser }) => {
+    const context = await browser.newContext({ timezoneId: 'Asia/Kolkata', viewport: { width: 780, height: 360 } });
+    const page = await context.newPage();
+    await page.goto('/panel/style.css');
+    await page.evaluate((language) => {
+      localStorage.clear();
+      localStorage.setItem('pb-demo-config', JSON.stringify({ night: { enabled: false }, shortcuts: [], display: { idleReturnSec: 0, language, hour12: false },
+        pages: [{ id: 'r', title: 'Ring', widgets: [{ id: 'r1', type: 'quotaring', x: 0, y: 0, w: 6, h: 6, options: { provider: 'claude', limit: '0' } }] }] }));
+    }, language);
+    await page.goto('/panel/');
+    await expect(page.locator('.w-quotaring')).toHaveCount(1);
+    // two hours from now, as a clock time in the browser's zone
+    const clock = await page.evaluate(async () => {
+      const { D, emit } = await import('/panel/main.js');
+      const resetsAt = Date.now() + 2 * 3600_000 + 30_000;
+      D.quotas = { providers: [{ id: 'claude', name: 'Claude', updatedAt: Date.now(), limits: [{ label: '5-hour session', percent: 17, resetsAt }] }] };
+      emit('quotas');
+      return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(resetsAt);
+    });
+    await expect(page.locator('.w-quotaring .g-sub')).toContainText(clock);
+    await expect(page.locator('.w-quotaring .g-sub')).toContainText(left);
+    await expect(page.locator('.w-quotaring .g-sub')).not.toContainText('resets in');
+    await context.close();
+  });
+}

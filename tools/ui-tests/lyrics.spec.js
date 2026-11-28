@@ -204,3 +204,33 @@ test('a player can have its own timing offset, and the others keep the general o
   // lines without a name or a number are ignored; the last "=" splits the value; values are held to +-5 s
   expect(out).toEqual({ size: 4, apple: 1000, appleCase: 1000, spotify: -250, other: 200, none: 200, far: 5000, last: 300, empty: 200, blank: 200, notAList: 0 });
 });
+
+test('a tap on a synced line plays the song from that line, after the timing offset (#744)', async ({ page }) => {
+  const errors = watchErrors(page);
+  await showPage(page, [{ id: 'l', type: 'lyrics', x: 0, y: 0, w: 12, h: 6, options: { lookup: true, offset: 500 } }]);
+  const lyrics = page.locator('.w-lyrics');
+  await expect(lyrics).toHaveClass(/timed/);
+  await expect(lyrics).toHaveClass(/seekable/);
+  const lines = await page.evaluate(async () => {
+    const { parseLrc } = await import('./widgets/lyrics.js');
+    const answer = await (await fetch('/agent/api/lyrics?widget=test%2Fl')).json();
+    return parseLrc(answer.synced).map((l) => l.ms);
+  });
+  await lyrics.locator('.ly-line').nth(3).click();
+  // the demo's player moved to the line's time minus the offset (it plays on, so allow a moment)
+  const target = Math.max(0, lines[3] - 500);
+  await expect.poll(async () => {
+    const pos = await page.evaluate(async () => (await (await fetch('/agent/api/state')).json()).media.posMs);
+    return pos >= target && pos < target + 3000;
+  }).toBe(true);
+  await expect(lyrics.locator('.ly-line').nth(3)).toHaveClass(/\bnow\b/);
+  await expect(lyrics.locator('.ly-line.past')).toHaveCount(3);
+  // a keyboard can do the same: the lines with words are buttons while the player can be moved; a music gap is not
+  await expect(lyrics.locator('.ly-line.gap').first()).not.toHaveAttribute('role', 'button');
+  const sixth = lyrics.locator('.ly-line:not(.gap)').nth(5);
+  await expect(sixth).toHaveAttribute('role', 'button');
+  await sixth.focus();
+  await page.keyboard.press('Enter');
+  await expect(sixth).toHaveClass(/\bnow\b/);
+  expect(errors).toEqual([]);
+});

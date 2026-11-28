@@ -407,8 +407,13 @@ body.night #navCard, body.night #navChip { display: none; }
 .fc-v { font-weight: 500; white-space: nowrap; }
 .fc-v small { color: var(--muted); font-weight: 400; }
 .fc-r { font-size: .78em; color: #7dd3fc; min-height: 1.1em; white-space: nowrap; }
-.fc.vert { flex-direction: column; }
-.fc.vert .fc-i { flex-direction: row; justify-content: space-between; gap: 6px; }
+/* Tall: one grid whose rows share the four column tracks, so a long day name or a rain value cannot move the other columns. */
+.fc.vert { display: grid; grid-template-columns: minmax(1.5em, 1fr) auto auto auto; grid-auto-rows: minmax(0, 1fr); align-items: center; column-gap: 4px; }
+.fc.vert .fc-i { display: contents; }
+.fc.vert .fc-t { overflow: hidden; text-overflow: ellipsis; }
+.fc.vert .fc-ic { justify-self: center; }
+.fc.vert .fc-v, .fc.vert .fc-r { justify-self: end; }
+.fc.vert > .empty { grid-column: 1 / -1; }
 .fc.vert .fc-ic { font-size: 1.2em; }
 
 /* ---------- media ---------- */
@@ -1926,6 +1931,7 @@ body.controls-top .ap-foot { order: -1; margin-bottom: 4px; }
 .ly-line.past { color: rgba(255, 255, 255, .2); }
 .ly-line.now { color: var(--text); transform: scale(1.04); }
 .ly-line.gap { color: rgba(255, 255, 255, .18); }
+.w-lyrics.timed.seekable .ly-line { cursor: pointer; }
 .w-lyrics.plain .ly-line { color: var(--text); font-weight: 500; font-size: clamp(12px, 6.5cqh, 18px); }
 .ly-note { font-size: 12px; color: var(--muted); text-align: center; }
 .ly-note[hidden] { display: none; }

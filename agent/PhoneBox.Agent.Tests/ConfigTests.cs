@@ -47,6 +47,18 @@ public class ConfigTests
         Assert.False(publicConfig.TryGetProperty("libreHardwareMonitorPort", out _));
     }
 
+    [Theory]
+    [InlineData("{}", true)] // older configs keep reading NVIDIA cards as before
+    [InlineData("""{"nvidiaSmi": true}""", true)]
+    [InlineData("""{"nvidiaSmi": false}""", false)]
+    public void NvidiaSmiIsOnUnlessTurnedOffAndStaysOnTheComputer(string json, bool expected)
+    {
+        var config = Load(json);
+        Assert.Equal(expected, config.NvidiaSmi);
+        var publicConfig = JsonSerializer.SerializeToElement(config.ToPublic(), ConfigStore.WriteOpts);
+        Assert.False(publicConfig.TryGetProperty("nvidiaSmi", out _));
+    }
+
     [Fact]
     public void ExtraClaudeCredentialDirsDropBlankAndRepeatedEntries()
     {
@@ -897,5 +909,69 @@ public class PageBarConfigTests
             File.Delete(path);
             File.Delete(path + ".bak");
         }
+    }
+}
+
+/// <summary>The shared "Tracked AI services" list (#351) that widgets without their own Providers list follow.</summary>
+public class SharedProvidersConfigTests
+{
+    /// <summary>Saves <paramref name="json"/> through a fresh store and returns what it keeps.</summary>
+    private static AgentConfig SavedConfig(string json)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"phonebox-providers-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, "{}");
+            var store = new ConfigStore(path);
+            Assert.Null(store.Save(json));
+            return store.Get();
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(path + ".bak");
+        }
+    }
+
+    [Theory]
+    [InlineData("""["claude","bogus","grok"]""", new[] { "claude", "grok" })] // unknown ids are dropped
+    [InlineData("""["codex","codex","claude","codex"]""", new[] { "codex", "claude" })] // duplicates are removed
+    [InlineData("null", new string[0])] // null becomes an empty list
+    [InlineData("[]", new string[0])] // an empty list stays empty
+    [InlineData("""["Claude","GROK"]""", new string[0])] // ids are matched exactly, as the checkboxes save them
+    public void SharedListIsNormalized(string providers, string[] expected)
+    {
+        var cfg = SavedConfig($$$"""{"codexBar":{"providers":{{{providers}}}}}""");
+        Assert.Equal(expected, cfg.CodexBar.Providers);
+    }
+
+    [Theory]
+    // a widget without its own list follows the shared one
+    [InlineData("""{"type":"clock","options":{"status":true}}""", """["claude"]""", false)]
+    [InlineData("""{"type":"clock","options":{"status":true}}""", """["claude","grok"]""", true)]
+    [InlineData("""{"type":"quotas","options":{}}""", """["claude"]""", false)]
+    [InlineData("""{"type":"quotas","options":{}}""", """["grok"]""", true)]
+    // its own list wins
+    [InlineData("""{"type":"clock","options":{"status":true,"providers":["grok"]}}""", """["claude"]""", true)]
+    [InlineData("""{"type":"quotas","options":{"providers":["claude"]}}""", """["grok"]""", false)]
+    // a Smart Stack card follows the same way
+    [InlineData("""{"type":"stack","options":{"widgets":[{"type":"quotas","enabled":true}]}}""", """["claude"]""", false)]
+    [InlineData("""{"type":"stack","options":{"widgets":[{"type":"quotas","enabled":true}]}}""", """["grok"]""", true)]
+    public void WidgetWithoutProvidersFollowsSharedListForGrok(string widget, string shared, bool grok)
+    {
+        var c = SavedConfig($$"""{"codexBar":{"providers":{{shared}}},"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{{widget.Insert(1, "\"id\":\"w\",\"x\":0,\"y\":0,\"w\":6,\"h\":4,")}}]}]}""");
+        Assert.Equal(grok, c.ShowGrokQuota());
+    }
+
+    [Theory]
+    [InlineData("ai")]
+    [InlineData("codexbar")]
+    public void TemplatePagesFollowTheSharedList(string template)
+    {
+        // a page made from a template keeps no Providers list, so its quotas widget follows the shared one
+        var c = SavedConfig($$"""{"codexBar":{"providers":["claude"]},"pages":[{"template":"{{template}}"}]}""");
+        var quotas = Assert.Single(c.Pages[0].Widgets!, w => w.Type == "quotas");
+        Assert.Null(quotas.Opt("providers"));
+        Assert.False(c.ShowGrokQuota());
     }
 }

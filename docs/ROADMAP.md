@@ -23,6 +23,12 @@ people who proposed or prototyped something are credited in the [changelog](../C
   tested against a real Discord client.
 - **Feeding PhoneBox from MQTT**: a bridge script and a guide example for pushed values and notifications
   ([#241](https://github.com/ersinkoc/phonebox/issues/241)).
+- **MQTT built into the agent** ([#732](https://github.com/ersinkoc/phonebox/issues/732)): an optional broker
+  connection held by the agent (MQTTnet; off by default, credentials never leave the computer), subscriptions that
+  feed the push store under fixed keys with a cap and a throttle, a read-only MQTT widget, then publish actions
+  defined on the computer and triggered from the phone by id only, behind the widget's `control` option with "ask
+  first" on and retain off by default. In small pull requests; the connection and its settings are in
+  ([#739](https://github.com/ersinkoc/phonebox/pull/739)), subscriptions to the push store come next.
 - **Rules for pushed values**: a "not updated for N seconds" condition, `>=` / `<=`, and a separate release threshold
   ([#242](https://github.com/ersinkoc/phonebox/issues/242), pull request
   [#245](https://github.com/ersinkoc/phonebox/pull/245), in 0.9.21, did the first two).
@@ -33,10 +39,6 @@ people who proposed or prototyped something are credited in the [changelog](../C
   played first, covers and update progress, read from Steam's own files with no API key or sign-in. Starting a game
   from the phone is a separate per-widget option, off by default and asking first, and the agent starts only an
   installed game's app id through Steam's URL handler.
-
-- **One "AI providers I use" setting** ([#351](https://github.com/ersinkoc/phonebox/issues/351)): a list in Settings ›
-  General, all on by default, that the Clock's status line, Quotas and the Quota ring's picker follow unless a widget
-  sets its own providers.
 
 - **Phone flashlight from the night screen** ([#369](https://github.com/ersinkoc/phonebox/issues/369)): a torch icon,
   off by default, that turns on the phone's flash through Android's `CameraManager.setTorchMode` (no camera
@@ -131,6 +133,12 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   read Now Playing from one long-running helper that reports changes (or in-process) instead of starting
   `nowplaying-cli` every few seconds. Each start adds to WindowServer's Mach ports, which macOS does not give back, until the user is logged
   out after days.
+- **Say why the agent can't start when its port is taken** ([#710](https://github.com/ersinkoc/phonebox/issues/710)):
+  before the host starts, check the local port the agent is about to listen on (8765, or `--port`) the way
+  `Lan.PortProblem` checks the Wi-Fi port. When it is taken,
+  log one `crit` line naming the port and, where it can be found, the program holding it, and show it (Windows: a
+  message box in the tray's language, macOS/Linux: stderr and a notification) instead of exiting silently; the
+  background services' cancellations during that shutdown stay out of the log.
 
 ## Waiting on someone else
 

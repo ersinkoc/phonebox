@@ -19,6 +19,11 @@ public sealed class AgentConfig
         && !IgnoredDeviceSerials.Contains(serial, StringComparer.Ordinal);
     public string? AdbPath { get; set; }
     public int LibreHardwareMonitorPort { get; set; } = DefaultLibreHardwareMonitorPort;
+    /// <summary>
+    /// Read NVIDIA cards through nvidia-smi (on by default). Off, nvidia-smi is never started, and LibreHardwareMonitor
+    /// or the OS supply the GPU readings: on some drivers its queries make the screens go black for a moment (#716).
+    /// </summary>
+    public bool NvidiaSmi { get; set; } = true;
     public WeatherConfig Weather { get; set; } = new();
     public PingConfig Ping { get; set; } = new();
     public NightConfig Night { get; set; } = new();
@@ -34,6 +39,8 @@ public sealed class AgentConfig
     public CursorConfig Cursor { get; set; } = new();
     /// <summary>Clipboard sharing with the paired phone (macOS only; off by default).</summary>
     public BridgeConfig Bridge { get; set; } = new();
+    /// <summary>Pi agent sessions on the AI sessions widget (off by default).</summary>
+    public PiConfig Pi { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
     public AntigravityConfig Antigravity { get; set; } = new();
     /// <summary>OpenCode prompts and sessions on the phone; everything is off until the settings page turns it on.</summary>
@@ -63,6 +70,8 @@ public sealed class AgentConfig
     public ConsoleConfig Console { get; set; } = new();
     /// <summary>Steam friends presence (the Web API key stays on this computer and is never sent to the phone).</summary>
     public SteamConfig Steam { get; set; } = new();
+    /// <summary>An MQTT broker the agent connects to (off by default). Like the Home Assistant token, none of it goes to the phone.</summary>
+    public MqttConfig Mqtt { get; set; } = new();
     /// <summary>The phone's microphone, played into a virtual audio cable (Windows; off by default).</summary>
     public PhoneMicConfig PhoneMic { get; set; } = new();
 
@@ -407,6 +416,15 @@ public sealed class CursorConfig
     /// (needs the Cursor hook, see Settings › General). Cursor's hook runs before every command, also the ones it would
     /// run by itself, and waits for the phone while one is connected, so this stays off until you turn it on.</summary>
     public bool PhoneApprovals { get; set; }
+}
+
+public sealed class PiConfig
+{
+    /// <summary>Show recent Pi agent sessions on the AI sessions widget (off by default, like Cursor's).</summary>
+    public bool Sessions { get; set; }
+    /// <summary>Show each Pi session's title on the phone. The title is the name Pi wrote for the session, so it
+    /// stays off the phone until you turn it on, like Antigravity's.</summary>
+    public bool ShareSessionTitles { get; set; }
 }
 
 public sealed class AntigravityConfig
@@ -969,6 +987,7 @@ public sealed partial class ConfigStore(string path)
             .Where(x => x.key is not null && x.key != defaultClaude)
             .DistinctBy(x => x.key).Select(x => x.d).DistinctBy(d => d.Label, StringComparer.OrdinalIgnoreCase).Take(10).ToArray();
         c.Cursor ??= new();
+        c.Pi ??= new();
         c.Antigravity ??= new();
         c.OpenCode ??= new();
         c.Bridge ??= new(); // a hand-edited "bridge": null must not break /api/config or the clipboard poll
@@ -1059,6 +1078,7 @@ public sealed partial class ConfigStore(string path)
         c.Ping ??= new();
         c.Ping.Adapters = (c.Ping.Adapters ?? []).Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(16).ToList();
         c.Obs ??= new();
+        c.Mqtt = MqttConfig.Normalized(c.Mqtt);
         c.PhoneMic ??= new();
         var mic = c.PhoneMic;
         if (!ScrcpyAudio.MicSources.Contains(mic.Source)) mic.Source = "mic-camcorder";

@@ -22,6 +22,7 @@ public sealed record AgentSession(string Id, string Tool, string Name, string Pr
 ///  - Cursor (opt-in): recent agent transcripts under ~/.cursor/projects/*/agent-transcripts
 ///  - Antigravity (opt-in): recent user transcripts under ~/.gemini/antigravity/brain and ~/.gemini/antigravity-cli/brain
 ///  - OpenCode: recent sessions from the local HTTP API of its background service (native and in WSL)
+///  - Pi (opt-in): recent sessions from the JSONL files under ~/.pi/agent/sessions
 /// </summary>
 public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigStore? config = null) : BackgroundService
 {
@@ -45,8 +46,9 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
     /// The sessions, for everything that sends them anywhere (the live stream, /api/work, the rules). This is the one
     /// place they leave this class, so the title settings are applied here: Claude Code's chats carry a title only
     /// while Settings › Claude Code › "Show session titles on the phone" is on, OpenCode's only while
-    /// Settings › General › "Show OpenCode session titles" is on, and Antigravity's only while
-    /// Settings › General › "Show Antigravity chat titles on the phone" is on. An OpenCode row whose sharing was just turned off
+    /// Settings › General › "Show OpenCode session titles" is on, Antigravity's only while
+    /// Settings › General › "Show Antigravity chat titles on the phone" is on, and Pi's only while
+    /// Settings › General › "Show Pi session titles" is on. An OpenCode row whose sharing was just turned off
     /// also loses the title from its Name — the reader puts the short session id there when titles are off, and the
     /// next monitor refresh (about two seconds) does the same; until then this keeps the title off the phone.
     /// </summary>
@@ -68,12 +70,14 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
         var claude = ShareTitles;
         var opencode = config?.Get().OpenCode.ShareSessionTitles ?? false;
         var antigravity = config?.Get().Antigravity.ShareSessionTitles ?? false;
-        if (claude && opencode && antigravity) return all;
+        var pi = config?.Get().Pi.ShareSessionTitles ?? false;
+        if (claude && opencode && antigravity && pi) return all;
         return all.Select(s => s.Tool switch
         {
             "claude" when !claude => s with { Title = null },
             "opencode" when !opencode => s with { Title = null, Name = OpenCodeSessions.ShortId(s.Id["opencode:".Length..]) },
             "antigravity" when !antigravity => s with { Title = null },
+            "pi" when !pi => s with { Title = null },
             _ => s,
         }).ToList();
     }
@@ -113,6 +117,16 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
             if (config?.Get().Cursor.Sessions == true)
             {
                 try { list.AddRange(ReadCursor()); } catch (Exception ex) { log.LogDebug("cursor sessions: {Msg}", ex.Message); }
+            }
+            // Pi sessions are off until Settings › General › Pi sessions is enabled.
+            if (config?.Get().Pi.Sessions == true)
+            {
+                try { list.AddRange(ReadPi(titles: config!.Get().Pi.ShareSessionTitles)); }
+                catch (Exception ex) { log.LogDebug("pi sessions: {Msg}", ex.Message); }
+            }
+            else
+            {
+                ClearPiCache();
             }
             // Antigravity sessions are off until Settings › General › Antigravity sessions is enabled.
             if (config?.Get().Antigravity.Sessions == true)

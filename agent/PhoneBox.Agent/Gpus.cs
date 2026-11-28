@@ -71,6 +71,19 @@ internal static partial class Gpus
     };
 
     /// <summary>"AMD Radeon(TM) Graphics" and "AMD Radeon Graphics" are the same card.</summary>
+    /// <summary>
+    /// The temperature limit from D3DKMT_ADAPTER_PERFDATACAPS.TemperatureMax. It is documented in tenths of a degree, but
+    /// the AMD Adrenalin driver reports whole degrees (110 for 110 °C, #736) while its current temperature is in tenths
+    /// as documented. No card's limit is below 50 °C or above 150 °C, so the reading that lands in that range wins;
+    /// anything else is no limit, and the panel falls back to its own scale.
+    /// </summary>
+    public static double? TempMaxFromCaps(uint raw) => raw switch
+    {
+        >= 500 and <= 1500 => raw / 10.0,
+        >= 50 and <= 150 => raw,
+        _ => null,
+    };
+
     public static string Key(string name) =>
         NonAlnum().Replace(name.ToLowerInvariant().Replace("(tm)", "").Replace("(r)", ""), "");
 

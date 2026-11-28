@@ -14,7 +14,10 @@ internal static class CodexQuota
 
     /// <summary>
     /// On Windows, npm writes a POSIX shell script named `codex` next to `codex.cmd`.
-    /// Accept only `.exe` first and then `.cmd` on Windows so the shell script is never selected.
+    /// Accept only `.exe` first and then `.cmd` on Windows so the shell script is never selected. A `codex.cmd` counts
+    /// only when it is npm's, with `node_modules\@openai\codex` beside it: that is the only kind
+    /// <see cref="StartInfo(string)"/> can start without cmd.exe. A wrapper of the user's own (one that forwards to the
+    /// desktop app's CLI, whose folder changes with every update) is passed over, so the desktop app is found (#709).
     /// </summary>
     internal static string? Find(string? pathEnv, bool isWindows, Func<string?>? findStoreCli = null)
     {
@@ -27,10 +30,12 @@ internal static class CodexQuota
             foreach (var dir in dirs)
             {
                 var candidate = Path.Combine(dir, name);
-                if (File.Exists(candidate)) return candidate;
+                if (File.Exists(candidate) && (name == "codex.exe" || IsNpmShim(dir))) return candidate;
             }
         return findStoreCli?.Invoke();
     }
+
+    private static bool IsNpmShim(string dir) => Directory.Exists(Path.Combine(dir, "node_modules", "@openai", "codex"));
 
     private static string? FindStoreCli()
     {
