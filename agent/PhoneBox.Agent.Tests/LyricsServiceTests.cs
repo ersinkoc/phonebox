@@ -229,6 +229,49 @@ public sealed class LyricsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ANotFoundThatAsksToSlowDownStopsTheLookupToo()
+    {
+        var lrclib = new Lrclib(req =>
+        {
+            if (req.RequestUri!.AbsolutePath != "/api/get") return Json(SearchHit);
+            var res = Json("""{"message":"not found"}""", HttpStatusCode.NotFound);
+            res.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(600));
+            return res;
+        });
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib, () => 0);
+        Assert.Equal("error", (await Ask(lyrics, Track("Song", "Artist", "Album"))).Status);
+        Assert.StartsWith("/api/get?", Assert.Single(lrclib.Asked)); // the search is not tried
+    }
+
+    [Fact]
+    public async Task ARefusalWhoseBodyBreaksOffIsStillARefusal()
+    {
+        var lrclib = new Lrclib(req =>
+        {
+            if (req.RequestUri!.AbsolutePath != "/api/get") return Json(SearchHit);
+            // a 429 whose body never arrives: the connection drops while it is read
+            return new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StreamContent(new BrokenStream()) };
+        });
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib, () => 0);
+        Assert.Equal("error", (await Ask(lyrics, Track("Song", "Artist", "Album"))).Status);
+        Assert.StartsWith("/api/get?", Assert.Single(lrclib.Asked));
+    }
+
+    private sealed class BrokenStream : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new IOException("connection reset");
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    [Fact]
     public void QueriesDropTheBracketedExtrasAndTheExtraArtists()
     {
         // a player that names a translated title, a version note and three artists in one string: LRCLIB matches the

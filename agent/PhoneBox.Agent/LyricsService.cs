@@ -184,21 +184,25 @@ public sealed partial class LyricsService : IDisposable
             // refusal that asks to slow down (429, or any Retry-After) still stops here
             try
             {
-                using var res = await _http.GetAsync(url);
+                // the status line and the headers decide before the body is read: a body that breaks off after a 429
+                // must not turn the refusal into a failure that goes on to the search
+                using var cts = new CancellationTokenSource(_http.Timeout);
+                using var res = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                // the header itself counts, whatever the status: a Retry-After of 0 or a past date is still a request to
+                // slow down; other answers below 500 are refusals too, except 404 (not in the database: search instead)
+                if (!res.IsSuccessStatusCode
+                    && (res.Headers.RetryAfter is not null || ((int)res.StatusCode < 500 && res.StatusCode != HttpStatusCode.NotFound)))
+                    throw Refused(res);
                 if (res.IsSuccessStatusCode)
                 {
-                    using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+                    await res.Content.LoadIntoBufferAsync(_http.MaxResponseContentBufferSize, cts.Token);
+                    using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(cts.Token));
                     if (FromEntry(doc.RootElement) is { } exact) return exact;
                 }
                 else if (res.StatusCode != HttpStatusCode.NotFound)
-                {
-                    var refused = Refused(res);
-                    // the header itself counts: a Retry-After of 0 or a past date is still a request to slow down
-                    if ((int)res.StatusCode < 500 || res.Headers.RetryAfter is not null) throw refused;
-                    _log.LogInformation("lyrics: exact lookup failed ({Msg}), trying the search", refused.Message);
-                }
+                    _log.LogInformation("lyrics: exact lookup failed ({Msg}), trying the search", Refused(res).Message);
             }
-            catch (Exception ex) when (ex is TaskCanceledException or HttpRequestException and not LrclibRefusedException)
+            catch (Exception ex) when (ex is OperationCanceledException or HttpRequestException and not LrclibRefusedException)
             {
                 _log.LogInformation("lyrics: exact lookup failed ({Msg}), trying the search", ex.GetBaseException().Message);
             }
