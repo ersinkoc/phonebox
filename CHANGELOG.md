@@ -74,6 +74,9 @@
   one; these events are the first ones dropped from the short event backlog, so notifications and page switches stay
   in it. A pushed value can nest at most 32 levels of arrays and objects; a deeper one is refused with an error
   (#686, [Seyamalam](https://github.com/Seyamalam)).
+- Checklist: two rows with the same text are ticked on their own; a list ticked before this update keeps meaning the
+  same rows. Changing the list's text during a day can move today's ticks to the rows now in those places (#765,
+  [ryoaonetsuki](https://github.com/ryoaonetsuki)).
 
 ## 0.9.32 — 2026-11-27
 

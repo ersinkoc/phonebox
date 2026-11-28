@@ -53,5 +53,5 @@ test('a checklist tap before the first midnight tick uses the new day', async ({
   await first.evaluate(button => button.click());
   await expect(box.locator('.cl-i.done')).toHaveText([/First task/]);
   const state = await page.evaluate(() => JSON.parse(localStorage.getItem('cl:fixture/checklist')));
-  expect(state).toEqual({ day: 'Fri Jan 02 2026', done: ['First task'] });
+  expect(state).toEqual({ day: 'Fri Jan 02 2026', done: [0] }); // the row's index, not its text (#765)
 });
