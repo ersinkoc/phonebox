@@ -53,6 +53,10 @@
   keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
   before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
   one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
+- macOS: Dictation and the Text action of shortcut keys type the text itself, whatever the keyboard layout. They used
+  System Events' `keystroke`, which looks each character up as a key of the current layout: on Brazilian ABNT2 every
+  accented vowel came out as `a` (`não, você` typed `nao, voca`). Text now goes as Quartz keyboard events from the
+  agent, so no `osascript` starts for it either (#706).
 - Appearance: a **Glass** preset (Settings › General › Appearance, or a page's or widget's appearance; opt-in):
   translucent cards with a light rim, a top sheen and a soft shadow, 20px corners and 10px spacing, over a colourful
   background drawn behind the pages that have glass widgets (or over your wallpaper). Shortcut keys, process rows and
