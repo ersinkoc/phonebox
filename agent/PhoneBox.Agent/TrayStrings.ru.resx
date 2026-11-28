@@ -51,4 +51,7 @@
     <data xml:space="preserve" name="portTakenUnknown">
         <value>PhoneBox не может запуститься: порт {0} уже использует другая программа. Закройте эту программу и запустите PhoneBox снова.</value>
     </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox не может запуститься: порт {0} зарезервирован Windows. Обычно его освобождает перезагрузка компьютера.</value>
+    </data>
 </root>

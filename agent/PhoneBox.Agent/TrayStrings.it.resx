@@ -51,4 +51,7 @@
     <data xml:space="preserve" name="portTakenUnknown">
         <value>PhoneBox non può avviarsi: un altro programma usa la porta {0}. Chiudi quel programma e avvia di nuovo PhoneBox.</value>
     </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox non può avviarsi: la porta {0} è riservata da Windows. Di solito riavviare il computer la libera.</value>
+    </data>
 </root>

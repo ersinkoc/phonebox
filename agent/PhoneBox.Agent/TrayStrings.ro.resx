@@ -51,4 +51,7 @@
     <data xml:space="preserve" name="portTakenUnknown">
         <value>PhoneBox nu poate porni: alt program folosește deja portul {0}. Închide acel program și pornește din nou PhoneBox.</value>
     </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox nu poate porni: portul {0} este rezervat de Windows. De obicei, repornirea computerului îl eliberează.</value>
+    </data>
 </root>

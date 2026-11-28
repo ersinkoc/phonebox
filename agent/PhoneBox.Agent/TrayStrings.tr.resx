@@ -51,4 +51,7 @@
     <data xml:space="preserve" name="portTakenUnknown">
         <value>PhoneBox başlatılamıyor: {0} numaralı portu başka bir program kullanıyor. O programı kapatın ve PhoneBox'ı yeniden başlatın.</value>
     </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox başlatılamıyor: {0} numaralı port Windows tarafından ayrılmış. Bilgisayarı yeniden başlatmak genellikle portu serbest bırakır.</value>
+    </data>
 </root>

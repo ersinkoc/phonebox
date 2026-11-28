@@ -51,4 +51,7 @@
     <data xml:space="preserve" name="portTakenUnknown">
         <value>Nie można uruchomić PhoneBox: inny program używa portu {0}. Zamknij ten program i uruchom PhoneBox ponownie.</value>
     </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>Nie można uruchomić PhoneBox: port {0} jest zarezerwowany przez system Windows. Ponowne uruchomienie komputera zwykle go zwalnia.</value>
+    </data>
 </root>

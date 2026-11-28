@@ -51,12 +51,12 @@ public sealed class Tray : IHostedService
         var language => CultureInfo.GetCultureInfo(language),
     };
 
-    /// <summary>Says why the agent stops before it starts (#710): its port is taken, by <paramref name="program"/> when known.</summary>
-    public static void ShowPortTaken(ConfigStore config, int port, string? program)
+    /// <summary>Says why the agent stops before it starts (#710): its port is taken, by <paramref name="program"/> when known, or reserved.</summary>
+    public static void ShowPortProblem(ConfigStore config, int port, string? program, bool reserved)
     {
         var culture = Culture(config);
-        var text = program is null ? string.Format(culture, Text("portTakenUnknown", culture), port)
-            : string.Format(culture, Text("portTaken", culture), port, program);
+        var text = program is not null ? string.Format(culture, Text("portTaken", culture), port, program)
+            : string.Format(culture, Text(reserved ? "portReserved" : "portTakenUnknown", culture), port);
         var options = culture.TextInfo.IsRightToLeft ? MessageBoxOptions.RightAlign | MessageBoxOptions.RtlReading : 0;
         Application.EnableVisualStyles();
         MessageBox.Show(text, "PhoneBox", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, options);

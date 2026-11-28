@@ -51,4 +51,7 @@
     <data xml:space="preserve" name="portTakenUnknown">
         <value>PhoneBox を起動できません: 別のプログラムがポート {0} を使用しています。そのプログラムを閉じてから、PhoneBox をもう一度起動してください。</value>
     </data>
+    <data xml:space="preserve" name="portReserved">
+        <value>PhoneBox を起動できません: ポート {0} は Windows に予約されています。通常はコンピューターを再起動すると解放されます。</value>
+    </data>
 </root>

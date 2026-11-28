@@ -19,9 +19,10 @@ public sealed class Tray(ILogger<Tray> log, AgentEndpoint endpoint) : IHostedSer
     public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
 
     /// <summary>Says why the agent stops before it starts (#710): on stderr, and as a notification where there is a desktop.</summary>
-    public static void ShowPortTaken(ConfigStore config, int port, string? program)
+    public static void ShowPortProblem(ConfigStore config, int port, string? program, bool reserved)
     {
-        var text = $"PhoneBox can't start: port {port} is used by {program ?? "another program"}. Close that program and start PhoneBox again.";
+        var text = reserved ? $"PhoneBox can't start: port {port} is reserved by the system."
+            : $"PhoneBox can't start: port {port} is used by {program ?? "another program"}. Close that program and start PhoneBox again.";
         Console.Error.WriteLine(text);
         // false when there is no osascript or notify-send, or no desktop session to show it in
         _ = (OperatingSystem.IsMacOS()
