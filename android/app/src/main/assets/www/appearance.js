@@ -7,6 +7,9 @@
     flat: { radius: 12, gap: 12, padding: 12, border: false, shadow: false },
     borderless: { radius: 0, gap: 12, padding: 12, border: false, shadow: false },
     seamless: { radius: 0, gap: 0, padding: 12, border: true, shadow: false },
+    // border and shadow stay unset: the glass surface draws its own rim and depth (appearance.css), and resolve()
+    // drops a border or shadow inherited from an earlier layer
+    glass: { radius: 20, gap: 10, padding: 12 },
   });
   const fonts = Object.freeze({
     default: '',
@@ -56,6 +59,9 @@
       if (!layer || typeof layer !== 'object') continue;
       if (typeof layer.style === 'string' && Object.prototype.hasOwnProperty.call(presets, layer.style)) {
         result = layer.style === 'default' ? { style: 'default' } : { ...result, ...presets[layer.style], style: layer.style };
+        // an inherited border: false or shadow: false (a Flat global appearance with a Glass page, say) would hide the glass rim
+        // and depth; a value set on this layer or a later one is applied below and still wins
+        if (layer.style === 'glass') { delete result.border; delete result.shadow; }
       }
       if (typeof layer.font === 'string' && Object.prototype.hasOwnProperty.call(fonts, layer.font)) {
         result.font = layer.font;

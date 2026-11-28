@@ -21,6 +21,48 @@
   backdrop-filter: none !important;
 }
 .w[data-widget-surface="borderless"] { background: transparent !important; background-image: none !important; }
+/* Glass: a translucent card with a light rim, a top sheen and depth. Live backdrop blur stays off: on a Helio P35 a
+   page swipe took 93 ms per frame with blur(14px) and 15 ms without it. Widgets keep their own look when it carries
+   meaning (Note, Image, the Discord bar) or when they are transparent by design: a transparent Custom HTML, and
+   Shortcuts, Processes and AI quotas, whose keys, rows and cards get the glass instead. */
+.w.card[data-widget-surface="glass"]:not(.w-shortcuts, .w-processes, .w-quotas, .w-note, .w-image, .w-discord-bar, .bare-html) {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05) 45%, rgba(255, 255, 255, .08));
+  border: 1px solid rgba(255, 255, 255, .26);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 rgba(255, 255, 255, .06);
+  isolation: isolate;
+}
+.w.card[data-widget-surface="glass"]:not(.w-shortcuts, .w-processes, .w-quotas, .w-note, .w-image, .w-discord-bar, .bare-html)::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(160deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 38%);
+}
+.w[data-widget-surface="glass"] .key {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--k) 30%, rgba(255, 255, 255, .12)), rgba(255, 255, 255, .04));
+  border-color: color-mix(in srgb, var(--k) 40%, rgba(255, 255, 255, .26));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .3);
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1), opacity .18s cubic-bezier(.2, .8, .2, 1);
+}
+.w[data-widget-surface="glass"] .key:active { transform: scale(.95); filter: none; opacity: .85; }
+.w[data-widget-surface="glass"] :is(.proc, .q-card) {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .04));
+  border-color: rgba(255, 255, 255, .2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+/* an explicit shadow: false clears all of the glass box-shadow, the inset sheen included, as it does on the widget
+   itself (above); the key's status ring is drawn by .key::after and stays */
+.w[data-widget-surface="glass"][data-widget-shadow="false"] :is(.key, .proc, .q-card) { box-shadow: none; }
+/* glass needs colour behind it: a static mesh (a moving one would redraw every card), unless a wallpaper is set. It is
+   drawn behind a page with a glass widget only (main.js marks it .has-glass), so the other pages keep their own
+   background; a page photo background paints over it. */
+body:not(.has-wallpaper) .page.has-glass::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(45% 55% at 12% 18%, rgba(56, 189, 248, .55), transparent 70%),
+    radial-gradient(40% 50% at 88% 22%, rgba(168, 85, 247, .5), transparent 70%),
+    radial-gradient(50% 60% at 70% 95%, rgba(45, 212, 191, .45), transparent 70%),
+    radial-gradient(45% 55% at 20% 90%, rgba(244, 114, 182, .35), transparent 70%),
+    #070a14;
+}
+@media (prefers-reduced-motion: reduce) { .w[data-widget-surface="glass"] .key { transition: none; } }
 /* Keep control surfaces consistent without changing signal meters or round dials. */
 .w.has-widget-radius :is(.deck-channel,.deck-button,.deck-hold,.radio-card,.chip-btn,.sc) {
   border-radius: min(var(--widget-radius), 12px);
