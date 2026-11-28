@@ -1267,6 +1267,9 @@ public sealed partial class ConfigStore(string path)
                 widgets.Add(w);
             }
             p.Widgets = widgets;
+            // a page whose widgets have no upright place (its widgets replaced from a template, say) has no upright
+            // layout of its own: upright, the panel packs it automatically
+            if (p.Upright == true && widgets.All(w => w.Upright is null)) p.Upright = null;
             pages.Add(p);
         }
         if (pages.Count > 0 && pages.All(p => !p.Enabled)) pages[0].Enabled = true;

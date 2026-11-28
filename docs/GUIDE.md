@@ -292,6 +292,10 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
 - **Pages**: add pages from templates, reorder, show/hide, export and import them as files, choose how long each page
   may stay before the panel goes home; arrange widgets on a phone-sized canvas (drag to move, drag
   the corner to resize) and set their options. The widget palette is grouped by category and searchable.
+  **Landscape** and **Upright** switch the canvas between the two ways the phone can be held. Upright, a page is
+  packed automatically from its landscape layout, as the panel does it; move or resize a widget there and the page
+  gets an upright layout of its own (6 × 12), which a phone or tablet held upright uses as it is. Widgets left off
+  it are listed under the canvas, and **Back to automatic** drops it.
   **Live preview** swaps the canvas for the real panel with your unsaved changes and live data.
 - **Rules**: automations, see [Rules](#rules).
 - **Shortcuts**: add, edit, reorder and test keys (label, emoji, colour). A key runs a program, presses a key
@@ -304,7 +308,7 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   [Numbers for a shortcut](#numbers-for-a-shortcut).
 - **Webhooks**: the webhook key, copy-paste examples, test buttons and the values pushed so far.
 - **General**: weather location search, the temperature unit (°C or °F) and the forecast model; calendars (ICS links from Google, Outlook or iCloud), Home Assistant, OBS and [MQTT](MQTT.md)
-  connections; night mode; theme and accent colour, orientation (landscape, portrait or follow the phone), clock seconds,
+  connections; night mode; theme and accent colour, orientation (landscape, portrait or follow the phone; how a page looks upright is set in **Pages**), clock seconds,
   vibration, the message when a session finishes, volume-key paging and the phone's sensors (brightness that follows the room, the night screen when the
   room goes dark, wave to wake it); [OLED burn-in protection](#appearance); [page switching](#rules) (home page, countdown, back home after);
   kiosk options (screen pinning, the panel as the phone's home screen so it starts after a reboot, keep the phone

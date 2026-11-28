@@ -51,6 +51,21 @@ public class UprightLayoutTests
     }
 
     [Fact]
+    public void APageWhoseWidgetsHaveNoUprightPlaceIsArrangedAutomatically()
+    {
+        // what Replace widgets from a template used to leave behind: upright on, and none of the new widgets placed
+        var page = Load("""
+            {"pages": [{"id": "games", "title": "Games", "upright": true, "widgets": [
+              {"id": "a", "type": "note", "x": 0, "y": 0, "w": 5, "h": 2},
+              {"id": "b", "type": "note", "x": 0, "y": 2, "w": 12, "h": 4}
+            ]}]}
+            """).Pages.Single();
+        Assert.Null(page.Upright);
+        var pub = JsonSerializer.SerializeToElement(new AgentConfig { Pages = [page] }.ToPublic(), ConfigStore.WriteOpts);
+        Assert.False(pub.GetProperty("pages")[0].TryGetProperty("upright", out _));
+    }
+
+    [Fact]
     public void ThePhoneGetsTheUprightLayout()
     {
         var pub = JsonSerializer.SerializeToElement(Load(Page).ToPublic(), ConfigStore.WriteOpts);

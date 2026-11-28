@@ -111,6 +111,16 @@
 - iOS: the companion app can pair with several computers and switch between them. When the one in use stops
   answering for 30 seconds, the app follows whichever paired computer answers, and goes back to your pick as soon
   as it answers again. Tokens stay in the Keychain (#727, [haquanghuy2908](https://github.com/haquanghuy2908)).
+- Pages: a layout of their own for an upright screen. The layout editor (Settings › Pages) has **Landscape** and
+  **Upright**. Upright, it shows the page as the panel packs it held upright, with the same columns (6 on a phone,
+  12 on a tablet with More rows on a tablet), wide widgets keeping their area and as many rows as that takes; widgets
+  the screen leaves out are listed under the canvas. Moving or resizing a widget there gives the page its own upright
+  layout (6 × 12), which a phone or tablet held upright then uses as it is; a widget that does not fit on it is
+  listed as left off and can be put back, and **Back to automatic** drops the layout. A click that only selects a
+  widget changes nothing. Replacing a page's widgets from a template or clearing it drops its upright layout, and a
+  page whose widgets have no upright place is packed automatically. Pages without one look as before. Without More
+  rows on a tablet, the editor's screen buttons read **Landscape** and **Upright** (#755, #758,
+  [WellyngtonSantos](https://github.com/WellyngtonSantos)).
 
 ## 0.9.32 — 2026-11-27
 
