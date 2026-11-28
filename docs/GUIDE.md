@@ -88,7 +88,7 @@ screen on (unless [power standby](#power-standby) is on).
 | **Time** | Clock (with status line and weather) · Analog clock (any time zone) · **Word clock** · World clocks · Calendar · **Next up** · Time progress (day / week / month / year) · Countdown · Pomodoro · **Focus history** · Quick timer · Stopwatch |
 | **Weather & sky** | Weather · Forecast (hourly / 7 days) · Sun & moon (daylight left, UV, moon phase) · **Moon** · Air quality (European AQI, PM2.5, PM10, O₃, NO₂) |
 | **Computer** | **Rules** (which hold, pause) · **Battery care** · On air (microphone / camera / OBS) · OBS Studio (live, recording, scenes) · **Dictation** (speak on the phone, typed on the PC; the app asks for the microphone on first use) · **App console** (Windows: keys and a dial for the app in front, set per app in Settings › General; use the focused app's process name from Task Manager's Details tab; packaged Store apps can all show up as `ApplicationFrameHost` and terminal tabs as `WindowsTerminal`, so a profile for those names covers all of them) · **Steam library** (installed games with covers, most recently played first; starting a game only when the widget allows it) · Device batteries (headphones, mice, keyboards) · Docker / Podman (containers, start / stop) · Metric tile · Gauge · Chart · GPU details · Memory & disks · Top processes · Processes · Now playing · Radio · Volume · **Spectrum bars** (Windows: a live spectrum of what the PC is playing, like the classic LED bar visualizers) · Shortcut grid · Big button (optionally filled with the shortcut's uploaded picture) · **Command** (PowerShell / bash / zsh output, refreshed every N seconds) · **Trackpad** (control PC cursor, tap to click, hold to drag, scroll) |
-| **AI & code** | AI quotas · Quota ring · AI sessions (Claude Code, Codex, Cursor, OpenCode, Antigravity, Pi) · GitHub |
+| **AI & code** | AI quotas · Quota ring · AI sessions (Claude Code, Codex, Cursor, OpenCode, Antigravity, Pi) · GitHub · **llama-swap** (a local LLM router's live state: loaded models, the requests in flight, today's tokens) |
 | **Personal** | **Agenda** (Google / Outlook / iCloud calendars) · Note (edit it from the phone) · Checklist (resets daily) · Counter · Breathe · Quote · Title · Phone battery · **Computers** (switch between paired computers) · **Photo frame** (a slideshow from a photo folder on the PC or an Immich album) |
 | **Web & data** | **Custom HTML** (your own widget, sandboxed, or a web page by its address on Android 7 or later) · **Home Assistant** (entities with their own name and icon, tap to switch) · **Home Assistant dashboard** (a dashboard as it is, see [HOME-ASSISTANT.md](HOME-ASSISTANT.md)) · **Pushed value** · **Notifications** (both fed by [webhooks](#webhooks)) · **News feeds** (RSS and Atom feeds with categories, OPML/bulk import, and category filtering; with its "Open articles on the PC" option, a tap opens the article on the PC) · Hacker News · Exchange rates (ECB) · Crypto prices · Image / webcam · **Camera** (a live picture from an IP camera over RTSP, pulled by ffmpeg on the PC) |
 
@@ -565,6 +565,14 @@ turn that writes nothing for half an hour settles as idle with no outcome, so a 
 "working" for hours nor claims a finish. The context window comes from Pi's cached model store, the file next to the
 sessions folder, so a built-in model that Pi has not cached shows the context size alone. Session titles reach the
 phone only when **Show Pi session titles on the phone** is also on; with it off no title is read at all.
+
+The llama-swap stats widget (opt-in: **Settings › General › llama-swap stats**, off by default) shows the local
+[llama-swap](https://github.com/mostlygeek/llama-swap) router: which models are currently loaded, the requests in
+flight (at most three as rows, more as `+N`, each with how long it has been running), requests and tokens today, the
+newest finished request's speed and the time of the last request. Requests and tokens today are asked for the local
+day's range, so they are exact totals. Point the **Server address** field at the router (e.g. `http://127.0.0.1:8080`);
+the agent polls it on a configurable interval (default: every minute), and only the counters, the version, the model
+names, and the id and elapsed time of each in-flight request reach the phone — no prompts, requests or responses.
 
 OpenCode's agent questions work the same way: when the agent asks "route A, B or C, or type your own", the phone
 shows the choices as buttons (and a text field when a custom answer is allowed) and sends the pick back. Questions

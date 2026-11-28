@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- llama-swap: a widget for the local [llama-swap](https://github.com/mostlygeek/llama-swap) router — which models are
+  currently loaded, the requests in flight (at most three rows, more as `+N`) with how long each has been running,
+  requests and tokens today, the newest finished request's speed and the time of the last request. Off by default;
+  point **Settings › General › llama-swap stats** at the server (e.g. `http://127.0.0.1:8080`) to switch it on. Only
+  the counters, the version, the loaded model names, and the id, model and elapsed time of each in-flight request are
+  sent to the phone — no prompts, requests, responses, request paths or response sizes. An address with a path keeps
+  the path, and clearing the address stops the stream while it is open.
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
