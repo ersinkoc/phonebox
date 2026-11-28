@@ -79,7 +79,7 @@ internal sealed class PortableDeckNative(
         }
         var player = ResolvePlayer(isStream) ?? throw new NotSupportedException("Install ffplay, mpv, or vlc for audio playback");
         var vol = Math.Clamp(volume, 0, 100);
-        var start = BuildStartInfo(player.Kind, player.Path, file, vol);
+        var start = BuildStartInfo(player.Kind, player.Path, file, vol, OutputSink(device));
 
         lock (_gate)
         {
@@ -155,7 +155,18 @@ internal sealed class PortableDeckNative(
         return null;
     }
 
-    internal static ProcessStartInfo BuildStartInfo(string kind, string executable, string target, int volume)
+    /// <summary>The Pulse sink to play on: the control's output when pactl lists it as an output right now, else null
+    /// (the default output, as before). Windows plays on the chosen device itself.</summary>
+    internal string? OutputSink(string? device) =>
+        // the listing decides, not the name: a Pulse sink may itself be called "default", while the synthetic system
+        // output of the same name exists only when pactl lists nothing (and then Read() is null)
+        pulse is not null && !string.IsNullOrWhiteSpace(device)
+        && pulse.Read()?.Devices.Any(d => d.Id == device && d.Direction == "output") == true ? device : null;
+
+    /// <summary>The player's command line. <paramref name="sink"/> (Linux) picks the output: PULSE_SINK for every
+    /// Pulse client (ffplay through SDL's Pulse driver, VLC's pulse output), and mpv's own --audio-device, which also
+    /// covers its PipeWire output.</summary>
+    internal static ProcessStartInfo BuildStartInfo(string kind, string executable, string target, int volume, string? sink = null)
     {
         var clamped = Math.Clamp(volume, 0, 100);
         var start = new ProcessStartInfo(executable)
@@ -170,10 +181,15 @@ internal sealed class PortableDeckNative(
         string[] args = kind switch
         {
             "ffplay" => ["-nodisp", "-autoexit", "-vn", "-sn", "-loglevel", "error", "-volume", clamped.ToString(CultureInfo.InvariantCulture), "-i", target],
-            "mpv" => ["--no-config", "--no-terminal", "--no-video", "--really-quiet", $"--volume={clamped.ToString(CultureInfo.InvariantCulture)}", "--", target],
+            "mpv" => ["--no-config", "--no-terminal", "--no-video", "--really-quiet", $"--volume={clamped.ToString(CultureInfo.InvariantCulture)}",
+                .. sink is null ? Array.Empty<string>() : ["--audio-device=pulse/" + sink], "--", target],
             "afplay" => ["-v", normalizedVolume, target],
-            _ => ["--intf", "dummy", "--no-one-instance", "--play-and-exit", "--no-video", "--quiet", $"--gain={normalizedVolume}", "--", target],
+            _ => ["--intf", "dummy", "--no-one-instance", "--play-and-exit", "--no-video", "--quiet", $"--gain={normalizedVolume}",
+                .. sink is null ? Array.Empty<string>() : ["--aout=pulse"], "--", target],
         };
+        if (sink is not null && kind != "afplay") start.Environment["PULSE_SINK"] = sink;
+        // SDL's PipeWire driver ignores PULSE_SINK, so ffplay with a chosen output uses SDL's Pulse driver
+        if (sink is not null && kind == "ffplay") start.Environment["SDL_AUDIODRIVER"] = "pulseaudio";
         foreach (var arg in args) start.ArgumentList.Add(arg);
         return start;
     }
