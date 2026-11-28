@@ -57,11 +57,14 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
 
     /// <summary>The current devices and application streams, or null when the sound server does not answer. A listing
     /// younger than <see cref="CacheMs"/> (patched by the writes since) is reused.</summary>
-    public DeckAudio? Read()
+    public DeckAudio? Read() => Read(fresh: false);
+
+    /// <summary>The listing; <paramref name="fresh"/> skips the kept one (the new listing is kept in its place).</summary>
+    public DeckAudio? Read(bool fresh)
     {
         lock (_cache)
         {
-            if (_last is { } last && _now() - last.At < CacheMs) return last.Audio;
+            if (!fresh && _last is { } last && _now() - last.At < CacheMs) return last.Audio;
             var audio = List();
             _last = (_now(), audio);
             if (audio is not null) _answered = true;

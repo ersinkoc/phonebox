@@ -518,6 +518,78 @@ public sealed class PulseDeckAudioTests
     }
 
     [Fact]
+    public void APulseDeviceNamedDefaultIsNotTheSystemOutput()
+    {
+        // PulseAudio does not reserve "default": a microphone with that name goes through pactl, not the master volume
+        var sources = Sources.Replace($"Name: {Mic}", "Name: default");
+        var calls = new List<string>();
+        var pulse = new PulseDeckAudio(args =>
+        {
+            var line = string.Join(' ', args);
+            switch (line)
+            {
+                case "list sinks": return Sinks;
+                case "list sources": return sources;
+                case "list sink-inputs": return Inputs;
+                case "info": return PipeWireInfo(Scarlett, "default");
+            }
+            calls.Add(line);
+            return "";
+        }, () => 0);
+        var toggles = 0;
+        var master = new AudioControl(() => new AudioSnapshot(30, false), _ => 30, () => { toggles++; return true; });
+        using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+        using var native = new PortableDeckNative(master, media, _ => null, pulse);
+
+        Assert.Contains(native.Audio().Devices, d => d is { Id: "default", Direction: "input" });
+        Assert.True(native.Device("default", null, true));
+        Assert.Equal(["set-source-mute default 1"], calls);
+        Assert.Equal(0, toggles);
+    }
+
+    [Fact]
+    public void DefaultIsTheSystemOutputUntilPactlAnswers()
+    {
+        var pulse = new PulseDeckAudio(_ => null, () => 0);
+        var set = new List<int>();
+        var master = new AudioControl(() => new AudioSnapshot(30, false), v => { set.Add(v); return v; }, () => true);
+        using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+        using var native = new PortableDeckNative(master, media, _ => null, pulse);
+        Assert.True(native.Device("default", 45, null));
+        Assert.Equal([45], set);
+    }
+
+    [Fact]
+    public void PushToTalkReadsTheMicrophoneFresh()
+    {
+        // another application mutes the microphone inside the kept listing's 300 ms: the restore target must see it
+        var micMuted = false;
+        var starts = 0;
+        var pulse = new PulseDeckAudio(args =>
+        {
+            starts++;
+            return string.Join(' ', args) switch
+            {
+                "list sinks" => Sinks, "list sink-inputs" => Inputs, "info" => PipeWireInfo(Scarlett, Mic),
+                "list sources" => micMuted
+                    ? System.Text.RegularExpressions.Regex.Replace(Sources, @"(Monitor of Sink: n/a\r?\n\tMute: )no", "$1yes") : Sources,
+                _ => "",
+            };
+        }, () => 0);
+        using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+        using var native = new PortableDeckNative(new AudioControl(), media, _ => null, pulse);
+        Assert.False(native.Audio().Devices.Single(d => d.Id == Mic).Muted);
+
+        micMuted = true;
+        Assert.False(native.Audio().Devices.Single(d => d.Id == Mic).Muted); // ordinary reads keep the listing
+        Assert.Equal(4, starts);
+        Assert.True(native.MicrophoneMuted(Mic));
+        Assert.Equal(8, starts);
+        Assert.True(native.Audio().Devices.Single(d => d.Id == Mic).Muted); // and the fresh listing is kept
+        Assert.Null(native.MicrophoneMuted(Scarlett)); // an output is not a microphone
+    }
+
+    [Fact]
     public void PortableNativeUsesPulseWhenAvailable()
     {
         var (pulse, calls) = Fake();

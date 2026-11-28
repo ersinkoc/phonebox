@@ -74,7 +74,7 @@ public sealed partial class ControlDeck : BackgroundService
         _native = native;
         _logos = logos ?? new RadioLogoCache();
         _native.SoundStopped += OnNativeSoundStopped;
-        _ptt = new(id => _native.Audio().Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted,
+        _ptt = new(id => _native.MicrophoneMuted(id),
             (id, muted) => { try { var ok = _native.Device(id, null, muted); Invalidate(); return ok; } catch { return false; } }, () => Environment.TickCount64);
     }
     private DeckAudio Audio()

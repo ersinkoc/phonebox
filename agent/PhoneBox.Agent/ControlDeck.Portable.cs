@@ -28,9 +28,16 @@ internal sealed class PortableDeckNative(
         : audio.Snapshot() is { } a ? new(true, null,
             [new("default", "System output", "output", true, a.Volume, a.Muted, 0, 1, a.CanControl)], [])
         : new(false, "Audio backend is unavailable", [], []);
+    /// <summary>Push-to-talk's restore target: read fresh, not from the listing pactl keeps for a moment, so a mute another
+    /// application made just before the hold is not lost.</summary>
+    public bool? MicrophoneMuted(string id) =>
+        (pulse?.Read(fresh: true) ?? Audio()).Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted;
     public bool Device(string id, int? volume, bool? muted, int? channel = null)
     {
-        if (pulse is not null && id != "default") return pulse.Device(id, volume, muted, channel);
+        // "default" is the synthetic system output only while pactl has not listed anything: a Pulse sink or source can
+        // itself be named "default", and once pactl has answered every id is one of its devices
+        if (pulse is not null && (id != "default" || pulse.Read() is not null || pulse.HasAnswered))
+            return pulse.Device(id, volume, muted, channel);
         if (id != "default" || channel is not null || audio.Current() is not { CanControl: true } current) return false;
         if (volume is { } v && !audio.SetVolume(v)) return false;
         return muted is not { } m || m == current.Muted || audio.ToggleMute();
