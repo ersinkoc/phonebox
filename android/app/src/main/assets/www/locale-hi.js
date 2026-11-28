@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "hi": {
     "strings": {
+      "s.llamaswap.title": "llama-swap आँकड़े",
+      "s.llamaswap.hint": "स्थानीय LLM रूटर को एक llama-swap विजेट पर दिखाएँ: कौन से मॉडल लोड हैं, अपनी अवधि के साथ चल रहे अनुरोध, आज के अनुरोध और टोकन, और जनरेशन गति (डिफ़ॉल्ट में बंद)। फ़ोन पर केवल काउंटर, मॉडल नाम और हर चलते अनुरोध का id और समय भेजे जाते हैं — कभी प्रॉम्प्ट, अनुरोध या उत्तर नहीं।",
+      "s.llamaswap.url": "सर्वर पता (खाली = बंद)",
+      "s.llamaswap.refresh": "हर (सेकंड) में रीफ़्रेश करें",
       "s.display.weekStart": "सप्ताह का पहला दिन",
       "s.display.weekStart.monday": "सोमवार",
       "s.display.weekStart.sunday": "रविवार",
@@ -1140,6 +1144,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "लोड हो रहा है…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "स्थानीय LLM रूटर: कौन से मॉडल लोड हैं, चल रहे अनुरोध, आज के अनुरोध और टोकन, और जनरेशन गति। सर्वर पता सेटिंग › सामान्य › llama-swap में सेट होता है।",
       "Only this category (its category in Settings; empty = all)": "केवल यह श्रेणी (सेटिंग्स में इसकी श्रेणी; खाली = सभी)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / कर्सर / OpenCode / Antigravity सत्र: कार्यरत, प्रतीक्षारत, निष्क्रिय.",
       "1": "1",
@@ -1883,6 +1889,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex प्लेलिस्ट (कोई चयनित नहीं = सभी)"
     },
     "panel": {
+      "In flight": "चालू",
+      "Today": "आज",
+      "Speed": "गति",
+      "Last request": "आख़री अनुरोध",
+      "Set the server address in Settings › General › llama-swap.": "सर्वर पता सेट करें: सेटिंग्स › सामान्य › llama-swap।",
+      "llama-swap is offline.": "llama-swap ऑफ़लाइन है।",
+      "{a} in / {b} out": "इनपुट {a} / आउटपुट {b}",
       "% load": "लोड%",
       "5-hour": "5 घंटे",
       "5-hour session": "5 घंटे का सत्र",

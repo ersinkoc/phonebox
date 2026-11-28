@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "cs": {
     "strings": {
+      "s.llamaswap.title": "Statistiky llama-swap",
+      "s.llamaswap.hint": "Zobrazí lokální LLM router na widgetu llama-swap: které modely jsou načteny, běžící požadavky s jejich dobou, požadavky a tokeny za dnešek, a rychlost generování (výchozí: vypnuto). Na telefon se posílají pouze počítadla, názvy modelů a identifikátor a délka každého běžícího požadavku — nikdy prompty, požadavky ani odpovědi.",
+      "s.llamaswap.url": "Adresa serveru (prázdné = vypnuto)",
+      "s.llamaswap.refresh": "Obnovovat každé (sekundy)",
       "s.display.weekStart": "První den v týdnu",
       "s.display.weekStart.monday": "Pondělí",
       "s.display.weekStart.sunday": "Neděle",
@@ -1140,6 +1144,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Načítá se…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Lokální LLM router: načtené modely, běžící požadavky, požadavky a tokeny za dnešek, a rychlost generování. Adresa serveru se nastavuje v Nastavení › Obecné › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Jen tato kategorie (její kategorie v Nastavení; prázdné = všechny)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Relace Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity: pracující, čekající, nečinný.",
       "1": "1",
@@ -1883,6 +1889,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlisty Plex (nic nezaškrtnuto = všechny)"
     },
     "panel": {
+      "In flight": "Probíhající",
+      "Today": "Dnes",
+      "Speed": "Rychlost",
+      "Last request": "Poslední požadavek",
+      "Set the server address in Settings › General › llama-swap.": "Nastavte adresu serveru v Nastavení › Obecné › llama-swap.",
+      "llama-swap is offline.": "llama-swap je offline.",
+      "{a} in / {b} out": "vstup {a} / výstup {b}",
       "% load": "% zatížení",
       "5-hour": "5hodinový",
       "5-hour session": "5 hodinový kurz",
