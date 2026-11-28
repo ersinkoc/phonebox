@@ -24,8 +24,11 @@ Last updated: 2026-11-26 (PhoneBox 0.9.30).
   `localconfig.vdf` for when each was last played, covers from Steam's library cache, and the game running now). On
   Windows it also reads what the Epic Games Launcher (its manifests), the EA app, GOG Galaxy, Ubisoft Connect and the
   Rockstar Games Launcher (their registry keys) leave on this computer, and looks through the folders at the top of each
-  drive for installed games; only the games' names and their programs' icons are kept, in memory. It sends the list and
-  the covers only to your phone and makes no network connection; nothing is sent to Steam or anyone else.
+  drive for installed games (once an hour, while the widget is on an enabled page). What it finds is kept in memory
+  only, never written to disk: each game's name, folder, program path and, for Epic and Ubisoft games, the launcher's
+  address that starts it. It sends only each game's name, id, source (which launcher, or a drive), the ids of your shortcuts that start a
+  program in its folder, and its program's icon to your phone and makes no
+  network connection; nothing is sent to Steam or anyone else.
 - **Last Claude quota reading**: `claude-quota.json` next to the log (usage percentages and reset times, no token),
   so the panel can show the last values after a restart, and `claude-quota-schedule.json` (when the next check may
   run, the last error message and, after Anthropic refused a token, a 16-character hash of that token, never the token

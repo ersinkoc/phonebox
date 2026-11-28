@@ -803,16 +803,20 @@
         games: DEMO_GAMES.map(([id, name, hoursAgo, state, progress]) => ({ id, name, lastPlayed: hoursAgo == null ? 0 : Math.floor(now() / 1000) - hoursAgo * 3600,
           sizeGb: 12.5, state, progress, cover: true })),
         // games found on this computer outside Steam (OtherGames)
-        others: mine.length ? DEMO_OTHERS.map(([id, name, source]) => ({ id, name, source, cover: false })) : [] });
+        others: mine.length ? DEMO_OTHERS.map(([id, name, source]) => ({ id, name, source, cover: false, shortcuts: [] })) : [] });
     }
-    if (path === '/api/steam/games') return json(DEMO_GAMES.map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
+    // the games a favorite can be picked from: Steam's and the ones found outside it, by name, like the agent
+    if (path === '/api/steam/games') return json([...DEMO_GAMES, ...DEMO_OTHERS].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
     if (path === '/api/steam/launch' && method === 'POST') {
       // the asking widget's own option, like the agent (PanelWidgets.Find): another widget's does not count
-      if (panelWidget(await config(), q.get('widget'), 'steam-library')?.options?.allowLaunch !== true) {
-        return json({ error: 'Turn on "Let the phone start games" in this Steam library widget\'s settings', code: 'off' }, 400);
-      }
+      const options = panelWidget(await config(), q.get('widget'), 'steam-library')?.options;
+      // a game found outside Steam has its own option, like the agent (OtherGames.LaunchAllowed)
       if (String(q.get('id')).startsWith('x:')) {
+        if (options?.allowLaunchOthers !== true) return json({ error: 'Turn on "Let the phone start the games found outside Steam" in this library widget\'s settings', code: 'off' }, 400);
         return DEMO_OTHERS.some((g) => g[0] === q.get('id')) ? json({ ok: true }) : json({ error: 'That game is not installed', code: 'notinstalled' }, 400);
+      }
+      if (options?.allowLaunch !== true) {
+        return json({ error: 'Turn on "Let the phone start games" in this Steam library widget\'s settings', code: 'off' }, 400);
       }
       return DEMO_GAMES.some((g) => g[0] === q.get('id')) ? json({ ok: true }) : json({ error: 'That game is not installed', code: 'notinstalled' }, 400);
     }

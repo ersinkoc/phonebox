@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
@@ -33,6 +35,12 @@ public class OtherGamesTests : IDisposable
     [InlineData(@"C:\G\__Installer\Touchup.exe")]
     [InlineData(@"C:\G\EasyAntiCheat_Setup.exe")]
     [InlineData(@"C:\G\gta4Browser.exe")]
+    [InlineData(@"C:\G\BEService_x64.exe")]
+    [InlineData(@"C:\G\BattlEye\BEService.exe")]
+    [InlineData(@"C:\G\bin\steamerrorreporter.exe")]
+    [InlineData(@"C:\G\unitycrashhandler64.exe")]
+    [InlineData(@"C:\G\CrashReportClient.exe")]
+    [InlineData(@"C:\G\crashsender1403.exe")]
     public void InstallersAndHelpersAreNeverTheGame(string file) => Assert.True(OtherGames.NotTheGame(file));
 
     [Fact]
@@ -153,7 +161,7 @@ public class OtherGamesTests : IDisposable
         MakeExe("EA/AC/EAAntiCheat.GameService.exe", 9000);
         MakeExe("EA/AC/EAAntiCheat.GameService.dll", 10);
         // a project folder keeping a copy of a game's files next to its own programs, and a source tree
-        MakeExe("Projects/tool/tool.exe", 9000);
+        MakeExe("Projects/mymod/mymod.exe", 9000);
         MakeExe("Projects/fifa-mod/backup/amd_ags_x64.dll", 10);
         MakeExe("Repo/.git/HEAD", 10);
         MakeExe("Repo/bin/app.exe", 9000);
@@ -175,11 +183,209 @@ public class OtherGamesTests : IDisposable
     }
 
     [Fact]
-    public void AGameStartedByOneOfYourOwnShortcutsIsShownOnceAsYours()
+    public void AFoundGameNamesTheShortcutsThatStartAProgramInItsFolder()
     {
         OtherGames.Found F(string name, string dir) => new(OtherGames.IdOf("t", dir), name, "drive", dir, dir + "/a.exe", null);
-        var games = new[] { F("GTA 4 LCPDFR", "D:/GTA 4 LCPDFR"), F("Red Dead Redemption 2", "D:/Games/Red Dead Redemption 2") };
-        var shown = OtherGames.Shown(games, [@"d:\gta 4 lcpdfr\GTA 4 LCPDFR\Grand Theft Auto IV\LaunchGTAIV.exe"]);
-        Assert.Equal(["Red Dead Redemption 2"], shown.Select(g => g.Name));
+        var programs = new[] { ("mod", @"d:\gta 4 lcpdfr\GTA 4 LCPDFR\Grand Theft Auto IV\LaunchGTAIV.exe"), ("notes", @"C:\Windows\notepad.exe") };
+        Assert.Equal(["mod"], OtherGames.ShortcutsIn(F("GTA 4 LCPDFR", "D:/GTA 4 LCPDFR"), programs));
+        Assert.Empty(OtherGames.ShortcutsIn(F("Red Dead Redemption 2", "D:/Games/Red Dead Redemption 2"), programs));
+    }
+
+    [Theory]
+    [InlineData(@"C:\G\BeachRacing.exe")]
+    [InlineData(@"C:\G\CrashBandicoot.exe")]
+    [InlineData(@"C:\G\Toolbox Wars.exe")]
+    [InlineData(@"C:\G\Speedrunners.exe")]
+    public void AGameWhoseNameHoldsAHelpersLettersIsStillTheGame(string file) => Assert.False(OtherGames.NotTheGame(file));
+
+    [Fact]
+    public void TokensSplitAtCapitalsDigitsAndMarks()
+    {
+        Assert.Equal(["unity", "crash", "handler", "64"], OtherGames.Tokens("UnityCrashHandler64"));
+        Assert.Equal(["ea", "anti", "cheat", "game", "service"], OtherGames.Tokens("EAAntiCheat.GameService"));
+        Assert.Equal(["gta", "4", "browser"], OtherGames.Tokens("gta4Browser"));
+        Assert.Equal(["beach", "racing"], OtherGames.Tokens("BeachRacing"));
+    }
+
+    [Fact]
+    public void ATableOfContentsAloneIsNotAGame()
+    {
+        var doc = Path.Combine(_dir, "Thesis");
+        MakeExe("Thesis/thesis.exe", 100);
+        MakeExe("Thesis/thesis.toc", 10);
+        Assert.False(OtherGames.LooksLikeAGame(doc, doc));
+        MakeExe("Thesis/data.sb", 10);
+        Assert.True(OtherGames.LooksLikeAGame(doc, doc));
+    }
+
+    [Fact]
+    public void AGameFoundOnADriveIsKnownByItsFolder()
+    {
+        MakeExe("Wild/Wild.exe", 9000);
+        MakeExe("Wild/bink2w64.dll", 10);
+        var game = Assert.Single(OtherGames.FromDrives([_dir]));
+        Assert.Equal(OtherGames.IdOf("drive", Path.Combine(_dir, "Wild")), game.Id);
+    }
+
+    [Fact]
+    public void ALinkedFolderIsNotFollowed()
+    {
+        MakeExe("Real/Wild/Wild.exe", 9000);
+        MakeExe("Real/Wild/bink2w64.dll", 10);
+        var drive = Path.Combine(_dir, "Drive");
+        Directory.CreateDirectory(drive);
+        try { Directory.CreateSymbolicLink(Path.Combine(drive, "Wild"), Path.Combine(_dir, "Real", "Wild")); }
+        catch (Exception) { return; } // no right to make links here (Windows without developer mode)
+        Assert.Empty(OtherGames.FromDrives([drive]));
+        Assert.Single(OtherGames.FromDrives([Path.Combine(_dir, "Real")]));
+    }
+
+    [Theory]
+    [InlineData("Windows.old")]
+    [InlineData("inetpub")]
+    public void SystemLeftoversAreNotLookedInto(string folder)
+    {
+        MakeExe(folder + "/Wild/Wild.exe", 9000);
+        MakeExe(folder + "/Wild/bink2w64.dll", 10);
+        MakeExe(folder + "/bink2w64.dll", 10);
+        Assert.Empty(OtherGames.FromDrives([_dir]));
+    }
+
+    // ------------------------------------------------------------------ starting a found game
+
+    private readonly List<ProcessStartInfo> _started = [];
+
+    private OtherGames Games(bool allowLaunch, bool allowOthers, params OtherGames.Found[] found)
+    {
+        var path = Path.Combine(_dir, "config-" + Guid.NewGuid().ToString("N") + ".json");
+        var options = $$"""{"allowLaunch":{{(allowLaunch ? "true" : "false")}},"allowLaunchOthers":{{(allowOthers ? "true" : "false")}}}""";
+        File.WriteAllText(path, """{"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{"id":"w","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":"""
+            + options + "}]}]}");
+        return new OtherGames(new ConfigStore(path), NullLogger<OtherGames>.Instance) { Launchers = () => found, Disks = () => [], StartProcess = _started.Add };
+    }
+
+    private OtherGames.Found FoundProgram(string name)
+    {
+        var exe = MakeExe(name + "/" + name + ".exe", 9000);
+        var dir = Path.GetDirectoryName(exe)!;
+        return new OtherGames.Found(OtherGames.IdOf("drive", dir), name, "drive", dir, exe, null);
+    }
+
+    [Fact]
+    public void AFoundGameStartsOnlyWithItsOwnOption()
+    {
+        var game = FoundProgram("Wild");
+        // "Let the phone start games" is Steam's: it does not start other programs
+        Assert.Equal("off", Games(allowLaunch: true, allowOthers: false, game).Launch(null, "p/w", game.Id)?.Code);
+        // another widget's option does not count
+        Assert.Equal("off", Games(allowLaunch: true, allowOthers: true, game).Launch(null, "p/other", game.Id)?.Code);
+        Assert.Empty(_started);
+    }
+
+    [Fact]
+    public void AnUnknownIdStartsNothing()
+    {
+        var games = Games(false, true, FoundProgram("Wild"));
+        Assert.Equal("notinstalled", games.Launch(null, "p/w", "x:0000000000000000")?.Code);
+        Assert.Equal("notinstalled", games.Launch(null, "p/w", @"C:\Windows\System32\cmd.exe")?.Code);
+        Assert.Empty(_started);
+    }
+
+    [Fact]
+    public void AFoundGamesProgramStartsDirectlyInItsFolderWithNoShell()
+    {
+        var game = FoundProgram("Wild");
+        Assert.Null(Games(false, true, game).Launch(null, "p/w", game.Id));
+        var psi = Assert.Single(_started);
+        Assert.Equal(game.Exe, psi.FileName);
+        Assert.False(psi.UseShellExecute);
+        Assert.Equal(game.Dir, psi.WorkingDirectory);
+        Assert.Empty(psi.ArgumentList);
+        Assert.Equal("", psi.Arguments);
+    }
+
+    [Fact]
+    public void AFoundGameWithALauncherAddressStartsThroughItsLauncher()
+    {
+        var dir = Path.Combine(_dir, "Epic");
+        Directory.CreateDirectory(dir);
+        var game = new OtherGames.Found(OtherGames.IdOf("epic", dir), "Epic one", "epic", dir, null, "com.epicgames.launcher://apps/a%3Ab%3Ac?action=launch&silent=true");
+        Assert.Null(Games(false, true, game).Launch(null, "p/w", game.Id));
+        var psi = Assert.Single(_started);
+        Assert.Equal(game.Url, psi.FileName);
+        Assert.True(psi.UseShellExecute);
+    }
+
+    [Fact]
+    public void AProgramThatIsGoneOrNotAProgramIsNotStarted()
+    {
+        var game = FoundProgram("Wild");
+        File.Delete(game.Exe!);
+        Assert.Equal("notinstalled", Games(false, true, game).Launch(null, "p/w", game.Id)?.Code);
+        var script = MakeExe("Bat/run.bat", 10);
+        var bat = game with { Id = OtherGames.IdOf("drive", Path.GetDirectoryName(script)!), Dir = Path.GetDirectoryName(script)!, Exe = script };
+        Assert.Equal("notinstalled", Games(false, true, bat).Launch(null, "p/w", bat.Id)?.Code);
+        Assert.Empty(_started);
+    }
+
+    [Fact]
+    public void TurningTheOptionOffDuringTheFirstLookRefusesTheLaunch()
+    {
+        var game = FoundProgram("Wild");
+        var path = Path.Combine(_dir, "config-off.json");
+        static string Config(bool on) => """{"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{"id":"w","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":{"allowLaunchOthers":"""
+            + (on ? "true" : "false") + "}}]}]}";
+        File.WriteAllText(path, Config(true));
+        var store = new ConfigStore(path);
+        var games = new OtherGames(store, NullLogger<OtherGames>.Instance)
+        {
+            // the option is turned off while the drives are read
+            Launchers = () => { Assert.Null(store.Save(Config(false))); return [game]; }, Disks = () => [], StartProcess = _started.Add,
+        };
+        Assert.Equal("off", games.Launch(null, "p/w", game.Id)?.Code);
+        Assert.Empty(_started);
+    }
+
+    [Fact]
+    public void ALaunchersProgramOutsideTheGamesFolderIsNotTaken()
+    {
+        var dir = Path.Combine(_dir, "GOG", "Wild");
+        MakeExe("GOG/Wild/Wild.exe", 9000);
+        var outside = MakeExe("Elsewhere/cmd.exe", 9000);
+        var key = new OtherGames.Key("1", k => k switch { "path" => dir, "gameName" => "Wild", "exe" => outside, _ => null });
+        Assert.Equal(Path.Combine(dir, "Wild.exe"), Assert.Single(OtherGames.FromKeys("gog", [key])).Exe);
+        var climbing = new OtherGames.Key("2", k => k switch { "path" => dir, "gameName" => "Wild", "exe" => Path.Combine(dir, "..", "..", "Elsewhere", "cmd.exe"), _ => null });
+        Assert.Equal(Path.Combine(dir, "Wild.exe"), Assert.Single(OtherGames.FromKeys("gog", [climbing])).Exe);
+
+        var manifests = Path.Combine(_dir, "Manifests");
+        Directory.CreateDirectory(manifests);
+        File.WriteAllText(Path.Combine(manifests, "a.item"), System.Text.Json.JsonSerializer.Serialize(new
+        {
+            DisplayName = "Wild", InstallLocation = dir, LaunchExecutable = "../../Elsewhere/cmd.exe", AppCategories = new[] { "games" },
+        }));
+        Assert.Empty(OtherGames.FromEpic(manifests)); // no program inside, and no launcher address to start it by
+    }
+
+    [Fact]
+    public void OnlyTheFirstRequestWaitsForTheFirstLook()
+    {
+        using var gate = new ManualResetEventSlim();
+        var game = FoundProgram("Wild");
+        var path = Path.Combine(_dir, "config-slow.json");
+        File.WriteAllText(path, """{"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{"id":"w","type":"steam-library","x":0,"y":0,"w":6,"h":4}]}]}""");
+        var games = new OtherGames(new ConfigStore(path), NullLogger<OtherGames>.Instance)
+        {
+            Launchers = () => { gate.Wait(TimeSpan.FromSeconds(20)); return [game]; }, Disks = () => [], FirstWaitMs = 300,
+        };
+        var clock = Stopwatch.StartNew();
+        Assert.Empty(games.List()); // waited up to 300 ms, then served what there is
+        Assert.InRange(clock.ElapsedMilliseconds, 250, 5000);
+        clock.Restart();
+        Assert.Empty(games.List()); // the look is still running: no second wait
+        Assert.InRange(clock.ElapsedMilliseconds, 0, 1000); // well under a wait, even on a busy runner
+        gate.Set();
+        var until = Stopwatch.StartNew();
+        while (games.List().Count == 0 && until.ElapsedMilliseconds < 10_000) Thread.Sleep(20);
+        Assert.Equal(["Wild"], games.List().Select(g => g.Name));
     }
 }

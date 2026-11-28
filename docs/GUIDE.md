@@ -87,7 +87,7 @@ screen on (unless [power standby](#power-standby) is on).
 |---|---|
 | **Time** | Clock (with status line and weather) · Analog clock (any time zone) · **Word clock** · World clocks · Calendar · **Next up** · Time progress (day / week / month / year) · Countdown · Pomodoro · **Focus history** · Quick timer · Stopwatch |
 | **Weather & sky** | Weather · Forecast (hourly / 7 days) · Sun & moon (daylight left, UV, moon phase) · **Moon** · Air quality (European AQI, PM2.5, PM10, O₃, NO₂) |
-| **Computer** | **Rules** (which hold, pause) · **Battery care** · On air (microphone / camera / OBS) · OBS Studio (live, recording, scenes) · **Dictation** (speak on the phone, typed on the PC; the app asks for the microphone on first use) · **App console** (Windows: keys and a dial for the app in front, set per app in Settings › General; use the focused app's process name from Task Manager's Details tab; packaged Store apps can all show up as `ApplicationFrameHost` and terminal tabs as `WindowsTerminal`, so a profile for those names covers all of them) · **Steam library** (installed games with covers, most recently played first; starting a game only when the widget allows it) · Device batteries (headphones, mice, keyboards) · Docker / Podman (containers, start / stop) · Metric tile · Gauge · Chart · GPU details · Memory & disks · Top processes · Processes · Now playing · Radio · Volume · **Spectrum bars** (Windows: a live spectrum of what the PC is playing, like the classic LED bar visualizers) · Shortcut grid · Big button (optionally filled with the shortcut's uploaded picture) · **Command** (PowerShell / bash / zsh output, refreshed every N seconds) · **Trackpad** (control PC cursor, tap to click, hold to drag, scroll) |
+| **Computer** | **Rules** (which hold, pause) · **Battery care** · On air (microphone / camera / OBS) · OBS Studio (live, recording, scenes) · **Dictation** (speak on the phone, typed on the PC; the app asks for the microphone on first use) · **App console** (Windows: keys and a dial for the app in front, set per app in Settings › General; use the focused app's process name from Task Manager's Details tab; packaged Store apps can all show up as `ApplicationFrameHost` and terminal tabs as `WindowsTerminal`, so a profile for those names covers all of them) · **Game library** (installed games with covers: Steam's, and on Windows the ones found outside Steam; starting a game only when the widget allows it) · Device batteries (headphones, mice, keyboards) · Docker / Podman (containers, start / stop) · Metric tile · Gauge · Chart · GPU details · Memory & disks · Top processes · Processes · Now playing · Radio · Volume · **Spectrum bars** (Windows: a live spectrum of what the PC is playing, like the classic LED bar visualizers) · Shortcut grid · Big button (optionally filled with the shortcut's uploaded picture) · **Command** (PowerShell / bash / zsh output, refreshed every N seconds) · **Trackpad** (control PC cursor, tap to click, hold to drag, scroll) |
 | **AI & code** | AI quotas · Quota ring · AI sessions (Claude Code, Codex, Cursor, OpenCode, Antigravity, Pi) · GitHub |
 | **Personal** | **Agenda** (Google / Outlook / iCloud calendars) · Note (edit it from the phone) · Checklist (resets daily) · Counter · Breathe · Quote · Title · Phone battery · **Computers** (switch between paired computers) · **Photo frame** (a slideshow from a photo folder on the PC or an Immich album) |
 | **Web & data** | **Custom HTML** (your own widget, sandboxed, or a web page by its address on Android 7 or later) · **Home Assistant** (entities with their own name and icon, tap to switch) · **Home Assistant dashboard** (a dashboard as it is, see [HOME-ASSISTANT.md](HOME-ASSISTANT.md)) · **Pushed value** · **Notifications** (both fed by [webhooks](#webhooks)) · **News feeds** (RSS and Atom feeds with categories, OPML/bulk import, and category filtering; with its "Open articles on the PC" option, a tap opens the article on the PC) · Hacker News · Exchange rates (ECB) · Crypto prices · Image / webcam · **Camera** (a live picture from an IP camera over RTSP, pulled by ffmpeg on the PC) |
@@ -139,9 +139,10 @@ Games Launcher (its manifests), the EA app, GOG Galaxy, Ubisoft Connect and the 
 installed, and the games on the drives that no launcher lists (a portable copy, a mod, an old disc install): the folders at
 the top of each drive, and inside folders such as Games or Program Files, that hold a program and something only games carry
 (a game store's or engine's library such as steam_api.dll or UnityPlayer.dll, Bink videos, a game's archives, a mod loader).
-The drives are looked through in the background every ten minutes. They come after the Steam games, with their program's
-icon; the program is the one named most like the folder, never an installer, uninstaller or crash reporter. Nothing is sent
-anywhere. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
+The drives are looked through in the background once an hour (links, junctions and system folders are not followed, and
+each drive and game folder is looked through only so far). They come after the Steam games, with their program's icon; the
+program is the one named most like the folder, and not one whose name says it is an installer, uninstaller, anti-cheat or crash reporter. A found game that one of
+the widget's own games (in **Other games**) already starts is shown once, as yours. Nothing is sent to external services. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
 Steam's own files, so the widget needs no Steam API key, no sign-in and no internet, and nothing is sent to Steam:
 `libraryfolders.vdf` and the `appmanifest_*.acf` file of each game in every library folder, `localconfig.vdf` for when a
 game was last played, covers from Steam's `appcache/librarycache`, and Steam's `RunningAppID` (the registry on Windows,
@@ -149,12 +150,19 @@ game was last played, covers from Steam's `appcache/librarycache`, and Steam's `
 however many phones ask, and parses a file again only after it changed; each file has a size limit. Steam tools and
 runtimes (Proton, Steamworks Common Redistributables…) are left out.
 
-Starting a game from the phone is off by default: turn on **Let the phone start games** in the widget's options. Each
-Steam library widget decides for itself: the agent checks the option of the widget a tap comes from. With
+Starting a game from the phone is off by default: turn on **Let the phone start games** in the widget's options (it also
+lets a tap run a shortcut ticked in **Other games**). Each Game library widget decides for itself: the agent checks the option of the widget a tap comes from. With
 **Ask before starting** (on by default) the first tap marks the game and a second tap within four seconds starts it.
 The phone sends only the game's app id; the agent starts it only if that id is installed right then, by handing
 Steam's own `steam://rungameid/<id>` link to the system (Windows' URL handler, `xdg-open` on Linux, `open` on macOS).
 Steam may still ask on the computer before a game starts, for example to install an update first.
+
+The games found outside Steam start only with their own option, **Let the phone start the games found outside Steam**
+(off by default, apart from **Let the phone start games**, since it starts programs other than Steam), and with
+**Ask before starting** like Steam's. The phone sends only the game's id; the agent starts it only if it is one of the
+games it found on this computer: through its launcher's own address (Epic's `com.epicgames.launcher://`, Ubisoft
+Connect's `uplay://`), or by starting its program directly, with no arguments and no shell, in its folder, only if the
+program is still an `.exe` there.
 
 **Smart Stack** combines up to 12 widgets in one slot. Add it from the Layout category, then drag widgets into it or
 use its picker. Reorder cards, open their settings, or disable individual cards. Tap the dots or swipe vertically to

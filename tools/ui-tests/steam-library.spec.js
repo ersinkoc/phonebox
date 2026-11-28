@@ -188,9 +188,11 @@ test('the settings editor picks favorite games from the installed list', async (
   await page.locator('#canvas .wb').first().click(); // selects the widget and opens its settings
   const field = page.locator('#inspector .field').filter({ hasText: /^Favorite games \(/ });
   const boxes = field.locator('label.check');
-  await expect(boxes).toHaveCount(11); // the 10 installed games by name, then the saved one that is gone
+  // the 12 installed games by name (10 Steam ones, 2 found outside Steam), then the saved one that is gone
+  await expect(boxes).toHaveCount(13);
   await expect(boxes.nth(0)).toHaveText('Deep Circuit');
-  await expect(boxes.nth(10)).toContainText('555');
+  await expect(boxes.nth(12)).toContainText('555');
+  await expect(boxes.nth(1)).toHaveText('Ember Road');
   await expect(boxes.filter({ hasText: 'Deep Circuit' }).locator('input')).toBeChecked();
   await boxes.filter({ hasText: 'Moss Garden' }).locator('input').check();
   await boxes.filter({ hasText: 'Deep Circuit' }).locator('input').uncheck();
@@ -258,6 +260,7 @@ test('pickGames puts your own games between the favorites and the rest', async (
 
 test('games found on this computer outside Steam come after the Steam ones and start by their id', async ({ page }) => {
   const errors = watch(page);
+  // "Let the phone start games" starts Steam's games, not the ones found outside Steam: they have their own option
   await open(page, '/panel/', { limit: 60, allowLaunch: true, confirm: false });
   const tiles = page.locator('.w-steam-library .sl-tile');
   await expect(tiles).toHaveCount(12);
@@ -265,11 +268,50 @@ test('games found on this computer outside Steam come after the Steam ones and s
   await expect(tiles.nth(11)).toHaveClass(/own/);
   await expect(page.locator('.w-steam-library .sl-count')).toHaveText(' 12');
   await tiles.nth(11).click();
+  await expect(toast(page, 'Let the phone start the games found outside Steam')).toBeVisible();
+  // and the agent (the demo here) refuses it too, for the asking widget
+  const refused = await page.evaluate(async () => (await fetch('/api/steam/launch?id=x:1b2c3d4e5f607182&widget=test%2Flib', { method: 'POST' })).status);
+  expect(refused).toBe(400);
+
+  await open(page, '/panel/', { limit: 60, allowLaunchOthers: true, confirm: false });
+  await tiles.nth(11).click();
   await expect(toast(page, 'Starting Old Fort')).toBeVisible();
+  await tiles.nth(0).click(); // a Steam game still needs "Let the phone start games"
+  await expect(toast(page, 'Let the phone start games')).toBeVisible();
 
   // a found game with the name of one of your own games is shown once, as yours
   await open(page, '/panel/', { limit: 60, games: ['fort'] }, { shortcuts: [{ id: 'fort', label: 'old fort', icon: '🎮' }] });
   await expect(tiles).toHaveCount(12);
   await expect(tiles.locator('.sl-name').filter({ hasText: /old fort/i })).toHaveCount(1);
   expect(errors).toEqual([]);
+});
+
+test('a found game is left out only by the shortcuts of the widget that shows it as its own', async ({ page }) => {
+  await page.goto('/panel/');
+  const r = await page.evaluate(async () => {
+    const { otherGames, ownGames } = await import('/panel/widgets/steam-library.js');
+    const shortcuts = [{ id: 'mod', label: 'LCPDFR' }, { id: 'other', label: 'Notes' }];
+    const found = [{ id: 'x:1', name: 'GTA IV', source: 'drive', shortcuts: ['mod'] }, { id: 'x:2', name: 'Old Fort', source: 'drive', shortcuts: [] }];
+    return {
+      mine: otherGames(found, ownGames(['mod'], shortcuts)).map((g) => g.id),
+      another: otherGames(found, ownGames(['other'], shortcuts)).map((g) => g.id),
+      none: otherGames(found, []).map((g) => g.id),
+    };
+  });
+  expect(r.mine).toEqual(['x:2']);
+  expect(r.another).toEqual(['x:1', 'x:2']);
+  expect(r.none).toEqual(['x:1', 'x:2']);
+});
+
+test('the favorites can be picked from the games found outside Steam, by name', async ({ page }) => {
+  await page.goto('/panel/');
+  const names = await page.evaluate(async () => (await (await fetch('/api/steam/games')).json()).map((g) => g.name));
+  expect(names).toContain('Ember Road');
+  expect(names).toContain('Old Fort');
+  expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+});
+
+test('with only favorites shown and none of them installed, the widget says so, found games counted', async ({ page }) => {
+  await open(page, '/panel/', { favorites: ['gone'], onlyFavorites: true });
+  await expect(page.locator('.w-steam-library .empty')).toHaveText(/favorite/i);
 });

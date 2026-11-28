@@ -1918,7 +1918,7 @@ body.controls-top .ap-foot { order: -1; margin-bottom: 4px; }
   grid-template-columns: repeat(auto-fill, minmax(clamp(62px, 22cqh, 104px), 1fr)); scrollbar-width: none; }
 .sl-grid::-webkit-scrollbar { display: none; }
 .sl-tile { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 0; text-align: left; border-radius: 9px; transition: transform .12s; }
-.sl-can-launch .sl-tile:active { transform: scale(.96); }
+.w-steam-library .sl-tile.can:active { transform: scale(.96); }
 .sl-tile.busy { opacity: .55; }
 .sl-cover { position: relative; width: 100%; aspect-ratio: 2 / 3; border-radius: 8px; overflow: hidden; display: grid; place-items: center;
   background: linear-gradient(160deg, #1e3a5f, #0f172a); border: 1px solid var(--line); }

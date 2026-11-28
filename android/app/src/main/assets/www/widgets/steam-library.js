@@ -70,13 +70,16 @@ export function ownGames(ids, shortcuts) {
 }
 
 /**
- * The games the agent found outside Steam, as tiles: their program's icon is the cover. One with the name of one of your
- * own games (a shortcut ticked in "Other games") is left out, so a game is not shown twice.
+ * The games the agent found outside Steam, as tiles: their program's icon is the cover. One that is already one of this
+ * widget's own games (a shortcut ticked in its "Other games" that starts a program in the game's folder, or has its
+ * name) is left out, so a game is not shown twice; another widget's shortcuts do not count.
  */
 export function otherGames(found, own = []) {
   const names = new Set(own.map((g) => g.name.trim().toLowerCase()));
+  const mine = new Set(own.map((g) => g.shortcut));
   return (Array.isArray(found) ? found : []).filter((g) => g && typeof g.id === 'string' && g.id.startsWith('x:')
-    && !names.has(String(g.name || '').trim().toLowerCase()))
+    && !names.has(String(g.name || '').trim().toLowerCase())
+    && !(Array.isArray(g.shortcuts) ? g.shortcuts : []).some((s) => mine.has(String(s))))
     .map((g) => ({ id: g.id, name: String(g.name || ''), source: String(g.source || ''), state: 'ready', progress: null, cover: g.cover === true }));
 }
 
@@ -88,7 +91,9 @@ export function otherGames(found, own = []) {
 W['steam-library'] = {
   needs: ['tick'],
   create(box, { o, page, w }) {
-    const canLaunch = o.allowLaunch === true; // this widget's own option; the agent checks it again for this widget
+    // this widget's own options, checked again by the agent for this widget: Steam's games and your own shortcuts with
+    // "Let the phone start games", the games found outside Steam with their own option
+    const canLaunch = (g) => (g.id.startsWith('x:') ? o.allowLaunchOthers === true : o.allowLaunch === true);
     const wq = 'widget=' + encodeURIComponent(`${page.id}/${w.id}`);
     const confirm = o.confirm !== false;
     const limit = Math.max(1, Math.min(60, Math.round(+o.limit || 8)));
@@ -119,6 +124,7 @@ W['steam-library'] = {
         const r = await fetch(`${API}/steam/launch?id=${encodeURIComponent(g.id)}&${wq}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
         const j = await r.json().catch(() => ({}));
         if (r.ok) toast(t('w.steamlib.starting', { game: g.name }), 'ok');
+        else if (j.code === 'off' && g.id.startsWith('x:')) toast(t('w.steamlib.launchOthersOff'), 'err');
         else toast((LAUNCH_ERRORS[j.code] || (() => t('w.steamlib.startFailed', { game: g.name })))(g.name), 'err');
       } catch (_) { toast(t('w.unavailable'), 'err'); }
       busy = null; render(true);
@@ -127,7 +133,7 @@ W['steam-library'] = {
       const running = data?.running === g.id;
       const isArmed = armed === g.id;
       const status = isArmed ? t('w.steamlib.tapAgain') : gameStatus(g, running);
-      const b = h('button', 'sl-tile' + (running ? ' running' : '') + (favorites.has(g.id) ? ' fav' : '') + (g.shortcut || g.source ? ' own' : '') + (isArmed ? ' armed' : '') + (busy === g.id ? ' busy' : '')
+      const b = h('button', 'sl-tile' + (canLaunch(g) ? ' can' : '') + (running ? ' running' : '') + (favorites.has(g.id) ? ' fav' : '') + (g.shortcut || g.source ? ' own' : '') + (isArmed ? ' armed' : '') + (busy === g.id ? ' busy' : '')
         + (g.state !== 'ready' ? ' sl-' + g.state : ''), gameCover(g),
         h('span', 'sl-name', g.name), status ? h('span', 'sl-status', status) : null);
       b.type = 'button';
@@ -140,7 +146,7 @@ W['steam-library'] = {
         b.append(bar);
       }
       b.addEventListener('click', () => {
-        if (!canLaunch) { toast(t('w.steamlib.launchOff')); return; }
+        if (!canLaunch(g)) { toast(t(g.id.startsWith('x:') ? 'w.steamlib.launchOthersOff' : 'w.steamlib.launchOff')); return; }
         if (running) { toast(t('w.steamlib.alreadyRunning', { game: g.name })); return; }
         if (!confirm || armed === g.id) { clearTimeout(armTimer); armed = null; launch(g); return; }
         haptic();
@@ -163,14 +169,13 @@ W['steam-library'] = {
       lastKey = key;
       const n = steam.length + own.length;
       count.textContent = n ? ' ' + n : ''; // how many are installed
-      box.classList.toggle('sl-can-launch', canLaunch);
       if (!own.length && !others.length) {
         if (!data) { message(t(failed ? 'w.unavailable' : 'w.loading')); return; }
         if (!data.enabled) { message(t('w.steamlib.off')); return; }
         if (!data.found) { message(t('w.steamlib.notFound')); return; }
         if (data.error && !games.length) { message(t('w.steamlib.unreadable')); return; }
       }
-      if (!games.length) { message(t(data?.games?.length ? 'w.steamlib.noFavorites' : 'w.steamlib.empty')); return; }
+      if (!games.length) { message(t(steam.length ? 'w.steamlib.noFavorites' : 'w.steamlib.empty')); return; }
       // a tile that had the focus (a keyboard or switch user) keeps it in its new copy, so a second Enter confirms
       const focused = grid.contains(document.activeElement) ? document.activeElement.dataset?.id : null;
       grid.replaceChildren(...games.map(tile));
