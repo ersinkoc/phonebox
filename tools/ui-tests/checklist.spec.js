@@ -45,8 +45,13 @@ test('a list of done texts saved before the fix still means the same rows', asyn
   await page.goto('/panel/');
   const rows = page.locator('.cl-i');
   await expect(rows).toHaveCount(3);
-  await expect(page.locator('.w-sub')).toHaveText('2 / 3');
-  await expect(rows.nth(0)).toHaveClass(/done/); // the first Stretch was done
-  await expect(rows.nth(1)).not.toHaveClass(/done/); // the second was not
+  // the old code showed both Stretch rows ticked, so both stay ticked; from then on each row toggles on its own
+  await expect(page.locator('.w-sub')).toHaveText('3 / 3');
+  await expect(rows.nth(0)).toHaveClass(/done/);
+  await expect(rows.nth(1)).toHaveClass(/done/);
   await expect(rows.nth(2)).toHaveClass(/done/);
+  await rows.nth(1).click();
+  await expect(page.locator('.w-sub')).toHaveText('2 / 3');
+  await expect(rows.nth(0)).toHaveClass(/done/);
+  await expect(rows.nth(1)).not.toHaveClass(/done/);
 });

@@ -335,10 +335,11 @@ W.checklist = {
     const day = () => new Date().toDateString();
     let st = store.get(key, null) || { day: day(), done: [] };
     // Done used to be the item texts, so two rows with the same text toggled together. It is now the row
-    // indexes, so each row is its own task; a stored list of texts still means the same rows.
+    // indexes, so each row is its own task. A stored list of texts keeps showing what it showed before: every
+    // row whose text is in it stays ticked (both "Stretch" rows, when "Stretch" was ticked).
     if (st.done.some((x) => typeof x === 'string')) {
-      const used = new Set();
-      st.done = st.done.map((x) => { const i = items.findIndex((it, j) => it === x && !used.has(j)); if (i >= 0) used.add(i); return i; }).filter((i) => i >= 0);
+      const texts = new Set(st.done.filter((x) => typeof x === 'string'));
+      st.done = items.map((it, i) => (texts.has(it) ? i : -1)).filter((i) => i >= 0);
     }
     const fresh = () => { if (o.daily !== false && st.day !== day()) st = { day: day(), done: [] }; };
     const head = h('span', 'w-sub');
