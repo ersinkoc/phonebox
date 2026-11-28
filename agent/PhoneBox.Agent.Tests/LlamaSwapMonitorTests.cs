@@ -93,8 +93,7 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         // a port that is free: TestPorts allocates and releases one, and the connection is refused
         var port = TestPorts.Listen();
         var url = port.Prefixes.Single().TrimEnd('/');
-        port.Stop();
-        port.Close();
+        ClosePort(port);
         var mon = Monitor(url);
         await mon.RefreshAsync();
         var s = mon.Snapshot()!;
@@ -256,8 +255,7 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         // a port that is free: TestPorts allocates and releases one, and the connection is refused
         var port = TestPorts.Listen();
         var url = port.Prefixes.Single().TrimEnd('/');
-        port.Stop();
-        port.Close();
+        ClosePort(port);
         var mon = Monitor(url);
         mon.ApplyInflightEvent("""{"operation":"upsert","request":{"id":"7","model":"M7","req_path":"/v1/chat/completions"}}""");
         await mon.RefreshAsync();
@@ -356,8 +354,7 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = url, HeaderWait = TimeSpan.FromMilliseconds(300) };
         var sw = System.Diagnostics.Stopwatch.StartNew();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => mon.StreamOnceAsync(new Uri(url)));
-        port.Stop();
-        port.Close();
+        ClosePort(port);
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), "the deadline is far sooner than the stream lifetime");
     }
 
@@ -375,8 +372,7 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         var cancelled = false;
         try { await read.WaitAsync(TimeSpan.FromSeconds(5)); }
         catch (OperationCanceledException) { cancelled = true; }
-        port.Stop();
-        port.Close();
+        ClosePort(port);
         Assert.True(cancelled, "the wait for the headers was not cancelled by the address change");
     }
 
@@ -488,6 +484,13 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         var mon = Monitor(ls.Url); // ends in /llama/, like Normalize keeps it
         await mon.RefreshAsync();
         Assert.True(mon.Snapshot()!.Connected); // api/version resolved under the path, not at the host root
+    }
+
+    /// <summary>Closes a test listener without letting the platform's cleanup race fail the test itself.</summary>
+    private static void ClosePort(HttpListener port)
+    {
+        try { port.Stop(); } catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException) { }
+        try { port.Close(); } catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException) { }
     }
 
     private static async Task WaitUntil(Func<bool> condition, int ms = 10_000)
