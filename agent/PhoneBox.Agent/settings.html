@@ -1394,31 +1394,54 @@ try { editorScreenId = localStorage.getItem('pb-editor-screen') || 'phone'; } ca
 if (!EDITOR_SCREENS[editorScreenId]) editorScreenId = 'phone';
 // Without Settings › Display › More rows on a tablet, every screen shows the phone page, so the editor does too.
 const tabletRowsOn = () => cfg?.display?.tabletRows === true;
-const editorScreen = () => EDITOR_SCREENS[editorScreenId === 'upright' || tabletRowsOn() ? editorScreenId : 'phone'];
-const uprightOn = () => editorScreen().upright === true;
+const baseScreen = () => EDITOR_SCREENS[editorScreenId === 'upright' || tabletRowsOn() ? editorScreenId : 'phone'];
+// Upright on a page without a layout of its own, the canvas shows the panel's automatic packing at its own size:
+// as many columns as the panel uses upright (6, or 12 on a tablet with More rows) and as many rows as it fills.
+const editorScreen = () => {
+  const s = baseScreen(), p = s.upright ? cfg?.pages?.[selPage] : null;
+  if (!p || p.upright === true) return s;
+  const a = autoUpright(p);
+  return { ...s, cols: a.cols, rows: a.rows };
+};
+const uprightOn = () => baseScreen().upright === true;
 // The cells a widget takes on the screen being edited: its own x/y/w/h, or its place on the page's upright layout
 // (null when it is left off that layout).
 const place = (w) => (uprightOn() ? w.upright || null : w);
 
-// Upright without a layout of its own, the panel packs the landscape widgets into 6 columns in reading order
-// (grid.js portraitLayout, wide widgets keeping their area). The editor shows that packing, and starts a page's own layout from it.
-function autoUpright(page) {
-  const cols = EDITOR_SCREENS.upright.cols, rows = EDITOR_SCREENS.upright.rows;
+// The panel's upright packing, kept the same as grid.js portraitSize and portraitLayout (upright.spec.js compares
+// them): the landscape widgets in reading order, a widget wider than the columns as narrow as them and as much taller
+// as keeps its area, and as many rows as that takes (at least 12).
+function packUpright(widgets, cols) {
   const occ = [], pos = new Map();
   const free = (x, y, w, h) => { for (let r = y; r < y + h; r++) for (let c = x; c < x + w; c++) if (occ[r]?.[c]) return false; return true; };
   const take = (x, y, w, h) => { for (let r = y; r < y + h; r++) { occ[r] = occ[r] || []; for (let c = x; c < x + w; c++) occ[r][c] = true; } };
-  const shown = (page.widgets || []).filter((w) => w.x < (catalog.cols || 12) && w.y < (catalog.rows || 6));
-  for (const w of [...shown].sort((a, b) => a.y - b.y || a.x - b.x)) {
-    // like grid.js portraitSize: a widget wider than the columns keeps its area, narrower and taller
-    const ww = Math.min(cols, w.w), hh = Math.min(rows, w.w > cols ? Math.ceil((w.w * w.h) / cols) : w.h);
-    search: for (let y = 0; y + hh <= rows; y++) for (let x = 0; x + ww <= cols; x++) if (free(x, y, ww, hh)) { take(x, y, ww, hh); pos.set(w, { x, y, w: ww, h: hh }); break search; }
+  for (const w of [...widgets].sort((a, b) => a.y - b.y || a.x - b.x)) {
+    const ww0 = Math.max(1, w.w ?? 1), hh0 = Math.max(1, w.h ?? 1);
+    const ww = ww0 <= cols ? ww0 : cols, hh = ww0 <= cols ? hh0 : Math.ceil((ww0 * hh0) / cols);
+    search: for (let y = 0; y < 200; y++) for (let x = 0; x + ww <= cols; x++) if (free(x, y, ww, hh)) { take(x, y, ww, hh); pos.set(w, { x, y, w: ww, h: hh }); break search; }
   }
+  return { pos, rows: Math.max(12, occ.length) };
+}
+// The widgets a phone's landscape grid shows (grid.js widgetsOnGrid); a tablet with More rows keeps its taller rows.
+const landscapeShown = (page) => (page.widgets || []).filter((w) => w.x < (catalog.cols || 12) && w.y < (tabletRowsOn() ? catalog.maxRows || 18 : catalog.rows || 6));
+/** What the panel draws upright for a page without a layout of its own: { pos, cols, rows }. */
+function autoUpright(page) {
+  const cols = tabletRowsOn() ? catalog.cols || 12 : EDITOR_SCREENS.upright.cols;
+  return { ...packUpright(landscapeShown(page), cols), cols };
+}
+/**
+ * The page's own upright layout as it would start: the automatic packing on the 6 × 12 upright grid. A widget that
+ * packs below row 12 is left off it (and then listed under the canvas, to be put back where there is room).
+ */
+function startUpright(page) {
+  const { cols, rows } = EDITOR_SCREENS.upright, pos = new Map();
+  for (const [w, at] of packUpright(landscapeShown(page), cols).pos) if (at.y + at.h <= rows) pos.set(w, at);
   return pos;
 }
-/** Give the page its own upright layout, starting from the automatic one; a widget that did not fit is left off. */
+/** Give the page its own upright layout, starting from the automatic one. */
 function ensureUpright(page) {
   if (page.upright === true) return;
-  const pos = autoUpright(page);
+  const pos = startUpright(page);
   for (const w of page.widgets || []) { const at = pos.get(w); if (at) w.upright = { ...at }; else delete w.upright; }
   page.upright = true;
 }
@@ -1607,7 +1630,8 @@ function newWidgetSpot(page, ww, hh, minW, minH) {
     return spot;
   }
   const land = (o) => o, cols = catalog.cols || 12;
-  const spot = freeSpot(page, ww, hh, minW, minH, cols, catalog.rows || 6, land) || freeSpot(page, ww, hh, minW, minH, cols, catalog.maxRows || 18, land);
+  const spot = freeSpot(page, ww, hh, minW, minH, cols, catalog.rows || 6, land)
+    || (tabletRowsOn() ? freeSpot(page, ww, hh, minW, minH, cols, catalog.maxRows || 18, land) : null);
   if (spot) { ensureUpright(page); spot.upright = freeSpot(page, ww, hh, minW, minH); }
   return spot;
 }
@@ -1694,7 +1718,7 @@ function renderPageEditor() {
         h('button', { class: 'btn sm', onclick: () => openTemplates(selPage) }, t('s.js.replaceTpl')),
         h('button', { class: 'btn sm', onclick: () => { const c = JSON.parse(JSON.stringify(p)); c.id = ''; c.title += t('s.js.dupPageSuffix'); cfg.pages.splice(selPage + 1, 0, c); selPage++; renderPages(); changed(); } }, t('s.js.dupPage')),
         h('button', { class: 'btn sm', title: t('s.js.exportPageHint'), onclick: () => exportPages([p], 'phonebox-page-' + (p.id || 'page')) }, t('s.js.exportPage')),
-        h('button', { class: 'btn sm', onclick: () => { p.widgets = []; selWidget = -1; renderPageEditor(); changed(); } }, t('s.js.clear')),
+        h('button', { class: 'btn sm', onclick: () => { p.widgets = []; dropUpright(p); selWidget = -1; renderPageEditor(); changed(); } }, t('s.js.clear')),
         h('span', { class: 'spacer' }),
         h('button', { class: 'btn sm' + (isHome(p) ? ' on' : ''), title: t('s.js.homePageHint'),
           onclick: () => { if (!p.id) { toast(t('s.js.saveFirstForId'), true); return; } cfg.display.homePage = p.id; renderPageEditor(); changed(); } },
@@ -1853,7 +1877,8 @@ function renderCanvas() {
   for (let i = 0; i < cols * rows; i++) canvas.appendChild(h('div', { class: 'cell' }));
   let hidden = 0;
   // upright, a page without a layout of its own shows the automatic one; the first change makes it the page's own
-  const upright = uprightOn(), auto = upright && p.upright !== true ? autoUpright(p) : null, left = [];
+  const upright = uprightOn(), auto = upright && p.upright !== true ? autoUpright(p).pos : null, left = [];
+  const wontFit = auto ? landscapeShown(p).length - startUpright(p).size : 0;
   canvas.classList.toggle('auto', !!auto);
   p.widgets.forEach((w, i) => {
     const at = auto ? auto.get(w) : place(w);
@@ -1897,7 +1922,7 @@ function renderCanvas() {
   });
   const hint = $('screenHint');
   if (hint) hint.hidden = !tabletRowsOn() && !hidden && !upright; // widgets left on tablet rows still get counted with the setting off
-  if (hint) hint.textContent = upright ? t(auto ? 's.pages.uprightAuto' : 's.pages.uprightOwn')
+  if (hint) hint.textContent = upright ? t(auto ? 's.pages.uprightAuto' : 's.pages.uprightOwn') + (wontFit ? ' ' + t('s.pages.uprightWontFit', { n: wontFit }) : '')
     : t('s.pages.screenHint') + ' ' + t('s.pages.screenRowsVary') + (hidden ? ' ' + t('s.pages.screenHidden', { n: hidden }) : '');
   $('uprightReset').hidden = !(upright && p.upright === true);
   // widgets left off the upright layout: a tap puts one back in the first free spot
@@ -1916,13 +1941,17 @@ function renderCanvas() {
 function startDrag(e, w, i, mode) {
   e.preventDefault();
   const canvas = $('canvas'), p = curPage(), d = widgetDef(w.type);
-  if (uprightOn()) ensureUpright(p); // the first change upright makes the shown automatic layout the page's own
-  const at = place(w);
-  if (!at) return;
+  // upright on the automatic layout, the widget is dragged on the page's own layout as it would start; it becomes
+  // the page's own only once something moves (a click only selects)
+  const auto = uprightOn() && p.upright !== true;
+  const start = auto ? startUpright(p) : null;
+  const at = auto ? start.get(w) && { ...start.get(w) } : place(w);
+  if (!at) { if (selWidget !== i) { selWidget = i; renderInspector(); } return; }
   const r = canvas.getBoundingClientRect();
-  const cols = gridCols(), rows = gridRows();
+  const cols = auto ? EDITOR_SCREENS.upright.cols : gridCols(), rows = auto ? EDITOR_SCREENS.upright.rows : gridRows();
   const cw = r.width / cols, ch = r.height / rows;
   const sx = e.clientX, sy = e.clientY, s = { ...at };
+  const others = auto ? (o) => start.get(o) || null : place;
   let moved = false;
   if (selWidget !== i) { selWidget = i; renderInspector(); }
   canvas.querySelectorAll('.wb').forEach((b) => b.classList.toggle('sel', b.dataset.i === String(i)));
@@ -1941,9 +1970,12 @@ function startDrag(e, w, i, mode) {
       if (dx) ww = Math.max(Math.min(d.minW, cols), Math.min(cols - s.x, s.w + dx));
       if (dy && !clipped) hh = Math.max(Math.min(d.minH, rows), Math.min(rows - s.y, s.h + dy));
     }
-    if ((x !== at.x || y !== at.y || ww !== at.w || hh !== at.h) && !overlaps(p, w, x, y, ww, hh)) {
+    if ((x !== at.x || y !== at.y || ww !== at.w || hh !== at.h) && !overlaps(p, w, x, y, ww, hh, others)) {
       Object.assign(at, { x, y, w: ww, h: hh });
-      el.style.gridArea = `${y + 1} / ${x + 1} / span ${Math.max(1, Math.min(hh, rows - y))} / span ${Math.max(1, Math.min(ww, cols - x))}`;
+      if (auto && !moved) { ensureUpright(p); renderCanvas(); } // the first move: the page's own layout now, drawn 6 × 12
+      if (auto) Object.assign(w.upright, at);
+      const box = auto ? $('canvas').querySelector(`.wb[data-i="${i}"]`) : el;
+      if (box) box.style.gridArea = `${y + 1} / ${x + 1} / span ${Math.max(1, Math.min(hh, rows - y))} / span ${Math.max(1, Math.min(ww, cols - x))}`;
       moved = true;
     }
   };
@@ -1951,7 +1983,6 @@ function startDrag(e, w, i, mode) {
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
     if (moved) { changed(); renderInspector(); }
-    if (canvas.classList.contains('auto')) { changed(); renderCanvas(); } // a click on the automatic layout made it the page's own
   };
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp);
@@ -1994,18 +2025,23 @@ function renderInspector() {
   const w = p?.widgets[selWidget];
   if (!w) { box.replaceChildren(h('h3', {}, t('s.js.widget')), h('p', { class: 'hint', style: { margin: 0 } }, t('s.js.clickWidget'))); return; }
   const d = widgetDef(w.type);
-  const at = place(w) || (uprightOn() && p.upright !== true ? autoUpright(p).get(w) : null);
+  const auto = uprightOn() && p.upright !== true;
+  const at = auto ? startUpright(p).get(w) || null : place(w);
   const num = (key, label, min, max) => h('div', { class: 'field', style: { flex: '1' } }, h('label', {}, label),
     h('input', { type: 'number', min, max, value: at ? at[key] : '', disabled: !at, onchange: (e) => {
-      if (uprightOn()) ensureUpright(p);
-      const cur = place(w);
+      const start = auto && p.upright !== true ? startUpright(p) : null;
+      const cur = start ? start.get(w) : place(w);
       if (!cur) return;
       const v = Math.max(min, Math.min(max, parseInt(e.target.value || '0', 10)));
       const n = { x: cur.x, y: cur.y, w: cur.w, h: cur.h, [key]: v };
       // Check the axis being edited: a widget clipped by this view (it runs onto tablet rows) can still change its column.
       const horizontal = key === 'x' || key === 'w';
-      if ((horizontal ? n.x + n.w > gridCols() : n.y + n.h > gridRows()) || overlaps(p, w, n.x, n.y, n.w, n.h)) { toast(t('s.js.doesNotFit'), true); e.target.value = cur[key]; return; }
-      cur[key] = v; changed(); renderCanvas();
+      const cols = start ? EDITOR_SCREENS.upright.cols : gridCols(), rows = start ? EDITOR_SCREENS.upright.rows : gridRows();
+      const others = start ? (o) => start.get(o) || null : place;
+      if ((horizontal ? n.x + n.w > cols : n.y + n.h > rows) || overlaps(p, w, n.x, n.y, n.w, n.h, others)) { toast(t('s.js.doesNotFit'), true); e.target.value = cur[key]; return; }
+      // only an edit that fits makes the automatic layout the page's own
+      if (start) ensureUpright(p);
+      place(w)[key] = v; changed(); renderCanvas();
     } }));
   box.replaceChildren(
     h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '8px' } },
@@ -2640,6 +2676,7 @@ function openTemplates(index) {
       selPage = cfg.pages.length - 1;
     } else {
       cfg.pages[index].widgets = widgets;
+      dropUpright(cfg.pages[index]); // the new widgets have no upright places
     }
     selWidget = -1;
     closeModal(); renderPages(); changed();

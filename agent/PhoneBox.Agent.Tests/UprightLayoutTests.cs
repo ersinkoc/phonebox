@@ -74,4 +74,16 @@ public class UprightLayoutTests
         copy.Upright!.X = 5;
         Assert.Equal(1, w.Upright.X);
     }
+
+    [Fact]
+    public void AnUprightLayoutWithNoWidgetOnItGoesBackToAutomatic()
+    {
+        // what Replace with template or Clear leaves: the page still marked, none of the new widgets placed
+        var page = Load("""
+            {"pages": [{"id": "games", "title": "Games", "upright": true, "widgets": [
+              {"id": "a", "type": "note", "x": 0, "y": 0, "w": 5, "h": 2}
+            ]}, {"id": "empty", "title": "Empty", "upright": true, "widgets": []}]}
+            """).Pages;
+        Assert.All(page, p => Assert.Null(p.Upright));
+    }
 }

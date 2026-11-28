@@ -405,6 +405,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "عمودي",
       "s.pages.screen.landscape": "أفقي",
       "s.pages.uprightAuto": "في الوضع العمودي تُرتَّب هذه الصفحة تلقائيًا من الصفحة الأفقية. انقل عنصرًا أو غيّر حجمه هنا لترتيبها بنفسك.",
+      "s.pages.uprightWontFit": "{n} منها لا تتسع في الصفوف الاثني عشر للشاشة العمودية: عند ترتيبها بنفسك تبقى خارجها، لتعيدها حيث توجد مساحة.",
       "s.pages.uprightOwn": "لهذه الصفحة تخطيط عمودي خاص: في الوضع العمودي تبقى العناصر حيث تضعها هنا.",
       "s.pages.uprightReset": "العودة إلى التلقائي",
       "s.pages.uprightLeftOff": "ليست على الشاشة العمودية:",

@@ -405,6 +405,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "세로",
       "s.pages.screen.landscape": "가로",
       "s.pages.uprightAuto": "세로로 두면 이 페이지는 가로 페이지를 바탕으로 자동 배치됩니다. 직접 배치하려면 여기서 위젯을 옮기거나 크기를 바꾸세요.",
+      "s.pages.uprightWontFit": "그중 {n}개는 세로 화면의 12줄에 들어가지 않습니다. 직접 배치하면 빠지며, 빈자리에 다시 넣을 수 있습니다.",
       "s.pages.uprightOwn": "이 페이지에는 자체 세로 레이아웃이 있습니다. 세로로 두면 위젯이 여기서 놓은 자리에 표시됩니다.",
       "s.pages.uprightReset": "자동으로 되돌리기",
       "s.pages.uprightLeftOff": "세로 화면에 없는 위젯:",

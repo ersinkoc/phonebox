@@ -405,6 +405,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "直向",
       "s.pages.screen.landscape": "橫向",
       "s.pages.uprightAuto": "直向時，此頁面會依橫向頁面自動排列。在這裡移動或調整小工具大小，即可自行排列。",
+      "s.pages.uprightWontFit": "其中 {n} 個放不進直向畫面的 12 列：自行排列時會被留在外面，可再放回有空位的地方。",
       "s.pages.uprightOwn": "此頁面有自己的直向版面：直向時，小工具會在你於此處放置的位置。",
       "s.pages.uprightReset": "恢復自動",
       "s.pages.uprightLeftOff": "不在直向畫面上：",

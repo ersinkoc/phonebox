@@ -405,6 +405,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "縦向き",
       "s.pages.screen.landscape": "横向き",
       "s.pages.uprightAuto": "縦向きでは、このページは横向きのページから自動で配置されます。ここでウィジェットを移動またはサイズ変更すると、自分で配置できます。",
+      "s.pages.uprightWontFit": "そのうち {n} 個は縦画面の 12 行に収まりません。自分で配置すると外され、空きのある場所に戻せます。",
       "s.pages.uprightOwn": "このページには独自の縦向きレイアウトがあります。縦向きでは、ここで置いた位置にウィジェットが表示されます。",
       "s.pages.uprightReset": "自動に戻す",
       "s.pages.uprightLeftOff": "縦向き画面にないもの:",

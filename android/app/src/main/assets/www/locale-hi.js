@@ -405,6 +405,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "खड़ा",
       "s.pages.screen.landscape": "लेटा",
       "s.pages.uprightAuto": "खड़ा रखने पर यह पेज लेटे पेज से अपने आप सजाया जाता है। इसे खुद सजाने के लिए यहाँ किसी विजेट को खिसकाएँ या उसका आकार बदलें।",
+      "s.pages.uprightWontFit": "इनमें से {n} खड़ी स्क्रीन की 12 पंक्तियों में नहीं आते: खुद व्यवस्थित करने पर ये बाहर रहते हैं, जहाँ जगह हो वहाँ वापस रखें।",
       "s.pages.uprightOwn": "इस पेज का अपना खड़ा लेआउट है: खड़ा रखने पर विजेट वहीं रहते हैं जहाँ आप उन्हें यहाँ रखते हैं।",
       "s.pages.uprightReset": "स्वचालित पर लौटें",
       "s.pages.uprightLeftOff": "खड़ी स्क्रीन पर नहीं:",

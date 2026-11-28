@@ -1267,6 +1267,9 @@ public sealed partial class ConfigStore(string path)
                 widgets.Add(w);
             }
             p.Widgets = widgets;
+            // an upright layout with no widget on it (its widgets replaced from a template, or cleared) would draw an empty
+            // screen: the page goes back to the automatic upright packing
+            if (p.Upright == true && !widgets.Any(w => w.Upright is not null)) p.Upright = null;
             pages.Add(p);
         }
         if (pages.Count > 0 && pages.All(p => !p.Enabled)) pages[0].Enabled = true;

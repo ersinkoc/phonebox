@@ -405,6 +405,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "Tegak",
       "s.pages.screen.landscape": "Mendatar",
       "s.pages.uprightAuto": "Saat tegak, halaman ini diatur otomatis dari halaman mendatar. Pindahkan atau ubah ukuran widget di sini untuk mengaturnya sendiri.",
+      "s.pages.uprightWontFit": "{n} di antaranya tidak muat di 12 baris layar tegak: jika Anda menatanya sendiri, widget itu ditinggalkan, untuk dikembalikan di tempat yang masih kosong.",
       "s.pages.uprightOwn": "Halaman ini punya tata letak tegak sendiri: saat tegak, widget berada di tempat yang Anda letakkan di sini.",
       "s.pages.uprightReset": "Kembali ke otomatis",
       "s.pages.uprightLeftOff": "Tidak ada di layar tegak:",

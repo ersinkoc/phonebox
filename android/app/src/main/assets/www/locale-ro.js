@@ -401,6 +401,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "Vertical",
       "s.pages.screen.landscape": "Orizontal",
       "s.pages.uprightAuto": "Pe verticală, această pagină este aranjată automat după cea orizontală. Mută sau redimensionează un widget aici ca s-o aranjezi singur.",
+      "s.pages.uprightWontFit": "{n} dintre ele nu încap în cele 12 rânduri ale ecranului vertical: dacă îl aranjezi singur, rămân pe dinafară, de pus înapoi unde e loc.",
       "s.pages.uprightOwn": "Această pagină are propriul aranjament vertical: pe verticală, widgeturile stau unde le pui aici.",
       "s.pages.uprightReset": "Înapoi la automat",
       "s.pages.uprightLeftOff": "Nu sunt pe ecranul vertical:",

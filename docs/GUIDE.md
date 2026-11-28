@@ -293,6 +293,10 @@ Double-click the tray icon on Windows (or open <http://127.0.0.1:8765>):
   may stay before the panel goes home; arrange widgets on a phone-sized canvas (drag to move, drag
   the corner to resize) and set their options. The widget palette is grouped by category and searchable.
   **Live preview** swaps the canvas for the real panel with your unsaved changes and live data.
+  **Landscape** and **Upright** switch the canvas between the page and the page held upright. Upright, a page is
+  packed automatically from its landscape widgets (a wide one keeps its area, narrower and taller); move or resize a
+  widget there to give the page its own upright layout, 6 × 12, used as it is whenever the screen is upright.
+  A widget can be left off it, and **Back to automatic** drops it.
 - **Rules**: automations, see [Rules](#rules).
 - **Shortcuts**: add, edit, reorder and test keys (label, emoji, colour). A key runs a program, presses a key
   combination (`ctrl+shift+m`), types text or runs a macro (keys, text, waits, other shortcuts); on / off keys show

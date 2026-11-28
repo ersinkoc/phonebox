@@ -405,6 +405,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "แนวตั้ง",
       "s.pages.screen.landscape": "แนวนอน",
       "s.pages.uprightAuto": "เมื่อตั้งแนวตั้ง หน้านี้จะจัดวางอัตโนมัติจากหน้าแนวนอน ย้ายหรือปรับขนาดวิดเจ็ตที่นี่เพื่อจัดวางเอง",
+      "s.pages.uprightWontFit": "{n} รายการใส่ไม่พอใน 12 แถวของหน้าจอแนวตั้ง: เมื่อจัดเอง รายการเหล่านี้จะถูกเอาออก เพื่อวางกลับในที่ที่ยังว่าง",
       "s.pages.uprightOwn": "หน้านี้มีเลย์เอาต์แนวตั้งของตัวเอง: เมื่อตั้งแนวตั้ง วิดเจ็ตจะอยู่ตรงที่คุณวางไว้ที่นี่",
       "s.pages.uprightReset": "กลับไปเป็นอัตโนมัติ",
       "s.pages.uprightLeftOff": "ไม่อยู่บนหน้าจอแนวตั้ง:",

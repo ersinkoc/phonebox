@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Pages: a layout of their own for an upright screen** (Settings › Pages › Upright). Held upright, a page is still
+  packed automatically from its landscape widgets (#730); the editor now shows that packing as the panel draws it, and
+  moving or resizing a widget there gives the page its own upright layout (6 × 12), which a phone or tablet held upright
+  uses as it is. A widget can be left off it and put back, and **Back to automatic** drops it; replacing the page's
+  widgets from a template or clearing them drops it too. Pages without one are unchanged. Without the tablet screens,
+  the editor's buttons read **Landscape** and **Upright** (#755, #758,
+  [WellyngtonSantos](https://github.com/WellyngtonSantos)).
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the

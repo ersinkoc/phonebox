@@ -405,6 +405,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pages.screen.upright": "Na výšku",
       "s.pages.screen.landscape": "Na šířku",
       "s.pages.uprightAuto": "Na výšku se tato stránka uspořádá automaticky podle stránky na šířku. Přesuňte nebo změňte velikost widgetu zde a uspořádejte ji sami.",
+      "s.pages.uprightWontFit": "{n} z nich se nevejde do 12 řádků svislé obrazovky: když ji uspořádáte sami, zůstanou mimo a vrátíte je tam, kde je místo.",
       "s.pages.uprightOwn": "Tato stránka má vlastní rozvržení na výšku: na výšku jsou widgety tam, kam je zde umístíte.",
       "s.pages.uprightReset": "Zpět na automatické",
       "s.pages.uprightLeftOff": "Mimo obrazovku na výšku:",
