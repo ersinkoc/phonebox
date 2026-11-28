@@ -7,12 +7,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if let computer = pairing.computer {
-                // A new identity rebuilds the panel with a fresh client and USB link: switching computers (a page with
-                // that computer's layout), pairing or forgetting one (the others to ask), pairing the same computer
-                // again (new addresses or token), or a new pick (the computer to go back to, even when the pick is the
-                // computer already on screen). An outstanding probe or pick check of the old client is discarded.
-                PanelScreen(computer: computer, others: pairing.others, preferred: pairing.pickElsewhere)
-                    .id(PanelIdentity(shown: computer, pick: pairing.preferredID, paired: pairing.computers))
+                PanelScreen(computer: computer)
             } else {
                 UnpairedView()
             }
@@ -27,21 +22,19 @@ private struct PanelIdentity: Hashable {
     let paired: [PairedComputer]
 }
 
+/// The cable state of the current panel, for the options sheet, which outlives any one panel.
+private final class USBStatus: ObservableObject {
+    @Published var isConnected = false
+}
+
 /// The panel shares the screen with a toolbar for the paired computers: details, switching, pairing and Forget.
+/// The toolbar and its sheets stay put while the panel under them is built again, so a switch of computers never
+/// closes the options sheet or loses a pairing link being entered there.
 private struct PanelScreen: View {
     let computer: PairedComputer
-    let others: [PairedComputer]
-    let preferred: PairedComputer?
     @EnvironmentObject private var pairing: PairingStore
     @State private var showingOptions = false
-    @StateObject private var usb: USBLink
-
-    init(computer: PairedComputer, others: [PairedComputer], preferred: PairedComputer?) {
-        self.computer = computer
-        self.others = others
-        self.preferred = preferred
-        _usb = StateObject(wrappedValue: USBLink(computer: computer))
-    }
+    @StateObject private var usbStatus = USBStatus()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -59,21 +52,49 @@ private struct PanelScreen: View {
             }
             .padding(.horizontal, 4)
             .background(.bar)
-            PanelView(computer: computer, others: others, preferred: preferred, usb: usb) { from, found in
-                pairing.follow(from: from, to: found.id)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // A new identity builds the panel again with a fresh client and USB link: switching computers (a page with
+            // that computer's layout), pairing or forgetting one (the others to ask), pairing the same computer again
+            // (new addresses or token), or a new pick (the computer to go back to, even when the pick is the computer
+            // already on screen). An outstanding probe or pick check of the old client is discarded.
+            PanelBody(computer: computer, others: pairing.others, preferred: pairing.pickElsewhere, status: usbStatus)
+                .id(PanelIdentity(shown: computer, pick: pairing.preferredID, paired: pairing.computers))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .sheet(isPresented: $showingOptions) {
-            ComputerOptionsView(computer: computer, usb: usb)
+            ComputerOptionsView(computer: computer, usb: usbStatus)
                 .environmentObject(pairing)
         }
     }
 }
 
+/// The part built again with each identity: the WebView, its client and the USB link.
+private struct PanelBody: View {
+    let computer: PairedComputer
+    let others: [PairedComputer]
+    let preferred: PairedComputer?
+    let status: USBStatus
+    @EnvironmentObject private var pairing: PairingStore
+    @StateObject private var usb: USBLink
+
+    init(computer: PairedComputer, others: [PairedComputer], preferred: PairedComputer?, status: USBStatus) {
+        self.computer = computer
+        self.others = others
+        self.preferred = preferred
+        self.status = status
+        _usb = StateObject(wrappedValue: USBLink(computer: computer))
+    }
+
+    var body: some View {
+        PanelView(computer: computer, others: others, preferred: preferred, usb: usb) { from, found in
+            pairing.follow(from: from, to: found.id)
+        }
+        .onReceive(usb.$isConnected) { status.isConnected = $0 }
+    }
+}
+
 private struct ComputerOptionsView: View {
     let computer: PairedComputer
-    @ObservedObject var usb: USBLink
+    @ObservedObject var usb: USBStatus
     @EnvironmentObject private var pairing: PairingStore
     @Environment(\.dismiss) private var dismiss
     @State private var addingComputer = false
