@@ -228,7 +228,7 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
     /// <summary>A refused start: a code the phone translates (off, nosteam, notinstalled, failed) and an English text.</summary>
     public sealed record LaunchError(string Code, string Error);
 
-    private static readonly LaunchError Off = new("off", "Turn on \"Let the phone start games\" in this Steam library widget's settings");
+    internal static readonly LaunchError LaunchOff = new("off", "Turn on \"Let the phone start games\" in this Steam library widget's settings");
 
     /// <summary>
     /// Starts an installed game through Steam for the asking <paramref name="widget"/> (see <see cref="LaunchAllowed"/>);
@@ -236,13 +236,13 @@ public sealed class SteamLibrary(ConfigStore config, ILogger<SteamLibrary> log)
     /// </summary>
     public LaunchError? Launch(string? deviceId, string? widget, string? id)
     {
-        if (!LaunchAllowed(deviceId, widget)) return Off;
+        if (!LaunchAllowed(deviceId, widget)) return LaunchOff;
         if (!IsAppId(id)) return new("notinstalled", "That game is not installed");
         if (Root() is null) return new("nosteam", "Steam was not found on this computer");
         // the installed list read right now (unchanged files come from the cache), not a list the phone saw a while ago
         if (Rescan(LaunchWaitMs, force: true) is not { } games) return new("failed", "The Steam library is still being read");
         // the option can be turned off while this waited for the files (a slow drive): decide with the settings of now
-        if (!LaunchAllowed(deviceId, widget)) return Off;
+        if (!LaunchAllowed(deviceId, widget)) return LaunchOff;
         var game = games.FirstOrDefault(g => g.Id == id);
         if (game is null) return new("notinstalled", "That game is not installed");
         // the URL is built from the manifest's own number, so no text from the request reaches the URL handler
