@@ -40,6 +40,7 @@ export function gameStatus(game, running) {
 /** The agent answers a refused start with a code; the phone says it in the panel language. */
 const LAUNCH_ERRORS = {
   off: () => t('w.steamlib.launchOff'),
+  othersoff: () => t('w.steamlib.launchOthersOff'),
   nosteam: () => t('w.steamlib.notFound'),
   notinstalled: (game) => t('w.steamlib.notInstalled', { game }),
 };
@@ -70,13 +71,16 @@ export function ownGames(ids, shortcuts) {
 }
 
 /**
- * The games the agent found outside Steam, as tiles: their program's icon is the cover. One with the name of one of your
- * own games (a shortcut ticked in "Other games") is left out, so a game is not shown twice.
+ * The games the agent found outside Steam, as tiles: their program's icon is the cover. One that is already one of this
+ * widget's own games (a shortcut ticked in its "Other games" that starts a program in the game's folder, or has the
+ * game's name) is left out, so a game is not shown twice.
  */
 export function otherGames(found, own = []) {
   const names = new Set(own.map((g) => g.name.trim().toLowerCase()));
+  const mine = new Set(own.map((g) => String(g.shortcut)));
   return (Array.isArray(found) ? found : []).filter((g) => g && typeof g.id === 'string' && g.id.startsWith('x:')
-    && !names.has(String(g.name || '').trim().toLowerCase()))
+    && !names.has(String(g.name || '').trim().toLowerCase())
+    && !(Array.isArray(g.shortcuts) && g.shortcuts.some((id) => mine.has(String(id)))))
     .map((g) => ({ id: g.id, name: String(g.name || ''), source: String(g.source || ''), state: 'ready', progress: null, cover: g.cover === true }));
 }
 
@@ -89,6 +93,9 @@ W['steam-library'] = {
   needs: ['tick'],
   create(box, { o, page, w }) {
     const canLaunch = o.allowLaunch === true; // this widget's own option; the agent checks it again for this widget
+    // the games found outside Steam start a program on the computer, not Steam: an option of their own, off by default
+    const canLaunchOthers = o.allowLaunchOthers === true;
+    const isFound = (g) => String(g.id).startsWith('x:');
     const wq = 'widget=' + encodeURIComponent(`${page.id}/${w.id}`);
     const confirm = o.confirm !== false;
     const limit = Math.max(1, Math.min(60, Math.round(+o.limit || 8)));
@@ -140,7 +147,7 @@ W['steam-library'] = {
         b.append(bar);
       }
       b.addEventListener('click', () => {
-        if (!canLaunch) { toast(t('w.steamlib.launchOff')); return; }
+        if (isFound(g) ? !canLaunchOthers : !canLaunch) { toast(t(isFound(g) ? 'w.steamlib.launchOthersOff' : 'w.steamlib.launchOff')); return; }
         if (running) { toast(t('w.steamlib.alreadyRunning', { game: g.name })); return; }
         if (!confirm || armed === g.id) { clearTimeout(armTimer); armed = null; launch(g); return; }
         haptic();
@@ -163,14 +170,15 @@ W['steam-library'] = {
       lastKey = key;
       const n = steam.length + own.length;
       count.textContent = n ? ' ' + n : ''; // how many are installed
-      box.classList.toggle('sl-can-launch', canLaunch);
+      box.classList.toggle('sl-can-launch', canLaunch || canLaunchOthers);
       if (!own.length && !others.length) {
         if (!data) { message(t(failed ? 'w.unavailable' : 'w.loading')); return; }
         if (!data.enabled) { message(t('w.steamlib.off')); return; }
         if (!data.found) { message(t('w.steamlib.notFound')); return; }
         if (data.error && !games.length) { message(t('w.steamlib.unreadable')); return; }
       }
-      if (!games.length) { message(t(data?.games?.length ? 'w.steamlib.noFavorites' : 'w.steamlib.empty')); return; }
+      // nothing shown although games are installed (Steam's, or only ones found outside it): none of them is a favorite
+      if (!games.length) { message(t(n ? 'w.steamlib.noFavorites' : 'w.steamlib.empty')); return; }
       // a tile that had the focus (a keyboard or switch user) keeps it in its new copy, so a second Enter confirms
       const focused = grid.contains(document.activeElement) ? document.activeElement.dataset?.id : null;
       grid.replaceChildren(...games.map(tile));

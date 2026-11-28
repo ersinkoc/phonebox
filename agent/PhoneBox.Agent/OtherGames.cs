@@ -5,8 +5,12 @@ using System.Text.Json;
 
 namespace PhoneBox.Agent;
 
-/// <summary>A game found outside Steam, as the phone sees it: an id ("x:" and a hash of its program), name and source.</summary>
-public sealed record OtherGame(string Id, string Name, string Source, bool Cover);
+/// <summary>
+/// A game found outside Steam, as the phone sees it: an id ("x:" and a hash of its folder), name and source, and the ids
+/// of your shortcuts that start a program in its folder (a widget that shows one of them as its own game leaves this one
+/// out). No path reaches the phone.
+/// </summary>
+public sealed record OtherGame(string Id, string Name, string Source, bool Cover, IReadOnlyList<string> Shortcuts);
 
 /// <summary>
 /// Games installed outside Steam, shown by the game library widget next to Steam's: found on their own, with nothing to
@@ -16,19 +20,36 @@ public sealed record OtherGame(string Id, string Name, string Source, bool Cover
 /// only games carry (<see cref="LooksLikeAGame"/>). A game's program is chosen from its folder (<see cref="PickExe"/>);
 /// installers, uninstallers, crash reporters and redistributables are never chosen. Nothing is read while no library
 /// widget is on an enabled page. Windows only: on macOS and Linux nothing is found.
+/// Starting one from the phone is a widget option of its own ("allowLaunchOthers", off by default), apart from the Steam
+/// one: it runs a program this scan picked, not only Steam's URL handler.
 /// </summary>
 public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
 {
     /// <summary>A found game and how it starts: a launcher's own address (Epic, Ubisoft), or its program in its folder.</summary>
     internal sealed record Found(string Id, string Name, string Source, string Dir, string? Exe, string? Url);
 
+    /// <summary>How often the launchers' records are read again (the registry and Epic's manifests: quick).</summary>
     internal const int RescanMs = 10 * 60_000;
+    /// <summary>How often the drives are looked through again: a walk wakes idle disks, so at most once an hour.</summary>
+    internal const int DriveRescanMs = 60 * 60_000;
     // bounds for a folder that is not what it seems
     internal const int MaxGamesPerFolder = 200, MaxFilesPerGame = 2000, MaxDepth = 3;
+    /// <summary>Folders looked into for one game (its program, its signs), and on one drive in all.</summary>
+    internal const int MaxFoldersPerGame = 400, MaxFoldersPerDrive = 20_000;
+
+    /// <summary>Links (junctions, symbolic links, a network share mounted in a folder) and the system's own files are not walked.</summary>
+    private static readonly EnumerationOptions Walk = new()
+    {
+        AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System, IgnoreInaccessible = true,
+        MatchCasing = MatchCasing.CaseInsensitive,
+    };
 
     private readonly Lock _gate = new();
     private List<Found> _found = [];
     private long _scannedAt = -(1L << 40);
+    private List<Found> _onDrives = [];
+    private long _drivesAt = -(1L << 40);
+    private long? _firstDeadline; // when the requests made during the first look stop waiting for it
 
     internal Func<long> Clock { get; init; } = () => Environment.TickCount64;
     /// <summary>Overridable for tests: the launchers' games (Windows registry and Epic manifests).</summary>
@@ -39,62 +60,78 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     /// <summary>A game library widget is on an enabled page.</summary>
     private bool Wanted() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "steam-library");
 
-    /// <summary>The asking widget may start games (its own option; see SteamLibrary.LaunchAllowed).</summary>
+    /// <summary>
+    /// The asking widget may start the games found outside Steam: its own "allowLaunchOthers" option, off by default and
+    /// apart from the Steam one ("allowLaunch"), on a Game library widget of an enabled page this phone shows (see
+    /// SteamLibrary.LaunchAllowed).
+    /// </summary>
     public bool LaunchAllowed(string? deviceId, string? widget) =>
-        PanelWidgets.Find(config.Get(), deviceId, widget, "steam-library") is { } w && w.Bool("allowLaunch") == true;
+        PanelWidgets.Find(config.Get(), deviceId, widget, "steam-library") is { } w && w.Bool("allowLaunchOthers") == true;
+
+    internal static readonly SteamLibrary.LaunchError LaunchOff =
+        new("othersoff", "Turn on \"Let the phone start the games found outside Steam\" in this Game library widget's settings");
 
     /// <summary>The games found, by name; empty while no library widget asks for them.</summary>
     public IReadOnlyList<OtherGame> List()
     {
         var games = Games();
         if (games.Count == 0) return [];
-        var c = config.Get();
-        // a game already shown as one of your own (a shortcut ticked in "Other games" that starts a program in its folder)
-        // is shown once, as yours: your shortcut may start it another way (a mod's launcher, a different program)
-        var ticked = c.Widgets(enabledPagesOnly: true).Where(w => w.Type == "steam-library")
-            .SelectMany(w => w.Options?.TryGetValue("games", out var v) == true && v.ValueKind == JsonValueKind.Array
-                ? v.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!) : [])
-            .ToHashSet(StringComparer.Ordinal);
-        var mine = c.Shortcuts.Where(s => ticked.Contains(s.Id) && ShortcutIcons.LooksLikeFilePath(s.Cmd)).Select(s => s.Cmd.Trim().Trim('"')).ToList();
-        return Shown(games, mine).OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new OtherGame(g.Id, g.Name, g.Source, g.Exe is not null)).ToList();
+        // a game your own shortcut starts (a program in its folder) is shown once, as yours, by a widget that has that
+        // shortcut in its "Other games": the phone leaves it out per widget, by these shortcut ids
+        var programs = config.Get().Shortcuts.Where(s => ShortcutIcons.LooksLikeFilePath(s.Cmd))
+            .Select(s => (s.Id, Path: s.Cmd.Trim().Trim('"'))).ToList();
+        return games.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new OtherGame(g.Id, g.Name, g.Source, g.Exe is not null, StartedBy(g, programs))).ToList();
     }
 
-    /// <summary>The found games but those whose folder holds one of <paramref name="mine"/> (programs your own games start).</summary>
-    internal static IEnumerable<Found> Shown(IEnumerable<Found> games, IReadOnlyList<string> mine) =>
-        games.Where(g => !mine.Any(p => Norm(p).StartsWith(Norm(g.Dir), StringComparison.OrdinalIgnoreCase)));
+    /// <summary>The ids of the shortcuts whose program is in the game's folder.</summary>
+    internal static IReadOnlyList<string> StartedBy(Found game, IEnumerable<(string Id, string Path)> programs) =>
+        programs.Where(p => Norm(p.Path).StartsWith(Norm(game.Dir), StringComparison.OrdinalIgnoreCase)).Select(p => p.Id).Distinct().ToList();
 
     /// <summary>
     /// The last list found. Looking through the drives takes a few seconds, so it runs in the background: a request gets
-    /// the last list at once (the very first one waits up to <see cref="FirstWaitMs"/>), and a list older than
-    /// <see cref="RescanMs"/> starts a new look.
+    /// the last list at once, and a list older than <see cref="RescanMs"/> starts a new look. Only the requests made while
+    /// the very first look runs wait for it, up to <see cref="FirstWaitMs"/> after it started; after that nothing waits.
     /// </summary>
     private List<Found> Games()
     {
         if (!OperatingSystem.IsWindows() && Launchers == DefaultLaunchers) return [];
         if (!Wanted()) return [];
         Task running;
-        bool first;
+        long wait;
         lock (_gate)
         {
             if (Clock() - _scannedAt < RescanMs) return _found;
-            first = _scannedAt < 0;
             running = _scanning ??= Task.Run(Refresh);
+            _firstDeadline ??= Environment.TickCount64 + FirstWaitMs;
+            wait = Math.Max(0, _firstDeadline.Value - Environment.TickCount64);
         }
-        running.Wait(first ? FirstWaitMs : 0);
+        if (wait > 0) running.Wait((int)wait);
         lock (_gate) return _found;
     }
 
     private void Refresh()
     {
         List<Found> found;
-        try { found = Scan(Launchers(), Disks()); }
+        try
+        {
+            // the drives are walked again only once an hour; the launchers' records every time
+            List<Found>? drives;
+            lock (_gate) drives = Clock() - _drivesAt < DriveRescanMs ? _onDrives : null;
+            if (drives is null)
+            {
+                drives = Disks().ToList();
+                lock (_gate) { _onDrives = drives; _drivesAt = Clock(); }
+            }
+            found = Scan(Launchers(), drives);
+        }
         catch (Exception ex) { log.LogWarning("could not look for other games: {Msg}", ex.Message); found = []; }
         lock (_gate) { _found = found; _scannedAt = Clock(); _scanning = null; }
     }
 
     private Task? _scanning;
-    internal const int FirstWaitMs = 8000;
+    /// <summary>How long the requests made while the first look runs wait for it.</summary>
+    internal int FirstWaitMs { get; init; } = 8000;
     /// <summary>Overridable for tests: the games found on the drives (<see cref="FromDrives"/>).</summary>
     internal Func<IEnumerable<Found>> Disks { get; init; } = () => OperatingSystem.IsWindows()
         ? FromDrives(DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed && d.IsReady).Select(d => d.RootDirectory.FullName)) : [];
@@ -133,31 +170,57 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         "NVIDIA", "NVIDIA Corporation", "Common Files", "WindowsApps", "Microsoft", "Windows Defender", "dotnet", "Steam", "SteamLibrary",
         "Launcher", "EA Desktop", "EA app", "Origin", "Social Club", "Epic Games Launcher", "Epic Online Services", "DirectXRedist",
         "GalaxyClient", "Battle.net Launcher", "cache", "data", "locales", "logs", "node_modules", "site-packages", "Python", "Git", "Java",
+        "Windows.old", "inetpub",
     };
+
+    /// <summary>
+    /// A number of folders that may still be looked into: one game's (<see cref="MaxFoldersPerGame"/>), taken from its
+    /// drive's (<see cref="MaxFoldersPerDrive"/>), so a large tree of photos or backups near a drive's top is not walked whole.
+    /// </summary>
+    internal sealed class Budget(int folders, Budget? drive = null)
+    {
+        private int _left = folders;
+        public bool Take()
+        {
+            if (_left <= 0 || drive?.Take() == false) return false;
+            _left--;
+            return true;
+        }
+    }
+
+    /// <summary>The folders in a folder (no links, no system folders), or none when it cannot be read or the budget is spent.</summary>
+    private static string[] Folders(string dir, Budget budget)
+    {
+        if (!budget.Take()) return [];
+        try { return Directory.EnumerateDirectories(dir, "*", Walk).ToArray(); } catch { return []; }
+    }
 
     /// <summary>The games on these drives: every folder at a drive's top, or inside a <see cref="Holders"/> folder, that looks like a game (<see cref="LooksLikeAGame"/>).</summary>
     internal static IEnumerable<Found> FromDrives(IEnumerable<string> roots)
     {
-        var candidates = new List<string>();
-        void Look(string dir, int level)
+        foreach (var root in roots)
         {
-            string[] subs;
-            try { subs = Directory.GetDirectories(dir); } catch { return; }
-            foreach (var sub in subs.Take(MaxGamesPerFolder))
+            var drive = new Budget(MaxFoldersPerDrive);
+            var candidates = new List<string>();
+            void Look(string dir, int level)
             {
-                var name = Path.GetFileName(sub);
-                // a package cache or a Python environment carries game libraries (pygame) without being a game
-                if (NotGames.Contains(name) || name.StartsWith('.') || name.StartsWith('$') || name.Contains("cache", StringComparison.OrdinalIgnoreCase)
-                    || name.Contains("venv", StringComparison.OrdinalIgnoreCase) || name.Contains("conda", StringComparison.OrdinalIgnoreCase)) continue;
-                // a launcher's own folder: only the games folder inside it (Ubisoft Game Launcher › games), not its parts
-                if (LauncherHomes.Contains(name)) { if (level < 3 && Directory.Exists(Path.Combine(sub, "games"))) Look(Path.Combine(sub, "games"), level + 1); }
-                else if (Holders.Contains(name) && level < 3) Look(sub, level + 1);
-                else candidates.Add(sub);
+                foreach (var sub in Folders(dir, drive).Take(MaxGamesPerFolder))
+                {
+                    var name = Path.GetFileName(sub);
+                    // a package cache or a Python environment carries game libraries (pygame) without being a game
+                    if (NotGames.Contains(name) || name.StartsWith('.') || name.StartsWith('$') || name.Contains("cache", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("venv", StringComparison.OrdinalIgnoreCase) || name.Contains("conda", StringComparison.OrdinalIgnoreCase)) continue;
+                    // a launcher's own folder: only the games folder inside it (Ubisoft Game Launcher › games), not its parts
+                    if (LauncherHomes.Contains(name)) { if (level < 3 && Directory.Exists(Path.Combine(sub, "games"))) Look(Path.Combine(sub, "games"), level + 1); }
+                    else if (Holders.Contains(name) && level < 3) Look(sub, level + 1);
+                    else candidates.Add(sub);
+                }
             }
+            Look(root, 0);
+            foreach (var dir in candidates)
+                if (Game(dir, new Budget(MaxFoldersPerGame, drive)) is { } g
+                    && LooksLikeAGame(dir, Path.GetDirectoryName(g.Exe!)!, new Budget(MaxFoldersPerGame, drive))) yield return g;
         }
-        foreach (var root in roots) Look(root, 0);
-        foreach (var dir in candidates)
-            if (Game(dir) is { } g && LooksLikeAGame(dir, Path.GetDirectoryName(g.Exe!)!)) yield return g;
     }
 
     /// <summary>Launchers that keep their games in a "games" folder of their own, next to their parts.</summary>
@@ -168,10 +231,12 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         "mss32.dll", "mss64.dll", "physxloader.dll", "xlive.dll", "eossdk-win64-shipping.dll", "eossdk-win32-shipping.dll"];
     private static readonly string[] SureStarts = ["bink", "uplay_r", "upc_r", "nvphysx", "galaxy64", "galaxy.dll"];
     private static readonly HashSet<string> SureExtensions = new(StringComparer.OrdinalIgnoreCase)
-        { ".rpf", ".bik", ".bk2", ".vpk", ".ucas", ".utoc", ".forge", ".bsa", ".ba2", ".ggpk", ".asi", ".toc", ".sb", ".wad", ".gcf", ".usm" };
+        { ".rpf", ".bik", ".bk2", ".vpk", ".ucas", ".utoc", ".forge", ".bsa", ".ba2", ".ggpk", ".asi", ".gcf", ".usm" };
     // also in other programs (or, for an anti-cheat, installed as a service of its own), so two are needed
     private static readonly string[] MaybeFiles = ["xinput1_3.dll", "d3dx9_43.dll", "d3dx9_42.dll", "openal32.dll", "fmod.dll", "fmod64.dll", "fmodex.dll", "fmodex64.dll", "fmodstudio.dll"];
     private static readonly string[] MaybeStarts = ["eaanticheat", "easyanticheat", "battleye"];
+    // game archives by other programs' extensions too (LaTeX writes .toc): a weak sign each
+    private static readonly HashSet<string> MaybeExtensions = new(StringComparer.OrdinalIgnoreCase) { ".toc", ".sb", ".wad" };
 
     /// <summary>
     /// Whether a folder holds a game whose program is in <paramref name="exeDir"/>: at least one sign only games carry (a
@@ -180,12 +245,12 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     /// else in the folder does not count. A source tree (a .git folder) is not a game. Looked at most three folders down
     /// and a few thousand files in.
     /// </summary>
-    internal static bool LooksLikeAGame(string dir, string exeDir)
+    internal static bool LooksLikeAGame(string dir, string exeDir, Budget? budget = null)
     {
         int sure = 0, files = 0;
         var weak = new HashSet<string>();
         var under = Norm(exeDir);
-        foreach (var file in Files(dir, 0))
+        foreach (var file in Files(dir, 0, budget ?? new Budget(MaxFoldersPerGame)))
         {
             if (++files > MaxFilesPerGame * 2) break;
             var path = file.Replace('/', '\\');
@@ -196,15 +261,16 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                 || SureExtensions.Contains(Path.GetExtension(n))) sure++;
             else if (MaybeFiles.Contains(n)) weak.Add(n);
             else if (MaybeStarts.FirstOrDefault(s => n.StartsWith(s, StringComparison.Ordinal)) is { } m) weak.Add(m);
+            else if (MaybeExtensions.Contains(Path.GetExtension(n))) weak.Add(Path.GetExtension(n));
         }
         return sure > 0 || weak.Count > 1;
     }
 
-    private static IEnumerable<string> Files(string dir, int depth)
+    private static IEnumerable<string> Files(string dir, int depth, Budget budget)
     {
         string[] files, dirs;
-        try { files = Directory.GetFiles(dir); dirs = depth < MaxDepth ? Directory.GetDirectories(dir) : []; }
-        catch { yield break; }
+        try { files = Directory.EnumerateFiles(dir, "*", Walk).ToArray(); } catch { yield break; }
+        dirs = depth < MaxDepth ? Folders(dir, budget) : [];
         foreach (var f in files) yield return f;
         foreach (var d in dirs)
         {
@@ -212,34 +278,95 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
             if (name.Equals("site-packages", StringComparison.OrdinalIgnoreCase) || name.Equals("node_modules", StringComparison.OrdinalIgnoreCase)) continue;
             // a source tree: its .git folder is reported (and ends the look) without reading it
             if (name.Equals(".git", StringComparison.OrdinalIgnoreCase)) { yield return Path.Combine(d, "HEAD"); continue; }
-            foreach (var f in Files(d, depth + 1)) yield return f;
+            foreach (var f in Files(d, depth + 1, budget)) yield return f;
         }
     }
 
     private static string Norm(string dir) => dir.Replace('/', '\\').TrimEnd('\\') + "\\";
 
+    /// <summary>A found game's id: a hash of where it is (its folder), so a different program picked later keeps the id.</summary>
     internal static string IdOf(string source, string where) =>
-        "x:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(source + "\n" + where.ToLowerInvariant())))[..16];
+        "x:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(source + "\n" + Norm(where).ToLowerInvariant())))[..16];
 
-    private static Found? Game(string dir)
+    private static Found? Game(string dir, Budget? budget = null)
     {
         var name = Path.GetFileName(dir.TrimEnd('\\', '/'));
         if (name.StartsWith('.') || name.StartsWith('$') || name.StartsWith('_')) return null;
-        return PickExe(dir, name) is { } exe ? new Found(IdOf("drive", exe), name, "drive", dir, exe, null) : null;
+        return PickExe(dir, name, budget) is { } exe ? new Found(IdOf("drive", dir), name, "drive", dir, exe, null) : null;
     }
+
+    /// <summary>
+    /// <paramref name="file"/> (relative to <paramref name="dir"/>, or a full path) when it is an existing program (.exe)
+    /// inside <paramref name="dir"/>; null for anything else (a document, a script, a path outside the game's folder).
+    /// What a launcher's record names is checked this way before it can be started.
+    /// </summary>
+    internal static string? ProgramIn(string dir, string? file)
+    {
+        if (string.IsNullOrWhiteSpace(file)) return null;
+        try
+        {
+            var full = Path.GetFullPath(Path.Combine(dir, file.Trim().Trim('"')));
+            return full.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && Norm(full).StartsWith(Norm(Path.GetFullPath(dir)), StringComparison.OrdinalIgnoreCase)
+                && File.Exists(full) ? full : null;
+        }
+        catch { return null; }
+    }
+
+    // Programs that come with a game but are not it, matched against whole words of the program's name (so "eac" does
+    // not throw out BeachRacing, nor "server" Observer), or a few words run together ("crash handler", "anti cheat").
+    private static readonly HashSet<string> HelperWords = new(StringComparer.Ordinal)
+    {
+        "setup", "redist", "vcredist", "directx", "report", "reporter", "helper", "patch", "patcher", "anticheat", "eac", "battleye",
+        "beservice", "cleanup", "dotnet", "touchup", "cef", "cefprocess", "activation", "register", "uploader", "benchmark", "config",
+        "configurator", "settings", "server", "dedicated", "unity", "ue4", "ue5", "subprocess", "error", "debug", "debugger", "tool",
+        "tools", "editor", "7z", "unrar", "physx", "oalinst", "nvidia", "browser", "encoder", "profiler", "viewer", "securom",
+    };
+    // the same, for words that come in several forms (uninstall, uninstaller, unins000; update, updater, autoupdate…)
+    private static readonly string[] HelperStems = ["unins", "uninstall", "install", "updat", "autoupdat", "prereq", "dxsetup", "dxwebsetup",
+        "diagnos", "crashhandl", "crashreport", "crashsend", "crashpad", "crashdump", "crashupload", "bugreport", "errorreport"];
 
     /// <summary>Programs that come with a game but are not it.</summary>
     internal static bool NotTheGame(string file)
     {
         file = file.Replace('/', '\\');
-        var n = Path.GetFileNameWithoutExtension(file[(file.LastIndexOf('\\') + 1)..]).ToLowerInvariant();
-        string[] words = ["unins", "setup", "install", "redist", "vcredist", "vc_redist", "dxsetup", "dxwebsetup", "directx", "crash", "report",
-            "helper", "updat", "patch", "prereq", "anticheat", "eac", "battleye", "beservice", "cleanup", "dotnet", "touchup",
-            "cefprocess", "cef", "activation", "register", "uploader", "benchmark", "config", "settings", "server", "dedicated",
-            "unity", "ue4", "ue5", "subprocess", "error", "debug", "tool", "editor", "7z", "unrar", "dxsetup", "physx", "oalinst", "nvidia",
-            "browser", "encoder", "diagnos", "profiler", "viewer", "securom"];
-        return words.Any(w => n.Contains(w, StringComparison.Ordinal)) || file.Contains(@"\_CommonRedist\", StringComparison.OrdinalIgnoreCase)
-            || file.Contains(@"\Redist\", StringComparison.OrdinalIgnoreCase) || file.Contains(@"\__Installer\", StringComparison.OrdinalIgnoreCase);
+        if (file.Contains(@"\_CommonRedist\", StringComparison.OrdinalIgnoreCase) || file.Contains(@"\Redist\", StringComparison.OrdinalIgnoreCase)
+            || file.Contains(@"\__Installer\", StringComparison.OrdinalIgnoreCase)) return true;
+        var parts = NameParts(Path.GetFileNameWithoutExtension(file[(file.LastIndexOf('\\') + 1)..]));
+        for (var i = 0; i < parts.Count; i++)
+        {
+            var run = "";
+            for (var j = i; j < parts.Count && j < i + 3; j++)
+            {
+                run += parts[j];
+                if (HelperWords.Contains(run) || HelperStems.Any(s => run.StartsWith(s, StringComparison.Ordinal))) return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// A program's name in words, lower case: split at anything not a letter or digit, between letters and digits, and
+    /// where the case changes (UnityCrashHandler64 gives unity, crash, handler and 64; EAAntiCheat gives ea, anti, cheat).
+    /// </summary>
+    internal static List<string> NameParts(string name)
+    {
+        var parts = new List<string>();
+        var sb = new StringBuilder();
+        void Flush() { if (sb.Length > 0) { parts.Add(sb.ToString()); sb.Clear(); } }
+        for (var i = 0; i < name.Length; i++)
+        {
+            var c = name[i];
+            if (!char.IsLetterOrDigit(c)) { Flush(); continue; }
+            if (sb.Length > 0)
+            {
+                var p = name[i - 1];
+                if (char.IsDigit(c) != char.IsDigit(p) || (char.IsUpper(c) && char.IsLower(p))
+                    || (char.IsUpper(c) && char.IsUpper(p) && i + 1 < name.Length && char.IsLower(name[i + 1]))) Flush();
+            }
+            sb.Append(char.ToLowerInvariant(c));
+        }
+        Flush();
+        return parts;
     }
 
     /// <summary>
@@ -247,12 +374,12 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     /// tools carry its name too, gta4Browser.exe next to GTAIV.exe), the one whose name shares the most with the folder's,
     /// then the largest, then the shallowest. Null when there is none.
     /// </summary>
-    internal static string? PickExe(string dir, string name)
+    internal static string? PickExe(string dir, string name, Budget? budget = null)
     {
         var want = Words(name);
         (string File, double Score)? best = null;
         var count = 0;
-        foreach (var (file, depth) in Programs(dir, 0))
+        foreach (var (file, depth) in Programs(dir, 0, budget ?? new Budget(MaxFoldersPerGame)))
         {
             if (++count > MaxFilesPerGame) break;
             if (NotTheGame(file)) continue;
@@ -268,14 +395,14 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         return best?.File;
     }
 
-    private static IEnumerable<(string File, int Depth)> Programs(string dir, int depth)
+    private static IEnumerable<(string File, int Depth)> Programs(string dir, int depth, Budget budget)
     {
         string[] files, dirs;
-        try { files = Directory.GetFiles(dir, "*.exe"); dirs = depth < MaxDepth ? Directory.GetDirectories(dir) : []; }
-        catch { yield break; }
+        try { files = Directory.EnumerateFiles(dir, "*.exe", Walk).ToArray(); } catch { yield break; }
+        dirs = depth < MaxDepth ? Folders(dir, budget) : [];
         foreach (var f in files) yield return (f, depth);
         foreach (var d in dirs)
-            foreach (var x in Programs(d, depth + 1)) yield return x;
+            foreach (var x in Programs(d, depth + 1, budget)) yield return x;
     }
 
     /// <summary>A name's words in lower case, with the digits split off ("GTAIV" stays one word, "FIFA23" gives fifa and 23).</summary>
@@ -310,7 +437,8 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                 string? S(string k) => r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
                 var cats = r.TryGetProperty("AppCategories", out var c) && c.ValueKind == JsonValueKind.Array ? c.EnumerateArray().Select(x => x.GetString()).ToList() : [];
                 if (!cats.Contains("games") || S("DisplayName") is not { Length: > 0 } name || S("InstallLocation") is not { Length: > 0 } dir) continue;
-                var exe = S("LaunchExecutable") is { Length: > 0 } le ? Path.Combine(dir, le) : null;
+                // a program inside the game's folder only; the launcher's address starts it otherwise
+                var exe = ProgramIn(dir, S("LaunchExecutable"));
                 string? url = null;
                 if (S("CatalogNamespace") is { } ns && S("CatalogItemId") is { } item && S("AppName") is { } app
                     && new[] { ns, item, app }.All(x => x.Length > 0 && x.All(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' or '.')))
@@ -336,7 +464,7 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                 case "gog":
                     if (k.Value("path") is { Length: > 0 } gp && k.Value("gameName") is { Length: > 0 } gn)
                     {
-                        var exe = k.Value("exe") is { Length: > 0 } ge && File.Exists(ge) ? ge : PickExe(gp, gn);
+                        var exe = ProgramIn(gp, k.Value("exe")) ?? PickExe(gp, gn);
                         if (exe is not null) yield return new Found(IdOf("gog", gp), gn, "gog", gp, exe, null);
                     }
                     break;
@@ -379,7 +507,8 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
             {
                 using var k = root.OpenSubKey(name);
                 if (k is null) continue;
-                var values = k.GetValueNames().ToDictionary(v => v, v => k.GetValue(v)?.ToString(), StringComparer.OrdinalIgnoreCase);
+                var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                foreach (var v in k.GetValueNames()) values[v] = k.GetValue(v)?.ToString();
                 list.Add(new Key(name, v => values.TryGetValue(v, out var s) ? s : null));
             }
         }
@@ -397,19 +526,28 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     }
 
     /// <summary>
-    /// Starts a found game for a widget that may start games (checked by the caller): by its launcher's address, or its
-    /// program in its folder. Only a game of the list read right now can start, so no text from the request is run.
+    /// Starts a found game for the asking <paramref name="widget"/> when its "Let the phone start the games found outside
+    /// Steam" is on (<see cref="LaunchAllowed"/>): by its launcher's address, or its program in its folder. Only a game of
+    /// the list found here can start, by its id, so no text from the request is run or passed on.
     /// </summary>
-    public SteamLibrary.LaunchError? Launch(string? id)
+    public SteamLibrary.LaunchError? Launch(string? deviceId, string? widget, string? id)
     {
+        if (!LaunchAllowed(deviceId, widget)) return LaunchOff;
+        if (id is null || !id.StartsWith("x:", StringComparison.Ordinal)) return new("notinstalled", "That game is not installed");
         var g = Games().FirstOrDefault(x => x.Id == id);
-        // the list is a few minutes old at most: a game removed since is not started
-        if (g is null || (g.Exe is not null && g.Url is null && !File.Exists(g.Exe))) return new("notinstalled", "That game is not installed");
+        // the option can be turned off while this waited for the first look: decide with the settings of now
+        if (!LaunchAllowed(deviceId, widget)) return LaunchOff;
+        if (g is null) return new("notinstalled", "That game is not installed");
+        // a launcher's address goes to its URL handler; a path only when it is still a program (the list is up to ten
+        // minutes old, and a launcher's record could name any file): the shell starts it so a game that asks for
+        // administrator rights still gets the prompt
+        var exe = g.Url is null && g.Exe is not null && g.Exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(g.Exe) ? g.Exe : null;
+        if (g.Url is null && exe is null) return new("notinstalled", "That game is not installed");
         try
         {
             StartProcess(g.Url is not null
                 ? new ProcessStartInfo { FileName = g.Url, UseShellExecute = true }
-                : new ProcessStartInfo { FileName = g.Exe!, WorkingDirectory = Path.GetDirectoryName(g.Exe!)!, UseShellExecute = true });
+                : new ProcessStartInfo { FileName = exe!, WorkingDirectory = Path.GetDirectoryName(exe!)!, UseShellExecute = true });
             log.LogInformation("game started from the phone: {Name} ({Source})", g.Name, g.Source);
             return null;
         }

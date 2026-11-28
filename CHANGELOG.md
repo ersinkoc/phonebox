@@ -111,6 +111,11 @@
 - iOS: the companion app can pair with several computers and switch between them. When the one in use stops
   answering for 30 seconds, the app follows whichever paired computer answers, and goes back to your pick as soon
   as it answers again. Tokens stay in the Keychain (#727, [haquanghuy2908](https://github.com/haquanghuy2908)).
+- The Steam library widget is now the Game library. Shortcuts ticked in its new **Other games** option show as games,
+  and on Windows it also finds the games installed outside Steam: the Epic Games Launcher's, the EA app's, GOG Galaxy's,
+  Ubisoft Connect's and the Rockstar Games Launcher's, and game folders on the drives. Starting those from the phone is
+  an option of its own, **Let the phone start the games found outside Steam**, off by default (#756, #759,
+  [WellyngtonSantos](https://github.com/WellyngtonSantos)).
 
 ## 0.9.32 — 2026-11-27
 

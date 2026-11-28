@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
@@ -33,7 +35,51 @@ public class OtherGamesTests : IDisposable
     [InlineData(@"C:\G\__Installer\Touchup.exe")]
     [InlineData(@"C:\G\EasyAntiCheat_Setup.exe")]
     [InlineData(@"C:\G\gta4Browser.exe")]
+    [InlineData(@"C:\G\EACLauncher.exe")]
+    [InlineData(@"C:\G\BEService_x64.exe")]
+    [InlineData(@"C:\G\CrashReportClient.exe")]
+    [InlineData(@"C:\G\UE4PrereqSetup_x64.exe")]
+    [InlineData(@"C:\G\VC_redist.x64.exe")]
+    [InlineData(@"C:\G\DedicatedServer.exe")]
+    [InlineData(@"C:\G\AutoUpdater.exe")]
     public void InstallersAndHelpersAreNeverTheGame(string file) => Assert.True(OtherGames.NotTheGame(file));
+
+    // whole words only: a helper's name inside a game's name does not throw the game out
+    [Theory]
+    [InlineData(@"C:\G\CrashBandicoot.exe")]
+    [InlineData(@"C:\G\Crash Bandicoot N. Sane Trilogy.exe")]
+    [InlineData(@"C:\G\BeachRacing.exe")]
+    [InlineData(@"C:\G\Observer.exe")]
+    [InlineData(@"C:\G\ObserverSystemRedux.exe")]
+    [InlineData(@"C:\G\Terror.exe")]
+    [InlineData(@"C:\G\Toolbox Heroes.exe")]
+    [InlineData(@"C:\G\GTAIV.exe")]
+    public void AGameNamedLikeAHelperIsStillTheGame(string file) => Assert.False(OtherGames.NotTheGame(file));
+
+    [Fact]
+    public void NamePartsSplitAtCaseDigitsAndPunctuation()
+    {
+        Assert.Equal(["unity", "crash", "handler", "64"], OtherGames.NameParts("UnityCrashHandler64"));
+        Assert.Equal(["ea", "anti", "cheat", "game", "service"], OtherGames.NameParts("EAAntiCheat.GameService"));
+        Assert.Equal(["beach", "racing"], OtherGames.NameParts("BeachRacing"));
+        Assert.Equal(["dxsetup"], OtherGames.NameParts("DXSETUP"));
+    }
+
+    [Fact]
+    public void ALaunchersRecordStartsOnlyAProgramInsideTheGamesFolder()
+    {
+        var game = Path.Combine(_dir, "Game");
+        MakeExe("Game/bin/game.exe", 100);
+        MakeExe("Game/readme.txt", 10);
+        MakeExe("Elsewhere/other.exe", 100);
+        Assert.Equal(Path.Combine(game, "bin", "game.exe"), OtherGames.ProgramIn(game, @"bin\game.exe".Replace('\\', Path.DirectorySeparatorChar)));
+        Assert.Equal(Path.Combine(game, "bin", "game.exe"), OtherGames.ProgramIn(game, Path.Combine(game, "bin", "game.exe")));
+        Assert.Null(OtherGames.ProgramIn(game, "readme.txt"));                                   // not a program
+        Assert.Null(OtherGames.ProgramIn(game, Path.Combine(_dir, "Elsewhere", "other.exe")));   // outside the game's folder
+        Assert.Null(OtherGames.ProgramIn(game, Path.Combine("..", "Elsewhere", "other.exe")));
+        Assert.Null(OtherGames.ProgramIn(game, "missing.exe"));
+        Assert.Null(OtherGames.ProgramIn(game, null));
+    }
 
     [Fact]
     public void TheProgramNamedLikeTheFolderWinsOverABiggerOne()
@@ -175,11 +221,161 @@ public class OtherGamesTests : IDisposable
     }
 
     [Fact]
-    public void AGameStartedByOneOfYourOwnShortcutsIsShownOnceAsYours()
+    public void AGameStartedByOneOfYourOwnShortcutsNamesThatShortcut()
     {
         OtherGames.Found F(string name, string dir) => new(OtherGames.IdOf("t", dir), name, "drive", dir, dir + "/a.exe", null);
-        var games = new[] { F("GTA 4 LCPDFR", "D:/GTA 4 LCPDFR"), F("Red Dead Redemption 2", "D:/Games/Red Dead Redemption 2") };
-        var shown = OtherGames.Shown(games, [@"d:\gta 4 lcpdfr\GTA 4 LCPDFR\Grand Theft Auto IV\LaunchGTAIV.exe"]);
-        Assert.Equal(["Red Dead Redemption 2"], shown.Select(g => g.Name));
+        var programs = new[] { ("gta", @"d:\gta 4 lcpdfr\GTA 4 LCPDFR\Grand Theft Auto IV\LaunchGTAIV.exe"), ("other", @"D:\GTA 4 LCPDFR2\x.exe") };
+        // the phone leaves the found game out only in a widget that shows that shortcut as one of its own games
+        Assert.Equal(["gta"], OtherGames.StartedBy(F("GTA 4 LCPDFR", "D:/GTA 4 LCPDFR"), programs));
+        Assert.Empty(OtherGames.StartedBy(F("Red Dead Redemption 2", "D:/Games/Red Dead Redemption 2"), programs));
+    }
+
+    [Fact]
+    public void AGameOnADriveIsKnownByItsFolderAndWeakSignsNeedACompanion()
+    {
+        MakeExe("Racer/racer.exe", 5000);
+        MakeExe("Racer/data/level.toc", 10);   // LaTeX writes .toc too: one weak sign alone is not a game
+        Assert.Empty(OtherGames.FromDrives([_dir]));
+        MakeExe("Racer/data/level.sb", 10);
+        var g = Assert.Single(OtherGames.FromDrives([_dir]));
+        // the id is the folder's, so another program picked later keeps it (and a favorite with it)
+        Assert.Equal(OtherGames.IdOf("drive", Path.Combine(_dir, "Racer")), g.Id);
+        MakeExe("Racer/Racer2.exe", 9_000_000);
+        Assert.Equal(g.Id, Assert.Single(OtherGames.FromDrives([_dir])).Id);
+    }
+
+    [Fact]
+    public void AFolderBudgetStopsTakingAtItsEndAndAtItsDrives()
+    {
+        var drive = new OtherGames.Budget(3);
+        var game = new OtherGames.Budget(2, drive);
+        Assert.True(game.Take());
+        Assert.True(game.Take());
+        Assert.False(game.Take());   // the game's own budget is spent
+        var next = new OtherGames.Budget(5, drive);
+        Assert.True(next.Take());
+        Assert.False(next.Take());   // the drive's is spent
+    }
+
+    [Fact]
+    public void WindowsOldAndInetpubAreNotLookedInto()
+    {
+        MakeExe("Windows.old/Games/Old Game/old.exe", 5000);
+        MakeExe("Windows.old/Games/Old Game/steam_api.dll", 10);
+        MakeExe("inetpub/site/site.exe", 5000);
+        MakeExe("inetpub/site/bink2w64.dll", 10);
+        Assert.Empty(OtherGames.FromDrives([_dir]));
+    }
+
+    // ------------------------------------------------------------------ starting a found game from the phone
+
+    private readonly List<ProcessStartInfo> _started = [];
+
+    private ConfigStore Config(string options)
+    {
+        var path = Path.Combine(_dir, "config-" + Guid.NewGuid().ToString("N") + ".json");
+        File.WriteAllText(path, $$$"""{"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{"id":"w","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":{{{options}}}}]}]}""");
+        return new ConfigStore(path);
+    }
+
+    private OtherGames Games(ConfigStore config, params OtherGames.Found[] found) =>
+        new(config, NullLogger<OtherGames>.Instance) { Launchers = () => found, Disks = () => [], StartProcess = _started.Add };
+
+    private OtherGames.Found Program(string name)
+    {
+        var exe = MakeExe($"{name}/{name}.exe", 100);
+        var dir = Path.GetDirectoryName(exe)!;
+        return new(OtherGames.IdOf("drive", dir), name, "drive", dir, exe, null);
+    }
+
+    [Fact]
+    public void StartingAGameFoundOutsideSteamIsItsOwnOptionOffByDefault()
+    {
+        var game = Program("Old Fort");
+        // the Steam option alone does not let the phone start a program found here
+        foreach (var options in new[] { "{}", """{"allowLaunch":true}""", """{"allowLaunchOthers":false}""" })
+            Assert.Equal("othersoff", Games(Config(options), game).Launch(null, "p/w", game.Id)?.Code);
+        // nor the option of another widget, or none named
+        var on = Games(Config("""{"allowLaunchOthers":true}"""), game);
+        Assert.Equal("othersoff", on.Launch(null, "p/other", game.Id)?.Code);
+        Assert.Equal("othersoff", on.Launch(null, null, game.Id)?.Code);
+        Assert.Empty(_started);
+    }
+
+    [Fact]
+    public void OnlyAGameOfTheListStartsAndOnlyByItsId()
+    {
+        var game = Program("Old Fort");
+        var on = Games(Config("""{"allowLaunchOthers":true}"""), game);
+        Assert.Equal("notinstalled", on.Launch(null, "p/w", "x:0000000000000000")?.Code);
+        Assert.Equal("notinstalled", on.Launch(null, "p/w", game.Exe)?.Code);
+        Assert.Equal("notinstalled", on.Launch(null, "p/w", null)?.Code);
+        Assert.Equal("notinstalled", on.Launch(null, "p/w", game.Id + " & calc")?.Code);
+        Assert.Empty(_started);
+
+        Assert.Null(on.Launch(null, "p/w", game.Id));
+        var psi = Assert.Single(_started);
+        Assert.Equal(game.Exe, psi.FileName);
+        Assert.Equal(game.Dir, psi.WorkingDirectory);
+        Assert.Empty(psi.ArgumentList);
+        Assert.True(string.IsNullOrEmpty(psi.Arguments));
+    }
+
+    [Fact]
+    public void ALaunchersGameStartsByItsAddressAndAProgramThatIsGoneDoesNot()
+    {
+        var epic = new OtherGames.Found(OtherGames.IdOf("epic", Path.Combine(_dir, "Ember")), "Ember Road", "epic", Path.Combine(_dir, "Ember"), null,
+            "com.epicgames.launcher://apps/ns%3Aitem%3AEmber?action=launch&silent=true");
+        var gone = new OtherGames.Found(OtherGames.IdOf("gog", Path.Combine(_dir, "Gone")), "Gone", "gog", Path.Combine(_dir, "Gone"), Path.Combine(_dir, "Gone", "gone.exe"), null);
+        var doc = Program("Doc") with { Exe = MakeExe("Doc/readme.txt", 10) };
+        var on = Games(Config("""{"allowLaunchOthers":true}"""), epic, gone, doc);
+        Assert.Null(on.Launch(null, "p/w", epic.Id));
+        Assert.Equal(epic.Url, Assert.Single(_started).FileName);
+        Assert.Equal("notinstalled", on.Launch(null, "p/w", gone.Id)?.Code);
+        Assert.Equal("notinstalled", on.Launch(null, "p/w", doc.Id)?.Code); // not a program: never handed to the shell
+        Assert.Single(_started);
+    }
+
+    [Fact]
+    public async Task TurningStartingOffWhileTheFirstLookRunsStopsTheStart()
+    {
+        var game = Program("Old Fort");
+        var config = Config("""{"allowLaunchOthers":true}""");
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var others = new OtherGames(config, NullLogger<OtherGames>.Instance)
+        {
+            Launchers = () => { entered.Set(); release.Wait(TimeSpan.FromSeconds(10)); return [game]; },
+            Disks = () => [], StartProcess = _started.Add,
+        };
+        var start = Task.Run(() => others.Launch(null, "p/w", game.Id));
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
+        Assert.Null(config.Save("""{"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{"id":"w","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":{"allowLaunchOthers":false}}]}]}"""));
+        release.Set();
+        Assert.Equal("othersoff", (await start.WaitAsync(TimeSpan.FromSeconds(10)))?.Code);
+        Assert.Empty(_started);
+    }
+
+    [Fact]
+    public void OnlyTheFirstLookIsWaitedFor()
+    {
+        var game = Program("Old Fort");
+        using var release = new ManualResetEventSlim();
+        var others = new OtherGames(Config("{}"), NullLogger<OtherGames>.Instance)
+        {
+            Launchers = () => { release.Wait(TimeSpan.FromSeconds(20)); return [game]; },
+            Disks = () => [], FirstWaitMs = 1500,
+        };
+        try
+        {
+            var clock = Stopwatch.StartNew();
+            Assert.Empty(others.List());                          // the first request waits for the look, then gives up
+            Assert.True(clock.ElapsedMilliseconds >= 1000, $"waited {clock.ElapsedMilliseconds} ms");
+            clock.Restart();
+            Assert.Empty(others.List());                          // later ones do not wait: they get what is there
+            Assert.Empty(others.List());
+            Assert.True(clock.ElapsedMilliseconds < 1000, $"waited {clock.ElapsedMilliseconds} ms");
+        }
+        finally { release.Set(); }
     }
 }

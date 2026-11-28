@@ -139,9 +139,11 @@ Games Launcher (its manifests), the EA app, GOG Galaxy, Ubisoft Connect and the 
 installed, and the games on the drives that no launcher lists (a portable copy, a mod, an old disc install): the folders at
 the top of each drive, and inside folders such as Games or Program Files, that hold a program and something only games carry
 (a game store's or engine's library such as steam_api.dll or UnityPlayer.dll, Bink videos, a game's archives, a mod loader).
-The drives are looked through in the background every ten minutes. They come after the Steam games, with their program's
-icon; the program is the one named most like the folder, never an installer, uninstaller or crash reporter. Nothing is sent
-anywhere. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
+The launchers' records are read again every ten minutes and the drives are looked through in the background at most once
+an hour, skipping links (junctions, symbolic links) and system folders, and a bounded number of folders per game and per
+drive. They come after the Steam games, with their program's icon; the program is the one named most like the folder, never
+an installer, uninstaller or crash reporter. A game one of the widget's **Other games** shortcuts starts is shown once, as
+that shortcut. The list and the icons go only to your phone; nothing is sent anywhere else. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
 Steam's own files, so the widget needs no Steam API key, no sign-in and no internet, and nothing is sent to Steam:
 `libraryfolders.vdf` and the `appmanifest_*.acf` file of each game in every library folder, `localconfig.vdf` for when a
 game was last played, covers from Steam's `appcache/librarycache`, and Steam's `RunningAppID` (the registry on Windows,
@@ -150,11 +152,18 @@ however many phones ask, and parses a file again only after it changed; each fil
 runtimes (Proton, Steamworks Common Redistributables…) are left out.
 
 Starting a game from the phone is off by default: turn on **Let the phone start games** in the widget's options. Each
-Steam library widget decides for itself: the agent checks the option of the widget a tap comes from. With
+Game library widget decides for itself: the agent checks the option of the widget a tap comes from. With
 **Ask before starting** (on by default) the first tap marks the game and a second tap within four seconds starts it.
-The phone sends only the game's app id; the agent starts it only if that id is installed right then, by handing
-Steam's own `steam://rungameid/<id>` link to the system (Windows' URL handler, `xdg-open` on Linux, `open` on macOS).
-Steam may still ask on the computer before a game starts, for example to install an update first.
+For a Steam game the phone sends only the game's app id; the agent starts it only if that id is installed right then, by
+handing Steam's own `steam://rungameid/<id>` link to the system (Windows' URL handler, `xdg-open` on Linux, `open` on
+macOS). Steam may still ask on the computer before a game starts, for example to install an update first. Your own games
+(the **Other games** shortcuts) run their shortcut, like its key would, under the same option.
+
+The games found outside Steam have an option of their own, also off by default: **Let the phone start the games found
+outside Steam**, because it starts a program the agent picked, not Steam. With it on, the phone sends only the game's id
+(`x:` and a hash of its folder); the agent starts the game only if that id is in the list it found, either by the
+launcher's own link (Epic Games Launcher, Ubisoft Connect), or by the game's program in its folder, with no arguments
+and only when it is still an existing `.exe` inside that folder. Nothing from the request reaches the command.
 
 **Smart Stack** combines up to 12 widgets in one slot. Add it from the Layout category, then drag widgets into it or
 use its picker. Reorder cards, open their settings, or disable individual cards. Tap the dots or swipe vertically to
