@@ -42,6 +42,7 @@ public sealed class GameCovers : IDisposable
     private readonly Dictionary<string, (int Count, long Until)> _gameFailures = [];
     private int _failures;
     private long _quietUntil;
+    private bool _sweepPending; // art files of dropped games still to delete once no lookup runs
     private Task? _worker;
 
     internal sealed record Entry(long App, long At);
@@ -155,21 +156,30 @@ public sealed class GameCovers : IDisposable
         return gone.Count > 0;
     }
 
-    /// <summary>Deletes the art files no index entry names any more (only files named like ours: digits and .jpg).</summary>
+    /// <summary>
+    /// Deletes the art files no index entry names any more (only files named like ours: digits and .jpg). While lookups
+    /// run (one may be writing a file now) it is left to the worker, which does it once its queue is empty.
+    /// </summary>
     private void DropUnusedArt()
     {
         try
         {
-            if (!Directory.Exists(_dir) || SteamLibrary.IsLink(_dir)) return;
+            lock (_gate)
+            {
+                _sweepPending = true;
+                if (_queue.Count > 0 || _worker is not null) return;
+            }
+            if (!Directory.Exists(_dir) || SteamLibrary.IsLink(_dir)) { lock (_gate) _sweepPending = false; return; }
             HashSet<string> used;
             lock (_gate) used = _index.Values.Where(e => e.App > 0).Select(e => Path.GetFileName(ArtPath(e.App))).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var file in Directory.EnumerateFiles(_dir, "*.jpg", new EnumerationOptions { AttributesToSkip = FileAttributes.ReparsePoint }))
+            foreach (var file in Directory.EnumerateFiles(_dir, "*.jpg", new EnumerationOptions { AttributesToSkip = FileAttributes.ReparsePoint }).ToList())
             {
                 var name = Path.GetFileName(file);
                 if (used.Contains(name) || !Path.GetFileNameWithoutExtension(name).All(char.IsAsciiDigit)) continue;
-                lock (_gate) if (_queue.Count > 0 || _worker is not null) return; // a lookup may be writing one now
+                lock (_gate) if (_queue.Count > 0 || _worker is not null) return; // a lookup started: the worker sweeps after it
                 File.Delete(file);
             }
+            lock (_gate) _sweepPending = false;
         }
         catch (Exception ex) { _log.LogDebug("could not drop old game covers: {Msg}", ex.Message); }
     }
@@ -185,10 +195,17 @@ public sealed class GameCovers : IDisposable
         while (true)
         {
             (string Key, string[] Names) next;
+            bool sweep = false;
             lock (_gate)
             {
-                if (_queue.Count == 0) { _worker = null; return; }
-                next = _queue.Dequeue();
+                if (_queue.Count == 0) { _worker = null; sweep = _sweepPending; next = ("", []); }
+                else next = _queue.Dequeue();
+            }
+            if (next.Key.Length == 0)
+            {
+                // the art of the games that were dropped while this ran
+                if (sweep) DropUnusedArt();
+                return;
             }
             long app = 0;
             var failed = false;
@@ -196,7 +213,9 @@ public sealed class GameCovers : IDisposable
             catch (CoversOffException)
             {
                 // the option was turned off: the rest is not asked, and nothing counts as a failure
-                lock (_gate) { _queue.Clear(); _queued.Clear(); _worker = null; }
+                bool pending;
+                lock (_gate) { _queue.Clear(); _queued.Clear(); _worker = null; pending = _sweepPending; }
+                if (pending) DropUnusedArt();
                 return;
             }
             catch (Exception ex)

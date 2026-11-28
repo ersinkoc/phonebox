@@ -199,4 +199,19 @@ public class GameCoversTests : IDisposable
         Assert.DoesNotContain("x:1", File.ReadAllText(Path.Combine(_dir, "index.json")));
         Assert.Null(again.CoverFile("x:1"));
     }
+
+    [Fact]
+    public async Task AGameDroppedWhileAnotherIsLookedUpLosesItsArtOnceTheLookupIsDone()
+    {
+        var covers = new GameCovers(NullLogger<GameCovers>.Instance, new FakeStore(Store), _dir, pauseMs: 0);
+        covers.Want([("x:1", ["Grand Theft Auto IV"])]);
+        await covers.Idle();
+        var art = covers.CoverFile("x:1");
+        Assert.NotNull(art);
+
+        // one list both drops x:1 and brings a new game to look up: the art goes once that lookup is over
+        covers.Want([("x:2", ["FIFA 23"])]);
+        await covers.Idle();
+        Assert.False(File.Exists(art));
+    }
 }
