@@ -69,6 +69,18 @@ public class ConfigTests
         Assert.False(publicConfig.TryGetProperty("nvidiaSmi", out _));
     }
 
+    [Theory]
+    [InlineData("{}", false)] // no Corsair device is asked anything until Settings says so
+    [InlineData("""{"batteries": null}""", false)]
+    [InlineData("""{"batteries": {"corsair": true}}""", true)]
+    public void CorsairBatteriesAreOffUnlessTurnedOnAndStayOnTheComputer(string json, bool expected)
+    {
+        var config = Load(json);
+        Assert.Equal(expected, config.Batteries.Corsair);
+        var publicConfig = JsonSerializer.SerializeToElement(config.ToPublic(), ConfigStore.WriteOpts);
+        Assert.False(publicConfig.TryGetProperty("batteries", out _));
+    }
+
     [Fact]
     public void ExtraClaudeCredentialDirsDropBlankAndRepeatedEntries()
     {

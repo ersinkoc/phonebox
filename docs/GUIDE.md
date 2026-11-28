@@ -711,6 +711,12 @@ that is always plugged in lasts longer. Phones cannot stop charging without root
 where it comes from: a smart plug in Home Assistant, or two shortcuts (for example `uhubctl` for a USB hub with
 switchable ports). The panel keeps running over Wi-Fi while the USB power is off.
 
+**Device batteries** (Settings › General, Windows) can also show Corsair wireless headsets, mice and keyboards on
+the Device batteries widget. This is off by default: while it is on, PhoneBox asks their USB receiver, or the device
+on its cable, for the battery level and charging state. Nothing is changed on the device, and iCUE keeps working.
+Only listed products are read, and a device that does not answer is left alone until it has disconnected and come
+back.
+
 ## Security & privacy
 
 - The agent listens on `127.0.0.1` only. Requests with a foreign `Host` header (DNS rebinding) or a cross-site

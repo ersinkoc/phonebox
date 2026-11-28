@@ -303,4 +303,409 @@ public class BatteryTests
         Assert.Equal((byte)0x3F, res.WorkingTxId);
         Assert.Equal([(byte)0x3F, (byte)0x3F], sentTx);
     }
+
+    // The accepted replies are the start of input reports captured from an HS80 RGB Wireless (0x0A69) and an Ironclaw
+    // RGB Wireless (0x1B4C), behind their receiver (0x0A6B) and on a USB cable; the rest of each report is zeroed here.
+    // Replies that must be refused or ignored, and bit fields other than "both connected", are made up from them.
+    private static byte[] CorsairReport(string head)
+        => Convert.FromHexString(head + new string('0', 64 * 2 - head.Length));
+
+    private const byte Level = BatteryMonitor.CorsairPropBatteryLevel;
+    private const byte State = BatteryMonitor.CorsairPropBatteryState;
+    private const byte Pid = BatteryMonitor.CorsairPropProductId;
+    private const byte Connected = BatteryMonitor.CorsairPropConnectedSlots;
+
+    // What the receiver answers about itself: the headset is on slot 0x09, the mouse on slot 0x0A.
+    private static readonly (byte, byte, string) CorsairBothConnected = (0x08, Connected, "010002000600");
+    private static readonly (byte, byte, string) CorsairMouseConnected = (0x08, Connected, "010002000400");
+
+    private static readonly (byte, byte, string)[] CorsairHeadsetSlot =
+        [(0x09, Level, "010102008403"), (0x09, State, "010102000200"), (0x09, Pid, "01010200690A")];
+    private static readonly (byte, byte, string)[] CorsairMouseSlot =
+        [(0x0A, Level, "01020200AC03"), (0x0A, State, "010202000200"), (0x0A, Pid, "010202004C1B")];
+
+    /// <summary>Answers each read with the listed reports in order, repeating the last; unlisted reads get silence.</summary>
+    private static Func<byte, byte, BatteryMonitor.CorsairReply?> CorsairReplies(
+        List<(byte Target, byte Property)> sent, params (byte Target, byte Property, string Report)[] replies)
+    {
+        var queues = replies.GroupBy(r => (r.Target, r.Property))
+            .ToDictionary(g => g.Key, g => new Queue<string>(g.Select(r => r.Report)));
+        return (target, property) =>
+        {
+            sent.Add((target, property));
+            if (!queues.TryGetValue((target, property), out var queue)) return null;
+            var report = queue.Count > 1 ? queue.Dequeue() : queue.Peek();
+            return BatteryMonitor.ParseCorsairReply(CorsairReport(report), target);
+        };
+    }
+
+    [Theory]
+    [InlineData(64)]
+    [InlineData(65)]
+    public void BuildCorsairRequest_OnlyEverReadsOneProperty(int length)
+    {
+        var request = BatteryMonitor.BuildCorsairRequest(length, 0x02, 0x09, Level);
+
+        Assert.Equal(length, request.Length);
+        Assert.Equal(new byte[] { 0x02, 0x09, BatteryMonitor.CorsairCmdGet, 0x0F }, request[..4]);
+        Assert.All(request[4..], b => Assert.Equal(0, b));
+    }
+
+    [Fact]
+    public void ParseCorsairReply_AcceptsOnlyTheAnswerForTheAskedSlot()
+    {
+        BatteryMonitor.CorsairReply? Parse(string head, byte target)
+            => BatteryMonitor.ParseCorsairReply(CorsairReport(head), target);
+
+        Assert.Equal(new BatteryMonitor.CorsairReply(0, 900), Parse("010102008403000000392A1C", 0x09));
+        Assert.Equal(new BatteryMonitor.CorsairReply(0, 940), Parse("01020200AC03", 0x0A));
+        Assert.Equal(new BatteryMonitor.CorsairReply(0, 1000), Parse("00000200E803", 0x08));
+        // A refusal keeps its status: here a receiver asked for a battery of its own (5, not supported).
+        Assert.Equal(5, Parse("0100020528420020", 0x08)!.Value.Status);
+        // Seen while iCUE was starting: a notification, then replies for other slots.
+        Assert.Null(Parse("010206000000", 0x0A));
+        Assert.Null(Parse("010102000200", 0x0B));
+        Assert.Null(Parse("010002001C1B", 0x09));
+        Assert.Null(BatteryMonitor.ParseCorsairReply(new byte[4], 0x08));
+    }
+
+    [Fact]
+    public void QueryCorsairBattery_ReadsLevelStateThenLevelAgain()
+    {
+        var sent = new List<(byte, byte)>();
+        var cabledHeadset = CorsairReplies(sent, (0x08, Level, "010002008403"), (0x08, State, "010002000100"));
+
+        var reading = BatteryMonitor.QueryCorsairBattery(0x08, cabledHeadset);
+
+        Assert.Equal(90, reading.Level);
+        Assert.True(reading.Charging);
+        Assert.Equal([(0x08, Level), (0x08, State), (0x08, Level)], sent);
+
+        // The cabled mouse says "full": its level is reported as it comes, shown as charging.
+        var full = BatteryMonitor.QueryCorsairBattery(0x08,
+            CorsairReplies([], (0x08, Level, "00000200E803"), (0x08, State, "000002000300")));
+        Assert.Equal(100, full.Level);
+        Assert.True(full.Charging);
+
+        var onBattery = BatteryMonitor.QueryCorsairBattery(0x09,
+            CorsairReplies([], (0x09, Level, "010102008403"), (0x09, State, "010102000200")));
+        Assert.False(onBattery.Charging);
+    }
+
+    [Theory]
+    [InlineData("010102008403", "010102008403", "010102008403")] // a late level reply taken for the state
+    [InlineData("010102008403", "010102000200", "010102000200")] // the two levels differ
+    [InlineData("010102000200", "010102000200", "010102000200")] // iCUE's "mode 2" reply: 0.2% is not a level
+    [InlineData("010102001C1B", "010102000200", "010102001C1B")] // iCUE's vendor id reply
+    [InlineData("010102008403", "010102050000", "010102008403")] // state not supported
+    [InlineData("010102050000", "010102000200", "010102050000")] // level not supported
+    public void QueryCorsairBattery_RefusesDoubtfulReadings(string first, string state, string second)
+    {
+        var reading = BatteryMonitor.QueryCorsairBattery(0x09,
+            CorsairReplies([], (0x09, Level, first), (0x09, State, state), (0x09, Level, second)));
+
+        Assert.Null(reading.Level);
+    }
+
+    [Fact]
+    public void QueryCorsairBattery_AsksNothingMoreOfASilentDevice()
+    {
+        var sent = new List<(byte, byte)>();
+
+        Assert.Null(BatteryMonitor.QueryCorsairBattery(0x09, CorsairReplies(sent)).Level);
+        Assert.Single(sent);
+    }
+
+    [Theory]
+    [InlineData("01010200690A", "01010200690A", 0x0A69)]
+    [InlineData("01010200690A", "010102005203", null)] // the two product ids differ
+    [InlineData("010102001C1B", "010102001C1B", null)] // a vendor id reply taken for the product id
+    [InlineData("010102000000", "010102000000", null)] // no product
+    [InlineData("010102050000", "010102050000", null)] // not supported
+    public void QueryCorsairProductId_NeedsTwoEqualPlausibleReads(string first, string second, int? expected)
+        => Assert.Equal(expected, BatteryMonitor.QueryCorsairProductId(0x09,
+            CorsairReplies([], (0x09, Pid, first), (0x09, Pid, second))));
+
+    [Theory]
+    [InlineData("010002000600", "010002000600", new byte[] { 0x09, 0x0A })]
+    [InlineData("010002000400", "010002000400", new byte[] { 0x0A })]
+    [InlineData("010002000000", "010002000000", new byte[0])]
+    [InlineData("010002000600", "010002000400", null)] // the two reads differ
+    [InlineData("010002001C1B", "010002001C1B", null)] // a vendor id reply taken for the bit field
+    [InlineData("010002000100", "010002000100", null)] // bit 0 would be the receiver itself
+    [InlineData("010002004600", "010002004600", null)] // a bit above the slots
+    [InlineData("010002000602", "010002000602", null)] // a bit in the high byte
+    [InlineData("010002050000", "010002050000", null)] // not supported
+    public void QueryCorsairConnectedTargets_NeedsTwoEqualPlausibleReads(string first, string second, byte[]? expected)
+        => Assert.Equal(expected, BatteryMonitor.QueryCorsairConnectedTargets(
+            CorsairReplies([], (0x08, Connected, first), (0x08, Connected, second))));
+
+    private static readonly (byte, byte, string)[] CorsairBothAnswering =
+        [CorsairBothConnected, .. CorsairHeadsetSlot, .. CorsairMouseSlot];
+    // The headset's bit is set, but it answers nothing.
+    private static readonly (byte, byte, string)[] CorsairSilentHeadset = [CorsairBothConnected, .. CorsairMouseSlot];
+
+    /// <summary>A receiver read time after time, as the agent does.</summary>
+    private sealed class CorsairReceiver
+    {
+        public readonly BatteryMonitor.CorsairInterfaceState State = new();
+        public readonly List<(byte Target, byte Property)> Sent = [];
+        public long Now = 1_000;
+
+        public List<(int ProductId, int Level, bool Charging)> Read(params (byte, byte, string)[] replies)
+        {
+            Sent.Clear();
+            return BatteryMonitor.QueryCorsairInterface(0x0A6B, State, CorsairReplies(Sent, replies), clock: () => Now);
+        }
+
+        public int SentTo(byte target) => Sent.Count(s => s.Target == target);
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_AsksASlotOnceTwoReadsReportedItConnected()
+    {
+        var receiver = new CorsairReceiver();
+
+        Assert.Empty(receiver.Read(CorsairBothAnswering));
+        Assert.All(receiver.Sent, s => Assert.Equal((0x08, Connected), s));
+
+        Assert.Equal([(0x0A69, 90, false), (0x1B4C, 94, false)], receiver.Read(CorsairBothAnswering));
+
+        // A bit set for the first time waits for the next read.
+        receiver = new CorsairReceiver();
+        (byte, byte, string)[] mouseOnly = [CorsairMouseConnected, .. CorsairHeadsetSlot, .. CorsairMouseSlot];
+        receiver.Read(mouseOnly);
+        Assert.Single(receiver.Read(CorsairBothAnswering));
+        Assert.Equal(0, receiver.SentTo(0x09));
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_AsksConnectedDevicesAndIdentifiesThemOnceInAWhile()
+    {
+        var receiver = new CorsairReceiver();
+        receiver.Read(CorsairBothAnswering);
+
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+        // Nothing but the list of connected devices is asked of the receiver, and nothing of the other slots.
+        Assert.All(receiver.Sent.Where(s => s.Target is not (0x09 or 0x0A)), s => Assert.Equal((0x08, Connected), s));
+
+        receiver.Now += BatteryMonitor.CorsairReidentifyMs - 1;
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+        Assert.DoesNotContain(receiver.Sent, s => s.Property == Pid);
+
+        receiver.Now += 1;
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+        Assert.Contains(receiver.Sent, s => s.Property == Pid);
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_SendsNothingToADeviceThatIsAway()
+    {
+        var receiver = new CorsairReceiver();
+        receiver.Read(CorsairBothAnswering);
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+
+        // The headset leaves: the receiver would keep anything sent to it.
+        (byte, byte, string)[] mouseOnly = [CorsairMouseConnected, .. CorsairHeadsetSlot, .. CorsairMouseSlot];
+        Assert.Equal([(0x1B4C, 94, false)], receiver.Read(mouseOnly));
+        Assert.Equal(0, receiver.SentTo(0x09));
+
+        Assert.Empty(receiver.Read((0x08, Connected, "010002000000")));
+        Assert.All(receiver.Sent, s => Assert.Equal(0x08, s.Target));
+
+        // Back again: it is identified anew.
+        receiver.Read(CorsairBothAnswering);
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+        Assert.Contains(receiver.Sent, s => s == (0x09, Pid));
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_StopsAskingASilentSlotUntilItLeavesAndComesBack()
+    {
+        var receiver = new CorsairReceiver();
+        receiver.Read(CorsairSilentHeadset);
+
+        for (var read = 0; read < BatteryMonitor.CorsairMaxMisses; read++)
+        {
+            Assert.Single(receiver.Read(CorsairSilentHeadset));
+            Assert.Equal(1, receiver.SentTo(0x09));
+        }
+        for (var read = 0; read < 3; read++)
+        {
+            receiver.Now += BatteryMonitor.CorsairReidentifyMs;
+            Assert.Single(receiver.Read(CorsairSilentHeadset));
+            Assert.Equal(0, receiver.SentTo(0x09));
+        }
+
+        receiver.Read([CorsairMouseConnected, .. CorsairMouseSlot]);
+        receiver.Read(CorsairBothAnswering);
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_ForgetsAMissOnceTheSlotAnswers()
+    {
+        var receiver = new CorsairReceiver();
+        receiver.Read(CorsairSilentHeadset);
+
+        for (var round = 0; round <= BatteryMonitor.CorsairMaxMisses; round++)
+        {
+            receiver.Read(CorsairSilentHeadset);
+            Assert.Equal(1, receiver.SentTo(0x09));
+            Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+        }
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_ForgetsAProductItCannotIdentifyAgain()
+    {
+        var receiver = new CorsairReceiver();
+        receiver.Read(CorsairBothAnswering);
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+
+        // The next identification of the headset's slot fails: another device may be there.
+        receiver.Now += BatteryMonitor.CorsairReidentifyMs;
+        var found = receiver.Read(
+            [CorsairBothConnected, .. CorsairHeadsetSlot, (0x09, Pid, "010102005203"), .. CorsairMouseSlot]);
+        Assert.Equal([(0x1B4C, 94, false)], found);
+        Assert.All(receiver.Sent.Where(s => s.Target == 0x09), s => Assert.Equal(Pid, s.Property));
+
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count);
+        Assert.Contains(receiver.Sent, s => s == (0x09, Pid));
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_ReadsTwoSlowDevicesWithinItsBudget()
+    {
+        var state = new BatteryMonitor.CorsairInterfaceState { Connected = [0x09, 0x0A] };
+        var replies = CorsairReplies([], CorsairBothAnswering);
+        long now = 0;
+
+        var found = BatteryMonitor.QueryCorsairInterface(0x0A6B, state, (target, property) =>
+        {
+            now += target == 0x08 ? 5 : 290;
+            return replies(target, property);
+        }, deadlineMs: BatteryMonitor.CorsairTotalBudgetMs, clock: () => now);
+
+        Assert.Equal(2, found.Count);
+    }
+
+    [Theory]
+    [InlineData(BatteryMonitor.CorsairReplyTimeoutMs - 1, 0)]
+    [InlineData(BatteryMonitor.CorsairReplyTimeoutMs, 3)]
+    public void QueryCorsairInterface_SendsNothingItHasNoTimeToHearFrom(long budget, int requests)
+    {
+        var sent = new List<(byte Target, byte Property)>();
+
+        BatteryMonitor.QueryCorsairInterface(0x1B4C, new(),
+            CorsairReplies(sent, (0x08, Level, "00000200E803"), (0x08, State, "000002000300")),
+            deadlineMs: budget, clock: () => 0);
+
+        Assert.Equal(requests, sent.Count);
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_AsksNoSlotWithoutTheListOfConnectedDevices()
+    {
+        var receiver = new CorsairReceiver();
+
+        for (var read = 0; read < 2; read++)
+        {
+            Assert.Empty(receiver.Read([.. CorsairHeadsetSlot, .. CorsairMouseSlot]));
+            Assert.All(receiver.Sent, s => Assert.Equal(0x08, s.Target));
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]           // it does not say which product it is
+    [InlineData("01010200491B")] // a product that is not listed (a wired keyboard's id)
+    public void QueryCorsairInterface_ReadsNoBatteryOfAnUnknownDeviceOnASlot(string? productId)
+    {
+        (byte, byte, string)[] identity = productId is null ? [] : [(0x09, Pid, productId)];
+        (byte, byte, string)[] replies =
+            [CorsairBothConnected, .. CorsairHeadsetSlot[..2], .. identity, .. CorsairMouseSlot];
+        var receiver = new CorsairReceiver();
+        receiver.Read(replies);
+
+        Assert.Equal([(0x1B4C, 94, false)], receiver.Read(replies));
+        Assert.All(receiver.Sent.Where(s => s.Target == 0x09), s => Assert.Equal(Pid, s.Property));
+    }
+
+    [Theory]
+    [InlineData(0x1B49)] // a Corsair keyboard that is not listed
+    [InlineData(0x1BF0)] // iCUE's virtual device
+    public void QueryCorsairInterface_AsksNothingOfAnUnknownProduct(int productId)
+    {
+        var sent = new List<(byte Target, byte Property)>();
+
+        var found = BatteryMonitor.QueryCorsairInterface(productId, new(), CorsairReplies(sent, CorsairBothAnswering));
+
+        Assert.Empty(found);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_DoesAnInterruptedIdentificationAgain()
+    {
+        var state = new BatteryMonitor.CorsairInterfaceState { Connected = [0x09, 0x0A] };
+        var sent = new List<(byte Target, byte Property)>();
+        var replies = CorsairReplies(sent, CorsairBothAnswering);
+        long now = 0;
+
+        // The time runs out once the list of connected devices has been read.
+        BatteryMonitor.QueryCorsairInterface(0x0A6B, state, (target, property) =>
+        {
+            now += 100;
+            return replies(target, property);
+        }, deadlineMs: 450, clock: () => now);
+
+        Assert.Equal(2, sent.Count);
+        Assert.Null(state.IdentifiedAt);
+    }
+
+    [Fact]
+    public void QueryCorsairInterface_ReadsACabledDeviceWithoutAskingForSlots()
+    {
+        var sent = new List<(byte Target, byte Property)>();
+
+        var found = BatteryMonitor.QueryCorsairInterface(0x1B4C, new(),
+            CorsairReplies(sent, (0x08, Level, "00000200E803"), (0x08, State, "000002000300")));
+
+        Assert.Equal([(0x1B4C, 100, true)], found);
+        Assert.All(sent, s => Assert.Equal(0x08, s.Target));
+    }
+
+    [Fact]
+    public void CorsairReportIds_AreBothTriedOnlyUntilOneWorks()
+    {
+        Assert.Equal(new byte[] { 0x02, 0x00 }, BatteryMonitor.CorsairReportIdsFor(null));
+        Assert.Equal(new byte[] { 0x00 }, BatteryMonitor.CorsairReportIdsFor(0x00));
+    }
+
+    [Fact]
+    public void CorsairEnabled_IsOffWithoutTheSetting()
+        => Assert.False(new BatteryMonitor(
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<BatteryMonitor>.Instance).CorsairEnabled);
+
+    [Theory]
+    [InlineData(0x0A69, "headphones")]
+    [InlineData(0x1B4C, "mouse")]
+    [InlineData(0x1B6E, "keyboard")]
+    [InlineData(0x2B10, "keyboard")]
+    [InlineData(0x0A6B, null)] // a receiver is not a device
+    [InlineData(0x2B07, null)]
+    public void CorsairDeviceInfo_KnowsPairedDevices(int pid, string? expectedKind)
+        => Assert.Equal(expectedKind, BatteryMonitor.CorsairDeviceInfo(pid).Kind);
+
+    [Fact]
+    public void CorsairDeviceBattery_NamesFromTheTable()
+    {
+        var onReceiver = BatteryMonitor.CorsairDeviceBattery(0x0A69, 90, false);
+        Assert.Equal(new DeviceBattery("Corsair HS80 RGB Wireless", 90, "headphones", false), onReceiver);
+
+        // The cable and the receiver slot of one device end up as one entry.
+        var cabled = BatteryMonitor.CorsairDeviceBattery(0x0A69, 91, true);
+        Assert.Equal([cabled], BatteryMonitor.MergeRazerIntoBluetooth([], [onReceiver, cabled]));
+    }
 }
