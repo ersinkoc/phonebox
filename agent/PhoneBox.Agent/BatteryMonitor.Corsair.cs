@@ -22,14 +22,17 @@ public sealed partial class BatteryMonitor
     internal const byte CorsairStatusOk = 0x00;
 
     // A headset behind a receiver takes up to about 190 ms to answer.
-    private const int CorsairReplyTimeoutMs = 300;
-    // Overall budget for a Corsair scan, as for Razer. The first read also identifies each connected device, which
-    // takes under a second with a headset. WindowsCorsair runs on its own task, so it delays no other battery.
-    private const long CorsairTotalBudgetMs = 1500;
+    internal const int CorsairReplyTimeoutMs = 300;
+    // Overall budget for a Corsair scan. Twice Razer's, so that two devices behind one receiver are both read even when
+    // each reply takes almost the whole timeout. WindowsCorsair runs on its own task, so it delays no other battery.
+    internal const long CorsairTotalBudgetMs = 3000;
     // How often connected devices are identified again, in case another one was paired to a slot.
     internal const long CorsairReidentifyMs = 60_000;
+    // A slot that leaves a request unanswered this many reads in a row is no longer asked.
+    internal const int CorsairMaxMisses = 2;
 
     internal static readonly byte[] CorsairSlotTargets = [0x09, 0x0A, 0x0B, 0x0C, 0x0D];
+    private const int CorsairSlotBits = 0x3E; // bits 1 to 5 of the connected bit field, one for each slot target
     // The tested receiver and headset refuse report id 0x00 (ERROR_INVALID_PARAMETER), which stays as a fallback.
     internal static readonly byte[] CorsairReportIds = [0x02, 0x00];
     private static readonly ConcurrentDictionary<string, CorsairInterfaceState> CorsairInterfaces =
@@ -95,9 +98,19 @@ public sealed partial class BatteryMonitor
     {
         public byte? ReportId { get; set; }
         public long? IdentifiedAt { get; set; }
+        /// <summary>Receiver slots reported connected on the last read.</summary>
+        public HashSet<byte> Connected { get; set; } = [];
+        /// <summary>Reads in a row on which a slot left a request unanswered.</summary>
+        public Dictionary<byte, int> Misses { get; } = [];
         /// <summary>Product id of the device on each connected receiver slot.</summary>
         public Dictionary<byte, int> ProductIds { get; } = [];
     }
+
+    /// <summary>
+    /// Report ids a request is written with: both until one has worked, then only that one, so that a stalled device
+    /// is not sent the same request twice.
+    /// </summary>
+    internal static byte[] CorsairReportIdsFor(byte? known) => known is { } id ? [id] : CorsairReportIds;
 
     /// <summary>Builds an output report reading one property. It is the only kind of frame ever sent.</summary>
     internal static byte[] BuildCorsairRequest(int length, byte reportId, byte target, byte property)
@@ -153,12 +166,12 @@ public sealed partial class BatteryMonitor
 
     /// <summary>
     /// Targets of the devices connected to a receiver right now, from its bit field (bit 1 stands for target 0x09), or
-    /// null unless two reads agree on a plausible value.
+    /// null unless two reads agree on a value with no bit outside the slots, which other replies would set.
     /// </summary>
     internal static byte[]? QueryCorsairConnectedTargets(Func<byte, byte, CorsairReply?> get)
     {
         if (get(CorsairDirectTarget, CorsairPropConnectedSlots) is not { Status: CorsairStatusOk } first
-            || first.Value > 0xFF || (first.Value & 1) != 0) return null;
+            || (first.Value & ~CorsairSlotBits) != 0) return null;
         if (get(CorsairDirectTarget, CorsairPropConnectedSlots) is not { Status: CorsairStatusOk } again
             || again.Value != first.Value) return null;
         return CorsairSlotTargets.Where(target => (first.Value & (1 << (target - CorsairDirectTarget))) != 0).ToArray();
@@ -169,9 +182,11 @@ public sealed partial class BatteryMonitor
     /// connected to a listed receiver. Any other product is asked nothing, and an unlisted device behind a receiver is
     /// only asked which product it is.
     /// <para>
-    /// A device that is away (on its cable or switched off) must never be asked: the receiver keeps what is sent to it
-    /// and delivers it all when the device comes back, and enough of that stops the slot from taking any command, for
-    /// the vendor's software too, until the receiver is plugged in again.
+    /// A receiver keeps what is sent to a device that does not take it (on its cable, switched off, out of range) and
+    /// delivers it all later, and enough of that stops the slot from taking any command, for the vendor's software too,
+    /// until the receiver is plugged in again. So a slot is asked only once two reads in a row reported it connected,
+    /// and no longer after <see cref="CorsairMaxMisses"/> reads in a row left a request unanswered, until it has been
+    /// reported gone. No request is sent without the time to read its reply.
     /// </para>
     /// </summary>
     internal static List<(int ProductId, int Level, bool Charging)> QueryCorsairInterface(
@@ -183,31 +198,54 @@ public sealed partial class BatteryMonitor
     {
         var now = clock ?? (() => Environment.TickCount64);
         var found = new List<(int ProductId, int Level, bool Charging)>();
+        bool OutOfTime() => deadlineMs is { } deadline && deadline - now() < CorsairReplyTimeoutMs;
+        var unanswered = false;
+        CorsairReply? Ask(byte target, byte property)
+        {
+            if (OutOfTime()) return null;
+            var reply = get(target, property);
+            unanswered |= reply is null;
+            return reply;
+        }
 
         if (CorsairDevices.ContainsKey(interfacePid))
         {
-            var own = QueryCorsairBattery(CorsairDirectTarget, get);
+            var own = QueryCorsairBattery(CorsairDirectTarget, Ask);
             if (own.Level is { } ownLevel) found.Add((interfacePid, ownLevel, own.Charging == true));
             return found;
         }
         if (!CorsairReceivers.Contains(interfacePid)) return found;
         // Without a trustworthy list of connected devices, no slot is asked at all.
-        if (QueryCorsairConnectedTargets(get) is not { } connected) return found;
-        // A device that left may come back as another one.
-        foreach (var gone in state.ProductIds.Keys.Except(connected).ToArray()) state.ProductIds.Remove(gone);
+        if (QueryCorsairConnectedTargets(Ask) is not { } connected) return found;
+        // A device that left may come back as another one, and gets another chance.
+        foreach (var gone in state.ProductIds.Keys.Concat(state.Misses.Keys).Except(connected).ToArray())
+        {
+            state.ProductIds.Remove(gone);
+            state.Misses.Remove(gone);
+        }
+        var settled = connected.Where(state.Connected.Contains).ToArray();
+        state.Connected = [.. connected];
 
         var identify = state.IdentifiedAt is not { } last || now() - last >= CorsairReidentifyMs;
-        foreach (var target in connected)
+        foreach (var target in settled)
         {
             // An interrupted identification keeps its old date, so the next read does it again.
-            if (deadlineMs is { } deadline && now() >= deadline) return found;
+            if (OutOfTime()) return found;
+            if (state.Misses.GetValueOrDefault(target) >= CorsairMaxMisses) continue;
 
-            if ((identify || !state.ProductIds.ContainsKey(target)) && QueryCorsairProductId(target, get) is { } id)
-                state.ProductIds[target] = id;
-            if (!state.ProductIds.TryGetValue(target, out var pid) || !CorsairDevices.ContainsKey(pid)) continue;
-
-            var battery = QueryCorsairBattery(target, get);
-            if (battery.Level is { } level) found.Add((pid, level, battery.Charging == true));
+            unanswered = false;
+            if (identify || !state.ProductIds.ContainsKey(target))
+            {
+                // An id that cannot be read again is forgotten: another device may be on the slot now.
+                if (QueryCorsairProductId(target, Ask) is { } id) state.ProductIds[target] = id;
+                else state.ProductIds.Remove(target);
+            }
+            if (state.ProductIds.TryGetValue(target, out var pid) && CorsairDevices.ContainsKey(pid))
+            {
+                var battery = QueryCorsairBattery(target, Ask);
+                if (battery.Level is { } level) found.Add((pid, level, battery.Charging == true));
+            }
+            state.Misses[target] = unanswered ? state.Misses.GetValueOrDefault(target) + 1 : 0;
         }
 
         if (identify) state.IdentifiedAt = now();
@@ -231,6 +269,7 @@ public sealed partial class BatteryMonitor
     private static (List<DeviceBattery> Devices, string? Error) WindowsCorsair()
     {
         var readings = new List<DeviceBattery>();
+        var handledDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var deadline = Environment.TickCount64 + CorsairTotalBudgetMs;
         string? lastError = null;
 
@@ -243,6 +282,7 @@ public sealed partial class BatteryMonitor
             try
             {
                 var ifData = new SP_DEVICE_INTERFACE_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVICE_INTERFACE_DATA>() };
+                var devData = new SP_DEVINFO_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVINFO_DATA>() };
                 for (uint i = 0; Environment.TickCount64 < deadline && SetupDiEnumDeviceInterfaces(set, IntPtr.Zero, ref guid, i, ref ifData); i++)
                 {
                     SetupDiGetDeviceInterfaceDetailW(set, ref ifData, IntPtr.Zero, 0, out var req, IntPtr.Zero);
@@ -252,11 +292,16 @@ public sealed partial class BatteryMonitor
                     try
                     {
                         Marshal.WriteInt32(mem, IntPtr.Size == 8 ? 8 : 6);
-                        if (!SetupDiGetDeviceInterfaceDetailW(set, ref ifData, mem, req, out _, IntPtr.Zero)) continue;
+                        if (!SetupDiGetDeviceInterfaceDetailW(set, ref ifData, mem, req, out _, ref devData)) continue;
                         var path = Marshal.PtrToStringUni(IntPtr.Add(mem, 4));
                         if (string.IsNullOrEmpty(path) || !path.Contains("vid_1b1c", StringComparison.OrdinalIgnoreCase)) continue;
 
-                        readings.AddRange(ReadCorsairInterface(path, deadline));
+                        // One device exposing the collection twice is asked once.
+                        var physicalId = GetPhysicalDeviceId(path, devData.DevInst);
+                        if (handledDevices.Contains(physicalId)) continue;
+                        if (ReadCorsairInterface(path, deadline) is not { } found) continue;
+                        handledDevices.Add(physicalId);
+                        readings.AddRange(found);
                     }
                     catch (Exception ex) { lastError ??= ex.Message; }
                     finally { Marshal.FreeHGlobal(mem); }
@@ -269,39 +314,39 @@ public sealed partial class BatteryMonitor
         return (MergeRazerIntoBluetooth([], readings), lastError);
     }
 
-    private static List<DeviceBattery> ReadCorsairInterface(string path, long deadline)
+    /// <summary>Readings of one interface, or null when it is not one to ask.</summary>
+    private static List<DeviceBattery>? ReadCorsairInterface(string path, long deadline)
     {
         using var infoHandle = CreateFileW(path, 0, 3, IntPtr.Zero, 3, 0, IntPtr.Zero);
-        if (infoHandle.IsInvalid) return [];
+        if (infoHandle.IsInvalid) return null;
 
         var attrs = new HIDD_ATTRIBUTES { Size = (uint)Marshal.SizeOf<HIDD_ATTRIBUTES>() };
-        if (!HidD_GetAttributes(infoHandle, ref attrs) || attrs.VendorID != CorsairVendorId) return [];
+        if (!HidD_GetAttributes(infoHandle, ref attrs) || attrs.VendorID != CorsairVendorId) return null;
         int pid = attrs.ProductID;
-        if (!CorsairDevices.ContainsKey(pid) && !CorsairReceivers.Contains(pid)) return [];
+        if (!CorsairDevices.ContainsKey(pid) && !CorsairReceivers.Contains(pid)) return null;
         if (!TryGetHidCaps(infoHandle, out var caps)
             || caps.UsagePage != CorsairUsagePage || caps.Usage != CorsairUsage
-            || caps.InputReportByteLength == 0 || caps.OutputReportByteLength == 0) return [];
+            || caps.InputReportByteLength == 0 || caps.OutputReportByteLength == 0) return null;
 
         // GENERIC_READ | GENERIC_WRITE, shared so that iCUE keeps its own handle, overlapped so every call can time out.
         using var rwHandle = CreateFileW(path, 0xC0000000u, 3, IntPtr.Zero, 3, 0x40000000u, IntPtr.Zero);
-        if (rwHandle.IsInvalid) return [];
+        if (rwHandle.IsInvalid) return null;
 
         var state = CorsairInterfaces.GetOrAdd(path, _ => new CorsairInterfaceState());
         var found = QueryCorsairInterface(pid, state,
-            (target, property) => CorsairGet(rwHandle, caps, state, target, property, deadline), deadline);
+            (target, property) => CorsairGet(rwHandle, caps, state, target, property), deadline);
 
         return found.Select(d => CorsairDeviceBattery(d.ProductId, d.Level, d.Charging)).ToList();
     }
 
     private static CorsairReply? CorsairGet(SafeFileHandle handle, HIDP_CAPS caps, CorsairInterfaceState state,
-        byte target, byte property, long deadline)
+        byte target, byte property)
     {
-        if (Environment.TickCount64 >= deadline) return null;
         // Drop what is already queued, so that an earlier reply is not taken for this one.
         HidD_FlushQueue(handle);
 
         var sent = false;
-        foreach (var id in CorsairReportIds.OrderByDescending(id => id == state.ReportId))
+        foreach (var id in CorsairReportIdsFor(state.ReportId))
         {
             var request = BuildCorsairRequest(caps.OutputReportByteLength, id, target, property);
             if (!WritePaOverlapped(handle, request, 200)) continue;
@@ -311,7 +356,7 @@ public sealed partial class BatteryMonitor
         }
         if (!sent) return null;
 
-        var replyDeadline = Math.Min(deadline, Environment.TickCount64 + CorsairReplyTimeoutMs);
+        var replyDeadline = Environment.TickCount64 + CorsairReplyTimeoutMs;
         while (Environment.TickCount64 < replyDeadline)
         {
             var wait = (int)Math.Max(1, replyDeadline - Environment.TickCount64);

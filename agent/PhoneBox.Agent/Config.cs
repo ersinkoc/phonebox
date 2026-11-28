@@ -39,6 +39,8 @@ public sealed class AgentConfig
     public CursorConfig Cursor { get; set; } = new();
     /// <summary>Clipboard sharing with the paired phone (macOS only; off by default).</summary>
     public BridgeConfig Bridge { get; set; } = new();
+    /// <summary>Optional sources of the Device batteries widget.</summary>
+    public BatteriesConfig Batteries { get; set; } = new();
     /// <summary>Pi agent sessions on the AI sessions widget (off by default).</summary>
     public PiConfig Pi { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
@@ -422,6 +424,12 @@ public sealed class CursorConfig
     /// (needs the Cursor hook, see Settings › General). Cursor's hook runs before every command, also the ones it would
     /// run by itself, and waits for the phone while one is connected, so this stays off until you turn it on.</summary>
     public bool PhoneApprovals { get; set; }
+}
+
+public sealed class BatteriesConfig
+{
+    /// <summary>Read the batteries of Corsair devices over their USB receiver or cable (Windows; off by default).</summary>
+    public bool Corsair { get; set; }
 }
 
 public sealed class PiConfig
@@ -1012,6 +1020,7 @@ public sealed partial class ConfigStore(string path)
             .Where(x => x.key is not null && x.key != defaultClaude)
             .DistinctBy(x => x.key).Select(x => x.d).DistinctBy(d => d.Label, StringComparer.OrdinalIgnoreCase).Take(10).ToArray();
         c.Cursor ??= new();
+        c.Batteries ??= new();
         c.Pi ??= new();
         c.Antigravity ??= new();
         c.OpenCode ??= new();

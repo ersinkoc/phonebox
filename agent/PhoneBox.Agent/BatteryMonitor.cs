@@ -9,13 +9,13 @@ public sealed record DeviceBattery(string Name, int Level, string Kind, bool? Ch
 
 /// <summary>
 /// Battery levels of wireless devices: headphones, mice, keyboards, controllers (and a laptop's own battery on Linux).
-///  - Windows: Bluetooth battery property via SetupAPI (what Settings › Bluetooth shows), Razer and Corsair USB HID
-///    devices.
+///  - Windows: Bluetooth battery property via SetupAPI (what Settings › Bluetooth shows), Razer USB HID devices and,
+///    when turned on in Settings, Corsair ones.
 ///  - Linux: UPower (BlueZ devices, Logitech receivers, the laptop battery).
 ///  - macOS: ioreg (Magic Mouse / Keyboard / Trackpad) and system_profiler (AirPods and other headphones).
 /// Read every 20 seconds (a minute on macOS, where system_profiler is slow), only while a phone shows the widget.
 /// </summary>
-public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : BackgroundService
+public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log, ConfigStore? config = null) : BackgroundService
 {
     private const long NoRequest = long.MinValue;
     internal const long ActiveRefreshIntervalMs = 20_000;
@@ -33,6 +33,9 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
 #endif
     private long _lastRequest = NoRequest;
     private long? _readAt;
+
+    /// <summary>Corsair devices are asked only when Settings says so: reading them sends requests over USB.</summary>
+    internal bool CorsairEnabled => config?.Get().Batteries.Corsair == true;
 
     public IReadOnlyList<DeviceBattery> Snapshot()
     {
@@ -76,7 +79,15 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
                     }, ct);
                 }
 
-                if (_corsairTask is null || _corsairTask.IsCompleted)
+                if (!CorsairEnabled)
+                {
+                    lock (_publishLock)
+                    {
+                        _corsairDevices = [];
+                        PublishWindowsDevices();
+                    }
+                }
+                else if (_corsairTask is null || _corsairTask.IsCompleted)
                 {
                     _corsairTask = Task.Run(() =>
                     {
@@ -84,7 +95,8 @@ public sealed partial class BatteryMonitor(ILogger<BatteryMonitor> log) : Backgr
                         if (error is not null) log.LogDebug("batteries (corsair): {Msg}", error);
                         lock (_publishLock)
                         {
-                            _corsairDevices = corsair;
+                            // turned off while the devices were read: nothing of it is shown
+                            _corsairDevices = CorsairEnabled ? corsair : [];
                             PublishWindowsDevices();
                         }
                     }, ct);
