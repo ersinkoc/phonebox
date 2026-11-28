@@ -53,6 +53,10 @@
   keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
   before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
   one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
+- macOS: Dictation and the Text action of shortcut keys type the text itself, whatever the keyboard layout. They used
+  System Events' `keystroke`, which looks each character up as a key of the current layout: on Brazilian ABNT2 every
+  accented vowel came out as `a` (`não, você` typed `nao, voca`). Text now goes as Quartz keyboard events from the
+  agent, so no `osascript` starts for it either (#706).
 - Webhooks: a value pushed every second (live FPS, for example) no longer makes the phone download every pushed value
   each time. The agent sends the change itself as an event, and the phone fetches the whole list only when it missed
   one; these events are the first ones dropped from the short event backlog, so notifications and page switches stay
