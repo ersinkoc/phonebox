@@ -118,6 +118,46 @@ public class ConfigTests
         Assert.Equal("work", Assert.Single(c.Claude.ExtraCredentialDirs).Label);
     }
 
+    [Fact(DisplayName = "The llama-swap address becomes an absolute url that keeps its path")]
+    public void LlamaSwapAddressBecomesAnAbsoluteUrlKeepingItsPath()
+    {
+        Assert.Equal("http://localhost:8080", ConfigStore.NormalizeLlamaSwapUrl("localhost:8080"));
+        Assert.Equal("http://127.0.0.1:8080/llama/", ConfigStore.NormalizeLlamaSwapUrl("  127.0.0.1:8080/llama/  "));
+        Assert.Equal("https://h:1/p/", ConfigStore.NormalizeLlamaSwapUrl("https://h:1/p/"));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl(""));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl(null));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl("ftp://router.test:8080/llama"));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl("file:///tmp/router"));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl("http://"));
+        // and the same address typed without a scheme still counts as configured
+        var c = Load("""{"llamaSwap":{"url":"localhost:8080","refreshSeconds":0}}""");
+        Assert.Equal("http://localhost:8080", c.LlamaSwap.Url);
+        Assert.Equal(10, c.LlamaSwap.RefreshSeconds); // a hand-edited 0 is clamped, not shown as the effective interval
+        // a query or fragment is dropped so the trailing slash lands on the path, not after the query
+        Assert.Equal("http://router.test/llama/", ConfigStore.NormalizeLlamaSwapUrl("http://router.test/llama?view=stats"));
+        Assert.Equal("http://router.test:8080", ConfigStore.NormalizeLlamaSwapUrl("router.test:8080#top"));
+        // a "://" inside the query is not the address's scheme
+        Assert.Equal("http://router.test:8080/llama/", ConfigStore.NormalizeLlamaSwapUrl("router.test:8080/llama?next=https://example.test"));
+    }
+
+    [Theory(DisplayName = "A wrong type in the llama-swap section does not cost the rest of the config")]
+    [InlineData("""{"url":"localhost:8080","refreshSeconds":null}""", "http://localhost:8080", 60)]
+    [InlineData("""{"url":"localhost:8080","refreshSeconds":"30"}""", "http://localhost:8080", 60)]
+    [InlineData("""{"url":"localhost:8080","refreshSeconds":99999999999}""", "http://localhost:8080", 3600)]
+    [InlineData("""{"url":"localhost:8080","refreshSeconds":12.6}""", "http://localhost:8080", 13)]
+    [InlineData("""{"url":42,"refreshSeconds":20}""", "", 20)]
+    [InlineData("""{"url":null}""", "", 60)]
+    [InlineData("null", "", 60)]
+    [InlineData("5", "", 60)]
+    [InlineData("\"http://h:1\"", "", 60)]
+    public void LlamaSwapWrongTypesKeepTheRestOfTheConfig(string section, string url, int refresh)
+    {
+        var c = Load($$"""{ "llamaSwap": {{section}}, "pages": [ { "title": "Kept", "widgets": [ { "type": "clock" } ] } ] }""");
+        Assert.Equal("Kept", Assert.Single(c.Pages).Title); // the saved pages load, not the defaults
+        Assert.Equal(url, c.LlamaSwap.Url);
+        Assert.Equal(refresh, c.LlamaSwap.RefreshSeconds);
+    }
+
     [Fact]
     public void EmptyConfigGetsTheDefaultPagesAndFreshTokens()
     {
@@ -591,6 +631,7 @@ public class LanTests
     [InlineData("/api/steam/games", false)]
     [InlineData("/api/lyrics", true)]
     [InlineData("/api/lyrics/search", false)]
+    [InlineData("/api/llamaswap", true)]
     [InlineData("/api/push/temperature", true)]
     [InlineData("/api/settings", false)]
     [InlineData("/api/pair", false)]

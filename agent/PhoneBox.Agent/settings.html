@@ -945,6 +945,13 @@ nav a.on::before { color: var(--accent); }
       </div>
 
       <div class="card">
+        <h3 data-i18n="s.llamaswap.title">llama-swap stats</h3>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.llamaswap.hint">Show the llama-swap router on a llama-swap widget: which models are loaded, the requests in flight with their elapsed time, requests and tokens for today, and the generation speed (off by default). Only counters, model names, the router version, the time of the last request, and the id and elapsed time of each in-flight request are sent to the phone — no prompts, requests or responses.</p>
+        <div class="field" style="max-width:420px;margin-bottom:8px"><label data-i18n="s.llamaswap.url" for="llamaSwapUrl">Server address (empty = off)</label><input id="llamaSwapUrl" type="text" data-bind="llamaSwap.url" placeholder="http://127.0.0.1:8080" autocomplete="off" spellcheck="false"></div>
+        <div class="field" style="max-width:420px"><label data-i18n="s.llamaswap.refresh" for="llamaSwapRefresh">Refresh every (seconds)</label><input id="llamaSwapRefresh" type="number" min="10" max="3600" data-bind="llamaSwap.refreshSeconds" data-type="int"></div>
+      </div>
+
+      <div class="card">
         <h3 data-i18n="s.approvals.title">AI coding agent permission prompts</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n-html="s.approvals.hint">When Codex or Claude Code asks for permission, the phone shows the request with <b>Allow</b> and <b>Deny</b>. Install the hook for each agent you use; existing hook files are preserved and backed up.</p>
         <div class="row" style="margin-bottom:8px"><b style="min-width:92px" data-i18n="s.approvals.codex">Codex</b><button class="btn" id="codexHookBtn" data-i18n="s.claude.installHook">Install hook</button><span class="hint" id="codexHookState"></span></div>

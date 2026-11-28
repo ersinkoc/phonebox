@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "zh-Hant": {
     "strings": {
+      "s.llamaswap.title": "llama-swap 統計",
+      "s.llamaswap.hint": "在 llama-swap 小工具上顯示本地 LLM 路由器：目前載入的模型、進行中的請求及其已用時間、今日的請求數和 token 數，以及生成速度（預設關閉）。只有計數器、模型名稱以及每個進行中請求的 id 和已用時間會傳送到手機——絕不傳送提示詞、請求或回應。 也會傳送路由器版本和最後一次請求的時間。",
+      "s.llamaswap.url": "伺服器位址（留空 = 關閉）",
+      "s.llamaswap.refresh": "重新整理間隔（秒）",
       "s.display.weekStart": "每週第一天",
       "s.display.weekStart.monday": "星期一",
       "s.display.weekStart.sunday": "星期日",
@@ -1141,6 +1145,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "正在載入…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "本地 LLM 路由器：目前載入的模型、進行中的請求、今日的請求數和 token 數，以及生成速度。伺服器位址在設定 › 一般 › llama-swap 中設定。",
       "Only this category (its category in Settings; empty = all)": "僅此分類（設定中的分類；留空 = 全部）",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity 工作階段：執行中、等待、閒置。",
       "1": "1",
@@ -1886,6 +1892,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 播放清單（未勾選 = 全部）"
     },
     "panel": {
+      "In flight": "進行中",
+      "Today": "今天",
+      "Speed": "速度",
+      "Last request": "上次請求",
+      "Set the server address in Settings › General › llama-swap.": "請在 設定 › 一般 › llama-swap 中設置伺服器地址。",
+      "llama-swap is offline.": "llama-swap 已離線。",
+      "{a} in / {b} out": "輸入 {a} / 輸出 {b}",
       "% load": "負載",
       "5-hour": "5 小時",
       "5-hour session": "5 小時工作階段",

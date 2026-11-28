@@ -36,6 +36,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "de": {
     "strings": {
+      "s.llamaswap.title": "llama-swap-Statistiken",
+      "s.llamaswap.hint": "Zeigt den lokalen LLM-Router auf einem llama-swap-Widget: welche Modelle geladen sind, die laufenden Anfragen mit ihrer Dauer, heutige Anfragen und Token, sowie die Generierungsgeschwindigkeit (standardmäßig deaktiviert). Nur Zähler, Modellnamen sowie die Kennung und Laufzeit jeder laufenden Anfrage werden an das Telefon gesendet — keine Prompts, Anfragen oder Antworten. Auch die Router-Version und der Zeitpunkt der letzten Anfrage werden gesendet.",
+      "s.llamaswap.url": "Serveradresse (leer = aus)",
+      "s.llamaswap.refresh": "Aktualisieren alle (Sekunden)",
       "s.mqtt.enable": "Mit einem MQTT-Broker verbinden",
       "s.mqtt.hint": "Der Agent hält die Verbindung. Das Telefon erhält nie die Adresse, den Benutzernamen, das Passwort oder die Topics des Brokers. Der Broker kann im Internet stehen und sieht dann die Adresse dieses Computers. Diese Version verbindet nur: Der Agent abonniert nichts und veröffentlicht selbst nichts. Nur die Last-Will-Nachricht, falls eingestellt, veröffentlicht der Broker, wenn die Verbindung abbricht.",
       "s.mqtt.transport": "Übertragung",
@@ -547,6 +551,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Wird geladen…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Der lokale LLM-Router: welche Modelle geladen sind, laufende Anfragen, heutige Anfragen und Token, sowie die Generierungsgeschwindigkeit. Die Serveradresse wird unter Einstellungen › Allgemein › llama-swap festgelegt.",
       "Only this category (its category in Settings; empty = all)": "Nur diese Kategorie (ihre Kategorie in den Einstellungen; leer = alle)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity-Sitzungen: arbeiten, warten, im Leerlauf.",
       "1": "1",
@@ -1278,6 +1284,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex-Playlists (keine angekreuzt = alle)"
     },
     "panel": {
+      "In flight": "Laufend",
+      "Today": "Heute",
+      "Speed": "Tempo",
+      "Last request": "Letzte Anfrage",
+      "Set the server address in Settings › General › llama-swap.": "Richten Sie die Serveradresse in Einstellungen › Allgemein › llama-swap ein.",
+      "llama-swap is offline.": "llama-swap ist offline.",
+      "{a} in / {b} out": "Eingang {a} / Ausgang {b}",
       "% load": "% Last",
       "5-hour": "5-Stunden-Zeit",
       "5-hour session": "5-stündige Sitzung",
@@ -1702,6 +1715,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "fr": {
     "strings": {
+      "s.llamaswap.title": "Statistiques llama-swap",
+      "s.llamaswap.hint": "Affiche le routeur LLM local dans un widget llama-swap : quels modèles sont chargés, les requêtes en cours avec leur durée, les requêtes et les jetons du jour, et la vitesse de génération (désactivé par défaut). Seuls les compteurs, les noms de modèles, ainsi que l'identifiant et la durée de chaque requête en cours sont envoyés au téléphone — jamais les invites, les requêtes ni les réponses. La version du routeur et l’heure de la dernière requête sont aussi envoyées.",
+      "s.llamaswap.url": "Adresse du serveur (vide = désactivé)",
+      "s.llamaswap.refresh": "Actualiser toutes les (secondes)",
       "s.mqtt.enable": "Se connecter à un broker MQTT",
       "s.mqtt.hint": "L'agent maintient la connexion. Le téléphone ne reçoit jamais l'adresse, le nom d'utilisateur, le mot de passe ni les topics du broker. Le broker peut se trouver sur Internet ; il voit alors l'adresse de cet ordinateur. Cette version se contente de se connecter : l'agent ne s'abonne à rien et ne publie rien lui-même. Seul le testament, si vous en définissez un, est publié par le broker quand la connexion est perdue.",
       "s.mqtt.transport": "Transport",
@@ -2213,6 +2230,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Chargement…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Le routeur LLM local : modèles chargés, requêtes en cours, requêtes et jetons du jour, et vitesse de génération. L'adresse du serveur se règle dans Réglages › Général › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Seulement cette catégorie (sa catégorie dans les réglages ; vide = toutes)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessions Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity: en cours, en attente, inactif.",
       "1": "1",
@@ -2944,6 +2963,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlists Plex (aucune cochée = toutes)"
     },
     "panel": {
+      "In flight": "En cours",
+      "Today": "Aujourd'hui",
+      "Speed": "Vitesse",
+      "Last request": "Dernière requête",
+      "Set the server address in Settings › General › llama-swap.": "Réglez l'adresse du serveur dans Paramètres › Général › llama-swap.",
+      "llama-swap is offline.": "llama-swap est hors ligne.",
+      "{a} in / {b} out": "entrée {a} / sortie {b}",
       "% load": "% de charge",
       "5-hour": "5 heures",
       "5-hour session": "Session de 5 heures",
@@ -3368,6 +3394,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "es": {
     "strings": {
+      "s.llamaswap.title": "Estadísticas de llama-swap",
+      "s.llamaswap.hint": "Muestra el router LLM local en un widget llama-swap: qué modelos están cargados, las peticiones en curso con su tiempo transcurrido, las peticiones y tokens de hoy, y la velocidad de generación (desactivado por defecto). Solo se envían al teléfono contadores, nombres de modelos y la id y el tiempo transcurrido de cada petición en curso — nunca los prompts, peticiones o respuestas. También se envían la versión del router y la hora de la última petición.",
+      "s.llamaswap.url": "Dirección del servidor (vacío = desactivado)",
+      "s.llamaswap.refresh": "Actualizar cada (segundos)",
       "s.mqtt.enable": "Conectar con un broker MQTT",
       "s.mqtt.hint": "El agente mantiene la conexión. El teléfono nunca recibe la dirección, el usuario, la contraseña ni los topics del broker. El broker puede estar en internet y, entonces, ve la dirección de este equipo. Esta versión solo se conecta: el agente no se suscribe a nada ni publica nada por sí mismo. Solo el testamento, si defines uno, lo publica el broker cuando se pierde la conexión.",
       "s.mqtt.transport": "Transporte",
@@ -3879,6 +3909,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Cargando…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "El router LLM local: modelos cargados, solicitudes en curso, solicitudes y tokens de hoy, y velocidad de generación. La dirección del servidor se configura en Ajustes › General › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Solo esta categoría (su categoría en Ajustes; vacío = todas)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sesiones de Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity: en funcionamiento, esperando, inactivo.",
       "1": "1",
@@ -4610,6 +4642,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Listas de Plex (ninguna marcada = todas)"
     },
     "panel": {
+      "In flight": "En curso",
+      "Today": "Hoy",
+      "Speed": "Velocidad",
+      "Last request": "Última solicitud",
+      "Set the server address in Settings › General › llama-swap.": "Establezca la dirección del servidor en Ajustes › General › llama-swap.",
+      "llama-swap is offline.": "llama-swap está fuera de línea.",
+      "{a} in / {b} out": "entrada {a} / salida {b}",
       "% load": "% de carga",
       "5-hour": "5 horas",
       "5-hour session": "Sesión de 5 horas",
@@ -5034,6 +5073,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "it": {
     "strings": {
+      "s.llamaswap.title": "Statistiche llama-swap",
+      "s.llamaswap.hint": "Mostra il router LLM locale in un widget llama-swap: quali modelli sono caricati, le richieste in corso con i relativi tempi, le richieste e i token di oggi, e la velocità di generazione (disattivata di default). Solo i contatori, i nomi dei modelli, nonché l'identificativo e il tempo di ogni richiesta in corso vengono inviati al telefono — mai prompt, richieste o risposte. Vengono inviati anche la versione del router e l’ora dell’ultima richiesta.",
+      "s.llamaswap.url": "Indirizzo del server (vuoto = disattivato)",
+      "s.llamaswap.refresh": "Aggiorna ogni (secondi)",
       "s.mqtt.enable": "Connetti a un broker MQTT",
       "s.mqtt.hint": "L'agente mantiene la connessione. Il telefono non riceve mai l'indirizzo, il nome utente, la password né i topic del broker. Il broker può essere su internet e in tal caso vede l'indirizzo di questo computer. Questa versione si limita a connettersi: l'agente non sottoscrive nulla e non pubblica nulla da sé. Solo il testamento, se ne imposti uno, viene pubblicato dal broker quando la connessione si perde.",
       "s.mqtt.transport": "Trasporto",
@@ -5545,6 +5588,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Caricamento…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Il router LLM locale: modelli caricati, richieste in corso, richieste e token di oggi, e velocità di generazione. L'indirizzo del server si imposta in Impostazioni › Generale › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Solo questa categoria (la sua categoria nelle Impostazioni; vuoto = tutte)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessioni Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity: in esecuzione, in attesa, inattivi.",
       "1": "1",
@@ -6276,6 +6321,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlist Plex (nessuna selezionata = tutte)"
     },
     "panel": {
+      "In flight": "In corso",
+      "Today": "Oggi",
+      "Speed": "Velocità",
+      "Last request": "Ultima richiesta",
+      "Set the server address in Settings › General › llama-swap.": "Imposta l'indirizzo del server in Impostazioni › Generale › llama-swap.",
+      "llama-swap is offline.": "llama-swap non è in linea.",
+      "{a} in / {b} out": "in entrata {a} / in uscita {b}",
       "% load": "% di carico",
       "5-hour": "5 ore",
       "5-hour session": "Sessione di 5 ore",
@@ -6700,6 +6752,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "pt": {
     "strings": {
+      "s.llamaswap.title": "Estatísticas do llama-swap",
+      "s.llamaswap.hint": "Mostra o router LLM local num widget llama-swap: que modelos estão carregados, os pedidos em curso com o seu tempo decorrido, os pedidos e tokens de hoje, e a velocidade de geração (desativado por omissão). Só os contadores, os nomes dos modelos e o identificador e o tempo decorrido de cada pedido em curso são enviados para o telefone — nunca os prompts, pedidos ou respostas. Também são enviados a versão do router e a hora do último pedido.",
+      "s.llamaswap.url": "Endereço do servidor (vazio = desativado)",
+      "s.llamaswap.refresh": "Atualizar a cada (segundos)",
       "s.mqtt.enable": "Ligar a um broker MQTT",
       "s.mqtt.hint": "O agente mantém a ligação. O telemóvel nunca recebe o endereço, o nome de utilizador, a palavra-passe nem os tópicos do broker. O broker pode estar na internet e, nesse caso, vê o endereço deste computador. Esta versão apenas liga: o agente não subscreve nada nem publica nada por si. Só o testamento, se definir um, é publicado pelo broker quando a ligação se perde.",
       "s.mqtt.transport": "Transporte",
@@ -7211,6 +7267,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "A carregar…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "O router LLM local: modelos carregados, pedidos em curso, pedidos e tokens de hoje, e velocidade de geração. O endereço do servidor define-se em Definições › Geral › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Só esta categoria (a sua categoria nas Definições; vazio = todas)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessões Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity: em funcionamento, esperando, ocioso.",
       "1": "1",
@@ -7942,6 +8000,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Listas do Plex (nenhuma marcada = todas)"
     },
     "panel": {
+      "In flight": "Em curso",
+      "Today": "Hoje",
+      "Speed": "Velocidade",
+      "Last request": "Último pedido",
+      "Set the server address in Settings › General › llama-swap.": "Defina o endereço do servidor em Definições › Geral › llama-swap.",
+      "llama-swap is offline.": "llama-swap está offline.",
+      "{a} in / {b} out": "entrada {a} / saída {b}",
       "% load": "% de carga",
       "5-hour": "5 horas",
       "5-hour session": "Sessão de 5 horas",
@@ -8366,6 +8431,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "pt-BR": {
     "strings": {
+      "s.llamaswap.title": "Estatísticas do llama-swap",
+      "s.llamaswap.hint": "Mostra o router LLM local em um widget llama-swap: quais modelos estão carregados, os pedidos em andamento com o tempo decorrido, os pedidos e tokens de hoje, e a velocidade de geração (desativado por padrão). Apenas contadores, nomes de modelos e o id e o tempo decorrido de cada pedido em andamento são enviados para o telefone — nunca prompts, pedidos ou respostas. Também são enviados a versão do roteador e o horário da última requisição.",
+      "s.llamaswap.url": "Endereço do servidor (vazio = desativado)",
+      "s.llamaswap.refresh": "Atualizar a cada (segundos)",
       "s.mqtt.enable": "Conectar a um broker MQTT",
       "s.mqtt.hint": "O agente mantém a conexão. O celular nunca recebe o endereço, o nome de usuário, a senha nem os tópicos do broker. O broker pode estar na internet e, nesse caso, vê o endereço deste computador. Esta versão apenas conecta: o agente não assina nada nem publica nada por conta própria. Só o testamento, se você definir um, é publicado pelo broker quando a conexão se perde.",
       "s.mqtt.transport": "Transporte",
@@ -8429,6 +8498,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Carregando…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "O router LLM local: modelos carregados, pedidos em andamento, pedidos e tokens de hoje, e velocidade de geração. O endereço do servidor é definido em Configurações › Geral › llama-swap.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -8443,6 +8514,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlists do Plex (nenhuma marcada = todas)"
     },
     "panel": {
+      "In flight": "Em andamento",
+      "Today": "Hoje",
+      "Speed": "Velocidade",
+      "Last request": "Último pedido",
+      "Set the server address in Settings › General › llama-swap.": "Defina o endereço do servidor em Configurações › Geral › llama-swap.",
+      "llama-swap is offline.": "llama-swap está offline.",
+      "{a} in / {b} out": "entrada {a} / saída {b}",
       "GB/s": "GB/s",
       "MB/s": "MB/s",
       "KB/s": "KB/s",
@@ -8549,6 +8627,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "nl": {
     "strings": {
+      "s.llamaswap.title": "llama-swap-statistieken",
+      "s.llamaswap.hint": "Toont de lokale LLM-router in een llama-swap-widget: welke modellen geladen zijn, de actieve verzoeken met hun duur, de verzoeken en tokens van vandaag, en de generatiesnelheid (standaard uit). Alleen tellers, modelnamen en de id en de duur van elk actief verzoek worden naar de telefoon gestuurd — nooit prompts, verzoeken of antwoorden. Ook de routerversie en het tijdstip van het laatste verzoek worden verstuurd.",
+      "s.llamaswap.url": "Serveradres (leeg = uit)",
+      "s.llamaswap.refresh": "Verversen om de (seconden)",
       "s.mqtt.enable": "Verbinden met een MQTT-broker",
       "s.mqtt.hint": "De agent houdt de verbinding vast. De telefoon krijgt nooit het adres, de gebruikersnaam, het wachtwoord of de topics van de broker. De broker kan op internet staan en ziet dan het adres van deze computer. Deze versie maakt alleen verbinding: de agent abonneert zich op niets en publiceert zelf niets. Alleen het laatste testament, als u er een instelt, wordt door de broker gepubliceerd wanneer de verbinding wegvalt.",
       "s.mqtt.transport": "Transport",
@@ -9060,6 +9142,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Laden…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "De lokale LLM-router: geladen modellen, actieve verzoeken, verzoeken en tokens van vandaag, en gegenereersnelheid. Het serveradres stel je in onder Instellingen › Algemeen › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Alleen deze categorie (de categorie in Instellingen; leeg = alle)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessies: werken, wachten, inactief.",
       "1": "1",
@@ -9791,6 +9875,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex-afspeellijsten (geen aangevinkt = alle)"
     },
     "panel": {
+      "In flight": "Lopende",
+      "Today": "Vandaag",
+      "Speed": "Snelheid",
+      "Last request": "Laatste aanvraag",
+      "Set the server address in Settings › General › llama-swap.": "Stel het serveradres in via Instellingen › Algemeen › llama-swap.",
+      "llama-swap is offline.": "llama-swap is offline.",
+      "{a} in / {b} out": "in {a} / uit {b}",
       "% load": "% lading",
       "5-hour": "5 uur",
       "5-hour session": "5 uur sessie",
@@ -10215,6 +10306,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "pl": {
     "strings": {
+      "s.llamaswap.title": "Statystyki llama-swap",
+      "s.llamaswap.hint": "Pokaż lokalny router LLM na widgetzie llama-swap: które modele są załadowane, trwające żądania z czasem trwania, żądania i tokeny z dziś, a także prędkość generowania (domyślnie wyłączone). Na telefon trafiają tylko liczniki, nazwy modeli oraz identyfikator i czas trwania każdego trwającego żądania — nigdy prompty, żądania ani odpowiedzi. Wysyłana jest też wersja routera i czas ostatniego żądania.",
+      "s.llamaswap.url": "Adres serwera (puste = wyłączone)",
+      "s.llamaswap.refresh": "Odświeżaj co (sekundy)",
       "s.mqtt.enable": "Połącz z brokerem MQTT",
       "s.mqtt.hint": "Agent utrzymuje połączenie. Telefon nigdy nie dostaje adresu, nazwy użytkownika, hasła ani tematów brokera. Broker może być w internecie i wtedy widzi adres tego komputera. Ta wersja tylko się łączy: agent niczego nie subskrybuje i sam niczego nie publikuje. Tylko ostatnią wolę, jeśli ją ustawisz, publikuje broker po utracie połączenia.",
       "s.mqtt.transport": "Transport",
@@ -10726,6 +10821,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Wczytywanie…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Lokalny router LLM: załadowane modele, trwające żądania, żądania i tokeny z dziś, a także prędkość generowania. Adres serwera ustala się w Ustawieniach › Ogólne › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Tylko ta kategoria (jej kategoria w Ustawieniach; puste = wszystkie)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sesje Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity: praca, oczekiwanie, bezczynność.",
       "1": "1",
@@ -11457,6 +11554,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlisty Plex (żadna zaznaczona = wszystkie)"
     },
     "panel": {
+      "In flight": "W trakcie",
+      "Today": "Dzisiaj",
+      "Speed": "Prędkość",
+      "Last request": "Ostatnie żądanie",
+      "Set the server address in Settings › General › llama-swap.": "Ustaw adres serwera w Ustawienia › Ogólne › llama-swap.",
+      "llama-swap is offline.": "llama-swap jest offline.",
+      "{a} in / {b} out": "wejście {a} / wyjście {b}",
       "% load": "% obciążenia",
       "5-hour": "5-godzinny",
       "5-hour session": "5-godzinna sesja",
@@ -11881,6 +11985,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "ru": {
     "strings": {
+      "s.llamaswap.title": "Статистика llama-swap",
+      "s.llamaswap.hint": "Показывает локальный LLM-роутер на виджете llama-swap: какие модели загружены, текущие запросы с их длительностью, запросы и токены за сегодня, а также скорость генерации (выключено по умолчанию). На телефон отправляются только счётчики, названия моделей, а также идентификатор и длительность каждого текущего запроса — никогда промпты, запросы и ответы. Также отправляются версия роутера и время последнего запроса.",
+      "s.llamaswap.url": "Адрес сервера (пусто = выкл.)",
+      "s.llamaswap.refresh": "Обновлять каждые (секунд)",
       "s.mqtt.enable": "Подключиться к брокеру MQTT",
       "s.mqtt.hint": "Соединение держит агент. Телефон никогда не получает адрес брокера, имя пользователя, пароль или топики. Брокер может находиться в интернете, и тогда он видит адрес этого компьютера. Эта версия только подключается: агент ни на что не подписывается и сам ничего не публикует. Только последнюю волю, если вы её задали, публикует брокер при потере соединения.",
       "s.mqtt.transport": "Транспорт",
@@ -12392,6 +12500,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Загрузка…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Локальный LLM-роутер: загруженные модели, текущие запросы, запросы и токены за сегодня, а также скорость генерации. Адрес сервера задаётся в Настройки › Общие › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Только эта категория (как в настройках; пусто = все)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Сеансы Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity: работающие, ожидающие, неактивные.",
       "1": "1",
@@ -13220,6 +13330,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "this page": "эта страница"
     },
     "panel": {
+      "In flight": "В процессе",
+      "Today": "Сегодня",
+      "Speed": "Скорость",
+      "Last request": "Последний запрос",
+      "Set the server address in Settings › General › llama-swap.": "Укажите адрес сервера в Настройки › Общие › llama-swap.",
+      "llama-swap is offline.": "llama-swap не в сети.",
+      "{a} in / {b} out": "вход {a} / выход {b}",
       "% load": "% загрузки",
       "5-hour": "5 часов",
       "5-hour session": "5-часовая сессия",
@@ -13667,6 +13784,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "el": {
     "strings": {
+      "s.llamaswap.title": "Στατιστικά llama-swap",
+      "s.llamaswap.hint": "Εμφανίζει τον τοπικό δρομολογητή LLM σε ένα widget llama-swap: ποια μοντέλα είναι φορτωμένα, οι αιτήσεις που βρίσκονται εν εξελίξει με τον χρόνο που έχουν πάρει, οι αιτήσεις και τα tokens για σήμερα, και η ταχύτητα παραγωγής (απενεργοποιημένο κατά προεπιλογή). Στο τηλέφωνο αποστέλλονται μόνο μετρητές, ονόματα μοντέλων, και το id και ο χρόνος κάθε ενεργής αίτησης — ποτέ prompts, αιτήσεις ή απαντήσεις. Αποστέλλονται επίσης η έκδοση του δρομολογητή και η ώρα του τελευταίου αιτήματος.",
+      "s.llamaswap.url": "Διεύθυνση διακομιστή (κενή = απενεργοποίηση)",
+      "s.llamaswap.refresh": "Ανανέωση κάθε (δευτερόλεπτα)",
       "s.mqtt.enable": "Σύνδεση σε broker MQTT",
       "s.mqtt.hint": "Ο πράκτορας κρατά τη σύνδεση. Το τηλέφωνο δεν λαμβάνει ποτέ τη διεύθυνση, το όνομα χρήστη, τον κωδικό ή τα topics του broker. Ο broker μπορεί να βρίσκεται στο διαδίκτυο και τότε βλέπει τη διεύθυνση αυτού του υπολογιστή. Αυτή η έκδοση απλώς συνδέεται: ο πράκτορας δεν εγγράφεται σε τίποτα και δεν δημοσιεύει ο ίδιος τίποτα. Μόνο την τελευταία επιθυμία, αν ορίσετε μία, τη δημοσιεύει ο broker όταν χαθεί η σύνδεση.",
       "s.mqtt.transport": "Μεταφορά",
@@ -13727,6 +13848,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Φόρτωση…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Ο τοπικός δρομολογητής LLM: ποια μοντέλα είναι φορτωμένα, ποιες αιτήσεις βρίσκονται εν εξελίξει, αιτήσεις και tokens για σήμερα, και η ταχύτητα παραγωγής. Η διεύθυνση του διακομιστή ρυθμίζεται στις Ρυθμίσεις › Γενικά › llama-swap.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -13744,6 +13867,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Λίστες Plex (καμία επιλεγμένη = όλες)"
     },
     "panel": {
+      "In flight": "Σε εξέλιξη",
+      "Today": "Σήμερα",
+      "Speed": "Ταχύτητα",
+      "Last request": "Τελευταίο αίτημα",
+      "Set the server address in Settings › General › llama-swap.": "Ορίστε τη διεύθυνση του διακομιστή στις Ρυθμίσεις › Γενικά › llama-swap.",
+      "llama-swap is offline.": "Το llama-swap είναι εκτός σύνδεσης.",
+      "{a} in / {b} out": "είσοδος {a} / έξοδος {b}",
       "% load": "% φορτίου",
       "5-hour": "5-ωρη",
       "5-hour session": "5ωρη συνεδρία",
@@ -14168,6 +14298,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "vi": {
     "strings": {
+      "s.llamaswap.title": "Thống kê llama-swap",
+      "s.llamaswap.hint": "Hiển thị bộ định tuyến LLM cục bộ trên widget llama-swap: mô hình nào đang tải, các yêu cầu đang chạy kèm thời gian đã chạy, yêu cầu và token hôm nay, cùng tốc độ sinh (tắt theo mặc định). Chỉ bộ đếm, tên mô hình, cùng id và thời gian của mỗi yêu cầu đang chạy được gửi lên điện thoại — không bao giờ gửi prompt, yêu cầu hay phản hồi. Phiên bản bộ định tuyến và thời điểm yêu cầu cuối cùng cũng được gửi.",
+      "s.llamaswap.url": "Địa chỉ máy chủ (trống = tắt)",
+      "s.llamaswap.refresh": "Làm mới mỗi (giây)",
       "s.mqtt.enable": "Kết nối tới broker MQTT",
       "s.mqtt.hint": "Agent giữ kết nối. Điện thoại không bao giờ nhận địa chỉ, tên người dùng, mật khẩu hay topic của broker. Broker có thể nằm trên internet và khi đó nó thấy địa chỉ của máy tính này. Phiên bản này chỉ kết nối: agent không đăng ký gì và tự nó không xuất bản gì. Chỉ có di chúc, nếu bạn đặt, là do broker xuất bản khi mất kết nối.",
       "s.mqtt.transport": "Phương thức truyền tải",
@@ -14228,6 +14362,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Đang tải…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Bộ định tuyến LLM cục bộ: mô hình nào đang tải, các yêu cầu đang chạy, yêu cầu và token hôm nay, cùng tốc độ sinh. Địa chỉ máy chủ được đặt trong Cài đặt › Chung › llama-swap.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -14245,6 +14381,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Danh sách phát Plex (không chọn = tất cả)"
     },
     "panel": {
+      "In flight": "Đang chạy",
+      "Today": "Hôm nay",
+      "Speed": "Tốc độ",
+      "Last request": "Lần yêu cầu cuối",
+      "Set the server address in Settings › General › llama-swap.": "Đặt địa chỉ máy chủ trong Cài đặt › Chung › llama-swap.",
+      "llama-swap is offline.": "llama-swap ngoại tuyến.",
+      "{a} in / {b} out": "vào {a} / ra {b}",
       "% load": "% tải",
       "5-hour": "5 giờ",
       "5-hour session": "Giai đoạn 5 giờ",
@@ -14669,6 +14812,10 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   },
   "zh": {
     "strings": {
+      "s.llamaswap.title": "llama-swap 统计",
+      "s.llamaswap.hint": "在 llama-swap 小组件上显示本地 LLM 路由器：当前加载的模型、进行中的请求及其已用时间、今日的请求数和 token 数，以及生成速度（默认关闭）。只有计数器、模型名称以及每个进行中请求的 id 和已用时间会发送到手机——绝不发送提示词、请求或响应。 还会发送路由器版本和最后一次请求的时间。",
+      "s.llamaswap.url": "服务器地址（留空 = 关闭）",
+      "s.llamaswap.refresh": "刷新间隔（秒）",
       "s.mqtt.enable": "连接到 MQTT 代理（broker）",
       "s.mqtt.hint": "连接由代理程序（agent）保持。手机永远不会收到 broker 的地址、用户名、密码或主题。broker 可以位于互联网上，此时它会看到这台电脑的地址。此版本只负责连接：agent 不订阅任何内容，自己也不发布任何内容。只有遗嘱消息（如果设置了）会在连接丢失时由 broker 发布。",
       "s.mqtt.transport": "传输方式",
@@ -15180,6 +15327,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "正在加载…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "本地 LLM 路由器：当前加载的模型、进行中的请求、今日的请求数和 token 数，以及生成速度。服务器地址在设置 › 常规 › llama-swap 中设置。",
       "Only this category (its category in Settings; empty = all)": "仅此分类（设置中的分类；留空 = 全部）",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok 光标 OpenCode / Antigravity 会话:工作,等待,闲置。",
       "1": "1",
@@ -15911,6 +16060,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 播放列表（未勾选 = 全部）"
     },
     "panel": {
+      "In flight": "进行中",
+      "Today": "今天",
+      "Speed": "速度",
+      "Last request": "上次请求",
+      "Set the server address in Settings › General › llama-swap.": "请在 设置 › 常规 › llama-swap 中设置服务器地址。",
+      "llama-swap is offline.": "llama-swap 已离线。",
+      "{a} in / {b} out": "输入 {a} / 输出 {b}",
       "% load": "负载%",
       "5-hour": "5小时",
       "5-hour session": "5小时会议",

@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ko": {
     "strings": {
+      "s.llamaswap.title": "llama-swap 통계",
+      "s.llamaswap.hint": "로컬 LLM 라우터를 llama-swap 위젯에 표시합니다: 로드된 모델, 경과 시간을 가진 진행 중인 요청, 오늘의 요청 및 토큰 수, 생성 속도 (기본값: 꺼짐). 카운터, 모델 이름, 진행 중인 요청의 id와 경과 시간만 전화로 전송되며 프롬프트, 요청, 응답은 전송되지 않습니다. 라우터 버전과 마지막 요청 시간도 전송됩니다.",
+      "s.llamaswap.url": "서버 주소 (비어 있음 = 꺼짐)",
+      "s.llamaswap.refresh": "새로고침 주기(초)",
       "s.display.weekStart": "한 주의 시작 요일",
       "s.display.weekStart.monday": "월요일",
       "s.display.weekStart.sunday": "일요일",
@@ -1141,6 +1145,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "불러오는 중…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "로컬 LLM 라우터: 로드된 모델, 진행 중인 요청, 오늘의 요청 및 토큰 수, 생성 속도. 서버 주소는 설정 › 일반 › llama-swap에서 설정합니다.",
       "Only this category (its category in Settings; empty = all)": "이 분류만 (설정의 분류, 비우면 전체)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity 세션: 작업, 대기, 유휴.",
       "1": "1",
@@ -1886,6 +1892,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 재생목록 (선택 안 함 = 전체)"
     },
     "panel": {
+      "In flight": "진행 중",
+      "Today": "오늘",
+      "Speed": "속도",
+      "Last request": "마지막 요청",
+      "Set the server address in Settings › General › llama-swap.": "서버 주소를 설정 › 일반 › llama-swap에서 설정하세요.",
+      "llama-swap is offline.": "llama-swap이 오프라인입니다.",
+      "{a} in / {b} out": "입력 {a} / 출력 {b}",
       "% load": "부하%",
       "5-hour": "5시간",
       "5-hour session": "5시간 세션",

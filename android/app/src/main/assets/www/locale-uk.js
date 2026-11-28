@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "uk": {
     "strings": {
+      "s.llamaswap.title": "Статистика llama-swap",
+      "s.llamaswap.hint": "Показує локальний LLM-роутер на віджето llama-swap: які моделі завантажено, поточні запити з їхнім часом, запити й токени за сьогодні, і швидкість генерації (вимкнено за замовчуванням). На телефон надсилаються лише лічильники, назви моделей, а також ідентифікатор і час кожного поточного запиту — ніколи промпти, запити чи відповіді. Також надсилаються версія маршрутизатора й час останнього запиту.",
+      "s.llamaswap.url": "Адреса сервера (порожньо = вимкнено)",
+      "s.llamaswap.refresh": "Оновлювати кожні (секунд)",
       "s.display.weekStart": "Перший день тижня",
       "s.display.weekStart.monday": "Понеділок",
       "s.display.weekStart.sunday": "Неділя",
@@ -1141,6 +1145,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Завантаження…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Локальний LLM-роутер: завантажені моделі, поточні запити, запити та токени за сьогодні, і швидкість генерації. Адресу сервера встановлюють у Налаштування › Загальні › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Лише ця категорія (її категорія в налаштуваннях; порожньо = усі)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Сеанси Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity: працює, очікує, неактивний.",
       "1": "1",
@@ -1886,6 +1892,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Плейлисти Plex (нічого не позначено = усі)"
     },
     "panel": {
+      "In flight": "У процесі",
+      "Today": "Сьогодні",
+      "Speed": "Швидкість",
+      "Last request": "Останній запит",
+      "Set the server address in Settings › General › llama-swap.": "Вкажіть адресу сервера в Налаштування › Загальні › llama-swap.",
+      "llama-swap is offline.": "llama-swap офлайн.",
+      "{a} in / {b} out": "вхід {a} / вихід {b}",
       "% load": "% завантаження",
       "5-hour": "5 годин",
       "5-hour session": "5- годинний сеанс",

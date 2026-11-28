@@ -135,7 +135,7 @@ const evOffer = (e) => {          // one event from the stream or a state answer
 export let pushVersion = null;
 
 /** Latest data from the agent and the web; widgets read from here. */
-export const D = { state: null, quotas: null, work: null, procs: null, push: {}, weather: null, calendar: null, notes: store.get('notes', []) };
+export const D = { state: null, quotas: null, llamaswap: null, work: null, procs: null, push: {}, weather: null, calendar: null, notes: store.get('notes', []) };
 
 export const HIST = 90;
 export const hist = { cpu: [], gpu: [], ram: [], vram: [], down: [], up: [], ping: [], gputemp: [], cputemp: [], hotspot: [], gpupower: [], gpuclock: [], cpupower: [] };
@@ -1786,11 +1786,11 @@ export function handleEvent(e) {
     else requestPage(e.data);
   }
   else if (e.kind === 'back' && e.data) requestBack(e.data.rule);
-  else if (e.kind === 'refresh') { loadConfig(); loadQuotas(); loadWork(); loadPush(); loadWeather(true); loadCalendar(); }
+  else if (e.kind === 'refresh') { loadConfig(); loadQuotas(); loadLlamaSwap(); loadWork(); loadPush(); loadWeather(true); loadCalendar(); }
   else if (e.kind === 'reload') location.reload();
 }
 
-export const WIDGET_ICONS = { camera: '📹', dictate: '🎙️', spectrum: '📶', 'app-console': '🎛️', discord: '💬', 'discord-bar': '🔊', steam: '👥', 'steam-activity': '🔔', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', media: '🎵', lyrics: '🎤', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖',
+export const WIDGET_ICONS = { camera: '📹', dictate: '🎙️', spectrum: '📶', 'app-console': '🎛️', discord: '💬', 'discord-bar': '🔊', steam: '👥', 'steam-activity': '🔔', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', media: '🎵', lyrics: '🎤', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖', 'llama-swap': '🦙',
   github: '🐙', processes: '⚙️', shortcuts: '🎛️', button: '🔘', worldclock: '🌍', calendar: '📅', pomodoro: '🍅', focushistory: '📈', countdown: '⏳', note: '📝', command: '💻',
   push: '📡', inbox: '📬', label: '🔤', analog: '🕰️', progress: '📆', stopwatch: '⏱️', timer: '⏲️', counter: '🔢', breathe: '🫁', quote: '💬',
   checklist: '✅', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊', sun: '🌅', air: '🍃', hackernews: '📰', hadash: '🏡', feeds: '🗞️', photos: '🖼️', exchange: '💱', crypto: '🪙', image: '🖼️', pcswitch: '🖥️', pagebuttons: '🧭', 'plex-queue': '🎛️', 'plex-playlists': '🎶' };
@@ -3171,6 +3171,21 @@ export async function loadQuotas() {
   try { D.quotas = await api('/quotas'); emit('quotas'); } catch (_) {}
 }
 
+let llamaSwapEpoch = 0;
+export async function loadLlamaSwap() {
+  const mine = ++llamaSwapEpoch;
+  try {
+    const d = await api('/llamaswap');
+    if (mine !== llamaSwapEpoch) return; // a newer request already owns the panel state
+    D.llamaswap = d;
+    emit('llamaswap');
+  } catch (_) {
+    if (mine !== llamaSwapEpoch) return; // a stale failure must not erase a newer success
+    D.llamaswap = { connected: false, error: 'unreachable' };
+    emit('llamaswap');
+  }
+}
+
 let workEpoch = 0;
 export function applyWork(w) {
   workEpoch++;
@@ -3254,7 +3269,7 @@ export function setOnline(on) {
   document.body.classList.toggle('offline', !on);
   if (on) { wakeAt = 0; clearInterval(wakeTicker); wakeTicker = 0; }
   wakeRender();
-  if (on && online !== true) { loadConfig(); loadQuotas(); loadWork(); loadPush(); loadApprovals(); loadCalendar(); }
+  if (on && online !== true) { loadConfig(); loadQuotas(); loadLlamaSwap(); loadWork(); loadPush(); loadApprovals(); loadCalendar(); }
   const changed = online !== on;
   if (!on && changed) unreachableSince = unreachableSince || Date.now();
   if (on && changed) unreachableSince = 0;
@@ -3352,6 +3367,7 @@ function wokeUp() {
   loadConfig(); loadPush(); loadApprovals();
   watchMedia(true);
   if (anyNeeds('quotas')) loadQuotas();
+  if (anyNeeds('llamaswap')) loadLlamaSwap();
   if (anyNeeds('calendar')) loadCalendar();
   if (anyNeeds('work') && !streaming()) loadWork();
 }
@@ -3379,7 +3395,7 @@ export async function poll() {
 // ticks of 250 ms (N = 2 is a half-second on, a half-second off). It only moves while something that pulses is on screen
 // (every page is mounted, side by side, and a stack keeps its other cards in place at opacity 0, so being in the page is not enough), and the
 // tick above is skipped when the panel is not visible or the night screen is up.
-const PULSING = '.sess.busy, .sess.shell, .sess.waiting, .obs-pill.on, .w-onair.on, .dc-mic.on, .radio-card.is-playing';
+const PULSING = '.sess.busy, .sess.shell, .sess.waiting, .obs-pill.on, .w-onair.on, .dc-mic.on, .radio-card.is-playing, .ls-dot.on';
 const pulseShown = (el) => { if (el.closest('.stack-item:not(.active)')) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight; };
 let beatN = 0;
 function beat() {
@@ -3398,6 +3414,9 @@ loadWeather();
 setInterval(loadWeather, 15 * 60_000);
 setInterval(() => { if (!nightOn && !idle()) { emit('fast'); beat(); } }, 250);
 setInterval(() => { if (online && !idle() && anyNeeds('quotas')) loadQuotas(); }, 30_000);
+setInterval(() => { if (online && !idle() && anyNeeds('llamaswap')) loadLlamaSwap(); }, 30_000);
+// while the router serves requests, their ages change fast: poll every 5 s instead of 30
+setInterval(() => { if (online && !idle() && anyNeeds('llamaswap') && (D.llamaswap?.inflight || 0) > 0) loadLlamaSwap(); }, 5_000);
 setInterval(() => { if (online && !idle() && anyNeeds('calendar')) loadCalendar(); }, 120_000);
 setInterval(() => { if (online && !idle() && anyNeeds('work') && !streaming()) loadWork(); }, 3000);
 setInterval(() => { if (idle()) return; if (online && pageOf('procs')) loadProcs(); if (online && sheet) loadSheet(); }, 2000);

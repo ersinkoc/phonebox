@@ -120,7 +120,7 @@ public static class Lan
         || path == "/api/stocks" || path == "/api/stocks/minutes"
         || path == "/api/guba"
         // the Synced lyrics widget: the playing track's lyrics (LRCLIB is asked only for a widget with its lookup on)
-        || path == "/api/lyrics" || path == "/api/wallpaper"
+        || path == "/api/lyrics" || path == "/api/wallpaper" || path == "/api/llamaswap"
         || path.StartsWithSegments("/api/work") || path.StartsWithSegments("/api/procs") || path.StartsWithSegments("/api/run")
         || path.StartsWithSegments("/api/apps") || path.StartsWithSegments("/api/shortcuts/icon") || path.StartsWithSegments("/api/console") || path == "/api/dictate"
         // the Steam library widget: the list of installed games, an installed game's cover (the tiles' <img>), and starting a

@@ -2,6 +2,10 @@
 window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "th": {
     "strings": {
+      "s.llamaswap.title": "สถิติ llama-swap",
+      "s.llamaswap.hint": "แสดง LLM router บนเครื่องใน widget llama-swap: โมเดลที่โหลด คำขอที่กำลังทำงานพร้อมเวลาที่ใช้แล้ว คำขอและโทเคนวันนี้ และความเร็วในการสร้าง (ปิดตามค่าเริ่มต้น) มีเพียงตัวนับ ชื่อโมเดล และ id กับเวลาของคำขอที่กำลังทำงานที่ถูกส่งขึ้นโทรศัพท์ — ไม่เคยส่ง prompt คำขอ หรือคำตอบ. เวอร์ชันของเราเตอร์และเวลาของคำขอล่าสุดจะถูกส่งไปด้วย",
+      "s.llamaswap.url": "ที่อยู่เซิร์ฟเวอร์ (ว่าง = ปิด)",
+      "s.llamaswap.refresh": "รีเฟรชทุก (วินาที)",
       "s.display.weekStart": "วันแรกของสัปดาห์",
       "s.display.weekStart.monday": "วันจันทร์",
       "s.display.weekStart.sunday": "วันอาทิตย์",
@@ -1141,6 +1145,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "กำลังโหลด…"
     },
     "catalog": {
+      "llama-swap": "llama-swap",
+      "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "LLM router บนเครื่อง: โมเดลที่โหลดไว้ คำขอที่กำลังประมวลผล คำขอและโทเคนวันนี้ และความเร็วในการสร้าง ตั้งที่อยู่เซิร์ฟเวอร์ใน Settings › General › llama-swap",
       "Only this category (its category in Settings; empty = all)": "เฉพาะหมวดหมู่นี้ (หมวดหมู่ในการตั้งค่า; ว่าง = ทั้งหมด)",
       "Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "วาระงาน Claude Code / Codex / Grok / เคลื่อนเคอร์เซอร์ / OpenCode / Antigravity: ทำงาน, คอย, ไม่มีกิจกรรม",
       "1": "1",
@@ -1886,6 +1892,13 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "เพลย์ลิสต์ Plex (ไม่เลือกเลย = ทั้งหมด)"
     },
     "panel": {
+      "In flight": "กำลังดำเนินการ",
+      "Today": "วันนี้",
+      "Speed": "ความเร็ว",
+      "Last request": "คำขอล่าสุด",
+      "Set the server address in Settings › General › llama-swap.": "ตั้งค่าที่อยู่อุปกรณ์เซิร์ฟเวอร์ใน การตั้งค่า › ทั่วไป › llama-swap",
+      "llama-swap is offline.": "llama-swap ออฟไลน์",
+      "{a} in / {b} out": "เข้า {a} / ออก {b}",
       "% load": "ค่า",
       "5-hour": "5 ชั่วโมง",
       "5-hour session": "วาระงาน5ชั่วโมง",

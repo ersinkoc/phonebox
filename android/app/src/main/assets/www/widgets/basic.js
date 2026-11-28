@@ -882,6 +882,125 @@ W.sessions = {
   },
 };
 
+// A poll gap this long can hide a request ending and its id being reused: the widget must not carry the old
+// request's timer across it. The fast poll is 5 s while requests are in flight, so three missed polls is a gap.
+const LLAMA_POLL_GAP_MS = 15_000;
+// The agent measures each request's elapsed time live, so between two polls the local count and the server's value
+// differ only by the request's latency. A larger difference means the id now belongs to another request.
+const LLAMA_DRIFT_MS = 2_000;
+
+W['llama-swap'] = {
+  needs: ['llamaswap', 'tick'],
+  create(box) {
+    const tok = (n) => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
+    box.style.setProperty('--c', '#7d9c85');
+    // head: name + version, the status dot pulses while requests are in flight (beat-2 from main.js, not a CSS animation)
+    const dot = h('span', 'ls-dot');
+    const sum = h('span', 'w-sum', dot);
+    const head = h('div', 'w-head', h('span', 's-label', 'llama-swap'), sum);
+    const models = h('div', 'ls-models');
+    const heroN = h('b', null, '0');
+    const heroT = h('span', 'ls-hero-t');
+    const hero = h('div', 'ls-hero', h('span', 't-label', tp('In flight')), h('span', 'ls-hero-n', heroN, heroT));
+    const flight = h('div', 'ls-reqs');
+    // when each in-flight request first appeared, so the seconds grow between polls; seeded by the server's elapsed
+    const seen = new Map();
+    // the server's elapsed for each id at the last poll: the same id reappearing with a lower value is a request
+    // that the router renumbered after a restart, not the one the local seed belongs to
+    const prevEl = new Map();
+    let lastData = null; // last rendered data object: a tick with the same data only updates the seconds labels
+    let lastDataAt = 0; // when that data arrived, to notice a poll gap the phone did not observe
+    let flightRefs = []; // the seconds span of each request row, so a tick advances them without a re-render
+    const row = (k, v) => h('div', 'ls-stat', h('span', 'ls-k', k), h('span', 'ls-v', v));
+    const stats = h('div', 'ls-stats');
+    const spd = h('span', null, '—'), last = h('span', null, '—');
+    const foot = h('div', 'ls-foot',
+      h('div', 'ls-mini ls-spd', h('span', 'ls-k', tp('Speed')), spd),
+      h('div', 'ls-mini', h('span', 'ls-k', tp('Last request')), last));
+    // The today numbers and the speed are pinned to the bottom of the card: when the queue grows, the scrolling
+    // middle (the models, the in-flight rows) is what gives way, never what the glance is for
+    stats.style.display = 'none';
+    foot.style.display = 'none';
+    const list = h('div', 'ls-list', models, hero, flight);
+    box.append(head, list, stats, foot);
+    return {
+      needs: W['llama-swap'].needs,
+      update() {
+        const d = D.llamaswap;
+        // A card that is not connected must not keep an in-flight display: a pulsing dot would keep the beat
+        // timer drawing, and the version label would stay stale.
+        const reset = () => { seen.clear(); prevEl.clear(); lastData = null; lastDataAt = 0; sum.replaceChildren(dot); dot.className = 'ls-dot'; flightRefs = []; flight.replaceChildren(); flight.style.display = 'none'; stats.style.display = 'none'; foot.style.display = 'none'; };
+        if (!d) { list.replaceChildren(h('div', 'empty', t('w.loading'))); reset(); return; }
+        if (d.configured === false) { list.replaceChildren(h('div', 'empty', tp('Set the server address in Settings › General › llama-swap.'))); reset(); return; }
+        if (!d.connected) { // error: the address is set but the server is down. No error: the first refresh has not finished yet.
+          list.replaceChildren(h('div', 'empty', d.error ? tp('llama-swap is offline.') : t('w.loading'))); reset(); return;
+        }
+        if (list.firstChild !== models) list.replaceChildren(models, hero, flight);
+        if (d === lastData) { // the data did not change: only the seconds of the in-flight requests move
+          const n = performance.now(); let o = 0;
+          for (const t0 of seen.values()) o = Math.max(o, n - t0);
+          heroT.textContent = seen.size ? Math.floor(o / 1000) + 's' : '';
+          for (const q of flightRefs) q.t.textContent = Math.floor((n - seen.get(q.id)) / 1000) + 's';
+          return;
+        }
+        // elapsed times run on the monotonic clock: a phone clock set back between polls must not show -5s
+        const now = performance.now();
+        // A gap since the last poll can contain a request ending and another reusing its id: the old local
+        // start belongs to a request the widget no longer saw, so the new one is seeded from its own elapsed.
+        if (lastDataAt && now - lastDataAt > LLAMA_POLL_GAP_MS) { seen.clear(); prevEl.clear(); }
+        lastDataAt = now;
+        lastData = d;
+        const n = d.inflight || 0;
+        sum.replaceChildren(dot, d.version || '');
+        dot.className = 'ls-dot' + (n ? ' on' : '');
+        heroN.textContent = String(n);
+        // the seconds are how long the oldest request in flight has been going
+        const reqs = d.inflightRequests || [];
+        for (const r of reqs) {
+          if (!r.id) continue;
+          const el = typeof r.elapsedMs === 'number' ? r.elapsedMs : 0;
+          // the router renumbers its ids from 1 on a restart: for one request the server's elapsed only grows,
+          // so the same id with a lower value than the last poll is a renumbered id - re-seed it
+          const prev = prevEl.get(r.id);
+          // ... and an id whose local count has drifted from the server's elapsed by more than latency can explain
+          // is another request too (a restart between two polls can bring the same id back with a larger value)
+          const drift = prev === undefined ? 0 : Math.abs((now - seen.get(r.id)) - el);
+          if (prev === undefined || el < prev || drift > LLAMA_DRIFT_MS) seen.set(r.id, now - el);
+          prevEl.set(r.id, el);
+        }
+        for (const id of [...seen.keys()]) if (!reqs.some(r => r.id === id)) { seen.delete(id); prevEl.delete(id); }
+        let oldest = 0;
+        for (const t0 of seen.values()) oldest = Math.max(oldest, now - t0);
+        heroT.textContent = seen.size ? Math.floor(oldest / 1000) + 's' : '';
+        // one row per in-flight request, oldest first: its model and its own seconds. Three rows at most - the card
+        // has a floor, and the hero number is the one that tells the truth
+        const ordered = reqs.filter(r => r.id).sort((a, b) => (b.elapsedMs || 0) - (a.elapsedMs || 0));
+        flightRefs = [];
+        const rows = ordered.slice(0, 3).map((r) => {
+          const s = h('span', 'ls-rs', Math.floor((now - seen.get(r.id)) / 1000) + 's');
+          flightRefs.push({ id: r.id, t: s });
+          return h('div', 'ls-req', h('span', 'ls-rm', r.model || r.id), s);
+        });
+        if (ordered.length > 3) rows.push(h('div', 'ls-more', '+' + (ordered.length - 3)));
+        flight.replaceChildren(...rows);
+        flight.style.display = rows.length ? '' : 'none';
+        const ms = d.loadedModels || [];
+        models.style.display = ms.length ? '' : 'none';
+        models.replaceChildren(...ms.map((m) => h('div', 'ls-model', m)));
+        // today's numbers come from the router's day range, so they are exact totals, not a lower bound
+        const tv = (v) => v == null ? '—' : tok(v);
+        stats.style.display = '';
+        foot.style.display = '';
+        stats.replaceChildren(
+          row(tp('Today'), `${d.todayRequests == null ? '—' : d.todayRequests} · ${tpv('{a} in / {b} out', { a: tv(d.todayInputTokens), b: tv(d.todayOutputTokens) })}`));
+        spd.textContent = d.genTps != null ? d.genTps.toFixed(1) + ' tok/s' : '—';
+        const at = d.lastRequestAt ? Date.parse(d.lastRequestAt) : NaN;
+        last.textContent = !d.lastRequestAt || Number.isNaN(at) ? '—' : ago(at); // the shared helper: every language orders the duration and the word as it wants
+      },
+    };
+  },
+};
+
 W.github = {
   needs: ['work'],
   create(box) {

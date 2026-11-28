@@ -142,6 +142,13 @@
   Ubisoft Connect's and the Rockstar Games Launcher's, and game folders on the drives. Starting those from the phone is
   an option of its own, **Let the phone start the games found outside Steam**, off by default (#756, #759,
   [WellyngtonSantos](https://github.com/WellyngtonSantos)).
+- llama-swap: a widget for the local [llama-swap](https://github.com/mostlygeek/llama-swap) router — which models are
+  currently loaded, the requests in flight (at most three rows, more as `+N`) with how long each has been running,
+  requests and tokens today, the newest finished request's speed and the time of the last request. Off by default;
+  point **Settings › General › llama-swap stats** at the server (e.g. `http://127.0.0.1:8080`) to switch it on. Only
+  the counters, the version, the loaded model names, and the id, model and elapsed time of each in-flight request are
+  sent to the phone — no prompts, requests, responses, request paths or response sizes (#768,
+  [0xTankBuilds](https://github.com/0xTankBuilds)).
 
 ## 0.9.32 — 2026-11-27
 
