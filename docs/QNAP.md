@@ -10,8 +10,8 @@ a computer left on. The phone can be paired with the NAS and with your computer,
 The agent is the Linux one (see [What works where](SETUP.md#what-works-where)), seen from inside a container:
 
 - CPU, memory and network are the NAS's. The disk list and the processes are those the container sees.
-- Widgets that read a service over the network work as on any computer: Home Assistant, Plex, news feeds, calendars,
-  webhooks and the like. Weather comes from the phone itself.
+- Widgets that read a service over the network work as on any computer: Home Assistant, news feeds, calendars, webhooks
+  and the like. Weather comes from the phone itself.
 - Command widgets and shortcuts run `bash` inside the container, as its `phonebox` user.
 - Nothing that needs a desktop or a program the container lacks: Now playing, volume, keys, the trackpad, the GitHub
   widget (`gh`), Claude Code and Codex quotas and sessions. Those stay with the agent on your computer.
