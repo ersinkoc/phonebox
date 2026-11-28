@@ -40,7 +40,12 @@ public sealed partial class LyricsService : IDisposable
         _config = config;
         _log = log;
         _clock = clock ?? (() => Environment.TickCount64);
-        _http = new HttpClient(handler ?? new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(10), AllowAutoRedirect = false })
+        _http = new HttpClient(handler ?? new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(10), AllowAutoRedirect = false,
+            // a search answer is mostly lyrics text: compressed, it is about a tenth of the size
+            AutomaticDecompression = DecompressionMethods.All,
+        })
         {
             BaseAddress = new Uri(Host),
             Timeout = TimeSpan.FromSeconds(10),
@@ -115,7 +120,8 @@ public sealed partial class LyricsService : IDisposable
         }
         catch (Exception ex)
         {
-            _log.LogDebug("lyrics: {Msg}", ex.Message);
+            // a warning, so agent.log says why (the back-off below keeps it rare); no track names in it
+            _log.LogWarning("lyrics: LRCLIB lookup failed: {Msg} ({Cause})", ex.Message, ex.GetBaseException().Message);
             result = new LyricsResult("error");
             lock (_gate)
             {
@@ -174,13 +180,32 @@ public sealed partial class LyricsService : IDisposable
         {
             var url = $"/api/get?track_name={Uri.EscapeDataString(title)}&artist_name={Uri.EscapeDataString(artist)}"
                 + $"&album_name={Uri.EscapeDataString(album)}&duration={seconds}";
-            using var res = await _http.GetAsync(url);
-            if (res.IsSuccessStatusCode)
+            // an exact lookup that times out, loses the connection or meets a server error goes on to the search; a
+            // refusal that asks to slow down (429, or any Retry-After) still stops here
+            try
             {
-                using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-                if (FromEntry(doc.RootElement) is { } exact) return exact;
+                // the status line and the headers decide before the body is read: a body that breaks off after a 429
+                // must not turn the refusal into a failure that goes on to the search
+                using var cts = new CancellationTokenSource(_http.Timeout);
+                using var res = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                // the header itself counts, whatever the status: a Retry-After of 0 or a past date is still a request to
+                // slow down; other answers below 500 are refusals too, except 404 (not in the database: search instead)
+                if (!res.IsSuccessStatusCode
+                    && (res.Headers.RetryAfter is not null || ((int)res.StatusCode < 500 && res.StatusCode != HttpStatusCode.NotFound)))
+                    throw Refused(res);
+                if (res.IsSuccessStatusCode)
+                {
+                    await res.Content.LoadIntoBufferAsync(_http.MaxResponseContentBufferSize, cts.Token);
+                    using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(cts.Token));
+                    if (FromEntry(doc.RootElement) is { } exact) return exact;
+                }
+                else if (res.StatusCode != HttpStatusCode.NotFound)
+                    _log.LogInformation("lyrics: exact lookup failed ({Msg}), trying the search", Refused(res).Message);
             }
-            else if (res.StatusCode != HttpStatusCode.NotFound) throw Refused(res);
+            catch (Exception ex) when (ex is OperationCanceledException or HttpRequestException and not LrclibRefusedException)
+            {
+                _log.LogInformation("lyrics: exact lookup failed ({Msg}), trying the search", ex.GetBaseException().Message);
+            }
         }
         // The searches, widest first: as the player named the track, then with the extra artists and the bracketed
         // extras dropped. A player often carries a translation in brackets or a version note ("(10 years after Ver.)")
