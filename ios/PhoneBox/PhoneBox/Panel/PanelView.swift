@@ -11,10 +11,14 @@ struct PanelView: UIViewRepresentable {
     let computer: PairedComputer
     /// The other paired computers, asked when this one stops answering.
     let others: [PairedComputer]
+    /// The user's own pick when this is another computer: asked now and then, and returned to once it answers.
+    let preferred: PairedComputer?
     let usb: USBLink
-    let onSwitch: @MainActor (PairedComputer) -> Void
+    let onSwitch: @MainActor (_ from: String, _ to: PairedComputer) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(computer: computer, others: others, usb: usb, onSwitch: onSwitch) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(computer: computer, others: others, preferred: preferred, usb: usb, onSwitch: onSwitch)
+    }
 
     func makeUIView(context: Context) -> WKWebView {
         context.coordinator.makeWebView()
@@ -35,8 +39,14 @@ struct PanelView: UIViewRepresentable {
         private var webView: WKWebView?
         private var loaded = false
 
-        init(computer: PairedComputer, others: [PairedComputer], usb: USBLink, onSwitch: @escaping @MainActor (PairedComputer) -> Void) {
-            let client = AgentClient(computer: computer, others: others, onSwitch: onSwitch)
+        init(
+            computer: PairedComputer,
+            others: [PairedComputer],
+            preferred: PairedComputer?,
+            usb: USBLink,
+            onSwitch: @escaping @MainActor (_ from: String, _ to: PairedComputer) -> Void
+        ) {
+            let client = AgentClient(computer: computer, others: others, preferred: preferred, onSwitch: onSwitch)
             let key = UUID().uuidString
             self.client = client
             self.usb = usb

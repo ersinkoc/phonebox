@@ -1,4 +1,5 @@
 import Foundation
+import PhoneBoxKit
 import Security
 
 enum KeychainError: LocalizedError {
@@ -40,14 +41,9 @@ final class KeychainStore {
     /// Every paired computer, in pairing order. A pairing saved by an older version is moved over once; it stays in
     /// its old place until the list has been written.
     func load() -> [PairedComputer] {
-        if let data = read(account), let computers = try? JSONDecoder().decode([PairedComputer].self, from: data) {
-            return computers
-        }
-        guard let data = read(legacyAccount), let single = try? JSONDecoder().decode(PairedComputer.self, from: data) else {
-            return []
-        }
-        try? save([single])
-        return [single]
+        let stored = PairingList.decode(PairedComputer.self, list: read(account), legacy: read(legacyAccount))
+        if stored.fromLegacy { try? save(stored.computers) }
+        return stored.computers
     }
 
     /// Replaces the stored list. The item is updated in place, so a failed write leaves the previous list intact; only
@@ -69,9 +65,10 @@ final class KeychainStore {
         SecItemDelete(query(legacyAccount) as CFDictionary)
     }
 
-    /// Removes every stored pairing and its token.
+    /// Removes every stored pairing and its token. The pre-list item goes first: if it can't be removed, the list stays,
+    /// rather than leaving only the old pairing to be read back at the next launch.
     func delete() throws {
-        for name in [account, legacyAccount] {
+        for name in [legacyAccount, account] {
             let status = SecItemDelete(query(name) as CFDictionary)
             guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError.unexpectedStatus(status) }
         }

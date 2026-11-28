@@ -10,7 +10,7 @@ struct RootView: View {
                 // A new identity rebuilds the panel with a fresh client and USB link: switching computers (a page with
                 // that computer's layout), pairing or forgetting one (the others to ask), or pairing the same computer
                 // again (new addresses or token). An outstanding probe of the old client is discarded.
-                PanelScreen(computer: computer, others: pairing.others)
+                PanelScreen(computer: computer, others: pairing.others, preferred: pairing.pickElsewhere)
                     .id([computer] + pairing.computers)
             } else {
                 UnpairedView()
@@ -23,13 +23,15 @@ struct RootView: View {
 private struct PanelScreen: View {
     let computer: PairedComputer
     let others: [PairedComputer]
+    let preferred: PairedComputer?
     @EnvironmentObject private var pairing: PairingStore
     @State private var showingOptions = false
     @StateObject private var usb: USBLink
 
-    init(computer: PairedComputer, others: [PairedComputer]) {
+    init(computer: PairedComputer, others: [PairedComputer], preferred: PairedComputer?) {
         self.computer = computer
         self.others = others
+        self.preferred = preferred
         _usb = StateObject(wrappedValue: USBLink(computer: computer))
     }
 
@@ -49,8 +51,8 @@ private struct PanelScreen: View {
             }
             .padding(.horizontal, 4)
             .background(.bar)
-            PanelView(computer: computer, others: others, usb: usb) { found in
-                pairing.activate(found.id)
+            PanelView(computer: computer, others: others, preferred: preferred, usb: usb) { from, found in
+                pairing.follow(from: from, to: found.id)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -80,7 +82,7 @@ private struct ComputerOptionsView: View {
                 Section {
                     ForEach(pairing.computers) { item in
                         Button {
-                            pairing.activate(item.id)
+                            pairing.choose(item.id)
                             dismiss()
                         } label: {
                             HStack {
@@ -89,6 +91,11 @@ private struct ComputerOptionsView: View {
                                     Text(item.hosts.joined(separator: ", "))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
+                                    if item.id == pairing.preferredID, item.id != computer.id {
+                                        Text("Your pick: shown again once it answers")
+                                            .font(.caption)
+                                            .foregroundStyle(.orange)
+                                    }
                                 }
                                 Spacer()
                                 if item.id == computer.id {
@@ -109,7 +116,7 @@ private struct ComputerOptionsView: View {
                 } header: {
                     Text("Computers")
                 } footer: {
-                    Text("When the computer on screen stops answering, PhoneBox switches to another paired computer that answers. Pair each operating system of a dual-boot PC once (Windows and macOS run separate agents), and the panel follows whichever is running.")
+                    Text("Tap a computer to show it. When it hasn't answered for 30 seconds, PhoneBox shows another paired computer that answers, and goes back to yours once it answers again. Pair each operating system of a dual-boot PC once (Windows and macOS run separate agents), and the panel follows whichever is running.")
                 }
                 Section("This computer") {
                     LabeledContent("Name", value: computer.name)

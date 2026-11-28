@@ -1,4 +1,5 @@
 import Foundation
+import PhoneBoxKit
 
 struct AgentReply: Equatable {
     let status: Int
@@ -9,31 +10,43 @@ struct AgentReply: Equatable {
 /// Talks HTTPS to the paired computer. The Bearer token and the certificate pin live only here: the WebView
 /// never sees either. Hosts are tried in the order the pairing stored them.
 ///
-/// When the active computer stops answering a GET, the other paired computers are asked in the background (at
-/// most every few seconds) and the first that answers is handed to `onSwitch`. That is how a dual-boot PC works:
-/// Windows and macOS run different agents with different certificates, often at the same address, and only the
-/// one that is booted answers. A request is never resent to another computer: a POST may run a command.
+/// Several paired computers (two machines, or Windows and macOS on one dual-boot PC, which run different agents with
+/// different certificates, often at the same address): `Failover` decides when to look at the others.
+/// - When the computer on screen has answered nothing for 30 s, the others are asked in the background and the first
+///   that answers is handed to `onSwitch`.
+/// - While the panel shows another computer than the user's own pick, the pick is asked every 15 s and handed to
+///   `onSwitch` once it answers again.
+/// A request is never resent to another computer: a POST may run a command. `onSwitch` gets the id of the computer
+/// this client serves, so a switch is applied only if the panel still shows it.
 final class AgentClient {
     private let computer: PairedComputer
     private let others: [PairedComputer]
-    private let onSwitch: @MainActor (PairedComputer) -> Void
+    /// The user's own pick when the panel shows another computer, else nil.
+    private let preferred: PairedComputer?
+    private let onSwitch: @MainActor (_ from: String, _ to: PairedComputer) -> Void
     private let pinned: PinnedSession
     private let deviceID: String
     private let appVersion: String
     private let model: String
 
-    private let probeLock = NSLock()
+    private let lock = NSLock()
+    private var failover = Failover()
     private var probing = false
-    private var lastProbe = Date.distantPast
+    private var checkingPreferred = false
     private var invalidated = false
-    /// Counts answers from the active computer. A probe started before one of them is stale: the active computer is
-    /// back, so whatever the probe finds must not take its place.
+    /// Counts answers from the computer on screen. A probe started before one of them is stale: the computer is back,
+    /// so whatever the probe finds must not take its place.
     private var activeAnswers = 0
-    private static let probeInterval: TimeInterval = 4
 
-    init(computer: PairedComputer, others: [PairedComputer] = [], onSwitch: @escaping @MainActor (PairedComputer) -> Void = { _ in }) {
+    init(
+        computer: PairedComputer,
+        others: [PairedComputer] = [],
+        preferred: PairedComputer? = nil,
+        onSwitch: @escaping @MainActor (_ from: String, _ to: PairedComputer) -> Void = { _, _ in }
+    ) {
         self.computer = computer
         self.others = others
+        self.preferred = preferred.flatMap { pick in others.first { $0.id == pick.id } }
         self.onSwitch = onSwitch
         self.pinned = PinnedSession(pin: computer.fingerprint, timeout: 8)
         self.deviceID = DeviceIdentity.deviceID
@@ -45,7 +58,7 @@ final class AgentClient {
     /// usual 503 "offline"). Only GET and POST are accepted.
     func request(method: String, pathAndQuery: String, body: Data? = nil, contentType: String? = nil) async -> AgentReply? {
         let reply = await send(method: method, pathAndQuery: pathAndQuery, body: body, contentType: contentType)
-        if reply == nil { lookForAnotherComputer() } else { activeAnswered() }
+        if reply == nil { activeFailed() } else { activeAnswered() }
         return reply
     }
 
@@ -114,18 +127,35 @@ final class AgentClient {
     // MARK: - Another paired computer
 
     private func activeAnswered() {
-        probeLock.lock()
+        lock.lock()
         activeAnswers &+= 1
-        probeLock.unlock()
+        failover.answered()
+        let pick = preferred
+        let check = pick != nil && !invalidated && !checkingPreferred && failover.shouldCheckPreferred(at: Date())
+        if check { checkingPreferred = true }
+        lock.unlock()
+        guard check, let pick else { return }
+
+        Task.detached(priority: .utility) { [self] in
+            let back = await answers(pick)
+            if finishPreferredCheck(), back { await onSwitch(computer.id, pick) }
+        }
     }
 
-    private func lookForAnotherComputer() {
-        guard !others.isEmpty else { return }
-        probeLock.lock()
-        guard !probing, Date().timeIntervalSince(lastProbe) >= Self.probeInterval else { probeLock.unlock(); return }
+    /// Ends a check of the user's pick; false when this client was invalidated meanwhile.
+    private func finishPreferredCheck() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        checkingPreferred = false
+        return !invalidated
+    }
+
+    private func activeFailed() {
+        lock.lock()
+        guard !others.isEmpty, !invalidated, !probing, failover.failed(at: Date()) else { lock.unlock(); return }
         probing = true
         let startedAt = activeAnswers
-        probeLock.unlock()
+        lock.unlock()
 
         Task.detached(priority: .utility) { [self] in
             let found = await withTaskGroup(of: PairedComputer?.self) { group -> PairedComputer? in
@@ -138,18 +168,18 @@ final class AgentClient {
                 return nil
             }
             // A panel that went away meanwhile (the user picked another computer, or the pairings changed) must not be
-            // overruled, and neither may an active computer that answered again while the probe ran.
-            if finishProbe(startedAt: startedAt), let found { await onSwitch(found) }
+            // overruled, and neither may a computer on screen that answered again while the probe ran.
+            if finishProbe(found: found != nil, startedAt: startedAt), let found { await onSwitch(computer.id, found) }
         }
     }
 
-    /// Ends a probe; false when its result must be dropped: this client was invalidated, or the active computer
+    /// Ends a probe; false when its result must be dropped: this client was invalidated, or the computer on screen
     /// answered after the probe started.
-    private func finishProbe(startedAt: Int) -> Bool {
-        probeLock.lock()
-        defer { probeLock.unlock() }
+    private func finishProbe(found: Bool, startedAt: Int) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
         probing = false
-        lastProbe = Date()
+        failover.probeFinished(found: found, at: Date())
         return !invalidated && activeAnswers == startedAt
     }
 
@@ -170,9 +200,9 @@ final class AgentClient {
     }
 
     func invalidate() {
-        probeLock.lock()
+        lock.lock()
         invalidated = true
-        probeLock.unlock()
+        lock.unlock()
         pinned.invalidate()
     }
 }
