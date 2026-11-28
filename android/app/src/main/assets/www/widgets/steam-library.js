@@ -73,13 +73,13 @@ export function ownGames(ids, shortcuts) {
 }
 
 /**
- * The games the agent found outside Steam, as tiles: their program's icon is the cover. One that is already one of this
- * widget's own games (a shortcut ticked in its "Other games" that starts a program in the game's folder, or has the
- * game's name) is left out, so a game is not shown twice.
+ * The games the agent found outside Steam, as tiles: their store art (portrait) or else their program's icon is
+ * the cover. One that is already one of this widget's own games (a shortcut ticked in its "Other games" that
+ * starts a program in the game's folder, or has the game's name) is left out, so a game is not shown twice.
  */
 export function otherGames(found, own = []) {
   return (Array.isArray(found) ? found : []).filter((g) => g && typeof g.id === 'string' && g.id.startsWith('x:') && !twinOf(g, own))
-    .map((g) => ({ id: g.id, name: String(g.name || ''), source: String(g.source || ''), state: 'ready', progress: null, cover: g.cover === true }));
+    .map((g) => ({ id: g.id, name: String(g.name || ''), source: String(g.source || ''), state: 'ready', progress: null, cover: g.cover === true, art: g.art === true }));
 }
 
 /** The one of your own games that stands for a found game, or undefined: first one whose shortcut the agent names as
@@ -157,7 +157,7 @@ W['steam-library'] = {
       const running = data?.running === g.id;
       const isArmed = armed === g.id;
       const status = isArmed ? t('w.steamlib.tapAgain') : gameStatus(g, running);
-      const b = h('button', 'sl-tile' + (running ? ' running' : '') + (favShown.has(g.id) ? ' fav' : '') + (g.shortcut || g.source ? ' own' : '') + (isArmed ? ' armed' : '') + (busy === g.id ? ' busy' : '')
+      const b = h('button', 'sl-tile' + (running ? ' running' : '') + (favShown.has(g.id) ? ' fav' : '') + (g.shortcut || (g.source && !g.art) ? ' own' : '') + (isArmed ? ' armed' : '') + (busy === g.id ? ' busy' : '')
         + (g.state !== 'ready' ? ' sl-' + g.state : ''), gameCover(g),
         h('span', 'sl-name', g.name), status ? h('span', 'sl-status', status) : null);
       b.type = 'button';

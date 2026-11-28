@@ -144,7 +144,10 @@ an hour, skipping links (junctions, symbolic links) and system folders, and a bo
 drive. A game folder a launcher's record names is read only when it is on a local fixed disk (not a network share, a
 disc or a removable drive) and no junction or symbolic link is on its path from the drive's root down. They come after the Steam games, with their program's icon; the program is the one named most like the folder, never
 an installer, uninstaller or crash reporter. A game one of the widget's **Other games** shortcuts starts is shown once, as
-that shortcut. The list and the icons go only to your phone; nothing is sent anywhere else. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
+that shortcut. The list and the icons go only to your phone; nothing is sent anywhere else, unless you turn on
+**Covers from the Steam store**: then each found game's name (its program's product name, then its folder's) is
+searched once in the Steam store, and when a result has the same name its portrait art replaces the icon; the store
+sees only the names searched for. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
 Steam's own files, so the widget needs no Steam API key, no sign-in and no internet, and nothing is sent to Steam:
 `libraryfolders.vdf` and the `appmanifest_*.acf` file of each game in every library folder, `localconfig.vdf` for when a
 game was last played, covers from Steam's `appcache/librarycache`, and Steam's `RunningAppID` (the registry on Windows,
