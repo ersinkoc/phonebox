@@ -15,10 +15,12 @@ namespace PhoneBox.Agent;
 /// phone's own countdown is a guard rail, not the security check.</param>
 /// <param name="AlwaysPattern">What Allow always would save for the project (OpenCode's proposed pattern), shown on
 /// the card so the user can see what they would allow from then on.</param>
+/// <param name="HighRisk">The agent judged this request a high-risk write (see ClaudeHook.IsHighRisk);
+/// the phone asks for a second tap before allowing such a card.</param>
 public sealed record Approval(string Id, string Source, string Session, string Project, string Cwd, string Tool, string Detail,
     string? Description, long CreatedAt, long ExpiresAt, string Kind = "permission",
     ApprovalOption[]? Options = null, bool Custom = false, bool Always = false,
-    long AlwaysNotBefore = 0, string? AlwaysPattern = null);
+    long AlwaysNotBefore = 0, string? AlwaysPattern = null, bool HighRisk = false);
 
 /// <summary>One answer an agent question can be answered with.</summary>
 public sealed record ApprovalOption(string Value, string Label, string? Description);
@@ -47,6 +49,11 @@ public sealed class ApprovalStore(PushStore events, ILogger<ApprovalStore> log)
         var now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
         return _pending.Values.Select(p => p.Approval).Where(a => a.ExpiresAt > now).OrderBy(a => a.CreatedAt).ToList();
     }
+
+    /// <summary>This agent's clock in epoch milliseconds; the phone's countdown is corrected by
+    /// the offset between this and its own clock, so a drifting phone clock never locks a card
+    /// early (or rings one back after the agent has already moved on).</summary>
+    public long AgentNow() => _clock.GetUtcNow().ToUnixTimeMilliseconds();
 
     /// <summary>Shows the request on the phone and waits for "allow" / "deny"; null = no answer (fall back to the terminal).</summary>
     /// <summary>Notes in the log why a coding agent's prompt was left to its own window instead of the phone.</summary>

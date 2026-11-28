@@ -1066,7 +1066,11 @@ app.MapPost("/api/workbuddy/hook", (ConfigStore cfg) => WorkBuddyHook.Configure(
 app.MapDelete("/api/workbuddy/hook", (ConfigStore cfg) => WorkBuddyHook.Configure(false, Port, cfg.Get().WorkBuddy.TimeoutSec) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
 
 // Permission prompts waiting for the phone (posted by an AI coding agent hook).
-app.MapGet("/api/approvals", (ApprovalStore a) => Results.Json(new { items = a.Snapshot() }));
+// now is this agent's clock in epoch ms: the phone's countdown and lock check compare the
+// cards' expiresAt against the agent's now (via its own clock plus the offset), so a phone
+// whose clock drifts neither locks a card early nor rings one back after it is gone.
+app.MapGet("/api/approvals", (ApprovalStore a) =>
+    Results.Json(new { items = a.Snapshot(), now = a.AgentNow() }));
 app.MapPost("/api/approvals/{id}", (string id, string decision, string? value, ApprovalStore a) =>
     a.Decide(id, decision, value) ? Results.Ok() : Results.NotFound());
 

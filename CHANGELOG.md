@@ -89,6 +89,14 @@
 - Checklist: two rows with the same text are ticked on their own; a list ticked before this update keeps meaning the
   same rows. Changing the list's text during a day can move today's ticks to the rows now in those places (#765,
   [ryoaonetsuki](https://github.com/ryoaonetsuki)).
+- Approvals: the card counts down the seconds left to answer, by the agent's clock, and locks its buttons when the
+  time is up; long detail ends with an ellipsis and can be expanded, and a high-risk prompt starts expanded. A
+  prompt the agent marks high-risk asks for a second tap on Allow and on Always allow (a guard against a mistap; a
+  second tap within 400 ms is ignored). The marking fails closed: only known read-only tools stay one tap (Claude
+  Code's Read, Glob, Grep, LS, WebFetch, WebSearch, TodoWrite, AskUserQuestion; OpenCode's read, glob, grep, webfetch, websearch,
+  subagent, skill, question), so a shell, an edit, PowerShell, OpenCode's `execute`, every MCP tool and any tool
+  added later ask twice. Prompts that used to allow on the first tap may now ask twice (#702,
+  [elong365](https://github.com/elong365)).
 
 ## 0.9.32 — 2026-11-27
 

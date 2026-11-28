@@ -1589,8 +1589,11 @@ html.beat-4 .w-onair.on .oa-sign { box-shadow: 0 0 34px rgba(239, 68, 68, .9); }
 .ap-tool { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
 .ap-desc { font-size: 13px; color: var(--muted); }
 .ap-desc:empty { display: none; }
+.ap-risk { padding: 6px 10px; border-radius: 10px; background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .4); color: #fca5a5; font-size: 12px; font-weight: 600; }
 .ap-detail { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 10px 12px; border-radius: 12px; background: #06080b; border: 1px solid var(--line);
   font: 12.5px/1.45 "Roboto Mono", monospace; color: #d5dce5; white-space: pre-wrap; word-break: break-word; touch-action: pan-y; -webkit-user-select: text; user-select: text; }
+.ap-detail-toggle { margin: -4px 0 0; padding: 4px; border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-align: start; cursor: pointer; }
+.ap-detail-toggle:active { color: var(--text); }
 /* What Allow always would save (OpenCode's proposed pattern), shown so the card says what it agrees to. */
 .ap-pattern { font-size: 12px; color: var(--muted); }
 .ap-pattern:empty { display: none; }
@@ -1602,9 +1605,8 @@ html.beat-4 .w-onair.on .oa-sign { box-shadow: 0 0 34px rgba(239, 68, 68, .9); }
 .ap-btn.allow { background: #22c55e; color: #052e14; }
 .ap-btn:active { transform: scale(.96); }
 .ap-btn:disabled { opacity: .4; }
-/* OpenCode's third button (Allow always): the two greens and the deny share the row, so the countdown hides and
-   the buttons give up their fixed width. */
-#approval.with-always .ap-time { display: none; }
+/* OpenCode's third button (Allow always): three buttons share the row, so they give up
+   their fixed width; the countdown stays visible, shrunken. */
 #approval.with-always .ap-btn { min-width: 0; flex: 1; padding: 14px 8px; }
 /* Agent questions (OpenCode forms): the question steps aside and the answers take the space. */
 #approval.with-choices .ap-detail { flex: 0 0 auto; max-height: 26%; }

@@ -119,6 +119,10 @@
       'panel.answerSend': 'Send',
       'panel.answered': 'Answer sent: {answer}',
       'panel.answerCustom': 'Type your own answer…',
+      'panel.showMore': 'Show more',
+      'panel.showLess': 'Show less',
+      'panel.confirmAllow': 'Tap again to confirm',
+      'panel.highRisk': 'High-risk write operation',
 
       // Panel: Rules & Sessions
       'panel.rulesPausedToast': 'Rules paused for an hour',
@@ -1197,6 +1201,10 @@
       'panel.answerSend': 'Gönder',
       'panel.answered': 'Yanıt gönderildi: {answer}',
       'panel.answerCustom': 'Kendi yanıtını yaz…',
+      'panel.showMore': 'Daha fazla göster',
+      'panel.showLess': 'Daha az göster',
+      'panel.confirmAllow': 'Onaylamak için tekrar dokunun',
+      'panel.highRisk': 'Yüksek riskli yazma işlemi',
 
       'panel.rulesPausedToast': 'Kurallar 1 saat duraklatıldı',
       'panel.rulesResumedToast': 'Kurallar tekrar aktif',
@@ -1800,6 +1808,10 @@
       'panel.answerSend': 'Senden',
       'panel.answered': 'Antwort gesendet: {answer}',
       'panel.answerCustom': 'Eigene Antwort tippen…',
+      'panel.showMore': 'Mehr anzeigen',
+      'panel.showLess': 'Weniger anzeigen',
+      'panel.confirmAllow': 'Zum Bestätigen erneut tippen',
+      'panel.highRisk': 'Schreiboperation mit hohem Risiko',
 
       'panel.rulesPausedToast': 'Regeln für 1 Stunde pausiert',
       'panel.rulesResumedToast': 'Regeln sind wieder aktiv',
@@ -2394,6 +2406,10 @@
       'panel.answerSend': 'Envoyer',
       'panel.answered': 'Réponse envoyée : {answer}',
       'panel.answerCustom': 'Tapez votre propre réponse…',
+      'panel.showMore': 'Afficher plus',
+      'panel.showLess': 'Afficher moins',
+      'panel.confirmAllow': 'Touchez à nouveau pour confirmer',
+      'panel.highRisk': 'Opération d\'écriture à haut risque',
 
       'panel.rulesPausedToast': 'Règles en pause pendant 1 heure',
       'panel.rulesResumedToast': 'Les règles sont réactivées',
@@ -2988,6 +3004,10 @@
       'panel.answerSend': 'Enviar',
       'panel.answered': 'Respuesta enviada: {answer}',
       'panel.answerCustom': 'Escribe tu propia respuesta…',
+      'panel.showMore': 'Mostrar más',
+      'panel.showLess': 'Mostrar menos',
+      'panel.confirmAllow': 'Toca de nuevo para confirmar',
+      'panel.highRisk': 'Operación de escritura de alto riesgo',
 
       'panel.rulesPausedToast': 'Reglas pausadas durante 1 hora',
       'panel.rulesResumedToast': 'Reglas activadas de nuevo',
@@ -3582,6 +3602,10 @@
       'panel.answerSend': 'Invia',
       'panel.answered': 'Risposta inviata: {answer}',
       'panel.answerCustom': 'Scrivi la tua risposta…',
+      'panel.showMore': 'Mostra di più',
+      'panel.showLess': 'Mostra meno',
+      'panel.confirmAllow': 'Tocca di nuovo per confermare',
+      'panel.highRisk': 'Operazione di scrittura ad alto rischio',
 
       'panel.rulesPausedToast': 'Regole in pausa per 1 ora',
       'panel.rulesResumedToast': 'Regole riattivate',
@@ -4176,6 +4200,10 @@
       'panel.answerSend': 'Enviar',
       'panel.answered': 'Resposta enviada: {answer}',
       'panel.answerCustom': 'Escreva a sua resposta…',
+      'panel.showMore': 'Mostrar mais',
+      'panel.showLess': 'Mostrar menos',
+      'panel.confirmAllow': 'Toque novamente para confirmar',
+      'panel.highRisk': 'Operação de escrita de alto risco',
 
       'panel.rulesPausedToast': 'Regras em pausa por 1 hora',
       'panel.rulesResumedToast': 'Regras reativadas',
@@ -4776,6 +4804,10 @@
       'panel.allowedTool': 'Permitido: {tool}',
       'panel.deniedTool': 'Recusado: {tool}',
       'panel.alreadyAnswered': 'Já respondido no terminal',
+      'panel.showMore': 'Mostrar mais',
+      'panel.showLess': 'Mostrar menos',
+      'panel.confirmAllow': 'Toque novamente para confirmar',
+      'panel.highRisk': 'Operação de escrita de alto risco',
       'panel.rulesPausedToast': 'Regras em pausa por 1 hora',
       'panel.rulesResumedToast': 'Regras reativadas',
       'panel.pcNoAnswer': 'O PC não respondeu',
@@ -5758,6 +5790,16 @@
       's.k.valueAddress': 'Um programa recebe o número como um argumento próprio e inicia sem o shell. Para um endereço (https:, shell:…), coloque {value} no próprio endereço.',
     },
 
+    // Romanian (upstream #671 adds the full dictionary in locale-ro.js, which
+    // does not know these new keys): only this PR's keys, so ro users see them
+    // translated right after the rebase instead of falling back to English.
+    ro: {
+      'panel.showMore': 'Afișează mai mult',
+      'panel.showLess': 'Afișează mai puțin',
+      'panel.confirmAllow': 'Atinge din nou pentru a permite',
+      'panel.highRisk': 'Operațiune cu risc ridicat',
+    },
+
     nl: {
       's.phoneMic.title': 'Telefoonmicrofoon',
       's.phoneMic.enable': 'De microfoon van de telefoon als computermicrofoon gebruiken',
@@ -5838,6 +5880,10 @@
       'panel.answerSend': 'Versturen',
       'panel.answered': 'Antwoord verzonden: {answer}',
       'panel.answerCustom': 'Typ je eigen antwoord…',
+      'panel.showMore': 'Meer tonen',
+      'panel.showLess': 'Minder tonen',
+      'panel.confirmAllow': 'Tik nogmaals om te bevestigen',
+      'panel.highRisk': 'Schrijfbewerking met hoog risico',
 
       'panel.rulesPausedToast': 'Regels 1 uur gepauzeerd',
       'panel.rulesResumedToast': 'Regels zijn weer actief',
@@ -6432,6 +6478,10 @@
       'panel.answerSend': 'Wyślij',
       'panel.answered': 'Wysłano odpowiedź: {answer}',
       'panel.answerCustom': 'Wpisz własną odpowiedź…',
+      'panel.showMore': 'Pokaż więcej',
+      'panel.showLess': 'Pokaż mniej',
+      'panel.confirmAllow': 'Dotknij ponownie, aby potwierdzić',
+      'panel.highRisk': 'Operacja zapisu o wysokim ryzyku',
 
       'panel.rulesPausedToast': 'Reguły wstrzymane na 1 godzinę',
       'panel.rulesResumedToast': 'Reguły znów działają',
@@ -7026,6 +7076,10 @@
       'panel.answerSend': 'Отправить',
       'panel.answered': 'Ответ отправлен: {answer}',
       'panel.answerCustom': 'Введите свой ответ…',
+      'panel.showMore': 'Показать больше',
+      'panel.showLess': 'Показать меньше',
+      'panel.confirmAllow': 'Коснитесь ещё раз для подтверждения',
+      'panel.highRisk': 'Операция записи с высоким риском',
 
       'panel.rulesPausedToast': 'Правила приостановлены на 1 час',
       'panel.rulesResumedToast': 'Правила снова активны',
@@ -7616,6 +7670,10 @@
       'panel.answerSend': 'Αποστολή',
       'panel.answered': 'Στάλθηκε η απάντηση: {answer}',
       'panel.answerCustom': 'Γράψε τη δική σου απάντηση…',
+      'panel.showMore': 'Περισσότερα',
+      'panel.showLess': 'Λιγότερα',
+      'panel.confirmAllow': 'Άγγιξε ξανά για επιβεβαίωση',
+      'panel.highRisk': 'Εγγραφή υψηλού ρίσκου',
       'panel.rulesPausedToast': 'Οι κανόνες τέθηκαν σε παύση για μία ώρα',
       'panel.rulesResumedToast': 'Οι κανόνες είναι ξανά ενεργοί',
       'panel.pcNoAnswer': 'Ο υπολογιστής δεν απάντησε',
@@ -8687,6 +8745,10 @@
       'panel.answerSend': 'Gửi',
       'panel.answered': 'Đã gửi câu trả lời: {answer}',
       'panel.answerCustom': 'Nhập câu trả lời của bạn…',
+      'panel.showMore': 'Hiện thêm',
+      'panel.showLess': 'Hiện ít hơn',
+      'panel.confirmAllow': 'Chạm lần nữa để xác nhận',
+      'panel.highRisk': 'Thao tác ghi rủi ro cao',
 
       'panel.rulesPausedToast': 'Đã tạm dừng các quy tắc trong một giờ',
       'panel.rulesResumedToast': 'Các quy tắc đã bật lại',
@@ -9731,6 +9793,10 @@
       'panel.answerSend': '发送',
       'panel.answered': '已发送回答：{answer}',
       'panel.answerCustom': '输入你自己的回答…',
+      'panel.showMore': '显示更多',
+      'panel.showLess': '收起显示',
+      'panel.confirmAllow': '再次点按确认',
+      'panel.highRisk': '高危写入操作',
 
       'panel.rulesPausedToast': '规则已暂停 1 小时',
       'panel.rulesResumedToast': '规则已恢复',

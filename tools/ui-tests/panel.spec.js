@@ -369,10 +369,48 @@ test('rules firing one after another do not bounce the screen', async ({ page })
 test('a Claude Code permission prompt can be answered', async ({ page }) => {
   await page.goto('/panel/');
   await expect(page.locator('.w').first()).toBeVisible();
-  await page.evaluate(() => window.PhoneBoxDemo.ask());
+  // a fixed low-risk sample: ask() without arguments picks one of the demo's
+  // samples at random, and two of them are high-risk, which would want a
+  // second tap and fail this single-tap test
+  await page.evaluate(() => window.PhoneBoxDemo.ask({
+    tool: 'Run a command', detail: 'git push origin main --force-with-lease',
+    description: 'Push the rebased branch', project: 'api-gateway', cwd: '/Users/me/work/api-gateway' }));
   const prompt = page.locator('#approval');
   await expect(prompt).toBeVisible();
   await prompt.getByRole('button', { name: 'Allow' }).click();
+  await expect(prompt).toBeHidden();
+});
+
+test('a high-risk prompt needs a second tap on Allow, and Always asks twice too', async ({ page }) => {
+  await page.goto('/panel/');
+  await expect(page.locator('.w').first()).toBeVisible();
+  const prompt = page.locator('#approval');
+  // Allow: the first tap only arms the button it landed on (the second tap
+  // must come after a pause: two taps under 400 ms are ignored as a double-click)
+  await page.evaluate(() => window.PhoneBoxDemo.ask({
+    tool: 'Write a file', detail: 'src/config/quota.json\n\n{ "weeklyCap": 10_000 }',
+    description: 'Rewrite the quota config', project: 'docs-site', highRisk: true }));
+  await expect(prompt).toBeVisible();
+  const allow = prompt.locator('#apAllow');
+  await allow.click();
+  await expect(prompt).toBeVisible(); // the card stays: the tap only armed the gate
+  await expect(allow).toContainText('Tap again to confirm');
+  await page.waitForTimeout(500);
+  await allow.click();
+  await expect(prompt).toBeHidden(); // the second tap answers
+  // Always: the same gate, on the button the user tapped
+  await page.evaluate(() => window.PhoneBoxDemo.ask({
+    tool: 'Write a file', detail: 'src/config/quota.json\n\n{ "weeklyCap": 10_000 }',
+    description: 'Rewrite the quota config', project: 'docs-site', highRisk: true, always: true }));
+  await expect(prompt).toBeVisible();
+  const always = prompt.locator('#apAlways');
+  // Always allow arms after the demo's configured 10 s countdown
+  await expect(always).toHaveText('Always allow', { timeout: 15_000 });
+  await always.click();
+  await expect(prompt).toBeVisible();
+  await expect(always).toContainText('Tap again to confirm');
+  await page.waitForTimeout(500);
+  await always.click();
   await expect(prompt).toBeHidden();
 });
 

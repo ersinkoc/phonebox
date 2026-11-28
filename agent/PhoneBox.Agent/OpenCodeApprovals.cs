@@ -242,7 +242,12 @@ public sealed class OpenCodeApprovals : BackgroundService
                 // user can see what they would allow from then on
                 Always: saves,
                 AlwaysNotBefore: saves ? now + Math.Clamp(countdownSec, 0, 60) * 1000L : 0,
-                AlwaysPattern: saves ? string.Join(", ", req.Save!) : null);
+                AlwaysPattern: saves ? string.Join(", ", req.Save!) : null,
+                // the same write classes Claude's list covers, in OpenCode's action names:
+                // shell (Bash), edit (Edit/Write) and any MCP tool (`server_tool`, the
+                // underscore shape — names alone do not say read from write). Questions travel
+                // on their own channel and are never marked.
+                HighRisk: IsHighRisk(req.Action));
             // AskAsync emits the offer to the phone, waits for its decision, and returns null once the window is over
             var decision = await _approvals.AskAsync(approval, ct);
             if (decision is "allow" or "always" or "deny")
@@ -633,6 +638,17 @@ public sealed class OpenCodeApprovals : BackgroundService
         var project = Path.GetFileName((directory ?? "").TrimEnd('\\', '/'));
         return project.Length == 0 ? "opencode" : project;
     }
+
+    /// <summary>Fail-closed whitelist: only the known read-only actions pass; everything
+    /// else is high risk — unknown words, plugin actions, actions OpenCode may add in
+    /// the future, "shell", "edit", "execute" (it runs AI-written code), "external_directory"
+    /// and every MCP tool (an MCP tool names itself <server>_<tool> — the underscore shape —
+    /// and names alone do not say read from write). The list is hardcoded here (the agent is
+    /// the trusted end) and can only ever be tightened, never loosened from the phone;
+    /// question forms are not permissions and are never marked.</summary>
+    internal static bool IsHighRisk(string action) =>
+        action is not ("read" or "glob" or "grep" or "webfetch" or "websearch"
+            or "subagent" or "skill" or "question");
 
     /// <summary>What the card's headline says, per OpenCode permission action (plugins may add their own).</summary>
     internal static string ToolTitle(string action) => action switch

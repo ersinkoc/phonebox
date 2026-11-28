@@ -184,6 +184,8 @@
     { tool: 'Run a command', detail: 'git push origin main --force-with-lease', description: 'Push the rebased branch', project: 'api-gateway', cwd: '/Users/me/work/api-gateway' },
     { tool: 'Edit a file', detail: 'src/routes/billing.ts\n\n  export const limit = rateLimit({ windowMs: 60_000, max: 120 })', description: '', project: 'docs-site' },
     { tool: 'Fetch a web page', detail: 'https://docs.github.com/en/rest/pulls', description: '', project: 'blog-engine' },
+    { tool: 'Write a file', detail: 'src/config/quota.json\n\n{ "weeklyCap": 10_000 }', description: 'Rewrite the quota config', project: 'docs-site', highRisk: true },
+    { tool: 'Use context7 › resolve-library-id', detail: 'library: react-router', description: 'Look up the library id', project: 'blog-engine', highRisk: true },
   ];
   function ask(sample, broadcast = true) {
     const s = sample || SAMPLE_PROMPTS[Math.floor(Math.random() * SAMPLE_PROMPTS.length)];
@@ -970,7 +972,7 @@
     if (path === '/api/procs') return json(procs());
     if (path === '/api/procs/detail') return json(procDetail(q.get('name')));
     if (path.startsWith('/api/widget/')) return json({ output: String(3 + Math.floor(Math.random() * 3)), at: now() - 8000, ok: true, running: false, durationMs: 412 });
-    if (path === '/api/approvals' && method === 'GET') return json({ items: approvals.filter((a) => a.expiresAt > now()) });
+    if (path === '/api/approvals' && method === 'GET') return json({ items: approvals.filter((a) => a.expiresAt > now()), now: Date.now() });
     if (path.startsWith('/api/approvals/') && method === 'POST') {
       const id = decodeURIComponent(path.slice(15));
       if (!approvals.some((a) => a.id === id)) return json({}, 404);

@@ -401,6 +401,62 @@ public sealed class OpenCodeApprovalsTests : IDisposable
         Assert.Equal(expected, actual);
     }
 
+    // fail-closed whitelist: only the known read-only actions pass;
+    // everything else is high risk — shell, edit, execute (it runs
+    // AI-written code), external_directory (it opens a folder outside
+    // the project), any MCP tool (the underscore shape) and any action
+    // the whitelist does not name, be it a plugin's or one OpenCode adds
+    // in the future.
+    [Fact]
+    public void WriteClassActionsAreMarkedHighRisk()
+    {
+        Assert.True(OpenCodeApprovals.IsHighRisk("shell"));
+        Assert.True(OpenCodeApprovals.IsHighRisk("edit"));
+        Assert.True(OpenCodeApprovals.IsHighRisk("myserver_mytool")); // an MCP tool
+        Assert.False(OpenCodeApprovals.IsHighRisk("read"));
+        Assert.False(OpenCodeApprovals.IsHighRisk("glob"));
+        Assert.False(OpenCodeApprovals.IsHighRisk("grep"));
+        Assert.False(OpenCodeApprovals.IsHighRisk("webfetch"));
+        Assert.False(OpenCodeApprovals.IsHighRisk("websearch"));
+        Assert.False(OpenCodeApprovals.IsHighRisk("subagent"));
+        Assert.False(OpenCodeApprovals.IsHighRisk("skill"));
+        Assert.False(OpenCodeApprovals.IsHighRisk("question"));  // questions are never permissions
+        Assert.True(OpenCodeApprovals.IsHighRisk("execute"));    // it runs AI-written code
+        Assert.True(OpenCodeApprovals.IsHighRisk("external_directory")); // not on the read-only whitelist
+    }
+
+    // fail-closed: anything outside the read-only whitelist is high risk —
+    // an empty action, a plugin's own action, a word no one has named yet
+    [Theory]
+    [InlineData("", true)]
+    [InlineData("someplugin_action", true)]
+    [InlineData("custom_action", true)]
+    [InlineData("weird", true)]
+    [InlineData("read", false)]
+    public void UnknownActionsAreHighRisk(string action, bool expected) =>
+        Assert.Equal(expected, OpenCodeApprovals.IsHighRisk(action));
+
+    // a permission request whose action is a write class carries HighRisk on the
+    // card; the question form channel never does (questions are not permissions)
+    [Fact]
+    public async Task AShellPromptIsOfferedHighRiskAndAQuestionNeverIs()
+    {
+        var fake = new FakeOpenCode(ProjDir) { QueueJson = QueueOne, FormsJson = """{"data":[]}""" };
+        var store = new ApprovalStore(_events, NullLogger<ApprovalStore>.Instance, _clock);
+        var monitor = Monitor(store, fake);
+        await monitor.PollOnceAsync(CancellationToken.None);
+
+        var a = Assert.Single(store.Snapshot());
+        Assert.Equal("Run a command", a.Tool);   // the queue's shell action reached the card's headline
+        Assert.True(a.HighRisk);
+
+        var fake2 = new FakeOpenCode(ProjDir) { QueueJson = """{"data":[]}""", FormsJson = FormOne };
+        var store2 = new ApprovalStore(_events, NullLogger<ApprovalStore>.Instance, _clock);
+        var monitor2 = Monitor(store2, fake2);
+        await monitor2.PollOnceAsync(CancellationToken.None);
+        Assert.False(Assert.Single(store2.Snapshot()).HighRisk); // the question form is on the card, and never marked
+    }
+
     [Fact]
     public async Task AnAgentQuestionIsOfferedWithItsChoicesAndTheAnswerReachesTheForm()
     {
