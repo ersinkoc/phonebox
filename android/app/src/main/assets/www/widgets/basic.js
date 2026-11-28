@@ -678,7 +678,7 @@ W.sessions = {
     box.append(h('div', 'w-head', h('span', 's-label', t('w.sessions')), sum), list);
     box.style.setProperty('--c', '#d97757');
     const tokens = (n) => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
-    const statusText = (s) => s.status === 'busy' ? t('sess.working') : s.status === 'waiting' ? t('sess.waiting') : s.status === 'shell' ? t('sess.shell') : s.outcome === 'completed' ? t('sess.completed') : s.outcome === 'failed' ? t('sess.failed') : s.outcome === 'aborted' ? t('sess.aborted') : t('sess.idle');
+    const statusText = (s) => s.status === 'busy' ? t('sess.working') : s.status === 'waiting' ? t('sess.waiting') : s.status === 'shell' ? t('sess.shell') : s.status === 'completed' ? t('sess.completed') : s.status === 'failed' ? t('sess.failed') : s.status === 'stopped' ? t('sess.stopped') : s.status === 'unknown' ? tp('unknown') : s.outcome === 'completed' ? t('sess.completed') : s.outcome === 'failed' ? t('sess.failed') : s.outcome === 'aborted' ? t('sess.aborted') : t('sess.idle');
     // The tool each session comes from: one glyph in the list, a glyph and a name in the details panel.
     const toolIcon = (tool) => tool === 'claude' ? '✳' : tool === 'codex' ? '◎' : tool === 'cursor' ? '◆' : tool === 'opencode' ? '◈' : tool === 'antigravity' ? Q_STYLE.antigravity.logo : tool === 'grok' ? Q_STYLE.grok.logo : tool === 'workbuddy' ? '❖' : tool === 'pi' ? 'π' : '◎';
     const toolTitle = (tool) => tool === 'claude' ? 'Claude Code' : tool === 'codex' ? 'Codex' : tool === 'cursor' ? 'Cursor' : tool === 'opencode' ? 'OpenCode' : tool === 'antigravity' ? 'Antigravity' : tool === 'grok' ? 'Grok' : tool === 'workbuddy' ? 'WorkBuddy' : tool === 'pi' ? 'Pi' : 'Codex';
@@ -760,6 +760,32 @@ W.sessions = {
       const timer = setInterval(load, 3000);
       return () => { gone = true; clearInterval(timer); };
     };
+    // WorkBuddy's setup check: three lines — the hook, the approval switch and the heartbeat's
+    // age. All of them come from the agent's own "work" frame (D.work.workbuddy: booleans the
+    // agent judged — the hook's settings path names the user's home folder and never travels),
+    // so the card also works over Wi-Fi and USB and never phones home for the path. Anything
+    // that cannot be read says "unknown" rather than "on": a check that fails must not pass
+    // itself (fail-loud). Values go in with textContent only.
+    const workbuddyCheck = async (panel, s) => {
+      const box = h('div', 'session-conv wb-check');
+      panel.append(box);
+      const wb = D.work?.workbuddy || null; // the agent's booleans; null when the agent is older
+      // the heartbeat the row's own freshness is judged on; since is a status-change time and can differ
+      const beat = s.heartbeat ?? s.since;
+      const beatAge = beat != null ? Math.max(0, Math.round((Date.now() - beat) / 1000)) : null;
+      const rows = [
+        [tp('Hook'), Promise.resolve(wb == null ? null : wb.installed === true ? tp('installed') : wb.installed === false ? tp('not installed') : null)],
+        [tp('Agent setting'), Promise.resolve(wb == null ? null : wb.approvals === true ? tp('on') : wb.approvals === false ? tp('off') : null)],
+        [tp('Last heartbeat'), Promise.resolve(s.recent === true ? tpv('{n}s ago', { n: beatAge ?? 0 }) : s.recent === false ? tp('stale') : beatAge == null ? null : beatAge > 90 ? tp('stale') : tpv('{n}s ago', { n: beatAge }))],
+      ];
+      box.replaceChildren(h('div', 'conv-h', tp('WorkBuddy check')), ...await Promise.all(rows.map(async ([label, value]) => {
+        let text;
+        try { text = await value; } catch (_) { text = null; }
+        const strong = h('strong', null, text ?? tp('unknown'));
+        if (text == null || text === tp('stale')) strong.classList.add('wb-unknown');
+        return h('div', 'wb-check-row', h('span', null, label), strong);
+      })));
+    };
     const openDetails = (s) => {
       haptic();
       const backdrop = h('div', 'session-backdrop');
@@ -795,6 +821,7 @@ W.sessions = {
       panel.append(h('div', 'session-grid', rows.filter(([, value]) => value != null)
         .map(([label, value]) => h('div', 'session-cell', h('span', null, tp(label)), h('strong', null, value)))));
       if (s.tool === 'codex' || s.tool === 'grok' || (s.tool === 'antigravity' && s.totalTokens != null) || (s.tool === 'pi' && s.totalTokens != null)) panel.append(h('p', 'session-note', tp('Token totals are for this local session, not your account allowance.')));
+      if (s.tool === 'workbuddy') workbuddyCheck(panel, s);
       if (s.tool === 'claude') stopConversation = conversationSection(panel, s);
       backdrop.append(panel);
       document.body.append(backdrop);
@@ -807,17 +834,32 @@ W.sessions = {
         if (!sessions) return;
         const counts = { waiting: 0, busy: 0, shell: 0, idle: 0 };
         sessions.forEach((s) => (counts[s.status] = (counts[s.status] || 0) + 1));
+        // the statuses that mean a turn is over count together as finished; unknown gets its own
+        // fragment so a list of rows never reads as "no open sessions"
+        const done = counts.completed + counts.failed + counts.stopped;
         sum.textContent = [
           counts.busy + counts.shell ? tpv('{n} working', { n: counts.busy + counts.shell }) : '',
           counts.waiting ? tpv('{n} waiting', { n: counts.waiting }) : '',
           counts.idle ? tpv('{n} idle', { n: counts.idle }) : '',
-        ].filter(Boolean).join(' · ') || t('w.noOpenSessions');
+          done ? tpv('{n} finished', { n: done }) : '',
+          counts.unknown ? tpv('{n} unknown', { n: counts.unknown }) : '',
+        ].filter(Boolean).join(' · ')
+          // rows that are all terminal or unknown are still sessions: the headline
+          // names them instead of contradicting the list with "no open sessions"
+          || (sessions.length ? tpv('{n} sessions', { n: sessions.length }) : t('w.noOpenSessions'));
         const sorted = [...sessions].sort((a, b) => (S_ORDER[a.status] ?? 9) - (S_ORDER[b.status] ?? 9) || b.since - a.since);
         const rows = sorted.length ? sorted.map((s) => {
-          const row = h('button', 'sess ' + s.status,
+          // a stale row is one the agent itself judged not recent (WorkBuddy's flag, judged on the
+          // computer's clock — the phone never compares its own clock to the computer's): it dims
+          // and gets the badge, because the dot it shows is only as fresh as the feed. Other tools
+          // (Claude, Codex…) send no such flag and never go stale — a since that records the last
+          // status change grows on its own while a busy session keeps working.
+          const stale = s.tool === 'workbuddy' && s.recent === false;
+          const row = h('button', 'sess ' + s.status + (stale ? ' stale' : ''),
             h('span', 'st'), h('span', 'tl ' + s.tool, toolIcon(s.tool)),
             h('span', 'sess-main', h('span', 'nm', titleOf(s)), h('span', 'sess-meta', [folderOf(s), [s.model, s.effort].filter(Boolean).join(' · ') || statusText(s)].filter(Boolean).join(' · '))),
-            h('span', 'ds', shortDur(Date.now() - s.since)));
+            h('span', 'ds', shortDur(Date.now() - s.since)),
+            stale ? h('span', 'stale-badge', tp('stale')) : null);
           row.type = 'button';
           row.addEventListener('click', () => openDetails(s));
           return row;

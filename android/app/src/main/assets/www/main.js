@@ -1126,7 +1126,7 @@ export function paceInfo(l) {
 }
 
 // ---------------------------------------------------------------- sessions & GitHub
-export const S_ORDER = { waiting: 0, busy: 1, shell: 2, idle: 3 };
+export const S_ORDER = { waiting: 0, failed: 1, busy: 2, shell: 3, completed: 4, stopped: 4, idle: 5, unknown: 6 };
 export const prevStatus = new Map();
 export let workLoaded = false;
 
@@ -1140,6 +1140,18 @@ export function notifyTransitions(sessions) {
         buzz('0,90,90,90,90,160');
         toast(s.waitingFor || t('panel.needsInput'), 'err', s.name);
       } else if (s.status === 'idle' && (before === 'busy' || before === 'shell')) {
+        buzz('0,70,110,70');
+        if (cfg.display?.finishToast !== false) toast(t('panel.sessionFinished', { name: s.name }), 'ok');
+        finished++;
+      }
+      // WorkBuddy has no idle: its busy turn ends as completed/stopped/failed (a final
+      // state), or reads unknown when its feed went quiet — and only a quiet feed (the
+      // agent's own recent=false, not the phone's clock) counts as an end, so a live
+      // unknown never chimes. Its states before this PR read busy only, so this brings
+      // back the reminder the old busy→idle path used to give.
+      else if (s.tool === 'workbuddy' && before === 'busy'
+        && (s.status === 'completed' || s.status === 'stopped' || s.status === 'failed'
+          || (s.status === 'unknown' && s.recent === false))) {
         buzz('0,70,110,70');
         if (cfg.display?.finishToast !== false) toast(t('panel.sessionFinished', { name: s.name }), 'ok');
         finished++;

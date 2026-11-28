@@ -111,6 +111,12 @@
 - iOS: the companion app can pair with several computers and switch between them. When the one in use stops
   answering for 30 seconds, the app follows whichever paired computer answers, and goes back to your pick as soon
   as it answers again. Tokens stay in the Keychain (#727, [haquanghuy2908](https://github.com/haquanghuy2908)).
+- AI sessions: a WorkBuddy row shows **Finished**, **Stopped**, **Failed** or **Unknown** instead of a "busy" that
+  never ends. A feed whose heartbeat stopped for over 90 seconds while WorkBuddy still runs reads Unknown and gets a
+  STALE badge, judged on the computer's clock. The list's headline counts finished and unknown rows, a failed turn
+  shows an error toast, and an unknown one stays quiet. The session details show a WorkBuddy check: whether the hook
+  is installed, the approval switch and the heartbeat's age, which keeps counting while the details are open (#701,
+  [elong365](https://github.com/elong365)).
 
 ## 0.9.32 — 2026-11-27
 
