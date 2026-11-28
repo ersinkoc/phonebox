@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using MQTTnet;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
 
@@ -11,18 +12,24 @@ internal sealed class MqttTestBroker : IDisposable
     public int Port { get; }
     public List<string> ClientIds { get; } = [];
     public List<(string? User, string? Password)> Logins { get; } = [];
+    /// <summary>The topic filters clients asked to unsubscribe from.</summary>
+    public List<string> Unsubscribed { get; } = [];
     /// <summary>Accepts every login and then disconnects the client at once (a duplicate client id, an access list that kicks).</summary>
     public volatile bool DropClients;
+    /// <summary>Refuses every subscription (an access list), as a broker answers with the failure code of MQTT 3.1.1.</summary>
+    public volatile bool DenySubscriptions;
 
     private MqttTestBroker(MqttServer server, int port) { _server = server; Port = port; }
 
-    public static async Task<MqttTestBroker> StartAsync(X509Certificate2? cert = null, string? user = null, string? password = null, int? at = null)
+    public static async Task<MqttTestBroker> StartAsync(X509Certificate2? cert = null, string? user = null, string? password = null, int? at = null, bool persistentSessions = false)
     {
         for (var attempt = 0; ; attempt++)
         {
             var port = at ?? FreePort();
             var factory = new MqttServerFactory();
             var builder = factory.CreateServerOptionsBuilder();
+            // a client that connects with Clean session off keeps its subscriptions between connections, as on a real broker
+            builder.WithPersistentSessions(persistentSessions);
             // loopback IPv4 only: a broker on every interface would show up twice in what ListeningPortsTests counts for this process
             if (cert is null) builder.WithDefaultEndpoint().WithDefaultEndpointPort(port).WithDefaultEndpointBoundIPAddress(IPAddress.Loopback).WithDefaultEndpointBoundIPV6Address(IPAddress.None);
             else builder.WithoutDefaultEndpoint().WithEncryptedEndpoint().WithEncryptedEndpointPort(port).WithEncryptedEndpointBoundIPAddress(IPAddress.Loopback).WithEncryptedEndpointBoundIPV6Address(IPAddress.None).WithEncryptionCertificate(cert);
@@ -34,6 +41,20 @@ internal sealed class MqttTestBroker : IDisposable
                 if (user is not null && (e.UserName != user || e.Password != password)) e.ReasonCode = MqttConnectReasonCode.BadUserNameOrPassword;
                 return Task.CompletedTask;
             };
+            server.InterceptingSubscriptionAsync += e =>
+            {
+                if (broker.DenySubscriptions)
+                {
+                    e.ProcessSubscription = false;
+                    e.Response.ReasonCode = MqttSubscribeReasonCode.NotAuthorized;
+                }
+                return Task.CompletedTask;
+            };
+            server.InterceptingUnsubscriptionAsync += e =>
+            {
+                lock (broker.Unsubscribed) broker.Unsubscribed.Add(e.Topic);
+                return Task.CompletedTask;
+            };
             server.ClientConnectedAsync += async e =>
             {
                 if (broker.DropClients) await server.DisconnectClientAsync(e.ClientId, MqttDisconnectReasonCode.AdministrativeAction);
@@ -42,6 +63,12 @@ internal sealed class MqttTestBroker : IDisposable
             catch (Exception) when (attempt < 10) { server.Dispose(); } // the port was taken in between
         }
     }
+
+    /// <summary>Publishes a message from the broker itself to every client subscribed to the topic (a retained one is kept for later subscribers).</summary>
+    public Task Publish(string topic, byte[] payload, bool retain = false) => _server.InjectApplicationMessage(
+        new InjectedMqttApplicationMessage(new MqttApplicationMessageBuilder().WithTopic(topic).WithPayload(payload).WithRetainFlag(retain).Build()));
+
+    public Task Publish(string topic, string payload, bool retain = false) => Publish(topic, System.Text.Encoding.UTF8.GetBytes(payload), retain);
 
     /// <summary>A port no other fixture of this run has been given (the HTTP fixtures share the same list).</summary>
     public static int FreePort() => TestPorts.Reserve();

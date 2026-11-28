@@ -21,7 +21,7 @@
   pinned SHA-256 fingerprint, and there is no switch to skip the check. The password is write-only (the settings
   page never gets it back, and it never reaches the phone, the log or the status), and a retained last will is
   off with a warning. `GET /api/mqtt/status` reports only the state, the time of the last message and a kind of
-  error, and is local only. Nothing is subscribed or published yet; subscriptions, a widget and publish actions
+  error, and is local only. This step only connects; subscriptions (next entry), a widget and publish actions
   follow in separate steps. The agent now includes the MQTTnet client library (#732, #739,
   [t7spotter](https://github.com/t7spotter)).
 - Android: a request that takes the computer several seconds to answer no longer reads as "Computer connection
@@ -144,6 +144,14 @@
   widget changes nothing. Replacing a page's widgets from a template or clearing it drops its upright layout, and a
   page whose widgets have no upright place is packed automatically. Pages without one look as before. Without More
   rows on a tablet, the editor's screen buttons read **Landscape** and **Upright** (#755, #758,
+- The Steam library widget is now the Game library. Shortcuts ticked in its new **Other games** option show as games,
+  and on Windows it also finds the games installed outside Steam: the Epic Games Launcher's, the EA app's, GOG Galaxy's,
+  Ubisoft Connect's and the Rockstar Games Launcher's, and game folders on the drives. Starting those from the phone is
+  an option of its own, **Let the phone start the games found outside Steam**, off by default (#756, #759,
+  [WellyngtonSantos](https://github.com/WellyngtonSantos)).
+- Game library: the new **Covers from the Steam store** option (off by default) looks up the games found outside Steam
+  by name in the Steam store and shows their portrait art instead of the program's icon. Only the names are sent; after
+  a failure the store is left alone for a while, and covers of games no longer found are deleted (#757, #760,
   [WellyngtonSantos](https://github.com/WellyngtonSantos)).
 - llama-swap: a widget for the local [llama-swap](https://github.com/mostlygeek/llama-swap) router — which models are
   currently loaded, the requests in flight (at most three rows, more as `+N`) with how long each has been running,
@@ -161,6 +169,27 @@
 - Memory & disks: the agent reports up to 26 disks (every fixed volume over 2 GB), not only the first six: with a seventh
   drive (a USB disk, for example) the last one no longer disappears from the widget and from `pc.disks`, and a volume
   that goes away while it is read no longer stops the sampling (#785, [ssavickiy](https://github.com/ssavickiy)).
+- **MQTT, second step: subscriptions** (Settings › General › MQTT › Subscriptions, #732, #781,
+  [t7spotter](https://github.com/t7spotter)): each row puts the messages of a topic (`+` and `#` allowed) into one
+  pushed value under a key you choose, with an optional JSON field and unit. A **Pushed value** widget shows it and the
+  rules can use it, as with a webhook's value; nothing else of MQTT reaches the phone, and no topic does. A wildcard
+  never makes keys (every matching message updates the row's one key), there are at most 32 rows, and a key is updated
+  at most once a second with the newest value, so a busy topic cannot fill the push store or flood the phone. The
+  password and the topics stay on the computer (never in the log or the status); **Test** subscribes to nothing. The
+  settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
+  `docs/MQTT.md`. With Clean session off, a row removed from the settings is unsubscribed on the next connection to
+  the same broker session; another broker or account never hears the old topics.
+- macOS: Apple Music shows in Now Playing again without `nowplaying-cli`: the AppleScript reading ended in an empty
+  artwork field, and trimming its tab away dropped the whole line (#787, [mathan-u](https://github.com/mathan-u)).
+- Synced lyrics: Apple Music for Windows reports "Artist — Album" as the artist with no album; the two are split, so
+  LRCLIB is asked for the artist and the album (#790, [Emanuele9017](https://github.com/Emanuele9017)).
+- Linux: soundboard sounds and radio stations play on the **output chosen in the control**, as on Windows, when `pactl`
+  lists it: `ffplay` and VLC through `PULSE_SINK` (VLC also with `--aout=pulse`), mpv through `--audio-device=pulse/…`.
+  An output that is not there right now plays on the default output, as before (#796, [mikicolmena](https://github.com/mikicolmena)).
+- Linux: the mixer names a stream after its program when the stream carries the name of an audio library instead.
+  Discord's voice showed as "WEBRTC VoiceEngine" and now shows as Discord; an Electron app that reports "Chromium",
+  and a program playing through the ALSA plug-in ("ALSA plug-in [program]"), get their program's name too (#798,
+  [mikicolmena](https://github.com/mikicolmena)).
 
 ## 0.9.32 — 2026-11-27
 

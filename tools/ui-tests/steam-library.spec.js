@@ -23,7 +23,7 @@ test('the library shows 8 games by default, newest first, with what Steam is doi
   await expect(tiles).toHaveCount(8);
   await expect(tiles.locator('.sl-name')).toHaveText(['Harbor Lights', 'Starfall Tactics', 'Moss Garden', 'Deep Circuit', 'Paper Comet',
     'Lantern Keep', 'Glass Orchard', 'Tidal Forge']);
-  await expect(page.locator('.w-steam-library .sl-count')).toHaveText(' 10'); // how many are installed
+  await expect(page.locator('.w-steam-library .sl-count')).toHaveText(' 12'); // how many are installed: 10 Steam games, 2 found outside Steam
   await expect(tiles.nth(0)).toHaveClass(/running/);
   await expect(tiles.nth(0).locator('.sl-status')).toHaveText('Playing now');
   await expect(tiles.nth(2).locator('.sl-status')).toHaveText('Updating 42%');
@@ -52,7 +52,7 @@ test('favorites come first in the order they were picked; the rest can be hidden
   await expect(page.locator('.w-steam-library .empty')).toHaveText('None of the favorite games is installed');
 
   await open(page, '/panel/', { limit: 60 });
-  await expect(tiles).toHaveCount(10);
+  await expect(tiles).toHaveCount(12); // with the 2 games found outside Steam
 });
 
 test('the library only shows the games until starting them is turned on', async ({ page }) => {
@@ -153,7 +153,7 @@ test('the agent checks the option of the widget named in the request, not of any
 test('the library speaks the panel language', async ({ page }) => {
   await open(page, '/panel/', { allowLaunch: true }, { display: { language: 'pt-BR' } });
   const tiles = page.locator('.w-steam-library .sl-tile');
-  await expect(page.locator('.w-steam-library .w-title')).toContainText('Biblioteca da Steam');
+  await expect(page.locator('.w-steam-library .w-title')).toContainText('Biblioteca de jogos');
   await expect(tiles.nth(0).locator('.sl-status')).toHaveText('Jogando agora');
   await expect(tiles.nth(2).locator('.sl-status')).toHaveText('Atualizando 42%');
   await tiles.nth(1).click();
@@ -188,9 +188,10 @@ test('the settings editor picks favorite games from the installed list', async (
   await page.locator('#canvas .wb').first().click(); // selects the widget and opens its settings
   const field = page.locator('#inspector .field').filter({ hasText: /^Favorite games \(/ });
   const boxes = field.locator('label.check');
-  await expect(boxes).toHaveCount(11); // the 10 installed games by name, then the saved one that is gone
+  await expect(boxes).toHaveCount(13); // the 10 Steam games and the 2 found outside Steam by name, then the saved one that is gone
   await expect(boxes.nth(0)).toHaveText('Deep Circuit');
-  await expect(boxes.nth(10)).toContainText('555');
+  await expect(boxes.filter({ hasText: 'Old Fort' })).toHaveCount(1);
+  await expect(boxes.nth(12)).toContainText('555');
   await expect(boxes.filter({ hasText: 'Deep Circuit' }).locator('input')).toBeChecked();
   await boxes.filter({ hasText: 'Moss Garden' }).locator('input').check();
   await boxes.filter({ hasText: 'Deep Circuit' }).locator('input').uncheck();
@@ -198,5 +199,232 @@ test('the settings editor picks favorite games from the installed list', async (
   await page.locator('#save').click();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pb-demo-config')).pages[0].widgets[0].options.favorites);
   expect(saved).toEqual(['555', '900030', '900100']); // in the order they were ticked
+  expect(errors).toEqual([]);
+});
+
+// Your own games: shortcuts ticked in "Other games" join the Steam games, after the favorites.
+const OWN = { shortcuts: [
+  { id: 'fifa', label: 'FIFA 23', icon: '🎮', cmd: 'C:\Games\FIFA 23\Launcher.exe' },
+  { id: 'mute', label: 'Mute', icon: '🔇' },
+  { id: 'gta4', label: 'GTA IV', icon: '🎮', cmd: 'C:\Games\GTA IV\LaunchGTAIV.exe' }] };
+
+test('shortcuts ticked as other games come after the favorites and count as installed', async ({ page }) => {
+  const errors = watch(page);
+  await open(page, '/panel/', { favorites: ['900040'], games: ['gta4', 'fifa', 'gone'], limit: 5 }, OWN);
+  const tiles = page.locator('.w-steam-library .sl-tile');
+  // in the order of the shortcut list; a shortcut that was removed is skipped; Mute was not ticked
+  await expect(tiles.locator('.sl-name')).toHaveText(['Deep Circuit', 'FIFA 23', 'GTA IV', 'Harbor Lights', 'Starfall Tactics']);
+  await expect(tiles.nth(1)).toHaveClass(/own/);
+  await expect(tiles.nth(1).locator('.sl-initials')).toHaveText('F2');
+  await expect(page.locator('.w-steam-library .sl-count')).toHaveText(' 14'); // 10 Steam, 2 yours, 2 found
+
+  // "only favorites" keeps them: they were picked by hand too
+  await open(page, '/panel/', { favorites: ['900040'], games: ['fifa'], onlyFavorites: true }, OWN);
+  await expect(tiles.locator('.sl-name')).toHaveText(['Deep Circuit', 'FIFA 23']);
+  expect(errors).toEqual([]);
+});
+
+test('a tap on your own game runs its shortcut, with the same start and ask-first options', async ({ page }) => {
+  await open(page, '/panel/', { games: ['fifa'], onlyFavorites: true }, OWN);
+  const tile = page.locator('.w-steam-library .sl-tile');
+  await tile.click();
+  await expect(toast(page, 'Let the phone start games')).toBeVisible();
+
+  await open(page, '/panel/', { games: ['fifa'], onlyFavorites: true, allowLaunch: true }, OWN);
+  await page.evaluate(() => {
+    window.__calls = [];
+    const real = window.fetch;
+    window.fetch = (url, ...rest) => { window.__calls.push(String(url)); return real(url, ...rest); };
+  });
+  await tile.click();
+  await expect(tile).toHaveClass(/armed/);
+  await tile.click();
+  await expect(toast(page, 'Starting FIFA 23')).toBeVisible();
+  const calls = await page.evaluate(() => window.__calls);
+  expect(calls.some((u) => u.includes('/run/fifa'))).toBe(true);
+  expect(calls.some((u) => u.includes('/steam/launch'))).toBe(false);
+});
+
+test('pickGames puts your own games between the favorites and the rest', async ({ page }) => {
+  await page.goto('/panel/');
+  const r = await page.evaluate(async () => {
+    const { pickGames, ownGames } = await import('/panel/widgets/steam-library.js');
+    const games = ['1', '2', '3'].map((id) => ({ id, name: 'G' + id }));
+    const own = ownGames(['b', 'x'], [{ id: 'a', label: 'A' }, { id: 'b', label: ' ', iconRev: 3, iconUpload: true }]);
+    return { own, picked: pickGames(games, ['3'], false, 3, own).map((g) => g.id) };
+  });
+  expect(r.own).toEqual([{ id: 'sc:b', shortcut: 'b', name: 'b', state: 'ready', progress: null, cover: true }]);
+  expect(r.picked).toEqual(['3', 'sc:b', '1']);
+});
+
+test('games found on this computer outside Steam come after the Steam ones and start by their id', async ({ page }) => {
+  const errors = watch(page);
+  await open(page, '/panel/', { limit: 60, allowLaunch: true, allowLaunchOthers: true, confirm: false });
+  const tiles = page.locator('.w-steam-library .sl-tile');
+  await expect(tiles).toHaveCount(12);
+  await expect(tiles.locator('.sl-name').nth(10)).toHaveText('Ember Road');
+  await expect(tiles.nth(11)).toHaveClass(/own/);
+  await expect(page.locator('.w-steam-library .sl-count')).toHaveText(' 12');
+  await tiles.nth(11).click();
+  await expect(toast(page, 'Starting Old Fort')).toBeVisible();
+
+  // their own option alone starts nothing: with "Let the phone start games" off the library is only shown
+  await open(page, '/panel/', { limit: 60, allowLaunchOthers: true, confirm: false });
+  await expect(tiles).toHaveCount(12);
+  await tiles.nth(11).click();
+  await expect(toast(page, 'Let the phone start games')).toBeVisible();
+  await tiles.nth(1).click();
+  await expect(toast(page, 'Let the phone start games')).toBeVisible();
+
+  // a found game with the name of one of your own games is shown once, as yours
+  await open(page, '/panel/', { limit: 60, games: ['fort'] }, { shortcuts: [{ id: 'fort', label: 'old fort', icon: '🎮' }] });
+  await expect(tiles).toHaveCount(12);
+  await expect(tiles.locator('.sl-name').filter({ hasText: /old fort/i })).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test('starting the games found outside Steam is an option of its own, on top of the Steam one', async ({ page }) => {
+  const errors = watch(page);
+  await open(page, '/panel/', { limit: 60, allowLaunch: true, confirm: false });
+  await page.evaluate(() => {
+    window.__launches = [];
+    const real = window.fetch;
+    window.fetch = (url, ...rest) => { if (String(url).includes('/steam/launch')) window.__launches.push(String(url)); return real(url, ...rest); };
+  });
+  const tiles = page.locator('.w-steam-library .sl-tile');
+  await expect(tiles).toHaveCount(12);
+  // a found game: the phone only says which option to turn on, and nothing is sent to the agent
+  await tiles.nth(11).click();
+  await expect(toast(page, 'Let the phone start the games found outside Steam')).toBeVisible();
+  expect(await page.evaluate(() => window.__launches)).toEqual([]);
+  // a Steam game still starts with the Steam option
+  await tiles.nth(1).click();
+  await expect(toast(page, 'Starting Starfall Tactics')).toBeVisible();
+
+  // the agent (here the demo) checks the asking widget's own option for an "x:" id too
+  const launch = (id) => page.evaluate(async (id) => {
+    const res = await fetch('/agent/api/steam/launch?id=' + encodeURIComponent(id) + '&widget=' + encodeURIComponent('test/lib'),
+      { method: 'POST', headers: { 'X-PhoneBox-Panel': '1' } });
+    return { status: res.status, code: (await res.json()).code };
+  }, id);
+  expect(await launch('x:1b2c3d4e5f607182')).toEqual({ status: 400, code: 'othersoff' });
+  // and needs the Steam option too
+  await open(page, '/panel/', { allowLaunchOthers: true });
+  expect(await launch('x:1b2c3d4e5f607182')).toEqual({ status: 400, code: 'off' });
+  expect(await launch('900020')).toEqual({ status: 400, code: 'off' });
+  await open(page, '/panel/', { allowLaunch: true, allowLaunchOthers: true });
+  expect(await launch('x:1b2c3d4e5f607182')).toEqual({ status: 200, code: undefined });
+  expect(await launch('x:ffffffffffffffff')).toEqual({ status: 400, code: 'notinstalled' });
+  expect(errors).toEqual([]);
+});
+
+test('a found game started by one of the widget\'s own shortcuts is left out by that widget only', async ({ page }) => {
+  await page.goto('/panel/');
+  const r = await page.evaluate(async () => {
+    const { otherGames, ownGames } = await import('/panel/widgets/steam-library.js');
+    const found = [{ id: 'x:1', name: 'Grand Theft Auto IV', source: 'drive', cover: true, shortcuts: ['gta4'] },
+      { id: 'x:2', name: 'Old Fort', source: 'epic', cover: false, shortcuts: [] }, { id: '570', name: 'Not found here' }];
+    const shortcuts = [{ id: 'gta4', label: 'GTA IV' }];
+    return {
+      mine: otherGames(found, ownGames(['gta4'], shortcuts)).map((g) => g.id),
+      another: otherGames(found, ownGames([], shortcuts)).map((g) => g.id),
+    };
+  });
+  expect(r).toEqual({ mine: ['x:2'], another: ['x:1', 'x:2'] });
+});
+
+test('a favorite found game shown as one of your own games keeps its place as that game', async ({ page }) => {
+  await page.goto('/panel/');
+  const r = await page.evaluate(async () => {
+    const { otherGames, ownGames, pickGames, foundTwins } = await import('/panel/widgets/steam-library.js');
+    const found = [{ id: 'x:1', name: 'Old Fort', source: 'drive', cover: false, shortcuts: [] },
+      { id: 'x:2', name: 'Ember Road', source: 'epic', cover: false, shortcuts: ['ember'] },
+      { id: 'x:3', name: 'Moss', source: 'gog', cover: false, shortcuts: [] }];
+    const shortcuts = [{ id: 'fifa', label: 'FIFA 23' }, { id: 'fort', label: 'old fort' }, { id: 'ember', label: 'Ember' }];
+    const own = ownGames(['fifa', 'fort', 'ember'], shortcuts);
+    const steam = [{ id: '10', name: 'Steam game' }, ...otherGames(found, own)];
+    const twins = foundTwins(found, own);
+    const pick = (favorites, limit, only = false) => pickGames(steam, favorites, only, limit, own, twins).map((g) => g.id);
+    return {
+      twins: [...twins].map(([id, g]) => [id, g.id]),
+      one: pick(['x:1'], 1),
+      all: pick(['x:1'], 10),
+      two: pick(['x:2', 'x:1'], 10),
+      only: pick(['x:1'], 10, true),
+      without: pickGames(steam, ['x:1'], false, 1, own).map((g) => g.id),
+    };
+  });
+  expect(r.twins).toEqual([['x:1', 'sc:fort'], ['x:2', 'sc:ember']]);
+  // the favorite comes first, as its shortcut, and that shortcut is not shown a second time
+  expect(r.one).toEqual(['sc:fort']);
+  expect(r.all).toEqual(['sc:fort', 'sc:fifa', 'sc:ember', '10', 'x:3']);
+  expect(r.two).toEqual(['sc:ember', 'sc:fort', 'sc:fifa', '10', 'x:3']);
+  expect(r.only).toEqual(['sc:fort', 'sc:fifa', 'sc:ember']);
+  expect(r.without).toEqual(['sc:fifa']); // without the twins the favorite would be lost
+});
+
+test('a found game is shown as the shortcut the agent names for it, before one that only has its name', async ({ page }) => {
+  await page.goto('/panel/');
+  const r = await page.evaluate(async () => {
+    const { otherGames, ownGames, foundTwins, pickGames } = await import('/panel/widgets/steam-library.js');
+    // shortcut "a" comes first and has the game's name; the agent says "b" starts a program in the game's folder
+    const found = [{ id: 'x:1', name: 'Old Fort', source: 'drive', cover: false, shortcuts: ['b'] },
+      { id: 'x:2', name: 'Moss', source: 'gog', cover: false, shortcuts: [] }];
+    const own = ownGames(['a', 'b', 'm'], [{ id: 'a', label: 'Old Fort' }, { id: 'b', label: 'Fort launcher' }, { id: 'm', label: 'moss' }]);
+    const twins = foundTwins(found, own);
+    return {
+      twins: [...twins].map(([id, g]) => [id, g.id]),
+      shown: otherGames(found, own).map((g) => g.id),
+      fav: pickGames([], ['x:1'], false, 1, own, twins).map((g) => g.id),
+    };
+  });
+  expect(r.twins).toEqual([['x:1', 'sc:b'], ['x:2', 'sc:m']]); // without a named shortcut the name still decides
+  expect(r.shown).toEqual([]);
+  expect(r.fav).toEqual(['sc:b']); // the favorite starts the shortcut the agent named, not the first with its name
+});
+
+test('your own game shown in the place of a favorite found game is marked as a favorite', async ({ page }) => {
+  const errors = watch(page);
+  // Old Fort (found on a drive) is a favorite; your shortcut "old fort" stands for it, FIFA 23 is only one of your games
+  await open(page, '/panel/', { favorites: ['x:1b2c3d4e5f607182'], games: ['fifa', 'fort'], limit: 4 },
+    { shortcuts: [{ id: 'fifa', label: 'FIFA 23', icon: '🎮' }, { id: 'fort', label: 'old fort', icon: '🎮' }] });
+  const tiles = page.locator('.w-steam-library .sl-tile');
+  await expect(tiles.locator('.sl-name')).toHaveText(['old fort', 'FIFA 23', 'Harbor Lights', 'Starfall Tactics']);
+  await expect(tiles.nth(0)).toHaveAttribute('data-id', 'sc:fort');
+  await expect(tiles.nth(0)).toHaveClass(/fav/);
+  await expect(tiles.nth(1)).not.toHaveClass(/fav/);
+  await expect(tiles.nth(2)).not.toHaveClass(/fav/);
+  expect(errors).toEqual([]);
+});
+
+test('the installed count follows the agent when the tiles shown stay the same', async ({ page }) => {
+  const errors = watch(page);
+  await open(page, '/panel/', { favorites: ['900040'], limit: 1 });
+  // the agent's answer held still (the demo's last-played times move with the clock), and later one more game found
+  // outside Steam; with a game updating, as in the demo, the widget reads the list every 5 s
+  await page.evaluate(() => {
+    const real = window.fetch;
+    window.__more = false;
+    window.__served = 0;
+    window.fetch = async (url, ...rest) => {
+      const res = await real(url, ...rest);
+      if (!String(url).includes('/steam/library')) return res;
+      window.__served++;
+      const j = await res.json();
+      j.games = (j.games || []).map((g) => ({ ...g, lastPlayed: 0 }));
+      if (window.__more) j.others = [...(j.others || []), { id: 'x:2c3d4e5f60718293', name: 'Moss Hollow', source: 'gog', cover: false, shortcuts: [] }];
+      return new Response(JSON.stringify(j), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    };
+  });
+  const tiles = page.locator('.w-steam-library .sl-tile');
+  const count = page.locator('.w-steam-library .sl-count');
+  await expect(tiles.locator('.sl-name')).toHaveText(['Deep Circuit']);
+  await expect(count).toHaveText(' 12');
+  // a held answer was shown (the second one is read only after the first was drawn)
+  await expect.poll(() => page.evaluate(() => window.__served), { timeout: 15_000 }).toBeGreaterThanOrEqual(2);
+  // the only tile shown stays Deep Circuit; the count goes up
+  await page.evaluate(() => { window.__more = true; });
+  await expect(count).toHaveText(' 13', { timeout: 15_000 });
+  await expect(tiles.locator('.sl-name')).toHaveText(['Deep Circuit']);
   expect(errors).toEqual([]);
 });

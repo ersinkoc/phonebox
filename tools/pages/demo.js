@@ -13,6 +13,8 @@
     ['900030', 'Moss Garden', 74, 'updating', 0.42, 120], ['900040', 'Deep Circuit', 300, 'ready', null, 210], ['900050', 'Paper Comet', 900, 'update', null, 190],
     ['900060', 'Lantern Keep', 1200, 'ready', null, 280], ['900070', 'Glass Orchard', 1500, 'paused', 0.7, 330], ['900080', 'Tidal Forge', 2000, 'ready', null, 160],
     ['900090', 'Quiet Summit', 2600, 'ready', null, 60], ['900100', 'Iron Meadow', null, 'ready', null, 95]];
+  // made-up games found outside Steam (OtherGames): id, name, where they were found
+  const DEMO_OTHERS = [['x:0a1b2c3d4e5f6071', 'Ember Road', 'epic'], ['x:1b2c3d4e5f607182', 'Old Fort', 'drive']];
   const now = () => Date.now();
   const rnd = (a, b) => a + Math.random() * (b - a);
   const wave = (period, lo, hi, phase = 0, noise = 0) =>
@@ -815,12 +817,26 @@
       const mine = shownWidgets(c).filter((w) => w.type === 'steam-library');
       return json({ enabled: mine.length > 0, found: true, error: null, running: '900010',
         games: DEMO_GAMES.map(([id, name, hoursAgo, state, progress]) => ({ id, name, lastPlayed: hoursAgo == null ? 0 : Math.floor(now() / 1000) - hoursAgo * 3600,
-          sizeGb: 12.5, state, progress, cover: true })) });
+          sizeGb: 12.5, state, progress, cover: true })),
+        // games found on this computer outside Steam (OtherGames)
+        // (shortcuts: the ids of your shortcuts that start a program in the game's folder; none here)
+        others: mine.length ? DEMO_OTHERS.map(([id, name, source]) => ({ id, name, source, cover: false, shortcuts: [] })) : [] });
     }
-    if (path === '/api/steam/games') return json(DEMO_GAMES.map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
+    // the favorites picker lists the games found outside Steam too, by name, like the agent
+    if (path === '/api/steam/games') {
+      return json([...DEMO_GAMES, ...DEMO_OTHERS].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
+    }
     if (path === '/api/steam/launch' && method === 'POST') {
-      // the asking widget's own option, like the agent (PanelWidgets.Find): another widget's does not count
-      if (panelWidget(await config(), q.get('widget'), 'steam-library')?.options?.allowLaunch !== true) {
+      // the asking widget's own option, like the agent (PanelWidgets.Find): another widget's does not count; a game
+      // found outside Steam needs an option of its own on top of the Steam one
+      const options = panelWidget(await config(), q.get('widget'), 'steam-library')?.options;
+      if (String(q.get('id')).startsWith('x:') && options?.allowLaunch === true) {
+        if (options?.allowLaunchOthers !== true) {
+          return json({ error: 'Turn on "Let the phone start the games found outside Steam" in this Game library widget\'s settings', code: 'othersoff' }, 400);
+        }
+        return DEMO_OTHERS.some((g) => g[0] === q.get('id')) ? json({ ok: true }) : json({ error: 'That game is not installed', code: 'notinstalled' }, 400);
+      }
+      if (options?.allowLaunch !== true) {
         return json({ error: 'Turn on "Let the phone start games" in this Steam library widget\'s settings', code: 'off' }, 400);
       }
       return DEMO_GAMES.some((g) => g[0] === q.get('id')) ? json({ ok: true }) : json({ error: 'That game is not installed', code: 'notinstalled' }, 400);
