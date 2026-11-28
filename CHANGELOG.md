@@ -42,8 +42,9 @@
 - Pomodoro: widgets with the same sequence share one timer, so starting, pausing, restarting or skipping on one page
   does the same on the others; a widget with another sequence keeps its own. Focus history shows today's running or
   paused focus step as it goes, and the minutes drop out again when that step is restarted or skipped (#741).
-- Synced lyrics: a tap on a line plays the song from that line, when the computer's player lets PhoneBox move its
-  position (the same players whose media bar can be dragged); the widget's timing offset is taken into account (#744).
+- Synced lyrics: a tap on a line (or Enter on it) moves the song to that line, when the computer's player lets
+  PhoneBox move its position (the same players whose media bar can be dragged). The widget's timing offset is taken
+  into account, and a paused song stays paused (#744).
 
 ## 0.9.32 — 2026-11-27
 

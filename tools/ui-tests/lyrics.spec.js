@@ -225,5 +225,11 @@ test('a tap on a synced line plays the song from that line, after the timing off
   }).toBe(true);
   await expect(lyrics.locator('.ly-line').nth(3)).toHaveClass(/\bnow\b/);
   await expect(lyrics.locator('.ly-line.past')).toHaveCount(3);
+  // a keyboard can do the same: the lines are buttons while the player can be moved
+  const fifth = lyrics.locator('.ly-line').nth(5);
+  await expect(fifth).toHaveAttribute('role', 'button');
+  await fifth.focus();
+  await page.keyboard.press('Enter');
+  await expect(fifth).toHaveClass(/\bnow\b/);
   expect(errors).toEqual([]);
 });
