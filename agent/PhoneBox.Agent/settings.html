@@ -1403,9 +1403,9 @@ const place = (w) => (uprightOn() ? w.upright || null : w);
 // The panel's grid rules (grid.js, served next to the panel), loaded before the first render: the editor's
 // automatic Upright view is the panel's own packing, not a copy of it.
 let gridLib = null;
-// A page has its own upright layout when it says so and at least one widget has a place on it. Otherwise the panel
+// A page has its own upright layout when it says so and at least one known widget has a place on it, as on the panel. Otherwise the panel
 // packs it automatically (main.js buildLayout), so the editor shows that too.
-const ownUpright = (page) => page?.upright === true && (page.widgets || []).some((w) => gridLib.uprightPlace(w));
+const ownUpright = (page) => page?.upright === true && (page.widgets || []).some((w) => catalog.widgets.some((cw) => cw.type === w.type) && gridLib.uprightPlace(w));
 // The upright screen the editor stands for: the preview phone (or an 800 × 1280 tablet) held upright.
 function uprightScreen() {
   const v = previewViewport(EDITOR_SCREENS.upright), opts = { tabletRows: tabletRowsOn() };
