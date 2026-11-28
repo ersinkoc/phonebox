@@ -22,7 +22,8 @@ const setWork = (page, sessions, workbuddy = { installed: true, approvals: false
   D.work = {
     sessions: list.map((s, i) => ({
       id: 'workbuddy:' + s.name, tool: 'workbuddy', name: s.name, project: s.name, status: s.status, waitingFor: null,
-      since: now - 60_000, startedAt: now - 120_000, heartbeat: now - s.beatAgo, recent: s.beatAgo < 90_000, outcome: null, pid: 100 + i,
+      since: s.noTime ? 0 : now - 60_000, startedAt: now - 120_000, heartbeat: s.noTime ? 0 : now - s.beatAgo,
+      recent: s.noTime ? false : s.recent ?? s.beatAgo < 90_000, outcome: null, pid: 100 + i,
     })),
     github: { user: null, notifications: 0, reviewRequests: [], myPrs: [], error: null },
     workbuddy: wb,
@@ -116,6 +117,25 @@ test('the WorkBuddy check keeps counting the heartbeat while it is open and turn
 
   // the agent judges the feed stale: the open card follows the next work frame
   await setWork(page, [{ name: 'live', status: 'unknown', beatAgo: 120_000 }]);
+  await expect(beat).toHaveText('stale');
+  await expect(beat).toHaveClass(/wb-unknown/);
+});
+
+test('a WorkBuddy file with no time at all reads unknown, not stale', async ({ page }) => {
+  await load(page);
+  await setWork(page, [{ name: 'blank', status: 'busy', beatAgo: 0, noTime: true }]);
+  await page.locator('button.sess').click();
+  const beat = page.locator('.wb-check-row').nth(2).locator('strong');
+  await expect(beat).toHaveText('unknown');
+  await expect(beat).toHaveClass(/wb-unknown/);
+});
+
+test('a "recent" judgment from a frame that stopped updating turns stale once the heartbeat is 90 s old', async ({ page }) => {
+  await load(page);
+  // the last frame said recent, but its heartbeat is already past the window: the feed went quiet after it
+  await setWork(page, [{ name: 'frozen', status: 'busy', beatAgo: 95_000, recent: true }]);
+  await page.locator('button.sess').click();
+  const beat = page.locator('.wb-check-row').nth(2).locator('strong');
   await expect(beat).toHaveText('stale');
   await expect(beat).toHaveClass(/wb-unknown/);
 });

@@ -777,13 +777,16 @@ W.sessions = {
         const s = live || { id: first.id };
         const wb = D.work?.workbuddy || null; // the agent's booleans; null when the agent is older
         // the heartbeat the row's own freshness is judged on; since is a status-change time and can differ.
-        // Its age is counted on the computer's clock (agentClock), never the phone's.
-        const beat = s.heartbeat ?? s.since;
+        // Its age is counted on the computer's clock (agentClock), never the phone's. 0 means the file
+        // had no time at all: there is nothing to judge, so it reads unknown, not stale.
+        const beat = s.heartbeat > 0 ? s.heartbeat : s.since > 0 ? s.since : null;
         const beatAge = beat != null ? Math.max(0, Math.round((agentClock() - beat) / 1000)) : null;
         const rows = [
           [tp('Hook'), wb == null ? null : wb.installed === true ? tp('installed') : wb.installed === false ? tp('not installed') : null],
           [tp('Agent setting'), wb == null ? null : wb.approvals === true ? tp('on') : wb.approvals === false ? tp('off') : null],
-          [tp('Last heartbeat'), s.recent === true ? tpv('{n}s ago', { n: beatAge ?? 0 }) : s.recent === false ? tp('stale') : beatAge == null ? null : beatAge > 90 ? tp('stale') : tpv('{n}s ago', { n: beatAge })],
+          // the agent's recent flag is only as fresh as the last frame: when the feed stops, the age
+          // keeps counting and passes the same 90 s window, so an old "recent" turns stale too
+          [tp('Last heartbeat'), beatAge == null ? null : s.recent === false || beatAge > 90 ? tp('stale') : tpv('{n}s ago', { n: beatAge })],
         ];
         box.replaceChildren(h('div', 'conv-h', tp('WorkBuddy check')), ...rows.map(([label, text]) => {
           const strong = h('strong', null, text ?? tp('unknown'));
