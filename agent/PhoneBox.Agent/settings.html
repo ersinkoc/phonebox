@@ -4018,7 +4018,7 @@ function appearanceEditor(owner, parents, label, widget = false) {
     const style = h('select', { 'aria-label': t('s.ap.surface'), onchange: e => {
       if (e.target.value) owner.appearance = { style: e.target.value }; else delete owner.appearance;
       update(); render();
-    } }, ...[['', 'Inherit / current look'], ['default', 'Original appearance'], ['cards', 'Rounded cards'], ['flat', 'Flat surfaces'], ['borderless', 'Content only'], ['seamless', 'Seamless panel']]
+    } }, ...[['', 'Inherit / current look'], ['default', 'Original appearance'], ['cards', 'Rounded cards'], ['flat', 'Flat surfaces'], ['borderless', 'Content only'], ['seamless', 'Seamless panel'], ['glass', 'Glass']]
       .map(([value, text]) => h('option', { value, selected: (owner.appearance?.style || '') === value }, tl(text))));
     const fields = [h('div', { class: 'field' }, h('label', {}, t('s.ap.surface')), style)];
     const fontLabels = { default: 'Original font', sans: 'Sans-serif', rounded: 'Rounded', condensed: 'Condensed', serif: 'Serif', mono: 'Monospace' };

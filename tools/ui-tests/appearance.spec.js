@@ -37,6 +37,91 @@ test('flat appearance has independent rounded corners, spacing and padding',asyn
   expect(await css(page.locator('.w-note'),'backgroundImage')).toBe('none');
 });
 
+test('glass appearance is opt-in, translucent and never blurs the background',async({page})=>{
+  const pages=[{id:'appearance',title:'Appearance',widgets:[
+    {id:'stat',type:'stat',x:0,y:0,w:6,h:6,options:{metric:'cpu'}},
+    {id:'note',type:'note',x:6,y:0,w:6,h:6,options:{text:'Appearance sample'}}
+  ]}];
+  const stat=page.locator('.w-stat'),note=page.locator('.w-note');
+  await show(page,{pages});
+  await expect(stat).not.toHaveAttribute('data-widget-surface','glass');
+  expect(await css(stat,'backgroundImage')).toBe('none');
+  const noteColour=await css(note,'backgroundImage');
+
+  await show(page,{pages,display:{appearance:{style:'glass'}}});
+  await expect(stat).toHaveAttribute('data-widget-surface','glass');
+  await expect.poll(()=>css(page.locator('.grid'),'gap')).toBe('10px');
+  expect(await css(stat,'borderTopLeftRadius')).toBe('20px');
+  expect(await css(stat,'backgroundImage')).toContain('linear-gradient(145deg');
+  expect(await css(stat,'boxShadow')).toContain('inset');
+  expect(await css(stat,'backdropFilter')).toBe('none');
+  expect(await css(note,'backgroundImage')).toBe(noteColour);
+});
+
+test('glass keeps explicit border and shadow choices',async({page})=>{
+  await show(page,{display:{appearance:{style:'glass',border:false,shadow:false}}});
+  await expect(page.locator('.w-note')).toHaveAttribute('data-widget-surface','glass');
+  await expect.poll(()=>css(page.locator('.w-note'),'borderTopWidth')).toBe('0px');
+  expect(await css(page.locator('.w-note'),'boxShadow')).toBe('none');
+});
+
+test('Flat global + Glass page: the glass rim and depth are not hidden by the inherited flat border and shadow',async({page})=>{
+  await show(page,{display:{appearance:{style:'flat'}},pages:[{id:'glass',title:'Glass',appearance:{style:'glass'},widgets:[
+    {id:'note',type:'note',x:0,y:0,w:4,h:6,options:{text:'Appearance sample'}},
+    {id:'stat',type:'stat',x:4,y:0,w:4,h:6,options:{metric:'cpu'}},
+    {id:'plain',type:'stat',x:8,y:0,w:4,h:6,options:{metric:'ram'},appearance:{border:false,shadow:false}}
+  ]}]});
+  const stat=page.locator('.w-stat').first(),plain=page.locator('.w-stat').nth(1);
+  await expect(stat).toHaveAttribute('data-widget-surface','glass');
+  await expect(stat).not.toHaveAttribute('data-widget-border',/./);
+  await expect(stat).not.toHaveAttribute('data-widget-shadow',/./);
+  await expect.poll(()=>css(stat,'borderTopWidth')).toBe('1px');
+  expect(await css(stat,'boxShadow')).toContain('inset');
+  expect(await css(stat,'backgroundImage')).toContain('linear-gradient(145deg');
+  // an explicit choice on a later layer still wins over the glass rim and depth
+  await expect(plain).toHaveAttribute('data-widget-border','false');
+  expect(await css(plain,'borderTopWidth')).toBe('0px');
+  expect(await css(plain,'boxShadow')).toBe('none');
+});
+
+test('an explicit shadow: false on a Glass widget also clears the glass shadows of its keys and process rows',async({page})=>{
+  const shortcuts=[{id:'k',label:'Key',icon:'🎚️',color:'#6b7280',cmd:'builtin:keys'}];
+  await show(page,{shortcuts,pages:[{id:'glass',title:'Glass',appearance:{style:'glass'},widgets:[
+    {id:'note',type:'note',x:0,y:0,w:2,h:6,options:{text:'Appearance sample'}},
+    {id:'deep',type:'shortcuts',x:2,y:0,w:2,h:3,options:{ids:['k'],columns:1}},
+    {id:'flat',type:'shortcuts',x:2,y:3,w:2,h:3,options:{ids:['k'],columns:1},appearance:{shadow:false}},
+    {id:'procs',type:'processes',x:4,y:0,w:4,h:6,options:{}},
+    {id:'flatProcs',type:'processes',x:8,y:0,w:4,h:6,options:{},appearance:{shadow:false}}
+  ]}]});
+  const keys=page.locator('.w-shortcuts .key');
+  await expect(keys).toHaveCount(2);
+  await expect(page.locator('.w-shortcuts').nth(1)).toHaveAttribute('data-widget-shadow','false');
+  await expect.poll(()=>css(keys.nth(0),'boxShadow')).toContain('inset');
+  expect(await css(keys.nth(1),'boxShadow')).toBe('none');
+  const procs=page.locator('.w-processes');
+  await expect(procs.nth(0).locator('.proc').first()).toBeVisible();
+  await expect(procs.nth(1).locator('.proc').first()).toBeVisible();
+  expect(await css(procs.nth(0).locator('.proc').first(),'boxShadow')).toContain('inset');
+  expect(await css(procs.nth(1).locator('.proc').first(),'boxShadow')).toBe('none');
+});
+
+test('the glass background is drawn behind a page with glass widgets only',async({page})=>{
+  const mesh='56, 189, 248';
+  await show(page,{pages:[
+    {id:'original',title:'Original',widgets:[{id:'note',type:'note',x:0,y:0,w:6,h:6,options:{text:'Appearance sample'}}]},
+    {id:'glass',title:'Glass',appearance:{style:'glass'},widgets:[{id:'stat',type:'stat',x:0,y:0,w:6,h:6,options:{metric:'cpu'}}]}
+  ]});
+  const pages=page.locator('#pager > .page');
+  await expect(pages).toHaveCount(2);
+  await expect(page.locator('.w-stat')).toHaveAttribute('data-widget-surface','glass');
+  const before=(locator)=>locator.evaluate(node=>{const s=getComputedStyle(node,'::before');return {content:s.content,background:s.backgroundImage};});
+  expect(await page.evaluate(()=>getComputedStyle(document.body,'::before').backgroundImage)).not.toContain(mesh);
+  expect((await before(pages.nth(0))).background).not.toContain(mesh);
+  const glass=await before(pages.nth(1));
+  expect(glass.content).not.toBe('none');
+  expect(glass.background).toContain(mesh);
+});
+
 test('page and widget overrides win and explicit false and zero survive',async({page})=>{
   await show(page,{display:{appearance:{style:'cards',radius:24,gap:18,border:true,shadow:true}},
     pages:[{id:'p',title:'P',appearance:{gap:0,radius:12},widgets:[

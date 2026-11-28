@@ -1610,6 +1610,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Scroll speed": "스크롤 속도",
       "Scrolling": "스크롤",
       "Seamless panel": "원활한 패널",
+      "Glass": "유리",
       "Second (weekly)": "2번째 (주간)",
       "Second GPU (e.g. integrated)": "두 번째 GPU (예: 내장)",
       "Second hand": "세컨드 핸드",

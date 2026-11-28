@@ -986,6 +986,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Scroll speed": "Gerileme hızı",
       "Scrolling": "Çevirme",
       "Seamless panel": "Dizüstü panel",
+      "Glass": "Cam",
       "Second (weekly)": "İkinci (haftalık)",
       "Second GPU (e.g. integrated)": "İkinci GPU (örneğin entegre)",
       "Second hand": "İkinci el",

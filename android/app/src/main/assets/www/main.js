@@ -1648,6 +1648,7 @@ export function buildLayout() {
     // while a tablet held upright keeps them.
     const pl = portrait ? portraitLayout(widgetsOnGrid(p.widgets, designed.cols, designed.rows), viewport.cols) : null;
     if (pl) { grid.style.gridTemplateColumns = `repeat(${viewport.cols}, minmax(0, 1fr))`; grid.style.gridTemplateRows = `repeat(${pl.rows}, minmax(0, 1fr))`; }
+    let glass = false;
     for (const w of p.widgets) {
       const def = W[w.type];
       if (!def) continue;
@@ -1662,9 +1663,12 @@ export function buildLayout() {
       let inst;
       try { inst = def.create(box, ctx) || {}; } catch (e) { box.replaceChildren(h('div', 'empty', `${w.type}: ${e.message}`)); inst = {}; }
       PhoneBoxAppearance.widget(box, appearance);
+      if (appearance.style === 'glass') glass = true;
       mounted.push({ pi, def: inst.needs ? { ...def, needs: inst.needs, always: inst.always ?? def.always } : def, inst, ctx, dirty: true });
     }
     const sec = h('section', 'page', grid);
+    // a page with a glass widget draws the glass mesh behind it (appearance.css); the other pages keep their background
+    sec.classList.toggle('has-glass', glass);
     // a page's photo background (Settings › Pages): a dimmed picture from the Photo frame's folder behind the
     // widgets; the layers crossfade like the Photo frame widget does
     if (p.photoBg?.enabled) {

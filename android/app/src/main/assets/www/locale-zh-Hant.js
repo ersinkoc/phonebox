@@ -1610,6 +1610,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Scroll speed": "滾動速度",
       "Scrolling": "滾動",
       "Seamless panel": "沒有縫隙的面板",
+      "Glass": "玻璃",
       "Second (weekly)": "第二次",
       "Second GPU (e.g. integrated)": "第二 GPU 例如",
       "Second hand": "二手",

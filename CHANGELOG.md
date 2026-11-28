@@ -62,9 +62,13 @@
   no back-off starts. A 429 or any Retry-After still stops the lookup and keeps LRCLIB alone as before. Answers are
   asked for compressed (gzip), so a search answer is about a tenth of the size, and a failed lookup is logged in
   `agent.log` with its reason, without track names (#717, #719, [jassu-Workspace](https://github.com/jassu-Workspace)).
-- Docs: running the agent in a container on a QNAP NAS (Container Station), for a panel that stays on without the
-  computer: a compose file, the settings through an SSH tunnel, Wi-Fi pairing and QuFirewall, and what mounting the
-  Docker socket means ([docs/QNAP.md](docs/QNAP.md)) (#718, [odin-21](https://github.com/odin-21)).
+- Appearance: a **Glass** preset (Settings › General › Appearance, or a page's or widget's appearance; opt-in):
+  translucent cards with a light rim, a top sheen and a soft shadow, 20px corners and 10px spacing, over a colourful
+  background drawn behind the pages that have glass widgets (or over your wallpaper). Shortcut keys, process rows and
+  AI quota cards get the glass; Note, Image and the Discord bar keep their own colours. Nothing behind the cards is
+  blurred, so it stays smooth on older phones. A Glass page under a Flat or Content only look keeps its rim and depth,
+  while a border or shadow set on the page or the widget itself still wins (#713,
+  [jassu-Workspace](https://github.com/jassu-Workspace)).
 
 ## 0.9.32 — 2026-11-27
 
