@@ -457,7 +457,9 @@ public static class Shortcuts
         if (!wayland) return [("xset", ["dpms", "force", "off"])];
         var desktops = (env("XDG_CURRENT_DESKTOP") ?? "").Split(':', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var commands = new List<(string, string[])>();
-        if (desktops.Contains("KDE", StringComparer.OrdinalIgnoreCase)) commands.Add(("kscreen-doctor", ["--dpms", "off"]));
+        // -platform wayland: with an inherited QT_QPA_PLATFORM=xcb, kscreen-doctor would talk to XWayland, print "DPMS is
+        // only supported on Wayland" and still exit 0
+        if (desktops.Contains("KDE", StringComparer.OrdinalIgnoreCase)) commands.Add(("kscreen-doctor", ["-platform", "wayland", "--dpms", "off"]));
         if (desktops.Contains("GNOME", StringComparer.OrdinalIgnoreCase))
             commands.Add(("busctl", ["--user", "set-property", "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
                 "org.gnome.Mutter.DisplayConfig", "PowerSaveMode", "i", "1"]));

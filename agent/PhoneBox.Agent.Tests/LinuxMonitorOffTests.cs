@@ -21,7 +21,7 @@ public sealed class LinuxMonitorOffTests
     [Fact]
     public void KdePlasmaOnWaylandUsesKscreenDoctor() =>
         // what the agent sees as a systemd user service on Plasma 6 (its DISPLAY is XWayland's)
-        Assert.Equal(["kscreen-doctor --dpms off"], Commands(("WAYLAND_DISPLAY", "wayland-0"), ("DISPLAY", ":1"),
+        Assert.Equal(["kscreen-doctor -platform wayland --dpms off"], Commands(("WAYLAND_DISPLAY", "wayland-0"), ("DISPLAY", ":1"),
             ("XDG_SESSION_TYPE", "wayland"), ("XDG_CURRENT_DESKTOP", "KDE")));
 
     [Theory]
@@ -33,7 +33,7 @@ public sealed class LinuxMonitorOffTests
 
     [Fact]
     public void WaylandIsRecognisedByItsSocketAlone() =>
-        Assert.Equal(["kscreen-doctor --dpms off"], Commands(("WAYLAND_DISPLAY", "wayland-1"), ("XDG_CURRENT_DESKTOP", "KDE")));
+        Assert.Equal(["kscreen-doctor -platform wayland --dpms off"], Commands(("WAYLAND_DISPLAY", "wayland-1"), ("XDG_CURRENT_DESKTOP", "KDE")));
 
     [Theory]
     [InlineData("sway")]
