@@ -647,8 +647,9 @@ public sealed class OpenCodeApprovals : BackgroundService
     /// the trusted end) and can only ever be tightened, never loosened from the phone;
     /// question forms are not permissions and are never marked.</summary>
     internal static bool IsHighRisk(string action) =>
+        // a subagent is not read-only: the agent it starts may write with its own permissions, so it asks twice too
         action is not ("read" or "glob" or "grep" or "webfetch" or "websearch"
-            or "subagent" or "skill" or "question");
+            or "skill" or "question");
 
     /// <summary>What the card's headline says, per OpenCode permission action (plugins may add their own).</summary>
     internal static string ToolTitle(string action) => action switch

@@ -94,7 +94,7 @@
   prompt the agent marks high-risk asks for a second tap on Allow and on Always allow (a guard against a mistap; a
   second tap within 400 ms is ignored). The marking fails closed: only known read-only tools stay one tap (Claude
   Code's Read, Glob, Grep, LS, WebFetch, WebSearch, TodoWrite, AskUserQuestion; OpenCode's read, glob, grep, webfetch, websearch,
-  subagent, skill, question), so a shell, an edit, PowerShell, OpenCode's `execute`, every MCP tool and any tool
+  skill, question), so a shell, an edit, PowerShell, OpenCode's `execute` and subagents, every MCP tool and any tool
   added later ask twice. Prompts that used to allow on the first tap may now ask twice (#702,
   [elong365](https://github.com/elong365)).
 

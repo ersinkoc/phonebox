@@ -1396,7 +1396,8 @@ const answeredCap = 50;
 const submitting = new Set();
 
 function stillOpen(items) {
-  return items.filter((x) => !answered.has(x.id));
+  // a list request sent before a card expired can answer after the card was taken off: it must not come back
+  return items.filter((x) => !answered.has(x.id) && !(typeof x.expiresAt === 'number' && x.expiresAt <= approvalNow()));
 }
 
 // The card's expiresAt is a timestamp of the agent's clock, so the countdown and the lock

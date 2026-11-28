@@ -418,7 +418,7 @@ public sealed class OpenCodeApprovalsTests : IDisposable
         Assert.False(OpenCodeApprovals.IsHighRisk("grep"));
         Assert.False(OpenCodeApprovals.IsHighRisk("webfetch"));
         Assert.False(OpenCodeApprovals.IsHighRisk("websearch"));
-        Assert.False(OpenCodeApprovals.IsHighRisk("subagent"));
+        Assert.True(OpenCodeApprovals.IsHighRisk("subagent"));   // the agent it starts may write
         Assert.False(OpenCodeApprovals.IsHighRisk("skill"));
         Assert.False(OpenCodeApprovals.IsHighRisk("question"));  // questions are never permissions
         Assert.True(OpenCodeApprovals.IsHighRisk("execute"));    // it runs AI-written code
