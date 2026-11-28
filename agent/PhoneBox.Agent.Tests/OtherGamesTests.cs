@@ -378,4 +378,56 @@ public class OtherGamesTests : IDisposable
         }
         finally { release.Set(); }
     }
+
+    [Fact]
+    public void TheDrivesAreWalkedAtMostOnceAnHourAndTheLaunchersEveryTenMinutes()
+    {
+        var now = 1_000_000L;
+        int launchers = 0, disks = 0;
+        var others = new OtherGames(Config("{}"), NullLogger<OtherGames>.Instance)
+        {
+            Clock = () => Interlocked.Read(ref now),
+            Launchers = () => { Interlocked.Increment(ref launchers); return []; },
+            Disks = () => { Interlocked.Increment(ref disks); return []; },
+        };
+        void Look(int expected)
+        {
+            others.List();
+            Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref launchers) == expected, TimeSpan.FromSeconds(10)));
+            Thread.Sleep(50); // the look sets its time after reading the launchers
+        }
+        Look(1);
+        Assert.Equal(1, disks);
+        others.List();                                         // within ten minutes: nothing is read again
+        Interlocked.Add(ref now, 11 * 60_000);
+        Look(2);
+        Assert.Equal(1, disks);                                // the launchers again, not the drives
+        Interlocked.Add(ref now, 50 * 60_000);
+        Look(3);
+        Assert.Equal(2, disks);                                // an hour after the last walk
+    }
+
+    [Fact]
+    public void ALinkedFolderIsNotWalked()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(outside, "Far Game"));
+            File.WriteAllBytes(Path.Combine(outside, "Far Game", "far.exe"), new byte[5000]);
+            File.WriteAllBytes(Path.Combine(outside, "Far Game", "steam_api64.dll"), new byte[10]);
+            Directory.CreateDirectory(Path.Combine(_dir, "Games"));
+            var link = Path.Combine(_dir, "Games", "Linked");
+            if (OperatingSystem.IsWindows())
+            {
+                // a junction (a network share or another disk mounted in a folder looks the same): no special rights needed
+                using var p = Process.Start(new ProcessStartInfo("cmd.exe") { ArgumentList = { "/c", "mklink", "/J", link, outside }, UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true })!;
+                p.WaitForExit(10_000);
+            }
+            else Directory.CreateSymbolicLink(link, outside);
+            Assert.True(Directory.Exists(Path.Combine(link, "Far Game")));
+            Assert.Empty(OtherGames.FromDrives([_dir]));
+        }
+        finally { try { Directory.Delete(Path.Combine(_dir, "Games", "Linked")); } catch { } try { Directory.Delete(outside, true); } catch { } }
+    }
 }
