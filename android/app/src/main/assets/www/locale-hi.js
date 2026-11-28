@@ -1887,6 +1887,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "केवल पसंदीदा गेम दिखाएँ",
       "Other games: shortcuts shown as games, after the favorites": "दूसरे गेम: शॉर्टकट जो पसंदीदा के बाद गेम की तरह दिखते हैं",
       "Games shown": "दिखाए जाने वाले गेम",
+      "Covers from the Steam store for the games found outside Steam (sends their names to the store)": "Steam के बाहर मिले गेम के लिए Steam स्टोर से कवर (उनके नाम स्टोर को भेजे जाते हैं)",
       "Let the phone start games (off: the library is only shown)": "फ़ोन को गेम शुरू करने दें (बंद: लाइब्रेरी सिर्फ़ दिखाई जाती है)",
       "Let the phone start the games found outside Steam": "फ़ोन को Steam के बाहर मिले गेम शुरू करने दें",
       "Ask before starting (tap a game twice)": "शुरू करने से पहले पूछें (गेम पर दो बार टैप करें)",

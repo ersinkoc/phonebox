@@ -1882,6 +1882,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "Arată doar jocurile favorite",
       "Other games: shortcuts shown as games, after the favorites": "Alte jocuri: scurtături afișate ca jocuri, după favorite",
       "Games shown": "Jocuri afișate",
+      "Covers from the Steam store for the games found outside Steam (sends their names to the store)": "Coperți din magazinul Steam pentru jocurile găsite în afara Steam (le trimite numele magazinului)",
       "Let the phone start games (off: the library is only shown)": "Permite telefonului să pornească jocuri (oprit: biblioteca doar se afișează)",
       "Let the phone start the games found outside Steam": "Permite telefonului să pornească jocurile găsite în afara Steam",
       "Ask before starting (tap a game twice)": "Întreabă înainte de pornire (atinge de două ori un joc)",

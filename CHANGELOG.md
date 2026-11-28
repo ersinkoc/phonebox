@@ -142,6 +142,10 @@
   Ubisoft Connect's and the Rockstar Games Launcher's, and game folders on the drives. Starting those from the phone is
   an option of its own, **Let the phone start the games found outside Steam**, off by default (#756, #759,
   [WellyngtonSantos](https://github.com/WellyngtonSantos)).
+- Game library: the new **Covers from the Steam store** option (off by default) looks up the games found outside Steam
+  by name in the Steam store and shows their portrait art instead of the program's icon. Only the names are sent; after
+  a failure the store is left alone for a while, and covers of games no longer found are deleted (#757, #760,
+  [WellyngtonSantos](https://github.com/WellyngtonSantos)).
 - llama-swap: a widget for the local [llama-swap](https://github.com/mostlygeek/llama-swap) router — which models are
   currently loaded, the requests in flight (at most three rows, more as `+N`) with how long each has been running,
   requests and tokens today, the newest finished request's speed and the time of the last request. Off by default;

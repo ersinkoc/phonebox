@@ -1887,6 +1887,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "只顯示收藏的遊戲",
       "Other games: shortcuts shown as games, after the favorites": "其他遊戲：以遊戲顯示的捷徑，排在最愛之後",
       "Games shown": "顯示的遊戲數量",
+      "Covers from the Steam store for the games found outside Steam (sends their names to the store)": "為在 Steam 之外找到的遊戲使用 Steam 商店的封面（會將遊戲名稱傳送給商店）",
       "Let the phone start games (off: the library is only shown)": "允許手機啟動遊戲（關閉時只顯示遊戲庫）",
       "Let the phone start the games found outside Steam": "允許手機啟動在 Steam 以外找到的遊戲",
       "Ask before starting (tap a game twice)": "啟動前確認（點兩次遊戲）",
