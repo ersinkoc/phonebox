@@ -32,13 +32,29 @@ public sealed partial class ControlDeck
     }
     private async Task<DeckResult> RouteAudio(DeckAction action, CancellationToken ct)
     {
+        // Linux (pactl) moves the streams itself; Windows needs the SoundVolumeView helper
+        var native = _native.CanRouteApplications;
         var path = _config.Get().Controls.MixerExecutable;
-        if (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-            return new(false, "Configure SoundVolumeView on the computer to use application routing");
+        if (!native && (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(path) || !File.Exists(path)))
+            return new(false, OperatingSystem.IsWindows() ? "Configure SoundVolumeView on the computer to use application routing"
+                : OperatingSystem.IsLinux() ? "Application routing needs pactl and a running sound server on the computer"
+                : "Application routing is not available on this computer");
         if (string.IsNullOrWhiteSpace(action.Target) || action.Target.Length > 256 || action.Device is null
             || !Audio().Devices.Any(d => d.Id == action.Device && d.Direction == "output"))
             return new(false, "Choose an application and an active output device");
-        var start = new ProcessStartInfo(path);
+        if (native)
+        {
+            var moved = _native.RouteApplication(action.Target, action.Device, ct);
+            Invalidate();
+            _actionResults[action.Id] = moved switch { > 0 => "Routed", 0 => "Not playing", _ => "Routing request failed" };
+            return moved switch
+            {
+                > 0 => new(true),
+                0 => new(false, "The application is not playing any audio right now"),
+                _ => new(false, "The application routing request failed"),
+            };
+        }
+        var start = new ProcessStartInfo(path!); // checked above: without native routing the path exists
         foreach (var arg in new[] { "/SetAppDefault", action.Device, "all", action.Target }) start.ArgumentList.Add(arg);
         var result = await ToolProcess.RunAsync(start, TimeSpan.FromSeconds(10), ct);
         _actionResults[action.Id] = result.ExitCode == 0 ? "Routing requested" : "Routing request failed";
@@ -127,8 +143,9 @@ public sealed partial class ControlDeck
             available = shortcut is not null; state = shortcut is null ? "Shortcut is missing" : ShortcutRunning(shortcut) ? "Running" : "Ready";
         }
         if (action.Kind is "mixer" or "mixer-mute") { state = MixerValue(action); available = state is not null; state ??= "Mixer is not connected"; }
-        if (action.Kind == "audio-route" && (string.IsNullOrWhiteSpace(_config.Get().Controls.MixerExecutable) || !File.Exists(_config.Get().Controls.MixerExecutable)))
-        { available = false; state = "Configure SoundVolumeView"; }
+        if (action.Kind == "audio-route" && !_native.CanRouteApplications
+            && (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(_config.Get().Controls.MixerExecutable) || !File.Exists(_config.Get().Controls.MixerExecutable)))
+        { available = false; state = OperatingSystem.IsWindows() ? "Configure SoundVolumeView" : OperatingSystem.IsLinux() ? "Needs pactl and a sound server" : "Unavailable"; }
         var rev = action.Kind == "radio"
             ? RadioLogoCache.CacheKey(action, _config.Get().Controls.AllowOnlineRadioLogos)[..12]
             : null;
