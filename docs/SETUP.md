@@ -109,8 +109,9 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
 - **Linux USB permissions**: if `adb devices` shows `no permissions`, adb also needs udev rules. Install
   `android-sdk-platform-tools-common` on Debian/Ubuntu or `android-udev` on Arch. Some systems also need the
   `plugdev` group (`sudo usermod -aG plugdev $USER`, then log out and in). Setup points this out when it happens.
-- **Linux shortcuts that type or press keys** use `xdotool` on X11. On Wayland they use `wtype` (wlroots, KDE) or
-  `ydotool` (GNOME, which takes neither of the others). PhoneBox uses ydotool 0.1.x (Ubuntu 24.04's `ydotool`
+- **Linux shortcuts that type or press keys** use `xdotool` on X11. On Wayland they use `wtype` (wlroots desktops such
+  as Sway and Hyprland) or `ydotool` (KDE Plasma and GNOME: neither offers ordinary programs the virtual keyboard
+  protocol `wtype` needs, and `wtype` fails there with "Compositor does not support the virtual keyboard protocol"). PhoneBox uses ydotool 0.1.x (Ubuntu 24.04's `ydotool`
   package, `sudo apt install ydotool`; 1.x isn't supported yet), which needs no `ydotoold` but needs write access to
   `/dev/uinput`. Give that access through a group of its own, not `input`: the `input` group can usually also read
   the real keyboards (`/dev/input/event*`), and with them every password typed. For example:

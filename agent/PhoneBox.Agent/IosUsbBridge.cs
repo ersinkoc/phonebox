@@ -33,9 +33,10 @@ public sealed class IosUsbBridge : BackgroundService
     private readonly int? _lanPort;
     private readonly ILogger<IosUsbBridge> _log;
     private readonly Func<CancellationToken, Task<Socket>> _connectUsbmuxd;
+    private readonly Func<bool> _usbmuxdPresent;
 
     public IosUsbBridge(ConfigStore config, int? lanPort, ILogger<IosUsbBridge> log)
-        : this(config, lanPort, log, ConnectUsbmuxdAsync)
+        : this(config, lanPort, log, ConnectUsbmuxdAsync, UsbmuxdPresent)
     {
     }
 
@@ -43,13 +44,26 @@ public sealed class IosUsbBridge : BackgroundService
         ConfigStore config,
         int? lanPort,
         ILogger<IosUsbBridge> log,
-        Func<CancellationToken, Task<Socket>> connectUsbmuxd)
+        Func<CancellationToken, Task<Socket>> connectUsbmuxd,
+        Func<bool>? usbmuxdPresent = null)
     {
         _config = config;
         _lanPort = lanPort;
         _log = log;
         _connectUsbmuxd = connectUsbmuxd;
+        _usbmuxdPresent = usbmuxdPresent ?? (() => true);
     }
+
+    /// <summary>usbmuxd's Unix socket paths on Linux and macOS.</summary>
+    private static readonly string[] UsbmuxdSockets = ["/var/run/usbmuxd", "/run/usbmuxd"];
+
+    /// <summary>
+    /// Whether usbmuxd can be there at all. On Linux it is socket-activated by udev when an Apple device is plugged in,
+    /// so without an iPhone its socket file does not exist, and twelve pipes connecting to it every few seconds only
+    /// threw (about 16 exceptions a second). Windows reaches Apple Mobile Device Support over TCP, which can only be
+    /// found by trying.
+    /// </summary>
+    internal static bool UsbmuxdPresent() => OperatingSystem.IsWindows() || UsbmuxdSockets.Any(File.Exists);
 
     /// <summary>The loopback port of the iOS app's USB relay (USBLink.hostPort in ios/PhoneBox).</summary>
     internal const int PhonePort = 8765;
@@ -89,7 +103,7 @@ public sealed class IosUsbBridge : BackgroundService
         while (!ct.IsCancellationRequested)
         {
             var lan = _config.Get().Lan;
-            if (lan.Enabled && !string.IsNullOrEmpty(lan.Token))
+            if (lan.Enabled && !string.IsNullOrEmpty(lan.Token) && _usbmuxdPresent())
             {
                 try { await RunPipeAsync(index, targetPort, lan.Token, ct); }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
@@ -182,7 +196,7 @@ public sealed class IosUsbBridge : BackgroundService
             return await ConnectTcpAsync(new IPEndPoint(IPAddress.Loopback, 27015), ct);
 
         Exception? last = null;
-        foreach (var path in new[] { "/var/run/usbmuxd", "/run/usbmuxd" })
+        foreach (var path in UsbmuxdSockets)
         {
             var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
             try
