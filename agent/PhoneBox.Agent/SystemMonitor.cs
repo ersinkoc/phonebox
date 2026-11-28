@@ -644,9 +644,13 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
                 .DistinctBy(d => (SafeSize(d), d.TotalFreeSpace / (1L << 30)));
         return drives
             .Select(d => new DiskInfo(DiskLabel(d.Name), Math.Round((d.TotalSize - d.TotalFreeSpace) / Gb), Math.Round(d.TotalSize / Gb)))
-            .Take(6)
+            .Take(MaxDisks)
             .ToList();
     }
+
+    // Every volume a computer can have a letter for: the panel's disk grid wraps, so a seventh drive must not push
+    // the last one out (#785). Only a bound against something odd, not a choice of which disks to show.
+    private const int MaxDisks = 26;
 
     private static long SafeSize(DriveInfo d) { try { return d.TotalSize; } catch { return 0; } }
 

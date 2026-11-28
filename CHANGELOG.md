@@ -151,6 +151,8 @@
   WirePlumber and PulseAudio do by default. The application is matched by its name or process name, ignoring case and a
   `.exe` suffix, so a control set up on Windows works too. An application that plays nothing reports "Not playing".
   Windows still uses SoundVolumeView (#782, [mikicolmena](https://github.com/mikicolmena)).
+- Memory & disks: the agent reports every disk, not only the first six: with a seventh drive (a USB disk, for example)
+  the last one no longer disappears from the widget and from `pc.disks` (#785, [ssavickiy](https://github.com/ssavickiy)).
 
 ## 0.9.32 — 2026-11-27
 
