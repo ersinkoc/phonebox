@@ -52,6 +52,6 @@
         <value>PhoneBox no puede iniciarse: otro programa está usando el puerto {0}. Cierra ese programa y vuelve a iniciar PhoneBox.</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox no puede iniciarse: el puerto {0} está reservado por Windows. Reiniciar el equipo suele liberarlo.</value>
+        <value>PhoneBox no puede iniciarse: el puerto {0} está reservado por Windows. Reiniciar el equipo suele liberarlo. Para ver los puertos reservados, ejecuta: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

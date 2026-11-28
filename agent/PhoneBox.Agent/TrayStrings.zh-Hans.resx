@@ -52,6 +52,6 @@
         <value>PhoneBox 无法启动：其他程序已在使用端口 {0}。请关闭该程序，然后重新启动 PhoneBox。</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox 无法启动：端口 {0} 被 Windows 保留。重新启动计算机通常可以释放它。</value>
+        <value>PhoneBox 无法启动：端口 {0} 被 Windows 保留。重新启动计算机通常可以释放它。要查看保留的端口，请运行：netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

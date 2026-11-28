@@ -52,6 +52,6 @@
         <value>تعذّر تشغيل PhoneBox: برنامج آخر يستخدم المنفذ ⁨{0}⁩. أغلق هذا البرنامج ثم شغّل PhoneBox مرة أخرى.</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>تعذّر تشغيل PhoneBox: المنفذ ⁨{0}⁩ محجوز من Windows. إعادة تشغيل الكمبيوتر تحرّره عادةً.</value>
+        <value>تعذّر تشغيل PhoneBox: المنفذ ⁨{0}⁩ محجوز من Windows. إعادة تشغيل الكمبيوتر تحرّره عادةً. لعرض المنافذ المحجوزة، شغّل: ⁨netsh interface ipv4 show excludedportrange protocol=tcp⁩</value>
     </data>
 </root>

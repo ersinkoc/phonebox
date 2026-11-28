@@ -52,6 +52,6 @@
         <value>PhoneBox เริ่มทำงานไม่ได้: มีโปรแกรมอื่นใช้พอร์ต {0} อยู่แล้ว ปิดโปรแกรมนั้นแล้วเปิด PhoneBox อีกครั้ง</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox เริ่มทำงานไม่ได้: พอร์ต {0} ถูก Windows จองไว้ โดยปกติการรีสตาร์ทคอมพิวเตอร์จะทำให้พอร์ตว่าง</value>
+        <value>PhoneBox เริ่มทำงานไม่ได้: พอร์ต {0} ถูก Windows จองไว้ โดยปกติการรีสตาร์ทคอมพิวเตอร์จะทำให้พอร์ตว่าง หากต้องการดูพอร์ตที่ถูกจองไว้ ให้เรียกใช้: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

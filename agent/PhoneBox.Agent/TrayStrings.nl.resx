@@ -52,6 +52,6 @@
         <value>PhoneBox kan niet starten: een ander programma gebruikt poort {0}. Sluit dat programma en start PhoneBox opnieuw.</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox kan niet starten: poort {0} is door Windows gereserveerd. Een herstart van de computer maakt hem meestal vrij.</value>
+        <value>PhoneBox kan niet starten: poort {0} is door Windows gereserveerd. Een herstart van de computer maakt hem meestal vrij. Voer dit uit om de gereserveerde poorten te zien: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

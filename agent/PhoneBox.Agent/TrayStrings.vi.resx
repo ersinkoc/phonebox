@@ -52,6 +52,6 @@
         <value>PhoneBox không thể khởi động: một chương trình khác đã dùng cổng {0}. Hãy đóng chương trình đó rồi khởi động lại PhoneBox.</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox không thể khởi động: cổng {0} bị Windows giữ trước. Khởi động lại máy tính thường sẽ giải phóng cổng này.</value>
+        <value>PhoneBox không thể khởi động: cổng {0} bị Windows giữ trước. Khởi động lại máy tính thường sẽ giải phóng cổng này. Để xem các cổng được giữ trước, hãy chạy: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

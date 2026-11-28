@@ -52,6 +52,6 @@
         <value>PhoneBox शुरू नहीं हो सकता: कोई दूसरा प्रोग्राम पोर्ट {0} इस्तेमाल कर रहा है। उस प्रोग्राम को बंद करें और PhoneBox फिर से शुरू करें।</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox शुरू नहीं हो सकता: पोर्ट {0} Windows ने आरक्षित किया है। कंप्यूटर रीस्टार्ट करने से यह आमतौर पर खाली हो जाता है।</value>
+        <value>PhoneBox शुरू नहीं हो सकता: पोर्ट {0} Windows ने आरक्षित किया है। कंप्यूटर रीस्टार्ट करने से यह आमतौर पर खाली हो जाता है। आरक्षित पोर्ट देखने के लिए चलाएँ: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

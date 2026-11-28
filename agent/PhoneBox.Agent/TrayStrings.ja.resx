@@ -52,6 +52,6 @@
         <value>PhoneBox を起動できません: 別のプログラムがポート {0} を使用しています。そのプログラムを閉じてから、PhoneBox をもう一度起動してください。</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox を起動できません: ポート {0} は Windows に予約されています。通常はコンピューターを再起動すると解放されます。</value>
+        <value>PhoneBox を起動できません: ポート {0} は Windows に予約されています。通常はコンピューターを再起動すると解放されます。予約済みのポートを確認するには、次を実行してください: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

@@ -52,6 +52,6 @@
         <value>PhoneBox не может запуститься: порт {0} уже использует другая программа. Закройте эту программу и запустите PhoneBox снова.</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox не может запуститься: порт {0} зарезервирован Windows. Обычно его освобождает перезагрузка компьютера.</value>
+        <value>PhoneBox не может запуститься: порт {0} зарезервирован Windows. Обычно его освобождает перезагрузка компьютера. Чтобы увидеть зарезервированные порты, выполните: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

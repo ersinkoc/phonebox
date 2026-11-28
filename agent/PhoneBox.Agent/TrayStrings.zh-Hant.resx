@@ -52,6 +52,6 @@
         <value>PhoneBox 無法啟動：其他程式已在使用連接埠 {0}。請關閉該程式，然後重新啟動 PhoneBox。</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox 無法啟動：連接埠 {0} 被 Windows 保留。重新啟動電腦通常可以釋放它。</value>
+        <value>PhoneBox 無法啟動：連接埠 {0} 被 Windows 保留。重新啟動電腦通常可以釋放它。若要查看保留的連接埠，請執行：netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

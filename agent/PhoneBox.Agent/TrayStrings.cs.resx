@@ -52,6 +52,6 @@
         <value>PhoneBox nelze spustit: port {0} už používá jiný program. Zavřete tento program a spusťte PhoneBox znovu.</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox nelze spustit: port {0} je rezervovaný systémem Windows. Restart počítače ho obvykle uvolní.</value>
+        <value>PhoneBox nelze spustit: port {0} je rezervovaný systémem Windows. Restart počítače ho obvykle uvolní. Seznam rezervovaných portů zobrazíte příkazem: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

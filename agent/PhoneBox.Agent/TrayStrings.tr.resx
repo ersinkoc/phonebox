@@ -52,6 +52,6 @@
         <value>PhoneBox başlatılamıyor: {0} numaralı portu başka bir program kullanıyor. O programı kapatın ve PhoneBox'ı yeniden başlatın.</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox başlatılamıyor: {0} numaralı port Windows tarafından ayrılmış. Bilgisayarı yeniden başlatmak genellikle portu serbest bırakır.</value>
+        <value>PhoneBox başlatılamıyor: {0} numaralı port Windows tarafından ayrılmış. Bilgisayarı yeniden başlatmak genellikle portu serbest bırakır. Ayrılmış portları görmek için şunu çalıştırın: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>

@@ -52,6 +52,6 @@
         <value>PhoneBox nu poate porni: alt program folosește deja portul {0}. Închide acel program și pornește din nou PhoneBox.</value>
     </data>
     <data xml:space="preserve" name="portReserved">
-        <value>PhoneBox nu poate porni: portul {0} este rezervat de Windows. De obicei, repornirea computerului îl eliberează.</value>
+        <value>PhoneBox nu poate porni: portul {0} este rezervat de Windows. De obicei, repornirea computerului îl eliberează. Pentru a vedea porturile rezervate, rulează: netsh interface ipv4 show excludedportrange protocol=tcp</value>
     </data>
 </root>
