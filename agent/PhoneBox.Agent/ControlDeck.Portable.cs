@@ -8,7 +8,8 @@ namespace PhoneBox.Agent;
 internal sealed class PortableDeckNative(
     AudioControl audio,
     MediaMonitor media,
-    Func<bool, (string Kind, string Path)?>? findPlayer = null) : IDeckNative
+    Func<bool, (string Kind, string Path)?>? findPlayer = null,
+    PulseDeckAudio? pulse = null) : IDeckNative
 {
     private const long PlayerCacheTtlMs = 15_000;
     private readonly Lock _gate = new();
@@ -16,17 +17,33 @@ internal sealed class PortableDeckNative(
     private (long At, (string Kind, string Path)? Player)? _filePlayerCache;
     private (long At, (string Kind, string Path)? Player)? _streamPlayerCache;
 
-    public DeckAudio Audio() => audio.Snapshot() is { } a ? new(true, null,
-        [new("default", "System output", "output", true, a.Volume, a.Muted, 0, 1, a.CanControl)], [])
+    /// <summary>
+    /// Every device and application stream on Linux (pactl); without that backend (macOS, Linux without pactl) the system
+    /// output's master volume only. Until pactl has answered once it may have no Pulse server to talk to (PipeWire without
+    /// pipewire-pulse), so the system output stays. Once it has, a failed listing is reported unavailable rather than
+    /// falling back to the system output: panic and "Mics off" must not take a list without microphones for the full one.
+    /// </summary>
+    public DeckAudio Audio() => pulse?.Read() is { } listed ? listed
+        : pulse is { HasAnswered: true } ? new(false, "The sound server did not answer (pactl)", [], [])
+        : audio.Snapshot() is { } a ? new(true, null,
+            [new("default", "System output", "output", true, a.Volume, a.Muted, 0, 1, a.CanControl)], [])
         : new(false, "Audio backend is unavailable", [], []);
+    /// <summary>Push-to-talk's restore target: read fresh, not from the listing pactl keeps for a moment, so a mute another
+    /// application made just before the hold is not lost.</summary>
+    public bool? MicrophoneMuted(string id) =>
+        (pulse?.Read(fresh: true) ?? Audio()).Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted;
     public bool Device(string id, int? volume, bool? muted, int? channel = null)
     {
+        // "default" is the synthetic system output only while pactl has not listed anything: a Pulse sink or source can
+        // itself be named "default", and once pactl has answered every id is one of its devices
+        if (pulse is not null && (id != "default" || pulse.Read() is not null || pulse.HasAnswered))
+            return pulse.Device(id, volume, muted, channel);
         if (id != "default" || channel is not null || audio.Current() is not { CanControl: true } current) return false;
         if (volume is { } v && !audio.SetVolume(v)) return false;
         return muted is not { } m || m == current.Muted || audio.ToggleMute();
     }
-    public bool Session(string id, int? volume, bool? muted) => false;
-    public bool DefaultDevice(string id, int? role = null) => false;
+    public bool Session(string id, int? volume, bool? muted) => pulse?.Session(id, volume, muted) ?? false;
+    public bool DefaultDevice(string id, int? role = null) => pulse?.DefaultDevice(id, role) ?? false;
     public IReadOnlyList<DeckMonitor> Monitors() => [];
     public bool Brightness(string id, int value) => false;
     public IReadOnlyList<DeckItem> PowerPlans() => [];

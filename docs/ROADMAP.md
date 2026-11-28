@@ -130,10 +130,6 @@ Agreed in principle, not being built in-house. Say so on the issue before starti
   accounts in #538, an opt-in list of extra Codex homes (`{ label, dir }`, each a `CODEX_HOME`), each with its own
   quota card as `codex@<label>`, sessions marked with their profile, and the live quota lookup run with that profile's
   `CODEX_HOME`. Paths and tokens stay on the computer, with no fallback to another profile.
-- **Audio devices and app volume on Linux** ([#613](https://github.com/ersinkoc/phonebox/issues/613)): the device
-  list, the default microphone, switching the default device and per-app volume through `pactl` (sinks, sources and
-  sink inputs; PipeWire answers it too), with a forced C locale for parsing. Today these are Windows-only and the
-  Linux agent controls only the system output.
 - **Synced lyrics from files on the computer** ([#669](https://github.com/ersinkoc/phonebox/issues/669)): `.lrc`
   files from a folder chosen in Settings on the computer, matched by artist and title, as a source before or instead
   of LRCLIB in the Synced lyrics widget. Off until a folder is set; the agent reads only `.lrc` files inside that

@@ -114,7 +114,17 @@ configure application/global shortcuts appropriately. Presentation bindings targ
 ## Platforms and connection behavior
 
 The full native audio/session/device, DDC/CI, Windows service/window/display/power, MIDI and loopback
-implementation targets Windows. On Linux/macOS, master volume/media controls remain available, and soundboard/radio
+implementation targets Windows. On Linux with `pactl` (PulseAudio, or PipeWire through pipewire-pulse; the package
+is `pulseaudio-utils` on Debian, Ubuntu and Fedora and `libpulse` on Arch) the audio
+controls work too: every output and microphone with its volume, mute and channel balance, per-application volume
+and mute, and switching the default output and microphone, so the application mixer, application and device
+volume, balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection widgets work.
+Linux has one default device per direction, so all three Windows roles follow it. Monitor sources and streams a
+module made (the loopbacks of a virtual mixer, a combine sink) are left out; virtual sinks (`module-null-sink`)
+are listed as outputs. Level meters show no signal on Linux yet. On macOS, on Linux without `pactl`, and on Linux
+where `pactl` has not yet reached a sound server (PipeWire without pipewire-pulse), master volume/media controls
+remain available. Once `pactl` has answered, a sound server that stops answering shows the audio widgets as
+unavailable. On Linux/macOS soundboard/radio
 actions use installed `ffplay`, `mpv`, `cvlc`/`vlc` (plus macOS `afplay` for local soundboard files) when found on
 `PATH`. Configured executable tasks, OSC and account integrations are portable when their corresponding programs and
 APIs are available. Do not interpret cross-platform compilation as native feature parity.

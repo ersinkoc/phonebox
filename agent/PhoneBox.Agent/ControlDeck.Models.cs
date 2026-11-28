@@ -63,6 +63,9 @@ internal interface IDeckNative : IDisposable
 {
     event Action<string>? SoundStopped { add { } remove { } }
     DeckAudio Audio();
+    /// <summary>Whether a microphone is muted right now, for push-to-talk's restore target: a backend that keeps its
+    /// listings for a moment (pactl) reads it fresh here.</summary>
+    bool? MicrophoneMuted(string id) => Audio().Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted;
     bool Device(string id, int? volume, bool? muted, int? channel = null);
     bool Session(string id, int? volume, bool? muted);
     bool DefaultDevice(string id, int? role = null);

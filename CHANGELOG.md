@@ -117,6 +117,17 @@
   shows an error toast, and an unknown one stays quiet. The session details show a WorkBuddy check: whether the hook
   is installed, the approval switch and the heartbeat's age, which keeps counting while the details are open (#701,
   [elong365](https://github.com/elong365)).
+- Linux: the Control Deck's **audio widgets work**: the application mixer, application volume, device volume,
+  channel balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection. The agent
+  reads every output, microphone and application stream through `pactl` (PulseAudio, or PipeWire through
+  pipewire-pulse) instead of offering only the system output, and works with pactl versions before 15 too. It reads
+  pactl's plain-text listing, as its JSON output turns any name with a non-ASCII character into "(null)", and shares
+  one listing for 300 ms, so an emergency mute or a profile restore starts one pactl per change. Monitor sources and
+  streams a module made (the loopbacks of a virtual mixer) are left out; virtual sinks are listed as outputs, so the
+  channels of a virtual mixer get their own faders. Until pactl reaches a sound server (PipeWire without
+  pipewire-pulse) the system output's volume stays; once it has, a server that stops answering shows the widgets as
+  unavailable. Without `pactl` (package `pulseaudio-utils` on Debian, Ubuntu and Fedora, `libpulse` on Arch) and on
+  macOS the widgets still say they need Windows (#613, #762, [mikicolmena](https://github.com/mikicolmena)).
 - The Steam library widget is now the Game library. Shortcuts ticked in its new **Other games** option show as games,
   and on Windows it also finds the games installed outside Steam: the Epic Games Launcher's, the EA app's, GOG Galaxy's,
   Ubisoft Connect's and the Rockstar Games Launcher's, and game folders on the drives. Starting those from the phone is
