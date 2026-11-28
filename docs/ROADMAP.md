@@ -29,6 +29,15 @@ people who proposed or prototyped something are credited in the [changelog](../C
   defined on the computer and triggered from the phone by id only, behind the widget's `control` option with "ask
   first" on and retain off by default. In small pull requests; the connection and its settings are in
   ([#739](https://github.com/ersinkoc/phonebox/pull/739)), subscriptions to the push store come next.
+- **A bigger Microphone tile** ([#766](https://github.com/ersinkoc/phonebox/issues/766)): an opt-in layout of the
+  Microphone widget with a large mute button and a vertical gain slider; the current look stays the default.
+- **An upright layout of a page's own** ([#755](https://github.com/ersinkoc/phonebox/issues/755), pull request
+  [#758](https://github.com/ersinkoc/phonebox/pull/758)): arrange a page for an upright screen in the editor instead of
+  the automatic packing.
+- **Games outside Steam in the game library** ([#756](https://github.com/ersinkoc/phonebox/issues/756), pull request
+  [#759](https://github.com/ersinkoc/phonebox/pull/759)): other launchers, games found on the drives and your own
+  shortcuts; starting them from the phone gets its own per-widget option, off by default. Store covers for them, opt-in
+  ([#757](https://github.com/ersinkoc/phonebox/issues/757), pull request [#760](https://github.com/ersinkoc/phonebox/pull/760)).
 - **Rules for pushed values**: a "not updated for N seconds" condition, `>=` / `<=`, and a separate release threshold
   ([#242](https://github.com/ersinkoc/phonebox/issues/242), pull request
   [#245](https://github.com/ersinkoc/phonebox/pull/245), in 0.9.21, did the first two).
@@ -91,6 +100,10 @@ people who proposed or prototyped something are credited in the [changelog](../C
 
 Agreed in principle, not being built in-house. Say so on the issue before starting.
 
+- **Rates for currencies the ECB does not publish** ([#767](https://github.com/ersinkoc/phonebox/issues/767)): the
+  Exchange rates widget uses Frankfurter (ECB reference rates), which has had no ruble since March 2022. A second,
+  optional source, such as the Central Bank of Russia's daily rates, behind its own switch (off by default) and with
+  a PRIVACY.md row.
 - **Typing from the phone's keyboard**: a text field and a row of keys (Enter, Backspace, Esc, Tab, arrows, optionally
   Ctrl / Alt / Shift) on the Dictation widget, behind its **Type the text on the computer** switch and through
   `/api/dictate`; nothing logged or stored ([#320](https://github.com/ersinkoc/phonebox/issues/320)).
