@@ -1350,6 +1350,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "Vyplňte tlačítko nahraným obrázkem zkratky",
       "Fill the widget (crop)": "Vyplnit widget (oříznout)",
       "Fire (red · orange · yellow)": "Oheň (červená · oranžová · žlutá)",
+      "Album colours (follow the cover)": "Barvy alba (podle obalu)",
       "First (5-hour session / weekly)": "První (5-hodinový kurz / týdně)",
       "Fit": "Fit",
       "Flat surfaces": "Na ploché povrchy",

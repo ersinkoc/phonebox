@@ -1350,6 +1350,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "เติมรูปภาพที่โหลดมาของทางลัดเข้าไปในปุ่ม",
       "Fill the widget (crop)": "เติมวิดเจ็ต (ตัด)",
       "Fire (red · orange · yellow)": "ไฟ (สีแดง สีส้ม และสีเหลือง)",
+      "Album colours (follow the cover)": "สีของอัลบั้ม (ตามปก)",
       "First (5-hour session / weekly)": "ครั้งแรก (วาระการทำงาน5ชั่วโมง / อาทิตย์ละ)",
       "Fit": "ปรับขนาด",
       "Flat surfaces": "พื้นผิวเรียบ",

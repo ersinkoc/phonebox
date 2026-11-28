@@ -1350,6 +1350,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "शॉर्टकट के अपलोडेड छवि से बटन भरें",
       "Fill the widget (crop)": "विजेट भरें (काटा गया)",
       "Fire (red · orange · yellow)": "आग (लाल · नारंगी · पीला)",
+      "Album colours (follow the cover)": "एल्बम के रंग (कवर के अनुसार)",
       "First (5-hour session / weekly)": "प्रथम (5- घंटे सत्र / सप्ताह में)",
       "Fit": "फिट",
       "Flat surfaces": "समतल सतह",

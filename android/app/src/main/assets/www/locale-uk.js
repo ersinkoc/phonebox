@@ -1350,6 +1350,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Fill the button with the shortcut's uploaded picture": "Заповнити кнопку зображенням, яке було вивантажено скороченням",
       "Fill the widget (crop)": "Заповнити віджет (обрізати)",
       "Fire (red · orange · yellow)": "Вогонь (червоний · оранжевий · жовтий)",
+      "Album colours (follow the cover)": "Кольори альбому (за обкладинкою)",
       "First (5-hour session / weekly)": "Перший (5- годинний сеанс / щотижня)",
       "Fit": "Встановити",
       "Flat surfaces": "Плоскі поверхні",

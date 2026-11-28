@@ -2,13 +2,23 @@
 // Frames arrive as "spectrum" stream events (~30 per second, 48 bands of 0–100); this widget merges them into its
 // own number of bars and animates the fall and the peak caps itself, so it stays smooth between frames.
 import { W } from '../registry.js';
-import { h, api, D, emit, streaming, t, pages, curPage, idle } from '../main.js';
+import { h, api, D, emit, streaming, t, pages, curPage, idle, DEFAULT_AMBIENT } from '../main.js';
 
 const PALETTES = {
   classic: [[0, '#16a34a'], [0.55, '#84cc16'], [0.72, '#facc15'], [0.88, '#f97316'], [1, '#ef4444']],
   fire: [[0, '#7f1d1d'], [0.4, '#dc2626'], [0.7, '#f97316'], [1, '#fde047']],
   ice: [[0, '#1e3a8a'], [0.45, '#2563eb'], [0.75, '#22d3ee'], [1, '#f0f9ff']],
 };
+/**
+ * "Album colours" (#745): the colour the panel takes from the song's cover (the one the background tint follows, and its
+ * default teal when the tint is off), dark at the bottom, itself in the middle and light at the top.
+ */
+export function ambientStops(rgb) {
+  const c = String(rgb || '').split(',').map((v) => Number(v.trim()));
+  const [r, gg, b] = c.length === 3 && c.every((v) => Number.isFinite(v)) ? c : [45, 212, 191];
+  const hex = (f) => '#' + [r, gg, b].map((v) => Math.round(Math.max(0, Math.min(255, f(v)))).toString(16).padStart(2, '0')).join('');
+  return [[0, hex((v) => v * 0.45)], [0.6, hex((v) => v)], [1, hex((v) => v + (255 - v) * 0.6)]];
+}
 const FALL = { slow: 55, normal: 110, fast: 200 }; // bar fall, in % of the height per second
 const PEAK_HOLD = 450;                              // ms a peak cap waits before it drops
 const PEAK_GRAVITY = 260;                           // %/s² once it drops
@@ -72,9 +82,9 @@ W.spectrum = {
     const me = { box, page: ctx.page };
     mountedBars.add(me);
     const bars =Math.max(4, Math.min(48, Math.round(+o.bars || 24)));
-    const style = PALETTES[o.style] ? o.style : (o.style === 'single' ? 'single' : 'classic');
+    const style = PALETTES[o.style] ? o.style : (o.style === 'single' || o.style === 'album' ? o.style : 'classic');
     const color = /^#[0-9a-f]{6}$/i.test(o.color || '') ? o.color : '#2dd4bf';
-    const stops = style === 'single' ? [[0, color], [1, color]] : PALETTES[style];
+    let stops = style === 'single' ? [[0, color], [1, color]] : style === 'album' ? [] : PALETTES[style], ambient = null;
     const segmented = o.segments !== false, peaks = o.peaks !== false;
     const fall = FALL[o.falloff] || FALL.normal;
 
@@ -102,6 +112,11 @@ W.spectrum = {
     ro.observe(wrap);
 
     const draw = () => {
+      if (style === 'album') {
+        // the cover colour changes with the song: new LED colours only when it does
+        const now = document.documentElement.style.getPropertyValue('--ambient').trim() || DEFAULT_AMBIENT;
+        if (now !== ambient) { ambient = now; stops = ambientStops(now); colors = []; }
+      }
       g.clearRect(0, 0, W2, H2);
       if (!W2 || !H2) return;
       const gap = Math.max(1, Math.round(W2 / bars * 0.18));
