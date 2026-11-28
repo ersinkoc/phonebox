@@ -332,3 +332,33 @@ test('a found game started by one of the widget\'s own shortcuts is left out by 
   });
   expect(r).toEqual({ mine: ['x:2'], another: ['x:1', 'x:2'] });
 });
+
+test('a favorite found game shown as one of your own games keeps its place as that game', async ({ page }) => {
+  await page.goto('/panel/');
+  const r = await page.evaluate(async () => {
+    const { otherGames, ownGames, pickGames, foundTwins } = await import('/panel/widgets/steam-library.js');
+    const found = [{ id: 'x:1', name: 'Old Fort', source: 'drive', cover: false, shortcuts: [] },
+      { id: 'x:2', name: 'Ember Road', source: 'epic', cover: false, shortcuts: ['ember'] },
+      { id: 'x:3', name: 'Moss', source: 'gog', cover: false, shortcuts: [] }];
+    const shortcuts = [{ id: 'fifa', label: 'FIFA 23' }, { id: 'fort', label: 'old fort' }, { id: 'ember', label: 'Ember' }];
+    const own = ownGames(['fifa', 'fort', 'ember'], shortcuts);
+    const steam = [{ id: '10', name: 'Steam game' }, ...otherGames(found, own)];
+    const twins = foundTwins(found, own);
+    const pick = (favorites, limit, only = false) => pickGames(steam, favorites, only, limit, own, twins).map((g) => g.id);
+    return {
+      twins: [...twins].map(([id, g]) => [id, g.id]),
+      one: pick(['x:1'], 1),
+      all: pick(['x:1'], 10),
+      two: pick(['x:2', 'x:1'], 10),
+      only: pick(['x:1'], 10, true),
+      without: pickGames(steam, ['x:1'], false, 1, own).map((g) => g.id),
+    };
+  });
+  expect(r.twins).toEqual([['x:1', 'sc:fort'], ['x:2', 'sc:ember']]);
+  // the favorite comes first, as its shortcut, and that shortcut is not shown a second time
+  expect(r.one).toEqual(['sc:fort']);
+  expect(r.all).toEqual(['sc:fort', 'sc:fifa', 'sc:ember', '10', 'x:3']);
+  expect(r.two).toEqual(['sc:ember', 'sc:fort', 'sc:fifa', '10', 'x:3']);
+  expect(r.only).toEqual(['sc:fort', 'sc:fifa', 'sc:ember']);
+  expect(r.without).toEqual(['sc:fifa']); // without the twins the favorite would be lost
+});

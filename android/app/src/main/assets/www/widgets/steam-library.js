@@ -48,14 +48,16 @@ const LAUNCH_ERRORS = {
 /**
  * The games a widget shows: its favorites first, in the order they were picked, then your own games (picked by hand,
  * so they count as chosen too), then (unless "only favorites" is on) the rest, most recently played first as the agent
- * sends them; at most `limit`.
+ * sends them; at most `limit`. `twins` (foundTwins) maps a found game left out as one of your own games to that game,
+ * so a favorite found game is shown first as that game, and only there.
  */
-export function pickGames(games, favorites, onlyFavorites, limit, own = []) {
+export function pickGames(games, favorites, onlyFavorites, limit, own = [], twins = new Map()) {
   const favs = (Array.isArray(favorites) ? favorites : []).map(String);
   const byId = new Map((games || []).map((g) => [g.id, g]));
-  const first = favs.map((id) => byId.get(id)).filter(Boolean);
+  // a favorite found game left out as one of your own games (twins) keeps its place, as that game
+  const first = [...new Set(favs.map((id) => byId.get(id) || twins.get(id)).filter(Boolean))];
   const rest = onlyFavorites ? [] : (games || []).filter((g) => !favs.includes(g.id));
-  return [...first, ...own, ...rest].slice(0, limit);
+  return [...first, ...own.filter((g) => !first.includes(g)), ...rest].slice(0, limit);
 }
 
 /**
@@ -76,12 +78,27 @@ export function ownGames(ids, shortcuts) {
  * game's name) is left out, so a game is not shown twice.
  */
 export function otherGames(found, own = []) {
-  const names = new Set(own.map((g) => g.name.trim().toLowerCase()));
-  const mine = new Set(own.map((g) => String(g.shortcut)));
-  return (Array.isArray(found) ? found : []).filter((g) => g && typeof g.id === 'string' && g.id.startsWith('x:')
-    && !names.has(String(g.name || '').trim().toLowerCase())
-    && !(Array.isArray(g.shortcuts) && g.shortcuts.some((id) => mine.has(String(id)))))
+  return (Array.isArray(found) ? found : []).filter((g) => g && typeof g.id === 'string' && g.id.startsWith('x:') && !twinOf(g, own))
     .map((g) => ({ id: g.id, name: String(g.name || ''), source: String(g.source || ''), state: 'ready', progress: null, cover: g.cover === true }));
+}
+
+/** The one of your own games that stands for a found game (same name, or its shortcut starts a program in the game's
+ *  folder), or undefined. */
+const twinOf = (g, own) => {
+  const name = String(g.name || '').trim().toLowerCase();
+  const ids = Array.isArray(g.shortcuts) ? g.shortcuts.map(String) : [];
+  return own.find((o) => o.name.trim().toLowerCase() === name || ids.includes(String(o.shortcut)));
+};
+
+/** The found games that otherGames leaves out, each with the own game shown in its place: a favorite found game keeps
+ *  its position as that game (pickGames). */
+export function foundTwins(found, own = []) {
+  const twins = new Map();
+  for (const g of Array.isArray(found) ? found : []) {
+    const twin = g && typeof g.id === 'string' && g.id.startsWith('x:') ? twinOf(g, own) : undefined;
+    if (twin) twins.set(g.id, twin);
+  }
+  return twins;
 }
 
 // The installed Steam games: the favorites picked in the widget's options first, then the most recently played, with
@@ -165,7 +182,7 @@ W['steam-library'] = {
       // computer outside Steam (other launchers, the drives) come after Steam's, except one that is already one of yours
       const others = otherGames(data?.others, own);
       const steam = [...(data?.enabled && data?.found ? data.games : []), ...others];
-      const games = pickGames(steam, o.favorites, o.onlyFavorites === true, limit, own);
+      const games = pickGames(steam, o.favorites, o.onlyFavorites === true, limit, own, foundTwins(data?.others, own));
       const key = JSON.stringify([games, data?.running, data?.enabled, data?.found, data?.error, failed, armed, busy]);
       if (!force && key === lastKey) return;
       lastKey = key;
