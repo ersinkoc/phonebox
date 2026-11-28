@@ -163,7 +163,7 @@ var app = builder.Build();
 var portProblem = Lan.PortProblem(Port, IPAddress.Loopback);
 if (portProblem is "in-use" or "reserved")
 {
-    var program = ListeningPorts.ProgramOn(Port);
+    var program = ListeningPorts.ProgramOn(IPAddress.Loopback, Port);
     // access denied with no listener: a range Windows keeps for itself (with one: a program holding the port exclusively)
     var reserved = portProblem == "reserved" && program is null;
     if (reserved)

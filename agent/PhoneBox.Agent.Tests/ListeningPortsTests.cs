@@ -143,17 +143,26 @@ public sealed class ListeningPortsTests
         finally { v4.Stop(); }
     }
 
-    // #710: the agent names the program holding its port
+    // #710: the agent names the program holding its port on 127.0.0.1, not one on another address with the same port
     [Fact]
-    public void TheOwnerOfAPortIsTheProcessListeningOnItOnLoopback()
+    public void TheOwnerOfAnEndpointListensOnItsAddressOrEveryInterface()
     {
         var v4 = Table(ListeningPorts.Ipv4RowSize,
             Row4(state: 5, [127, 0, 0, 1], 8765, pid: 70),
             Row4(state: 2, [192, 168, 1, 5], 8765, pid: 71),
-            Row4(state: 2, [127, 0, 0, 1], 8764, pid: 72),
-            Row4(state: 2, [127, 0, 0, 1], 8765, pid: 23788));
-        Assert.Equal(23788, ListeningPorts.OwnerOf(v4, ipv6: false, port: 8765));
-        Assert.Null(ListeningPorts.OwnerOf(v4, ipv6: false, port: 9000));
+            Row4(state: 2, [127, 0, 0, 2], 8765, pid: 72),
+            Row4(state: 2, [127, 0, 0, 1], 8764, pid: 73),
+            Row4(state: 2, [127, 0, 0, 1], 8765, pid: 23788),
+            Row4(state: 2, [0, 0, 0, 0], 9000, pid: 74));
+        Assert.Equal(23788, ListeningPorts.OwnerOf(v4, ipv6: false, IPAddress.Loopback, port: 8765));
+        Assert.Equal(74, ListeningPorts.OwnerOf(v4, ipv6: false, IPAddress.Loopback, port: 9000));
+        Assert.Null(ListeningPorts.OwnerOf(v4, ipv6: false, IPAddress.Loopback, port: 9001));
+
+        // an IPv6 socket on every interface can hold the IPv4 port too; one on ::1 can't
+        var v6 = Table(ListeningPorts.Ipv6RowSize,
+            Row6(IPAddress.IPv6Loopback, 8765, pid: 75),
+            Row6(IPAddress.IPv6Any, 8765, pid: 76));
+        Assert.Equal(76, ListeningPorts.OwnerOf(v6, ipv6: true, IPAddress.Loopback, port: 8765));
     }
 
     [Fact]
@@ -165,7 +174,7 @@ public sealed class ListeningPortsTests
         {
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
             using var self = System.Diagnostics.Process.GetCurrentProcess();
-            Assert.Equal(OperatingSystem.IsWindows() ? $"{self.ProcessName} (PID {self.Id})" : null, ListeningPorts.ProgramOn(port));
+            Assert.Equal(OperatingSystem.IsWindows() ? $"{self.ProcessName} (PID {self.Id})" : null, ListeningPorts.ProgramOn(IPAddress.Loopback, port));
         }
         finally { listener.Stop(); }
     }

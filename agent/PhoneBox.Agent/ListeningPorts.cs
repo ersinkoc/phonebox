@@ -111,15 +111,15 @@ internal static class ListeningPorts
     }
 
     /// <summary>
-    /// The program listening on this TCP port, as "Code (PID 23788)", when the listener is reachable on loopback.
-    /// Windows only, from the same table; null elsewhere or when none is found.
+    /// The program whose listener keeps <paramref name="address"/>:<paramref name="port"/> from being opened, as
+    /// "Code (PID 23788)". Windows only, from the same table; null elsewhere or when none is found.
     /// </summary>
-    public static string? ProgramOn(int port)
+    public static string? ProgramOn(IPAddress address, int port)
     {
         if (!OperatingSystem.IsWindows()) return null;
         try
         {
-            if ((OwnerOf(ReadTcpTable(AfInet), ipv6: false, port) ?? OwnerOf(ReadTcpTable(AfInet6), ipv6: true, port)) is not { } pid) return null;
+            if ((OwnerOf(ReadTcpTable(AfInet), ipv6: false, address, port) ?? OwnerOf(ReadTcpTable(AfInet6), ipv6: true, address, port)) is not { } pid) return null;
             using var process = Process.GetProcessById(pid);
             return $"{process.ProcessName} (PID {pid})";
         }
@@ -129,23 +129,28 @@ internal static class ListeningPorts
         }
     }
 
-    internal static int? OwnerOf(ReadOnlySpan<byte> table, bool ipv6, int port)
+    /// <summary>
+    /// The process listening on this address and port, or on every interface (an IPv6 one can hold the IPv4 port too).
+    /// Another loopback address on the same port (127.0.0.2) is a different endpoint and doesn't count.
+    /// </summary>
+    internal static int? OwnerOf(ReadOnlySpan<byte> table, bool ipv6, IPAddress address, int port)
     {
-        foreach (var (pid, listener) in ParseOwnerPidRows(table, ipv6))
-            if (listener.Port == port) return pid;
+        foreach (var (pid, bound, boundPort) in ParseOwnerPidRows(table, ipv6))
+            if (boundPort == port && (bound.Equals(address) || bound.Equals(IPAddress.Any) || bound.Equals(IPAddress.IPv6Any))) return pid;
         return null;
     }
 
     internal static List<Listener> ParseOwnerPidTable(ReadOnlySpan<byte> table, bool ipv6, int pid) =>
-        [.. ParseOwnerPidRows(table, ipv6).Where(r => r.Pid == pid).Select(r => r.Listener)];
+        [.. ParseOwnerPidRows(table, ipv6).Where(r => r.Pid == pid).Select(r => new Listener(LoopbackFor(r.Address), r.Port))];
 
     /// <summary>
     /// Decodes a <c>MIB_TCPTABLE_OWNER_PID</c> or <c>MIB_TCP6TABLE_OWNER_PID</c>: a 4-byte row count, then fixed-size rows.
-    /// Ports are in network byte order in the low 16 bits of their DWORD. Keeps the listeners reachable on loopback.
+    /// Ports are in network byte order in the low 16 bits of their DWORD. Keeps the listeners reachable on loopback, with
+    /// the address they are bound to.
     /// </summary>
-    private static List<(int Pid, Listener Listener)> ParseOwnerPidRows(ReadOnlySpan<byte> table, bool ipv6)
+    private static List<(int Pid, IPAddress Address, int Port)> ParseOwnerPidRows(ReadOnlySpan<byte> table, bool ipv6)
     {
-        var ports = new List<(int, Listener)>();
+        var ports = new List<(int, IPAddress, int)>();
         if (table.Length < 4) return ports;
         var count = BitConverter.ToUInt32(table[..4]);
         var rowSize = ipv6 ? Ipv6RowSize : Ipv4RowSize;
@@ -160,7 +165,7 @@ internal static class ListeningPorts
             var address = new IPAddress(row.Slice(addrAt, addrLength));
             if (!ReachableOnLoopback(address)) continue;
             var port = (row[portAt] << 8) | row[portAt + 1];
-            if (port is > 0 and <= 65535) ports.Add((BitConverter.ToInt32(row[pidAt..]), new Listener(LoopbackFor(address), port)));
+            if (port is > 0 and <= 65535) ports.Add((BitConverter.ToInt32(row[pidAt..]), Plain(address), port));
         }
         return ports;
     }
