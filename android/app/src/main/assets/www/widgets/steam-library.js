@@ -93,8 +93,9 @@ W['steam-library'] = {
   needs: ['tick'],
   create(box, { o, page, w }) {
     const canLaunch = o.allowLaunch === true; // this widget's own option; the agent checks it again for this widget
-    // the games found outside Steam start a program on the computer, not Steam: an option of their own, off by default
-    const canLaunchOthers = o.allowLaunchOthers === true;
+    // the games found outside Steam start a program on the computer, not Steam: an option of their own, off by default,
+    // on top of the Steam one (with "Let the phone start games" off, no game starts)
+    const canLaunchOthers = canLaunch && o.allowLaunchOthers === true;
     const isFound = (g) => String(g.id).startsWith('x:');
     const wq = 'widget=' + encodeURIComponent(`${page.id}/${w.id}`);
     const confirm = o.confirm !== false;
@@ -147,7 +148,7 @@ W['steam-library'] = {
         b.append(bar);
       }
       b.addEventListener('click', () => {
-        if (isFound(g) ? !canLaunchOthers : !canLaunch) { toast(t(isFound(g) ? 'w.steamlib.launchOthersOff' : 'w.steamlib.launchOff')); return; }
+        if (isFound(g) ? !canLaunchOthers : !canLaunch) { toast(t(canLaunch ? 'w.steamlib.launchOthersOff' : 'w.steamlib.launchOff')); return; }
         if (running) { toast(t('w.steamlib.alreadyRunning', { game: g.name })); return; }
         if (!confirm || armed === g.id) { clearTimeout(armTimer); armed = null; launch(g); return; }
         haptic();
@@ -170,7 +171,7 @@ W['steam-library'] = {
       lastKey = key;
       const n = steam.length + own.length;
       count.textContent = n ? ' ' + n : ''; // how many are installed
-      box.classList.toggle('sl-can-launch', canLaunch || canLaunchOthers);
+      box.classList.toggle('sl-can-launch', canLaunch);
       if (!own.length && !others.length) {
         if (!data) { message(t(failed ? 'w.unavailable' : 'w.loading')); return; }
         if (!data.enabled) { message(t('w.steamlib.off')); return; }

@@ -159,8 +159,9 @@ handing Steam's own `steam://rungameid/<id>` link to the system (Windows' URL ha
 macOS). Steam may still ask on the computer before a game starts, for example to install an update first. Your own games
 (the **Other games** shortcuts) run their shortcut, like its key would, under the same option.
 
-The games found outside Steam have an option of their own, also off by default: **Let the phone start the games found
-outside Steam**, because it starts a program the agent picked, not Steam. With it on, the phone sends only the game's id
+The games found outside Steam need, on top of **Let the phone start games**, an option of their own, also off by default:
+**Let the phone start the games found outside Steam**, because it starts a program the agent picked, not Steam. With
+**Let the phone start games** off, no game starts from the phone. With both on, the phone sends only the game's id
 (`x:` and a hash of its folder); the agent starts the game only if that id is in the list it found, either by the
 launcher's own link (Epic Games Launcher, Ubisoft Connect), or by the game's program in its folder, with no arguments
 and only when it is still an existing `.exe` inside that folder. Nothing from the request reaches the command.

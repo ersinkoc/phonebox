@@ -259,7 +259,7 @@ test('pickGames puts your own games between the favorites and the rest', async (
 
 test('games found on this computer outside Steam come after the Steam ones and start by their id', async ({ page }) => {
   const errors = watch(page);
-  await open(page, '/panel/', { limit: 60, allowLaunchOthers: true, confirm: false });
+  await open(page, '/panel/', { limit: 60, allowLaunch: true, allowLaunchOthers: true, confirm: false });
   const tiles = page.locator('.w-steam-library .sl-tile');
   await expect(tiles).toHaveCount(12);
   await expect(tiles.locator('.sl-name').nth(10)).toHaveText('Ember Road');
@@ -267,7 +267,12 @@ test('games found on this computer outside Steam come after the Steam ones and s
   await expect(page.locator('.w-steam-library .sl-count')).toHaveText(' 12');
   await tiles.nth(11).click();
   await expect(toast(page, 'Starting Old Fort')).toBeVisible();
-  // their own option does not start the Steam games
+
+  // their own option alone starts nothing: with "Let the phone start games" off the library is only shown
+  await open(page, '/panel/', { limit: 60, allowLaunchOthers: true, confirm: false });
+  await expect(tiles).toHaveCount(12);
+  await tiles.nth(11).click();
+  await expect(toast(page, 'Let the phone start games')).toBeVisible();
   await tiles.nth(1).click();
   await expect(toast(page, 'Let the phone start games')).toBeVisible();
 
@@ -278,7 +283,7 @@ test('games found on this computer outside Steam come after the Steam ones and s
   expect(errors).toEqual([]);
 });
 
-test('starting the games found outside Steam is an option of its own, apart from the Steam one', async ({ page }) => {
+test('starting the games found outside Steam is an option of its own, on top of the Steam one', async ({ page }) => {
   const errors = watch(page);
   await open(page, '/panel/', { limit: 60, allowLaunch: true, confirm: false });
   await page.evaluate(() => {
@@ -303,9 +308,12 @@ test('starting the games found outside Steam is an option of its own, apart from
     return { status: res.status, code: (await res.json()).code };
   }, id);
   expect(await launch('x:1b2c3d4e5f607182')).toEqual({ status: 400, code: 'othersoff' });
+  // and needs the Steam option too
   await open(page, '/panel/', { allowLaunchOthers: true });
-  expect(await launch('x:1b2c3d4e5f607182')).toEqual({ status: 200, code: undefined });
+  expect(await launch('x:1b2c3d4e5f607182')).toEqual({ status: 400, code: 'off' });
   expect(await launch('900020')).toEqual({ status: 400, code: 'off' });
+  await open(page, '/panel/', { allowLaunch: true, allowLaunchOthers: true });
+  expect(await launch('x:1b2c3d4e5f607182')).toEqual({ status: 200, code: undefined });
   expect(await launch('x:ffffffffffffffff')).toEqual({ status: 400, code: 'notinstalled' });
   expect(errors).toEqual([]);
 });

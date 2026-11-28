@@ -828,9 +828,9 @@
     }
     if (path === '/api/steam/launch' && method === 'POST') {
       // the asking widget's own option, like the agent (PanelWidgets.Find): another widget's does not count; a game
-      // found outside Steam has an option of its own
+      // found outside Steam needs an option of its own on top of the Steam one
       const options = panelWidget(await config(), q.get('widget'), 'steam-library')?.options;
-      if (String(q.get('id')).startsWith('x:')) {
+      if (String(q.get('id')).startsWith('x:') && options?.allowLaunch === true) {
         if (options?.allowLaunchOthers !== true) {
           return json({ error: 'Turn on "Let the phone start the games found outside Steam" in this Game library widget\'s settings', code: 'othersoff' }, 400);
         }

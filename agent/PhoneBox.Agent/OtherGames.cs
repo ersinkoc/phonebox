@@ -22,8 +22,8 @@ public sealed record OtherGame(string Id, string Name, string Source, bool Cover
 /// only games carry (<see cref="LooksLikeAGame"/>). A game's program is chosen from its folder (<see cref="PickExe"/>);
 /// installers, uninstallers, crash reporters and redistributables are never chosen. Nothing is read while no library
 /// widget is on an enabled page. Windows only: on macOS and Linux nothing is found.
-/// Starting one from the phone is a widget option of its own ("allowLaunchOthers", off by default), apart from the Steam
-/// one: it runs a program this scan picked, not only Steam's URL handler.
+/// Starting one from the phone needs a widget option of its own ("allowLaunchOthers", off by default) on top of the
+/// Steam one ("allowLaunch"): it runs a program this scan picked, not only Steam's URL handler.
 /// </summary>
 public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
 {
@@ -70,13 +70,17 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     private bool Wanted() => config.Get().Widgets(enabledPagesOnly: true).Any(w => w.Type == "steam-library");
 
     /// <summary>
-    /// The asking widget may start the games found outside Steam: its own "allowLaunchOthers" option, off by default and
-    /// apart from the Steam one ("allowLaunch"), on a Game library widget of an enabled page this phone shows (see
-    /// SteamLibrary.LaunchAllowed).
+    /// Why the asking widget may not start the games found outside Steam, or null when it may: both its "Let the phone
+    /// start games" ("allowLaunch": with it off the library is only shown, for every game) and its own
+    /// "allowLaunchOthers" must be on (both off by default), on a Game library widget of an enabled page this phone
+    /// shows (see SteamLibrary.LaunchAllowed).
     /// </summary>
-    public bool LaunchAllowed(string? deviceId, string? widget) =>
-        PanelWidgets.Find(config.Get(), deviceId, widget, "steam-library") is { } w && w.Bool("allowLaunchOthers") == true;
+    internal SteamLibrary.LaunchError? LaunchRefused(string? deviceId, string? widget) =>
+        PanelWidgets.Find(config.Get(), deviceId, widget, "steam-library") is not { } w || w.Bool("allowLaunch") != true ? StartingOff
+        : w.Bool("allowLaunchOthers") != true ? LaunchOff : null;
 
+    internal static readonly SteamLibrary.LaunchError StartingOff =
+        new("off", "Turn on \"Let the phone start games\" in this Game library widget's settings");
     internal static readonly SteamLibrary.LaunchError LaunchOff =
         new("othersoff", "Turn on \"Let the phone start the games found outside Steam\" in this Game library widget's settings");
 
@@ -617,17 +621,18 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     }
 
     /// <summary>
-    /// Starts a found game for the asking <paramref name="widget"/> when its "Let the phone start the games found outside
-    /// Steam" is on (<see cref="LaunchAllowed"/>): by its launcher's address, or its program in its folder. Only a game of
-    /// the list found here can start, by its id, so no text from the request is run or passed on.
+    /// Starts a found game for the asking <paramref name="widget"/> when both its "Let the phone start games" and its "Let
+    /// the phone start the games found outside Steam" are on (<see cref="LaunchRefused"/>): by its launcher's address, or
+    /// its program in its folder. Only a game of the list found here can start, by its id, so no text from the request is
+    /// run or passed on.
     /// </summary>
     public SteamLibrary.LaunchError? Launch(string? deviceId, string? widget, string? id)
     {
-        if (!LaunchAllowed(deviceId, widget)) return LaunchOff;
+        if (LaunchRefused(deviceId, widget) is { } off) return off;
         if (id is null || !id.StartsWith("x:", StringComparison.Ordinal)) return new("notinstalled", "That game is not installed");
         var g = Games().FirstOrDefault(x => x.Id == id);
-        // the option can be turned off while this waited for the first look: decide with the settings of now
-        if (!LaunchAllowed(deviceId, widget)) return LaunchOff;
+        // an option can be turned off while this waited for the first look: decide with the settings of now
+        if (LaunchRefused(deviceId, widget) is { } now) return now;
         if (g is null) return new("notinstalled", "That game is not installed");
         // a launcher's address goes to its URL handler; a path only when it is still a program (the list is up to ten
         // minutes old, and a launcher's record could name any file) that no other account could have put there (see

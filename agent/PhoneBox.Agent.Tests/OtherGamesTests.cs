@@ -435,25 +435,40 @@ public class OtherGamesTests : IDisposable
         return new(OtherGames.IdOf("drive", dir), name, "drive", dir, exe, null);
     }
 
+    // both options: "Let the phone start games" and "Let the phone start the games found outside Steam"
+    private const string BothOn = """{"allowLaunch":true,"allowLaunchOthers":true}""";
+
     [Fact]
     public void StartingAGameFoundOutsideSteamIsItsOwnOptionOffByDefault()
     {
         var game = Program("Old Fort");
         // the Steam option alone does not let the phone start a program found here
-        foreach (var options in new[] { "{}", """{"allowLaunch":true}""", """{"allowLaunchOthers":false}""" })
+        foreach (var options in new[] { """{"allowLaunch":true}""", """{"allowLaunch":true,"allowLaunchOthers":false}""" })
             Assert.Equal("othersoff", Games(Config(options), game).Launch(null, "p/w", game.Id)?.Code);
         // nor the option of another widget, or none named
-        var on = Games(Config("""{"allowLaunchOthers":true}"""), game);
-        Assert.Equal("othersoff", on.Launch(null, "p/other", game.Id)?.Code);
-        Assert.Equal("othersoff", on.Launch(null, null, game.Id)?.Code);
+        var on = Games(Config(BothOn), game);
+        Assert.Equal("off", on.Launch(null, "p/other", game.Id)?.Code);
+        Assert.Equal("off", on.Launch(null, null, game.Id)?.Code);
         Assert.Empty(_started);
+    }
+
+    [Fact]
+    public void WithStartingGamesOffNoGameFoundOutsideSteamStarts()
+    {
+        // "Let the phone start games" off: the library is only shown, whatever the option for the games found here says
+        var game = Program("Old Fort");
+        foreach (var options in new[] { "{}", """{"allowLaunchOthers":true}""", """{"allowLaunch":false,"allowLaunchOthers":true}""" })
+            Assert.Equal("off", Games(Config(options), game).Launch(null, "p/w", game.Id)?.Code);
+        Assert.Empty(_started);
+        Assert.Null(Games(Config(BothOn), game).Launch(null, "p/w", game.Id));
+        Assert.Single(_started);
     }
 
     [Fact]
     public void OnlyAGameOfTheListStartsAndOnlyByItsId()
     {
         var game = Program("Old Fort");
-        var on = Games(Config("""{"allowLaunchOthers":true}"""), game);
+        var on = Games(Config(BothOn), game);
         Assert.Equal("notinstalled", on.Launch(null, "p/w", "x:0000000000000000")?.Code);
         Assert.Equal("notinstalled", on.Launch(null, "p/w", game.Exe)?.Code);
         Assert.Equal("notinstalled", on.Launch(null, "p/w", null)?.Code);
@@ -475,7 +490,7 @@ public class OtherGamesTests : IDisposable
             "com.epicgames.launcher://apps/ns%3Aitem%3AEmber?action=launch&silent=true");
         var gone = new OtherGames.Found(OtherGames.IdOf("gog", Path.Combine(_dir, "Gone")), "Gone", "gog", Path.Combine(_dir, "Gone"), Path.Combine(_dir, "Gone", "gone.exe"), null);
         var doc = Program("Doc") with { Exe = MakeExe("Doc/readme.txt", 10) };
-        var on = Games(Config("""{"allowLaunchOthers":true}"""), epic, gone, doc);
+        var on = Games(Config(BothOn), epic, gone, doc);
         Assert.Null(on.Launch(null, "p/w", epic.Id));
         Assert.Equal(epic.Url, Assert.Single(_started).FileName);
         Assert.Equal("notinstalled", on.Launch(null, "p/w", gone.Id)?.Code);
@@ -487,7 +502,7 @@ public class OtherGamesTests : IDisposable
     public async Task TurningStartingOffWhileTheFirstLookRunsStopsTheStart()
     {
         var game = Program("Old Fort");
-        var config = Config("""{"allowLaunchOthers":true}""");
+        var config = Config(BothOn);
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
         var others = new OtherGames(config, NullLogger<OtherGames>.Instance)
@@ -497,7 +512,7 @@ public class OtherGamesTests : IDisposable
         };
         var start = Task.Run(() => others.Launch(null, "p/w", game.Id));
         Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
-        Assert.Null(config.Save("""{"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{"id":"w","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":{"allowLaunchOthers":false}}]}]}"""));
+        Assert.Null(config.Save("""{"pages":[{"id":"p","title":"P","enabled":true,"widgets":[{"id":"w","type":"steam-library","x":0,"y":0,"w":6,"h":4,"options":{"allowLaunch":true,"allowLaunchOthers":false}}]}]}"""));
         release.Set();
         Assert.Equal("othersoff", (await start.WaitAsync(TimeSpan.FromSeconds(10)))?.Code);
         Assert.Empty(_started);
@@ -639,7 +654,7 @@ public class OtherGamesTests : IDisposable
     {
         var game = Program("Old Fort");
         Assert.Null(OtherGames.Unsafe(game.Dir, game.Exe!));
-        Assert.Null(Games(Config("""{"allowLaunchOthers":true}"""), game).Launch(null, "p/w", game.Id));
+        Assert.Null(Games(Config(BothOn), game).Launch(null, "p/w", game.Id));
         Assert.Equal(Path.GetFullPath(game.Exe!), Assert.Single(_started).FileName);
     }
 
@@ -658,7 +673,7 @@ public class OtherGamesTests : IDisposable
             var at = new OtherGames.Found(OtherGames.IdOf("gog", link), "Far 2", "gog", link, Path.Combine(link, "Far", "far.exe"), null);
             Assert.Equal("is reached through a link", OtherGames.Unsafe(at.Dir, at.Exe!));
             if (OperatingSystem.IsWindows()) Assert.Equal("is reached through a link", OtherGames.Unsafe(below.Dir, below.Exe!));
-            var config = Config("""{"allowLaunchOthers":true}""");
+            var config = Config(BothOn);
             Assert.Equal("unsafe", Games(config, at).Launch(null, "p/w", at.Id)?.Code);
             if (OperatingSystem.IsWindows()) Assert.Equal("unsafe", Games(config, below).Launch(null, "p/w", below.Id)?.Code);
             Assert.Empty(_started);
@@ -692,7 +707,7 @@ public class OtherGamesTests : IDisposable
         Assert.Equal("can be changed by other accounts", OtherGames.Unsafe(game.Dir, game.Exe!));
         Assert.Equal("can be changed by other accounts", OtherGames.Unsafe(sub.Dir, sub.Exe!)); // a program further down, by inheritance
         Assert.Equal("can be changed by other accounts", OtherGames.Unsafe(other.Dir, other.Exe!));
-        var on = Games(Config("""{"allowLaunchOthers":true}"""), game, other);
+        var on = Games(Config(BothOn), game, other);
         Assert.Equal("unsafe", on.Launch(null, "p/w", game.Id)?.Code);
         Assert.Equal("unsafe", on.Launch(null, "p/w", other.Id)?.Code);
         Assert.Empty(_started);
@@ -760,7 +775,7 @@ public class OtherGamesTests : IDisposable
             System.Security.AccessControl.PropagationFlags.None, System.Security.AccessControl.AccessControlType.Allow));
         dir.SetAccessControl(acl);
         Assert.Equal("can be changed by other accounts", OtherGames.Unsafe(game.Dir, game.Exe!));
-        Assert.Equal("unsafe", Games(Config("""{"allowLaunchOthers":true}"""), game).Launch(null, "p/w", game.Id)?.Code);
+        Assert.Equal("unsafe", Games(Config(BothOn), game).Launch(null, "p/w", game.Id)?.Code);
         Assert.Empty(_started);
     }
 }

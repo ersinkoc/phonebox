@@ -848,7 +848,7 @@ app.MapGet("/api/steam/cover", (string? id, SteamLibrary library, OtherGames oth
 // Starts an installed game through Steam (steam://rungameid/<id>) for the asking widget ("widget=pageId/widgetId"),
 // only with that widget's "Let the phone start games" on (off by default), like the App console and Dictation.
 // A game found outside Steam ("x:…") starts by its launcher or its program, only with that widget's own "Let the phone
-// start the games found outside Steam" on (off by default, apart from the Steam option); OtherGames.Launch checks it.
+// start the games found outside Steam" on as well (off by default, on top of the Steam option); OtherGames.Launch checks both.
 app.MapPost("/api/steam/launch", (string? id, string? widget, HttpRequest req, SteamLibrary library, OtherGames others) =>
     (id?.StartsWith("x:", StringComparison.Ordinal) == true
         ? others.Launch(req.Headers["X-PhoneBox-Device"].ToString(), widget, id)
