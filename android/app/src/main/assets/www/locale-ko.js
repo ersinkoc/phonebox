@@ -1153,6 +1153,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "불러오는 중…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "MQTT 연결 상태와 마지막 메시지 시간, 그리고 구독이 푸시 값에 넣은 값을 보여 줍니다. 브로커와 구독은 설정 › 일반 › MQTT에서 설정합니다.",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "표시할 푸시 값의 키, 쉼표로 구분 (MQTT 구독의 키)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "로컬 LLM 라우터: 로드된 모델, 진행 중인 요청, 오늘의 요청 및 토큰 수, 생성 속도. 서버 주소는 설정 › 일반 › llama-swap에서 설정합니다.",
       "Only this category (its category in Settings; empty = all)": "이 분류만 (설정의 분류, 비우면 전체)",
@@ -1901,6 +1904,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 재생목록 (선택 안 함 = 전체)"
     },
     "panel": {
+      "Last message": "마지막 메시지",
+      "Turn on MQTT in Settings › General › MQTT.": "설정 › 일반 › MQTT에서 MQTT를 켜세요.",
       "In flight": "진행 중",
       "Today": "오늘",
       "Speed": "속도",

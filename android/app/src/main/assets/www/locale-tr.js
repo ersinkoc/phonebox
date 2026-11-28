@@ -516,6 +516,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Yükleniyor…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "MQTT bağlantısının durumu ve son iletinin zamanı, aboneliklerinizin itilmiş değerlere koyduğu değerlerle birlikte. Broker ve abonelikler Ayarlar › Genel › MQTT altında ayarlanır.",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "Gösterilecek itilmiş değerlerin anahtarları, virgülle ayrılmış (MQTT aboneliklerinizin anahtarları)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Yerel LLM yönlendiricisi: yüklü modeller, devam eden istekler, bugünün istekleri ve tokenları ve üretim hızı. Sunucu adresi Ayarlar › Genel › llama-swap içinde ayarlanır.",
       "Only this category (its category in Settings; empty = all)": "Yalnızca bu kategori (Ayarlar'daki kategorisi; boş = tümü)",
@@ -1249,6 +1252,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex çalma listeleri (hiçbiri işaretli değil = hepsi)"
     },
     "panel": {
+      "Last message": "Son ileti",
+      "Turn on MQTT in Settings › General › MQTT.": "MQTT'yi Ayarlar › Genel › MQTT altında açın.",
       "In flight": "Devam eden",
       "Today": "Bugün",
       "Speed": "Hız",

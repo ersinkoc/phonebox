@@ -196,12 +196,19 @@ public sealed class MqttTests : IDisposable
     }
 
     [Fact]
-    public void TheStatusAndTheWifiAllowListLeaveItOut()
+    public void OnlyTheStatusIsOnTheWifiAllowList()
     {
-        Assert.False(Lan.AllowedOverLan("/api/mqtt/status"));
+        // the MQTT widget reads the status over Wi-Fi; the test (which takes broker settings) and anything else stay local
+        Assert.True(Lan.AllowedOverLan("/api/mqtt/status"));
+        Assert.False(Lan.AllowedOverLan("/api/mqtt/status/more"));
         Assert.False(Lan.AllowedOverLan("/api/mqtt/test"));
         Assert.False(Lan.AllowedOverLan("/api/mqtt"));
         Assert.False(Lan.IsWebhook("/api/mqtt/status"));
+        // with the phone's key only: a webhook key does not open it
+        var lan = new LanConfig { Enabled = true, Token = "phone-key", WebhookToken = "hook-key" };
+        Assert.Equal(Lan.LanAccess.Phone, Lan.AuthorizeRequest(lan, "GET", "/api/mqtt/status", "", "Bearer phone-key", null));
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(lan, "GET", "/api/mqtt/status", "", "Bearer hook-key", null));
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(lan, "GET", "/api/mqtt/status", "", null, null));
         var status = JsonSerializer.Serialize(new MqttStatus("error", 1700000000000, "auth"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
         Assert.Equal("""{"state":"error","lastMessageAt":1700000000000,"errorKind":"auth"}""", status);
         Assert.Equal(["ErrorKind", "LastMessageAt", "State"], typeof(MqttStatus).GetProperties().Select(p => p.Name).Order().ToArray());

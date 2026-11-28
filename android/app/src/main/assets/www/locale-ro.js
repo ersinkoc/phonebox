@@ -1148,6 +1148,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Se încarcă…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "Starea conexiunii MQTT și ora ultimului său mesaj, cu valorile pe care abonamentele tale le pun în valori trimise. Brokerul și abonamentele se setează în Setări › General › MQTT.",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "Cheile valorilor trimise de afișat, separate prin virgule (cheile abonamentelor tale MQTT)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Routerul LLM local: modelele încărcate, cererile în curs, cererile și tokenii de astăzi și viteza de generare. Adresa serverului se setează în Setări › General › llama-swap.",
       "1": "1",
@@ -1896,6 +1899,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Playlisturi Plex (niciunul bifat = toate)"
     },
     "panel": {
+      "Last message": "Ultimul mesaj",
+      "Turn on MQTT in Settings › General › MQTT.": "Activează MQTT în Setări › General › MQTT.",
       "In flight": "În curs",
       "Today": "Astăzi",
       "Speed": "Viteză",

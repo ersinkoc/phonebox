@@ -1153,6 +1153,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "読み込み中…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "MQTT 接続の状態と最後のメッセージの時刻、そして購読がプッシュ値に入れた値を表示します。ブローカーと購読は「設定 › 一般 › MQTT」で設定します。",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "表示するプッシュ値のキー (カンマ区切り、MQTT 購読のキー)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "ローカル LLM ルーター: ロード済みのモデル、実行中のリクエスト、本日のリクエスト数とトークン数、生成速度。サーバーアドレスは「設定 › 全般 › llama-swap」で設定します。",
       "Only this category (its category in Settings; empty = all)": "このカテゴリのみ（設定でのカテゴリ。空欄 = すべて）",
@@ -1901,6 +1904,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex プレイリスト（未選択 = すべて）"
     },
     "panel": {
+      "Last message": "最後のメッセージ",
+      "Turn on MQTT in Settings › General › MQTT.": "「設定 › 一般 › MQTT」で MQTT をオンにしてください。",
       "In flight": "進行中",
       "Today": "今日",
       "Speed": "速度",
