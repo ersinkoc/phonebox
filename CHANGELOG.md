@@ -97,6 +97,17 @@
   skill, question), so a shell, an edit, PowerShell, OpenCode's `execute` and subagents, every MCP tool and any tool
   added later ask twice. Prompts that used to allow on the first tap may now ask twice (#702,
   [elong365](https://github.com/elong365)).
+- Durations of an hour or more show the hours (`1:30:00`, not `90:00`) on the Pomodoro and timer dials, the media
+  position, the meeting timer and OBS's recording and stream times (#763, [ryoaonetsuki](https://github.com/ryoaonetsuki)).
+- Home Assistant: a second tap on a tile while its toggle is still running is ignored, so a double tap no longer
+  switches a light on and straight back off; other tiles still react at once (#764,
+  [ryoaonetsuki](https://github.com/ryoaonetsuki)).
+- macOS: a discrete GPU (an AMD card in an Intel Mac, or an eGPU) shows its own memory, temperature and power, each
+  card with its own numbers; Apple silicon starts no extra `ioreg` for it (#724,
+  [haquanghuy2908](https://github.com/haquanghuy2908)).
+- iOS: the companion app runs on iOS 15, and the panel works in Safari 15 and in older Android WebViews that lack
+  newer CSS (keys keep their look, and media art no longer collapses) (#723,
+  [haquanghuy2908](https://github.com/haquanghuy2908)).
 
 ## 0.9.32 — 2026-11-27
 
