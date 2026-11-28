@@ -123,7 +123,17 @@ and mute, and switching the default output and microphone, so the application mi
 volume, balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection widgets work.
 Linux has one default device per direction, so all three Windows roles follow it. Monitor sources and streams a
 module made (the loopbacks of a virtual mixer, a combine sink) are left out; virtual sinks (`module-null-sink`)
-are listed as outputs. Level meters show no signal on Linux yet. On macOS, on Linux without `pactl`, and on Linux
+are listed as outputs. Level meters on Linux use `parec` (same package as `pactl`): while an enabled page holds a widget that draws meters
+(application mixer, application volume, device volume, channel balance, audio levels) and the phone's deck widgets ask
+for levels (the desktop settings page never does), one `parec` per output (the source listed as its monitor) and per
+playing application stream (`--monitor-stream`; a paused one gets 0) reads 8 kHz audio and keeps only the loudest
+sample of the last second, the same linear 0–1 peak Windows reports. They stop about ten seconds after the phone stops
+asking, at once when their output or stream goes away, and at most 32 run; a capture that ends at once is not retried
+for five seconds. Microphones are never read: an output without a listed monitor gets no meter, and the captures carry
+`node.dont-reconnect`, so PipeWire leaves them unlinked rather than moving them to the microphone when their output or
+application goes away. KDE Plasma still lists any monitor capture as "using the microphone" in its tray (as it does for
+other mixers' meters), so the indicator shows PhoneBox while the meters run. Ducking, which waits for signal on a
+microphone, does not start on Linux. On macOS, on Linux without `pactl`, and on Linux
 where `pactl` has not yet reached a sound server (PipeWire without pipewire-pulse), master volume/media controls
 remain available. Once `pactl` has answered, a sound server that stops answering shows the audio widgets as
 unavailable. On Linux/macOS soundboard/radio

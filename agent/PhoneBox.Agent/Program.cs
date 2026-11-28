@@ -172,7 +172,9 @@ Shortcuts.OnLocked = cfgNow =>
     }
 };
 
-app.MapGet("/api/controls/state", async (ControlDeck deck, CancellationToken ct) => Results.Json(await deck.Snapshot(ct)));
+// ?levels=1 comes only from the phone's deck widgets: the settings page also reads this state, and must start no meter
+app.MapGet("/api/controls/state", async (bool? levels, ControlDeck deck, CancellationToken ct) =>
+    Results.Json(await deck.Snapshot(ct, levels == true)));
 app.MapPost("/api/controls/command/{kind}", async (string kind, string? id, string? op, int? value, bool? muted,
     string? lease, ControlDeck deck, CancellationToken ct) => Results.Json(await deck.Act(kind, id, op, value, muted, lease, ct)));
 app.MapGet("/api/controls/listen", async (HttpResponse response, ControlDeck deck, CancellationToken ct) => await deck.Listen(response, ct));

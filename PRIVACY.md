@@ -185,6 +185,12 @@ Last updated: 2026-11-26 (PhoneBox 0.9.30).
   entries at least two minutes old. Notification contents stay out of the phone's log and storage. If you enable
   `PhoneBoxBridge` debug logging with adb, the phone can log app package names and call flags, including for skipped calls.
   Until you turn the switch on, the app does not even appear in Android's Notification access list.
+- **Sound levels for the Control Deck** (Linux): while a phone shows a Control Deck widget with level meters, the
+  agent reads what each output and each playing application plays with `parec` (8 kHz), keeps only the loudest sample
+  of the last second in memory, and sends that one number per output and application to the phone. Audio is never
+  stored, logged or sent. Microphones are not read, though a virtual output can carry a microphone routed into it.
+  Capture stops about ten seconds after the phone stops asking. KDE Plasma's tray shows these captures as "using the
+  microphone".
 - **Sound for the Spectrum bars widget** (Windows): while an enabled page with the widget is on the phone's screen,
   the agent captures what the default output device plays, analyzes it in memory and sends only 48 loudness levels
   per frame to the phone. Audio is never stored or sent; capture stops a few seconds after the widget leaves the

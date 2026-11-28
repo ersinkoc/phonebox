@@ -204,6 +204,11 @@ internal sealed class PortableDeckNative(
     public void Midi(int port, string message, int value) => throw new NotSupportedException("Native MIDI requires Windows");
     public async IAsyncEnumerable<DeckAudioPacket> Listen([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     { await Task.CompletedTask; yield break; }
-    public void Dispose() => StopSound(null);
+    public void WantLevels() => pulse?.WantLevels();
+    public void Dispose()
+    {
+        StopSound(null);
+        pulse?.Dispose();
+    }
 }
 #endif

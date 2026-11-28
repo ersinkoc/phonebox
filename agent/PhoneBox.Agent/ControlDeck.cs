@@ -86,8 +86,19 @@ public sealed partial class ControlDeck : BackgroundService
             return _audio = _native.Audio();
         }
     }
-    private DeckAudio AudioForPhone()
+    /// <summary>The deck widgets that draw level meters. The Microphone widget is left out: Linux meters no microphone,
+    /// so it would only start output meters nobody sees.</summary>
+    private static readonly HashSet<string> MeterWidgets =
+        new(["audio-mixer", "app-volume", "device-volume", "audio-balance", "audio-meter"], StringComparer.Ordinal);
+
+    /// <summary>Whether an enabled page holds a widget with a level meter: only then may the phone's state request start
+    /// on-demand meters (parec on Linux).</summary>
+    internal static bool MetersShown(AgentConfig config) =>
+        config.Widgets(enabledPagesOnly: true).Any(w => MeterWidgets.Contains(w.Type));
+
+    private DeckAudio AudioForPhone(bool wantLevels = false)
     {
+        if (wantLevels) _native.WantLevels();
         var audio = Audio();
         if (!audio.Available || audio.Sessions.Count == 0) return audio;
         var defaultOutput = audio.Defaults?.GetValueOrDefault("output:1");
@@ -133,7 +144,9 @@ public sealed partial class ControlDeck : BackgroundService
             if (TryMute(id)) _panicPending.Remove(id);
     }
 
-    public async Task<object> Snapshot(CancellationToken ct)
+    /// <param name="levels">The phone's deck widgets ask for level meters; the desktop settings page reads the same state
+    /// without them, so opening a control's options on the computer starts no on-demand meter (parec on Linux).</param>
+    public async Task<object> Snapshot(CancellationToken ct, bool levels = false)
     {
         RefreshHardware();
         var c = _config.Get();
@@ -144,7 +157,7 @@ public sealed partial class ControlDeck : BackgroundService
         lock (_state) sleep = _sleep.Select(p => (object)new { id = p.Key, at = p.Value }).ToArray();
         return new
         {
-            platform = AppPaths.Os, audio = AudioForPhone(), media, mediaError,
+            platform = AppPaths.Os, audio = AudioForPhone(wantLevels: levels && MetersShown(c)), media, mediaError,
             monitors = _monitors, powerPlans = _plans, midi = _midi, hardwareLoading = _hardwareJob?.IsCompleted == false,
             actions = c.Controls.Actions.Where(a => a.Enabled).Select(Describe).ToArray(),
             shortcuts = c.Shortcuts.Select(DescribeShortcut),

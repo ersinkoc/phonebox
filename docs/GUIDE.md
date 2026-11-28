@@ -29,8 +29,10 @@ matching widgets in Pages. Executable shortcuts and macros are configured in Sho
 only configured IDs. PC audio listening and hold-to-confirm power buttons require separate desktop opt-ins.
 
 The audio device list, microphone controls, per-application volume, balance and switching the default device use
-Windows Core Audio, so for now they work only on Windows; on Linux and macOS the deck controls the system output's
-volume and mute and the media player, and those widgets say "only on Windows for now".
+Windows Core Audio on Windows and `pactl` on Linux (PulseAudio, or PipeWire through pipewire-pulse); on macOS, and on
+Linux without `pactl`, the deck controls the system output's volume and mute and the media player, and those widgets
+say "only on Windows for now". Level meters work on Windows and, with `parec` (from the same package as `pactl`), on
+Linux for outputs and applications.
 
 **Emergency mute** mutes the computer's outputs and microphones. **Mics off, camera off** mutes only the microphones
 and stops the OBS virtual camera; the speakers stay as they are. It needs OBS connected for the camera part, and tells
