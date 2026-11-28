@@ -1514,7 +1514,7 @@ W.ha = {
     // like the agent: a non-empty "items" list is final, even when none of its rows is usable
     if (!listed.length) for (const id of String(o.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.')).slice(0, HA_MAX_ITEMS)) items.push({ id, name: '', icon: '', showName: true, showIcon: true, control: o.control === true });
     const ids = items.map((i) => i.id);
-    let data = null, lastKey = '', busy = null;
+    let data = null, lastKey = '', busy = new Set();
     const grid = h('div', 'ha-grid');
     if (o.title) box.append(h('div', 'w-title', o.title));
     box.append(grid);
@@ -1532,17 +1532,17 @@ W.ha = {
       } catch (_) {}
     };
     const toggle = async (e) => {
-      if (busy === e.id) return; // a second tap while a toggle is in flight would flip the light back
+      if (busy.has(e.id)) return; // a second tap while a toggle is in flight would flip the light back
       haptic();
-      busy = e.id; render(true);
+      busy.add(e.id); render(true);
       try {
         const r = await fetch(`${API}/ha/toggle/${encodeURIComponent(e.id)}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
         if (!r.ok) toast((await r.json().catch(() => ({}))).error || tp('Could not switch it'), 'err');
       } catch (_) { toast(t('panel.pcNoAnswer'), 'err'); }
-      setTimeout(async () => { await load(); busy = null; render(true); }, 700);
+      setTimeout(async () => { await load(); busy.delete(e.id); render(true); }, 700);
     };
     const render = (force = false) => {
-      const key = JSON.stringify([data, busy]);
+      const key = JSON.stringify([data, [...busy]]);
       if (!force && key === lastKey) return;
       lastKey = key;
       if (!ids.length) { grid.replaceChildren(h('div', 'empty', t('w.ha.empty'))); return; }
@@ -1555,7 +1555,7 @@ W.ha = {
         const active = HA_ACTIVE.has(e.state);
         const icon = it.icon || (dom === 'lock' ? (e.state === 'unlocked' ? '🔓' : '🔒') : HA_CLASS_ICONS[e.deviceClass] || HA_ICONS[dom] || '◻️');
         const can = it.control && HA_SWITCHABLE.has(dom) && e.state !== 'unavailable';
-        const tile = h('div', 'ha-tile' + (active ? ' on' : '') + (can ? ' can' : '') + (busy === e.id ? ' busy' : '') + (e.state === 'unavailable' ? ' gone' : ''),
+        const tile = h('div', 'ha-tile' + (active ? ' on' : '') + (can ? ' can' : '') + (busy.has(e.id) ? ' busy' : '') + (e.state === 'unavailable' ? ' gone' : ''),
           ...(it.showIcon ? [h('span', 'ha-ico', rich(icon))] : []), ...(it.showName ? [h('span', 'ha-name', it.name || e.name)] : []), h('b', 'ha-state', haState(e)));
         if (can) tile.addEventListener('click', () => toggle(e));
         return tile;
