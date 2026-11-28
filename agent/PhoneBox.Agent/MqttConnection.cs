@@ -283,7 +283,10 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     /// <summary>What names a broker session: the broker, the way to it, the account and the client id.</summary>
     private static string SessionOf(MqttConfig c)
-        => System.Text.Json.JsonSerializer.Serialize(new { c.Host, c.Port, c.Transport, c.WebSocketPath, c.Tls, c.Username, c.ClientId });
+        => System.Text.Json.JsonSerializer.Serialize(new { c.Host, c.Port, c.Transport, c.WebSocketPath, c.Tls, c.Username, ClientId = ClientIdOf(c) });
+
+    /// <summary>The client id the connection uses: the one set, or one made from this computer's name.</summary>
+    private static string ClientIdOf(MqttConfig cfg) => cfg.ClientId ?? "phonebox-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Environment.MachineName)))[..8].ToLowerInvariant();
 
     /// <summary>Settings › Test connection: connects once with these settings, then disconnects. Its client id differs from the real connection's, so the broker does not drop that one.</summary>
     public static async Task<MqttTestResult> TestAsync(MqttConfig cfg, CancellationToken ct)
@@ -332,7 +335,7 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     internal static MqttClientOptions Options(MqttConfig cfg, string idSuffix, MqttTrust trust)
     {
-        var id = cfg.ClientId ?? "phonebox-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Environment.MachineName)))[..8].ToLowerInvariant();
+        var id = ClientIdOf(cfg);
         var b = new MqttClientOptionsBuilder()
             .WithProtocolVersion(MqttProtocolVersion.V311) // what every broker speaks; MQTT 5 can come later
             .WithClientId(id + idSuffix)
