@@ -3171,9 +3171,19 @@ export async function loadQuotas() {
   try { D.quotas = await api('/quotas'); emit('quotas'); } catch (_) {}
 }
 
+let llamaSwapEpoch = 0;
 export async function loadLlamaSwap() {
-  try { D.llamaswap = await api('/llamaswap'); emit('llamaswap'); }
-  catch (_) { D.llamaswap = { connected: false, error: 'unreachable' }; emit('llamaswap'); }
+  const mine = ++llamaSwapEpoch;
+  try {
+    const d = await api('/llamaswap');
+    if (mine !== llamaSwapEpoch) return; // a newer request already owns the panel state
+    D.llamaswap = d;
+    emit('llamaswap');
+  } catch (_) {
+    if (mine !== llamaSwapEpoch) return; // a stale failure must not erase a newer success
+    D.llamaswap = { connected: false, error: 'unreachable' };
+    emit('llamaswap');
+  }
 }
 
 let workEpoch = 0;
