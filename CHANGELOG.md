@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Linux: the mixer names a stream after its program when the stream carries the name of an audio library instead.
+  Discord's voice showed as "WEBRTC VoiceEngine" and now shows as Discord; an Electron app that reports "Chromium",
+  and a program playing through the ALSA plug-in ("ALSA plug-in [program]"), get their program's name too.
+
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
