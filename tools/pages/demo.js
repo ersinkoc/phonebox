@@ -140,7 +140,10 @@
       pages: (c.pages || []).map((p) => ({ id: p.id, title: p.title, icon: p.icon, enabled: p.enabled !== false, idleSec: p.idleSec ?? null, appearance: p.appearance ?? null,
         // like AgentConfig.ToPublic: the page's photo background options, without the folder (that stays with the agent)
         photoBg: p.photoBg && p.photoBg.enabled ? { enabled: true, dim: p.photoBg.dim ?? 45 } : null,
-        widgets: (p.widgets || []).map((w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, appearance: w.appearance ?? null, options: options(w) })) })),
+        // like AgentConfig.ToPublic: a page's own upright layout, and each widget's place on it
+        upright: p.upright === true ? true : undefined,
+        widgets: (p.widgets || []).map((w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, appearance: w.appearance ?? null,
+          upright: p.upright === true && w.upright ? { ...w.upright } : undefined, options: options(w) })) })),
       // iconRev / iconUpload: the agent sets them when a shortcut has a picture (and when the user uploaded it). The demo
       // has no uploads and serves no /agent/api/shortcuts/icon, so a config that sets them also needs that image mocked
       // (see button-cover.spec.js); without one the key keeps its emoji.
