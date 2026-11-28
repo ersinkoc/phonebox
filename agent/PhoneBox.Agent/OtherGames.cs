@@ -54,6 +54,7 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     private List<Found> _onDrives = [];
     private long _drivesAt = -(1L << 40);
     private long _retryAt = -(1L << 40); // after a look failed: not tried again before this
+    private List<Found> _lastLaunchers = []; // the launchers' games of the last look that could read them
     private long? _firstDeadline; // when the requests made during the first look stop waiting for it
     private int _looks;
 
@@ -127,6 +128,7 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     private void Refresh()
     {
         List<Found>? found = null;
+        var launchersFailed = false;
         try
         {
             // the drives are walked again only once an hour; the launchers' records every time
@@ -137,12 +139,27 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                 drives = Disks().ToList();
                 lock (_gate) { _onDrives = drives; _drivesAt = Clock(); }
             }
-            found = Scan(Launchers(), drives);
+            // A launcher's record that cannot be read keeps that part of the last list (none on a first look); it does not
+            // hold back the games on the drives, and it is read again after RetryMs.
+            List<Found> launchers;
+            try
+            {
+                launchers = Launchers().ToList();
+                lock (_gate) _lastLaunchers = launchers;
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning("could not read the launchers' games: {Msg}", ex.Message);
+                launchersFailed = true;
+                lock (_gate) launchers = _lastLaunchers;
+            }
+            found = Scan(launchers, drives);
         }
         catch (Exception ex) { log.LogWarning("could not look for other games: {Msg}", ex.Message); }
         lock (_gate)
         {
-            if (found is not null) { _found = found; _scannedAt = Clock(); }
+            if (found is not null) _found = found;
+            if (found is not null && !launchersFailed) _scannedAt = Clock();
             else _retryAt = Clock() + RetryMs;
             _scanning = null;
             _looks++;

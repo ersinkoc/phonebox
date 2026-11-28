@@ -778,6 +778,29 @@ public class OtherGamesTests : IDisposable
     }
 
     [Fact]
+    public void ALauncherRecordThatCannotBeReadDoesNotHideTheGamesOnTheDrives()
+    {
+        var onDrive = new OtherGames.Found("x:drive1", "Wild Lands", "drive", @"D:\Games\Wild Lands", @"D:\Games\Wild Lands\wild.exe", null);
+        var now = 1_000_000L;
+        int launchers = 0;
+        var others = new OtherGames(Config("{}"), NullLogger<OtherGames>.Instance)
+        {
+            Clock = () => Interlocked.Read(ref now),
+            Launchers = () => { Interlocked.Increment(ref launchers); throw new UnauthorizedAccessException("a key that is never readable"); },
+            Disks = () => [onDrive],
+        };
+        others.List();
+        Assert.True(SpinWait.SpinUntil(() => others.Looks == 1, TimeSpan.FromSeconds(10)));
+        Assert.Equal(["Wild Lands"], others.List().Select(g => g.Name)); // the drives' games are listed all the same
+        Interlocked.Add(ref now, OtherGames.RetryMs - 1);
+        others.List();
+        Assert.Equal(1, Volatile.Read(ref launchers));           // not read again on every request
+        Interlocked.Add(ref now, 2);
+        others.List();
+        Assert.True(SpinWait.SpinUntil(() => others.Looks == 2, TimeSpan.FromSeconds(10))); // but again after the retry time
+    }
+
+    [Fact]
     public void ALinkedFolderIsNotWalked()
     {
         var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
