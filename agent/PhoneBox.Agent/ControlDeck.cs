@@ -63,7 +63,7 @@ public sealed partial class ControlDeck : BackgroundService
 #if WINDOWS
         return new WindowsDeckNative(media, log);
 #else
-        return new PortableDeckNative(audio, media);
+        return new PortableDeckNative(audio, media, pulse: PulseDeckAudio.TryCreate());
 #endif
     }
     internal ControlDeck(ConfigStore config, IDeckNative native, ILogger<ControlDeck> log, Func<long>? now = null, PushStore? push = null, AudioControl? master = null, SpotifyControl? spotify = null, RadioLogoCache? logos = null, PlexControl? plex = null, IVirtualCamera? camera = null)
@@ -74,7 +74,7 @@ public sealed partial class ControlDeck : BackgroundService
         _native = native;
         _logos = logos ?? new RadioLogoCache();
         _native.SoundStopped += OnNativeSoundStopped;
-        _ptt = new(id => _native.Audio().Devices.FirstOrDefault(d => d.Id == id && d.Direction == "input")?.Muted,
+        _ptt = new(id => _native.MicrophoneMuted(id),
             (id, muted) => { try { var ok = _native.Device(id, null, muted); Invalidate(); return ok; } catch { return false; } }, () => Environment.TickCount64);
     }
     private DeckAudio Audio()
