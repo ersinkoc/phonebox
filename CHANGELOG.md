@@ -188,6 +188,10 @@
   their receiver or on their cable, without iCUE (which can keep running). Only read requests are sent, only to devices
   the receiver reports connected on two reads in a row, and a device behind a receiver that stops answering is not
   asked again until it reconnects (#773, #783, [lemarkis](https://github.com/lemarkis)).
+- The agent says why it cannot start when its port is taken by another program (named, on Windows) or reserved by
+  Windows, in a message box on Windows and on stderr and as a notification on Linux and macOS, instead of stopping
+  with the reason buried in the log. Under systemd or launchd it waits for the port and then starts, rather than
+  exiting into a restart loop (#710, #805, [sszxt](https://github.com/sszxt)).
 
 ## 0.9.32 — 2026-11-27
 

@@ -44,6 +44,18 @@ public static class Lan
     /// "in-use" (another program listens on it) or "failed". Checked before the agent starts listening, so a bad Wi-Fi
     /// port turns Wi-Fi off instead of stopping the whole agent, and a taken local port is explained (#710).
     /// </summary>
+    /// <summary>
+    /// The agent runs as a systemd or launchd service, which restarts it on its own: systemd sets INVOCATION_ID for a unit's
+    /// process, and launchd sets XPC_SERVICE_NAME to the job's label (a Terminal shell has "0" there). Never on Windows,
+    /// where the agent starts at sign-in and nothing restarts it.
+    /// </summary>
+    internal static bool RunsUnderSupervisor(Func<string, string?>? env = null)
+    {
+        if (OperatingSystem.IsWindows()) return false;
+        env ??= Environment.GetEnvironmentVariable;
+        return !string.IsNullOrEmpty(env("INVOCATION_ID")) || env("XPC_SERVICE_NAME") is { Length: > 0 } name && name != "0";
+    }
+
     public static string? PortProblem(int port, IPAddress? address = null)
     {
         try

@@ -43,4 +43,16 @@ public sealed class LanPortProblemTests
         again.Start();
         again.Stop();
     }
+
+    [Fact]
+    public void AServiceIsToldFromAStartByHand()
+    {
+        string? None(string _) => null;
+        Assert.False(Lan.RunsUnderSupervisor(None));
+        Assert.False(Lan.RunsUnderSupervisor(k => k == "XPC_SERVICE_NAME" ? "0" : null)); // a Terminal shell on macOS
+        var service = Lan.RunsUnderSupervisor(k => k == "INVOCATION_ID" ? "5f2c" : null);
+        var job = Lan.RunsUnderSupervisor(k => k == "XPC_SERVICE_NAME" ? "net.oxog.phonebox.agent" : null);
+        Assert.Equal(!OperatingSystem.IsWindows(), service);
+        Assert.Equal(!OperatingSystem.IsWindows(), job);
+    }
 }

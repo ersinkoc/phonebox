@@ -173,8 +173,13 @@ if (portProblem is "in-use" or "reserved")
         app.Logger.LogCritical("PhoneBox can't start: port {Port} is used by {Program}. Close that program and start PhoneBox again",
             Port, program ?? "another program");
     Tray.ShowPortProblem(configStore, Port, program, reserved);
-    // a clean exit: systemd (Restart=on-failure) and launchd (SuccessfulExit=false) would restart it into the same port
-    return;
+    // Started by hand: the message says it, and the agent stops. Under systemd or launchd it is meant to come up by itself
+    // once the port is free (a program that holds it for a while at boot): it waits here, checking every five seconds,
+    // instead of exiting into a restart loop that would show the message again each time (or, with a clean exit, of
+    // staying down for good).
+    if (!Lan.RunsUnderSupervisor()) return;
+    while (Lan.PortProblem(Port, IPAddress.Loopback) is "in-use" or "reserved") Thread.Sleep(5000);
+    app.Logger.LogInformation("port {Port} is free again: starting", Port);
 }
 {
     // the phone acts on it through a shortcut command and reads it in /api/state (see PhoneDevices)
