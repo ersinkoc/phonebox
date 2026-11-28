@@ -2,13 +2,6 @@
 
 ## Unreleased
 
-- Linux: the Control Deck's **Application routing** control works with `pactl` (PulseAudio, or PipeWire through
-  pipewire-pulse), with nothing else to install: a tap moves the application's playing streams to the chosen output
-  (`pactl move-sink-input`); its next streams use that output too when the sound server restores stream targets, as
-  WirePlumber and PulseAudio do by default. The
-  application is matched by its name or process name, ignoring case and a `.exe` suffix, so a control set up on Windows
-  works too. An application that plays nothing reports "Not playing". Windows still uses SoundVolumeView.
-
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
@@ -152,6 +145,12 @@
   the counters, the version, the loaded model names, and the id, model and elapsed time of each in-flight request are
   sent to the phone — no prompts, requests, responses, request paths or response sizes (#768,
   [0xTankBuilds](https://github.com/0xTankBuilds)).
+- Linux: the Control Deck's **Application routing** control works with `pactl` (PulseAudio, or PipeWire through
+  pipewire-pulse), with nothing else to install: a tap moves the application's playing streams to the chosen output
+  (`pactl move-sink-input`); its next streams use that output too when the sound server restores stream targets, as
+  WirePlumber and PulseAudio do by default. The application is matched by its name or process name, ignoring case and a
+  `.exe` suffix, so a control set up on Windows works too. An application that plays nothing reports "Not playing".
+  Windows still uses SoundVolumeView (#782, [mikicolmena](https://github.com/mikicolmena)).
 
 ## 0.9.32 — 2026-11-27
 
