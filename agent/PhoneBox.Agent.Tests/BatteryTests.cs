@@ -544,6 +544,17 @@ public class BatteryTests
     }
 
     [Fact]
+    public void QueryCorsairInterface_AnOldReadingDoesNotCountAsTheLastOne()
+    {
+        var receiver = new CorsairReceiver();
+        receiver.Read(CorsairBothAnswering);
+        receiver.Now += BatteryMonitor.CorsairStaleMs + 1; // the widget was closed for a while
+        Assert.Empty(receiver.Read(CorsairBothAnswering)); // one reading is not enough again
+        Assert.Equal(0, receiver.SentTo(0x09));
+        Assert.Equal(2, receiver.Read(CorsairBothAnswering).Count); // the second one in a row is
+    }
+
+    [Fact]
     public void QueryCorsairInterface_ForgetsAMissOnceTheSlotAnswers()
     {
         var receiver = new CorsairReceiver();
@@ -578,7 +589,7 @@ public class BatteryTests
     [Fact]
     public void QueryCorsairInterface_ReadsTwoSlowDevicesWithinItsBudget()
     {
-        var state = new BatteryMonitor.CorsairInterfaceState { Connected = [0x09, 0x0A] };
+        var state = new BatteryMonitor.CorsairInterfaceState { Connected = [0x09, 0x0A], ConnectedAt = 0 };
         var replies = CorsairReplies([], CorsairBothAnswering);
         long now = 0;
 
@@ -648,7 +659,7 @@ public class BatteryTests
     [Fact]
     public void QueryCorsairInterface_DoesAnInterruptedIdentificationAgain()
     {
-        var state = new BatteryMonitor.CorsairInterfaceState { Connected = [0x09, 0x0A] };
+        var state = new BatteryMonitor.CorsairInterfaceState { Connected = [0x09, 0x0A], ConnectedAt = 0 };
         var sent = new List<(byte Target, byte Property)>();
         var replies = CorsairReplies(sent, CorsairBothAnswering);
         long now = 0;

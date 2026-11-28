@@ -429,6 +429,7 @@ public sealed class CursorConfig
 public sealed class BatteriesConfig
 {
     /// <summary>Read the batteries of Corsair devices over their USB receiver or cable (Windows; off by default).</summary>
+    [JsonConverter(typeof(OptInBoolJsonConverter))]
     public bool Corsair { get; set; }
 }
 

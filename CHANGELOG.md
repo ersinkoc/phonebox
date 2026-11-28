@@ -172,6 +172,11 @@
   settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
   `docs/MQTT.md`. With Clean session off, a row removed from the settings is unsubscribed on the next connection to
   the same broker session; another broker or account never hears the old topics.
+- **Corsair batteries** (Windows, off by default: Settings › General › Device batteries): wireless Corsair headsets,
+  mice and keyboards from a known list show in the Device batteries widget with their level and charging state, through
+  their receiver or on their cable, without iCUE (which can keep running). Only read requests are sent, only to devices
+  the receiver reports connected on two reads in a row, and a device behind a receiver that stops answering is not
+  asked again until it reconnects (#773, #783, [lemarkis](https://github.com/lemarkis)).
 
 ## 0.9.32 — 2026-11-27
 

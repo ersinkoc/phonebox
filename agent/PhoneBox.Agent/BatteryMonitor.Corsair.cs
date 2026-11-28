@@ -30,6 +30,10 @@ public sealed partial class BatteryMonitor
     internal const long CorsairReidentifyMs = 60_000;
     // A slot that leaves a request unanswered this many reads in a row is no longer asked.
     internal const int CorsairMaxMisses = 2;
+    // A receiver reading older than this is not "the last read": the widget was closed meanwhile (scans run only while it
+    // is shown), the setting was off, or the receiver was plugged in again. Its slots start over: two reads in a row
+    // before one is asked, and a slot that stopped answering gets its chance again.
+    internal const long CorsairStaleMs = 90_000;
 
     internal static readonly byte[] CorsairSlotTargets = [0x09, 0x0A, 0x0B, 0x0C, 0x0D];
     private const int CorsairSlotBits = 0x3E; // bits 1 to 5 of the connected bit field, one for each slot target
@@ -98,8 +102,9 @@ public sealed partial class BatteryMonitor
     {
         public byte? ReportId { get; set; }
         public long? IdentifiedAt { get; set; }
-        /// <summary>Receiver slots reported connected on the last read.</summary>
+        /// <summary>Receiver slots reported connected on the last read, and when that was.</summary>
         public HashSet<byte> Connected { get; set; } = [];
+        public long? ConnectedAt { get; set; }
         /// <summary>Reads in a row on which a slot left a request unanswered.</summary>
         public Dictionary<byte, int> Misses { get; } = [];
         /// <summary>Product id of the device on each connected receiver slot.</summary>
@@ -200,10 +205,12 @@ public sealed partial class BatteryMonitor
         var found = new List<(int ProductId, int Level, bool Charging)>();
         bool OutOfTime() => deadlineMs is { } deadline && deadline - now() < CorsairReplyTimeoutMs;
         var unanswered = false;
+        var asked = false; // a request went out (a skipped one leaves the slot's count as it was)
         CorsairReply? Ask(byte target, byte property)
         {
             if (OutOfTime()) return null;
             var reply = get(target, property);
+            asked = true;
             unanswered |= reply is null;
             return reply;
         }
@@ -223,8 +230,14 @@ public sealed partial class BatteryMonitor
             state.ProductIds.Remove(gone);
             state.Misses.Remove(gone);
         }
+        if (state.ConnectedAt is not { } seen || now() - seen > CorsairStaleMs)
+        {
+            state.Connected = [];
+            state.Misses.Clear();
+        }
         var settled = connected.Where(state.Connected.Contains).ToArray();
         state.Connected = [.. connected];
+        state.ConnectedAt = now();
 
         var identify = state.IdentifiedAt is not { } last || now() - last >= CorsairReidentifyMs;
         foreach (var target in settled)
@@ -234,6 +247,7 @@ public sealed partial class BatteryMonitor
             if (state.Misses.GetValueOrDefault(target) >= CorsairMaxMisses) continue;
 
             unanswered = false;
+            asked = false;
             if (identify || !state.ProductIds.ContainsKey(target))
             {
                 // An id that cannot be read again is forgotten: another device may be on the slot now.
@@ -245,7 +259,7 @@ public sealed partial class BatteryMonitor
                 var battery = QueryCorsairBattery(target, Ask);
                 if (battery.Level is { } level) found.Add((pid, level, battery.Charging == true));
             }
-            state.Misses[target] = unanswered ? state.Misses.GetValueOrDefault(target) + 1 : 0;
+            if (asked) state.Misses[target] = unanswered ? state.Misses.GetValueOrDefault(target) + 1 : 0;
         }
 
         if (identify) state.IdentifiedAt = now();
