@@ -206,7 +206,7 @@ public class OtherGamesTests : IDisposable
         MakeExe("Projects/fifa-mod/backup/amd_ags_x64.dll", 10);
         MakeExe("Repo/.git/HEAD", 10);
         MakeExe("Repo/bin/app.exe", 9000);
-        MakeExe("Repo/assets/intro.bik", 10);
+        MakeExe("Repo/bin/intro.bik", 10);    // a game's sign next to its program: only the .git folder keeps it out
         // a launcher's own parts; its games folder is looked into
         MakeExe("Ubisoft Game Launcher/shareplay/stream.exe", 9000);
         MakeExe("Ubisoft Game Launcher/shareplay/bink2w64.dll", 10);
