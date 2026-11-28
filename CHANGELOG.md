@@ -137,6 +137,10 @@
   widget changes nothing. Replacing a page's widgets from a template or clearing it drops its upright layout, and a
   page whose widgets have no upright place is packed automatically. Pages without one look as before. Without More
   rows on a tablet, the editor's screen buttons read **Landscape** and **Upright** (#755, #758,
+- The Steam library widget is now the Game library. Shortcuts ticked in its new **Other games** option show as games,
+  and on Windows it also finds the games installed outside Steam: the Epic Games Launcher's, the EA app's, GOG Galaxy's,
+  Ubisoft Connect's and the Rockstar Games Launcher's, and game folders on the drives. Starting those from the phone is
+  an option of its own, **Let the phone start the games found outside Steam**, off by default (#756, #759,
   [WellyngtonSantos](https://github.com/WellyngtonSantos)).
 - llama-swap: a widget for the local [llama-swap](https://github.com/mostlygeek/llama-swap) router — which models are
   currently loaded, the requests in flight (at most three rows, more as `+N`) with how long each has been running,

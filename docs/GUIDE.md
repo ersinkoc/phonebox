@@ -130,9 +130,21 @@ vibrate for them). **Tick while scrolling**, off by default, adds a light tick f
 settings, **Haptic feedback** sets how strong they are (no vibration, light, normal or strong). The vibrations follow the
 display's vibration switch and night mode like the panel's other ones.
 
-**Steam library** shows the Steam games installed on this computer: the favorites you tick in the widget's options
+**Game library** shows the Steam games installed on this computer: the favorites you tick in the widget's options
 first, in the order you ticked them, then the most recently played, with their covers, the game being played and update progress.
-**Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
+A game Steam does not know (one from another launcher, a mod, a game started by its own program) can join them:
+make it a shortcut and tick it in **Other games**; it comes after the favorites, with the picture uploaded for the
+shortcut as its cover, and a tap runs the shortcut. On Windows the widget also finds, on its own, the games installed outside Steam: the ones the Epic
+Games Launcher (its manifests), the EA app, GOG Galaxy, Ubisoft Connect and the Rockstar Games Launcher (their registry keys)
+installed, and the games on the drives that no launcher lists (a portable copy, a mod, an old disc install): the folders at
+the top of each drive, and inside folders such as Games or Program Files, that hold a program and something only games carry
+(a game store's or engine's library such as steam_api.dll or UnityPlayer.dll, Bink videos, a game's archives, a mod loader).
+The launchers' records are read again every ten minutes and the drives are looked through in the background at most once
+an hour, skipping links (junctions, symbolic links) and system folders, and a bounded number of folders per game and per
+drive. A game folder a launcher's record names is read only when it is on a local fixed disk (not a network share, a
+disc or a removable drive) and no junction or symbolic link is on its path from the drive's root down. They come after the Steam games, with their program's icon; the program is the one named most like the folder, never
+an installer, uninstaller or crash reporter. A game one of the widget's **Other games** shortcuts starts is shown once, as
+that shortcut. The list and the icons go only to your phone; nothing is sent anywhere else. **Games shown** sets how many appear (8 by default), and **Show only the favorite games** hides the rest. The agent reads
 Steam's own files, so the widget needs no Steam API key, no sign-in and no internet, and nothing is sent to Steam:
 `libraryfolders.vdf` and the `appmanifest_*.acf` file of each game in every library folder, `localconfig.vdf` for when a
 game was last played, covers from Steam's `appcache/librarycache`, and Steam's `RunningAppID` (the registry on Windows,
@@ -141,11 +153,40 @@ however many phones ask, and parses a file again only after it changed; each fil
 runtimes (Proton, Steamworks Common Redistributables…) are left out.
 
 Starting a game from the phone is off by default: turn on **Let the phone start games** in the widget's options. Each
-Steam library widget decides for itself: the agent checks the option of the widget a tap comes from. With
+Game library widget decides for itself: for a Steam game or a game found outside Steam, the agent checks the option
+of the widget a tap comes from (for your own games, see below). With
 **Ask before starting** (on by default) the first tap marks the game and a second tap within four seconds starts it.
-The phone sends only the game's app id; the agent starts it only if that id is installed right then, by handing
-Steam's own `steam://rungameid/<id>` link to the system (Windows' URL handler, `xdg-open` on Linux, `open` on macOS).
-Steam may still ask on the computer before a game starts, for example to install an update first.
+For a Steam game the phone sends only the game's app id; the agent starts it only if that id is installed right then, by
+handing Steam's own `steam://rungameid/<id>` link to the system (Windows' URL handler, `xdg-open` on Linux, `open` on
+macOS). Steam may still ask on the computer before a game starts, for example to install an update first. Your own games
+(the **Other games** shortcuts) run their shortcut, like its key would: with **Let the phone start games** off the
+widget does not offer to start them, but the agent does not check that option for a shortcut, which is a command you set
+up on the computer yourself and runs from its key as well.
+
+The games found outside Steam need, on top of **Let the phone start games**, an option of their own, also off by default:
+**Let the phone start the games found outside Steam**, because it starts a program the agent picked, not Steam. With
+**Let the phone start games** off, no game starts from the phone. With both on, the phone sends only the game's id
+(`x:` and a hash of its folder); the agent starts the game only if that id is in the list it found, either by the
+launcher's own link (Epic Games Launcher, Ubisoft Connect), or by the game's program in its folder, with no arguments
+and only when it is still an existing `.exe` inside that folder. Nothing from the request reaches the command.
+A program started by its path is checked again right before it starts, so that no account outside your own, SYSTEM,
+Administrators and TrustedInstaller can change it. No junction or symbolic link may be on its path, from the drive's root down to the program.
+On Windows the program and every folder above it, up to the drive's root, must be owned by you, SYSTEM, Administrators
+or TrustedInstaller, and only those four may write, create, delete, change the permissions or take the ownership of
+them (inherited permissions count; a permission that only reaches what is created inside a folder, such as CREATOR
+OWNER's, is judged where it reaches the path). One exception: at a drive's root itself, Windows lets Authenticated
+Users create files and folders (and, on a data drive, modify the root), which cannot move or replace a folder already
+there, so it is accepted at the root and nowhere else. Permissions that cannot be read refuse the start. Games under
+Program Files or in your own user folders pass. A folder you made at the top of a drive usually lets Authenticated
+Users change it (Windows hands that down from the drive), so its games are listed but not started from the phone: the
+phone says the game could not be started, and the agent's log says why. Remove that permission from the folder, or move
+the game to a folder only you and administrators can change. A shortcut of your own (**Other games**) runs its command
+without these folder checks: if another account can change the game's folder or any folder above it, it can replace
+the program (or move the folder away and put another in its place), and the phone then starts that one. So start such a
+game from a shortcut only once it and the folders above it can be changed only by you and administrators, or if you
+accept that risk.
+Games started by a launcher's link skip the program checks, as the launcher starts them; the agent hands over the link
+only while the game's folder is still there, on a local disk with no junction or symbolic link on its way.
 
 **Smart Stack** combines up to 12 widgets in one slot. Add it from the Layout category, then drag widgets into it or
 use its picker. Reorder cards, open their settings, or disable individual cards. Tap the dots or swipe vertically to
