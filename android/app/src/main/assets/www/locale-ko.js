@@ -1864,6 +1864,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "즐겨찾는 게임만 표시",
       "Other games: shortcuts shown as games, after the favorites": "다른 게임: 즐겨찾기 다음에 게임으로 표시되는 바로 가기",
       "Games shown": "표시할 게임 수",
+      "Covers from the Steam store for the games found outside Steam (sends their names to the store)": "Steam 밖에서 찾은 게임에 Steam 상점 표지 사용 (게임 이름을 상점에 보냄)",
       "Let the phone start games (off: the library is only shown)": "휴대폰에서 게임 실행 허용(끄면 라이브러리만 표시)",
       "Let the phone start the games found outside Steam": "Steam 밖에서 찾은 게임을 휴대폰에서 실행 허용",
       "Ask before starting (tap a game twice)": "실행 전에 확인(게임을 두 번 탭)",

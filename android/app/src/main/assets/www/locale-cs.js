@@ -1864,6 +1864,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Show only the favorite games": "Zobrazit jen oblíbené hry",
       "Other games: shortcuts shown as games, after the favorites": "Další hry: zkratky zobrazené jako hry, za oblíbenými",
       "Games shown": "Počet zobrazených her",
+      "Covers from the Steam store for the games found outside Steam (sends their names to the store)": "Obaly z obchodu Steam pro hry nalezené mimo Steam (posílá jejich názvy do obchodu)",
       "Let the phone start games (off: the library is only shown)": "Telefon smí spouštět hry (vypnuto: knihovna se jen zobrazuje)",
       "Let the phone start the games found outside Steam": "Telefon smí spouštět hry nalezené mimo Steam",
       "Ask before starting (tap a game twice)": "Před spuštěním se zeptat (klepnout na hru dvakrát)",
