@@ -3,6 +3,21 @@ using System.Text.Json.Serialization;
 namespace PhoneBox.Agent;
 
 /// <summary>
+/// One subscription: the messages of a topic (wildcards allowed) go into one pushed value under a fixed key, which a
+/// Pushed value widget shows and the rules read. A wildcard never makes keys: every message it matches writes this one.
+/// </summary>
+public sealed class MqttSubscription
+{
+    public string? Topic { get; set; }
+    /// <summary>The push key (the same rule as a webhook's: 1-64 letters, digits, '.', '_' or '-').</summary>
+    public string? Key { get; set; }
+    /// <summary>A field of a JSON message ("temperature", "sensor.temp", "list.0"); empty = the whole message.</summary>
+    public string? Field { get; set; }
+    /// <summary>Stored with a number or a text as {"value", "unit"}; the widget shows it next to the value.</summary>
+    public string? Unit { get; set; }
+}
+
+/// <summary>
 /// The MQTT broker the agent connects to (Settings › General › MQTT). Off by default. The agent holds the connection:
 /// the phone never gets the broker's address, the user name, the password or any topic.
 /// </summary>
@@ -10,6 +25,8 @@ public sealed class MqttConfig
 {
     public const string Tcp = "tcp";
     public const string WebSocket = "websocket";
+    /// <summary>The push store holds 200 keys in all, webhooks included: a subscription list stays well below that.</summary>
+    public const int MaxSubscriptions = 32;
 
     public bool Enabled { get; set; }
     public string? Host { get; set; }
@@ -35,6 +52,8 @@ public sealed class MqttConfig
     public int WillQos { get; set; }
     /// <summary>Off by default: a retained message is delivered again whenever a device connects.</summary>
     public bool WillRetain { get; set; }
+    /// <summary>What the agent subscribes to, and the push key each topic feeds. Empty = nothing is subscribed.</summary>
+    public List<MqttSubscription> Subscriptions { get; set; } = [];
 
     [JsonIgnore] public bool Configured => Enabled && Host is { Length: > 0 };
 
@@ -67,7 +86,42 @@ public sealed class MqttConfig
         c.WillPayload = c.WillTopic is null || string.IsNullOrEmpty(c.WillPayload) ? null : c.WillPayload.Length > 1024 ? c.WillPayload[..1024] : c.WillPayload;
         c.WillQos = Math.Clamp(c.WillQos, 0, 2);
         if (c.WillTopic is null) c.WillRetain = false;
+        c.Subscriptions = NormalizedSubscriptions(c.Subscriptions);
         return c;
+    }
+
+    /// <summary>The usable subscriptions, at most <see cref="MaxSubscriptions"/>: a valid topic filter, a valid key, and each key once.</summary>
+    private static List<MqttSubscription> NormalizedSubscriptions(List<MqttSubscription>? list)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<MqttSubscription>();
+        foreach (var s in list ?? [])
+        {
+            if (result.Count >= MaxSubscriptions) break;
+            var topic = s?.Topic?.Trim();
+            var key = s?.Key?.Trim();
+            if (s is null || topic is null || !ValidFilter(topic) || key is null || !PushStore.ValidKey(key) || !keys.Add(key)) continue;
+            result.Add(new MqttSubscription { Topic = topic, Key = key, Field = Clean(s.Field, 128), Unit = Clean(s.Unit, 16) });
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// A topic filter as MQTT defines it: '+' is a whole level, '#' is the whole last level, nothing else is special.
+    /// A shared subscription ("$share/group/topic") is not supported: the broker delivers the topic without the prefix,
+    /// so such a row would never match.
+    /// </summary>
+    internal static bool ValidFilter(string filter)
+    {
+        if (filter.Length is 0 or > 256 || filter.Any(char.IsControl) || filter.StartsWith("$share/", StringComparison.Ordinal)) return false;
+        var levels = filter.Split('/');
+        for (var i = 0; i < levels.Length; i++)
+        {
+            var level = levels[i];
+            if (level.Contains('#') && (level != "#" || i != levels.Length - 1)) return false;
+            if (level.Contains('+') && level != "+") return false;
+        }
+        return true;
     }
 
     /// <summary>

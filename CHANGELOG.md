@@ -14,7 +14,7 @@
   pinned SHA-256 fingerprint, and there is no switch to skip the check. The password is write-only (the settings
   page never gets it back, and it never reaches the phone, the log or the status), and a retained last will is
   off with a warning. `GET /api/mqtt/status` reports only the state, the time of the last message and a kind of
-  error, and is local only. Nothing is subscribed or published yet; subscriptions, a widget and publish actions
+  error, and is local only. This step only connects; subscriptions (next entry), a widget and publish actions
   follow in separate steps. The agent now includes the MQTTnet client library (#732, #739,
   [t7spotter](https://github.com/t7spotter)).
 - Android: a request that takes the computer several seconds to answer no longer reads as "Computer connection
@@ -158,6 +158,16 @@
 - Memory & disks: the agent reports up to 26 disks (every fixed volume over 2 GB), not only the first six: with a seventh
   drive (a USB disk, for example) the last one no longer disappears from the widget and from `pc.disks`, and a volume
   that goes away while it is read no longer stops the sampling (#785, [ssavickiy](https://github.com/ssavickiy)).
+- **MQTT, second step: subscriptions** (Settings › General › MQTT › Subscriptions, #732, #781,
+  [t7spotter](https://github.com/t7spotter)): each row puts the messages of a topic (`+` and `#` allowed) into one
+  pushed value under a key you choose, with an optional JSON field and unit. A **Pushed value** widget shows it and the
+  rules can use it, as with a webhook's value; nothing else of MQTT reaches the phone, and no topic does. A wildcard
+  never makes keys (every matching message updates the row's one key), there are at most 32 rows, and a key is updated
+  at most once a second with the newest value, so a busy topic cannot fill the push store or flood the phone. The
+  password and the topics stay on the computer (never in the log or the status); **Test** subscribes to nothing. The
+  settings text says the agent subscribes and still publishes nothing itself, in all 24 languages. Documented in
+  `docs/MQTT.md`. With Clean session off, a row removed from the settings is unsubscribed on the next connection to
+  the same broker session; another broker or account never hears the old topics.
 
 ## 0.9.32 — 2026-11-27
 

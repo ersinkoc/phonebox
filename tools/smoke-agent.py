@@ -7,7 +7,7 @@ base=f'http://127.0.0.1:{args.port}'
 with tempfile.TemporaryDirectory(prefix='phonebox-smoke-') as work:
  config=pathlib.Path(work)/'config.json'
  # one shortcut with no program icon of its own (builtin:), for the uploaded-picture checks below
- config.write_text(json.dumps({'deviceSerial':'__smoke_no_device__','updates':{'auto':False},'lan':{'enabled':False},'claude':{'phoneApprovals':False},'pages':[{'template':'home'}],'rules':[],'shortcuts':[{'id':'smoke-art','label':'Art','cmd':'builtin:lock'}],'steam':{'enabled':False,'apiKey':'smoke-steam-key'},'mqtt':{'enabled':False,'host':'broker.invalid','username':'smoke-mqtt-user','password':'smoke-mqtt-password'}}))
+ config.write_text(json.dumps({'deviceSerial':'__smoke_no_device__','updates':{'auto':False},'lan':{'enabled':False},'claude':{'phoneApprovals':False},'pages':[{'template':'home'}],'rules':[],'shortcuts':[{'id':'smoke-art','label':'Art','cmd':'builtin:lock'}],'steam':{'enabled':False,'apiKey':'smoke-steam-key'},'mqtt':{'enabled':False,'host':'broker.invalid','username':'smoke-mqtt-user','password':'smoke-mqtt-password','subscriptions':[{'topic':'smoke/secret-topic/+','key':'smoke-key'}]}}))
  # A Windows helper may briefly inherit the agent's log handle. Keep capture outside the config directory
  # and let the temporary file's delete-on-close semantics handle it without masking configuration cleanup errors.
  with tempfile.TemporaryFile(mode='w+b') as log:
@@ -52,9 +52,10 @@ with tempfile.TemporaryDirectory(prefix='phonebox-smoke-') as work:
    # local request does not get Steam's key either. MQTT is off here, so the agent never connects anywhere.
    settings=urllib.request.urlopen(base+'/api/settings',timeout=3).read()
    assert b'smoke-mqtt-password' not in settings and json.loads(settings)['mqtt']['passwordSet'] is True,'MQTT password in the settings'
+   assert [(x['topic'],x['key']) for x in json.loads(settings)['mqtt']['subscriptions']]==[('smoke/secret-topic/+','smoke-key')],'MQTT subscriptions in the settings'
    assert b'smoke-steam-key' not in settings,'Steam key in a plain local settings request'
    phone_config=json.dumps(get('/api/config')).encode()
-   assert not any(x in phone_config for x in (b'smoke-mqtt-password',b'smoke-mqtt-user',b'broker.invalid',b'mqtt')),'MQTT in the phone config'
+   assert not any(x in phone_config for x in (b'smoke-mqtt-password',b'smoke-mqtt-user',b'broker.invalid',b'smoke/secret-topic',b'mqtt')),'MQTT in the phone config'
    assert get('/api/mqtt/status')=={'state':'off','lastMessageAt':None,'errorKind':None},'MQTT status while off'
    # A filled Big button asks for the upload only, as upload=true: the real query binding must accept it, serve the
    # upload, and answer 404 (not the program icon, not 400) once the upload is removed.
