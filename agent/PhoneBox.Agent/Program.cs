@@ -948,7 +948,7 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
             {
                 if (tick++ % 2 == 0)
                 {
-                    var work = WorkFeed.Build(sessions, gh);
+                    var work = WorkFeed.Build(sessions, gh, configStore.Get().WorkBuddy, WorkBuddyHook.InstalledCached());
                     var json = JsonSerializer.Serialize(work, opts);
                     if (json != lastWork) { lastWork = json; await Send("work", work); }
                 }
@@ -1061,6 +1061,9 @@ app.MapPost(WorkBuddyHook.Endpoint, async (HttpRequest req, ConfigStore cfg, App
     var output = await ClaudeHook.HandleWorkBuddyAsync(input, cfg, approvals, sessions, req.HttpContext.RequestAborted);
     return output is null ? Results.Text("") : Results.Json(output);
 });
+// The phone-safe facts (installed flag, approval switch) reach the phone inside the "work"
+// feed instead: this read would need the settings path in it (the local page names the file),
+// and that path carries the user's home folder — it never goes out, so the endpoint stays local.
 app.MapGet("/api/workbuddy/hook", () => Results.Json(new { installed = WorkBuddyHook.Installed(), path = WorkBuddyHook.SettingsPath }));
 app.MapPost("/api/workbuddy/hook", (ConfigStore cfg) => WorkBuddyHook.Configure(true, Port, cfg.Get().WorkBuddy.TimeoutSec) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
 app.MapDelete("/api/workbuddy/hook", (ConfigStore cfg) => WorkBuddyHook.Configure(false, Port, cfg.Get().WorkBuddy.TimeoutSec) is { } err ? Results.BadRequest(new { error = err }) : Results.Ok());
@@ -1202,7 +1205,7 @@ app.MapPost("/api/volume", (int? level, string? op, AudioControl audio) =>
 
 app.MapGet("/api/quotas", (QuotaMonitor q) => Results.Json(new { providers = q.Snapshot(), overview = q.Overview() }));
 
-app.MapGet("/api/work", (SessionMonitor s, GitHubMonitor gh) => Results.Json(WorkFeed.Build(s, gh)));
+app.MapGet("/api/work", (SessionMonitor s, GitHubMonitor gh, ConfigStore cfg) => Results.Json(WorkFeed.Build(s, gh, cfg.Get().WorkBuddy, WorkBuddyHook.InstalledCached())));
 
 app.MapGet("/api/proxy", (string? url, CancellationToken ct) => WidgetFeedProxy.FetchAsync(url, ct));
 

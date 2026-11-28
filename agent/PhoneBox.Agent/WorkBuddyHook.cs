@@ -18,7 +18,36 @@ public static class WorkBuddyHook
 
     public static bool Installed() => ClaudeHook.Installed(SettingsPath, Endpoint);
 
+    private static readonly Lock CacheLock = new();
+    private static bool _cachedInstalled;
+    private static long _cachedAt = long.MinValue;
+    internal const long CacheMs = 5000;
+
+    /// <summary>
+    /// <see cref="Installed"/> read at most once every <see cref="CacheMs"/>: the "work" feed asks on every tick for
+    /// every stream, and each read parses ~/.workbuddy/settings.json. An Install or Remove from the settings page
+    /// clears it; an edit by hand shows within a few seconds. The settings page's own status read stays uncached.
+    /// </summary>
+    public static bool InstalledCached() => InstalledCached(Environment.TickCount64, Installed);
+
+    internal static bool InstalledCached(long nowMs, Func<bool> read)
+    {
+        lock (CacheLock)
+        {
+            if (_cachedAt != long.MinValue && nowMs - _cachedAt < CacheMs) return _cachedInstalled;
+            _cachedInstalled = read();
+            _cachedAt = nowMs;
+            return _cachedInstalled;
+        }
+    }
+
+    internal static void ForgetCached() { lock (CacheLock) _cachedAt = long.MinValue; }
+
     /// <summary>Installs or removes the hook in ~/.workbuddy/settings.json. Returns an error message, or null on success.</summary>
-    public static string? Configure(bool install, int port, int timeoutSec) =>
-        ClaudeHook.Configure(install, port, timeoutSec, SettingsPath, Endpoint);
+    public static string? Configure(bool install, int port, int timeoutSec)
+    {
+        var error = ClaudeHook.Configure(install, port, timeoutSec, SettingsPath, Endpoint);
+        ForgetCached();
+        return error;
+    }
 }
