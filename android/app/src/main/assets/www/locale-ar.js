@@ -1645,6 +1645,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Scroll speed": "سرعة التنقل",
       "Scrolling": "التنقل",
       "Seamless panel": "لوحة بلا تشابك",
+      "Glass": "زجاج",
       "Second (weekly)": "الثانية )أسبوعية(",
       "Second GPU (e.g. integrated)": "ثانيا GPU (مثلا متكامل)",
       "Second hand": "مستعملة",

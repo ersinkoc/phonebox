@@ -15,7 +15,7 @@ public sealed class AppearanceConfig
 
     internal void Normalize(bool widget = false)
     {
-        Style = Style is "default" or "cards" or "flat" or "borderless" or "seamless" ? Style : null;
+        Style = Style is "default" or "cards" or "flat" or "borderless" or "seamless" or "glass" ? Style : null;
         Font = Font is "default" or "sans" or "rounded" or "condensed" or "serif" or "mono" ? Font : null;
         FontScale = FontScale is { } s ? Math.Clamp(s, 50, 200) : null;
         Radius = Bound(Radius, 32);

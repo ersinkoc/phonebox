@@ -1610,6 +1610,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Scroll speed": "Viteza de derulare",
       "Scrolling": "Derulare",
       "Seamless panel": "Panou continuu",
+      "Glass": "Sticlă",
       "Second (weekly)": "A doua (săptămânală)",
       "Second GPU (e.g. integrated)": "Al doilea GPU (de ex. integrat)",
       "Second hand": "Secundar",
