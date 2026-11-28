@@ -87,8 +87,7 @@ Last updated: 2026-11-26 (PhoneBox 0.9.30).
   `/v1/models` and `/api/metrics/activity` endpoints) on a configurable interval (default:
   every minute), and keeps its `/api/events`
   stream open to count the requests the router is serving right now. Only the counters it returns — requests and
-  tokens today, the in-flight count (with the id of each in-flight request and how long it has
-  been running), generation speed, the loaded model names and the time of the last request — are kept for the
+  tokens today, the in-flight count (with the id, model and elapsed time of each in-flight request), generation speed, the loaded model names and the time of the last request — are kept for the
   panel; prompts,
   requests and responses are never read, stored or sent. Clearing the
   address stops the polling and the stream.

@@ -566,9 +566,11 @@ The llama-swap stats widget (opt-in: **Settings › General › llama-swap stats
 [llama-swap](https://github.com/mostlygeek/llama-swap) router: which models are currently loaded, the requests in
 flight (at most three as rows, more as `+N`, each with how long it has been running), requests and tokens today, the
 newest finished request's speed and the time of the last request. Requests and tokens today are asked for the local
-day's range, so they are exact totals. Point the **Server address** field at the router (e.g. `http://127.0.0.1:8080`);
-the agent polls it on a configurable interval (default: every minute), and only the counters, the version, the model
-names, and the id and elapsed time of each in-flight request reach the phone — no prompts, requests or responses.
+day's range, so they are exact totals; a very busy day (more than 20 pages of 999 requests) still shows the
+request count, with `—` for the token totals it could not read completely. Point the **Server address** field at the
+router (e.g. `http://127.0.0.1:8080`); the agent polls it on a configurable interval (default: every minute), and only
+the counters, the version, the loaded model names, and the id, model and elapsed time of each in-flight request reach
+the phone. Prompts, requests, responses, request paths and response sizes never leave the server.
 
 OpenCode's agent questions work the same way: when the agent asks "route A, B or C, or type your own", the phone
 shows the choices as buttons (and a text field when a custom answer is allowed) and sends the pick back. Questions

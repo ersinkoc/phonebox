@@ -61,6 +61,9 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     /// <summary>The longest one stream line may be: a router (or a proxy) that sends an endless line must not
     /// make the reader grow without bound. Longer lines are discarded.</summary>
     internal const int MaxLineChars = 64 * 1024;
+    /// <summary>The most activity pages one refresh walks: a router (or a proxy) that reports a huge total must
+    /// not make the agent issue an unbounded number of requests while it holds the refresh gate.</summary>
+    internal const int MaxActivityPages = 20;
 
     /// <summary>The longest one /api/events connection is kept open: a half-dead socket blocks its read forever
     /// and leaves the in-flight list stale until MaxInflightAge, so each connection is dropped after this and
@@ -284,7 +287,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     }
 
     /// <summary>Reads one stream line, discarding a line longer than <see cref="MaxLineChars"/> instead of growing
-    /// an unbounded buffer. A discarded line returns null, so the loop skips it and keeps reading.</summary>
+    /// an unbounded buffer. A discarded line returns an empty string, which the loop skips; null means EOF.</summary>
     private static async Task<string?> ReadLineCappedAsync(StreamReader reader, CancellationToken ct)
     {
         var line = new StringBuilder();
@@ -293,9 +296,9 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         while (true)
         {
             if (await reader.ReadAsync(one.AsMemory(0, 1), ct) == 0)
-                return oversized || line.Length == 0 ? null : TrimCr(line).ToString();
+                return oversized ? "" : line.Length == 0 ? null : TrimCr(line).ToString();
             var c = one[0];
-            if (c == '\n') return oversized ? null : TrimCr(line).ToString();
+            if (c == '\n') return oversized ? "" : TrimCr(line).ToString();
             if (oversized) continue;
             if (line.Length >= MaxLineChars) { oversized = true; line.Clear(); continue; }
             line.Append(c);
@@ -538,19 +541,21 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         if (firstPage is not { ValueKind: JsonValueKind.Object } page
             || !page.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
             return (null, null, null, null, null);
-        var total = page.TryGetProperty("total", out var totalEl) && totalEl.ValueKind == JsonValueKind.Number && totalEl.TryGetInt32(out var totalN)
-            ? totalN : data.GetArrayLength();
-        long input = 0, output = 0;
+        int? total = page.TryGetProperty("total", out var totalEl) && totalEl.ValueKind == JsonValueKind.Number
+            && totalEl.TryGetInt32(out var totalN) && totalN >= 0 ? totalN : null;
+        long input = 0, output = 0, inDay = 0, seen = 0;
         DateTime? last = null;
         double? tps = null;
         var newestRead = false;
+        var sawOlder = false;
+        var complete = true;
         for (var pageNo = 1; ; pageNo++)
         {
             if (pageNo > 1)
             {
                 var next = await GetAsync(baseUri, $"api/metrics/activity?start={start}&limit={ActivityWindow}&page={pageNo}", ct);
                 if (next is not { ValueKind: JsonValueKind.Object } nextPage
-                    || !nextPage.TryGetProperty("data", out data) || data.ValueKind != JsonValueKind.Array) break;
+                    || !nextPage.TryGetProperty("data", out data) || data.ValueKind != JsonValueKind.Array) { complete = false; break; }
             }
             foreach (var entry in data.EnumerateArray())
             {
@@ -560,15 +565,26 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 if (ts is not null)
                 {
                     if (last is null || ts > last) last = ts;
-                    // The day range should already exclude yesterday; keep the guard for a router that ignores it
-                    if (ts < day) continue;
+                    // The day range should already exclude yesterday; keep the guard for a router that ignores it,
+                    // and count what we actually see inside the day instead of trusting its all-time total.
+                    if (ts < day) { sawOlder = true; continue; }
                 }
+                inDay++;
                 input += entry.TryGetProperty("tokens", out var tk) && tk.ValueKind == JsonValueKind.Object ? Num(tk, "input_tokens") ?? 0 : 0;
                 output += entry.TryGetProperty("tokens", out var tk2) && tk2.ValueKind == JsonValueKind.Object ? Num(tk2, "output_tokens") ?? 0 : 0;
             }
-            if (pageNo * ActivityWindow >= total) break;
+            // Coverage is what actually arrived, not the page size we asked for: a router may cap ?limit lower
+            // than 999, and one that omits ?total is walked until an empty page.
+            seen += data.GetArrayLength();
+            if (total is { } expected)
+            {
+                if (seen >= expected) break;
+                if (data.GetArrayLength() == 0) { complete = false; break; }
+            }
+            else if (data.GetArrayLength() == 0) break;
+            if (pageNo >= MaxActivityPages) { complete = false; break; }
         }
-        if (total == 0)
+        if (total is 0)
         {
             // Nothing finished today: the widget still shows the newest finished request's speed and time.
             var newest = await GetAsync(baseUri, "api/metrics/activity?limit=1&page=1", ct);
@@ -580,7 +596,10 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 last = TimestampOf(nd[0]);
             }
         }
-        return (total, input, output, last, tps);
+        var requests = sawOlder
+            ? (complete ? (int?)Math.Min(inDay, int.MaxValue) : null)
+            : total ?? (complete ? (int?)Math.Min(inDay, int.MaxValue) : null);
+        return (requests, complete ? input : null, complete ? output : null, last, tps);
     }
 
     private static double? TpsOf(JsonElement entry)
