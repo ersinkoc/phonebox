@@ -1317,6 +1317,21 @@ armButton($('psAll'), t('panel.tapToConfirm'), async () => {
 $('psClose').addEventListener('click', () => { haptic(); closeSheet(); });
 
 // ---------------------------------------------------------------- pushed data (webhook API)
+export function applyPushChange(d) {
+  if (!d || typeof d.version !== 'number') return;
+  if (pushVersion !== null && d.version <= pushVersion) return;
+  if (pushVersion === null || d.baseVersion !== pushVersion) { loadPush(); return; }
+  if (d.clear === true) D.push = {};
+  if (Array.isArray(d.remove)) for (const key of d.remove) if (typeof key === 'string') delete D.push[key];
+  if (typeof d.key === 'string') {
+    // an own entry even for "__proto__", which a plain assignment would turn into the object's prototype
+    if (d.item && typeof d.item === 'object') Object.defineProperty(D.push, d.key, { value: d.item, enumerable: true, writable: true, configurable: true });
+    else delete D.push[d.key];
+  }
+  pushVersion = d.version;
+  emit('push');
+}
+
 /** Normalises whatever was pushed into { value, title, sub, unit, color, icon, progress, items, level }. */
 export function pushView(item) {
   const d = item.data;
@@ -1584,6 +1599,7 @@ $('apCustomText').addEventListener('keydown', (e) => { if (e.key === 'Enter') { 
 export function handleEvent(e) {
   if (PREVIEW && (e.kind === 'goto' || e.kind === 'back' || e.kind === 'reload')) return; // the editor picks the page
   if (e.kind === 'approval' || e.kind === 'approval-done') loadApprovals();
+  else if (e.kind === 'push' && e.data) applyPushChange(e.data);
   else if (e.kind === 'notify' && e.data) handleNotify(e.data);
   else if (e.kind === 'goto' && e.data) {
     // "next" and "prev" are relative: the panel alone knows which page it shows, so they step without a queue (#616).
@@ -2998,10 +3014,13 @@ export async function loadProcs() {
 
 let pushRequest = 0, appliedPushRequest = 0;
 export async function loadPush() {
-  const req = ++pushRequest;
+  const req = ++pushRequest, startVersion = pushVersion;
   try {
     const r = await api('/push');
     if (req < appliedPushRequest) return;
+    // an event applied while this request was out is newer than an answer with a lower version: the next state asks
+    // again. A lower version alone is not stale (the agent restarted or its clock stepped back)
+    if (pushVersion !== startVersion && r.version < pushVersion) return;
     appliedPushRequest = req;
     D.push = r.items || {};
     pushVersion = r.version;

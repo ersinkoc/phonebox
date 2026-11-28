@@ -69,6 +69,11 @@
   blurred, so it stays smooth on older phones. A Glass page under a Flat or Content only look keeps its rim and depth,
   while a border or shadow set on the page or the widget itself still wins (#713,
   [jassu-Workspace](https://github.com/jassu-Workspace)).
+- Webhooks: a value pushed every second (live FPS, for example) no longer makes the phone download every pushed value
+  each time. The agent sends the change itself as an event, and the phone fetches the whole list only when it missed
+  one; these events are the first ones dropped from the short event backlog, so notifications and page switches stay
+  in it. A pushed value can nest at most 32 levels of arrays and objects; a deeper one is refused with an error
+  (#686, [Seyamalam](https://github.com/Seyamalam)).
 
 ## 0.9.32 — 2026-11-27
 

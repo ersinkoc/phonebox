@@ -166,14 +166,15 @@
     if (broadcast) bc.postMessage({ type: 'event', kind, data });
     return e;
   }
-  const push = {
+  // no prototype: "__proto__" is a valid key and must stay an ordinary entry, as in the agent's store
+  const push = Object.assign(Object.create(null), {
     temperature: { data: 21.5, at: now() - 180e3, expiresAt: null },
     build: { data: { value: 'passed', sub: 'main · 3m 12s' }, at: now() - 240e3, expiresAt: null },
     deploy: { data: { value: 'running', sub: 'production' }, at: now() - 60e3, expiresAt: null },
     progress: { data: { value: 64 }, at: now() - 30e3, expiresAt: null },
     todo: { data: { items: [{ label: 'Try the layout editor', value: 'now', level: 'warn' }, { label: 'Widgets', value: 'done', level: 'ok' },
       { label: 'Webhooks', value: 'done', level: 'ok' }, 'Water the plants'] }, at: now() - 600e3, expiresAt: null },
-  };
+  });
   let pushVersion = 1;
   let rulesPaused = 0;
   // the phone reports its battery through /api/phone/battery; /api/charge serves the last report
@@ -199,8 +200,23 @@
     if (d.type === 'event') emit(d.kind, d.data, false);
     if (d.type === 'push') setPush(d.key, d.value, d.ttl);
   };
-  function setPush(key, value, ttl = null) { push[key] = { data: value, at: now(), expiresAt: ttl > 0 ? now() + ttl * 1000 : null }; pushVersion++; }
-  const livePush = () => { for (const k of Object.keys(push)) if (push[k].expiresAt && push[k].expiresAt <= now()) { delete push[k]; pushVersion++; } return push; };
+  function setPush(key, value, ttl = null) {
+    const baseVersion = pushVersion;
+    const item = { data: value, at: now(), expiresAt: ttl > 0 ? now() + ttl * 1000 : null };
+    push[key] = item;
+    pushVersion++;
+    emit('push', { baseVersion, version: pushVersion, key, item }, false);
+  }
+  const livePush = () => {
+    const expired = Object.keys(push).filter((k) => push[k].expiresAt && push[k].expiresAt <= now());
+    if (expired.length) {
+      const baseVersion = pushVersion;
+      for (const k of expired) delete push[k];
+      pushVersion++;
+      emit('push', { baseVersion, version: pushVersion, remove: expired }, false);
+    }
+    return push;
+  };
 
   // ---- made-up computer
   const audio = { volume: 42, muted: false, canControl: true };
@@ -963,8 +979,22 @@
       return json({ ok: true });
     }
     if (path === '/api/push' && method === 'GET') return json({ version: pushVersion, items: livePush() });
-    if (path === '/api/push' && method === 'DELETE') { for (const k of Object.keys(push)) delete push[k]; pushVersion++; return json({}); }
-    if (path.startsWith('/api/push/') && method === 'DELETE') { const key = decodeURIComponent(path.slice(10)); if (!push[key]) return json({}, 404); delete push[key]; pushVersion++; return json({}); }
+    if (path === '/api/push' && method === 'DELETE') {
+      const baseVersion = pushVersion;
+      for (const k of Object.keys(push)) delete push[k];
+      pushVersion++;
+      emit('push', { baseVersion, version: pushVersion, clear: true }, false);
+      return json({});
+    }
+    if (path.startsWith('/api/push/') && method === 'DELETE') {
+      const key = decodeURIComponent(path.slice(10));
+      if (!push[key]) return json({}, 404);
+      const baseVersion = pushVersion;
+      delete push[key];
+      pushVersion++;
+      emit('push', { baseVersion, version: pushVersion, key, item: null }, false);
+      return json({});
+    }
     if (path.startsWith('/api/push/') && method === 'POST') {
       const key = decodeURIComponent(path.slice(10)), value = body == null || body === '' ? (q.has('value') ? parse(q.get('value')) : true) : parse(body), ttl = q.has('ttl') ? +q.get('ttl') : null;
       setPush(key, value, ttl);

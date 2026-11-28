@@ -6,7 +6,7 @@ namespace PhoneBox.Agent;
 
 public sealed record PushItem(JsonElement Data, long At, long? ExpiresAt);
 
-/// <param name="Kind">notify | goto | back | refresh | reload | approval | approval-done</param>
+/// <param name="Kind">notify | goto | back | refresh | reload | approval | approval-done | push</param>
 public sealed record PanelEvent(long Seq, string Kind, JsonElement? Data, long At);
 
 /// <summary>
@@ -17,10 +17,17 @@ public sealed record PanelEvent(long Seq, string Kind, JsonElement? Data, long A
 public sealed partial class PushStore : IDisposable
 {
     public const int MaxBytes = 64 * 1024;
+    /// <summary>
+    /// Arrays and objects inside one value. The serializer stops at 64, and a value travels wrapped: in a change event
+    /// inside /api/state's event list, in /api/push's item list. The rest is the room those envelopes need.
+    /// </summary>
+    public const int MaxDepth = 32;
     private const int MaxItems = 200;
     private const int MaxEvents = 50;
     private const int SaveDelayMs = 2000;
     private const int MaxSaveRetryMs = 30_000;
+
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
 
     private readonly string _dataPath;
     private readonly ConcurrentDictionary<string, PushItem> _items = new();
@@ -60,8 +67,8 @@ public sealed partial class PushStore : IDisposable
     }
 
     /// <summary>
-    /// Changes whenever a value is set, removed or expires; the phone refetches /api/push when it changes. Phones read it
-    /// every second (in /api/state), which is also when expired values are dropped.
+    /// Changes whenever a value is set, removed or expires. Change events carry the update; the phone refetches
+    /// /api/push when it misses one. Phones read it every second (in /api/state), which is also when expired values are dropped.
     /// </summary>
     public long Version
     {
@@ -86,34 +93,59 @@ public sealed partial class PushStore : IDisposable
     public string? Set(string key, JsonElement data, int? ttlSec)
     {
         if (!ValidKey(key)) return "key must be 1-64 characters: letters, digits, '.', '_' or '-'";
+        if (Depth(data) > MaxDepth) return $"value nested too deeply (max {MaxDepth} levels of arrays and objects)";
         PurgeExpired(); // expired values do not count against the limit
         // {"ttl": 300, ...} inside the payload works too
         if (ttlSec is null && data.ValueKind == JsonValueKind.Object && data.TryGetProperty("ttl", out var t)
             && t.ValueKind == JsonValueKind.Number && t.TryGetInt32(out var tt)) ttlSec = tt;
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var item = new PushItem(data.Clone(), now, ttlSec is > 0 ? now + ttlSec.Value * 1000L : null);
-        // ConcurrentDictionary does not make the capacity check and insertion atomic.
+        // ConcurrentDictionary does not make the capacity check and insertion atomic. The version belongs to the
+        // mutation itself: a change event is applied only through this unbroken chain, so concurrent writers cannot
+        // make the phone apply the same key in the wrong order.
         lock (_setLock)
         {
             if (!_items.ContainsKey(key) && _items.Count >= MaxItems) return $"too many keys (max {MaxItems}); delete some first";
+            // the event is built before anything changes: a value it cannot carry leaves the store as it was
+            var change = NextVersion();
+            JsonElement ev;
+            try { ev = JsonSerializer.SerializeToElement(new { baseVersion = change.BaseVersion, version = change.Version, key, item }, WebJson); }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return "value cannot be sent to the phone: " + ex.Message; }
             _items[key] = item;
+            Interlocked.Exchange(ref _version, change.Version);
+            Enqueue("push", ev);
         }
-        // outside _setLock: Changed can wait for a save in progress, and other writers must not wait behind it
-        Changed();
+        // outside _setLock: scheduling can wait for a save in progress, and other writers must not wait behind it
+        ScheduleSave();
+        Emitted?.Invoke();
         return null;
     }
 
     public bool Remove(string key)
     {
-        var ok = _items.TryRemove(key, out _);
-        if (ok) Changed();
-        return ok;
+        (long BaseVersion, long Version) change;
+        lock (_setLock)
+        {
+            if (!_items.TryRemove(key, out _)) return false;
+            change = AdvanceVersion();
+            EnqueuePushChange(new { baseVersion = change.BaseVersion, version = change.Version, key, item = (PushItem?)null });
+        }
+        ScheduleSave();
+        Emitted?.Invoke();
+        return true;
     }
 
     public void Clear()
     {
-        _items.Clear();
-        Changed();
+        (long BaseVersion, long Version) change;
+        lock (_setLock)
+        {
+            _items.Clear();
+            change = AdvanceVersion();
+            EnqueuePushChange(new { baseVersion = change.BaseVersion, version = change.Version, clear = true });
+        }
+        ScheduleSave();
+        Emitted?.Invoke();
     }
 
     /// <summary>Raised after an event is queued, so live streams can deliver it right away.</summary>
@@ -121,15 +153,27 @@ public sealed partial class PushStore : IDisposable
 
     public PanelEvent Emit(string kind, JsonElement? data = null)
     {
-        PanelEvent e;
-        lock (_evLock)
-        {
-            e = new PanelEvent(++_seq, kind, data?.Clone(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-            _events.AddLast(e);
-            while (_events.Count > MaxEvents) _events.RemoveFirst();
-        }
+        var e = Enqueue(kind, data);
         Emitted?.Invoke();
         return e;
+    }
+
+    private PanelEvent Enqueue(string kind, JsonElement? data = null)
+    {
+        lock (_evLock)
+        {
+            var e = new PanelEvent(++_seq, kind, data?.Clone(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            _events.AddLast(e);
+            while (_events.Count > MaxEvents)
+            {
+                // pushed values can change every second; drop those before notifications and page switches, because
+                // the phone can always refill them from /api/push when it notices the broken chain
+                var victim = _events.FirstOrDefault(x => x.Kind == "push");
+                if (victim is null) _events.RemoveFirst();
+                else _events.Remove(victim);
+            }
+            return e;
+        }
     }
 
     /// <summary>Events after <paramref name="seq"/>, at most a minute old (a phone that was away does not get a flood).</summary>
@@ -143,28 +187,55 @@ public sealed partial class PushStore : IDisposable
     private void PurgeExpired()
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var removed = false;
-        foreach (var kv in _items)
-            if (kv.Value.ExpiresAt <= now && _items.TryRemove(kv)) removed = true; // only this exact value, not a newer one
-        if (removed) Changed();
+        var removed = new List<string>();
+        lock (_setLock)
+        {
+            foreach (var kv in _items)
+                if (kv.Value.ExpiresAt <= now && _items.TryRemove(kv)) removed.Add(kv.Key); // only this exact value, not a newer one
+            if (removed.Count == 0) return;
+            var change = AdvanceVersion();
+            EnqueuePushChange(new { baseVersion = change.BaseVersion, version = change.Version, remove = removed });
+        }
+        ScheduleSave();
+        Emitted?.Invoke();
     }
 
     private readonly Lock _persistLock = new();
     private bool _disposed;
     private int _saveRetryMs = SaveDelayMs;
 
-    private void Changed()
+    // Every version change happens under _setLock, so the next version can be worked out before it is taken.
+    private (long BaseVersion, long Version) NextVersion()
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        long previous;
-        do
-        {
-            previous = Interlocked.Read(ref _version);
-        } while (Interlocked.CompareExchange(ref _version, Math.Max(now, previous + 1), previous) != previous);
-        if (Interlocked.Exchange(ref _savePending, 1) != 0) return;
-        lock (_persistLock)
-            if (!_disposed) _saveTimer.Change(SaveDelayMs, Timeout.Infinite);
+        var previous = Interlocked.Read(ref _version);
+        return (previous, Math.Max(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), previous + 1));
     }
+
+    private (long BaseVersion, long Version) AdvanceVersion()
+    {
+        var change = NextVersion();
+        Interlocked.Exchange(ref _version, change.Version);
+        return change;
+    }
+
+    /// <summary>How many arrays and objects are nested in <paramref name="e"/>; a scalar is 0.</summary>
+    private static int Depth(JsonElement e)
+    {
+        var deepest = 0;
+        if (e.ValueKind == JsonValueKind.Object) foreach (var p in e.EnumerateObject()) deepest = Math.Max(deepest, Depth(p.Value));
+        else if (e.ValueKind == JsonValueKind.Array) foreach (var x in e.EnumerateArray()) deepest = Math.Max(deepest, Depth(x));
+        else return 0;
+        return deepest + 1;
+    }
+
+    private void ScheduleSave()
+    {
+        if (Interlocked.Exchange(ref _savePending, 1) == 0)
+            lock (_persistLock)
+                if (!_disposed) _saveTimer.Change(SaveDelayMs, Timeout.Infinite);
+    }
+
+    private void EnqueuePushChange(object payload) => Enqueue("push", JsonSerializer.SerializeToElement(payload, WebJson));
 
     private void Persist()
     {

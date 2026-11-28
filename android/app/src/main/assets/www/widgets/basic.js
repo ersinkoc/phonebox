@@ -1585,19 +1585,19 @@ W.push = {
   needs: ['push', 'tick'],
   create(box, { o }) {
     const key = o.key || '';
-    let lastAt = -1;
+    let shown; // the item drawn last, null for "no data yet"; two values can share a millisecond, so not its time
     const render = () => {
-      const item = D.push[key];
+      const item = Object.prototype.hasOwnProperty.call(D.push, key) ? D.push[key] : null; // not Object.prototype for "__proto__"
       if (!item) {
-        if (lastAt === 0) return;
-        lastAt = 0;
+        if (shown === null) return;
+        shown = null;
         box.style.removeProperty('--c');
         box.replaceChildren(h('div', 'w-title', o.title || key), h('div', 'push-empty', t('w.noDataYet'), h('code', null, `POST /api/push/${key}`)));
         return;
       }
       const ageEl = box.querySelector('.push-age');
-      if (item.at === lastAt) { if (ageEl) ageEl.textContent = ago(item.at); return; }
-      lastAt = item.at;
+      if (item === shown) { if (ageEl) ageEl.textContent = ago(item.at); return; }
+      shown = item;
       const v = pushView(item);
       const lvl = levelOf(v);
       const c = v.color || LEVEL_COLOR[lvl] || '';
