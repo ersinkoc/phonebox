@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The microphone and camera are only checked while something uses them: an **On air** widget on an enabled page that
+  lights up for them, or a rule on mic-in-use or camera-in-use. Before, the agent probed every two seconds regardless.
+  On Linux that probe listed the open files of every process (thousands of them) and threw an exception for each
+  process of another user (hundreds every two seconds); those processes are now skipped with `access(2)`.
 - Linux: the built-in **Screen off** key works on Wayland. It ran `xset dpms force off`, which does nothing under
   XWayland (no DPMS extension) and still reported success. KDE Plasma on Wayland now uses `kscreen-doctor -platform wayland --dpms off`,
   GNOME on Wayland Mutter's PowerSaveMode over D-Bus (`busctl`), and X11 keeps `xset`; the screens come back at the next

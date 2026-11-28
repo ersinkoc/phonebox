@@ -10,8 +10,11 @@ public sealed record PrivacySnapshot(bool? Mic, bool? Camera, IReadOnlyList<stri
 ///    be read: Windows 11 stopped updating it in late 2026 builds (26200 with the October updates, 26300).
 ///  - Linux: ALSA capture streams that are running, and processes with a /dev/video* device open.
 ///  - macOS: what the menu bar's microphone and camera dots show, from CoreAudio and CoreMediaIO (see Unix/MacPrivacyProbe.cs).
+/// Only what something uses is read (<see cref="Wanted"/>): with no On air widget on an enabled page and no rule on the
+/// microphone or camera nothing is probed, and the snapshot is null. On Linux the camera probe looks at every process's
+/// open files, thousands of them, so it runs only while an On air widget or a rule needs the camera.
 /// </summary>
-public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log) : BackgroundService
+public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log, ConfigStore? config = null) : BackgroundService
 {
     private volatile PrivacySnapshot? _snap;
 
@@ -24,7 +27,15 @@ public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log) : BackgroundServ
         {
             try
             {
-                var (mic, cam) = Read();
+                var (wantMic, wantCamera) = config is null ? (true, true) : Wanted(config.Get());
+                if (!wantMic && !wantCamera)
+                {
+                    _snap = null;
+                    lastLog = null;
+                    await Task.Delay(2000, ct);
+                    continue;
+                }
+                var (mic, cam) = Read(wantMic, wantCamera);
                 _snap = new(mic.Count > 0, cam.Count > 0, mic, cam);
                 var line = $"mic: {(mic.Count > 0 ? string.Join(", ", mic) : "off")}, camera: {(cam.Count > 0 ? string.Join(", ", cam) : "off")}";
                 if (line != lastLog) { if (lastLog is not null) log.LogInformation("{State}", line); lastLog = line; }
@@ -34,7 +45,32 @@ public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log) : BackgroundServ
         }
     }
 
-    private static (List<string> Mic, List<string> Camera) Read()
+    /// <summary>
+    /// What reads the microphone and camera state: an On air widget on an enabled page (or in an enabled Smart Stack
+    /// child) that lights up for them, and an enabled rule on mic-in-use or camera-in-use.
+    /// </summary>
+    internal static (bool Mic, bool Camera) Wanted(AgentConfig cfg)
+    {
+        bool mic = false, camera = false;
+        foreach (var w in cfg.Widgets(enabledPagesOnly: true))
+        {
+            if (w.Type != "onair") continue;
+            var source = w.Str("source") ?? "both";
+            mic |= source is "both" or "mic";
+            camera |= source is "both" or "camera";
+        }
+        foreach (var r in cfg.Rules)
+        {
+            if (!r.Enabled) continue;
+            mic |= r.When == "mic-in-use";
+            camera |= r.When == "camera-in-use";
+        }
+        return (mic, camera);
+    }
+
+    /// <summary>The apps using the microphone and the camera. Windows and macOS read both together; Linux reads only
+    /// the one asked for, since its camera probe is the expensive one.</summary>
+    private static (List<string> Mic, List<string> Camera) Read(bool wantMic, bool wantCamera)
     {
 #if WINDOWS
         var mic = CaptureSessions();
@@ -44,7 +80,7 @@ public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log) : BackgroundServ
         foreach (var p in System.Diagnostics.Process.GetProcesses()) using (p) { try { running.Add(p.ProcessName); } catch { } }
         return (mic ?? ConsentStore("microphone", running), camera ?? ConsentStore("webcam", running));
 #else
-        return OperatingSystem.IsMacOS() ? MacPrivacyProbe.Read() : (LinuxMic(), LinuxCamera());
+        return OperatingSystem.IsMacOS() ? MacPrivacyProbe.Read() : (wantMic ? LinuxMic() : [], wantCamera ? LinuxCamera() : []);
 #endif
     }
 
@@ -162,6 +198,9 @@ public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log) : BackgroundServ
         {
             var pid = Path.GetFileName(proc);
             if (!pid.All(char.IsDigit)) continue;
+            // another user's process (root's daemons, about two thirds of them): skipped without the exception that
+            // listing its fd folder throws, which was hundreds of exceptions every two seconds
+            if (!Sh.CanList(Path.Combine(proc, "fd"))) continue;
             try
             {
                 foreach (var fd in Directory.EnumerateFiles(Path.Combine(proc, "fd")))
