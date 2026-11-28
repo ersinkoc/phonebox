@@ -355,9 +355,45 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         {
             var full = Path.GetFullPath(Path.Combine(dir, file.Trim().Trim('"')));
             return full.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && Norm(full).StartsWith(Norm(Path.GetFullPath(dir)), StringComparison.OrdinalIgnoreCase)
-                && File.Exists(full) ? full : null;
+                && File.Exists(full) && !LinkBelow(dir, full) ? full : null;
         }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// Whether a junction or symbolic link is on the way from the game's folder down to its program, the program
+    /// included: such a path can lead out of the folder. A program found by a walk never is (links are not walked); one
+    /// named by a launcher's record is checked here, and again before its icon is read. Before a start,
+    /// <see cref="Unsafe"/> checks the whole path again, from the drive's root down.
+    /// </summary>
+    internal static bool LinkBelow(string dir, string exe)
+    {
+        try
+        {
+            var root = Norm(Path.GetFullPath(dir));
+            for (var p = Path.GetFullPath(exe); Norm(p).Length > root.Length && Norm(p).StartsWith(root, StringComparison.OrdinalIgnoreCase); p = Path.GetDirectoryName(p)!)
+                if (SteamLibrary.IsLink(p)) return true;
+            return false;
+        }
+        catch { return true; }
+    }
+
+    /// <summary>
+    /// Whether a launcher's record names a folder on a local disk, judged from its text before anything there is read
+    /// (reading a folder on a network share would connect to it): never a path starting with two separators (a share,
+    /// \\server\share or \\?\UNC\server\share, or a device path), never a relative one, and on Windows only a drive
+    /// letter of a fixed disk, not a mapped network drive (nor a disc or a removable drive).
+    /// </summary>
+    internal static bool Local(string? dir, Func<string, DriveType>? driveType = null)
+    {
+        if (string.IsNullOrWhiteSpace(dir)) return false;
+        var d = dir.Trim();
+        if (d.Length >= 2 && (d[0] is '\\' or '/') && (d[1] is '\\' or '/')) return false;
+        if (!Path.IsPathFullyQualified(d)) return false;
+        if (!OperatingSystem.IsWindows()) return true;
+        if (d.Length < 3 || !char.IsAsciiLetter(d[0]) || d[1] != ':') return false;
+        try { return (driveType ?? (root => new DriveInfo(root).DriveType))(d[0] + @":\") == DriveType.Fixed; }
+        catch { return false; }
     }
 
     // Programs that come with a game but are not it, matched against whole words of the program's name (so "eac" does
@@ -488,6 +524,8 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                 string? S(string k) => r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
                 var cats = r.TryGetProperty("AppCategories", out var c) && c.ValueKind == JsonValueKind.Array ? c.EnumerateArray().Select(x => x.GetString()).ToList() : [];
                 if (!cats.Contains("games") || S("DisplayName") is not { Length: > 0 } name || S("InstallLocation") is not { Length: > 0 } dir) continue;
+                // a folder on a network share is never read; a game whose folder is gone is not installed (any more)
+                if (!Local(dir) || !Directory.Exists(dir)) continue;
                 // a program inside the game's folder only; the launcher's address starts it otherwise
                 var exe = ProgramIn(dir, S("LaunchExecutable"));
                 string? url = null;
@@ -508,12 +546,13 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     /// <summary>GOG Galaxy, Ubisoft Connect, the EA app and Rockstar from their keys (see <see cref="DefaultLaunchers"/>).</summary>
     internal static IEnumerable<Found> FromKeys(string source, IEnumerable<Key> keys)
     {
+        // each folder named is checked to be on a local disk (Local) before anything there is read
         foreach (var k in keys)
         {
             switch (source)
             {
                 case "gog":
-                    if (k.Value("path") is { Length: > 0 } gp && k.Value("gameName") is { Length: > 0 } gn)
+                    if (k.Value("path") is { Length: > 0 } gp && Local(gp) && k.Value("gameName") is { Length: > 0 } gn)
                     {
                         var exe = ProgramIn(gp, k.Value("exe")) ?? PickExe(gp, gn);
                         if (exe is not null) yield return new Found(IdOf("gog", gp), gn, "gog", gp, exe, null);
@@ -521,13 +560,13 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
                     break;
                 case "ubisoft":
                     // the Installs key holds only the folder; Ubisoft Connect starts the game by its number
-                    if (k.Value("InstallDir") is { Length: > 0 } ud && k.Name.All(char.IsAsciiDigit) && Directory.Exists(ud))
+                    if (k.Value("InstallDir") is { Length: > 0 } ud && k.Name.All(char.IsAsciiDigit) && Local(ud) && Directory.Exists(ud))
                         yield return new Found(IdOf("ubisoft", ud), Path.GetFileName(ud.TrimEnd('/', '\\')), "ubisoft", ud, PickExe(ud, Path.GetFileName(ud.TrimEnd('/', '\\'))), $"uplay://launch/{k.Name}/0");
                     break;
                 case "ea":
                 case "rockstar":
                     var dir = k.Value("Install Dir") ?? k.Value("InstallFolder") ?? k.Value("InstallDir");
-                    if (dir is { Length: > 0 } && Directory.Exists(dir) && !k.Name.Contains("Launcher", StringComparison.OrdinalIgnoreCase)
+                    if (dir is { Length: > 0 } && Local(dir) && Directory.Exists(dir) && !k.Name.Contains("Launcher", StringComparison.OrdinalIgnoreCase)
                         && !k.Name.Contains("Social Club", StringComparison.OrdinalIgnoreCase) && PickExe(dir, k.Name) is { } x)
                         yield return new Found(IdOf(source, dir), k.Name, source, dir, x, null);
                     break;
@@ -572,7 +611,8 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
     {
         if (id is null || !id.StartsWith("x:", StringComparison.Ordinal)) return null;
         var g = Games().FirstOrDefault(x => x.Id == id);
-        if (g?.Exe is null) return null;
+        // the list is up to ten minutes old: a link put on the program's path since is not followed
+        if (g?.Exe is null || LinkBelow(g.Dir, g.Exe)) return null;
         return ShortcutIcons.Icon(new Shortcut { Id = id, Cmd = g.Exe });
     }
 

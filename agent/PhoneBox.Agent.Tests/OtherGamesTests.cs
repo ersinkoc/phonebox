@@ -125,6 +125,92 @@ public class OtherGamesTests : IDisposable
         Assert.Equal(Path.Combine(game, "Ember.exe"), g.Exe);
     }
 
+    private string Manifest(string folder, string name, string? location, string? exe)
+    {
+        var manifests = Path.Combine(_dir, folder);
+        Directory.CreateDirectory(manifests);
+        File.WriteAllText(Path.Combine(manifests, Guid.NewGuid().ToString("N") + ".item"), System.Text.Json.JsonSerializer.Serialize(new
+        {
+            DisplayName = name, InstallLocation = location, LaunchExecutable = exe, AppCategories = new[] { "games" },
+            CatalogNamespace = "ns1", CatalogItemId = "item1", AppName = "App1",
+        }));
+        return manifests;
+    }
+
+    [Fact]
+    public void AnEpicGameWhoseFolderIsGoneIsNotListedButOneWithoutAProgramIs()
+    {
+        Directory.CreateDirectory(Path.Combine(_dir, "Kept"));
+        var manifests = Manifest("M", "Kept", Path.Combine(_dir, "Kept"), "missing.exe");   // starts by the launcher's address
+        Manifest("M", "Gone", Path.Combine(_dir, "Gone"), "gone.exe");
+        var g = Assert.Single(OtherGames.FromEpic(manifests));
+        Assert.Equal("Kept", g.Name);
+        Assert.Null(g.Exe);
+        Assert.NotNull(g.Url);
+    }
+
+    [Theory]
+    [InlineData(@"\\server\share\Games\Ember")]
+    [InlineData(@"\\?\UNC\server\share\Games\Ember")]
+    [InlineData(@"//server/share/Games/Ember")]
+    [InlineData(@"\\.\C:\Games\Ember")]
+    [InlineData(@"Games\Ember")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void AnInstallFolderOffThisComputerIsNotLocal(string? dir) => Assert.False(OtherGames.Local(dir));
+
+    [Fact]
+    public void OnlyAFixedDiskIsLocal()
+    {
+        Assert.True(OtherGames.Local(_dir));
+        if (!OperatingSystem.IsWindows()) return; // drive letters
+        Assert.False(OtherGames.Local(@"C:Games\Ember"));
+        foreach (var kind in new[] { DriveType.Network, DriveType.Removable, DriveType.CDRom, DriveType.NoRootDirectory, DriveType.Unknown })
+            Assert.False(OtherGames.Local(@"Z:\Games\Ember", _ => kind));
+        Assert.True(OtherGames.Local(@"Z:\Games\Ember", root => root == @"Z:\" ? DriveType.Fixed : DriveType.Unknown));
+    }
+
+    [Fact]
+    public void ALaunchersRecordOfAGameOnANetworkShareIsNotRead()
+    {
+        // a share's folder would be read (connecting to it) if the check came after; nothing is listed from it
+        const string share = @"\\phonebox-test.invalid\share\Ember Road";
+        var manifests = Manifest("Share", "Ember Road", share, "Ember.exe");
+        var clock = Stopwatch.StartNew();
+        Assert.Empty(OtherGames.FromEpic(manifests));
+        var key = (string name, Dictionary<string, string> v) => new OtherGames.Key(name, k => v.GetValueOrDefault(k));
+        Assert.Empty(OtherGames.FromKeys("gog", [key("1", new() { ["path"] = share, ["gameName"] = "Ember Road", ["exe"] = "Ember.exe" })]));
+        Assert.Empty(OtherGames.FromKeys("ubisoft", [key("635", new() { ["InstallDir"] = share })]));
+        Assert.Empty(OtherGames.FromKeys("ea", [key("Ember Road", new() { ["Install Dir"] = share })]));
+        Assert.Empty(OtherGames.FromKeys("rockstar", [key("Ember Road", new() { ["InstallFolder"] = @"\\?\UNC\phonebox-test.invalid\share\Ember Road" })]));
+        Assert.True(clock.ElapsedMilliseconds < 1000, $"took {clock.ElapsedMilliseconds} ms");
+    }
+
+    [Fact]
+    public void AProgramNamedThroughALinkInTheGamesFolderIsNotTaken()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), $"phonebox-games-outside-{Guid.NewGuid():N}");
+        var game = Path.Combine(_dir, "Ember Road");
+        var link = Path.Combine(game, "bin");
+        try
+        {
+            Directory.CreateDirectory(outside);
+            File.WriteAllBytes(Path.Combine(outside, "Ember.exe"), new byte[100]);
+            MakeExe("Ember Road/Ember.exe", 100);
+            Junction(link, outside);
+            Assert.True(File.Exists(Path.Combine(link, "Ember.exe")));
+            Assert.Null(OtherGames.ProgramIn(game, Path.Combine("bin", "Ember.exe")));
+            Assert.True(OtherGames.LinkBelow(game, Path.Combine(link, "Ember.exe")));
+            Assert.Equal(Path.Combine(game, "Ember.exe"), OtherGames.ProgramIn(game, "Ember.exe"));   // the program in the folder itself
+            Assert.False(OtherGames.LinkBelow(game, Path.Combine(game, "Ember.exe")));
+            // an Epic record naming the linked program: listed by the launcher's address only
+            var g = Assert.Single(OtherGames.FromEpic(Manifest("Linked", "Ember Road", game, Path.Combine("bin", "Ember.exe"))));
+            Assert.Null(g.Exe);
+            Assert.NotNull(g.Url);
+        }
+        finally { try { Directory.Delete(link); } catch { } try { Directory.Delete(outside, true); } catch { } }
+    }
+
     [Fact]
     public void LauncherKeysGiveTheirGames()
     {
