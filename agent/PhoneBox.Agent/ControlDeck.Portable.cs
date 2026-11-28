@@ -44,6 +44,9 @@ internal sealed class PortableDeckNative(
     }
     public bool Session(string id, int? volume, bool? muted) => pulse?.Session(id, volume, muted) ?? false;
     public bool DefaultDevice(string id, int? role = null) => pulse?.DefaultDevice(id, role) ?? false;
+    /// <summary>With pactl talking to a sound server; pactl without one (PipeWire without pipewire-pulse) can't route.</summary>
+    public bool CanRouteApplications => pulse is not null && (pulse.HasAnswered || pulse.Read() is not null);
+    public int? RouteApplication(string application, string deviceId) => pulse?.Route(application, deviceId);
     public IReadOnlyList<DeckMonitor> Monitors() => [];
     public bool Brightness(string id, int value) => false;
     public IReadOnlyList<DeckItem> PowerPlans() => [];

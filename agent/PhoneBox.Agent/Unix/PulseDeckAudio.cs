@@ -242,6 +242,41 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         }
     }
 
+    /// <summary>
+    /// Moves every stream of an application to an output (<c>pactl move-sink-input</c>), the Linux side of the
+    /// "audio-route" control that SoundVolumeView's /SetAppDefault does on Windows. The application is matched by its
+    /// process name or its name, ignoring case and a ".exe" suffix, so a control set up as "Discord.exe" works here too.
+    /// Only streams playing now move; PipeWire (WirePlumber) remembers the output for the application's next streams,
+    /// PulseAudio does with module-stream-restore. Returns how many streams the application has (0: it plays nothing),
+    /// or null when the output is not one of the listed outputs or a move failed.
+    /// </summary>
+    public int? Route(string application, string sink)
+    {
+        var wanted = AppKey(application);
+        if (wanted.Length == 0) return null;
+        lock (_writes)
+        {
+            // fresh: streams come and go, and a stream index from an old listing may belong to another application now
+            var audio = Read(fresh: true);
+            if (audio is null || !audio.Devices.Any(d => d.Id == sink && d.Direction == "output")) return null;
+            var streams = audio.Sessions.Where(s => AppKey(s.ProcessName) == wanted || AppKey(s.Name) == wanted).ToList();
+            foreach (var stream in streams.Where(s => s.DeviceId != sink))
+            {
+                if (pactl(["move-sink-input", stream.Id, sink]) is null) { Forget(); return null; }
+                Patch(a => a with { Sessions = [.. a.Sessions.Select(s => s.Id == stream.Id ? s with { DeviceId = sink } : s)] });
+            }
+            return streams.Count;
+        }
+    }
+
+    /// <summary>"Discord.exe", " discord " and "Discord" all name the same application.</summary>
+    internal static string AppKey(string? name)
+    {
+        var key = (name ?? "").Trim();
+        if (key.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) key = key[..^4];
+        return key.ToLowerInvariant();
+    }
+
     /// <summary>Applies a write that worked to the kept listing; its age stays, so it still expires on time.</summary>
     private void Patch(Func<DeckAudio, DeckAudio> change)
     {
