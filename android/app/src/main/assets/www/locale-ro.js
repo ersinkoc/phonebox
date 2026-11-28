@@ -3,7 +3,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ro": {
     "strings": {
       "s.llamaswap.title": "Statistici llama-swap",
-      "s.llamaswap.hint": "Afișează routerul LLM local pe un widget llama-swap: ce modele sunt încărcate, cererile în curs cu durata lor, cererile și tokenii de astăzi și viteza de generare (oprit implicit). Doar contoarele, numele modelelor și id-ul și durata fiecărei cereri în curs sunt trimise pe telefon — niciodată prompturi, cereri sau răspunsuri.",
+      "s.llamaswap.hint": "Afișează routerul LLM local pe un widget llama-swap: ce modele sunt încărcate, cererile în curs cu durata lor, cererile și tokenii de astăzi și viteza de generare (oprit implicit). Doar contoarele, numele modelelor și id-ul și durata fiecărei cereri în curs sunt trimise pe telefon — niciodată prompturi, cereri sau răspunsuri. Se trimit și versiunea routerului și ora ultimei cereri.",
       "s.llamaswap.url": "Adresa serverului (gol = oprit)",
       "s.llamaswap.refresh": "Reîmprospătează la fiecare (secunde)",
       "s.display.weekStart": "Prima zi a săptămânii",

@@ -3172,7 +3172,8 @@ export async function loadQuotas() {
 }
 
 export async function loadLlamaSwap() {
-  try { D.llamaswap = await api('/llamaswap'); emit('llamaswap'); } catch (_) {}
+  try { D.llamaswap = await api('/llamaswap'); emit('llamaswap'); }
+  catch (_) { D.llamaswap = { connected: false, error: 'unreachable' }; emit('llamaswap'); }
 }
 
 let workEpoch = 0;

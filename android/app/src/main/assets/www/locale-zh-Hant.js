@@ -3,7 +3,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "zh-Hant": {
     "strings": {
       "s.llamaswap.title": "llama-swap 統計",
-      "s.llamaswap.hint": "在 llama-swap 小工具上顯示本地 LLM 路由器：目前載入的模型、進行中的請求及其已用時間、今日的請求數和 token 數，以及生成速度（預設關閉）。只有計數器、模型名稱以及每個進行中請求的 id 和已用時間會傳送到手機——絕不傳送提示詞、請求或回應。",
+      "s.llamaswap.hint": "在 llama-swap 小工具上顯示本地 LLM 路由器：目前載入的模型、進行中的請求及其已用時間、今日的請求數和 token 數，以及生成速度（預設關閉）。只有計數器、模型名稱以及每個進行中請求的 id 和已用時間會傳送到手機——絕不傳送提示詞、請求或回應。 也會傳送路由器版本和最後一次請求的時間。",
       "s.llamaswap.url": "伺服器位址（留空 = 關閉）",
       "s.llamaswap.refresh": "重新整理間隔（秒）",
       "s.display.weekStart": "每週第一天",

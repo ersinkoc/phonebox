@@ -126,9 +126,13 @@ public class ConfigTests
         Assert.Equal("https://h:1/p/", ConfigStore.NormalizeLlamaSwapUrl("https://h:1/p/"));
         Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl(""));
         Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl(null));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl("ftp://router.test:8080/llama"));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl("file:///tmp/router"));
+        Assert.Equal("", ConfigStore.NormalizeLlamaSwapUrl("http://"));
         // and the same address typed without a scheme still counts as configured
-        var c = Load("""{"llamaSwap":{"url":"localhost:8080"}}""");
+        var c = Load("""{"llamaSwap":{"url":"localhost:8080","refreshSeconds":0}}""");
         Assert.Equal("http://localhost:8080", c.LlamaSwap.Url);
+        Assert.Equal(10, c.LlamaSwap.RefreshSeconds); // a hand-edited 0 is clamped, not shown as the effective interval
     }
 
     [Fact]
