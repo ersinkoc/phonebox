@@ -19,6 +19,7 @@ public sealed class PrivacyWantedTests
     [InlineData("""[{"type":"onair","options":{"source":"push"}}]""", false, false)]       // a pushed value only
     [InlineData("""[{"type":"stack","options":{"widgets":[{"type":"onair","options":{"source":"camera"}}]}}]""", false, true)]
     [InlineData("""[{"type":"stack","options":{"widgets":[{"type":"onair","enabled":false}]}}]""", false, false)]
+    [InlineData("""[{"type":"meeting-status"}]""", true, true)]                            // drawn by the On air code
     [InlineData("""[{"type":"clock"},{"type":"audio-mixer"}]""", false, false)]
     [InlineData("[]", false, false)]
     public void OnAirWidgetsAskForWhatTheyLightUpFor(string widgets, bool mic, bool camera) =>

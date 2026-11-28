@@ -54,7 +54,8 @@ public sealed class PrivacyMonitor(ILogger<PrivacyMonitor> log, ConfigStore? con
         bool mic = false, camera = false;
         foreach (var w in cfg.Widgets(enabledPagesOnly: true))
         {
-            if (w.Type != "onair") continue;
+            // the Meeting status widget is drawn by the On air code and has no source option: both
+            if (w.Type is not ("onair" or "meeting-status")) continue;
             var source = w.Str("source") ?? "both";
             mic |= source is "both" or "mic";
             camera |= source is "both" or "camera";

@@ -446,7 +446,7 @@ public static class Shortcuts
     /// <summary>
     /// The commands that turn the screens off in this Linux session, in the order to try. XWayland has no DPMS
     /// extension, so on Wayland <c>xset dpms force off</c> does nothing (and reported success): KDE Plasma turns them off
-    /// through <c>kscreen-doctor --dpms off</c>, GNOME through Mutter's PowerSaveMode property over D-Bus. Both turn the
+    /// through <c>kscreen-doctor -platform wayland --dpms off</c>, GNOME through Mutter's PowerSaveMode property over D-Bus. Both turn the
     /// screens back on at the next input. X11 keeps <c>xset</c>. Another Wayland desktop gets no command, so the key
     /// reports that it can't instead of pretending.
     /// </summary>
