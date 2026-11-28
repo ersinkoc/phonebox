@@ -46,7 +46,15 @@ internal sealed class MqttTestBroker : IDisposable
     /// <summary>A port no other fixture of this run has been given (the HTTP fixtures share the same list).</summary>
     public static int FreePort() => TestPorts.Reserve();
 
-    public void Dispose() { try { _server.StopAsync().GetAwaiter().GetResult(); } catch { } _server.Dispose(); }
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        if (_disposed) return; // a test may stop the broker itself and let "using" dispose it again
+        _disposed = true;
+        try { _server.StopAsync().GetAwaiter().GetResult(); } catch { }
+        _server.Dispose();
+    }
 
     /// <summary>A certificate for 127.0.0.1 / localhost (or another name), self-signed or signed by <paramref name="issuer"/>.</summary>
     public static X509Certificate2 Certificate(string name = "localhost", X509Certificate2? issuer = null, bool authority = false, string usage = "1.3.6.1.5.5.7.3.1")

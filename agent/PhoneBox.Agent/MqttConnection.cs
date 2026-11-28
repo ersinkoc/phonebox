@@ -122,11 +122,15 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
         var first = _firstWait;
         var wait = first;
         string? lastKind = null;
+        string? previous = null; // the settings of the previous attempt
         while (!ct.IsCancellationRequested)
         {
             var cfg = config.Get().Mqtt;
-            if (!cfg.Configured) { _status = new(Off, null, null); lastKind = null; await Pause(TimeSpan.FromSeconds(2), null, ct); continue; }
+            if (!cfg.Configured) { _status = new(Off, null, null); wait = first; lastKind = null; previous = null; await Pause(TimeSpan.FromSeconds(2), null, ct); continue; }
             var signature = Signature(cfg);
+            // new settings start over, however they were noticed (a change in the last half second of a pause is not): the
+            // wait is the short one again and their first failure is logged even if the old settings failed the same way
+            if (signature != previous) { wait = first; lastKind = null; previous = signature; }
             try
             {
                 // returns when the settings changed or the agent stops: connect again at once, with what is saved now.
@@ -136,9 +140,6 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
                 await RunAsync(cfg, signature, ct,
                     () => { if (lastKind is null) log.LogInformation("mqtt: connected"); },
                     () => { if (lastKind is not null) log.LogInformation("mqtt: connected"); wait = first; lastKind = null; });
-                // a clean return is a settings change: a fresh start for the new settings
-                wait = first;
-                lastKind = null;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
             catch (Exception ex)

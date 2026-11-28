@@ -473,6 +473,29 @@ public sealed class MqttTests : IDisposable
     }
 
     [Fact]
+    public async Task NewSettingsAreLoggedEvenIfTheOldOnesFailedTheSameWay()
+    {
+        // two brokers that accept the login and drop the client: the same kind of failure, "other"
+        using var first = await MqttTestBroker.StartAsync();
+        using var second = await MqttTestBroker.StartAsync();
+        first.DropClients = second.DropClients = true;
+        var log = new ListLogger<MqttConnection>();
+        var store = Store(Config(first.Port, user: null, password: null));
+        var connection = new MqttConnection(store, log, TimeSpan.FromMilliseconds(200), TimeSpan.FromSeconds(60));
+        await connection.StartAsync(CancellationToken.None);
+        try
+        {
+            for (var i = 0; i < 100 && !log.Lines.Any(l => l.Contains("failed")); i++) await Task.Delay(100);
+            Assert.Single(log.Lines, l => l.Contains("failed"));
+            Assert.Null(store.Save(JsonSerializer.Serialize(new { mqtt = Config(second.Port, user: null, password: null) }, ConfigStore.WriteOpts)));
+            // the new settings' own failure is not left out because the old ones failed the same way
+            for (var i = 0; i < 100 && log.Lines.Count(l => l.Contains("failed")) < 2; i++) await Task.Delay(100);
+            Assert.Equal(2, log.Lines.Count(l => l.Contains("failed")));
+        }
+        finally { await connection.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
     public async Task AConnectionThatHeldStartsOverWithAShortWaitAndAFreshLog()
     {
         var port = MqttTestBroker.FreePort();
@@ -482,15 +505,17 @@ public sealed class MqttTests : IDisposable
         try
         {
             await Until(connection, s => s.State == MqttConnection.Error); // nothing listens: "refused", noted once
-            var broker = await MqttTestBroker.StartAsync(at: port);
+            using var broker = await MqttTestBroker.StartAsync(at: port); // disposed on an early exit too
             await Until(connection, s => s.State == MqttConnection.Connected);
             // after a failure the "connected" line waits until the connection has held
             Assert.DoesNotContain(log.Lines, l => l.Contains("connected"));
             for (var i = 0; i < 100 && !log.Lines.Any(l => l.Contains("connected")); i++) await Task.Delay(100);
             Assert.Contains(log.Lines, l => l.Contains("connected"));
             // it held: a drop now is reported as a new failure, and retried after the short first wait
-            broker.Dispose();
+            broker.Dispose(); // the explicit call is what drops the connection
             await Until(connection, s => s.State == MqttConnection.Error);
+            // the state is set before the line is written: wait for the line itself (bounded), then count
+            for (var i = 0; i < 100 && log.Lines.Count(l => l.Contains("failed")) < 2; i++) await Task.Delay(100);
             Assert.Equal(2, log.Lines.Count(l => l.Contains("failed")));
             using var again = await MqttTestBroker.StartAsync(at: port);
             await Until(connection, s => s.State == MqttConnection.Connected, 5);
