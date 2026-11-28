@@ -127,8 +127,9 @@ W.lyrics = {
       if (on === seekable) return;
       seekable = on;
       box.classList.toggle('seekable', on);
+      // a line without words (a music gap) stays a tap target only: as a button it would have nothing to say
       for (const r of rows) {
-        if (on) { r.tabIndex = 0; r.setAttribute('role', 'button'); } else { r.removeAttribute('tabindex'); r.removeAttribute('role'); }
+        if (on && !r.classList.contains('gap')) { r.tabIndex = 0; r.setAttribute('role', 'button'); } else { r.removeAttribute('tabindex'); r.removeAttribute('role'); }
       }
     };
     const follow = (jump = false) => {
