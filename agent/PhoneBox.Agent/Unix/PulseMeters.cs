@@ -16,10 +16,15 @@ internal sealed class PulseMeters : IDisposable
     internal const int Rate = 8000, Channels = 2, ChunkFrames = 400; // 50 ms per chunk
     internal const int WindowChunks = 20, WindowMs = 1000; // the level covers the last second
     internal const int IdleMs = 5000, MaxMeters = 32;
+    /// <summary>A meter that could not start, or whose capture ended within <see cref="QuickEndMs"/> (a device that is
+    /// gone, a refused connection), is not started again for <see cref="RetryMs"/>: listings come every ~400 ms with
+    /// ducking on, and up to 32 meters could otherwise be respawned each time.</summary>
+    internal const int QuickEndMs = 2000, RetryMs = 5000;
     private readonly Func<IReadOnlyList<string>, Feed?> _start;
     private readonly Func<long> _now;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, Meter> _meters = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _retryAt = new(StringComparer.Ordinal);
     private readonly Timer _sweep;
     private bool _disposed;
 
@@ -46,10 +51,16 @@ internal sealed class PulseMeters : IDisposable
     [
         "--raw", "--format=s16le", $"--rate={Rate}", $"--channels={Channels}", "--latency-msec=50",
         "--client-name=PhoneBox", "--stream-name=PhoneBox level meter",
+        // When the output or the application stream goes away, PipeWire moves a capture elsewhere, and a closed
+        // application's --monitor-stream capture landed on the default source, the microphone (seen on PipeWire 1.6).
+        // pacat has no --no-move; this stream property makes PipeWire leave the capture unlinked instead, and
+        // Retain() stops it at the next listing (also on PulseAudio, which ignores the property).
+        "--property=node.dont-reconnect=true",
     ];
 
     private static Feed? Start(string path, IReadOnlyList<string> args)
     {
+        Process? process = null;
         try
         {
             var psi = new ProcessStartInfo(path)
@@ -58,7 +69,7 @@ internal sealed class PulseMeters : IDisposable
                 WorkingDirectory = AppPaths.NeutralCwd,
             };
             foreach (var a in args) psi.ArgumentList.Add(a);
-            var process = Process.Start(psi);
+            process = Process.Start(psi);
             if (process is null) return null;
             _ = process.StandardError.BaseStream.CopyToAsync(Stream.Null);
             return new(process.StandardOutput.BaseStream, () =>
@@ -67,7 +78,13 @@ internal sealed class PulseMeters : IDisposable
                 process.Dispose();
             });
         }
-        catch { return null; }
+        catch
+        {
+            // started, then a later line threw: nothing may keep capturing
+            try { if (process is { HasExited: false }) process.Kill(entireProcessTree: true); } catch { }
+            process?.Dispose();
+            return null;
+        }
     }
 
     /// <summary>
@@ -81,8 +98,12 @@ internal sealed class PulseMeters : IDisposable
             if (_disposed) return 0;
             if (!_meters.TryGetValue(key, out var meter))
             {
-                if (_meters.Count >= MaxMeters || _start(args()) is not { } feed) return 0;
-                meter = new Meter(this, key, feed);
+                var now = _now();
+                if (_retryAt.TryGetValue(key, out var retry) && now < retry) return 0;
+                _retryAt.Remove(key);
+                if (_meters.Count >= MaxMeters) return 0;
+                if (_start(args()) is not { } feed) { _retryAt[key] = now + RetryMs; return 0; }
+                meter = new Meter(this, key, feed) { StartedAt = now };
                 _meters[key] = meter;
                 meter.Run();
                 _sweep.Change(1000, 1000);
@@ -111,7 +132,29 @@ internal sealed class PulseMeters : IDisposable
 
     private void Ended(Meter meter)
     {
-        lock (_gate) if (_meters.TryGetValue(meter.Key, out var current) && ReferenceEquals(current, meter)) _meters.Remove(meter.Key);
+        lock (_gate)
+        {
+            if (!_meters.TryGetValue(meter.Key, out var current) || !ReferenceEquals(current, meter)) return;
+            _meters.Remove(meter.Key);
+            var now = _now();
+            if (now - meter.StartedAt < QuickEndMs) _retryAt[meter.Key] = now + RetryMs;
+        }
+    }
+
+    /// <summary>
+    /// Stops every meter whose output or application stream is not in the current listing (unplugged, closed, paused):
+    /// what it captures now is no longer what it was started for.
+    /// </summary>
+    public void Retain(IReadOnlySet<string> keys)
+    {
+        List<Meter> gone;
+        lock (_gate)
+        {
+            gone = [.. _meters.Values.Where(m => !keys.Contains(m.Key))];
+            foreach (var m in gone) _meters.Remove(m.Key);
+            foreach (var k in _retryAt.Keys.Where(k => !keys.Contains(k)).ToList()) _retryAt.Remove(k);
+        }
+        foreach (var m in gone) m.Stop();
     }
 
     public void Dispose()
@@ -150,6 +193,7 @@ internal sealed class PulseMeters : IDisposable
         private int _stopped;
         public string Key => key;
         public long AskedAt;
+        public long StartedAt;
         /// <summary>The loudest peak read within the last <see cref="WindowMs"/>.</summary>
         public double Level
         {

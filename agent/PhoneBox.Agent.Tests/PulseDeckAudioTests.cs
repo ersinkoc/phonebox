@@ -799,16 +799,50 @@ public sealed class PulseDeckAudioTests
     }
 
     [Fact]
-    public void AMeterWhoseCaptureEndsIsForgottenAndStartsAgain()
+    public void AMeterWhoseCaptureEndsAtOnceWaitsBeforeStartingAgain()
     {
+        long clock = 0;
         var started = 0;
-        using var meters = new PulseMeters(_ => { started++; return new(new MemoryStream(Chunk(8192)), () => { }); });
+        using var meters = new PulseMeters(_ => { started++; return new(new MemoryStream(Chunk(8192)), () => { }); }, () => clock);
         meters.Level("stream:1", () => PulseMeters.StreamArgs("1"));
         var until = DateTime.UtcNow.AddSeconds(5);
         while (meters.Running > 0 && DateTime.UtcNow < until) Thread.Sleep(10);
-        Assert.Equal(0, meters.Running); // the stream ended
+        Assert.Equal(0, meters.Running); // the capture ended right away: a device that is gone
+        meters.Level("stream:1", () => PulseMeters.StreamArgs("1"));
+        clock = PulseMeters.RetryMs - 1;
+        meters.Level("stream:1", () => PulseMeters.StreamArgs("1"));
+        Assert.Equal(1, started); // not respawned on every listing
+        clock = PulseMeters.RetryMs;
         meters.Level("stream:1", () => PulseMeters.StreamArgs("1"));
         Assert.Equal(2, started);
+    }
+
+    [Fact]
+    public void AMeterThatCannotStartWaitsBeforeTryingAgain()
+    {
+        long clock = 0;
+        var tries = 0;
+        using var meters = new PulseMeters(_ => { tries++; return null; }, () => clock);
+        for (var i = 0; i < 10; i++) meters.Level("output:a", () => PulseMeters.OutputArgs("a.monitor"));
+        Assert.Equal(1, tries);
+        clock = PulseMeters.RetryMs;
+        meters.Level("output:a", () => PulseMeters.OutputArgs("a.monitor"));
+        Assert.Equal(2, tries);
+    }
+
+    [Fact]
+    public void AMeterWhoseOutputOrStreamIsGoneIsStopped()
+    {
+        var (meters, _, feeds) = FakeMeters(() => 0);
+        using (meters)
+        {
+            meters.Level("stream:1", () => PulseMeters.StreamArgs("1"));
+            meters.Level("output:a", () => PulseMeters.OutputArgs("a.monitor"));
+            meters.Retain(new HashSet<string> { "output:a" }); // the application closed
+            Assert.Equal(1, meters.Running);
+            Assert.True(feeds.Single(f => f.Key.EndsWith("--monitor-stream=1", StringComparison.Ordinal)).Value.Stopped);
+            Assert.False(feeds.Single(f => f.Key.EndsWith("--device=a.monitor", StringComparison.Ordinal)).Value.Stopped);
+        }
     }
 
     [Fact]
@@ -823,20 +857,50 @@ public sealed class PulseDeckAudioTests
     }
 
     [Fact]
-    public void ParecMetersTheMonitorSourceAndEachStreamButNoMicrophone()
+    public void ParecMetersTheListedMonitorAndPlayingStreamsButNoMicrophone()
     {
         var (meters, started, _) = FakeMeters(() => 0);
         using (meters)
         {
-            var sinks = PulseDeckAudio.Parse(Sinks);
-            var audio = PulseDeckAudio.Build(sinks, PulseDeckAudio.Parse(Sources), PulseDeckAudio.Parse(Inputs), Scarlett, Mic);
-            PulseDeckAudio.WithLevels(audio, sinks, meters);
+            var sources = PulseDeckAudio.Parse(Sources);
+            var audio = PulseDeckAudio.Build(PulseDeckAudio.Parse(Sinks), sources, PulseDeckAudio.Parse(Inputs), Scarlett, Mic);
+            var levelled = PulseDeckAudio.WithLevels(audio, sources, meters);
+            // the Scarlett's monitor is the source whose "Monitor of Sink" names it
             Assert.Contains(started, a => a.EndsWith("--device=" + Scarlett + ".monitor", StringComparison.Ordinal));
-            Assert.Contains(started, a => a.EndsWith("--monitor-stream=798", StringComparison.Ordinal));
+            // korvex_ch_musica has no monitor source in this listing: no meter, and no guessed "<sink>.monitor"
+            Assert.DoesNotContain(started, a => a.Contains("korvex_ch_musica", StringComparison.Ordinal));
+            // sidra plays; Firefox (798) is corked, delivers nothing, so it gets 0 and no meter
             Assert.Contains(started, a => a.EndsWith("--monitor-stream=3746", StringComparison.Ordinal));
+            Assert.DoesNotContain(started, a => a.EndsWith("--monitor-stream=798", StringComparison.Ordinal));
+            Assert.Equal(0, levelled.Sessions.Single(s => s.Id == "798").Peak);
             Assert.DoesNotContain(started, a => a.Contains(Mic, StringComparison.Ordinal));
             Assert.All(started, a => Assert.StartsWith("--raw --format=s16le --rate=8000 --channels=2", a));
-            Assert.Equal(audio.Devices.Count(d => d.Direction == "output") + audio.Sessions.Count, started.Count);
+            Assert.All(started, a => Assert.Contains("--property=node.dont-reconnect=true", a)); // never moved to the mic
+            Assert.Equal(2, started.Count);
+        }
+    }
+
+    [Fact]
+    public void AMicrophoneNamedLikeAMonitorIsNeverMetered()
+    {
+        // a sink without a monitor in the listing, and a real microphone that happens to be called "<sink>.monitor"
+        const string sources = """
+            Source #7
+            	Name: korvex_ch_musica.monitor
+            	Description: Conference microphone
+            	Monitor of Sink: n/a
+            	Mute: no
+            	Volume: mono: 32768 /  50% / -18.06 dB
+            	Properties:
+            		device.class = "sound"
+            """;
+        var (meters, started, _) = FakeMeters(() => 0);
+        using (meters)
+        {
+            var parsed = PulseDeckAudio.Parse(sources);
+            var audio = PulseDeckAudio.Build(PulseDeckAudio.Parse(Sinks), parsed, [], null, null);
+            PulseDeckAudio.WithLevels(audio, parsed, meters);
+            Assert.Empty(started);
         }
     }
 
@@ -957,5 +1021,39 @@ public sealed class PulseDeckAudioTests
             """;
         var session = Assert.Single(PulseDeckAudio.Build(PulseDeckAudio.Parse(Sinks), [], PulseDeckAudio.Parse(inputs), null, null).Sessions);
         Assert.Equal(("Discord", "Discord"), (session.Name, session.ProcessName));
+    }
+
+    [Fact]
+    public async Task OnlyThePhonesStateRequestStartsMeters()
+    {
+        long clock = 0;
+        var (meters, started, _) = FakeMeters(() => clock);
+        var directory = Path.Combine(Path.GetTempPath(), "phonebox-levels-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var path = Path.Combine(directory, "config.json");
+            File.WriteAllText(path, """{"pages":[{"id":"audio","enabled":true,"widgets":[{"id":"m","type":"audio-mixer"}]}]}""");
+            var pulse = new PulseDeckAudio(PactlFor, () => clock, meters);
+            using var media = new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance);
+            var native = new PortableDeckNative(new AudioControl(), media, _ => null, pulse);
+            using var deck = new ControlDeck(new ConfigStore(path), native,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ControlDeck>.Instance, () => clock);
+            // the desktop settings page reads the same state (control-target editor, Refresh): no meter
+            await deck.Snapshot(CancellationToken.None);
+            clock += 1000; // past the backend's listing cache
+            await Task.Delay(450); // and the deck's, which counts real time
+            await deck.Snapshot(CancellationToken.None);
+            Assert.Empty(started);
+            // the phone's deck widgets send ?levels=1 (the deck keeps a listing for 400 ms of real time)
+            clock += 1000;
+            await Task.Delay(450);
+            await deck.Snapshot(CancellationToken.None, levels: true);
+            clock += 1000;
+            await Task.Delay(450);
+            await deck.Snapshot(CancellationToken.None, levels: true);
+            Assert.NotEmpty(started);
+        }
+        finally { Directory.Delete(directory, true); }
     }
 }

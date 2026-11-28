@@ -12,7 +12,8 @@ export async function deckState(force = false) {
   if (!force && cached && performance.now() - at < 650) return cached;
   if (!force && pending) return pending;
   const stamp = epoch;
-  const task = api('/controls/state', 'GET', 15000).then(data => {
+  // levels=1: the meters run only while the phone shows them (the settings page reads this state without it)
+  const task = api('/controls/state?levels=1', 'GET', 15000).then(data => {
     if (stamp === epoch) { cached = data; at = performance.now(); }
     return data;
   }).finally(() => { if (pending === task) pending = null; });

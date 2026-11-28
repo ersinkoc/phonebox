@@ -93,24 +93,39 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         if (pactl(["info"]) is not { } info || pactl(["list", "sinks"]) is not { } sinksText
             || pactl(["list", "sources"]) is not { } sourcesText || pactl(["list", "sink-inputs"]) is not { } inputsText) return null;
         var (defaultSink, defaultSource) = Defaults(info);
-        var sinks = Parse(sinksText);
-        var audio = Build(sinks, Parse(sourcesText), Parse(inputsText), defaultSink, defaultSource);
-        return meters is not null && _now() < Interlocked.Read(ref _levelsUntil) ? WithLevels(audio, sinks, meters) : audio;
+        var sources = Parse(sourcesText);
+        var audio = Build(Parse(sinksText), sources, Parse(inputsText), defaultSink, defaultSource);
+        return meters is not null && _now() < Interlocked.Read(ref _levelsUntil) ? WithLevels(audio, sources, meters) : audio;
     }
 
     /// <summary>The listing with the level of every output (its monitor source) and application stream.</summary>
-    internal static DeckAudio WithLevels(DeckAudio audio, IReadOnlyList<Block> sinks, PulseMeters meters)
+    /// <remarks>
+    /// Never a microphone, even by accident: an output's monitor is the source whose "Monitor of Sink" names that output
+    /// (a real microphone may itself be called "*.monitor", so the name is not guessed), and an output without one gets
+    /// no meter. A paused (corked) application stream delivers nothing, so it gets 0 and no meter. Meters whose output
+    /// or stream is no longer listed are stopped (<see cref="PulseMeters.Retain"/>).
+    /// </remarks>
+    internal static DeckAudio WithLevels(DeckAudio audio, IReadOnlyList<Block> sources, PulseMeters meters)
     {
         var monitors = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var s in sinks)
-            if (s.Field("Name") is { Length: > 0 } name)
-                monitors[name] = s.Field("Monitor Source") is { Length: > 0 } monitor && monitor != "n/a" ? monitor : name + ".monitor";
-        return audio with
+        foreach (var s in sources)
+            if (s.Field("Name") is { Length: > 0 } name && s.Field("Monitor of Sink") is { Length: > 0 } sink && sink != "n/a")
+                monitors[sink] = name;
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        double Measure(string key, Func<IReadOnlyList<string>> args)
+        {
+            keys.Add(key);
+            return meters.Level(key, args);
+        }
+        var levelled = audio with
         {
             Devices = [.. audio.Devices.Select(d => d.Direction == "output" && monitors.TryGetValue(d.Id, out var monitor)
-                ? d with { Peak = meters.Level("output:" + d.Id, () => PulseMeters.OutputArgs(monitor)) } : d)],
-            Sessions = [.. audio.Sessions.Select(s => s with { Peak = meters.Level("stream:" + s.Id, () => PulseMeters.StreamArgs(s.Id)) })],
+                ? d with { Peak = Measure("output:" + d.Id, () => PulseMeters.OutputArgs(monitor)) } : d)],
+            Sessions = [.. audio.Sessions.Select(s => s.Active
+                ? s with { Peak = Measure("stream:" + s.Id, () => PulseMeters.StreamArgs(s.Id)) } : s with { Peak = 0 })],
         };
+        meters.Retain(keys);
+        return levelled;
     }
 
     /// <summary>The default sink and source from <c>LC_ALL=C pactl info</c> ("Default Sink: name"), null when none is set.</summary>
