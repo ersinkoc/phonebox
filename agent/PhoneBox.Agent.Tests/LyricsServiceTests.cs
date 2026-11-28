@@ -148,6 +148,129 @@ public sealed class LyricsServiceTests : IDisposable
         Assert.StartsWith("/api/search?", Assert.Single(lrclib.Asked));
     }
 
+    private const string SearchHit = """[{"id":1,"duration":200,"instrumental":false,"plainLyrics":"found","syncedLyrics":"[00:01.00] found"}]""";
+
+    /// <summary>
+    /// The lyrics come from the search after the exact match failed, and LRCLIB is not left alone afterwards: another
+    /// song, asked at the same moment, still reaches it.
+    /// </summary>
+    private static async Task AssertFoundBySearchWithoutABackOff(LyricsService lyrics, List<string> asked)
+    {
+        var result = await Ask(lyrics, Track("Song", "Artist", "Album"));
+        Assert.Equal("ok", result.Status);
+        Assert.Equal("[00:01.00] found", result.Synced);
+        lock (asked)
+        {
+            Assert.Equal(2, asked.Count);
+            Assert.StartsWith("/api/get?", asked[0]);
+            Assert.StartsWith("/api/search?track_name=Song", asked[1]);
+        }
+        Assert.Equal("ok", (await Ask(lyrics, Track("Other", "Artist", "Album"))).Status);
+        lock (asked) Assert.Equal(4, asked.Count);
+    }
+
+    [Fact]
+    public async Task AServerErrorFromTheExactMatchFallsBackToTheSearchWithoutABackOff()
+    {
+        long now = 0;
+        var lrclib = new Lrclib(req => req.RequestUri!.AbsolutePath == "/api/get"
+            ? Json("oops", HttpStatusCode.ServiceUnavailable)
+            : Json(SearchHit));
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib, () => now);
+        await AssertFoundBySearchWithoutABackOff(lyrics, lrclib.Asked);
+    }
+
+    [Fact]
+    public async Task AnExactMatchThatTimesOutFallsBackToTheSearchWithoutABackOff()
+    {
+        long now = 0;
+        var asked = new List<string>();
+        var lrclib = new SlowLrclib(async req =>
+        {
+            lock (asked) asked.Add(req.RequestUri!.PathAndQuery);
+            if (req.RequestUri!.AbsolutePath != "/api/get") return Json(SearchHit);
+            // LRCLIB never answers the exact match; the wait ends as HttpClient's own timeout would (10 s is too long for
+            // a test), and HttpClient reports it as that timeout
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+            await Task.Delay(Timeout.Infinite, timeout.Token);
+            return Json("{}");
+        });
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib, () => now);
+        await AssertFoundBySearchWithoutABackOff(lyrics, asked);
+    }
+
+    [Theory]
+    [InlineData(429, null)]   // asked too often
+    [InlineData(503, 600)]    // down, back in 10 minutes
+    [InlineData(503, 0)]      // down, with a Retry-After that asks for no wait at all: still a request to slow down
+    public async Task AnExactMatchAskedToSlowDownStopsTheLookupAndStartsTheBackOff(int status, int? retryAfterSeconds)
+    {
+        long now = 0;
+        var lrclib = new Lrclib(req =>
+        {
+            if (req.RequestUri!.AbsolutePath != "/api/get") return Json(SearchHit);
+            var res = Json("""{"message":"slow down"}""", (HttpStatusCode)status);
+            if (retryAfterSeconds is { } s) res.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(s));
+            return res;
+        });
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib, () => now);
+        Assert.Equal("error", (await Ask(lyrics, Track("Song", "Artist", "Album"))).Status);
+        // the search is not tried
+        Assert.StartsWith("/api/get?", Assert.Single(lrclib.Asked));
+
+        // the back-off: the first step, or as long as Retry-After asks when that is longer
+        var backOff = Math.Max(LyricsService.FirstBackoffMs, (retryAfterSeconds ?? 0) * 1000L);
+        now = backOff - 1000;
+        Assert.Equal("error", (await Ask(lyrics, Track("Other", "Artist", "Album"))).Status);
+        Assert.Single(lrclib.Asked);
+        now = backOff + 1;
+        await Ask(lyrics, Track("Third", "Artist", "Album"));
+        Assert.Equal(2, lrclib.Asked.Count);
+    }
+
+    [Fact]
+    public async Task ANotFoundThatAsksToSlowDownStopsTheLookupToo()
+    {
+        var lrclib = new Lrclib(req =>
+        {
+            if (req.RequestUri!.AbsolutePath != "/api/get") return Json(SearchHit);
+            var res = Json("""{"message":"not found"}""", HttpStatusCode.NotFound);
+            res.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(600));
+            return res;
+        });
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib, () => 0);
+        Assert.Equal("error", (await Ask(lyrics, Track("Song", "Artist", "Album"))).Status);
+        Assert.StartsWith("/api/get?", Assert.Single(lrclib.Asked)); // the search is not tried
+    }
+
+    [Fact]
+    public async Task ARefusalWhoseBodyBreaksOffIsStillARefusal()
+    {
+        var lrclib = new Lrclib(req =>
+        {
+            if (req.RequestUri!.AbsolutePath != "/api/get") return Json(SearchHit);
+            // a 429 whose body never arrives: the connection drops while it is read
+            return new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StreamContent(new BrokenStream()) };
+        });
+        using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib, () => 0);
+        Assert.Equal("error", (await Ask(lyrics, Track("Song", "Artist", "Album"))).Status);
+        Assert.StartsWith("/api/get?", Assert.Single(lrclib.Asked));
+    }
+
+    private sealed class BrokenStream : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new IOException("connection reset");
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     [Fact]
     public void QueriesDropTheBracketedExtrasAndTheExtraArtists()
     {
