@@ -364,7 +364,13 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log)
         }
     }
 
-    private static string Norm(string dir) => dir.Replace('/', '\\').TrimEnd('\\') + "\\";
+    // resolved first ("D:\Games\.\Racer" and "D:\Games\\Racer" are D:\Games\Racer), so one folder has one id and one record
+    private static string Norm(string dir)
+    {
+        string full;
+        try { full = Path.GetFullPath(dir); } catch { full = dir; }
+        return full.Replace('/', '\\').TrimEnd('\\') + "\\";
+    }
 
     /// <summary>A found game's id: a hash of where it is (its folder), so a different program picked later keeps the id.</summary>
     // the folder alone, not the source: a game first found on a drive and later named by its launcher keeps its id, and

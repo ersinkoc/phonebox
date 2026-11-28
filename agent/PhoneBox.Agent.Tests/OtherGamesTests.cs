@@ -338,6 +338,11 @@ public class OtherGamesTests : IDisposable
     {
         var a = OtherGames.IdOf(@"D:\Games\FIFA 23\FIFA23.exe");
         Assert.Equal(a, OtherGames.IdOf(@"d:\games\fifa 23\fifa23.exe"));
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal(a, OtherGames.IdOf(@"D:\Games\.\FIFA 23\FIFA23.exe")); // one folder, one id, however it is written
+            Assert.Equal(a, OtherGames.IdOf(@"D:\Games\\FIFA 23\FIFA23.exe"));
+        }
         Assert.Matches("^x:[0-9a-f]{16}$", a);
         Assert.NotEqual(a, OtherGames.IdOf(@"D:\Games\FIFA 24\FIFA24.exe"));
     }
