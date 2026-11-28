@@ -37,7 +37,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "de": {
     "strings": {
       "s.mqtt.enable": "Mit einem MQTT-Broker verbinden",
-      "s.mqtt.hint": "Der Agent hält die Verbindung. Das Telefon erhält nie die Adresse, den Benutzernamen, das Passwort oder die Topics des Brokers. Der Broker kann im Internet stehen und sieht dann die Adresse dieses Computers. Diese Version verbindet nur: noch wird nichts abonniert oder veröffentlicht.",
+      "s.mqtt.hint": "Der Agent hält die Verbindung. Das Telefon erhält nie die Adresse, den Benutzernamen, das Passwort oder die Topics des Brokers. Der Broker kann im Internet stehen und sieht dann die Adresse dieses Computers. Diese Version verbindet nur: Der Agent abonniert nichts und veröffentlicht selbst nichts. Nur die Last-Will-Nachricht, falls eingestellt, veröffentlicht der Broker, wenn die Verbindung abbricht.",
       "s.mqtt.transport": "Übertragung",
       "s.mqtt.wsPath": "WebSocket-Pfad",
       "s.mqtt.user": "Benutzername",
@@ -51,7 +51,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Topic der Last-Will-Nachricht (leer = keine)",
       "s.mqtt.willPayload": "Last-Will-Nachricht",
       "s.mqtt.willRetain": "Last Will als Retained-Nachricht senden",
-      "s.mqtt.retainWarn": "Achtung: Eine Retained-Nachricht wird erneut zugestellt, sobald sich ein Gerät verbindet oder neu startet. Lassen Sie das aus, wenn Sie nicht sicher sind.",
+      "s.mqtt.retainWarn": "Achtung: Eine Retained-Nachricht wird einem Gerät zugestellt, sobald es abonniert, bei den meisten Boards also direkt nach dem Verbinden oder Neustart. Lassen Sie das aus, wenn Sie nicht sicher sind.",
       "s.mqtt.err.network": "Der Broker ist nicht erreichbar. Prüfen Sie Adresse, Port und Netzwerk.",
       "s.mqtt.err.tls": "Das Zertifikat des Brokers wurde nicht akzeptiert. Geben Sie seine CA-Datei oder seinen Fingerabdruck an.",
       "s.mqtt.err.auth": "Der Broker hat Benutzername oder Passwort abgelehnt.",
@@ -1687,7 +1687,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "fr": {
     "strings": {
       "s.mqtt.enable": "Se connecter à un broker MQTT",
-      "s.mqtt.hint": "L'agent maintient la connexion. Le téléphone ne reçoit jamais l'adresse, le nom d'utilisateur, le mot de passe ni les topics du broker. Le broker peut se trouver sur Internet ; il voit alors l'adresse de cet ordinateur. Cette version se contente de se connecter : rien n'est encore abonné ni publié.",
+      "s.mqtt.hint": "L'agent maintient la connexion. Le téléphone ne reçoit jamais l'adresse, le nom d'utilisateur, le mot de passe ni les topics du broker. Le broker peut se trouver sur Internet ; il voit alors l'adresse de cet ordinateur. Cette version se contente de se connecter : l'agent ne s'abonne à rien et ne publie rien lui-même. Seul le testament, si vous en définissez un, est publié par le broker quand la connexion est perdue.",
       "s.mqtt.transport": "Transport",
       "s.mqtt.wsPath": "Chemin WebSocket",
       "s.mqtt.user": "Nom d'utilisateur",
@@ -1701,7 +1701,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Topic du testament (vide = aucun)",
       "s.mqtt.willPayload": "Message du testament",
       "s.mqtt.willRetain": "Conserver le testament (retain)",
-      "s.mqtt.retainWarn": "Attention : un message conservé est renvoyé chaque fois qu'un appareil se connecte ou redémarre. Laissez cette option désactivée si vous n'êtes pas sûr.",
+      "s.mqtt.retainWarn": "Attention : un message conservé est remis à un appareil dès qu'il s'abonne, ce qui, pour la plupart des cartes, se produit juste après la connexion ou le redémarrage. Laissez cette option désactivée si vous n'êtes pas sûr.",
       "s.mqtt.err.network": "Impossible de joindre le broker. Vérifiez l'adresse, le port et le réseau.",
       "s.mqtt.err.tls": "Le certificat du broker n'a pas été accepté. Indiquez le fichier de son AC ou son empreinte.",
       "s.mqtt.err.auth": "Le broker a refusé le nom d'utilisateur ou le mot de passe.",
@@ -3337,7 +3337,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "es": {
     "strings": {
       "s.mqtt.enable": "Conectar con un broker MQTT",
-      "s.mqtt.hint": "El agente mantiene la conexión. El teléfono nunca recibe la dirección, el usuario, la contraseña ni los topics del broker. El broker puede estar en internet y, entonces, ve la dirección de este equipo. Esta versión solo se conecta: todavía no se suscribe ni se publica nada.",
+      "s.mqtt.hint": "El agente mantiene la conexión. El teléfono nunca recibe la dirección, el usuario, la contraseña ni los topics del broker. El broker puede estar en internet y, entonces, ve la dirección de este equipo. Esta versión solo se conecta: el agente no se suscribe a nada ni publica nada por sí mismo. Solo el testamento, si defines uno, lo publica el broker cuando se pierde la conexión.",
       "s.mqtt.transport": "Transporte",
       "s.mqtt.wsPath": "Ruta WebSocket",
       "s.mqtt.user": "Nombre de usuario",
@@ -3351,7 +3351,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Topic del testamento (vacío = ninguno)",
       "s.mqtt.willPayload": "Mensaje del testamento",
       "s.mqtt.willRetain": "Retener el testamento (retain)",
-      "s.mqtt.retainWarn": "Atención: un mensaje retenido se vuelve a entregar cada vez que un dispositivo se conecta o se reinicia. Déjalo desactivado si no estás seguro.",
+      "s.mqtt.retainWarn": "Atención: un mensaje retenido se entrega a un dispositivo en cuanto se suscribe, lo que en la mayoría de las placas ocurre justo después de conectarse o reiniciarse. Déjalo desactivado si no estás seguro.",
       "s.mqtt.err.network": "No se pudo contactar con el broker. Revisa la dirección, el puerto y la red.",
       "s.mqtt.err.tls": "No se aceptó el certificado del broker. Indica el archivo de su CA o su huella.",
       "s.mqtt.err.auth": "El broker rechazó el usuario o la contraseña.",
@@ -4987,7 +4987,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "it": {
     "strings": {
       "s.mqtt.enable": "Connetti a un broker MQTT",
-      "s.mqtt.hint": "L'agente mantiene la connessione. Il telefono non riceve mai l'indirizzo, il nome utente, la password né i topic del broker. Il broker può essere su internet e in tal caso vede l'indirizzo di questo computer. Questa versione si limita a connettersi: per ora non si sottoscrive né si pubblica nulla.",
+      "s.mqtt.hint": "L'agente mantiene la connessione. Il telefono non riceve mai l'indirizzo, il nome utente, la password né i topic del broker. Il broker può essere su internet e in tal caso vede l'indirizzo di questo computer. Questa versione si limita a connettersi: l'agente non sottoscrive nulla e non pubblica nulla da sé. Solo il testamento, se ne imposti uno, viene pubblicato dal broker quando la connessione si perde.",
       "s.mqtt.transport": "Trasporto",
       "s.mqtt.wsPath": "Percorso WebSocket",
       "s.mqtt.user": "Nome utente",
@@ -5001,7 +5001,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Topic del testamento (vuoto = nessuno)",
       "s.mqtt.willPayload": "Messaggio del testamento",
       "s.mqtt.willRetain": "Mantieni il testamento (retain)",
-      "s.mqtt.retainWarn": "Attenzione: un messaggio mantenuto viene consegnato di nuovo ogni volta che un dispositivo si connette o si riavvia. Lascia disattivato se non sei sicuro.",
+      "s.mqtt.retainWarn": "Attenzione: un messaggio mantenuto viene consegnato a un dispositivo non appena si sottoscrive, cosa che per la maggior parte delle schede avviene subito dopo la connessione o il riavvio. Lascia disattivato se non sei sicuro.",
       "s.mqtt.err.network": "Impossibile raggiungere il broker. Controlla indirizzo, porta e rete.",
       "s.mqtt.err.tls": "Il certificato del broker non è stato accettato. Indica il file della sua CA o la sua impronta.",
       "s.mqtt.err.auth": "Il broker ha rifiutato il nome utente o la password.",
@@ -6637,7 +6637,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "pt": {
     "strings": {
       "s.mqtt.enable": "Ligar a um broker MQTT",
-      "s.mqtt.hint": "O agente mantém a ligação. O telemóvel nunca recebe o endereço, o nome de utilizador, a palavra-passe nem os tópicos do broker. O broker pode estar na internet e, nesse caso, vê o endereço deste computador. Esta versão apenas liga: ainda não se subscreve nem se publica nada.",
+      "s.mqtt.hint": "O agente mantém a ligação. O telemóvel nunca recebe o endereço, o nome de utilizador, a palavra-passe nem os tópicos do broker. O broker pode estar na internet e, nesse caso, vê o endereço deste computador. Esta versão apenas liga: o agente não subscreve nada nem publica nada por si. Só o testamento, se definir um, é publicado pelo broker quando a ligação se perde.",
       "s.mqtt.transport": "Transporte",
       "s.mqtt.wsPath": "Caminho WebSocket",
       "s.mqtt.user": "Nome de utilizador",
@@ -6651,7 +6651,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Tópico do testamento (vazio = nenhum)",
       "s.mqtt.willPayload": "Mensagem do testamento",
       "s.mqtt.willRetain": "Reter o testamento (retain)",
-      "s.mqtt.retainWarn": "Atenção: uma mensagem retida é entregue novamente sempre que um dispositivo se liga ou reinicia. Deixe desativado se não tiver a certeza.",
+      "s.mqtt.retainWarn": "Atenção: uma mensagem retida é entregue a um dispositivo assim que ele subscreve, o que na maioria das placas acontece logo depois de ligar ou reiniciar. Deixe desativado se não tiver a certeza.",
       "s.mqtt.err.network": "Não foi possível contactar o broker. Verifique o endereço, a porta e a rede.",
       "s.mqtt.err.tls": "O certificado do broker não foi aceite. Indique o ficheiro da sua CA ou a sua impressão digital.",
       "s.mqtt.err.auth": "O broker recusou o nome de utilizador ou a palavra-passe.",
@@ -8287,7 +8287,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "pt-BR": {
     "strings": {
       "s.mqtt.enable": "Conectar a um broker MQTT",
-      "s.mqtt.hint": "O agente mantém a conexão. O celular nunca recebe o endereço, o nome de usuário, a senha nem os tópicos do broker. O broker pode estar na internet e, nesse caso, vê o endereço deste computador. Esta versão apenas conecta: nada é assinado nem publicado ainda.",
+      "s.mqtt.hint": "O agente mantém a conexão. O celular nunca recebe o endereço, o nome de usuário, a senha nem os tópicos do broker. O broker pode estar na internet e, nesse caso, vê o endereço deste computador. Esta versão apenas conecta: o agente não assina nada nem publica nada por conta própria. Só o testamento, se você definir um, é publicado pelo broker quando a conexão se perde.",
       "s.mqtt.transport": "Transporte",
       "s.mqtt.wsPath": "Caminho WebSocket",
       "s.mqtt.user": "Nome de usuário",
@@ -8301,7 +8301,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Tópico do testamento (vazio = nenhum)",
       "s.mqtt.willPayload": "Mensagem do testamento",
       "s.mqtt.willRetain": "Reter o testamento (retain)",
-      "s.mqtt.retainWarn": "Atenção: uma mensagem retida é entregue de novo sempre que um dispositivo conecta ou reinicia. Deixe desativado se não tiver certeza.",
+      "s.mqtt.retainWarn": "Atenção: uma mensagem retida é entregue a um dispositivo assim que ele assina, o que na maioria das placas acontece logo depois de conectar ou reiniciar. Deixe desativado se não tiver certeza.",
       "s.mqtt.err.network": "Não foi possível alcançar o broker. Verifique o endereço, a porta e a rede.",
       "s.mqtt.err.tls": "O certificado do broker não foi aceito. Informe o arquivo da sua CA ou a sua impressão digital.",
       "s.mqtt.err.auth": "O broker recusou o nome de usuário ou a senha.",
@@ -8456,7 +8456,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "nl": {
     "strings": {
       "s.mqtt.enable": "Verbinden met een MQTT-broker",
-      "s.mqtt.hint": "De agent houdt de verbinding vast. De telefoon krijgt nooit het adres, de gebruikersnaam, het wachtwoord of de topics van de broker. De broker kan op internet staan en ziet dan het adres van deze computer. Deze versie maakt alleen verbinding: er wordt nog niets geabonneerd of gepubliceerd.",
+      "s.mqtt.hint": "De agent houdt de verbinding vast. De telefoon krijgt nooit het adres, de gebruikersnaam, het wachtwoord of de topics van de broker. De broker kan op internet staan en ziet dan het adres van deze computer. Deze versie maakt alleen verbinding: de agent abonneert zich op niets en publiceert zelf niets. Alleen het laatste testament, als u er een instelt, wordt door de broker gepubliceerd wanneer de verbinding wegvalt.",
       "s.mqtt.transport": "Transport",
       "s.mqtt.wsPath": "WebSocket-pad",
       "s.mqtt.user": "Gebruikersnaam",
@@ -8470,7 +8470,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Topic van het laatste testament (leeg = geen)",
       "s.mqtt.willPayload": "Bericht van het laatste testament",
       "s.mqtt.willRetain": "Laatste testament bewaren (retain)",
-      "s.mqtt.retainWarn": "Let op: een bewaard bericht wordt opnieuw bezorgd telkens als een apparaat verbinding maakt of opnieuw start. Laat dit uit als u het niet zeker weet.",
+      "s.mqtt.retainWarn": "Let op: een bewaard bericht wordt aan een apparaat bezorgd zodra het zich abonneert, bij de meeste borden direct na het verbinden of opnieuw starten. Laat dit uit als u het niet zeker weet.",
       "s.mqtt.err.network": "De broker is niet bereikbaar. Controleer het adres, de poort en het netwerk.",
       "s.mqtt.err.tls": "Het certificaat van de broker is niet geaccepteerd. Geef het CA-bestand of de vingerafdruk op.",
       "s.mqtt.err.auth": "De broker heeft de gebruikersnaam of het wachtwoord geweigerd.",
@@ -10106,7 +10106,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "pl": {
     "strings": {
       "s.mqtt.enable": "Połącz z brokerem MQTT",
-      "s.mqtt.hint": "Agent utrzymuje połączenie. Telefon nigdy nie dostaje adresu, nazwy użytkownika, hasła ani tematów brokera. Broker może być w internecie i wtedy widzi adres tego komputera. Ta wersja tylko się łączy: na razie nic nie jest subskrybowane ani publikowane.",
+      "s.mqtt.hint": "Agent utrzymuje połączenie. Telefon nigdy nie dostaje adresu, nazwy użytkownika, hasła ani tematów brokera. Broker może być w internecie i wtedy widzi adres tego komputera. Ta wersja tylko się łączy: agent niczego nie subskrybuje i sam niczego nie publikuje. Tylko ostatnią wolę, jeśli ją ustawisz, publikuje broker po utracie połączenia.",
       "s.mqtt.transport": "Transport",
       "s.mqtt.wsPath": "Ścieżka WebSocket",
       "s.mqtt.user": "Nazwa użytkownika",
@@ -10120,7 +10120,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Temat ostatniej woli (puste = brak)",
       "s.mqtt.willPayload": "Wiadomość ostatniej woli",
       "s.mqtt.willRetain": "Zachowaj ostatnią wolę (retain)",
-      "s.mqtt.retainWarn": "Uwaga: zachowana wiadomość jest dostarczana ponownie za każdym razem, gdy urządzenie się łączy lub restartuje. Jeśli nie masz pewności, zostaw wyłączone.",
+      "s.mqtt.retainWarn": "Uwaga: zachowana wiadomość jest dostarczana urządzeniu w chwili, gdy ono subskrybuje, co w większości płytek dzieje się zaraz po połączeniu lub restarcie. Jeśli nie masz pewności, zostaw wyłączone.",
       "s.mqtt.err.network": "Nie można połączyć się z brokerem. Sprawdź adres, port i sieć.",
       "s.mqtt.err.tls": "Certyfikat brokera nie został zaakceptowany. Podaj plik jego CA lub odcisk.",
       "s.mqtt.err.auth": "Broker odrzucił nazwę użytkownika lub hasło.",
@@ -11756,7 +11756,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "ru": {
     "strings": {
       "s.mqtt.enable": "Подключиться к брокеру MQTT",
-      "s.mqtt.hint": "Соединение держит агент. Телефон никогда не получает адрес брокера, имя пользователя, пароль или топики. Брокер может находиться в интернете, и тогда он видит адрес этого компьютера. Эта версия только подключается: подписок и публикаций пока нет.",
+      "s.mqtt.hint": "Соединение держит агент. Телефон никогда не получает адрес брокера, имя пользователя, пароль или топики. Брокер может находиться в интернете, и тогда он видит адрес этого компьютера. Эта версия только подключается: агент ни на что не подписывается и сам ничего не публикует. Только последнюю волю, если вы её задали, публикует брокер при потере соединения.",
       "s.mqtt.transport": "Транспорт",
       "s.mqtt.wsPath": "Путь WebSocket",
       "s.mqtt.user": "Имя пользователя",
@@ -11770,7 +11770,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Топик последней воли (пусто = нет)",
       "s.mqtt.willPayload": "Сообщение последней воли",
       "s.mqtt.willRetain": "Сохранять последнюю волю (retain)",
-      "s.mqtt.retainWarn": "Внимание: сохранённое сообщение доставляется снова при каждом подключении или перезапуске устройства. Если не уверены, оставьте выключенным.",
+      "s.mqtt.retainWarn": "Внимание: сохранённое сообщение доставляется устройству, когда оно подписывается, а у большинства плат это происходит сразу после подключения или перезапуска. Если не уверены, оставьте выключенным.",
       "s.mqtt.err.network": "Не удалось связаться с брокером. Проверьте адрес, порт и сеть.",
       "s.mqtt.err.tls": "Сертификат брокера не принят. Укажите файл его CA или отпечаток.",
       "s.mqtt.err.auth": "Брокер отклонил имя пользователя или пароль.",
@@ -13526,7 +13526,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "el": {
     "strings": {
       "s.mqtt.enable": "Σύνδεση σε broker MQTT",
-      "s.mqtt.hint": "Ο πράκτορας κρατά τη σύνδεση. Το τηλέφωνο δεν λαμβάνει ποτέ τη διεύθυνση, το όνομα χρήστη, τον κωδικό ή τα topics του broker. Ο broker μπορεί να βρίσκεται στο διαδίκτυο και τότε βλέπει τη διεύθυνση αυτού του υπολογιστή. Αυτή η έκδοση απλώς συνδέεται: δεν γίνεται ακόμη εγγραφή ούτε δημοσίευση.",
+      "s.mqtt.hint": "Ο πράκτορας κρατά τη σύνδεση. Το τηλέφωνο δεν λαμβάνει ποτέ τη διεύθυνση, το όνομα χρήστη, τον κωδικό ή τα topics του broker. Ο broker μπορεί να βρίσκεται στο διαδίκτυο και τότε βλέπει τη διεύθυνση αυτού του υπολογιστή. Αυτή η έκδοση απλώς συνδέεται: ο πράκτορας δεν εγγράφεται σε τίποτα και δεν δημοσιεύει ο ίδιος τίποτα. Μόνο την τελευταία επιθυμία, αν ορίσετε μία, τη δημοσιεύει ο broker όταν χαθεί η σύνδεση.",
       "s.mqtt.transport": "Μεταφορά",
       "s.mqtt.wsPath": "Διαδρομή WebSocket",
       "s.mqtt.user": "Όνομα χρήστη",
@@ -13540,7 +13540,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Topic τελευταίας επιθυμίας (κενό = κανένα)",
       "s.mqtt.willPayload": "Μήνυμα τελευταίας επιθυμίας",
       "s.mqtt.willRetain": "Διατήρηση της τελευταίας επιθυμίας (retain)",
-      "s.mqtt.retainWarn": "Προσοχή: ένα διατηρημένο μήνυμα παραδίδεται ξανά κάθε φορά που μια συσκευή συνδέεται ή επανεκκινείται. Αφήστε το απενεργοποιημένο αν δεν είστε σίγουροι.",
+      "s.mqtt.retainWarn": "Προσοχή: ένα διατηρημένο μήνυμα παραδίδεται σε μια συσκευή μόλις εγγραφεί, κάτι που στις περισσότερες πλακέτες συμβαίνει αμέσως μετά τη σύνδεση ή την επανεκκίνηση. Αφήστε το απενεργοποιημένο αν δεν είστε σίγουροι.",
       "s.mqtt.err.network": "Δεν ήταν δυνατή η επικοινωνία με τον broker. Ελέγξτε τη διεύθυνση, τη θύρα και το δίκτυο.",
       "s.mqtt.err.tls": "Το πιστοποιητικό του broker δεν έγινε δεκτό. Δώστε το αρχείο του CA ή το αποτύπωμά του.",
       "s.mqtt.err.auth": "Ο broker απέρριψε το όνομα χρήστη ή τον κωδικό.",
@@ -14013,7 +14013,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "vi": {
     "strings": {
       "s.mqtt.enable": "Kết nối tới broker MQTT",
-      "s.mqtt.hint": "Agent giữ kết nối. Điện thoại không bao giờ nhận địa chỉ, tên người dùng, mật khẩu hay topic của broker. Broker có thể nằm trên internet và khi đó nó thấy địa chỉ của máy tính này. Phiên bản này chỉ kết nối: chưa đăng ký hay xuất bản gì.",
+      "s.mqtt.hint": "Agent giữ kết nối. Điện thoại không bao giờ nhận địa chỉ, tên người dùng, mật khẩu hay topic của broker. Broker có thể nằm trên internet và khi đó nó thấy địa chỉ của máy tính này. Phiên bản này chỉ kết nối: agent không đăng ký gì và tự nó không xuất bản gì. Chỉ có di chúc, nếu bạn đặt, là do broker xuất bản khi mất kết nối.",
       "s.mqtt.transport": "Phương thức truyền tải",
       "s.mqtt.wsPath": "Đường dẫn WebSocket",
       "s.mqtt.user": "Tên người dùng",
@@ -14027,7 +14027,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Topic di chúc (để trống = không có)",
       "s.mqtt.willPayload": "Tin nhắn di chúc",
       "s.mqtt.willRetain": "Giữ lại di chúc (retain)",
-      "s.mqtt.retainWarn": "Cảnh báo: tin nhắn được giữ lại sẽ được gửi lại mỗi khi một thiết bị kết nối hoặc khởi động lại. Hãy để tắt nếu bạn không chắc.",
+      "s.mqtt.retainWarn": "Cảnh báo: tin nhắn được giữ lại sẽ được gửi cho thiết bị ngay khi nó đăng ký, với hầu hết các bo mạch là ngay sau khi kết nối hoặc khởi động lại. Hãy để tắt nếu bạn không chắc.",
       "s.mqtt.err.network": "Không thể kết nối tới broker. Hãy kiểm tra địa chỉ, cổng và mạng.",
       "s.mqtt.err.tls": "Chứng chỉ của broker không được chấp nhận. Hãy nhập tệp CA hoặc dấu vân tay của nó.",
       "s.mqtt.err.auth": "Broker đã từ chối tên người dùng hoặc mật khẩu.",
@@ -14500,7 +14500,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "zh": {
     "strings": {
       "s.mqtt.enable": "连接到 MQTT 代理（broker）",
-      "s.mqtt.hint": "连接由代理程序（agent）保持。手机永远不会收到 broker 的地址、用户名、密码或主题。broker 可以位于互联网上，此时它会看到这台电脑的地址。此版本只负责连接：暂时不订阅也不发布任何内容。",
+      "s.mqtt.hint": "连接由代理程序（agent）保持。手机永远不会收到 broker 的地址、用户名、密码或主题。broker 可以位于互联网上，此时它会看到这台电脑的地址。此版本只负责连接：agent 不订阅任何内容，自己也不发布任何内容。只有遗嘱消息（如果设置了）会在连接丢失时由 broker 发布。",
       "s.mqtt.transport": "传输方式",
       "s.mqtt.wsPath": "WebSocket 路径",
       "s.mqtt.user": "用户名",
@@ -14514,7 +14514,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "遗嘱主题（留空 = 不设置）",
       "s.mqtt.willPayload": "遗嘱消息",
       "s.mqtt.willRetain": "保留遗嘱消息（retain）",
-      "s.mqtt.retainWarn": "警告：保留的消息会在设备每次连接或重启时再次送达。如果不确定，请保持关闭。",
+      "s.mqtt.retainWarn": "警告：保留的消息会在设备订阅时送达，对大多数开发板来说就是在连接或重启之后立即送达。如果不确定，请保持关闭。",
       "s.mqtt.err.network": "无法连接到 broker。请检查地址、端口和网络。",
       "s.mqtt.err.tls": "broker 的证书未被接受。请填写其 CA 文件或指纹。",
       "s.mqtt.err.auth": "broker 拒绝了用户名或密码。",

@@ -11,6 +11,8 @@ internal sealed class MqttTestBroker : IDisposable
     public int Port { get; }
     public List<string> ClientIds { get; } = [];
     public List<(string? User, string? Password)> Logins { get; } = [];
+    /// <summary>Accepts every login and then disconnects the client at once (a duplicate client id, an access list that kicks).</summary>
+    public volatile bool DropClients;
 
     private MqttTestBroker(MqttServer server, int port) { _server = server; Port = port; }
 
@@ -31,6 +33,10 @@ internal sealed class MqttTestBroker : IDisposable
                 lock (broker.Logins) { broker.ClientIds.Add(e.ClientId); broker.Logins.Add((e.UserName, e.Password)); }
                 if (user is not null && (e.UserName != user || e.Password != password)) e.ReasonCode = MqttConnectReasonCode.BadUserNameOrPassword;
                 return Task.CompletedTask;
+            };
+            server.ClientConnectedAsync += async e =>
+            {
+                if (broker.DropClients) await server.DisconnectClientAsync(e.ClientId, MqttDisconnectReasonCode.AdministrativeAction);
             };
             try { await server.StartAsync(); return broker; }
             catch (Exception) when (attempt < 10) { server.Dispose(); } // the port was taken in between

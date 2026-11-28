@@ -2,7 +2,9 @@
 
 PhoneBox can connect to an MQTT broker (Mosquitto, Home Assistant's add-on, Zigbee2MQTT, a cloud broker) from the
 computer. This is the first step: the agent holds the connection and reports its state. Subscribing to topics so their
-values reach the panel, a widget and publish actions come in later steps (issue #732).
+values reach the panel, a widget and publish actions come in later steps (issue #732). Until then the agent subscribes to
+nothing and publishes nothing itself; the only message that can be published is the last will, if you set one, and the
+broker publishes it when the connection is lost.
 
 The connection is made by the agent on the computer, never by the phone. The phone never gets the broker's address, user
 name, password or topics.
@@ -17,7 +19,9 @@ name, password or topics.
 5. Turn on **Connect to an MQTT broker** and save. The line next to **Test** then shows whether the connection holds.
 
 It is off by default. While it is on, the agent keeps trying: after a failure it waits 5 seconds, then 10, 20, 40 and
-60 seconds between tries.
+60 seconds between tries. The wait starts over at 5 seconds once a connection has held for a minute or the settings
+change. A broker that accepts the login and then drops the connection (a duplicate client ID, an access list) is
+therefore retried more and more slowly, and the log notes it once.
 
 ## Options
 
@@ -27,7 +31,7 @@ It is off by default. While it is on, the agent keeps trying: after a failure it
 | Keep-alive | How often the agent pings the broker when it is quiet (5 to 600 seconds, default 60) |
 | Clean session | The broker forgets this client's state when it disconnects (on by default) |
 | Last will topic and message | What the broker publishes if the agent disappears without saying goodbye. An empty topic means no last will. The topic has no wildcards |
-| Retain the last will | **Off by default.** A retained message is delivered again to every device that connects or restarts, so a retained command can be acted on again long after it was meant. Leave it off unless you are sure |
+| Retain the last will | **Off by default.** A retained message is delivered to a device whenever it subscribes, which for most boards is right after it connects or restarts, so a retained command can be acted on again long after it was meant. Leave it off unless you are sure |
 
 The last will's QoS (0, 1 or 2) is `willQos` in `config.json` (default 0).
 

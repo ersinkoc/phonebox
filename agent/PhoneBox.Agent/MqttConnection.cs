@@ -98,6 +98,15 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     private volatile MqttStatus _status = new(Off, null, null);
     private long _lastMessage;
+    private readonly TimeSpan _firstWait = TimeSpan.FromSeconds(5);
+    private readonly TimeSpan _stableAfter = TimeSpan.FromSeconds(60);
+
+    /// <summary>For tests: shorter waits (internal, so the container does not pick it).</summary>
+    internal MqttConnection(ConfigStore config, ILogger<MqttConnection> log, TimeSpan firstWait, TimeSpan stableAfter) : this(config, log)
+    {
+        _firstWait = firstWait;
+        _stableAfter = stableAfter;
+    }
 
     public MqttStatus Status
     {
@@ -110,7 +119,7 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        var first = TimeSpan.FromSeconds(5);
+        var first = _firstWait;
         var wait = first;
         string? lastKind = null;
         while (!ct.IsCancellationRequested)
@@ -120,8 +129,16 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
             var signature = Signature(cfg);
             try
             {
-                // returns when the settings changed or the agent stops: connect again at once, with what is saved now
-                await RunAsync(cfg, signature, ct, () => { wait = first; lastKind = null; });
+                // returns when the settings changed or the agent stops: connect again at once, with what is saved now.
+                // The wait and the last error kind reset only once a connection has held for a while: a broker that accepts
+                // the login and then drops it (a duplicate client id, an access list) must keep backing off, and must not
+                // fill the log with a "connected" and a "failed" line every few seconds.
+                await RunAsync(cfg, signature, ct,
+                    () => { if (lastKind is null) log.LogInformation("mqtt: connected"); },
+                    () => { if (lastKind is not null) log.LogInformation("mqtt: connected"); wait = first; lastKind = null; });
+                // a clean return is a settings change: a fresh start for the new settings
+                wait = first;
+                lastKind = null;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
             catch (Exception ex)
@@ -154,7 +171,7 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
     }
 
     /// <summary>Connects and stays connected until the connection drops (an exception) or the settings change (a return).</summary>
-    private async Task RunAsync(MqttConfig cfg, string signature, CancellationToken ct, Action connected)
+    private async Task RunAsync(MqttConfig cfg, string signature, CancellationToken ct, Action connected, Action held)
     {
         Interlocked.Exchange(ref _lastMessage, 0);
         _status = new(Connecting, null, null);
@@ -165,13 +182,18 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
             c.ApplicationMessageReceivedAsync += _ => { Interlocked.Exchange(ref _lastMessage, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()); return Task.CompletedTask; };
         });
         _status = new(Connected, null, null);
-        connected(); // a connection that held resets the wait, so a drop after days is retried in seconds
-        log.LogInformation("mqtt: connected");
+        connected();
+        var since = System.Diagnostics.Stopwatch.StartNew();
+        var holding = false;
         var dropped = false;
         try
         {
             while (!ct.IsCancellationRequested && !lost.Task.IsCompleted && Signature(config.Get().Mqtt) == signature)
+            {
+                // held for a while: the next drop, after days, is retried in seconds
+                if (!holding && since.Elapsed >= _stableAfter) { holding = true; held(); }
                 await Task.WhenAny(lost.Task, Task.Delay(1000, ct));
+            }
             // read before our own goodbye below: MQTTnet reports that one as a disconnect too
             dropped = lost.Task.IsCompleted;
         }

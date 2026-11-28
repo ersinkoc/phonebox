@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
+  then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
+  5 seconds, and the log notes it once: the wait starts over only after a connection has held for a minute. A broker
+  address with a control character in it is now reported as an address problem instead of being cleaned into a host
+  name. The settings text no longer says nothing is published (the broker publishes the last will, if set) and says a
+  retained message is delivered when a device subscribes, in all 24 languages.
 - **MQTT, first step** (Settings › General › MQTT, off by default): the agent can hold a connection to an MQTT broker:
   TCP or WebSocket, TLS, client id, user name and password, keep-alive, clean session, a last will and a **Test**
   button. The certificate is always checked: a broker with its own certificate is trusted through a CA file or a

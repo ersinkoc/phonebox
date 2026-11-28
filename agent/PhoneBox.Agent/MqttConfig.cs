@@ -41,8 +41,10 @@ public sealed class MqttConfig
     internal static MqttConfig Normalized(MqttConfig? c)
     {
         c ??= new();
-        // kept as typed (trimmed): an unusable address is reported when connecting ("config"), not silently emptied
-        c.Host = Clean(c.Host, 253);
+        // trimmed and nothing else: a control character in the middle ("bro\nker") makes the address unusable, which is reported
+        // when connecting ("config"), instead of being stripped into a host name the user never typed
+        var host = c.Host?.Trim() ?? "";
+        c.Host = host.Length == 0 ? null : host.Length > 253 ? host[..253] : host;
         c.Port = c.Port is >= 1 and <= 65535 ? c.Port : 1883;
         c.Transport = string.Equals(c.Transport?.Trim(), WebSocket, StringComparison.OrdinalIgnoreCase) ? WebSocket : Tcp;
         var path = c.WebSocketPath?.Trim() ?? "";

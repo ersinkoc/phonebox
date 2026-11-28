@@ -55,7 +55,7 @@
   // MQTT broker (off by default; Settings › General › MQTT, see docs/MQTT.md). The agent connects, the phone never sees any of it.
   // "transport" is "tcp" or "websocket" (then "webSocketPath"). A broker with its own certificate is trusted only through "caFile" or
   // "pinnedFingerprint" (SHA-256); there is no way to skip the check. "password" is write-only in Settings. "willRetain" stays off
-  // unless you want the last will delivered again to every device that connects
+  // unless you want the last will delivered to every device that subscribes (for most boards, right after it connects)
   "mqtt": { "enabled": false, "host": null, "port": 1883, "transport": "tcp", "webSocketPath": "/mqtt", "tls": false, "caFile": null, "pinnedFingerprint": null, "clientId": null, "username": null, "keepAliveSec": 60, "cleanSession": true, "willTopic": null, "willPayload": null, "willQos": 0, "willRetain": false },
 
   // Night mode: between these times the screen dims and only the clock stays. Tap to wake it for 30 s.

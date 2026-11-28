@@ -400,7 +400,8 @@ public sealed class MqttTests : IDisposable
             var off = Config(broker.Port, user: null, password: null);
             off.Enabled = false;
             Assert.Null(store.Save(JsonSerializer.Serialize(new { mqtt = off }, ConfigStore.WriteOpts)));
-            for (var i = 0; i < 80 && connection.Status.State != MqttConnection.Off; i++)
+            // up to 15 s: the goodbye alone may take 2 s on a slow runner
+            for (var i = 0; i < 300 && connection.Status.State != MqttConnection.Off; i++)
             {
                 Assert.NotEqual(MqttConnection.Error, connection.Status.State);
                 await Task.Delay(50);
@@ -434,7 +435,8 @@ public sealed class MqttTests : IDisposable
     {
         using var broker = await MqttTestBroker.StartAsync();
         var store = Store(Config(MqttTestBroker.FreePort(), user: null, password: null)); // nothing listens there
-        var connection = new MqttConnection(store, NullLogger<MqttConnection>.Instance);
+        // a first wait of 30 s, so the connection found well under that proves the wait was cut short
+        var connection = new MqttConnection(store, NullLogger<MqttConnection>.Instance, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60));
         await connection.StartAsync(CancellationToken.None);
         try
         {
@@ -442,9 +444,69 @@ public sealed class MqttTests : IDisposable
             var started = DateTime.UtcNow;
             Assert.Null(store.Save(JsonSerializer.Serialize(new { mqtt = Config(broker.Port, user: null, password: null) }, ConfigStore.WriteOpts)));
             await Until(connection, s => s.State == MqttConnection.Connected);
-            Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(4), "the five-second wait was sat out");
+            Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(15), "the wait was sat out");
         }
         finally { await connection.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task ABrokerThatAcceptsAndThenDropsEveryConnectionKeepsBackingOff()
+    {
+        using var broker = await MqttTestBroker.StartAsync();
+        broker.DropClients = true;
+        var log = new ListLogger<MqttConnection>();
+        // waits of 200 ms, 400 ms, 800 ms... (a connection counts as held only after a minute)
+        var connection = new MqttConnection(Store(Config(broker.Port, user: null, password: null)), log, TimeSpan.FromMilliseconds(200), TimeSpan.FromSeconds(60));
+        await connection.StartAsync(CancellationToken.None);
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(6));
+            int tries;
+            lock (broker.Logins) tries = broker.Logins.Count;
+            // 200 ms between tries all the time would be about 25 in six seconds; doubling gives about six
+            Assert.InRange(tries, 3, 12);
+            // one line for the first connection, one for the failure: not a pair every few seconds
+            Assert.True(log.Lines.Count(l => l.Contains("failed")) <= 1, string.Join(" | ", log.Lines));
+            Assert.True(log.Lines.Count(l => l.Contains("connected")) <= 1, string.Join(" | ", log.Lines));
+        }
+        finally { await connection.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task AConnectionThatHeldStartsOverWithAShortWaitAndAFreshLog()
+    {
+        var port = MqttTestBroker.FreePort();
+        var log = new ListLogger<MqttConnection>();
+        var connection = new MqttConnection(Store(Config(port, user: null, password: null)), log, TimeSpan.FromMilliseconds(300), TimeSpan.FromSeconds(2));
+        await connection.StartAsync(CancellationToken.None);
+        try
+        {
+            await Until(connection, s => s.State == MqttConnection.Error); // nothing listens: "refused", noted once
+            var broker = await MqttTestBroker.StartAsync(at: port);
+            await Until(connection, s => s.State == MqttConnection.Connected);
+            // after a failure the "connected" line waits until the connection has held
+            Assert.DoesNotContain(log.Lines, l => l.Contains("connected"));
+            for (var i = 0; i < 100 && !log.Lines.Any(l => l.Contains("connected")); i++) await Task.Delay(100);
+            Assert.Contains(log.Lines, l => l.Contains("connected"));
+            // it held: a drop now is reported as a new failure, and retried after the short first wait
+            broker.Dispose();
+            await Until(connection, s => s.State == MqttConnection.Error);
+            Assert.Equal(2, log.Lines.Count(l => l.Contains("failed")));
+            using var again = await MqttTestBroker.StartAsync(at: port);
+            await Until(connection, s => s.State == MqttConnection.Connected, 5);
+        }
+        finally { await connection.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task AControlCharacterInTheAddressMakesItUnusableInsteadOfBeingStripped()
+    {
+        var typed = MqttConfig.Normalized(new MqttConfig { Host = "  bro\nker.local " });
+        Assert.Equal("bro\nker.local", typed.Host); // trimmed, nothing taken out of the middle
+        typed.Enabled = true;
+        Assert.Equal(new MqttTestResult(false, "config"), await MqttConnection.TestAsync(MqttConfig.ForTest(typed, new MqttConfig()), CancellationToken.None));
+        var (status, _) = await RunOnceAsync(typed, s => s.State == MqttConnection.Error);
+        Assert.Equal("config", status.ErrorKind);
     }
 
     [Fact]

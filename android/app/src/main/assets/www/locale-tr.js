@@ -3,7 +3,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
   "tr": {
     "strings": {
       "s.mqtt.enable": "Bir MQTT broker'ına bağlan",
-      "s.mqtt.hint": "Bağlantıyı ajan tutar. Telefon broker'ın adresini, kullanıcı adını, parolasını veya konularını asla almaz. Broker internette olabilir; o durumda bu bilgisayarın adresini görür. Bu sürüm yalnızca bağlanır: henüz hiçbir şeye abone olunmaz ve hiçbir şey yayınlanmaz.",
+      "s.mqtt.hint": "Bağlantıyı ajan tutar. Telefon broker'ın adresini, kullanıcı adını, parolasını veya konularını asla almaz. Broker internette olabilir; o durumda bu bilgisayarın adresini görür. Bu sürüm yalnızca bağlanır: ajan hiçbir şeye abone olmaz ve kendisi hiçbir şey yayınlamaz. Yalnızca son istek iletisini (ayarladıysanız) bağlantı koptuğunda broker yayınlar.",
       "s.mqtt.transport": "Aktarım",
       "s.mqtt.wsPath": "WebSocket yolu",
       "s.mqtt.user": "Kullanıcı adı",
@@ -17,7 +17,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.mqtt.willTopic": "Son istek konusu (boş = yok)",
       "s.mqtt.willPayload": "Son istek iletisi",
       "s.mqtt.willRetain": "Son isteği kalıcı tut (retain)",
-      "s.mqtt.retainWarn": "Uyarı: kalıcı tutulan bir ileti, bir cihaz her bağlandığında veya yeniden başladığında yeniden teslim edilir. Emin değilseniz kapalı bırakın.",
+      "s.mqtt.retainWarn": "Uyarı: kalıcı tutulan bir ileti, bir cihaz abone olduğunda ona teslim edilir; çoğu kart için bu, bağlandıktan veya yeniden başladıktan hemen sonradır. Emin değilseniz kapalı bırakın.",
       "s.mqtt.err.network": "Broker'a ulaşılamadı. Adresi, bağlantı noktasını ve ağı kontrol edin.",
       "s.mqtt.err.tls": "Broker'ın sertifikası kabul edilmedi. CA dosyasını veya parmak izini girin.",
       "s.mqtt.err.auth": "Broker kullanıcı adını veya parolayı reddetti.",

@@ -41,6 +41,10 @@ test('it is off by default and nothing is retained unless asked', async ({ page 
   await expect(page.locator('#mqttKeepAlive')).toHaveValue('60');
   await expect(page.locator('[data-bind="mqtt.cleanSession"]')).toBeChecked();
   await expect(page.locator('#mqttCard')).toContainText('Leave this off unless you are sure');
+  // retained messages arrive when a client subscribes; and the last will is the one thing the broker publishes
+  await expect(page.locator('#mqttCard')).toContainText('delivered to a device whenever it subscribes');
+  await expect(page.locator('#mqttCard')).toContainText('Only the last will, if you set one, is published by the broker');
+  await expect(page.locator('#mqttCard')).not.toContainText('nothing is subscribed or published');
   await expect(page.locator('#mqttCard')).toContainText('there is no way to switch the check off');
 });
 
