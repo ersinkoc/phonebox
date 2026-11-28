@@ -36,24 +36,26 @@ test('a break in the pushed-value version chain refetches the list', async ({ pa
   await expect.poll(async () => page.evaluate(async () => (await import('/panel/main.js')).D.push.lost)).toBeUndefined();
 });
 
-test('"__proto__" is an ordinary pushed key: it shows, goes away when deleted and leaves the other values alone', async ({ page }) => {
+/** Opens a page holding Push widgets for these keys (titled by key) next to each other. */
+async function showPushWidgets(page, keys) {
   await page.goto('/panel/style.css');
-  await page.evaluate(() => {
+  await page.evaluate((keys) => {
     localStorage.clear();
     localStorage.setItem('pb-demo-config', JSON.stringify({
       night: { enabled: false }, rules: [], shortcuts: [], display: { language: 'en', idleReturnSec: 0 },
-      pages: [{ id: 'one', title: 'One', enabled: true, widgets: [
-        { id: 'p1', type: 'push', x: 0, y: 0, w: 6, h: 4, options: { key: '__proto__', title: 'Proto' } },
-        { id: 'p2', type: 'push', x: 6, y: 0, w: 6, h: 4, options: { key: 'temperature', title: 'Temp' } },
-      ] }],
+      pages: [{ id: 'one', title: 'One', enabled: true, widgets: keys.map((key, i) => (
+        { id: 'p' + i, type: 'push', x: i * 6, y: 0, w: 6, h: 4, options: { key, title: 'Key ' + key } })) }],
     }));
-  });
+  }, keys);
   await page.goto('/panel/');
-  const proto = page.locator('.w-push', { hasText: 'Proto' });
-  const temp = page.locator('.w-push', { hasText: 'Temp' });
+  await expect.poll(async () => page.evaluate(async () => (await import('/panel/main.js')).pushVersion)).not.toBeNull();
+  return keys.map((key) => page.locator('.w-push', { hasText: 'Key ' + key }));
+}
+
+test('"__proto__" is an ordinary pushed key: it shows, goes away when deleted and leaves the other values alone', async ({ page }) => {
+  const [proto, temp] = await showPushWidgets(page, ['__proto__', 'temperature']);
   await expect(proto.locator('.push-empty')).toBeVisible();
   await expect(temp.locator('.pv')).toContainText('21.5');
-  await expect.poll(async () => page.evaluate(async () => (await import('/panel/main.js')).pushVersion)).not.toBeNull();
   await instrumentPushGets(page);
   const store = () => page.evaluate(async () => {
     const { D } = await import('/panel/main.js');
@@ -70,6 +72,25 @@ test('"__proto__" is an ordinary pushed key: it shows, goes away when deleted an
   expect(await store()).toEqual({ own: false, plain: true, inherited: true, temperature: 21.5 });
   await expect(temp.locator('.pv')).toContainText('21.5');
   expect(await page.evaluate(() => window.__pushGets)).toBe(0); // both changes came from events, not a refetch
+});
+
+test('a second value pushed in the same millisecond replaces the first on the widget', async ({ page }) => {
+  const [fps] = await showPushWidgets(page, ['fps']);
+  await expect(fps.locator('.push-empty')).toBeVisible();
+  await page.evaluate(async () => {
+    window.__realNow = Date.now;
+    const frozen = Date.now();
+    Date.now = () => frozen; // both values get the same "at"
+    await fetch('/api/push/fps', { method: 'POST', body: '1' });
+  });
+  try {
+    await expect(fps.locator('.pv')).toHaveText('1');
+    await page.evaluate(async () => { await fetch('/api/push/fps', { method: 'POST', body: '2' }); });
+    await expect.poll(async () => page.evaluate(async () => (await import('/panel/main.js')).D.push.fps?.data)).toBe(2);
+    await expect(fps.locator('.pv')).toHaveText('2');
+  } finally {
+    await page.evaluate(() => { Date.now = window.__realNow; });
+  }
 });
 
 test('an older /push answer does not undo an event applied while it was on its way, and a restart still applies', async ({ page }) => {

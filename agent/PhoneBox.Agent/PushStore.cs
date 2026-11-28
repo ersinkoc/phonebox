@@ -17,6 +17,11 @@ public sealed record PanelEvent(long Seq, string Kind, JsonElement? Data, long A
 public sealed partial class PushStore : IDisposable
 {
     public const int MaxBytes = 64 * 1024;
+    /// <summary>
+    /// Arrays and objects inside one value. The serializer stops at 64, and a value travels wrapped: in a change event
+    /// inside /api/state's event list, in /api/push's item list. The rest is the room those envelopes need.
+    /// </summary>
+    public const int MaxDepth = 32;
     private const int MaxItems = 200;
     private const int MaxEvents = 50;
     private const int SaveDelayMs = 2000;
@@ -88,6 +93,7 @@ public sealed partial class PushStore : IDisposable
     public string? Set(string key, JsonElement data, int? ttlSec)
     {
         if (!ValidKey(key)) return "key must be 1-64 characters: letters, digits, '.', '_' or '-'";
+        if (Depth(data) > MaxDepth) return $"value nested too deeply (max {MaxDepth} levels of arrays and objects)";
         PurgeExpired(); // expired values do not count against the limit
         // {"ttl": 300, ...} inside the payload works too
         if (ttlSec is null && data.ValueKind == JsonValueKind.Object && data.TryGetProperty("ttl", out var t)
@@ -97,13 +103,17 @@ public sealed partial class PushStore : IDisposable
         // ConcurrentDictionary does not make the capacity check and insertion atomic. The version belongs to the
         // mutation itself: a change event is applied only through this unbroken chain, so concurrent writers cannot
         // make the phone apply the same key in the wrong order.
-        (long BaseVersion, long Version) change;
         lock (_setLock)
         {
             if (!_items.ContainsKey(key) && _items.Count >= MaxItems) return $"too many keys (max {MaxItems}); delete some first";
+            // the event is built before anything changes: a value it cannot carry leaves the store as it was
+            var change = NextVersion();
+            JsonElement ev;
+            try { ev = JsonSerializer.SerializeToElement(new { baseVersion = change.BaseVersion, version = change.Version, key, item }, WebJson); }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return "value cannot be sent to the phone: " + ex.Message; }
             _items[key] = item;
-            change = AdvanceVersion();
-            EnqueuePushChange(new { baseVersion = change.BaseVersion, version = change.Version, key, item });
+            Interlocked.Exchange(ref _version, change.Version);
+            Enqueue("push", ev);
         }
         // outside _setLock: scheduling can wait for a save in progress, and other writers must not wait behind it
         ScheduleSave();
@@ -194,16 +204,28 @@ public sealed partial class PushStore : IDisposable
     private bool _disposed;
     private int _saveRetryMs = SaveDelayMs;
 
+    // Every version change happens under _setLock, so the next version can be worked out before it is taken.
+    private (long BaseVersion, long Version) NextVersion()
+    {
+        var previous = Interlocked.Read(ref _version);
+        return (previous, Math.Max(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), previous + 1));
+    }
+
     private (long BaseVersion, long Version) AdvanceVersion()
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        long previous, next;
-        do
-        {
-            previous = Interlocked.Read(ref _version);
-            next = Math.Max(now, previous + 1);
-        } while (Interlocked.CompareExchange(ref _version, next, previous) != previous);
-        return (previous, next);
+        var change = NextVersion();
+        Interlocked.Exchange(ref _version, change.Version);
+        return change;
+    }
+
+    /// <summary>How many arrays and objects are nested in <paramref name="e"/>; a scalar is 0.</summary>
+    private static int Depth(JsonElement e)
+    {
+        var deepest = 0;
+        if (e.ValueKind == JsonValueKind.Object) foreach (var p in e.EnumerateObject()) deepest = Math.Max(deepest, Depth(p.Value));
+        else if (e.ValueKind == JsonValueKind.Array) foreach (var x in e.EnumerateArray()) deepest = Math.Max(deepest, Depth(x));
+        else return 0;
+        return deepest + 1;
     }
 
     private void ScheduleSave()

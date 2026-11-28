@@ -131,4 +131,37 @@ public sealed class PushEventTests
             dir.Delete(recursive: true);
         }
     }
+
+    [Fact]
+    public void ATooDeeplyNestedValueIsRefusedWithoutChangingTheStore()
+    {
+        static JsonElement Nested(int depth) => JsonDocument.Parse(new string('[', depth) + "1" + new string(']', depth)).RootElement.Clone();
+        var dir = Directory.CreateTempSubdirectory("phonebox-push-event-");
+        var store = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(dir.FullName, "data.json"));
+        try
+        {
+            // 63 levels pass the body parser (64), but the event envelope around the value would not
+            var version = store.Version;
+            var seq = store.Seq;
+            Assert.NotNull(store.Set("deep", Nested(63), null));
+            Assert.NotNull(store.Set("deep", Nested(PushStore.MaxDepth + 1), null));
+            Assert.Null(store.Get("deep"));
+            Assert.Equal(version, store.Version);
+            Assert.Equal(seq, store.Seq);
+            Assert.Empty(store.Since(0));
+
+            // the deepest accepted value still fits in every answer that carries it: /api/state, the stream, /api/push
+            Assert.Null(store.Set("deep", Nested(PushStore.MaxDepth), null));
+            var e = Assert.Single(store.Since(0), x => x.Kind == "push");
+            Assert.Equal("deep", e.Data!.Value.GetProperty("key").GetString());
+            var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            JsonSerializer.Serialize(new { pushVersion = store.Version, events = new[] { e } }, web);
+            JsonSerializer.Serialize(new { version = store.Version, items = store.Snapshot() }, web);
+        }
+        finally
+        {
+            store.Dispose();
+            dir.Delete(recursive: true);
+        }
+    }
 }
