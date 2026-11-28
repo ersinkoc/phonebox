@@ -87,6 +87,20 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         Assert.NotNull(s.LastRequestAt);
     }
 
+    [Fact(DisplayName = "An empty day without a total still shows the newest request's speed and time")]
+    public async Task EmptyDayWithoutTotalStillShowsTheNewestSpeedAndTime()
+    {
+        var frozen = DateTime.Today.AddHours(1);
+        await using var ls = new FakeLlamaSwap { OmitTotal = true };
+        ls.ActivityEntries = [Entry(frozen.AddDays(-1), 100, 10, tps: 58.42)];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(0, s.TodayRequests);
+        Assert.Equal(58.42, s.GenTps!.Value, 2);
+        Assert.NotNull(s.LastRequestAt);
+    }
+
     [Fact(DisplayName = "An address with nothing listening is offline")]
     public async Task OfflineWhenNothingListens()
     {

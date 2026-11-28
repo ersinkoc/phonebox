@@ -663,7 +663,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             else if (data.GetArrayLength() == 0) break;
             if (pageNo >= MaxActivityPages) { complete = false; break; }
         }
-        if (total is 0)
+        if (total is 0 || (total is null && inDay == 0))
         {
             // Nothing finished today: the widget still shows the newest finished request's speed and time.
             var newest = await GetAsync(baseUri, "api/metrics/activity?limit=1&page=1", ct);
