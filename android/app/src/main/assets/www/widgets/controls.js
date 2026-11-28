@@ -1,4 +1,4 @@
-import { API, PANEL_HEADERS, api, applyState, bridge, buzz, D, evSeq, h, en, haptic, icon, toast, store, t, tp, tpv } from '../main.js';
+import { API, PANEL_HEADERS, api, applyState, bridge, buzz, D, evSeq, fmtTime, h, en, haptic, icon, toast, store, t, tp, tpv } from '../main.js';
 import { W } from '../registry.js';
 
 let cached = null, at = 0, epoch = 0, pending = null;
@@ -718,7 +718,6 @@ function integrationWidget(type, title, endpoint, create) {
     }, destroy() { alive = false; } };
   } };
 }
-const timeText = ms => { const s = Math.floor((ms || 0) / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 integrationWidget('obs-mixer', 'OBS mixer', 'obs', (root, data, send) => {
   if (!data.inputs?.length) { empty(root, 'No OBS inputs found'); return; }
   for (const input of data.inputs) {
@@ -737,7 +736,7 @@ integrationWidget('obs-sources', 'OBS sources', 'obs', (root, data, send) => {
   for(const source of data.sources || []) { const b=button((source.enabled?'● ':'○ ')+source.name,()=>send('source',{id:source.id,enabled:!source.enabled}));b.setAttribute('aria-pressed',String(source.enabled));root.append(b); }
 });
 integrationWidget('obs-recording', 'OBS recording and stream', 'obs', (root,data,send)=>{
-  root.append(h('div','deck-track',tp('Recording ')+timeText(data.recordMs)),h('div','deck-caption',tp('Stream ')+timeText(data.streamMs)),
+  root.append(h('div','deck-track',tp('Recording ')+fmtTime(data.recordMs)),h('div','deck-caption',tp('Stream ')+fmtTime(data.streamMs)),
     button(data.recording?tp('Stop recording'):tp('Start recording'),()=>send('record')),
     button(data.streaming?tp('Stop stream'):tp('Start stream'),()=>send('stream')));
   const pause=button(data.recordPaused?tp('Resume recording'):tp('Pause recording'),()=>send('pause'));pause.disabled=!data.recording;root.append(pause);
@@ -813,7 +812,7 @@ W['meeting-timer'] = {needs:['tick'],create(box,{o}){
   const persist=()=>store.set(key,state);
   const start=button(state.started?tp('Pause'):tp('Start'),()=>{state=store.get(key,state);if(state.started){state.elapsed+=Date.now()-state.started;state.started=0;}else state.started=Date.now();persist();render();});
   box.append(start,button(tp('Reset'),()=>{state={elapsed:0,started:0};persist();render();}));
-  function render(){state=store.get(key,state);const elapsed=state.elapsed+(state.started?Date.now()-state.started:0);clock.textContent=timeText(elapsed);start.textContent=state.started?t('w.pause'):t('w.start');start.setAttribute('aria-label',start.textContent);clock.classList.toggle('deck-overdue',elapsed>=(o.minutes || 30)*60000);}
+  function render(){state=store.get(key,state);const elapsed=state.elapsed+(state.started?Date.now()-state.started:0);clock.textContent=fmtTime(elapsed);start.textContent=state.started?t('w.pause'):t('w.start');start.setAttribute('aria-label',start.textContent);clock.classList.toggle('deck-overdue',elapsed>=(o.minutes || 30)*60000);}
   render();return {update:render};
 }};
 
