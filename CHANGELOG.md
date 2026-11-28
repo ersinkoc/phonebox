@@ -57,6 +57,11 @@
   System Events' `keystroke`, which looks each character up as a key of the current layout: on Brazilian ABNT2 every
   accented vowel came out as `a` (`não, você` typed `nao, voca`). Text now goes as Quartz keyboard events from the
   agent, so no `osascript` starts for it either (#706).
+- Synced lyrics: found more often when LRCLIB's exact lookup fails. A timeout, a lost connection or a server error
+  there (without a Retry-After) no longer ends the lookup with "error": the agent goes on to LRCLIB's search, and
+  no back-off starts. A 429 or any Retry-After still stops the lookup and keeps LRCLIB alone as before. Answers are
+  asked for compressed (gzip), so a search answer is about a tenth of the size, and a failed lookup is logged in
+  `agent.log` with its reason, without track names (#717, #719, [jassu-Workspace](https://github.com/jassu-Workspace)).
 - Appearance: a **Glass** preset (Settings › General › Appearance, or a page's or widget's appearance; opt-in):
   translucent cards with a light rim, a top sheen and a soft shadow, 20px corners and 10px spacing, over a colourful
   background drawn behind the pages that have glass widgets (or over your wallpaper). Shortcut keys, process rows and
