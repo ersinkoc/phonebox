@@ -641,12 +641,23 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
             drives = drives.Where(d => d.Name == "/" || d.Name.StartsWith("/home") || d.Name.StartsWith("/mnt/") || d.Name.StartsWith("/media/")
                                        || d.Name.StartsWith("/Volumes/") || d.Name.StartsWith("/data"))
                 .Where(d => !d.Name.Contains("/wsl") && !d.Name.Contains("docker") && !d.Name.StartsWith("/mnt/c") && d.Name.Length > 0)
-                .DistinctBy(d => (SafeSize(d), d.TotalFreeSpace / (1L << 30)));
+                .DistinctBy(d => (SafeSize(d), SafeFree(d) / (1L << 30)));
         return drives
-            .Select(d => new DiskInfo(DiskLabel(d.Name), Math.Round((d.TotalSize - d.TotalFreeSpace) / Gb), Math.Round(d.TotalSize / Gb)))
+            .Select(d => ReadDisk(d, Gb))
+            .OfType<DiskInfo>()
             .Take(MaxDisks)
             .ToList();
     }
+
+    // A volume that goes away between the checks above and this read is left out of this sample; the others still report
+    // (an exception here would end the sampling loop).
+    private static DiskInfo? ReadDisk(DriveInfo d, double gb)
+    {
+        try { return new DiskInfo(DiskLabel(d.Name), Math.Round((d.TotalSize - d.TotalFreeSpace) / gb), Math.Round(d.TotalSize / gb)); }
+        catch { return null; }
+    }
+
+    private static long SafeFree(DriveInfo d) { try { return d.TotalFreeSpace; } catch { return 0; } }
 
     // Every volume a computer can have a letter for: the panel's disk grid wraps, so a seventh drive must not push
     // the last one out (#785). Only a bound against something odd, not a choice of which disks to show.
