@@ -205,10 +205,11 @@ public sealed partial class BatteryMonitor
         var found = new List<(int ProductId, int Level, bool Charging)>();
         bool OutOfTime() => deadlineMs is { } deadline && deadline - now() < CorsairReplyTimeoutMs;
         var unanswered = false;
-        var asked = false; // a request went out (a skipped one leaves the slot's count as it was)
+        var asked = false; // a request went out
+        var skipped = false; // a request was not sent for lack of time: the slot's answer is incomplete
         CorsairReply? Ask(byte target, byte property)
         {
-            if (OutOfTime()) return null;
+            if (OutOfTime()) { skipped = true; return null; }
             var reply = get(target, property);
             asked = true;
             unanswered |= reply is null;
@@ -250,6 +251,7 @@ public sealed partial class BatteryMonitor
 
             unanswered = false;
             asked = false;
+            skipped = false;
             if (identify || !state.ProductIds.ContainsKey(target))
             {
                 // An id that cannot be read again is forgotten: another device may be on the slot now.
@@ -261,7 +263,9 @@ public sealed partial class BatteryMonitor
                 var battery = QueryCorsairBattery(target, Ask);
                 if (battery.Level is { } level) found.Add((pid, level, battery.Charging == true));
             }
-            if (asked) state.Misses[target] = unanswered ? state.Misses.GetValueOrDefault(target) + 1 : 0;
+            // an unanswered request counts; a full answer clears the count; a query cut short leaves it as it was
+            if (unanswered) state.Misses[target] = state.Misses.GetValueOrDefault(target) + 1;
+            else if (asked && !skipped) state.Misses[target] = 0;
         }
 
         if (identify) state.IdentifiedAt = now();
