@@ -53,6 +53,10 @@
   keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
   before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
   one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
+- macOS: Dictation and the Text action of shortcut keys type the text itself, whatever the keyboard layout. They used
+  System Events' `keystroke`, which looks each character up as a key of the current layout: on Brazilian ABNT2 every
+  accented vowel came out as `a` (`não, você` typed `nao, voca`). Text now goes as Quartz keyboard events from the
+  agent, so no `osascript` starts for it either (#706).
 - Synced lyrics: found more often when LRCLIB's exact lookup fails. A timeout, a lost connection or a server error
   there (without a Retry-After) no longer ends the lookup with "error": the agent goes on to LRCLIB's search, and
   no back-off starts. A 429 or any Retry-After still stops the lookup and keeps LRCLIB alone as before. Answers are
