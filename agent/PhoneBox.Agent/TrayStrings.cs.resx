@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>Nelze změnit spouštěcí zkratku: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox nelze spustit: port {0} používá {1}. Zavřete tento program a spusťte PhoneBox znovu.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox nelze spustit: port {0} už používá jiný program. Zavřete tento program a spusťte PhoneBox znovu.</value>
+    </data>
 </root>

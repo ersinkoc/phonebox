@@ -42,12 +42,25 @@ public sealed class Tray : IHostedService
         return Task.CompletedTask;
     }
 
-    private CultureInfo UiCulture() => _config.Get().Display.Language switch
+    private CultureInfo UiCulture() => Culture(_config);
+
+    private static CultureInfo Culture(ConfigStore config) => config.Get().Display.Language switch
     {
         "auto" => CultureInfo.CurrentUICulture,
         "zh" => CultureInfo.GetCultureInfo("zh-Hans"),
         var language => CultureInfo.GetCultureInfo(language),
     };
+
+    /// <summary>Says why the agent stops before it starts (#710): its port is taken, by <paramref name="program"/> when known.</summary>
+    public static void ShowPortTaken(ConfigStore config, int port, string? program)
+    {
+        var culture = Culture(config);
+        var text = program is null ? string.Format(culture, Text("portTakenUnknown", culture), port)
+            : string.Format(culture, Text("portTaken", culture), port, program);
+        var options = culture.TextInfo.IsRightToLeft ? MessageBoxOptions.RightAlign | MessageBoxOptions.RtlReading : 0;
+        Application.EnableVisualStyles();
+        MessageBox.Show(text, "PhoneBox", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, options);
+    }
 
     private static string Text(string key, CultureInfo culture) =>
         Strings.GetString(key, culture) ?? throw new MissingManifestResourceException(key);

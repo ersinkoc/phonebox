@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>No se pudo cambiar el acceso directo de inicio: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox no puede iniciarse: {1} está usando el puerto {0}. Cierra ese programa y vuelve a iniciar PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox no puede iniciarse: otro programa está usando el puerto {0}. Cierra ese programa y vuelve a iniciar PhoneBox.</value>
+    </data>
 </root>

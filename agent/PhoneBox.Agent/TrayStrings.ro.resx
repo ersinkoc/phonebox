@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>Nu s-a putut modifica scurtătura de pornire: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox nu poate porni: portul {0} este folosit de {1}. Închide acel program și pornește din nou PhoneBox.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox nu poate porni: alt program folosește deja portul {0}. Închide acel program și pornește din nou PhoneBox.</value>
+    </data>
 </root>

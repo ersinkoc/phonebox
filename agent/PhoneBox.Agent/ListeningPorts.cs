@@ -111,12 +111,41 @@ internal static class ListeningPorts
     }
 
     /// <summary>
-    /// Decodes a <c>MIB_TCPTABLE_OWNER_PID</c> or <c>MIB_TCP6TABLE_OWNER_PID</c>: a 4-byte row count, then fixed-size rows.
-    /// Ports are in network byte order in the low 16 bits of their DWORD.
+    /// The program listening on this TCP port, as "Code (PID 23788)", when the listener is reachable on loopback.
+    /// Windows only, from the same table; null elsewhere or when none is found.
     /// </summary>
-    internal static List<Listener> ParseOwnerPidTable(ReadOnlySpan<byte> table, bool ipv6, int pid)
+    public static string? ProgramOn(int port)
     {
-        var ports = new List<Listener>();
+        if (!OperatingSystem.IsWindows()) return null;
+        try
+        {
+            if ((OwnerOf(ReadTcpTable(AfInet), ipv6: false, port) ?? OwnerOf(ReadTcpTable(AfInet6), ipv6: true, port)) is not { } pid) return null;
+            using var process = Process.GetProcessById(pid);
+            return $"{process.ProcessName} (PID {pid})";
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return null; // the program may have just exited
+        }
+    }
+
+    internal static int? OwnerOf(ReadOnlySpan<byte> table, bool ipv6, int port)
+    {
+        foreach (var (pid, listener) in ParseOwnerPidRows(table, ipv6))
+            if (listener.Port == port) return pid;
+        return null;
+    }
+
+    internal static List<Listener> ParseOwnerPidTable(ReadOnlySpan<byte> table, bool ipv6, int pid) =>
+        [.. ParseOwnerPidRows(table, ipv6).Where(r => r.Pid == pid).Select(r => r.Listener)];
+
+    /// <summary>
+    /// Decodes a <c>MIB_TCPTABLE_OWNER_PID</c> or <c>MIB_TCP6TABLE_OWNER_PID</c>: a 4-byte row count, then fixed-size rows.
+    /// Ports are in network byte order in the low 16 bits of their DWORD. Keeps the listeners reachable on loopback.
+    /// </summary>
+    private static List<(int Pid, Listener Listener)> ParseOwnerPidRows(ReadOnlySpan<byte> table, bool ipv6)
+    {
+        var ports = new List<(int, Listener)>();
         if (table.Length < 4) return ports;
         var count = BitConverter.ToUInt32(table[..4]);
         var rowSize = ipv6 ? Ipv6RowSize : Ipv4RowSize;
@@ -127,12 +156,11 @@ internal static class ListeningPorts
             var start = 4 + i * rowSize;
             if (start + rowSize > table.Length) break;
             var row = table.Slice((int)start, rowSize);
-            if (BitConverter.ToInt32(row[pidAt..]) != pid) continue;
             if (BitConverter.ToInt32(row[stateAt..]) != MibTcpStateListen) continue;
             var address = new IPAddress(row.Slice(addrAt, addrLength));
             if (!ReachableOnLoopback(address)) continue;
             var port = (row[portAt] << 8) | row[portAt + 1];
-            if (port is > 0 and <= 65535) ports.Add(new Listener(LoopbackFor(address), port));
+            if (port is > 0 and <= 65535) ports.Add((BitConverter.ToInt32(row[pidAt..]), new Listener(LoopbackFor(address), port)));
         }
         return ports;
     }

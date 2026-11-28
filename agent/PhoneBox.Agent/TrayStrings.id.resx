@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>Tak dapat mengubah jalan pintas startup: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox tidak dapat dimulai: port {0} sedang dipakai oleh {1}. Tutup program itu, lalu mulai PhoneBox lagi.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox tidak dapat dimulai: program lain sudah memakai port {0}. Tutup program itu, lalu mulai PhoneBox lagi.</value>
+    </data>
 </root>

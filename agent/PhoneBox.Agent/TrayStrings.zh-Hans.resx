@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>无法更改启动快捷方式: {0} .</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox 无法启动：端口 {0} 正被 {1} 占用。请关闭该程序，然后重新启动 PhoneBox。</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox 无法启动：其他程序已在使用端口 {0}。请关闭该程序，然后重新启动 PhoneBox。</value>
+    </data>
 </root>

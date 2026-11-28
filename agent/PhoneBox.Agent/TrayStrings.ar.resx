@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>تعذّر تغيير اختصار بدء التشغيل: ⁨{0}⁩</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>تعذّر تشغيل PhoneBox: المنفذ ⁨{0}⁩ يستخدمه ⁨{1}⁩. أغلق هذا البرنامج ثم شغّل PhoneBox مرة أخرى.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>تعذّر تشغيل PhoneBox: برنامج آخر يستخدم المنفذ ⁨{0}⁩. أغلق هذا البرنامج ثم شغّل PhoneBox مرة أخرى.</value>
+    </data>
 </root>

@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>Die Startverknüpfung konnte nicht geändert werden: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox kann nicht starten: Port {0} wird von {1} verwendet. Schließen Sie dieses Programm und starten Sie PhoneBox erneut.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox kann nicht starten: Ein anderes Programm verwendet Port {0}. Schließen Sie dieses Programm und starten Sie PhoneBox erneut.</value>
+    </data>
 </root>

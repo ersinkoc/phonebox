@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>ไม่สามารถเปลี่ยนปุ่มพิมพ์ลัดในการเริ่มการทำงานได้: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox เริ่มทำงานไม่ได้: {1} ใช้พอร์ต {0} อยู่ ปิดโปรแกรมนั้นแล้วเปิด PhoneBox อีกครั้ง</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox เริ่มทำงานไม่ได้: มีโปรแกรมอื่นใช้พอร์ต {0} อยู่แล้ว ปิดโปรแกรมนั้นแล้วเปิด PhoneBox อีกครั้ง</value>
+    </data>
 </root>

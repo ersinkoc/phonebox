@@ -143,6 +143,33 @@ public sealed class ListeningPortsTests
         finally { v4.Stop(); }
     }
 
+    // #710: the agent names the program holding its port
+    [Fact]
+    public void TheOwnerOfAPortIsTheProcessListeningOnItOnLoopback()
+    {
+        var v4 = Table(ListeningPorts.Ipv4RowSize,
+            Row4(state: 5, [127, 0, 0, 1], 8765, pid: 70),
+            Row4(state: 2, [192, 168, 1, 5], 8765, pid: 71),
+            Row4(state: 2, [127, 0, 0, 1], 8764, pid: 72),
+            Row4(state: 2, [127, 0, 0, 1], 8765, pid: 23788));
+        Assert.Equal(23788, ListeningPorts.OwnerOf(v4, ipv6: false, port: 8765));
+        Assert.Null(ListeningPorts.OwnerOf(v4, ipv6: false, port: 9000));
+    }
+
+    [Fact]
+    public void ProgramOnNamesThisProcessOnWindows()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            using var self = System.Diagnostics.Process.GetCurrentProcess();
+            Assert.Equal(OperatingSystem.IsWindows() ? $"{self.ProcessName} (PID {self.Id})" : null, ListeningPorts.ProgramOn(port));
+        }
+        finally { listener.Stop(); }
+    }
+
     [Theory]
     [InlineData("::ffff:127.0.0.2", "127.0.0.2")]
     [InlineData("::ffff:0.0.0.0", "127.0.0.1")]

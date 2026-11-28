@@ -158,6 +158,17 @@ AddMonitor<PhoneMic>(builder.Services);
 builder.Services.AddHostedService<Tray>();
 
 var app = builder.Build();
+// #710: a local port another program holds stopped the agent as it started, silently, and the background services'
+// cancellations buried the reason in the log. Checked before anything starts, so the reason is the only line.
+if (Lan.PortProblem(Port, IPAddress.Loopback) == "in-use")
+{
+    var program = ListeningPorts.ProgramOn(Port);
+    app.Logger.LogCritical("PhoneBox can't start: port {Port} is used by {Program}. Close that program and start PhoneBox again",
+        Port, program ?? "another program");
+    Tray.ShowPortTaken(configStore, Port, program);
+    // a clean exit: systemd (Restart=on-failure) and launchd (SuccessfulExit=false) would restart it into the same port
+    return;
+}
 {
     // the phone acts on it through a shortcut command and reads it in /api/state (see PhoneDevices)
     PhoneDevices.Mic = app.Services.GetRequiredService<PhoneMic>();

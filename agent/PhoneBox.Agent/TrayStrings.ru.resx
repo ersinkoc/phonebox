@@ -45,4 +45,10 @@
     <data xml:space="preserve" name="autostartError">
         <value>Не удалось изменить ярлык запуска: {0}</value>
     </data>
+    <data xml:space="preserve" name="portTaken">
+        <value>PhoneBox не может запуститься: порт {0} занят программой {1}. Закройте эту программу и запустите PhoneBox снова.</value>
+    </data>
+    <data xml:space="preserve" name="portTakenUnknown">
+        <value>PhoneBox не может запуститься: порт {0} уже использует другая программа. Закройте эту программу и запустите PhoneBox снова.</value>
+    </data>
 </root>
