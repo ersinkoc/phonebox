@@ -537,6 +537,23 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         Assert.Equal(111, s.TodayInputTokens); // rows 3, 2 and 1 once each - not row 2 twice
     }
 
+    [Fact(DisplayName = "A repeated row does not count towards coverage, so the walk still reaches the oldest row")]
+    public async Task RepeatedRowDoesNotEndTheWalkEarly()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        static string Row(int id, DateTime local, long input) =>
+            $"{{\"id\":{id},\"timestamp\":\"{local.ToUniversalTime():yyyy-MM-ddTHH:mm:ss.fffZ}\",\"tokens\":{{\"input_tokens\":{input},\"output_tokens\":1}}}}";
+        await using var ls = new FakeLlamaSwap { LimitCap = 2 };
+        ls.ActivityEntries = [Row(4, frozen.AddMinutes(-1), 1000), Row(3, frozen.AddMinutes(-2), 100), Row(2, frozen.AddMinutes(-3), 10), Row(1, frozen.AddMinutes(-4), 1)];
+        ls.InsertAfterFirstPage = Row(5, frozen, 10000); // page 2 is then [3, 2], page 3 [1]
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        var s = mon.Snapshot()!;
+        Assert.Equal(4, s.TodayRequests);
+        Assert.Equal(1111, s.TodayInputTokens); // rows 4, 3, 2 and 1 once each - row 1 is not left out
+        Assert.Equal(3, ls.ActivityRequests);
+    }
+
     [Fact(DisplayName = "A broken optional activity page leaves the router online with unknown token totals")]
     public async Task BrokenActivityPageKeepsTheRouterOnline()
     {

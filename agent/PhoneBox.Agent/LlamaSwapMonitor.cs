@@ -710,13 +710,15 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 if (next is not { ValueKind: JsonValueKind.Object } nextPage
                     || !nextPage.TryGetProperty("data", out data) || data.ValueKind != JsonValueKind.Array) { complete = false; break; }
             }
+            var repeats = 0;
             foreach (var entry in data.EnumerateArray())
             {
                 if (entry.ValueKind != JsonValueKind.Object) continue;
                 // The router pages by offset, newest first: a request that finishes between two pages pushes the
-                // last row of one page onto the next. Its id is the same, so it is counted once.
+                // last row of one page onto the next. Its id is the same, so it is counted once - and it does not
+                // count towards coverage either, or the walk would stop one row short of the total.
                 if (entry.TryGetProperty("id", out var rowId) && rowId.ValueKind == JsonValueKind.Number
-                    && rowId.TryGetInt64(out var rowN) && !rowIds.Add(rowN)) continue;
+                    && rowId.TryGetInt64(out var rowN) && !rowIds.Add(rowN)) { repeats++; continue; }
                 if (!newestRead) { newestRead = true; tps = TpsOf(entry); }
                 var ts = TimestampOf(entry);
                 if (ts is not null)
@@ -731,9 +733,10 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                 output += entry.TryGetProperty("tokens", out var tk2) && tk2.ValueKind == JsonValueKind.Object ? Num(tk2, "output_tokens") ?? 0 : 0;
             }
             if (sawOlder) break;
-            // Coverage is what actually arrived, not the page size we asked for: a router may cap ?limit lower
-            // than 999, and one that omits ?total is walked until an empty page.
-            seen += data.GetArrayLength();
+            // Coverage is the distinct rows that actually arrived, not the page size we asked for: a router may cap
+            // ?limit lower than 999, and one that omits ?total is walked until an empty page. A walk that cannot
+            // reach the total within the page cap reports unknown token sums.
+            seen += data.GetArrayLength() - repeats;
             if (total is { } expected)
             {
                 if (seen >= expected) break;
