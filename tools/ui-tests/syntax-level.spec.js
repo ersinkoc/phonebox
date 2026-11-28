@@ -122,3 +122,15 @@ test('the panel uses no syntax newer than Chromium 80', () => {
   }
   expect(found).toEqual([]);
 });
+
+test('the panel uses no regex lookbehind', () => {
+  // (?<= and (?<! came in Safari 16.4: iOS 15 rejects the whole module ("invalid group specifier name", #723). The
+  // lexer above blanks regular expressions and strings (a RegExp is often built from one), so this reads the raw source.
+  const found = [];
+  for (const file of [...files(WWW), path.join(WWW, 'index.html')]) {
+    fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+      if (/\(\?<[=!]/.test(line)) found.push(`${path.relative(WWW, file)}:${i + 1}: ${line.trim()}`);
+    });
+  }
+  expect(found).toEqual([]);
+});

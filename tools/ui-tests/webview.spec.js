@@ -66,6 +66,24 @@ test('panel shows dismissible notice only when container query units are unsuppo
   }
 });
 
+test('the iOS shell shows no Android WebView notice, even without container query units', async ({ browser }) => {
+  // the notice tells the user to update Android System WebView or Chrome: no use on iOS, whose WebKit comes with the OS
+  const ctx = await browser.newContext();
+  try {
+    const iosPage = await ctx.newPage();
+    await iosPage.addInitScript(() => {
+      window.__phoneboxIOS = true; // set by the iOS shell at document start
+      const orig = window.CSS && window.CSS.supports ? window.CSS.supports.bind(window.CSS) : () => false;
+      window.CSS.supports = (prop, val) => (String(prop).includes('cqw') || String(val).includes('cqw')) ? false : orig(prop, val);
+    });
+    await iosPage.goto('/panel/');
+    await iosPage.waitForFunction(() => window.__pbUp); // booted, so the notice had its chance to show
+    await expect(iosPage.locator('#webviewWarn')).toBeHidden();
+  } finally {
+    await ctx.close();
+  }
+});
+
 test('panel says the WebView is too old to run it, and keeps the notice up', async ({ browser }) => {
   // the version is the one in use: a phone maker's own WebView reports its own, whatever Google Play installed
   const ctx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Linux; Android 5.0; GEM-701L) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/37.0.0.0 Safari/537.36' });
