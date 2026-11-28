@@ -459,7 +459,7 @@ export function clockPeriod(date) {
 export const fmtClock = (H, M, period = H < 12 ? 'AM' : 'PM') => (hour12() ? `${H % 12 || 12}:${pad(M)} ${period}` : `${pad(H)}:${pad(M)}`);
 const fmtNightClock = (d) => fmtClock(d.getHours(), d.getMinutes(), clockPeriod(d));
 export const fmtHM = (d) => fmtClock(d.getHours(), d.getMinutes());
-export const fmtTime = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + pad(s % 60); };
+export const fmtTime = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)), m = Math.floor(s / 60); return (m >= 60 ? Math.floor(m / 60) + ':' + pad(m % 60) : m) + ':' + pad(s % 60); };
 export function fmtRate(bps) {
   if (bps == null) return ['—', ''];
   if (bps >= 1e9) return [(bps / 1e9).toFixed(1), tp('GB/s')];
