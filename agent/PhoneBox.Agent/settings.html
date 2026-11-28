@@ -3013,6 +3013,8 @@ function mqttSubProblem(rows, i) {
   const topic = String(rows[i].topic ?? '').trim(), key = String(rows[i].key ?? '').trim();
   if (!topic && !key) return false; // an empty row is dropped without a word
   if (!topic || !key) return true;
+  // more than 32 (a pasted config can have them): the agent keeps the first 32, so the rest are marked
+  if (rows.slice(0, i).filter((r) => String(r.topic ?? '').trim() || String(r.key ?? '').trim()).length >= MQTT_SUBS_MAX) return true;
   const levels = topic.split('/');
   const badTopic = topic.length > 256 || /[\u0000-\u001f\u007f-\u009f]/.test(topic) || topic.startsWith('$share/')
     || levels.some((l, n) => (l.includes('#') && (l !== '#' || n !== levels.length - 1)) || (l.includes('+') && l !== '+'));

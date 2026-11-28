@@ -207,9 +207,11 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
             var session = SessionOf(cfg);
             if (_filtersSession != session) _filters = []; // another session: the old topic names are not sent to it
             var leftover = cfg.CleanSession ? [] : await UnsubscribeAsync(client, wanted, ct);
-            if (wanted.Count > 0) await SubscribeAsync(client, wanted, ct);
+            // recorded before the SUBSCRIBE: one that times out may still have reached the broker, so it is unsubscribed
+            // later if the setting goes away
             _filters = [.. wanted, .. leftover];
             _filtersSession = session;
+            if (wanted.Count > 0) await SubscribeAsync(client, wanted, ct);
             _status = new(Connected, null, null);
             connected();
             while (!ct.IsCancellationRequested && !lost.Task.IsCompleted && Signature(config.Get().Mqtt) == signature)
@@ -222,7 +224,9 @@ public sealed class MqttConnection(ConfigStore config, ILogger<MqttConnection> l
                 feed?.Flush(); // the newest value of a key that had to wait for its second
             }
             // read before our own goodbye below: MQTTnet reports that one as a disconnect too
-            dropped = lost.Task.IsCompleted;
+            // a drop that coincides with a settings change or the agent stopping is not one: the old rows' waiting values
+            // are not written then
+            dropped = lost.Task.IsCompleted && !ct.IsCancellationRequested && Signature(config.Get().Mqtt) == signature;
         }
         catch (OperationCanceledException) { }
         finally
