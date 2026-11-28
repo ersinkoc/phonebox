@@ -8,7 +8,8 @@ namespace PhoneBox.Agent;
 internal sealed class PortableDeckNative(
     AudioControl audio,
     MediaMonitor media,
-    Func<bool, (string Kind, string Path)?>? findPlayer = null) : IDeckNative
+    Func<bool, (string Kind, string Path)?>? findPlayer = null,
+    PulseDeckAudio? pulse = null) : IDeckNative
 {
     private const long PlayerCacheTtlMs = 15_000;
     private readonly Lock _gate = new();
@@ -16,17 +17,20 @@ internal sealed class PortableDeckNative(
     private (long At, (string Kind, string Path)? Player)? _filePlayerCache;
     private (long At, (string Kind, string Path)? Player)? _streamPlayerCache;
 
-    public DeckAudio Audio() => audio.Snapshot() is { } a ? new(true, null,
+    /// <summary>Every device and application stream on Linux (pactl); elsewhere, or when the sound server does not answer,
+    /// the system output's master volume only.</summary>
+    public DeckAudio Audio() => pulse?.Read() ?? (audio.Snapshot() is { } a ? new(true, null,
         [new("default", "System output", "output", true, a.Volume, a.Muted, 0, 1, a.CanControl)], [])
-        : new(false, "Audio backend is unavailable", [], []);
+        : new(false, "Audio backend is unavailable", [], []));
     public bool Device(string id, int? volume, bool? muted, int? channel = null)
     {
+        if (pulse is not null && id != "default") return pulse.Device(id, volume, muted, channel);
         if (id != "default" || channel is not null || audio.Current() is not { CanControl: true } current) return false;
         if (volume is { } v && !audio.SetVolume(v)) return false;
         return muted is not { } m || m == current.Muted || audio.ToggleMute();
     }
-    public bool Session(string id, int? volume, bool? muted) => false;
-    public bool DefaultDevice(string id, int? role = null) => false;
+    public bool Session(string id, int? volume, bool? muted) => pulse?.Session(id, volume, muted) ?? false;
+    public bool DefaultDevice(string id, int? role = null) => pulse?.DefaultDevice(id, role) ?? false;
     public IReadOnlyList<DeckMonitor> Monitors() => [];
     public bool Brightness(string id, int value) => false;
     public IReadOnlyList<DeckItem> PowerPlans() => [];
