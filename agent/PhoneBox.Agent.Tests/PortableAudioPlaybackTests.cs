@@ -60,6 +60,7 @@ public sealed class PortableAudioPlaybackTests
     {
         var ffplay = PortableDeckNative.BuildStartInfo("ffplay", "/usr/bin/ffplay", "/tmp/bell.wav", 50, "korvex_ch_musica");
         Assert.Equal("korvex_ch_musica", ffplay.Environment["PULSE_SINK"]);
+        Assert.Equal("pulseaudio", ffplay.Environment["SDL_AUDIODRIVER"]); // SDL's PipeWire driver ignores PULSE_SINK
         Assert.Equal(["-nodisp", "-autoexit", "-vn", "-sn", "-loglevel", "error", "-volume", "50", "-i", "/tmp/bell.wav"], ffplay.ArgumentList);
 
         var mpv = PortableDeckNative.BuildStartInfo("mpv", "/usr/bin/mpv", "/tmp/bell.wav", 50, "korvex_ch_musica");
@@ -72,5 +73,6 @@ public sealed class PortableAudioPlaybackTests
         // without a chosen output nothing changes, and a PULSE_SINK the agent inherited is left alone
         var plain = PortableDeckNative.BuildStartInfo("ffplay", "/usr/bin/ffplay", "/tmp/bell.wav", 50);
         Assert.Equal(Environment.GetEnvironmentVariable("PULSE_SINK"), plain.Environment.TryGetValue("PULSE_SINK", out var v) ? v : null);
+        Assert.Equal(Environment.GetEnvironmentVariable("SDL_AUDIODRIVER"), plain.Environment.TryGetValue("SDL_AUDIODRIVER", out var d) ? d : null);
     }
 }

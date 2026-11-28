@@ -158,12 +158,14 @@ internal sealed class PortableDeckNative(
     /// <summary>The Pulse sink to play on: the control's output when pactl lists it as an output right now, else null
     /// (the default output, as before). Windows plays on the chosen device itself.</summary>
     internal string? OutputSink(string? device) =>
-        pulse is not null && !string.IsNullOrWhiteSpace(device) && device != "default"
+        // the listing decides, not the name: a Pulse sink may itself be called "default", while the synthetic system
+        // output of the same name exists only when pactl lists nothing (and then Read() is null)
+        pulse is not null && !string.IsNullOrWhiteSpace(device)
         && pulse.Read()?.Devices.Any(d => d.Id == device && d.Direction == "output") == true ? device : null;
 
     /// <summary>The player's command line. <paramref name="sink"/> (Linux) picks the output: PULSE_SINK for every
-    /// Pulse client (ffplay through SDL, VLC's pulse output), and mpv's own --audio-device, which also covers its
-    /// PipeWire output.</summary>
+    /// Pulse client (ffplay through SDL's Pulse driver, VLC's pulse output), and mpv's own --audio-device, which also
+    /// covers its PipeWire output.</summary>
     internal static ProcessStartInfo BuildStartInfo(string kind, string executable, string target, int volume, string? sink = null)
     {
         var clamped = Math.Clamp(volume, 0, 100);
@@ -186,6 +188,8 @@ internal sealed class PortableDeckNative(
                 .. sink is null ? Array.Empty<string>() : ["--aout=pulse"], "--", target],
         };
         if (sink is not null && kind != "afplay") start.Environment["PULSE_SINK"] = sink;
+        // SDL's PipeWire driver ignores PULSE_SINK, so ffplay with a chosen output uses SDL's Pulse driver
+        if (sink is not null && kind == "ffplay") start.Environment["SDL_AUDIODRIVER"] = "pulseaudio";
         foreach (var arg in args) start.ArgumentList.Add(arg);
         return start;
     }
