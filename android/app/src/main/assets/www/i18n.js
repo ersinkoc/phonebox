@@ -12954,7 +12954,7 @@
       'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.': 'Alvo: owner/repo. Argumento: nome do arquivo de workflow. Dispositivo: branch/ref opcional.',
       'Target: process name. Argument: left, right, center, max.': 'Alvo: nome do processo. Argumento: left, right, center, max.',
       'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.': 'Alvo: ID do monitor. Argumento: JSON com width, height, hz, x/y opcionais.',
-      'Target: process.exe (Windows) or the application\'s name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.': 'Alvo: process.exe (Windows) ou o nome do aplicativo (Linux). Dispositivo: ID de saída. Requer SoundVolumeView no Windows ou pactl no Linux.',
+      'Target: process.exe (Windows) or the application\'s name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.': 'Destino: process.exe (Windows) ou o nome do aplicativo (Linux). Dispositivo: ID de saída. Requer SoundVolumeView no Windows ou pactl no Linux.',
       'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.': 'Alvo: Strip[0].Gain ou Bus[0].Gain. Valor: −60 a 12 dB.',
       'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.': 'Alvo: Strip[0].Mute (ou outro alternador suportado). Valor: 0 ou 1.',
       'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.': 'Alvo: POWERPNT ou soffice. Argumento: start, next, prev, end, blank.',
