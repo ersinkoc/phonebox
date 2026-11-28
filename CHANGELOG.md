@@ -48,6 +48,11 @@
 - Synced lyrics: a tap on a line (or Enter on it) moves the song to that line, when the computer's player lets
   PhoneBox move its position (the same players whose media bar can be dragged). The widget's timing offset is taken
   into account, and a paused song stays paused (#744).
+- Android: over Wi-Fi with a phone that was once connected by USB, taps no longer reach the computer seconds late, and
+  the live stream no longer takes 8 s to come back every minute. With the cable out, the adb daemon on some phones
+  keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
+  before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
+  one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
 
 ## 0.9.32 — 2026-11-27
 

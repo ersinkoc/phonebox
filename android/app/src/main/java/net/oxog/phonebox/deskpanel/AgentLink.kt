@@ -304,23 +304,46 @@ class AgentLink(private val context: Context) {
 
     private fun usb(method: String, pathAndQuery: String, readTimeout: Int, body: ByteArray?, contentType: String?,
                     headers: Map<String, String> = emptyMap(), pin: String? = UsbKey.pin(context)): Reply? = try {
-        val c = usbConnection(pathAndQuery, pin)
-        c.connectTimeout = 400 // refused instantly when no adb reverse tunnel exists
-        headers.forEach { (name, value) -> c.setRequestProperty(name, value) }
-        val r = send(c, method, readTimeout, body, contentType)
-        if (r.code == 401) {
-            // the agent doesn't know this app's key yet (it reads it over adb within seconds): nothing ran, try Wi-Fi
-            try { r.body.close() } catch (_: Exception) {}
-            null
-        } else r
+        if (pin == null || !usbWorthTrying(pin)) null
+        else {
+            val c = usbConnection(pathAndQuery, pin)
+            c.connectTimeout = 400 // refused instantly when no adb reverse tunnel exists
+            headers.forEach { (name, value) -> c.setRequestProperty(name, value) }
+            val r = send(c, method, readTimeout, body, contentType)
+            usbHealth.ok()
+            if (r.code == 401) {
+                // the agent doesn't know this app's key yet (it reads it over adb within seconds): nothing ran, try Wi-Fi
+                try { r.body.close() } catch (_: Exception) {}
+                null
+            } else r
+        }
     } catch (e: Exception) {
+        usbHealth.unsure()
         null
     }
+
+    private val usbHealth = UsbHealth()
+
+    /**
+     * Whether a request should go over USB now (#750): a tunnel that worked a moment ago is used at once; otherwise a short
+     * handshake (at most about 2 s) decides, instead of a request that waits out its whole read timeout on a silent tunnel.
+     */
+    private fun usbWorthTrying(pin: String): Boolean {
+        usbHealth.decide()?.let { return it }
+        return when (UsbProbe.check(usbFactoryFor(pin), "127.0.0.1", USB_PORT)) {
+            UsbProbe.Result.REACHABLE -> { usbHealth.ok(); true }
+            UsbProbe.Result.STALLED -> { usbHealth.down(); false }
+            UsbProbe.Result.REFUSED -> false
+        }
+    }
+
+    private fun usbFactoryFor(pin: String): SSLSocketFactory =
+        usbFactory?.takeIf { it.first == pin }?.second ?: pinnedFactory(pin).also { usbFactory = pin to it }
 
     /** A USB request: TLS pinned to the agent's certificate, then the key. Without a pin yet, USB is not used at all. */
     private fun usbConnection(pathAndQuery: String, pin: String? = UsbKey.pin(context)): HttpURLConnection {
         if (pin == null) throw java.io.IOException("no USB pin yet")
-        val f = usbFactory?.takeIf { it.first == pin }?.second ?: pinnedFactory(pin).also { usbFactory = pin to it }
+        val f = usbFactoryFor(pin)
         return (URL("$USB_BASE$pathAndQuery").openConnection() as HttpsURLConnection).apply {
             sslSocketFactory = f
             hostnameVerifier = PINNED_HOSTNAME_VERIFIER // identity is the pinned certificate
@@ -735,7 +758,8 @@ class AgentLink(private val context: Context) {
         // (#389, #508). Only for the pinned factories: the pinned certificate, not the host name, is the identity.
         private val PINNED_HOSTNAME_VERIFIER = javax.net.ssl.HostnameVerifier { _, _ -> true }
 
-        private const val USB_BASE = "https://127.0.0.1:8765"
+        private const val USB_PORT = 8765
+        private const val USB_BASE = "https://127.0.0.1:$USB_PORT"
         /** The agent sends "state" every second, so a silent connection for this long is dead. */
         const val STREAM_READ_TIMEOUT = 8000
         /** A request without a deadline of its own: most answers take milliseconds. */
