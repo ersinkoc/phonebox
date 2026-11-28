@@ -193,7 +193,8 @@ public sealed partial class LyricsService : IDisposable
                 else if (res.StatusCode != HttpStatusCode.NotFound)
                 {
                     var refused = Refused(res);
-                    if ((int)res.StatusCode < 500 || refused.RetryAfter is not null) throw refused;
+                    // the header itself counts: a Retry-After of 0 or a past date is still a request to slow down
+                    if ((int)res.StatusCode < 500 || res.Headers.RetryAfter is not null) throw refused;
                     _log.LogInformation("lyrics: exact lookup failed ({Msg}), trying the search", refused.Message);
                 }
             }

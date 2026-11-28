@@ -53,6 +53,11 @@
   keeps accepting on the USB tunnel's port and then stays silent, and each request waited out its read timeout there
   before trying Wi-Fi. A short TLS handshake now checks the tunnel first: a silent one is skipped for 15 s, a working
   one is used without a check for 10 s after its last answer (#750, [HerrLichterloh](https://github.com/HerrLichterloh)).
+- Synced lyrics: found more often when LRCLIB's exact lookup fails. A timeout, a lost connection or a server error
+  there (without a Retry-After) no longer ends the lookup with "error": the agent goes on to LRCLIB's search, and
+  no back-off starts. A 429 or any Retry-After still stops the lookup and keeps LRCLIB alone as before. Answers are
+  asked for compressed (gzip), so a search answer is about a tenth of the size, and a failed lookup is logged in
+  `agent.log` with its reason, without track names (#717, #719, [jassu-Workspace](https://github.com/jassu-Workspace)).
 
 ## 0.9.32 — 2026-11-27
 
