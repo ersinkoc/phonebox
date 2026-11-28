@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Docs: on KDE Plasma (Wayland), shortcuts that press keys or type need `ydotool`, as on GNOME. SETUP.md said `wtype`
+  works on KDE, but KWin doesn't offer ordinary programs the virtual keyboard protocol `wtype` needs.
+
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
