@@ -1728,7 +1728,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "Target: ID monitor. Argumen: JSON dengan lebar, tinggi, hz, optional x/y.",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "Target: owner/repo. Argumen: nama berkas workflow. Device: cabang/ref pilihan.",
       "Target: process name. Argument: left, right, center, max.": "Target: nama proses. Argumen: kiri, kanan, tengah, maks.",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "Target: process.exe. Device: ID keluaran. Memerlukan SoundVolumeView.",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "Target: process.exe (Windows) atau nama aplikasi (Linux). Device: ID keluaran. Memerlukan SoundVolumeView di Windows atau pactl di Linux.",
       "Target: spotify:playlist:… (also album, track or episode).": "Target: spotify:playlist:… (juga album, track atau episode).",
       "Target: text shortcut ID.": "Target: ID jalan pintas teks.",
       "Target: text to type.": "Target: teks untuk ditype.",

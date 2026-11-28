@@ -1728,7 +1728,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "लक्ष्य: मॉनीटर आईडी. तर्क: JSON चौड़ाई, ऊंचाई, hz, वैकल्पिक x/y के साथ.",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "लक्ष्य: मालिक/रिपो. तर्क: कार्यप्रवाह फ़ाइलनाम. उपकरण: वैकल्पिक शाखा/संदर्भ.",
       "Target: process name. Argument: left, right, center, max.": "लक्ष्य: प्रक्रिया नाम. आर्गुमेंट: बायाँ, दायाँ, केंद्र, अधिकतम.",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "लक्ष्य: process.exe. उपकरण: आउटपुट आईडी. SoundVolumeView की आवश्यकता है.",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "लक्ष्य: process.exe (Windows) या ऐप्लिकेशन का नाम (Linux). उपकरण: आउटपुट आईडी. Windows पर SoundVolumeView या Linux पर pactl की आवश्यकता है.",
       "Target: spotify:playlist:… (also album, track or episode).": "लक्ष्य: स्पॉटीफ़ाई:प्लेलिस्ट:... (एल्बम, ट्रैक या एपिसोड भी)।",
       "Target: text shortcut ID.": "लक्ष्य: पाठ शॉर्टकट आईडी.",
       "Target: text to type.": "उदाहरण: पाठ लिखने के लिए।",

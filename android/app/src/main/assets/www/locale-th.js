@@ -1728,7 +1728,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "เป้าหมาย: ID ของจอภาพ อาร์กิวเมนต์: JSON พร้อมความกว้าง, ความสูง, hz, x/ y ตัวเลือก",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "เป้าหมาย: owner/repo. อาร์กิวเมนต์: workflow filename. อุปกรณ์: branch/ref ตัวเลือก",
       "Target: process name. Argument: left, right, center, max.": "เป้าหมาย: ชื่อโพรเซส อาร์กิวเมนต์: ซ้าย, ขวา, กลาง, สูงสุด",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "เป้าหมาย: process. exe อุปกรณ์: หมายเลขออกแบบ ต้องการ SoundVolumeView",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "เป้าหมาย: process.exe (Windows) หรือชื่อแอปพลิเคชัน (Linux) อุปกรณ์: ID เอาต์พุต ต้องใช้ SoundVolumeView บน Windows หรือ pactl บน Linux",
       "Target: spotify:playlist:… (also album, track or episode).": "เป้าหมาย: spotify:รายการเล่น:... (รวมถึงอัลบั้ม, แทร็ก หรือตอน)",
       "Target: text shortcut ID.": "หมายเลขรหัสทางลัด",
       "Target: text to type.": "เป้าหมาย: ข้อความที่จะพิมพ์",

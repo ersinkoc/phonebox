@@ -1728,7 +1728,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "ターゲット: モニタ ID。引数: JSON with width, height, hz, optional x/y",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "ターゲット: 所有者/リポジトリ。引数: ワークフローファイル名。デバイス: オプションのブランチ/ref。",
       "Target: process name. Argument: left, right, center, max.": "ターゲット: プロセス名. 引数: 左, 右, 中央, max",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "ターゲット: process.exe デバイス: 出力 ID SoundVolumeView が必要です。",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "ターゲット: process.exe (Windows) またはアプリケーション名 (Linux) デバイス: 出力 ID Windows では SoundVolumeView、Linux では pactl が必要です。",
       "Target: spotify:playlist:… (also album, track or episode).": "ターゲット: spotify:プレイリスト:... (アルバム、トラックまたはエピソードも含む)",
       "Target: text shortcut ID.": "ターゲット: テキストショートカット ID。",
       "Target: text to type.": "ターゲット: タイプするテキスト。",

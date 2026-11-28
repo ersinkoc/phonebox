@@ -1728,7 +1728,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "Призначення: ІД монітора. Аргумент: JSON з шириною, висотою, частотою, необов’ язковими x/ y.",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "Призначення: власник/ сховище. Аргумент: назва файла потоку роботи. Пристрій: необов’ язкове гілку/ посилання.",
       "Target: process name. Argument: left, right, center, max.": "Призначення: назва процесу. Аргументи: ліворуч, праворуч, центр, макс.",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "Призначення: process. exe. Пристрій: ідентифікатор виводу. Потрібно SoundVolumeView.",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "Призначення: process.exe (Windows) або назва застосунку (Linux). Пристрій: ідентифікатор виводу. Потрібно SoundVolumeView у Windows або pactl у Linux.",
       "Target: spotify:playlist:… (also album, track or episode).": "Мета: spotify:playlist:… (також альбом, пісня або епізод).",
       "Target: text shortcut ID.": "Призначення: ІД текстового скорочення.",
       "Target: text to type.": "Призначення: текст для введення.",

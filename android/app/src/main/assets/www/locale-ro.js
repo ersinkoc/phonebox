@@ -1723,7 +1723,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "Țintă: ID-ul monitorului. Argument: JSON cu width, height, hz și opțional x/y.",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "Țintă: owner/repo. Argument: numele fișierului de workflow. Dispozitiv: branch/ref opțional.",
       "Target: process name. Argument: left, right, center, max.": "Țintă: numele procesului. Argument: left, right, center, max.",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "Țintă: process.exe. Dispozitiv: ID-ul ieșirii. Necesită SoundVolumeView.",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "Țintă: process.exe (Windows) sau numele aplicației (Linux). Dispozitiv: ID-ul ieșirii. Necesită SoundVolumeView pe Windows sau pactl pe Linux.",
       "Target: spotify:playlist:… (also album, track or episode).": "Țintă: spotify:playlist:… (și album, track sau episode).",
       "Target: text shortcut ID.": "Țintă: ID-ul scurtăturii de text.",
       "Target: text to type.": "Țintă: textul de tastat.",
