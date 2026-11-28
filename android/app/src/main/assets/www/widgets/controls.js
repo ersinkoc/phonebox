@@ -95,8 +95,10 @@ function meter(value) { const e = h('div', 'deck-meter', h('i')); e.firstChild.s
 
 // The device list, the microphone, per-app volume and switching devices need the agent's full audio backend: Windows
 // Core Audio, or pactl on Linux. Without one (macOS, or Linux without pactl) the agent reports only the system output
-// ("default"), so these say so instead of showing an empty list (#613).
-const onlyOnWindows = data => !!D.state?.os && D.state.os !== 'windows'
+// ("default"), so these say so instead of showing an empty list (#613). When the backend is there but did not answer
+// (pactl with no sound server) audio is unavailable, not Windows-only.
+const audioUnavailable = data => data?.audio?.available === false;
+const onlyOnWindows = data => !!D.state?.os && D.state.os !== 'windows' && !audioUnavailable(data)
   && !(data?.audio?.devices || []).some(d => d.id !== 'default');
 const WINDOWS_ONLY = {
   apps: () => tp('Per-app volume is only on Windows for now'),
@@ -179,6 +181,11 @@ function chooser(box, options, which) {
       if (signature !== 'windows-only') { signature = 'windows-only'; empty(list, tp('Switching audio devices is only on Windows for now')); }
       return;
     }
+    if ((which === 'input' || which === 'output') && audioUnavailable(data)) {
+      const text = data.audio.error || tp('Audio is unavailable on this computer');
+      if (signature !== 'unavailable:' + text) { signature = 'unavailable:' + text; empty(list, text); }
+      return;
+    }
     const items = which === 'media' ? data.media || [] : which === 'plans' ? data.powerPlans || [] : (data.audio?.devices || []).filter(d => d.direction === which);
     const role = options.role || 'all';
     const roleIndex = {console:0,media:1,communications:2}[role];
@@ -237,6 +244,7 @@ function hold(box, options, power = null) {
       device = options.device || data.audio?.devices?.find(d => d.direction === 'input' && d.default)?.id;
       b.disabled = power ? !data.allowPower : !device;
       if (b.disabled) status.textContent = power ? tp('Enable power controls in desktop settings')
+        : audioUnavailable(data) ? data.audio.error || tp('Audio is unavailable on this computer')
         : onlyOnWindows(data) ? tp('Microphone control is only on Windows for now') : tp('No microphone is available');
     },
     destroy() { end(); observer?.disconnect(); window.removeEventListener('blur', end); document.removeEventListener('visibilitychange', visibility); },

@@ -114,10 +114,14 @@
 - Linux: the Control Deck's **audio widgets work**: the application mixer, application volume, device volume,
   channel balance, microphone, push-to-talk, emergency mute, audio profiles and output/input selection. The agent
   reads every output, microphone and application stream through `pactl` (PulseAudio, or PipeWire through
-  pipewire-pulse) instead of offering only the system output. It reads pactl's plain-text listing, as its JSON
-  output turns any name with a non-ASCII character into "(null)". Monitor sources and streams a module made (the
-  loopbacks of a virtual mixer) are left out; virtual sinks are listed as outputs, so the channels of a virtual
-  mixer get their own faders. Without `pactl` (and on macOS) the widgets still say they need Windows (#613).
+  pipewire-pulse) instead of offering only the system output, and works with pactl versions before 15 too. It reads
+  pactl's plain-text listing, as its JSON output turns any name with a non-ASCII character into "(null)", and shares
+  one listing for 300 ms, so an emergency mute or a profile restore starts one pactl per change. Monitor sources and
+  streams a module made (the loopbacks of a virtual mixer) are left out; virtual sinks are listed as outputs, so the
+  channels of a virtual mixer get their own faders. Until pactl reaches a sound server (PipeWire without
+  pipewire-pulse) the system output's volume stays; once it has, a server that stops answering shows the widgets as
+  unavailable. Without `pactl` (package `pulseaudio-utils` on Debian, Ubuntu and Fedora, `libpulse` on Arch) and on
+  macOS the widgets still say they need Windows (#613, #762, [mikicolmena](https://github.com/mikicolmena)).
 
 ## 0.9.32 — 2026-11-27
 

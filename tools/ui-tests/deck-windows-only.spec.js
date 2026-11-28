@@ -35,6 +35,13 @@ for (const [type, text, control] of [
       await expect(page.getByText(text, { exact: true })).toHaveCount(0);
     });
   }
+
+  // pactl answered once, then the sound server stopped: the agent reports audio unavailable, which is not Windows-only
+  test(`${type} says audio is unavailable when the sound server stops`, async ({ page }) => {
+    await show(page, type, 'linux', 'down');
+    await expect(page.getByText('The sound server did not answer (pactl)', { exact: true })).toBeVisible();
+    await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+  });
 }
 
 test('device-volume controls the system output on Linux', async ({ page }) => {

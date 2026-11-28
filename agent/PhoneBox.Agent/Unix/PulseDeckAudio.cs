@@ -11,12 +11,28 @@ namespace PhoneBox.Agent;
 /// string holding a non-ASCII character with "(null)", so a sink called "Música" or a window title with an accent would
 /// lose its name.
 /// </summary>
-internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?> pactl)
+/// <remarks>
+/// A listing costs four pactl processes, so the last one is kept for <see cref="CacheMs"/> and shared by the writes
+/// (panic and a profile restore change many devices in a row). A write patches the kept listing with what it set
+/// instead of dropping it, so the next write in the same burst still finds the device and its current channels.
+/// </remarks>
+internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?> pactl, Func<long>? now = null)
 {
     private const int TimeoutMs = 2000;
+    /// <summary>How long a listing is reused, in milliseconds.</summary>
+    internal const int CacheMs = 300;
+    private readonly Func<long> _now = now ?? (() => Environment.TickCount64);
     /// <summary>One write at a time: a channel change reads every channel and writes them all back, so two overlapping
     /// left/right changes would otherwise drop one of them.</summary>
     private readonly Lock _writes = new();
+    /// <summary>Guards <see cref="_last"/>, and is held while listing, so callers arriving together share one listing.</summary>
+    private readonly Lock _cache = new();
+    private (long At, DeckAudio? Audio)? _last;
+    private volatile bool _answered;
+
+    /// <summary>Whether pactl has listed the devices at least once. Until then the caller keeps its master-volume fallback:
+    /// pactl may be installed with no Pulse server to talk to (PipeWire without pipewire-pulse).</summary>
+    public bool HasAnswered => _answered;
 
     /// <summary>The backend when this is Linux with pactl installed, or null (the caller keeps its master-volume fallback).</summary>
     public static PulseDeckAudio? TryCreate() =>
@@ -26,6 +42,9 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
     {
         try
         {
+            // No "--" is needed before a device name: pactl parses its options with getopt_long("+s:n:…"), which stops at
+            // the command word, so a name that starts with "-" is taken as the name. A "--" after the command would itself
+            // be taken as the name.
             var psi = new ProcessStartInfo(path);
             foreach (var a in args) psi.ArgumentList.Add(a);
             psi.Environment["LC_ALL"] = "C"; // field names in English, values (names, titles) still UTF-8
@@ -36,15 +55,44 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         catch { return null; }
     }
 
-    /// <summary>The current devices and application streams, or null when the sound server does not answer.</summary>
+    /// <summary>The current devices and application streams, or null when the sound server does not answer. A listing
+    /// younger than <see cref="CacheMs"/> (patched by the writes since) is reused.</summary>
     public DeckAudio? Read()
     {
-        if (pactl(["list", "sinks"]) is not { } sinksText || pactl(["list", "sources"]) is not { } sourcesText
-            || pactl(["list", "sink-inputs"]) is not { } inputsText) return null;
-        var defaultSink = pactl(["get-default-sink"])?.Trim();
-        var defaultSource = pactl(["get-default-source"])?.Trim();
+        lock (_cache)
+        {
+            if (_last is { } last && _now() - last.At < CacheMs) return last.Audio;
+            var audio = List();
+            _last = (_now(), audio);
+            if (audio is not null) _answered = true;
+            return audio;
+        }
+    }
+
+    private DeckAudio? List()
+    {
+        // "info" first: without a sound server it is the only process started. It names the defaults on every pactl
+        // version; get-default-sink / get-default-source only exist since PulseAudio 15.
+        if (pactl(["info"]) is not { } info || pactl(["list", "sinks"]) is not { } sinksText
+            || pactl(["list", "sources"]) is not { } sourcesText || pactl(["list", "sink-inputs"]) is not { } inputsText) return null;
+        var (defaultSink, defaultSource) = Defaults(info);
         return Build(Parse(sinksText), Parse(sourcesText), Parse(inputsText), defaultSink, defaultSource);
     }
+
+    /// <summary>The default sink and source from <c>LC_ALL=C pactl info</c> ("Default Sink: name"), null when none is set.</summary>
+    internal static (string? Sink, string? Source) Defaults(string? info)
+    {
+        string? sink = null, source = null;
+        foreach (var raw in (info ?? "").Split('\n'))
+        {
+            var line = raw.TrimEnd('\r');
+            if (line.StartsWith("Default Sink:", StringComparison.Ordinal)) sink = DefaultName(line["Default Sink:".Length..]);
+            else if (line.StartsWith("Default Source:", StringComparison.Ordinal)) source = DefaultName(line["Default Source:".Length..]);
+        }
+        return (sink, source);
+    }
+
+    private static string? DefaultName(string value) => value.Trim() is { Length: > 0 } name && name != "(null)" && name != "n/a" ? name : null;
 
     internal static DeckAudio Build(IReadOnlyList<Block> sinks, IReadOnlyList<Block> sources, IReadOnlyList<Block> inputs,
         string? defaultSink, string? defaultSource)
@@ -123,17 +171,22 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         if (volume is { } v)
         {
             var current = device.ChannelVolumes ?? [];
-            string[] levels;
+            IReadOnlyList<int> levels;
             if (channel is { } c)
             {
                 if (c < 0 || c >= current.Count) return false;
-                levels = [.. current.Select((level, i) => Percent(i == c ? v : level))];
+                levels = [.. current.Select((level, i) => i == c ? v : level)];
             }
-            else levels = [.. Scale(current, v).Select(Percent)];
-            if (levels.Length == 0) levels = [Percent(v)];
-            if (pactl([$"set-{kind}-volume", id, .. levels]) is null) return false;
+            else levels = Scale(current, v);
+            if (levels.Count == 0) levels = [v];
+            if (pactl([$"set-{kind}-volume", id, .. levels.Select(Percent)]) is null) { Forget(); return false; }
+            Patch(a => a with { Devices = [.. a.Devices.Select(d => d.Id != id ? d
+                : d with { Volume = Master(levels), ChannelVolumes = d.ChannelVolumes is null ? null : levels })] });
         }
-        return muted is not { } m || pactl([$"set-{kind}-mute", id, m ? "1" : "0"]) is not null;
+        if (muted is not { } m) return true;
+        if (pactl([$"set-{kind}-mute", id, m ? "1" : "0"]) is null) { Forget(); return false; }
+        Patch(a => a with { Devices = [.. a.Devices.Select(d => d.Id == id ? d with { Muted = m } : d)] });
+        return true;
     }
 
     public bool Session(string id, int? volume, bool? muted)
@@ -141,12 +194,20 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         if (volume is < 0 or > 100 || id.Length == 0 || !id.All(char.IsAsciiDigit)) return false;
         lock (_writes)
         {
-            if (volume is { } v && pactl(["set-sink-input-volume", id, Percent(v)]) is null) return false;
-            return muted is not { } m || pactl(["set-sink-input-mute", id, m ? "1" : "0"]) is not null;
+            if (volume is { } v)
+            {
+                if (pactl(["set-sink-input-volume", id, Percent(v)]) is null) { Forget(); return false; }
+                Patch(a => a with { Sessions = [.. a.Sessions.Select(s => s.Id == id ? s with { Volume = v } : s)] });
+            }
+            if (muted is not { } m) return true;
+            if (pactl(["set-sink-input-mute", id, m ? "1" : "0"]) is null) { Forget(); return false; }
+            Patch(a => a with { Sessions = [.. a.Sessions.Select(s => s.Id == id ? s with { Muted = m } : s)] });
+            return true;
         }
     }
 
-    /// <summary>Makes a device the default for its direction. Linux has no separate roles, so every role follows.</summary>
+    /// <summary>Makes a device the default for its direction. Linux has no separate roles, so every role follows: a
+    /// device the listing already shows as the default is left alone (a profile restore sets it once per role).</summary>
     public bool DefaultDevice(string id, int? role = null)
     {
         if (role is < 0 or > 2) return false;
@@ -154,10 +215,33 @@ internal sealed partial class PulseDeckAudio(Func<IReadOnlyList<string>, string?
         {
             var device = Read()?.Devices.FirstOrDefault(d => d.Id == id);
             if (device is null) return false;
+            if (device.Default) return true;
             var kind = device.Direction == "output" ? "sink" : "source";
-            if (pactl([$"set-default-{kind}", id]) is null) return false;
-            return pactl([$"get-default-{kind}"])?.Trim() == id;
+            if (pactl([$"set-default-{kind}", id]) is null) { Forget(); return false; }
+            var (sink, source) = Defaults(pactl(["info"]));
+            if ((kind == "sink" ? sink : source) != id) { Forget(); return false; }
+            Patch(a => a with
+            {
+                Devices = [.. a.Devices.Select(d => d.Direction == device.Direction ? d with { Default = d.Id == id } : d)],
+                Defaults = new Dictionary<string, string>(a.Defaults ?? new Dictionary<string, string>())
+                {
+                    [$"{device.Direction}:0"] = id, [$"{device.Direction}:1"] = id, [$"{device.Direction}:2"] = id,
+                },
+            });
+            return true;
         }
+    }
+
+    /// <summary>Applies a write that worked to the kept listing; its age stays, so it still expires on time.</summary>
+    private void Patch(Func<DeckAudio, DeckAudio> change)
+    {
+        lock (_cache) if (_last is { Audio: { } audio } last) _last = (last.At, change(audio));
+    }
+
+    /// <summary>Drops the kept listing after a write that failed: what pactl holds now is unknown.</summary>
+    private void Forget()
+    {
+        lock (_cache) _last = null;
     }
 
     /// <summary>A new master level that keeps the balance: the loudest channel gets <paramref name="level"/>, the others

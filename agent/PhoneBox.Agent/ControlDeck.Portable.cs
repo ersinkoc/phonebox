@@ -19,11 +19,12 @@ internal sealed class PortableDeckNative(
 
     /// <summary>
     /// Every device and application stream on Linux (pactl); without that backend (macOS, Linux without pactl) the system
-    /// output's master volume only. When pactl is there but its listing fails, audio is reported unavailable rather than
+    /// output's master volume only. Until pactl has answered once it may have no Pulse server to talk to (PipeWire without
+    /// pipewire-pulse), so the system output stays. Once it has, a failed listing is reported unavailable rather than
     /// falling back to the system output: panic and "Mics off" must not take a list without microphones for the full one.
     /// </summary>
-    public DeckAudio Audio() => pulse is not null
-        ? pulse.Read() ?? new(false, "The sound server did not answer (pactl)", [], [])
+    public DeckAudio Audio() => pulse?.Read() is { } listed ? listed
+        : pulse is { HasAnswered: true } ? new(false, "The sound server did not answer (pactl)", [], [])
         : audio.Snapshot() is { } a ? new(true, null,
             [new("default", "System output", "output", true, a.Volume, a.Muted, 0, 1, a.CanControl)], [])
         : new(false, "Audio backend is unavailable", [], []);

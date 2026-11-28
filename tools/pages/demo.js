@@ -490,10 +490,12 @@
     Object.assign(deck.audio.devices[0], { volume: audio.volume, muted: audio.muted });
     Object.assign(deck.media[0], { title: TRACKS[player.track][0], playing: player.playing, position: position(), duration: TRACKS[player.track][3] });
     // like PortableDeckNative without pactl (macOS, or Linux without it): only the system output, no app sessions, no
-    // microphones. With pactl (__demoPulse) Linux reports every device and application stream, as Windows does.
+    // microphones. With pactl (__demoPulse) Linux reports every device and application stream, as Windows does; once
+    // pactl has answered, a sound server that stops answering (__demoPulse = 'down') makes audio unavailable.
     const portable = basicDeckAudio();
-    const deckAudio = portable ? { ...deck.audio, sessions: [], devices: [{ id: 'default', name: 'System output', direction: 'output',
-      default: true, volume: audio.volume, muted: audio.muted, peak: 0, channels: 1, canControl: true }] } : deck.audio;
+    const deckAudio = window.__demoPulse === 'down' ? { available: false, error: 'The sound server did not answer (pactl)', devices: [], sessions: [] }
+      : portable ? { ...deck.audio, sessions: [], devices: [{ id: 'default', name: 'System output', direction: 'output',
+        default: true, volume: audio.volume, muted: audio.muted, peak: 0, channels: 1, canControl: true }] } : deck.audio;
     return { ...deck, audio: deckAudio, allowListening: !!controls.allowListening, allowPower: !!controls.allowPower,
       // ControlDeck.Describe / DescribeShortcut: ids, labels and kinds only
       actions: (controls.actions || []).filter((a) => a.enabled !== false).map((a) => ({ id: a.id, name: a.label, kind: a.kind, state: actionState[a.id] ?? (/^(app|project|shortcut|focus)$/.test(a.kind) ? (c.shortcuts.some((x) => x.id === a.target) ? 'Ready' : 'Shortcut is missing') : null),
