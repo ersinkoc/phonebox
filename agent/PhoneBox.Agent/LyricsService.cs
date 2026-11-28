@@ -225,7 +225,8 @@ public sealed partial class LyricsService : IDisposable
         // extras dropped. A player often carries a translation in brackets or a version note ("(10 years after Ver.)")
         // in the title and several artists in one string; LRCLIB matches the track name as a whole, so such a title
         // finds nothing even when the song is there. An ordinary title has one query here, as before.
-        foreach (var (queryTitle, queryArtist) in combined is null ? Queries(title, artist) : Queries(title, artist).Prepend((title, combined)))
+        // With an artist field that was split ("Artist — Album"), the whole field's searches come first, then the split artist's.
+        foreach (var (queryTitle, queryArtist) in combined is null ? Queries(title, artist) : Queries(title, combined).Concat(Queries(title, artist)).Distinct())
         {
             // a failure of another lookup may have started a back-off meanwhile: no further request during it
             if (PausedFor() is > 0 and var left) throw new LrclibPausedException(left);

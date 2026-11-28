@@ -113,6 +113,10 @@ public sealed class LyricsServiceTests : IDisposable
             ? Json(SearchHit) : req.RequestUri!.AbsolutePath == "/api/get" ? new HttpResponseMessage(System.Net.HttpStatusCode.NotFound) : Json("[]"));
         using var lyrics = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib);
         Assert.Equal("ok", (await Ask(lyrics, Track("Song", "Earth — Wind", "", 200_000))).Status);
+        // with a bracketed note in the title, the whole field is searched without it too
+        using var bracketed = new LyricsService(Config("lyrics"), NullLogger<LyricsService>.Instance, lrclib);
+        Assert.Equal("ok", (await Ask(bracketed, Track("Song (Live)", "Earth — Wind", "", 200_000))).Status);
+        Assert.Contains(lrclib.Asked, a => a.Contains("track_name=Song&artist_name=Earth%20%E2%80%94%20Wind"));
 
         // "Artist - Song" as the title: the field is split before the title is cleaned, so the album is still found
         var exact = new Lrclib(req => Json("[]"));
