@@ -1,4 +1,4 @@
-import { $, API, D, LEVEL_COLOR, phoneMediaArt, phoneMediaControl, phoneAudio, phoneMute, phoneVolume, setMediaChoice, swapOn, swapPhone, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, mediaPosMs, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, providersFor, pages, curPage, gotoPageRef } from '../main.js';
+import { $, API, D, LEVEL_COLOR, phoneMediaArt, phoneMediaControl, phoneAudio, phoneMute, phoneVolume, setMediaChoice, swapOn, swapPhone, LOCALE, mediaHtml, METRICS, PANEL_HEADERS, PREVIEW, Q_STYLE, S_ORDER, agentClock, ago, api, averageColor, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, clockPeriod, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, media, mediaPosMs, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, quotaWanted, r1, registerProcessesSorter, renderStatus, ringSvg, setArtColor, configMark, configReadSince, localWriteStored, setMediaState, setVolDragging, shortDur, shortGpu, store, t, tick, toast, volDragging, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText, providersFor, pages, curPage, gotoPageRef } from '../main.js';
 import { W } from '../registry.js';
 import { weekStartDay } from './time.js';
 import { invalidateDeckState } from './controls.js';
@@ -765,26 +765,33 @@ W.sessions = {
     // agent judged — the hook's settings path names the user's home folder and never travels),
     // so the card also works over Wi-Fi and USB and never phones home for the path. Anything
     // that cannot be read says "unknown" rather than "on": a check that fails must not pass
-    // itself (fail-loud). Values go in with textContent only.
-    const workbuddyCheck = async (panel, s) => {
+    // itself (fail-loud). Values go in with textContent only. The card follows the latest
+    // "work" frame every second while it is open, so the heartbeat's age keeps counting and
+    // turns stale when the agent says so; it returns the function that stops that.
+    const workbuddyCheck = (panel, first) => {
       const box = h('div', 'session-conv wb-check');
       panel.append(box);
-      const wb = D.work?.workbuddy || null; // the agent's booleans; null when the agent is older
-      // the heartbeat the row's own freshness is judged on; since is a status-change time and can differ
-      const beat = s.heartbeat ?? s.since;
-      const beatAge = beat != null ? Math.max(0, Math.round((Date.now() - beat) / 1000)) : null;
-      const rows = [
-        [tp('Hook'), Promise.resolve(wb == null ? null : wb.installed === true ? tp('installed') : wb.installed === false ? tp('not installed') : null)],
-        [tp('Agent setting'), Promise.resolve(wb == null ? null : wb.approvals === true ? tp('on') : wb.approvals === false ? tp('off') : null)],
-        [tp('Last heartbeat'), Promise.resolve(s.recent === true ? tpv('{n}s ago', { n: beatAge ?? 0 }) : s.recent === false ? tp('stale') : beatAge == null ? null : beatAge > 90 ? tp('stale') : tpv('{n}s ago', { n: beatAge }))],
-      ];
-      box.replaceChildren(h('div', 'conv-h', tp('WorkBuddy check')), ...await Promise.all(rows.map(async ([label, value]) => {
-        let text;
-        try { text = await value; } catch (_) { text = null; }
-        const strong = h('strong', null, text ?? tp('unknown'));
-        if (text == null || text === tp('stale')) strong.classList.add('wb-unknown');
-        return h('div', 'wb-check-row', h('span', null, label), strong);
-      })));
+      const render = () => {
+        const s = D.work?.sessions?.find((x) => x.id === first.id) || first;
+        const wb = D.work?.workbuddy || null; // the agent's booleans; null when the agent is older
+        // the heartbeat the row's own freshness is judged on; since is a status-change time and can differ.
+        // Its age is counted on the computer's clock (agentClock), never the phone's.
+        const beat = s.heartbeat ?? s.since;
+        const beatAge = beat != null ? Math.max(0, Math.round((agentClock() - beat) / 1000)) : null;
+        const rows = [
+          [tp('Hook'), wb == null ? null : wb.installed === true ? tp('installed') : wb.installed === false ? tp('not installed') : null],
+          [tp('Agent setting'), wb == null ? null : wb.approvals === true ? tp('on') : wb.approvals === false ? tp('off') : null],
+          [tp('Last heartbeat'), s.recent === true ? tpv('{n}s ago', { n: beatAge ?? 0 }) : s.recent === false ? tp('stale') : beatAge == null ? null : beatAge > 90 ? tp('stale') : tpv('{n}s ago', { n: beatAge })],
+        ];
+        box.replaceChildren(h('div', 'conv-h', tp('WorkBuddy check')), ...rows.map(([label, text]) => {
+          const strong = h('strong', null, text ?? tp('unknown'));
+          if (text == null || text === tp('stale')) strong.classList.add('wb-unknown');
+          return h('div', 'wb-check-row', h('span', null, label), strong);
+        }));
+      };
+      render();
+      const timer = setInterval(render, 1000);
+      return () => clearInterval(timer);
     };
     const openDetails = (s) => {
       haptic();
@@ -821,7 +828,7 @@ W.sessions = {
       panel.append(h('div', 'session-grid', rows.filter(([, value]) => value != null)
         .map(([label, value]) => h('div', 'session-cell', h('span', null, tp(label)), h('strong', null, value)))));
       if (s.tool === 'codex' || s.tool === 'grok' || (s.tool === 'antigravity' && s.totalTokens != null) || (s.tool === 'pi' && s.totalTokens != null)) panel.append(h('p', 'session-note', tp('Token totals are for this local session, not your account allowance.')));
-      if (s.tool === 'workbuddy') workbuddyCheck(panel, s);
+      if (s.tool === 'workbuddy') stopConversation = workbuddyCheck(panel, s);
       if (s.tool === 'claude') stopConversation = conversationSection(panel, s);
       backdrop.append(panel);
       document.body.append(backdrop);
@@ -836,7 +843,7 @@ W.sessions = {
         sessions.forEach((s) => (counts[s.status] = (counts[s.status] || 0) + 1));
         // the statuses that mean a turn is over count together as finished; unknown gets its own
         // fragment so a list of rows never reads as "no open sessions"
-        const done = counts.completed + counts.failed + counts.stopped;
+        const done = (counts.completed || 0) + (counts.failed || 0) + (counts.stopped || 0);
         sum.textContent = [
           counts.busy + counts.shell ? tpv('{n} working', { n: counts.busy + counts.shell }) : '',
           counts.waiting ? tpv('{n} waiting', { n: counts.waiting }) : '',

@@ -2208,6 +2208,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n} working": "pracuje: {n}",
       "{n} waiting": "čeká: {n}",
       "{n} idle": "nečinné: {n}",
+      "{n} finished": "dokončené: {n}",
+      "{n} unknown": "neznámé: {n}",
       "WorkBuddy check": "Kontrola WorkBuddy",
       "Hook": "Hook",
       "Agent setting": "Nastavení agenta",

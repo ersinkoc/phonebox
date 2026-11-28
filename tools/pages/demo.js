@@ -413,7 +413,8 @@
           pr('acme/infra', 77, 'Move staging to a new region', null, null, false, 'hubot')],
         myPrs: [pr('acme/api', 409, 'Cache user sessions in Redis', 'SUCCESS', 'APPROVED'), pr('acme/web', 1281, 'Faster image uploads', 'PENDING'),
           pr('acme/cli', 53, 'New "deploy" command', 'FAILURE', 'CHANGES_REQUESTED'), pr('acme/docs', 210, 'Getting started rewrite', null, null, true)] },
-      workbuddy: { installed: true, approvals: true, sessions: true },
+      // the same hook state and approval switch the settings page's demo shows (/api/workbuddy/hook, the defaults)
+      workbuddy: { installed: false, approvals: false, sessions: true },
     };
   }
 

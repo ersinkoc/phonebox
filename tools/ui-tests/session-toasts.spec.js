@@ -131,3 +131,37 @@ test('a permission prompt that wakes the night screen stays silent', async ({ pa
   await expect(page.locator('body')).not.toHaveClass(/night/); // the prompt still wakes the screen
   expect(await tones(page)).toEqual([]);
 });
+
+// WorkBuddy turns end as completed, stopped or failed (#701): a failure reads as one (an error toast, shown even with the
+// finish toast off), and a feed that went quiet (unknown) is not a finish, so it says nothing.
+const runWorkBuddy = (page, ...states) => page.evaluate(async (list) => {
+  const { notifyTransitions } = await import('/panel/main.js');
+  document.getElementById('toast').className = 'toast';
+  for (const status of list) notifyTransitions([{ id: 'workbuddy:toast-test', tool: 'workbuddy', name: 'Night build', status, recent: status !== 'unknown' }]);
+  const t = document.getElementById('toast');
+  return { on: t.classList.contains('on'), err: t.classList.contains('err'), ok: t.classList.contains('ok'), text: t.textContent };
+}, states);
+
+test('a WorkBuddy turn that completes shows the finished toast and chimes', async ({ page }) => {
+  await load(page, { finishSound: true });
+  const r = await runWorkBuddy(page, 'busy', 'completed');
+  expect(r.on && r.ok).toBe(true);
+  expect(r.text).toContain('Night build finished');
+  expect(await tones(page)).toHaveLength(3);
+});
+
+test('a failed WorkBuddy turn reads as a failure, not as finished', async ({ page }) => {
+  await load(page, { finishSound: true, finishToast: false });
+  const r = await runWorkBuddy(page, 'busy', 'failed');
+  expect(r.on && r.err).toBe(true);
+  expect(r.text).toContain('Night build');
+  expect(r.text).toContain('Failed');
+  expect(r.text).not.toContain('finished');
+  expect(await tones(page)).toEqual([]);
+});
+
+test('a WorkBuddy feed that goes quiet stays quiet', async ({ page }) => {
+  await load(page, { finishSound: true });
+  expect((await runWorkBuddy(page, 'busy', 'unknown')).on).toBe(false);
+  expect(await tones(page)).toEqual([]);
+});

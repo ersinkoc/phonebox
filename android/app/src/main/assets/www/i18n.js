@@ -406,8 +406,6 @@
       'w.processes': 'Processes',
       'w.memory': 'Memory',
       'w.noOpenSessions': 'No open sessions',
-      'w.nUnknown': '{n} unknown',
-      'w.nFinished': '{n} finished',
       'w.noAiSessions': 'No Claude Code / Codex / Grok / Cursor / OpenCode / Antigravity sessions open',
       'w.note.cancel': 'Cancel',
       'w.note.save': 'Save',
@@ -5808,6 +5806,7 @@
       'panel.showLess': 'Afișează mai puțin',
       'panel.confirmAllow': 'Atinge din nou pentru a permite',
       'panel.highRisk': 'Operațiune cu risc ridicat',
+      'sess.stopped': 'Oprit',
     },
 
     nl: {
@@ -10320,13 +10319,11 @@
       'sess.completed': '已完成',
       'sess.failed': '失败',
       'sess.aborted': '已中止',
+      'sess.stopped': '已停止',
       'sess.idle': '空闲',
       'sess.waitingData': '正在等待会话数据…',
       'w.pressToResume': '按 ▶ 继续',
       'w.startOnPc': '在电脑上开始播放',
-    },
-    ro: {
-      'sess.stopped': 'Oprit',
     },
   };
 

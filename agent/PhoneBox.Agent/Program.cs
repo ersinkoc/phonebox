@@ -948,7 +948,7 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
             {
                 if (tick++ % 2 == 0)
                 {
-                    var work = WorkFeed.Build(sessions, gh, configStore.Get().WorkBuddy, WorkBuddyHook.Installed());
+                    var work = WorkFeed.Build(sessions, gh, configStore.Get().WorkBuddy, WorkBuddyHook.InstalledCached());
                     var json = JsonSerializer.Serialize(work, opts);
                     if (json != lastWork) { lastWork = json; await Send("work", work); }
                 }
@@ -1205,7 +1205,7 @@ app.MapPost("/api/volume", (int? level, string? op, AudioControl audio) =>
 
 app.MapGet("/api/quotas", (QuotaMonitor q) => Results.Json(new { providers = q.Snapshot(), overview = q.Overview() }));
 
-app.MapGet("/api/work", (SessionMonitor s, GitHubMonitor gh, ConfigStore cfg) => Results.Json(WorkFeed.Build(s, gh, cfg.Get().WorkBuddy, WorkBuddyHook.Installed())));
+app.MapGet("/api/work", (SessionMonitor s, GitHubMonitor gh, ConfigStore cfg) => Results.Json(WorkFeed.Build(s, gh, cfg.Get().WorkBuddy, WorkBuddyHook.InstalledCached())));
 
 app.MapGet("/api/proxy", (string? url, CancellationToken ct) => WidgetFeedProxy.FetchAsync(url, ct));
 

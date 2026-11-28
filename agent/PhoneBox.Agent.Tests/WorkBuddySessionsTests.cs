@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
+[Collection("WorkBuddy names")] // ReadWorkBuddy goes through the static WorkBuddyNames cache (see WorkBuddyNamesTests)
 public sealed class WorkBuddySessionsTests : IDisposable
 {
     private readonly string _home = Directory.CreateTempSubdirectory("phonebox-workbuddy-").FullName;
@@ -217,12 +218,63 @@ public sealed class WorkBuddySessionsTests : IDisposable
     {
         var path = Path.Combine(_home, "config-hook.json");
         File.WriteAllText(path, """{"workbuddy": {"phoneApprovals": true}}""");
-        var cfg = new ConfigStore(path).Get();
+        var store = new ConfigStore(path);
+        var cfg = store.Get();
         Assert.True(cfg.WorkBuddy.PhoneApprovals);
         // the phone's own paths (the work feed, with the switches) stay open; the hook status
         // endpoint, whose answer carries the settings path, does not
         Assert.True(Lan.AllowedOverLan("/api/work"));
         Assert.False(Lan.AllowedOverLan("/api/workbuddy/hook"));
+
+        // the work feed the phone gets carries the hook and approval state as booleans, and no path
+        var monitor = new SessionMonitor(NullLogger<SessionMonitor>.Instance, store);
+        var json = JsonSerializer.Serialize(WorkFeed.Build(monitor, new GitHubMonitor(NullLogger<GitHubMonitor>.Instance), cfg.WorkBuddy, hookInstalled: true),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var wb = JsonDocument.Parse(json).RootElement.GetProperty("workbuddy");
+        Assert.Equal(JsonValueKind.True, wb.GetProperty("installed").ValueKind);
+        Assert.Equal(JsonValueKind.True, wb.GetProperty("approvals").ValueKind);
+        Assert.Equal(JsonValueKind.False, wb.GetProperty("sessions").ValueKind);
+        Assert.False(wb.TryGetProperty("path", out _));
+        Assert.DoesNotContain("settings.json", json);
+        Assert.DoesNotContain(".workbuddy", json);
+    }
+
+    /// <summary>A paired phone's key opens the work feed over Wi-Fi, but never the hook's own path: a POST would
+    /// install the hook in ~/.workbuddy/settings.json and a DELETE would remove it, so both are refused with the
+    /// phone's key, and over USB too.</summary>
+    [Theory]
+    [InlineData("GET")]
+    [InlineData("POST")]
+    [InlineData("DELETE")]
+    public void ThePhonesKeyCannotReachTheHookPath(string method)
+    {
+        var lan = new LanConfig { Enabled = true, Port = 8766, Token = "phone-tok", WebhookToken = "hook-tok" };
+        Assert.Equal(Lan.LanAccess.Phone, Lan.AuthorizeRequest(lan, "GET", "/api/work", "", "Bearer phone-tok", null));
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(lan, method, "/api/workbuddy/hook", "", "Bearer phone-tok", null));
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(lan, method, "/api/workbuddy/hook", "", "Bearer hook-tok", null));
+        Assert.False(UsbLink.Allowed(method, "/api/workbuddy/hook"));
+    }
+
+    /// <summary>The work feed asks whether the hook is installed on every tick for every stream: the settings file is
+    /// read at most once every few seconds, and an Install or Remove is seen at once.</summary>
+    [Fact]
+    public void TheHookStateIsReadAtMostOnceEveryFewSeconds()
+    {
+        WorkBuddyHook.ForgetCached();
+        var reads = 0;
+        var installed = false;
+        bool Read() { reads++; return installed; }
+        Assert.False(WorkBuddyHook.InstalledCached(1_000, Read));
+        installed = true;
+        Assert.False(WorkBuddyHook.InstalledCached(1_000 + WorkBuddyHook.CacheMs - 1, Read));
+        Assert.Equal(1, reads);
+        Assert.True(WorkBuddyHook.InstalledCached(1_000 + WorkBuddyHook.CacheMs, Read));
+        Assert.Equal(2, reads);
+        installed = false;
+        WorkBuddyHook.ForgetCached(); // what Configure does after an Install or Remove
+        Assert.False(WorkBuddyHook.InstalledCached(1_000 + WorkBuddyHook.CacheMs + 1, Read));
+        Assert.Equal(3, reads);
+        WorkBuddyHook.ForgetCached();
     }
 
     public void Dispose() => Directory.Delete(_home, recursive: true);

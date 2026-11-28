@@ -2244,6 +2244,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n} working": "{n} قيد العمل",
       "{n} waiting": "{n} في الانتظار",
       "{n} idle": "{n} خاملة",
+      "{n} finished": "{n} منتهية",
+      "{n} unknown": "{n} غير معروفة",
       "WorkBuddy check": "فحص WorkBuddy",
       "Hook": "الخطاف",
       "Agent setting": "إعداد الوكيل",

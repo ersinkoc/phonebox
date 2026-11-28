@@ -1568,6 +1568,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n} working": "{n} çalışıyor",
       "{n} waiting": "{n} bekliyor",
       "{n} idle": "{n} boşta",
+      "{n} finished": "{n} bitti",
+      "{n} unknown": "{n} bilinmiyor",
       "WorkBuddy check": "WorkBuddy kontrolü",
       "Hook": "Hook",
       "Agent setting": "Ajan ayarı",

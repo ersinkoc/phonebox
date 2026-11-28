@@ -2203,6 +2203,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n} working": "{n} lucrează",
       "{n} waiting": "{n} în așteptare",
       "{n} idle": "Inactive: {n}",
+      "{n} finished": "Încheiate: {n}",
+      "{n} unknown": "Necunoscute: {n}",
       "Total RAM {pct}% ({used}/{total} GB) · ": "RAM total {pct}% ({used}/{total} GB) · ",
       "Total RAM {pct}% · ": "RAM total {pct}% · ",
       "Total CPU {pct}% · ": "CPU total {pct}% · ",

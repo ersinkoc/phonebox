@@ -2208,6 +2208,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "{n} working": "ทำงานอยู่ {n}",
       "{n} waiting": "รออยู่ {n}",
       "{n} idle": "ว่าง {n}",
+      "{n} finished": "เสร็จแล้ว {n}",
+      "{n} unknown": "ไม่ทราบ {n}",
       "WorkBuddy check": "ตรวจสอบ WorkBuddy",
       "Hook": "ฮุก",
       "Agent setting": "การตั้งค่าเอเจนต์",
