@@ -187,7 +187,8 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         // plugged in): never on Apple silicon, whose GPU has no memory of its own. Each ioreg start costs WindowServer a
         // Mach port (#695), so the poll below stays the only regular one.
         IReadOnlyDictionary<string, MacPciGpu> cards = new Dictionary<string, MacPciGpu>();
-        var cardsFor = "";
+        var cardsFor = "";          // the accelerators the PCI read found every card for
+        var triesFor = ""; var tries = 0;
         var retryPci = DateTime.MinValue;
         while (!ct.IsCancellationRequested)
         {
@@ -198,9 +199,14 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
                 var own = OwnMemoryAccelerators(text);
                 if (own.Length > 0 && own != cardsFor && DateTime.UtcNow >= retryPci)
                 {
-                    var pci = await RunIoreg(ct, "-r", "-d", "2", "-w", "0", "-c", "IOPCIDevice");
-                    if (pci.Length > 0) { cards = ParseMacPciGpus(pci); cardsFor = own; }
-                    else retryPci = DateTime.UtcNow.AddMinutes(1); // timed out: keep the last list, try again later
+                    if (own != triesFor) { triesFor = own; tries = 0; }
+                    // "" after a timeout; ioreg can also print headings without properties, which finds no card
+                    var found = ParseMacPciGpus(await RunIoreg(ct, "-r", "-d", "2", "-w", "0", "-c", "IOPCIDevice"));
+                    cards = MergeCards(cards, found);
+                    // Done once every such accelerator has its card. A few tries a minute apart otherwise, then stop:
+                    // a GPU whose PCI device has no "VRAM,totalMB" must not cost an ioreg start every minute.
+                    if (HasEveryCard(cards, own) || ++tries >= 3) cardsFor = own;
+                    else retryPci = DateTime.UtcNow.AddMinutes(1);
                 }
                 // the SMC's GPU temperature exists only on Apple silicon; a GPU with memory of its own brings its own
                 var gpus = ParseAppleGpus(text, Memory().Total, cards);
@@ -334,6 +340,19 @@ public sealed partial class SystemMonitor(ILogger<SystemMonitor> log, ConfigStor
         }
         return cards;
     }
+
+    /// <summary>The cards an earlier PCI read found, with a new read's added on top: a partial read never loses a card.</summary>
+    internal static IReadOnlyDictionary<string, MacPciGpu> MergeCards(IReadOnlyDictionary<string, MacPciGpu> before, IReadOnlyDictionary<string, MacPciGpu> found)
+    {
+        if (found.Count == 0) return before;
+        var merged = new Dictionary<string, MacPciGpu>(before);
+        foreach (var (id, card) in found) merged[id] = card;
+        return merged;
+    }
+
+    /// <summary>Whether every accelerator of <see cref="OwnMemoryAccelerators"/> has found its card.</summary>
+    internal static bool HasEveryCard(IReadOnlyDictionary<string, MacPciGpu> cards, string ownMemoryAccelerators) =>
+        ownMemoryAccelerators.Split(',', StringSplitOptions.RemoveEmptyEntries).All(cards.ContainsKey);
 
     /// <summary>
     /// Every GPU in the ioreg text, each read from its own accelerator entry. On Apple silicon the memory is unified:

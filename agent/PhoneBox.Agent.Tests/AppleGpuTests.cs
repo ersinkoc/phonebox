@@ -229,6 +229,24 @@ public sealed class AppleGpuTests
         Assert.NotEqual(before, SystemMonitor.OwnMemoryAccelerators(IntelUhd + Radeon5500M + Rx580));
     }
 
+    [Fact]
+    public void APciReadThatFindsNoCardIsNotTakenAsDone()
+    {
+        var own = SystemMonitor.OwnMemoryAccelerators(IntelUhd + Radeon5500M);
+        var good = SystemMonitor.ParseMacPciGpus(MacPci);
+        Assert.True(SystemMonitor.HasEveryCard(good, own));
+        // ioreg printed the headings but no properties: no card, so the good list stays and the read is not done
+        var empty = SystemMonitor.ParseMacPciGpus("+-o display@0  <class IOPCIDevice, id 0x10000039e, registered>\n  | {\n  | }\n  +-o AMDRadeonX6000_AMDNavi14GraphicsAccelerator  <class AMDRadeonX6000_AMDNavi14GraphicsAccelerator, id 0x1000005d5, registered>\n");
+        Assert.Empty(empty);
+        Assert.Same(good, SystemMonitor.MergeCards(good, empty));
+        Assert.False(SystemMonitor.HasEveryCard(SystemMonitor.MergeCards(new Dictionary<string, SystemMonitor.MacPciGpu>(), empty), own));
+        // a read that finds only the Radeon is not done either, but keeps the Intel GPU found before
+        var partial = SystemMonitor.MergeCards(good, SystemMonitor.ParseMacPciGpus(EgpuPci));
+        Assert.Equal("Intel UHD Graphics 630", partial["0x100000401"].Name);
+        Assert.False(SystemMonitor.HasEveryCard(SystemMonitor.ParseMacPciGpus(EgpuPci), SystemMonitor.OwnMemoryAccelerators(Radeon5500M + Rx580)));
+        Assert.True(SystemMonitor.HasEveryCard(partial, SystemMonitor.OwnMemoryAccelerators(Radeon5500M + Rx580)));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("+-o pci-bridge@1  <class IOPCIDevice, id 0x100000200, registered>\n  | {\n  |   \"model\" = <\"Some bridge\">\n  | }\n  +-o child  <class IOPCIDevice, id 0x100000201, registered>")]
