@@ -82,12 +82,13 @@ export function otherGames(found, own = []) {
     .map((g) => ({ id: g.id, name: String(g.name || ''), source: String(g.source || ''), state: 'ready', progress: null, cover: g.cover === true }));
 }
 
-/** The one of your own games that stands for a found game (same name, or its shortcut starts a program in the game's
- *  folder), or undefined. */
+/** The one of your own games that stands for a found game, or undefined: first one whose shortcut the agent names as
+ *  starting a program in the game's folder (g.shortcuts), whatever its place among your own games; only without such a
+ *  shortcut, one with the game's name. */
 const twinOf = (g, own) => {
-  const name = String(g.name || '').trim().toLowerCase();
   const ids = Array.isArray(g.shortcuts) ? g.shortcuts.map(String) : [];
-  return own.find((o) => o.name.trim().toLowerCase() === name || ids.includes(String(o.shortcut)));
+  const name = String(g.name || '').trim().toLowerCase();
+  return own.find((o) => ids.includes(String(o.shortcut))) || own.find((o) => o.name.trim().toLowerCase() === name);
 };
 
 /** The found games that otherGames leaves out, each with the own game shown in its place: a favorite found game keeps
@@ -109,7 +110,9 @@ export function foundTwins(found, own = []) {
 W['steam-library'] = {
   needs: ['tick'],
   create(box, { o, page, w }) {
-    const canLaunch = o.allowLaunch === true; // this widget's own option; the agent checks it again for this widget
+    // this widget's own option; the agent checks it again for this widget when it starts a Steam game or one found
+    // outside Steam (your own games are shortcuts: the agent runs them like their keys, without this option)
+    const canLaunch = o.allowLaunch === true;
     // the games found outside Steam start a program on the computer, not Steam: an option of their own, off by default,
     // on top of the Steam one (with "Let the phone start games" off, no game starts)
     const canLaunchOthers = canLaunch && o.allowLaunchOthers === true;
@@ -119,6 +122,8 @@ W['steam-library'] = {
     const limit = Math.max(1, Math.min(60, Math.round(+o.limit || 8)));
     const favorites = new Set((Array.isArray(o.favorites) ? o.favorites : []).map(String));
     let data = null, failed = false, armed = null, armTimer = 0, busy = null, lastKey = '';
+    // the tiles marked as favorites: the favorites, and your own game shown in the place of a favorite found game
+    let favShown = favorites;
     const own = ownGames(o.games, cfg.shortcuts); // the layout is rebuilt when the shortcuts change
     const count = h('span', 'sl-count');
     const grid = h('div', 'sl-grid');
@@ -152,7 +157,7 @@ W['steam-library'] = {
       const running = data?.running === g.id;
       const isArmed = armed === g.id;
       const status = isArmed ? t('w.steamlib.tapAgain') : gameStatus(g, running);
-      const b = h('button', 'sl-tile' + (running ? ' running' : '') + (favorites.has(g.id) ? ' fav' : '') + (g.shortcut || g.source ? ' own' : '') + (isArmed ? ' armed' : '') + (busy === g.id ? ' busy' : '')
+      const b = h('button', 'sl-tile' + (running ? ' running' : '') + (favShown.has(g.id) ? ' fav' : '') + (g.shortcut || g.source ? ' own' : '') + (isArmed ? ' armed' : '') + (busy === g.id ? ' busy' : '')
         + (g.state !== 'ready' ? ' sl-' + g.state : ''), gameCover(g),
         h('span', 'sl-name', g.name), status ? h('span', 'sl-status', status) : null);
       b.type = 'button';
@@ -182,12 +187,16 @@ W['steam-library'] = {
       // computer outside Steam (other launchers, the drives) come after Steam's, except one that is already one of yours
       const others = otherGames(data?.others, own);
       const steam = [...(data?.enabled && data?.found ? data.games : []), ...others];
-      const games = pickGames(steam, o.favorites, o.onlyFavorites === true, limit, own, foundTwins(data?.others, own));
-      const key = JSON.stringify([games, data?.running, data?.enabled, data?.found, data?.error, failed, armed, busy]);
+      const twins = foundTwins(data?.others, own);
+      const games = pickGames(steam, o.favorites, o.onlyFavorites === true, limit, own, twins);
+      favShown = new Set(favorites);
+      for (const [id, twin] of twins) if (favorites.has(id)) favShown.add(twin.id);
+      // how many are installed: also when the tiles shown stay the same (a game found beyond the ones shown)
+      const n = steam.length + own.length;
+      count.textContent = n ? ' ' + n : '';
+      const key = JSON.stringify([games, [...favShown], data?.running, data?.enabled, data?.found, data?.error, failed, armed, busy]);
       if (!force && key === lastKey) return;
       lastKey = key;
-      const n = steam.length + own.length;
-      count.textContent = n ? ' ' + n : ''; // how many are installed
       box.classList.toggle('sl-can-launch', canLaunch);
       if (!own.length && !others.length) {
         if (!data) { message(t(failed ? 'w.unavailable' : 'w.loading')); return; }

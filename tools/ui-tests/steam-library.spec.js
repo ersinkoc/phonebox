@@ -362,3 +362,69 @@ test('a favorite found game shown as one of your own games keeps its place as th
   expect(r.only).toEqual(['sc:fort', 'sc:fifa', 'sc:ember']);
   expect(r.without).toEqual(['sc:fifa']); // without the twins the favorite would be lost
 });
+
+test('a found game is shown as the shortcut the agent names for it, before one that only has its name', async ({ page }) => {
+  await page.goto('/panel/');
+  const r = await page.evaluate(async () => {
+    const { otherGames, ownGames, foundTwins, pickGames } = await import('/panel/widgets/steam-library.js');
+    // shortcut "a" comes first and has the game's name; the agent says "b" starts a program in the game's folder
+    const found = [{ id: 'x:1', name: 'Old Fort', source: 'drive', cover: false, shortcuts: ['b'] },
+      { id: 'x:2', name: 'Moss', source: 'gog', cover: false, shortcuts: [] }];
+    const own = ownGames(['a', 'b', 'm'], [{ id: 'a', label: 'Old Fort' }, { id: 'b', label: 'Fort launcher' }, { id: 'm', label: 'moss' }]);
+    const twins = foundTwins(found, own);
+    return {
+      twins: [...twins].map(([id, g]) => [id, g.id]),
+      shown: otherGames(found, own).map((g) => g.id),
+      fav: pickGames([], ['x:1'], false, 1, own, twins).map((g) => g.id),
+    };
+  });
+  expect(r.twins).toEqual([['x:1', 'sc:b'], ['x:2', 'sc:m']]); // without a named shortcut the name still decides
+  expect(r.shown).toEqual([]);
+  expect(r.fav).toEqual(['sc:b']); // the favorite starts the shortcut the agent named, not the first with its name
+});
+
+test('your own game shown in the place of a favorite found game is marked as a favorite', async ({ page }) => {
+  const errors = watch(page);
+  // Old Fort (found on a drive) is a favorite; your shortcut "old fort" stands for it, FIFA 23 is only one of your games
+  await open(page, '/panel/', { favorites: ['x:1b2c3d4e5f607182'], games: ['fifa', 'fort'], limit: 4 },
+    { shortcuts: [{ id: 'fifa', label: 'FIFA 23', icon: '🎮' }, { id: 'fort', label: 'old fort', icon: '🎮' }] });
+  const tiles = page.locator('.w-steam-library .sl-tile');
+  await expect(tiles.locator('.sl-name')).toHaveText(['old fort', 'FIFA 23', 'Harbor Lights', 'Starfall Tactics']);
+  await expect(tiles.nth(0)).toHaveAttribute('data-id', 'sc:fort');
+  await expect(tiles.nth(0)).toHaveClass(/fav/);
+  await expect(tiles.nth(1)).not.toHaveClass(/fav/);
+  await expect(tiles.nth(2)).not.toHaveClass(/fav/);
+  expect(errors).toEqual([]);
+});
+
+test('the installed count follows the agent when the tiles shown stay the same', async ({ page }) => {
+  const errors = watch(page);
+  await open(page, '/panel/', { favorites: ['900040'], limit: 1 });
+  // the agent's answer held still (the demo's last-played times move with the clock), and later one more game found
+  // outside Steam; with a game updating, as in the demo, the widget reads the list every 5 s
+  await page.evaluate(() => {
+    const real = window.fetch;
+    window.__more = false;
+    window.__served = 0;
+    window.fetch = async (url, ...rest) => {
+      const res = await real(url, ...rest);
+      if (!String(url).includes('/steam/library')) return res;
+      window.__served++;
+      const j = await res.json();
+      j.games = (j.games || []).map((g) => ({ ...g, lastPlayed: 0 }));
+      if (window.__more) j.others = [...(j.others || []), { id: 'x:2c3d4e5f60718293', name: 'Moss Hollow', source: 'gog', cover: false, shortcuts: [] }];
+      return new Response(JSON.stringify(j), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    };
+  });
+  const tiles = page.locator('.w-steam-library .sl-tile');
+  const count = page.locator('.w-steam-library .sl-count');
+  await expect(tiles.locator('.sl-name')).toHaveText(['Deep Circuit']);
+  await expect(count).toHaveText(' 12');
+  // a held answer was shown (the second one is read only after the first was drawn)
+  await expect.poll(() => page.evaluate(() => window.__served), { timeout: 15_000 }).toBeGreaterThanOrEqual(2);
+  // the only tile shown stays Deep Circuit; the count goes up
+  await page.evaluate(() => { window.__more = true; });
+  await expect(count).toHaveText(' 13', { timeout: 15_000 });
+  await expect(tiles.locator('.sl-name')).toHaveText(['Deep Circuit']);
+  expect(errors).toEqual([]);
+});
