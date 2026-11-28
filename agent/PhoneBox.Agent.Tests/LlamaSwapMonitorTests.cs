@@ -151,6 +151,24 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         Assert.Equal(14, s.TodayOutputTokens);
     }
 
+    [Fact(DisplayName = "A router that ignores the day range is walked only up to yesterday's newest entry")]
+    public async Task RouterIgnoringTheDayRangeStopsAtYesterday()
+    {
+        var frozen = DateTime.Today.AddHours(12);
+        await using var ls = new FakeLlamaSwap { IgnoreStart = true, LimitCap = 1 }; // one entry per page
+        ls.ActivityEntries = [
+            Entry(frozen, 5, 6),
+            .. Enumerable.Range(1, 6).Select(i => Entry(frozen.AddDays(-i), 999, 999)),
+        ];
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance) { UrlOverride = ls.Url, Now = () => frozen };
+        await mon.RefreshAsync();
+        Assert.Equal(2, ls.ActivityRequests); // today's page, then the first older entry ends the walk
+        var s = mon.Snapshot()!;
+        Assert.Equal(1, s.TodayRequests);
+        Assert.Equal(5, s.TodayInputTokens);
+        Assert.Equal(6, s.TodayOutputTokens);
+    }
+
     [Fact(DisplayName = "A router that caps the page size below 999 still has every entry summed")]
     public async Task ActivityPageSizeCapStillSumsEveryEntry()
     {
@@ -448,6 +466,44 @@ public sealed class LlamaSwapMonitorTests : IDisposable
         Assert.False(mon.Snapshot()!.Connected);
         Assert.Equal("offline", mon.Snapshot()!.Error);
         await read.WaitAsync(TimeSpan.FromSeconds(5)); // EndStream ended it, rather than leaving it for StreamLifetime
+    }
+
+    [Fact(DisplayName = "A line read before the stream ended is dropped, not applied after the offline state")]
+    public void EventFromAnEndedStreamIsDropped()
+    {
+        var now = DateTime.Now;
+        var router = new Uri("http://127.0.0.1:1/");
+        var mon = new LlamaSwapMonitor(NullLogger<LlamaSwapMonitor>.Instance)
+        { UrlOverride = router.ToString(), Now = () => now, UtcNow = () => now };
+        const string late = """{"operation":"upsert","request":{"id":"late","model":"ModelLate","req_path":"/v1/chat","elapsed_ms":11,"resp_bytes":1}}""";
+        // the same router, but its stream was ended by a failed poll: the line it already read must not land
+        mon.ApplyInflightEvent(late, router, new CancellationToken(canceled: true));
+        Assert.Empty(mon.Inflight);
+        // control: a stream that is still running applies the same line
+        using var live = new CancellationTokenSource();
+        mon.ApplyInflightEvent(late, router, live.Token);
+        Assert.Contains(mon.Inflight, r => r.Id == "late");
+    }
+
+    [Fact(DisplayName = "A newly entered address ends the stream's reconnect wait at once")]
+    public async Task NewAddressEndsTheReconnectWait()
+    {
+        await using var ls = new FakeLlamaSwap(quietEvents: true);
+        // no address yet: the stream loop sits in its reconnect wait, here far longer than the test may take
+        var mon = new LlamaSwapMonitor(new ConfigStore(Path.Combine(_dir, "wake-config.json")), NullLogger<LlamaSwapMonitor>.Instance)
+        { UrlOverride = "", StreamRetryMin = TimeSpan.FromMinutes(10), StreamRetryMax = TimeSpan.FromMinutes(10) };
+        await mon.StartAsync(CancellationToken.None);
+        try
+        {
+            await Task.Delay(300); // the loop found no address and is waiting
+            mon.UrlOverride = ls.Url; // the watcher notices within a second and wakes the wait
+            await WaitUntil(() => mon.Inflight.Count > 0); // the stream to the new address is open and has fed the list
+        }
+        finally
+        {
+            try { await mon.StopAsync(CancellationToken.None); }
+            catch (OperationCanceledException) { }
+        }
     }
 
     [Fact(DisplayName = "A stream still waiting for its headers is not a healthy stream")]

@@ -84,6 +84,10 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     internal static readonly TimeSpan MaxRestCall = TimeSpan.FromSeconds(15);
     /// <summary>For tests: the deadline one REST call gives up after.</summary>
     internal TimeSpan RestCallTimeout { get; init; } = MaxRestCall;
+    /// <summary>For tests: the first wait before the stream reconnects after a failure, and the longest the
+    /// doubling wait grows to.</summary>
+    internal TimeSpan StreamRetryMin { get; init; } = TimeSpan.FromSeconds(1);
+    internal TimeSpan StreamRetryMax { get; init; } = TimeSpan.FromSeconds(30);
 
     private HttpClient? _http;
     private HttpClient Http => _http ??= NewHttpClient(HttpHandler);
@@ -109,7 +113,9 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     // The active REST refresh: an address change cancels the retired walk, so a stalled body cannot hold the
     // gate - and the new router's first snapshot - until shutdown.
     private volatile CancellationTokenSource? _activeRefresh;
-    private volatile bool _resetStreamBackoff;
+    // Cancelled when the address changes: it ends the stream loop's reconnect wait (up to 30 s after a run of
+    // failures, or with no address at all), so a newly entered address shows its in-flight list at once.
+    private CancellationTokenSource _streamWake = new();
     private int _addressGeneration;
     // The active /api/events read, if any: a cleared or changed address cancels it - a quiet old router would
     // otherwise keep the old stream, and its in-flight list, for the rest of the stream's lifetime.
@@ -189,9 +195,9 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             {
                 last = cur;
                 CancelRefresh();
-                ClearInflight();
                 EndStream();
-                _resetStreamBackoff = true;
+                ClearInflight();
+                WakeStream();
                 // A new address is a new router: refresh it at once, not at the next poll (which can be an hour
                 // away at the maximum interval). Run it off the watcher so another address change is still
                 // noticed, and let the newest change cancel the retired walk.
@@ -217,14 +223,11 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     // stream is the only view of the requests while they run: the REST endpoints only know the finished ones.
     private async Task StreamLoopAsync(CancellationToken ct)
     {
-        var backoff = 1.0;
+        var backoff = StreamRetryMin;
         while (!ct.IsCancellationRequested)
         {
-            if (_resetStreamBackoff)
-            {
-                _resetStreamBackoff = false;
-                backoff = 1.0;
-            }
+            // Taken before the attempt: an address change during the attempt then skips the wait after it, too.
+            var wake = Volatile.Read(ref _streamWake);
             var ok = false;
             try
             {
@@ -236,8 +239,14 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex) { log.LogDebug(ex, "llama-swap events stream failed"); }
-            backoff = ok ? 1.0 : Math.Min(backoff * 2, 30);
-            await Task.Delay(TimeSpan.FromSeconds(backoff), ct);
+            backoff = ok ? StreamRetryMin : TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, StreamRetryMax.Ticks));
+            using (var waitCt = CancellationTokenSource.CreateLinkedTokenSource(ct, wake.Token))
+            {
+                try { await Task.Delay(backoff, waitCt.Token); }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
+            }
+            // A new address starts over: its first failure must not wait as long as the old address's last one.
+            if (wake.IsCancellationRequested) backoff = StreamRetryMin;
         }
     }
 
@@ -297,8 +306,8 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
                     if (doc.RootElement.ValueKind != JsonValueKind.Object) continue;
                     if (!doc.RootElement.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String || type.GetString() != "inflight") continue;
                     if (!doc.RootElement.TryGetProperty("data", out var data)) continue;
-                    if (data.ValueKind == JsonValueKind.String) ApplyInflightEvent(data.GetString()!, baseUri);
-                    else if (data.ValueKind == JsonValueKind.Object) ApplyInflightEvent(data.GetRawText(), baseUri);
+                    if (data.ValueKind == JsonValueKind.String) ApplyInflightEvent(data.GetString()!, baseUri, readCt.Token);
+                    else if (data.ValueKind == JsonValueKind.Object) ApplyInflightEvent(data.GetRawText(), baseUri, readCt.Token);
                 }
             }
         }
@@ -353,6 +362,15 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
         }
     }
 
+    /// <summary>Ends the stream loop's reconnect wait: called on an address change, so the new address is tried
+    /// at once and its backoff starts over. The old source is cancelled, not disposed: the loop may still be
+    /// reading its token.</summary>
+    private void WakeStream()
+    {
+        var old = Interlocked.Exchange(ref _streamWake, new CancellationTokenSource());
+        old.Cancel();
+    }
+
     /// <summary>Cancels the REST refresh in flight, if any: an address change must not keep waiting for the old
     /// router's stalled body while the new router has no snapshot yet.</summary>
     private void CancelRefresh()
@@ -374,7 +392,11 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
     /// <param name="from">The router the event came from, when it comes from the stream: a line already read can
     /// land after the address changed and <see cref="RefreshAsync"/> cleared the list, so it is dropped, not
     /// applied - the old router's request ids, models and elapsed times are not the new router's.</param>
-    internal void ApplyInflightEvent(string payload, Uri? from = null)
+    /// <param name="stream">The read the event came from: a line already read when a failed poll ended the stream
+    /// is dropped, not applied after the list was cleared and the offline state published. Callers end the
+    /// stream before they clear the list, and the check runs under the list's lock, so a late line either lands
+    /// before the clear or not at all.</param>
+    internal void ApplyInflightEvent(string payload, Uri? from = null, CancellationToken stream = default)
     {
         try
         {
@@ -383,7 +405,7 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             var op = doc.RootElement.TryGetProperty("operation", out var o) && o.ValueKind == JsonValueKind.String ? o.GetString() : null;
             lock (_inflightLock)
             {
-                if (from is not null && !UrlMatches(from)) return;
+                if (stream.IsCancellationRequested || (from is not null && !UrlMatches(from))) return;
                 var now = UtcNow();
                 void Add(LlamaSwapInflight r)
                 {
@@ -457,8 +479,8 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             CancelRefresh();
             _published = null;
             // No (valid) address: the phone must not keep seeing the last router's requests as in flight.
-            ClearInflight();
             EndStream();
+            ClearInflight();
             _lastUrl = null;
             return;
         }
@@ -468,9 +490,9 @@ public sealed class LlamaSwapMonitor(ConfigStore config, ILogger<LlamaSwapMonito
             // snapshot belong to the old server. Until the new one has answered, the panel says "loading" - the
             // old router's version and counts must not keep showing as if they were the new router's.
             CancelRefresh();
-            ClearInflight();
             EndStream();
-            _resetStreamBackoff = true;
+            ClearInflight();
+            WakeStream();
             _published = null;
         }
         _lastUrl = baseUri;
