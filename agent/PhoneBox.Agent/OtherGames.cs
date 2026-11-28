@@ -86,8 +86,9 @@ public sealed class OtherGames(ConfigStore config, ILogger<OtherGames> log, Game
         {
             Dictionary<string, string[]> names;
             lock (_gate) names = _names;
-            covers!.Want(shown.Select(g => (g.Id, names.GetValueOrDefault(g.Id) ?? [g.Name])));
+            covers!.Want(shown.Select(g => (g.Id, names.GetValueOrDefault(g.Id) ?? [g.Name])).ToList(), CoversWanted);
         }
+        else covers?.Stop(); // turned off (or no widget asks): what waits is dropped
         return shown.Select(g => art && covers!.CoverFile(g.Id) is not null
             ? new OtherGame(g.Id, g.Name, g.Source, true, ShortcutsIn(g, programs), true)
             : new OtherGame(g.Id, g.Name, g.Source, g.Exe is not null, ShortcutsIn(g, programs))).ToList();
