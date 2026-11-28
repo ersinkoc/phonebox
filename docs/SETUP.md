@@ -84,6 +84,15 @@ curl -fsSL https://raw.githubusercontent.com/ersinkoc/phonebox/main/setup.sh | b
   Windows SmartScreen or an antivirus may warn about a new, unsigned program, and some antivirus engines have flagged
   it ([#69](https://github.com/ersinkoc/phonebox/issues/69)). Setup only installs a file that matches the release
   checksum. If your antivirus removes `PhoneBoxAgent.exe`, setup says so; restore it from quarantine or report it.
+- **"This script contains malicious content and has been blocked by your antivirus software"**
+  (`ScriptContainedMaliciousContent`) when you paste the `irm … | iex` line: Microsoft Defender scans a script that is
+  run straight from the internet and sometimes flags the setup script's own download-and-check code as suspicious
+  ([#789](https://github.com/ersinkoc/phonebox/issues/789)). Nothing was installed. Use the Windows installer
+  (`PhoneBox-<version>-win-x64-setup.exe`) or the agent zip from the
+  [latest release](https://github.com/ersinkoc/phonebox/releases/latest) instead; both are listed with their SHA-256
+  in `SHA256SUMS-<version>.txt`. These don't install adb, which the USB connection and installing the phone app over
+  the cable need: run `winget install Google.PlatformTools` (the agent finds it), or install the APK from the release
+  and pair the phone over Wi-Fi instead.
 - **Smart App Control** (Windows 11) blocks programs that are neither signed nor known to Microsoft. The agent is
   not code-signed yet (signing through SignPath Foundation waits for its release certificate, [#56](https://github.com/ersinkoc/phonebox/issues/56)),
   so with Smart App Control on, Windows refuses to start it: "An Application Control policy has blocked this file"
