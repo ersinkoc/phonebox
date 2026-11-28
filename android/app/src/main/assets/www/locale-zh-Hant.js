@@ -1737,7 +1737,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.": "目標：顯示器ID。參數：JSON，寬度、高度、頻率、可選的x/y。",
       "Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.": "目標：所有者/存儲庫。參數：工作流程文件名。 裝置：可選的分支/ref。",
       "Target: process name. Argument: left, right, center, max.": "目標：進程名稱。參數：左、右、中間、最大值。",
-      "Target: process.exe. Device: output ID. Requires SoundVolumeView.": "目標：process.exe。 裝置：輸出ID。 需要SoundVolumeView。",
+      "Target: process.exe (Windows) or the application's name (Linux). Device: output ID. Requires SoundVolumeView on Windows or pactl on Linux.": "目標：process.exe（Windows）或應用程式名稱（Linux）。 裝置：輸出ID。 Windows 需要 SoundVolumeView，Linux 需要 pactl。",
       "Target: spotify:playlist:… (also album, track or episode).": "目標：spotify:playlist: … (也包括專輯、曲目或單集)。",
       "Target: text shortcut ID.": "目標：文字快捷方式 ID。",
       "Target: text to type.": "目標 ： 將文字輸入",
