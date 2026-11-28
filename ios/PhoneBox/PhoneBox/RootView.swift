@@ -8,15 +8,23 @@ struct RootView: View {
         Group {
             if let computer = pairing.computer {
                 // A new identity rebuilds the panel with a fresh client and USB link: switching computers (a page with
-                // that computer's layout), pairing or forgetting one (the others to ask), or pairing the same computer
-                // again (new addresses or token). An outstanding probe of the old client is discarded.
+                // that computer's layout), pairing or forgetting one (the others to ask), pairing the same computer
+                // again (new addresses or token), or a new pick (the computer to go back to, even when the pick is the
+                // computer already on screen). An outstanding probe or pick check of the old client is discarded.
                 PanelScreen(computer: computer, others: pairing.others, preferred: pairing.pickElsewhere)
-                    .id([computer] + pairing.computers)
+                    .id(PanelIdentity(shown: computer, pick: pairing.preferredID, paired: pairing.computers))
             } else {
                 UnpairedView()
             }
         }
     }
+}
+
+/// What the panel's client is built from; when any of it changes, the panel and its client are built again.
+private struct PanelIdentity: Hashable {
+    let shown: PairedComputer
+    let pick: String?
+    let paired: [PairedComputer]
 }
 
 /// The panel shares the screen with a toolbar for the paired computers: details, switching, pairing and Forget.
