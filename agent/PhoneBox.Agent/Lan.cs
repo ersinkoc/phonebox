@@ -121,6 +121,9 @@ public static class Lan
         || path == "/api/guba"
         // the Synced lyrics widget: the playing track's lyrics (LRCLIB is asked only for a widget with its lookup on)
         || path == "/api/lyrics" || path == "/api/wallpaper" || path == "/api/llamaswap"
+        // the MQTT widget: the connection's state, the time of its last message and a kind of error, nothing else (never the
+        // broker, the user name or a topic). The values come through the push store; /api/mqtt/test stays local
+        || path == "/api/mqtt/status"
         || path.StartsWithSegments("/api/work") || path.StartsWithSegments("/api/procs") || path.StartsWithSegments("/api/run")
         || path.StartsWithSegments("/api/apps") || path.StartsWithSegments("/api/shortcuts/icon") || path.StartsWithSegments("/api/console") || path == "/api/dictate"
         // the Steam library widget: the list of installed games, an installed game's cover (the tiles' <img>), and starting a

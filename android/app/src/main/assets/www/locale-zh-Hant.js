@@ -1156,6 +1156,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "正在載入…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "MQTT 連線的狀態和最後一則訊息的時間，以及你的訂閱放進推送值中的值。broker 和訂閱在 設定 › 一般 › MQTT 中設定。",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "要顯示的推送值的鍵，以逗號分隔（你的 MQTT 訂閱的鍵）",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "本地 LLM 路由器：目前載入的模型、進行中的請求、今日的請求數和 token 數，以及生成速度。伺服器位址在設定 › 一般 › llama-swap 中設定。",
       "Only this category (its category in Settings; empty = all)": "僅此分類（設定中的分類；留空 = 全部）",
@@ -1904,6 +1907,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Plex 播放清單（未勾選 = 全部）"
     },
     "panel": {
+      "Last message": "最後一則訊息",
+      "Turn on MQTT in Settings › General › MQTT.": "請在 設定 › 一般 › MQTT 中開啟 MQTT。",
       "In flight": "進行中",
       "Today": "今天",
       "Speed": "速度",

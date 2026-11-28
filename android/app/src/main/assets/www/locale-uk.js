@@ -1156,6 +1156,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Завантаження…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "Стан підключення MQTT і час останнього повідомлення, а також значення, які ваші підписки записують у надіслані значення. Брокер і підписки налаштовуються в Налаштування › Загальні › MQTT.",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "Ключі надісланих значень для показу, через кому (ключі ваших підписок MQTT)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Локальний LLM-роутер: завантажені моделі, поточні запити, запити та токени за сьогодні, і швидкість генерації. Адресу сервера встановлюють у Налаштування › Загальні › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Лише ця категорія (її категорія в налаштуваннях; порожньо = усі)",
@@ -1904,6 +1907,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Плейлисти Plex (нічого не позначено = усі)"
     },
     "panel": {
+      "Last message": "Останнє повідомлення",
+      "Turn on MQTT in Settings › General › MQTT.": "Увімкніть MQTT у Налаштування › Загальні › MQTT.",
       "In flight": "У процесі",
       "Today": "Сьогодні",
       "Speed": "Швидкість",

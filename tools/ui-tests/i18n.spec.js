@@ -594,3 +594,28 @@ test('every llama-swap panel string is translated, not copied English, and keeps
   });
   expect(problems, 'llama-swap panel strings not properly translated:\n' + problems.join('\n')).toEqual([]);
 });
+
+// The MQTT widget: its catalog text (widgets.json) and its two panel literals (tp), in every non-English dictionary.
+test('every MQTT widget string is translated and not copied English', async ({ page }) => {
+  await page.goto('/panel/');
+  const problems = await page.evaluate(() => {
+    const I18n = window.PhoneBoxI18n;
+    const catalog = [
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.",
+      'Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)',
+    ];
+    const panel = ['Last message', 'Turn on MQTT in Settings › General › MQTT.'];
+    return I18n.LANGUAGES.filter(({ code }) => code !== 'en').flatMap(({ code }) => {
+      const check = (dict, k) => {
+        const v = (dict || {})[k];
+        if (typeof v !== 'string' || !v.trim()) return [`${code}:${k} (missing)`];
+        if (v === k) return [`${code}:${k} (copied english)`];
+        if (k.includes('MQTT') && !v.includes('MQTT')) return [`${code}:${k} (lost the name MQTT)`];
+        return [];
+      };
+      return [...catalog.flatMap((k) => check(I18n.CATALOG[code], k)), ...panel.flatMap((k) => check(I18n.PANEL[code], k))];
+    });
+  });
+  expect(problems, 'MQTT widget strings not properly translated:\n' + problems.join('\n')).toEqual([]);
+});
+

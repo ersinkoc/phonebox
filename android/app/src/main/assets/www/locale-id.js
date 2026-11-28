@@ -1156,6 +1156,9 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.cd.plexLoading": "Memuat…"
     },
     "catalog": {
+      "MQTT": "MQTT",
+      "The MQTT connection's state and the time of its last message, with the values your subscriptions put into pushed values. The broker and the subscriptions are set in Settings › General › MQTT.": "Status koneksi MQTT dan waktu pesan terakhirnya, beserta nilai yang dimasukkan langganan Anda ke nilai yang didorong. Broker dan langganan diatur di Pengaturan › Umum › MQTT.",
+      "Keys of the pushed values to show, separated by commas (the keys of your MQTT subscriptions)": "Kunci nilai yang didorong yang ditampilkan, dipisahkan koma (kunci langganan MQTT Anda)",
       "llama-swap": "llama-swap",
       "The local LLM router: which models are loaded, the requests in flight, requests and tokens for today, and the generation speed. The server address is set in Settings › General › llama-swap.": "Router LLM lokal: model yang dimuat, permintaan berjalan, permintaan dan token hari ini, serta kecepatan generasi. Alamat server diatur di Pengaturan › Umum › llama-swap.",
       "Only this category (its category in Settings; empty = all)": "Hanya kategori ini (kategorinya di Pengaturan; kosong = semua)",
@@ -1904,6 +1907,8 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Plex playlists (none ticked = all)": "Daftar putar Plex (tidak ada yang dicentang = semua)"
     },
     "panel": {
+      "Last message": "Pesan terakhir",
+      "Turn on MQTT in Settings › General › MQTT.": "Aktifkan MQTT di Pengaturan › Umum › MQTT.",
       "In flight": "Berlangsung",
       "Today": "Hari ini",
       "Speed": "Kecepatan",
