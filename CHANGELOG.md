@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Linux: the iPhone USB relay waits quietly while usbmuxd is not running. Its twelve pipes dialled usbmuxd's socket
+  every four seconds even when it did not exist (Linux starts usbmuxd only while an Apple device is plugged in), about
+  16 exceptions a second for nothing; they now check for the socket first. macOS, where usbmuxd always runs, and
+  Windows are unchanged.
+
 - MQTT follow-up to the first step (#739, [t7spotter](https://github.com/t7spotter)): a broker that accepts the login and
   then drops the connection (a duplicate client ID, an access list) is retried more and more slowly instead of every
   5 seconds, and the log notes it once: the wait starts over after a connection has held for a minute or when the
