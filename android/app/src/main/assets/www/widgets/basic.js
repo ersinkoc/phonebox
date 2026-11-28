@@ -1827,8 +1827,11 @@ W.mqtt = {
     const load = async () => {
       try { status = await api('/mqtt/status'); failed = false; return true; } catch (_) { failed = true; return false; }
     };
+    // a failed request wins over an answer kept from before: the agent may be gone, so its last state no longer holds
+    // (the values stay: they are the push store's, and the next answer brings the state back)
     const stateText = () => {
-      if (!status) return failed ? t('w.offline') : t('w.loading');
+      if (failed) return t('w.offline');
+      if (!status) return t('w.loading');
       if (status.state === 'connected') return t('s.cd.connected');
       if (status.state === 'connecting') return t('panel.connecting');
       if (status.state === 'error') return t(MQTT_ERR(status.errorKind));
@@ -1840,7 +1843,7 @@ W.mqtt = {
       const key = JSON.stringify([status, failed, at ? ago(at) : '', items.map(([k, it]) => [k, it ? [it.at, it.data, ago(it.at)] : null]), box.clientHeight]);
       if (key === lastKey) return;
       lastKey = key;
-      const state = status ? status.state : failed ? 'error' : 'connecting';
+      const state = failed ? 'error' : status ? status.state : 'connecting';
       const rows = items.map(([k, it]) => {
         if (!it) return h('div', 'mq-row none', h('span', 'mq-k', k), h('span', 'mq-v', t('w.noDataYet')), h('span', 'mq-age'));
         const v = pushView(it), unit = v.unit ?? '';

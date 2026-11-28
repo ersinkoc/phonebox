@@ -73,6 +73,34 @@ test('an error is shown by its kind, in words', async ({ page }) => {
   await expect(widget(page).locator('.mq-v')).toHaveText('22.4°C');
 });
 
+test('a failed status request shows Offline instead of the last answer, and the next answer brings the state back', async ({ page }) => {
+  await open(page, config({ keys: 'hall-temp' }));
+  await expect(widget(page).locator('.mq-state')).toHaveClass(/connected/);
+  await page.evaluate(() => {
+    const inner = window.fetch;
+    window.__mqttDown = true;
+    window.fetch = (input, init) => String(input).endsWith('/api/mqtt/status') && window.__mqttDown ? Promise.reject(new TypeError('Failed to fetch')) : inner(input, init);
+  });
+  await expect(widget(page).locator('.mq-text')).toHaveText('Offline', { timeout: 12_000 });
+  await expect(widget(page).locator('.mq-state')).toHaveClass(/error/);
+  await expect(widget(page).locator('.mq-v')).toHaveText('22.4°C'); // the values are the push store's
+  await page.evaluate(() => { window.__mqttDown = false; });
+  // after a failure the widget asks again within its retry time (15 s)
+  await expect(widget(page).locator('.mq-text')).toHaveText('Connected', { timeout: 25_000 });
+});
+
+test('rows beyond the widget height can be scrolled to', async ({ page }) => {
+  const keys = Array.from({ length: 12 }, (_, i) => 'key' + i).join(',');
+  await open(page, { ...config({ keys }), pages: [{ id: 'one', title: 'One', widgets: [{ id: 'mq', type: 'mqtt', x: 0, y: 0, w: 3, h: 2, options: { keys } }] }] });
+  const list = widget(page).locator('.mq-list');
+  await expect(list.locator('.mq-row')).toHaveCount(12);
+  const sizes = await list.evaluate((el) => ({ overflowY: getComputedStyle(el).overflowY, scroll: el.scrollHeight, client: el.clientHeight }));
+  expect(sizes.overflowY).toBe('auto');
+  expect(sizes.scroll).toBeGreaterThan(sizes.client); // more rows than room: the list scrolls rather than cutting them off
+  await list.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await expect(list.locator('.mq-row').last()).toBeInViewport();
+});
+
 test('the widget is in the catalog and the panel speaks the language (German)', async ({ page }) => {
   await open(page, { ...config({}, { mqtt: { enabled: false } }), display: { language: 'de' } });
   await expect(widget(page).locator('.mq-text')).toHaveText('Schalten Sie MQTT in Einstellungen › Allgemein › MQTT ein.');

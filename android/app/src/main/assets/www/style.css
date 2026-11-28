@@ -942,7 +942,7 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .mq-state.error .mq-dot { background: var(--err); }
 .mq-state.connected { color: var(--text); }
 .mq-last { white-space: nowrap; }
-.mq-list { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 4px; }
+.mq-list { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; touch-action: pan-x pan-y; }
 .mq-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 8px; font-size: 14px; flex-shrink: 0; }
 .mq-k { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .mq-v { font-variant-numeric: tabular-nums; color: var(--c, var(--text)); white-space: nowrap; }
