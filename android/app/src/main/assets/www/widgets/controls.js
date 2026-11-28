@@ -91,7 +91,12 @@ function slider(label, send, max = 100) {
   input.onpointerup = input.onpointercancel = input.onlostpointercapture = input.onblur = () => { editing = false; };
   return { input, number, set(value) { if (!editing && document.activeElement !== input) input.value = String(value); number.textContent = String(editing ? input.value : value); fill(); } };
 }
-function meter(value) { const e = h('div', 'deck-meter', h('i')); e.firstChild.style.transform = `scaleX(${Math.max(0, Math.min(1, value || 0))})`; return e; }
+// A meter reads in dB, as mixers and the computer's own meters do: -60 dBFS is empty, 0 dBFS full. Ordinary music
+// around -20 dBFS (a linear peak of 0.1) then fills two thirds of the bar instead of a tenth.
+export const meterLevel = peak => { const p = Number(peak) || 0; return p > 0 ? Math.max(0, Math.min(1, 1 + 20 * Math.log10(p) / 60)) : 0; };
+// The bar is clipped rather than scaled, so its colours stay put: green up to -12 dB, yellow up to -3 dB, red above.
+function showLevel(e, peak) { e.firstChild.style.clipPath = `inset(0 ${((1 - meterLevel(peak)) * 100).toFixed(1)}% 0 0)`; }
+function meter(value) { const e = h('div', 'deck-meter', h('i')); showLevel(e, value); return e; }
 
 // The device list, the microphone, per-app volume and switching devices need the agent's full audio backend: Windows
 // Core Audio, or pactl on Linux. Without one (macOS, or Linux without pactl) the agent reports only the system output
@@ -155,7 +160,7 @@ function audioView(box, options, mode) {
       row.controls.input.disabled = item.canControl === false; row.mute.disabled = item.canControl === false;
       row.balance.forEach((slider, channel) => { const value = item.channelVolumes?.[channel]; slider.input.disabled = value == null; slider.set(value || 0); if (value == null) slider.number.textContent = 'n/a'; });
       row.mute.setAttribute('aria-pressed', String(item.muted));
-      row.el.classList.toggle('deck-muted', item.muted); row.signal.firstChild.style.transform = `scaleX(${Math.max(0, Math.min(1, item.peak || 0))})`;
+      row.el.classList.toggle('deck-muted', item.muted); showLevel(row.signal, item.peak);
       return row.el;
     });
     reconcile(root, nodes);
